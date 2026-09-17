@@ -1,7 +1,7 @@
 # JustGO — Implementation Plan
 
 **Version:** 2 · Updated September 17, 2026  
-**Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native UI and physical-device acceptance remain pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
+**Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native UI verification is partial and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](PRD.md) · [Tech stack](TECH_STACK.md)  
 **Handoffs:** [Index](handoffs/README.md) · [Template](handoffs/TEMPLATE.md) · [Planning baseline](handoffs/00-planning-baseline.md)
