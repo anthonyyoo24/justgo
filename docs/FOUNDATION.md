@@ -1,5 +1,7 @@
 # Foundation: setup, versions and operations
 
+> Phase 01 historical setup record. Phase 02 now adds account/session tables, identity endpoints and secure credential storage; see [IDENTITY.md](IDENTITY.md) and the [phase 02 handoff](handoffs/phase-02-identity.md). Native and physical-device acceptance status is recorded separately there.
+
 Implemented September 17, 2026. Start with the [README](../README.md); the [phase handoff](handoffs/phase-01-foundation.md) records actual verification and remaining gates. This is the foundation preview, not the release app. No domain tables, account/session endpoints, purchases or permanent client data storage exist yet.
 
 ## Compatible version set

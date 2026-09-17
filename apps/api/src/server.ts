@@ -3,6 +3,7 @@ import { buildApp } from './build-app.js';
 import { readConfig } from './config.js';
 import { checkDatabase, createDatabase } from './db/client.js';
 import { loggerOptions } from './diagnostics.js';
+import { IdentityService } from './identity/service.js';
 
 const config = readConfig();
 // Once per warm process/function instance; never construct a pool per request.
@@ -10,6 +11,17 @@ const database = config.DATABASE_URL ? createDatabase(config) : undefined;
 const app = buildApp(
   {
     logger: loggerOptions(config.LOG_LEVEL),
+    onVercel: process.env.VERCEL === '1',
+    ...(database
+      ? {
+          identity: new IdentityService(database.db, {
+            rateKey: config.IDENTITY_RATE_LIMIT_KEY,
+            sessionHours: config.IDENTITY_SESSION_HOURS,
+            transferMinutes: config.IDENTITY_TRANSFER_MINUTES,
+            rateLimit: config.IDENTITY_RECOVERY_RATE_LIMIT,
+          }),
+        }
+      : {}),
     origins: config.CORS_ORIGINS.split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),

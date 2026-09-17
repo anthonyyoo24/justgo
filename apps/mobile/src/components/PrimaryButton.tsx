@@ -20,10 +20,7 @@ export function PrimaryButton({
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
       {busy && (
-        <ActivityIndicator
-          color={colors.white}
-          accessibilityLabel="Checking connection"
-        />
+        <ActivityIndicator color={colors.white} accessibilityLabel={label} />
       )}
       <Text style={styles.label}>{label}</Text>
     </Pressable>

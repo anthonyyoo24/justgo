@@ -19,3 +19,4 @@
 !packages/contracts/tsconfig.build.json
 !packages/contracts/src
 !packages/contracts/src/index.ts
+!packages/contracts/src/identity.ts

@@ -1,6 +1,6 @@
 # JustGO
 
-An iOS-first social-confidence app. Phase 01 provides the Expo development app, Fastify API, shared contracts, database foundation and test infrastructure. Feature work begins with identity/recovery in phase 02. `npm ci` builds the shared contracts for Node; re-run `npm run build:contracts` after editing contracts during API development.
+An iOS-first social-confidence app. Phase 01 provides the Expo development app, Fastify API, shared contracts, database foundation and test infrastructure. Phase 02 adds real account bootstrap, independent sessions, recovery keys, approved device transfers and a Swift Keychain module. [Identity setup](docs/IDENTITY.md) and the [phase 02 handoff](docs/handoffs/phase-02-identity.md) record implementation, verification and deferred physical-device acceptance. `npm ci` builds the shared contracts for Node; re-run `npm run build:contracts` after editing contracts during API development.
 
 ## Start locally
 
@@ -17,9 +17,9 @@ npm run dev:web
 
 `db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere set `JUSTGO_PG_BIN` to their directory. It creates a dedicated, loopback-only cluster at `.local/postgres` on port **54329** and the `justgo_test` database, generates local role credentials and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Local host authentication is trusted on this disposable cluster; never expose its port or use it for personal data.
 
-The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The starter app's **Check connection** checks both. Without a database, liveness still works and readiness returns 503.
+The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The identity preview uses authenticated account endpoints; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
 
-For environment-managed development, copy the workspace `.env.example` files to `.env` and configure the separate runtime and migration URLs. Never commit credentials. A physical iPhone needs a reachable LAN API address or staging HTTPS URL; `localhost` on a phone refers to the phone.
+For environment-managed development, copy the workspace `.env.example` files to `.env` and configure the separate runtime and migration URLs. Never commit credentials. Identity traffic requires HTTPS, except loopback during development. A physical iPhone needs a reachable HTTPS API route; `localhost` on a phone refers to the phone. Do not embed a Vercel protection bypass secret in the app.
 
 ## Verify
 
@@ -47,11 +47,13 @@ After the cloud build finishes, download its artifact and launch **one** install
 
 Generated native projects and completed Xcode caches are retained locally and excluded from Git/cloud uploads. EAS runs Continuous Native Generation from app config. `.easignore` excludes local secrets, native output, dependencies and design/docs; inspect the archive before changing those rules.
 
+The local Expo module is auto-linked from `apps/mobile/modules/justgo-keychain`; native dependency or Swift changes require a new EAS build. If `xcrun simctl` resolves only Command Line Tools, use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for simulator commands without changing the global developer selection.
+
 A native smoke flow lives in `apps/mobile/e2e/launch.yaml`. With Maestro installed, a running development build, Metro and healthy API, run `APP_ID=dev.justgo.foundation npm run test:native -w @justgo/mobile`. This is a launch harness, not proof of physical-device recovery or purchases. The [phase handoff](docs/handoffs/phase-01-foundation.md) owns actual results.
 
 ## Workspace
 
-- `apps/mobile`: Expo Router, React Native StyleSheet, typed design tokens and a foundation preview.
+- `apps/mobile`: Expo Router, typed design tokens, native Keychain storage and the identity/recovery preview.
 - `apps/api`: Fastify, Drizzle, `pg`, reviewed SQL and operational endpoints.
 - `packages/contracts`: public Zod response schemas shared by mobile and API.
 - `docs`: product scope, implementation plan, extracted design references and durable phase handoffs.
