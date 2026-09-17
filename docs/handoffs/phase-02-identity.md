@@ -81,6 +81,8 @@ The Mac was accessible on the follow-up attempt. The retained EAS binary initial
 
 After the fix, the native app created and connected account `8d1d2903` using its Keychain vault. Terminating and relaunching the app restored the same account, and tapping **Renew this session** succeeded. `npm run check` passed all 34 unit/component tests, and both iOS and web exports passed. Browser account creation and session renewal were also rechecked through the real local API. No Swift changes or new native compilation were needed.
 
+Fix commit [`b303fb7`](https://github.com/anthonyyoo24/justgo/commit/b303fb7bb91bb56251a9026adfd5eae332f5adf2) passed [GitHub CI run 35277871318](https://github.com/anthonyyoo24/justgo/actions/runs/35277871318), including all 48 unit/component/database tests, web and iOS exports, type/lint/format checks and Expo Doctor.
+
 Native recovery controls below the fold are still awaiting inspection: Computer Use taps work, but its drag/scroll actions did not move either JustGO or the iOS home screen. A manual swipe was requested so the remaining controls can be tested. This is a different blocker from the earlier Mac lock; it is not evidence of a JustGO scrolling defect. The physical-device matrix remains deferred.
 
 GitHub [phase two CI run 35274014833](https://github.com/anthonyyoo24/justgo/actions/runs/35274014833) passed against implementation commit `fd48e48`: clean dependency install, `npm run check`, database migration and integration tests, web export and Expo Doctor. It completed on September 17, 2026 at 21:00:57 UTC.
