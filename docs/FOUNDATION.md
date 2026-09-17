@@ -1,27 +1,27 @@
 # Foundation: setup, versions and operations
 
-> Phase 01 historical setup record. Phase 02 now adds account/session tables, identity endpoints and secure credential storage; see [IDENTITY.md](IDENTITY.md) and the [phase 02 handoff](handoffs/phase-02-identity.md). Native and physical-device acceptance status is recorded separately there.
+> Current setup and operations guide, established in Phase 01. See [IDENTITY.md](IDENTITY.md) for Phase 02 identity configuration and [phase handoffs](handoffs/README.md) for historical verification and remaining acceptance gates.
 
-Implemented September 17, 2026. Start with the [README](../README.md); the [phase handoff](handoffs/phase-01-foundation.md) records actual verification and remaining gates. This is the foundation preview, not the release app. No domain tables, account/session endpoints, purchases or permanent client data storage exist yet.
+Established September 17, 2026. Start with the [README](../README.md). The Phase 01 preview did not include account/session endpoints or permanent client credential storage; Phase 02 adds those capabilities. Purchases and later domain features remain scheduled in the implementation plan.
 
 ## Compatible version set
 
 Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node/Vercel; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
 
-| Component                        | Pinned version / constraint                                                                 |
-| -------------------------------- | ------------------------------------------------------------------------------------------- |
-| Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                  |
-| TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                |
-| Expo / React Native / React      | 57.0.23 / 0.86.3 / 19.2.3                                                                   |
-| Expo Router / development client | 57.0.21 / 57.0.19                                                                           |
-| Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                                   |
-| Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                             |
-| Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                                    |
-| React Native Web                 | 0.21.2; development/browser verification only                                               |
-| iOS                              | 16.4 minimum, Hermes; local build uses Xcode 26.6 with matching iOS 26.5 simulator platform |
-| Fastify / Drizzle / pg           | 5.12.5 / 0.45.2 (kit 0.31.10) / 8.23.0                                                      |
-| PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                                 |
-| Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.5, React Native Testing Library 13.3.3            |
+| Component                        | Pinned version / constraint                                                      |
+| -------------------------------- | -------------------------------------------------------------------------------- |
+| Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                       |
+| TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                     |
+| Expo / React Native / React      | 57.0.23 / 0.86.3 / 19.2.3                                                        |
+| Expo Router / development client | 57.0.21 / 57.0.19                                                                |
+| Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                        |
+| Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                  |
+| Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                         |
+| React Native Web                 | 0.21.2; development/browser verification only                                    |
+| iOS                              | 16.4 minimum, Hermes; simulator verification used iPhone 17 / iOS 26.4           |
+| Fastify / Drizzle / pg           | 5.12.5 / 0.45.2 (kit 0.31.10) / 8.23.0                                           |
+| PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                      |
+| Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.5, React Native Testing Library 13.3.3 |
 
 The React family is overridden to the Expo-supported version to prevent a test renderer from pulling an incompatible React. Expo Doctor validates the installed native set. Recheck the [Expo 57 reference](https://docs.expo.dev/versions/v57.0.0/) and [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/) as a set when upgrading. Do not update Worklets independently.
 
@@ -58,7 +58,7 @@ Staging administrative provisioning is recorded as Supabase migration `foundatio
 
 The runtime role owns no schema/table, cannot bypass RLS, create roles/databases/tables, or assume the migrator. Future owner-scoped tables must enable **and force** RLS, have `USING` and `WITH CHECK` policies for `justgo_runtime`, grant only required operations, and index `user_id` alongside access-path indexes. Example policy predicate: `user_id = (select justgo.current_user_id())`. Add constraints and indexes with the consuming feature, not a speculative full schema.
 
-Use `withOwner(db, verifiedUserId, tx => …)` for every owner operation. It sets `app.user_id` with transaction-local `set_config(..., true)` and executes work on that same connection. Never derive ownership from an untrusted request field, use session-level `SET`, or issue the feature query outside `tx`. A connection without ownership sees no owner data. RLS is defense in depth; it does not replace API authentication/authorization, which starts in phase 02.
+Identity code uses `withOwner(db, verifiedUserId, tx => …)` as its foundation ownership primitive. For authenticated feature operations, use `IdentityService.withSession(token, callback)` as described in [IDENTITY.md](IDENTITY.md); it verifies the active account/device/session before supplying the owner transaction. It sets `app.user_id` with transaction-local `set_config(..., true)` and executes work on that same connection. Never derive ownership from an untrusted request field, use session-level `SET`, or issue the feature query outside `tx`. A connection without ownership sees no owner data. RLS is defense in depth; it does not replace API authentication/authorization, which Phase 02 implements.
 
 `pg` reuses one pool per warm server instance, max 1 by default, with 5-second connect/statement and 6-second query limits. There are no named prepared statements. Runtime role connection limit is 20. Transaction pooling and those caps bound individual processes; they do not establish a traffic capacity or global Vercel instance limit. Load tests, capacity alerts and budget policy are later operational work. Certificate verification must not be disabled to fix pooler TLS errors; use the dashboard connection host and the Supabase CA.
 
@@ -74,25 +74,27 @@ npx vercel@latest deploy --dry --json
 npx vercel@latest deploy --target=preview --regions yul1 --yes --scope anthony-youngshin-yoos-projects
 ```
 
-Verified staging deployment: `https://justgo-303esikf7-anthony-youngshin-yoos-projects.vercel.app`. Both health/readiness returned healthy JSON using authenticated `vercel curl`.
+Phase 01 verified staging deployment (historical; see the latest handoff for the current preview): `https://justgo-303esikf7-anthony-youngshin-yoos-projects.vercel.app`. Both health/readiness returned healthy JSON using authenticated `vercel curl`.
 
-Set runtime variables in the **preview** environment before deployment. Use Secret storage for `DATABASE_URL`; do not pass its value as a command-line argument. An explicit preview target avoids Vercel treating a project's first deployment as production. The app has no release production deployment or feature access yet. Preserve Vercel deployment protection; use authenticated CLI requests for protected verification. A phone needs an owner-approved reachable staging route before it can call a protected preview.
+Set runtime variables in the **preview** environment before deployment. Use Secret storage for `DATABASE_URL`; do not pass its value as a command-line argument. An explicit preview target avoids Vercel treating a project's first deployment as production. The app has no release production deployment yet. Preserve Vercel deployment protection; use authenticated CLI requests for protected verification. A phone needs an owner-approved reachable staging route before it can call a protected preview.
 
 | Route         | Contract                                                      | Failure                                              |
 | ------------- | ------------------------------------------------------------- | ---------------------------------------------------- |
 | `GET /health` | 200 `{ "status": "ok", "service": "justgo-api" }`             | Process/platform failures only; not a database check |
 | `GET /ready`  | 200 `{ "status": "ready" }` after database/role/context check | 503 `{ "status": "unavailable" }`                    |
 
-Responses use `no-store`, security headers and server-generated request IDs. The app validates both endpoints, has an 8-second deadline, prevents duplicate probes, cancels on unmount, and offers a retry. Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. No session or reflection content exists yet. Sentry and analytics export are not enabled; implement opt-in interfaces in the appropriate phase and revalidate scrubbing before export.
+Responses use `no-store`, security headers and server-generated request IDs. The Phase 01 connection probe validated both endpoints with an 8-second deadline. The current identity UI uses the authenticated API and its 10-second request deadline; see [IDENTITY.md](IDENTITY.md). Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. Identity session records now exist; reflection content remains a later feature. Sentry and analytics export are not enabled; implement opt-in interfaces in the appropriate phase and revalidate scrubbing before export.
 
 ## Design and tests
 
 The [design guide](DESIGN.md), `docs/design-source/` and asset README record Paper provenance, editable-source measurements and raster-only uncertainty. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.
 
-Run `npm run check`, `npm run test:db`, `npm run export:web -w @justgo/mobile`, and `npm run doctor -w @justgo/mobile`. CI mirrors these with PostgreSQL 17. Native compilation now runs on EAS using `development-simulator`, per the owner’s 8 GB memory constraint. Keep Simulator and local preview servers stopped during cloud compilation; launch only one simulator afterwards and reuse its binary for JS/UI changes. Preserve local Pods/DerivedData caches. Explain any EAS account/quota/configuration blocker before considering a heavy local fallback.
+Run `npm run check`, `npm run test:db`, `npm run export:web -w @justgo/mobile`, `npm run export:ios -w @justgo/mobile`, and `npm run doctor -w @justgo/mobile`. CI mirrors these with PostgreSQL 17. Native compilation now runs on EAS using `development-simulator`, per the owner’s 8 GB memory constraint. Keep Simulator and local preview servers stopped during cloud compilation; launch only one simulator afterwards and reuse its binary for JS/UI changes. Preserve local Pods/DerivedData caches. Explain any EAS account/quota/configuration blocker before considering a heavy local fallback.
 
 The EAS `development-simulator` build `2c73c1af-3d5d-4216-8f25-875c72691973` completed on September 17, 2026. Its downloaded binary passed native startup and the connection check on one iPhone 17 / iOS 26.4 simulator. The artifact remains at `.local/JustGO-eas-simulator.tar.gz`, with the extracted app at `.local/eas-simulator/JustGO.app`. Start Metro from `apps/mobile` using `NODE_OPTIONS=--dns-result-order=ipv4first npx expo start --dev-client --localhost --max-workers 1`; the IPv4 option avoids a localhost/127.0.0.1 binding mismatch. Reuse this binary until a native dependency/configuration changes.
 
+The Phase 02 simulator binary and subsequent native checks are recorded in [its handoff](handoffs/phase-02-identity.md). Use that newer development binary for identity testing.
+
 The native launch harness is `apps/mobile/e2e/launch.yaml`; run it with Maestro only after installing/launching a development build and starting Metro/API. Browser verification must cover loading/disabled state, successful readiness, offline failure/retry, keyboard activation and narrow-screen scrolling. Native verification is separately recorded in the handoff; a web export proves no Keychain, purchase or device recovery behavior.
 
-`npm audit` currently reports 18 moderate dependency advisories, with no high/critical findings at the recorded installation. They include transitive Expo tooling and Drizzle Kit dependencies. Review compatible upstream fixes before release; do not apply a forced Expo downgrade to silence the audit.
+The Phase 01 `npm audit` recorded 18 moderate dependency advisories, with no high/critical findings at the recorded installation. They include transitive Expo tooling and Drizzle Kit dependencies. Review compatible upstream fixes before release; do not apply a forced Expo downgrade to silence the audit.

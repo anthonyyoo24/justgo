@@ -5,7 +5,7 @@
 - **Status:** In progress — implementation and browser/backend verification complete; native UI verification partial; physical-device acceptance remains pending.
 - **Updated / author:** September 17, 2026 / Codex.
 - **Scope:** [Phase 02](../IMPLEMENTATION_PLAN.md#phase-02), PRD AC-01, Tech acceptance 1–4 and relevant security checks.
-- **Dependency:** [Phase 01 handoff](phase-01-foundation.md), reread before implementation. Its original uncommitted baseline was subsequently committed as `fe0fa015f99f652388344ab9c2dee5bd6e8bfaf8` and pushed to the private GitHub repository `anthonyyoo24/justgo`.
+- **Dependency:** [Phase 01 handoff](phase-01-foundation.md), reread before implementation. Its original uncommitted baseline was subsequently committed as `fe0fa015f99f652388344ab9c2dee5bd6e8bfaf8` and pushed to the then-private GitHub repository `anthonyyoo24/justgo`.
 - **Branch:** `phase-02-identity`. Implementation commit: [`fd48e48`](https://github.com/anthonyyoo24/justgo/commit/fd48e4844161b12bd26c4b19c117cc5de105e674).
 - **Sequencing decision:** Anthony authorized phase 02 implementation with Apple enrollment/signing and physical-iPhone acceptance deferred. Later feature implementation may use the verified account boundary while phase 02 stays open. This does not waive device acceptance before valuable-data external testing or release.
 - **Summary:** Custom identity API, real owner-scoped database tables, independent expiring sessions, idempotent bootstrap/renewal, revocable keys, approved transfers, durable rate limits, a Swift Keychain module, typed client storage/protocol and minimal recovery UI now exist. No signup, purchases, onboarding, journal data or silent account merging was added.
@@ -30,7 +30,7 @@
 Read [IDENTITY.md](../IDENTITY.md) for the complete protocol and setup.
 
 - 256-bit random recovery/session credentials, SHA-256 digests in PostgreSQL, independent 7-day device sessions, renewal within 24 hours of expiry, 10-minute transfers.
-- New device generates a 64-bit transfer code plus a separate 256-bit claimant secret. An authenticated existing device compares six verification digits and explicitly approves. Redemption binds the exact previously saved device/session/credential proposal. Replay cannot create a second session.
+- New device generates a 64-bit transfer code plus a separate 256-bit claimant secret. An authenticated existing device submits six verification digits entered by the user from the new device and explicitly approves. Inspection does not expose the digits; HMAC derivation/storage and a five-attempt limit protect verification. Redemption binds the exact previously saved device/session/credential proposal. Replay cannot create a second session.
 - Save the pending intent and recovery item before bootstrap; retries preserve IDs and tokens. Never treat a timeout, locked storage or rejected credential as permission to bootstrap a replacement account.
 - Recovering with a key or another discovered credential is explicit. Late/multiple iCloud credentials are preserved and cannot overwrite or silently switch/merge the current account. A separately confirmed new empty account is available when recovery is not possible.
 - Device revocation and recovery-credential revocation are independent. Account retirement revokes both and preserves tombstones so old credentials cannot resurrect the account. The confirmed deletion UI and vendor cleanup remain phase 09 work.
@@ -103,6 +103,19 @@ GitHub [phase two CI run 35274014833](https://github.com/anthonyyoo24/justgo/act
 - **Native build:** [EAS build 7fb7ae73](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/7fb7ae73-3144-458e-9f21-96263e94a6dd), profile `development-simulator`, Expo SDK 57, provisional `dev.justgo.foundation`, completed `2026-09-17T20:43:35.000Z`. Build metadata references the phase one Git commit because it compiled the uploaded working tree; it is not a claim that phase two was already in that commit.
 - **Retained native app:** `.local/phase02-simulator/JustGO.app`. Existing simulator ID `A194AE2D-F06F-42EB-9804-0BE17A547594`, iPhone 17 / iOS 26.4. Only that simulator was booted; it was shut down after the blocked UI check. No heavy local native compilation was run. Existing phase one artifacts, Pods and DerivedData were preserved.
 - **Historical HTML tracker:** `docs/IMPLEMENTATION_PLAN.html` is absent from this checkout despite older handoff references. Current plan/status were updated in Markdown. The historical HTML validator was not claimed as passing or recreated as unrelated feature work.
+
+## CodeRabbit review fixes — September 17 follow-up
+
+All seven findings from [PR review](https://github.com/anthonyyoo24/justgo/pull/1#pullrequestreview-5242118325) were assessed against the code and addressed:
+
+- Transfer inspection now uses a strict response without verification digits. Approval takes digits entered from the new device; it never reuses the inspection response as proof.
+- Transfer digits derive from a server-keyed HMAC. Only a separately domain-separated, transfer-ID-bound HMAC verifier is stored. Failed guesses commit to a per-transfer counter; five cancel the transfer, including concurrent attempts across accounts. Existing HTTP rate limiting remains.
+- Drizzle generated migration `0003_transfer_verification.sql` erases legacy plaintext values, cancels old transfer requests, adds the attempt counter and enforces the HMAC format. It was applied and tested **locally only**. Staging still has the earlier implementation: deploy the new API/client and migration together using the maintenance sequence in [IDENTITY.md](../IDENTITY.md#transfer-verification-upgrade). Never roll back to the old transfer API against the upgraded schema.
+- Malformed API URLs map to service-unavailable errors rather than secure-storage errors.
+- The native launch harness allows up to 30 seconds for account bootstrap. Execution was attempted but remains blocked by `maestro: command not found`; this is not recorded as a native test pass.
+- README documents both CI exports. FOUNDATION is maintained as the current operations guide, with historical evidence identified and newer identity behavior linked. The implementation plan points to the saved handoff.
+
+Verification: `npm run check` passed (API 8, mobile 28, contracts 2 = **38**); `npm run test:db` passed (**18**, including the migration, proof separation, key rotation and concurrent guessing regressions). Web/iOS exports and Expo Doctor (21/21) passed. In-app browser testing exercised an empty verification field, wrong digits, pending claimant, correct approval, and claimant redemption into the same disposable account (`5e74b1ee`). Visual inspection confirmed the entry field and approval button fit the recovery card. A separate browser preview with a malformed API address showed the correct service-unavailable message, and the final transfer instructions were rechecked after the wording correction. This verifies the browser implementation, not iPhone Keychain or physical-device acceptance.
 
 ## Remaining work and next steps
 

@@ -31,6 +31,15 @@ it('rejects insecure remote URLs and malformed server payloads', async () => {
     createIdentityApi('https://example.com', fetcher).request('/me', okSchema),
   ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
 });
+it('maps malformed API addresses to availability errors before sending a request', async () => {
+  const fetcher = jest.fn();
+  for (const address of ['not-a-url', 'https://', 'http://[broken']) {
+    await expect(
+      createIdentityApi(address, fetcher).request('/me', okSchema),
+    ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  }
+  expect(fetcher).not.toHaveBeenCalled();
+});
 it('normalizes transport and HTTP failures without echoing server payloads', async () => {
   const fetcher = jest
     .fn()

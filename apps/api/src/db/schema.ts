@@ -84,7 +84,9 @@ export const transfers = appSchema.table(
     sessionId: uuid('session_id').notNull(),
     sessionDigest: text('session_digest').notNull(),
     credentialDigest: text('credential_digest').notNull(),
+    // Domain-separated HMAC verifier; never the six-digit approval code.
     verification: text().notNull(),
+    verificationAttempts: integer('verification_attempts').notNull().default(0),
     createdAt: time('created_at').notNull().defaultNow(),
     expiresAt: time('expires_at').notNull(),
     approvedAt: time('approved_at'),
@@ -95,6 +97,14 @@ export const transfers = appSchema.table(
     uniqueIndex('transfers_code_uq').on(t.codeDigest),
     index('transfers_owner_idx').on(t.userId),
     index('transfers_expiry_idx').on(t.expiresAt),
+    check(
+      'transfers_verification_hmac',
+      sql`${t.verification} ~ '^[a-f0-9]{64}$'`,
+    ),
+    check(
+      'transfers_verification_attempts',
+      sql`${t.verificationAttempts} between 0 and 5`,
+    ),
   ],
 );
 export const rateBuckets = appSchema.table(

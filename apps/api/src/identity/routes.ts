@@ -12,6 +12,7 @@ import {
   sessionResponseSchema,
   transferApproveSchema,
   transferInspectSchema,
+  transferInspectionResponseSchema,
   transferProofSchema,
   transferResponseSchema,
   transferStartSchema,
@@ -106,7 +107,7 @@ export function identityRoutes(
     ),
   );
   app.post('/transfers/inspect', { preHandler: sensitive }, async (request) =>
-    transferResponseSchema.parse(
+    transferInspectionResponseSchema.parse(
       await service.inspectTransfer(
         bearer(request),
         parse(transferInspectSchema, request.body).code,

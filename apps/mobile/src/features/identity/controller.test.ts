@@ -59,6 +59,41 @@ const nativeVault = (): CredentialVault => ({
   kind: 'keychain',
 });
 
+it('requires user-entered verification, preserves a rejected inspection and clears it after approval', async () => {
+  const inspection = { id: id(), expiresAt: expiry(), status: 'waiting' };
+  const code = 'ABCDEF0123456789';
+  const server = connected((path, body) => {
+    if (path === '/transfers/inspect') return inspection;
+    if (path === '/transfers/approve') {
+      if ((body as { verification: string }).verification !== '012345')
+        throw new IdentityClientError('CONFLICT');
+      return { ok: true };
+    }
+  });
+  const controller = new IdentityController(nativeVault(), server, random);
+  await controller.initialize();
+  await controller.inspectTransfer(code);
+  expect(controller.getSnapshot().inspection).not.toHaveProperty(
+    'verification',
+  );
+  await controller.approveTransfer('');
+  await controller.approveTransfer('abc123');
+  expect(
+    server.calls.mock.calls.filter((c) => c[0] === '/transfers/approve'),
+  ).toHaveLength(0);
+  await controller.approveTransfer('999999');
+  expect(controller.getSnapshot().inspection?.code).toBe(code);
+  expect(controller.getSnapshot().account).not.toBeNull();
+  await controller.approveTransfer('012345');
+  expect(server.calls).toHaveBeenLastCalledWith(
+    '/transfers/approve',
+    { code, verification: '012345' },
+    expect.any(String),
+  );
+  expect(controller.getSnapshot().inspection).toBeNull();
+  expect(controller.getSnapshot().message).toContain('Transfer approved');
+});
+
 it('persists intent and recovery secret before bootstrap, then retries a lost response with identical IDs', async () => {
   const vault = nativeVault();
   let attempts = 0;

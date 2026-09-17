@@ -6,6 +6,9 @@ import {
   secretSchema,
   sessionResponseSchema,
   transferCodeSchema,
+  transferInspectionResponseSchema,
+  transferVerificationSchema,
+  type TransferInspectionResponse,
   transferResponseSchema,
   type SessionProposal,
   type SessionResponse,
@@ -24,7 +27,7 @@ type Snapshot = {
   credentials: { id: string }[];
   key: string | null;
   transfer: (TransferResponse & { code: string }) | null;
-  inspection: (TransferResponse & { code: string }) | null;
+  inspection: (TransferInspectionResponse & { code: string }) | null;
   devices: z.infer<typeof devicesResponseSchema>['devices'];
   recoveryKeys: z.infer<typeof credentialsResponseSchema>['credentials'];
 };
@@ -48,7 +51,7 @@ const messages: Record<string, string> = {
   UNAUTHORIZED:
     'Your session could not be verified. Use a recovery method to continue.',
   TRANSFER_PENDING:
-    'Waiting for approval on your existing device. Check the matching numbers before approving.',
+    'Waiting for approval on your existing device. Enter the six digits from this device on your existing device.',
   TRANSFER_EXPIRED:
     'This transfer expired. Start a new transfer on this device.',
   RATE_LIMITED: 'Too many attempts. Wait 10 minutes before trying again.',
@@ -56,7 +59,8 @@ const messages: Record<string, string> = {
     'This action no longer matches the saved request. Review your recovery options.',
   NOT_FOUND:
     'That recovery request wasn’t found. Check the code and try again.',
-  INVALID_REQUEST: 'Check the recovery key or transfer code and try again.',
+  INVALID_REQUEST:
+    'Check the recovery key, transfer code or six verification digits and try again.',
   UNAVAILABLE: 'The account service is unavailable. Please retry shortly.',
 };
 export class IdentityController {
@@ -264,7 +268,7 @@ export class IdentityController {
       this.update({
         transfer: { ...transfer, code: pending.input.code },
         message:
-          'Enter this transfer code on your existing device, then compare the verification numbers.',
+          'Enter this transfer code on your existing device, then enter the six verification digits shown here.',
       });
       return;
     }
@@ -567,20 +571,23 @@ export class IdentityController {
       if (!parsed.success) throw new IdentityClientError('INVALID_REQUEST');
       const transfer = await this.api.request(
         '/transfers/inspect',
-        transferResponseSchema,
+        transferInspectionResponseSchema,
         { code: parsed.data },
         this.data!.session!.token,
       );
       this.update({ inspection: { ...transfer, code: parsed.data } });
     });
-  approveTransfer = () =>
+  approveTransfer = (value: string) =>
     this.run(async () => {
       const transfer = this.snapshot.inspection;
       if (!transfer) throw new IdentityClientError('NOT_FOUND');
+      const verification = transferVerificationSchema.safeParse(value.trim());
+      if (!verification.success)
+        throw new IdentityClientError('INVALID_REQUEST');
       await this.api.request(
         '/transfers/approve',
         okSchema,
-        { code: transfer.code, verification: transfer.verification },
+        { code: transfer.code, verification: verification.data },
         this.data!.session!.token,
       );
       this.update({

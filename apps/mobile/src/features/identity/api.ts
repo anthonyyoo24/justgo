@@ -25,7 +25,12 @@ export function createIdentityApi(
       token?: string,
     ) {
       if (!baseUrl) throw new IdentityClientError('UNAVAILABLE');
-      const base = new URL(baseUrl);
+      let base: URL;
+      try {
+        base = new URL(baseUrl);
+      } catch {
+        throw new IdentityClientError('UNAVAILABLE');
+      }
       if (
         base.protocol !== 'https:' &&
         !(

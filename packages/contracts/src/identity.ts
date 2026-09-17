@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 // 32 cryptographically random bytes, represented as lowercase hex. Never a user password.
 export const secretSchema = z.string().regex(/^[a-f0-9]{64}$/);
+export const transferVerificationSchema = z.string().regex(/^\d{6}$/);
 export const transferCodeSchema = z.string().regex(/^[A-F0-9]{16}$/);
 export const sessionProposalSchema = z
   .object({
@@ -38,7 +39,7 @@ export const transferInspectSchema = z
   .object({ code: transferCodeSchema })
   .strict();
 export const transferApproveSchema = transferInspectSchema
-  .extend({ verification: z.string().regex(/^\d{6}$/) })
+  .extend({ verification: transferVerificationSchema })
   .strict();
 export const sessionResponseSchema = z
   .object({
@@ -75,13 +76,15 @@ export const devicesResponseSchema = z
     ),
   })
   .strict();
-export const transferResponseSchema = z
+export const transferInspectionResponseSchema = z
   .object({
     id: z.uuid(),
-    verification: z.string(),
     expiresAt: z.iso.datetime(),
     status: z.enum(['waiting', 'approved', 'redeemed', 'cancelled']),
   })
+  .strict();
+export const transferResponseSchema = transferInspectionResponseSchema
+  .extend({ verification: transferVerificationSchema })
   .strict();
 export const okSchema = z.object({ ok: z.literal(true) }).strict();
 export const identityErrorCodeSchema = z.enum([
@@ -107,6 +110,9 @@ export type SessionProposal = z.infer<typeof sessionProposalSchema>;
 export type BootstrapRequest = z.infer<typeof bootstrapSchema>;
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 export type TransferStart = z.infer<typeof transferStartSchema>;
+export type TransferInspectionResponse = z.infer<
+  typeof transferInspectionResponseSchema
+>;
 export type TransferResponse = z.infer<typeof transferResponseSchema>;
 export type CredentialCreate = z.infer<typeof credentialCreateSchema>;
 export type IdentityErrorCode = z.infer<typeof identityErrorCodeSchema>;

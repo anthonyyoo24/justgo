@@ -5,7 +5,9 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     visible: 'ACCOUNT & RECOVERY PREVIEW'
     timeout: 60000
-- assertVisible: 'A place for your progress.'
+- extendedWaitUntil:
+    visible: 'A place for your progress.'
+    timeout: 30000
 - scrollUntilVisible:
     element: 'Refresh account'
     direction: DOWN

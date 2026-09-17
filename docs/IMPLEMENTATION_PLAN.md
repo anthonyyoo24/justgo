@@ -140,7 +140,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 **Carry forward:** Identity endpoints and schema, native setup, device/OS test matrix, recovery failure behavior, remaining platform limits and minimal setup instructions.
 
-**Handoff file to create:** [handoffs/phase-02-identity.md](handoffs/phase-02-identity.md)
+**Saved handoff:** [handoffs/phase-02-identity.md](handoffs/phase-02-identity.md)
 
 **Working notes / blocker:** See [phase-02-identity.md](handoffs/phase-02-identity.md). Apple enrollment, permanent identifier/signing and two-iPhone validation remain deferred by the owner’s September 17 sequencing decision. Later implementation may proceed against the verified identity contract while this phase remains open; external testing with valuable data and release still require device acceptance.
 

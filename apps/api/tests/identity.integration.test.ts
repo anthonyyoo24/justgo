@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
@@ -100,6 +101,151 @@ afterAll(async () => {
 });
 
 describe('identity protocol through the restricted runtime', () => {
+  it('erases legacy approval values and cancels old transfers when the forward migration runs', async () => {
+    const client = await admin.connect();
+    const table = `migration_fixture_${randomUUID().replaceAll('-', '')}`;
+    try {
+      await client.query('begin');
+      await client.query(
+        `create table justgo.${table} (verification text not null, cancelled_at timestamptz)`,
+      );
+      await client.query(
+        `insert into justgo.${table} values ('012345', null), ('999999', now()-interval '1 day')`,
+      );
+      const migration = await readFile(
+        new URL('../drizzle/0003_transfer_verification.sql', import.meta.url),
+        'utf8',
+      );
+      await client.query(
+        migration.replaceAll('"justgo"."device_transfers"', `justgo.${table}`),
+      );
+      const result = await client.query(
+        `select verification, cancelled_at, verification_attempts from justgo.${table}`,
+      );
+      expect(result.rows).toHaveLength(2);
+      for (const row of result.rows) {
+        expect(row.verification).toBe('0'.repeat(64));
+        expect(row.cancelled_at).toBeInstanceOf(Date);
+        expect(row.verification_attempts).toBe(0);
+      }
+      await expect(
+        client.query(
+          `insert into justgo.${table} (verification) values ('123456')`,
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
+    } finally {
+      await client.query('rollback');
+      client.release();
+    }
+  });
+  it('keeps verification out of inspection and prevents binding with the transfer code alone', async () => {
+    const owner = await account(),
+      attacker = await account(),
+      t = await start();
+    const inspection = await post(
+      '/transfers/inspect',
+      { code: t.input.code },
+      attacker.input.sessionToken,
+    );
+    expect(inspection.statusCode).toBe(200);
+    expect(inspection.json()).toEqual({
+      id: t.input.id,
+      expiresAt: t.result.expiresAt,
+      status: 'waiting',
+    });
+    const missingProof = await post(
+      '/transfers/approve',
+      { code: t.input.code },
+      attacker.input.sessionToken,
+    );
+    expect(missingProof.statusCode).toBe(400);
+    const wrong = t.result.verification === '000000' ? '000001' : '000000';
+    const rejected = await post(
+      '/transfers/approve',
+      { code: t.input.code, verification: wrong },
+      attacker.input.sessionToken,
+    );
+    expect(rejected.statusCode).toBe(409);
+    const pending = await admin.query(
+      'select user_id, verification_attempts from justgo.device_transfers where id=$1',
+      [t.input.id],
+    );
+    expect(pending.rows[0]).toEqual({
+      user_id: null,
+      verification_attempts: 1,
+    });
+    const approved = await post(
+      '/transfers/approve',
+      { code: t.input.code, verification: t.result.verification },
+      owner.input.sessionToken,
+    );
+    expect(approved.statusCode).toBe(200);
+    const redeemed = await service.redeemTransfer(
+      t.input.code,
+      t.input.claimSecret,
+    );
+    expect(redeemed.userId).toBe(owner.session.userId);
+    expect(redeemed.userId).not.toBe(attacker.session.userId);
+  });
+  it('stores only a keyed verifier, replays the same digits and fails safely after a server key rotation', async () => {
+    const t = await start({ ...transfer(), claimSecret: 'a'.repeat(64) });
+    const records = await admin.query(
+      'select verification from justgo.device_transfers where id=$1',
+      [t.input.id],
+    );
+    expect(t.result.verification).toMatch(/^\d{6}$/);
+    expect(records.rows[0].verification).toMatch(/^[a-f0-9]{64}$/);
+    expect(records.rows[0].verification).not.toBe(t.result.verification);
+    expect(records.rows[0].verification).not.toBe(
+      digest(t.result.verification),
+    );
+    expect(await service.startTransfer(t.input)).toEqual(t.result);
+    const rotated = new IdentityService(db.db, {
+      rateKey: 'a-different-isolated-test-server-key',
+    });
+    await expect(rotated.startTransfer(t.input)).rejects.toMatchObject({
+      code: 'CREDENTIAL_REJECTED',
+    });
+    const fresh = transfer();
+    // Same claimant with a different server key: storage alone cannot derive the code.
+    fresh.claimSecret = t.input.claimSecret;
+    const second = await rotated.startTransfer(fresh);
+    transfers.add(fresh.id);
+    expect(second.verification).not.toBe(t.result.verification);
+  });
+  it('commits and bounds failed verification attempts across accounts and concurrent requests', async () => {
+    const a = await account(),
+      b = await account(),
+      t = await start();
+    const wrong = t.result.verification === '000000' ? '000001' : '000000';
+    const results = await Promise.allSettled(
+      Array.from({ length: 7 }, (_, i) =>
+        service.approveTransfer(
+          i % 2 ? a.input.sessionToken : b.input.sessionToken,
+          t.input.code,
+          wrong,
+        ),
+      ),
+    );
+    expect(results.every((result) => result.status === 'rejected')).toBe(true);
+    const record = await admin.query(
+      'select verification_attempts, cancelled_at, user_id from justgo.device_transfers where id=$1',
+      [t.input.id],
+    );
+    expect(record.rows[0].verification_attempts).toBe(5);
+    expect(record.rows[0].cancelled_at).toBeInstanceOf(Date);
+    expect(record.rows[0].user_id).toBeNull();
+    await expect(
+      service.approveTransfer(
+        a.input.sessionToken,
+        t.input.code,
+        t.result.verification,
+      ),
+    ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+    await expect(
+      service.redeemTransfer(t.input.code, t.input.claimSecret),
+    ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+  });
   it('stores hashes only and recovers exactly one account/session after lost and concurrent bootstrap responses', async () => {
     const input = request();
     const results = await Promise.all([

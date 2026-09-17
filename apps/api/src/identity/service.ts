@@ -1,4 +1,9 @@
-import { createHash, createHmac, randomUUID } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  randomUUID,
+  timingSafeEqual,
+} from 'node:crypto';
 import { sql, type SQL } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
@@ -37,6 +42,7 @@ type TransferRow = Row & {
   session_digest: string;
   credential_digest: string;
   verification: string;
+  verification_attempts: number;
   expires_at: Date;
   approved_at: Date | null;
   redeemed_at: Date | null;
@@ -334,7 +340,6 @@ export class IdentityService {
   private transferView(row: TransferRow) {
     return {
       id: row.id,
-      verification: row.verification,
       expiresAt: new Date(row.expires_at).toISOString(),
       status: row.cancelled_at
         ? ('cancelled' as const)
@@ -344,6 +349,25 @@ export class IdentityService {
             ? ('approved' as const)
             : ('waiting' as const),
     };
+  }
+  // Separate domains for code generation and the per-transfer stored verifier.
+  // The claim digest alone must not reveal the six digits to a database reader.
+  private transferVerification(claimHash: string) {
+    const bytes = createHmac('sha256', this.options.rateKey)
+      .update(`justgo:transfer:code:v1:${claimHash}`)
+      .digest();
+    return (bytes.readUInt32BE(0) % 1000000).toString().padStart(6, '0');
+  }
+  private transferVerifier(id: string, verification: string) {
+    return createHmac('sha256', this.options.rateKey)
+      .update(`justgo:transfer:verifier:v1:${id}:${verification}`)
+      .digest('hex');
+  }
+  private matchesVerification(row: TransferRow, verification: string) {
+    return timingSafeEqual(
+      Buffer.from(row.verification, 'hex'),
+      Buffer.from(this.transferVerifier(row.id, verification), 'hex'),
+    );
   }
   private async transfer(tx: Tx, code: string) {
     const hash = digest(code);
@@ -388,17 +412,20 @@ export class IdentityService {
         )
           return fail('CONFLICT', 409);
         await this.liveTransfer(tx, existing);
-        return this.transferView(existing);
+        const verification = this.transferVerification(claimHash);
+        // A key rotation invalidates old pending transfers; never display unusable digits.
+        if (!this.matchesVerification(existing, verification))
+          return fail('CREDENTIAL_REJECTED');
+        return { ...this.transferView(existing), verification };
       }
-      const verification = (parseInt(claimHash.slice(0, 8), 16) % 1000000)
-        .toString()
-        .padStart(6, '0');
+      const verification = this.transferVerification(claimHash);
+      const verifier = this.transferVerifier(input.id, verification);
       const row = await one<TransferRow>(
         tx,
         sql`insert into justgo.device_transfers (id,code_digest,claim_digest,device_id,session_id,session_digest,credential_digest,verification,expires_at)
-        values (${input.id},${codeHash},${claimHash},${input.deviceId},${input.sessionId},${digest(input.sessionToken)},${digest(input.credential)},${verification},now()+${this.transferMinutes}*interval '1 minute') returning *`,
+        values (${input.id},${codeHash},${claimHash},${input.deviceId},${input.sessionId},${digest(input.sessionToken)},${digest(input.credential)},${verifier},now()+${this.transferMinutes}*interval '1 minute') returning *`,
       );
-      return this.transferView(row!);
+      return { ...this.transferView(row!), verification };
     });
   }
   inspectTransfer(token: string, code: string) {
@@ -408,25 +435,34 @@ export class IdentityService {
       return this.transferView(row);
     });
   }
-  approveTransfer(token: string, code: string, verification: string) {
-    return this.withSession(token, async (tx, session) => {
+  async approveTransfer(token: string, code: string, verification: string) {
+    const approved = await this.withSession(token, async (tx, session) => {
       let row = await this.transfer(tx, code);
       row = (await one<TransferRow>(
         tx,
         sql`select * from justgo.device_transfers where id=${row.id} for update`,
       ))!;
       await this.liveTransfer(tx, row);
-      if (
-        row.verification !== verification ||
-        row.redeemed_at ||
-        (row.user_id && row.user_id !== session.userId)
-      )
+      if (row.redeemed_at || (row.user_id && row.user_id !== session.userId))
         return fail('CONFLICT', 409);
+      if (!this.matchesVerification(row, verification)) {
+        // Commit failed attempts even when approval is rejected. Bound guessing across
+        // addresses/accounts/API instances, in addition to the HTTP rate limiter.
+        await tx.execute(
+          sql`update justgo.device_transfers set
+            verification_attempts=least(verification_attempts+1,5),
+            cancelled_at=case when verification_attempts>=4 then now() else cancelled_at end
+            where id=${row.id}`,
+        );
+        return false;
+      }
       await tx.execute(
         sql`update justgo.device_transfers set user_id=${session.userId},approved_at=coalesce(approved_at,now()) where id=${row.id}`,
       );
-      return { ok: true as const };
+      return true;
     });
+    if (!approved) return fail('CONFLICT', 409);
+    return { ok: true as const };
   }
   cancelTransfer(token: string, code: string) {
     return this.withSession(token, async (tx, session) => {

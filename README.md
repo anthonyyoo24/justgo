@@ -30,7 +30,7 @@ npm run export:web -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
-CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports the browser preview. Database tests refuse remote hosts and create/drop only their uniquely named fixture table. They run as `justgo_runtime`, not an administrator.
+CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts and create/drop only their uniquely named fixture table. They run as `justgo_runtime`, not an administrator.
 
 ## iOS development
 

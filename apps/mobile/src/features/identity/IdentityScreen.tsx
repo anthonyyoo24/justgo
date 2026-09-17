@@ -59,6 +59,7 @@ export function IdentityScreen({
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryKey, setRecoveryKey] = useState('');
   const [transferCode, setTransferCode] = useState('');
+  const [verification, setVerification] = useState('');
   const [confirmation, setConfirmation] = useState<{
     message: string;
     action: () => Promise<void>;
@@ -242,21 +243,32 @@ export function IdentityScreen({
                   maxLength={24}
                   style={styles.input}
                 />
-                {button('Review transfer', () =>
-                  controller.inspectTransfer(transferCode),
-                )}
+                {button('Review transfer', async () => {
+                  setVerification('');
+                  await controller.inspectTransfer(transferCode);
+                })}
                 {state.inspection && (
                   <View style={styles.keyBox}>
                     <Text style={styles.body}>
-                      Only approve if these numbers match the numbers on your
-                      new device.
+                      Enter the six verification digits shown on your new
+                      device. Only approve a device you are setting up.
                     </Text>
-                    <Text selectable style={styles.verification}>
-                      {state.inspection.verification}
-                    </Text>
-                    {button('The numbers match — approve', async () => {
-                      await controller.approveTransfer();
-                      setTransferCode('');
+                    <TextInput
+                      accessibilityLabel="Verification digits"
+                      placeholder="Six digits from your new device"
+                      placeholderTextColor={colors.ink}
+                      value={verification}
+                      onChangeText={setVerification}
+                      keyboardType="number-pad"
+                      autoCorrect={false}
+                      maxLength={6}
+                      style={styles.input}
+                    />
+                    {button('Approve this device', async () => {
+                      await controller.approveTransfer(verification);
+                      setVerification('');
+                      if (!controller.getSnapshot().inspection)
+                        setTransferCode('');
                     })}
                   </View>
                 )}
@@ -321,7 +333,7 @@ export function IdentityScreen({
                     {state.transfer.code.match(/.{1,4}/g)?.join('-')}
                   </Text>
                   <Text style={styles.body}>
-                    Then compare these verification numbers:
+                    Then enter these six digits on your existing device:
                   </Text>
                   <Text selectable style={styles.verification}>
                     {state.transfer.verification}
