@@ -1,8 +1,8 @@
 # JustGO — Implementation Plan
 
 **Version:** 2 · Updated September 17, 2026  
-**Status:** Phase 01 complete; native simulator launch, connectivity and deployed staging readiness verified. See the [phase 01 handoff](handoffs/phase-01-foundation.md) for evidence and next steps.  
-**Companion:** [Interactive HTML plan](IMPLEMENTATION_PLAN.html)  
+**Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native UI verification is partial and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
+**Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](PRD.md) · [Tech stack](TECH_STACK.md)  
 **Handoffs:** [Index](handoffs/README.md) · [Template](handoffs/TEMPLATE.md) · [Planning baseline](handoffs/00-planning-baseline.md)
 
@@ -19,6 +19,7 @@ Phase IDs stay stable: phase 05 (lock-screen display) moves after launch and no 
 - Build each slice through the database, API and UI it needs; introduce tables and indexes with their consuming feature.
 - Run relevant tests and UI verification during every phase. Phase 10 integrates and releases work already verified in its own stage.
 - Mark a phase complete only after its checks and dependency phases pass, and its handoff is saved with evidence.
+- **September 17 sequencing exception:** Anthony approved implementing phase 02 while Apple enrollment/signing and physical-iPhone recovery acceptance remain pending. Phase 03 and later feature implementation may proceed after the backend/client identity checks pass. Keep phase 02 open and retain those device gates before valuable-data external testing and release.
 - Update this file and the handoff index when recording progress. The HTML checklist is browser-local; it does not automatically update this Markdown file or the handoffs. Export/import the HTML checklist to move it between browsers.
 - Keep scope changes synchronized between the HTML and Markdown plans. Saved handoffs and actual implementation/test evidence remain authoritative.
 
@@ -27,7 +28,7 @@ Phase IDs stay stable: phase 05 (lock-screen display) moves after launch and no 
 | Phase                                                     | Outcome                                                                                                 | Depends on | Status        |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------- | ------------- |
 | [01 — Foundation & implementation decisions](#phase-01)   | A reproducible workspace and a clear list of decisions to settle before each feature.                   | None       | Complete      |
-| [02 — No-signup identity & recovery](#phase-02)           | A real account survives supported recovery paths, without exposing another person’s history.            | 01         | Not started   |
+| [02 — No-signup identity & recovery](#phase-02)           | A real account survives supported recovery paths, without exposing another person’s history.            | 01         | In progress   |
 | [03 — App shell, shared API & onboarding](#phase-03)      | The app restores the right account and onboarding step, with consistent network behavior.               | 02         | Not started   |
 | [04 — Challenge deck & reliable attempts](#phase-04)      | Browse → accept → complete or give up works against real cloud data exactly once.                       | 03         | Not started   |
 | [06 — Feelings & typed reflections](#phase-06)            | A completed attempt can have optional private feedback and typed reflection text.                       | 04         | Not started   |
@@ -112,7 +113,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 02 — No-signup identity & recovery
 
-**Status:** Not started  
+**Status:** In progress — implementation built; physical-device acceptance pending  
 **Depends on:** 01  
 **Acceptance references:** PRD AC-01 · Tech acceptance 1–4, 17
 
@@ -134,14 +135,14 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 - [ ] Real iPhone reinstall, two-iPhone recovery, disabled/delayed sync and credential failures behave as specified; limitations are recorded.
 - [ ] iPhone recovery-key/transfer, replay/expiry/revocation, lost bootstrap responses and concurrent sessions are tested.
-- [ ] Two-user API/database isolation passes under the actual runtime role; Keychain configuration and fallback limitations are recorded.
-- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [x] Two-user API/database isolation passes under the actual runtime role; Keychain configuration and fallback limitations are recorded.
+- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Identity endpoints and schema, native setup, device/OS test matrix, recovery failure behavior, remaining platform limits and minimal setup instructions.
 
-**Handoff file to create:** `handoffs/phase-02-identity.md`
+**Saved handoff:** [handoffs/phase-02-identity.md](handoffs/phase-02-identity.md)
 
-**Working notes / blocker:** None recorded.
+**Working notes / blocker:** See [phase-02-identity.md](handoffs/phase-02-identity.md). Apple enrollment, permanent identifier/signing and two-iPhone validation remain deferred by the owner’s September 17 sequencing decision. Later implementation may proceed against the verified identity contract while this phase remains open; external testing with valuable data and release still require device acceptance.
 
 <a id="phase-03"></a>
 

@@ -1,1 +1,1 @@
-export { FoundationScreen as default } from '../features/foundation/FoundationScreen';
+export { IdentityScreen as default } from '../features/identity/IdentityScreen';

@@ -1,6 +1,7 @@
 import { z } from 'zod';
+export * from './identity.ts';
 
-// Public operational responses only. Domain contracts arrive with their features.
+// Operational response contracts; identity contracts are exported above.
 export const healthResponseSchema = z
   .object({
     status: z.literal('ok'),

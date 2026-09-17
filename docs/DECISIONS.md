@@ -22,3 +22,9 @@ Updated September 17, 2026. Anthony owns product/account decisions; the implemen
 | Future levels/credit/taxonomy, Android, dictation, lock-screen display          | Anthony                        | Respective deferred phase       | Intentionally deferred; not launch blockers.                                                                                              |
 
 Never treat Paper's sample counts, preselected feelings, dates or content as approved defaults. No paid-access bypass, fake user account, permanent local journal or domain table has been added in phase 01.
+
+## September 17 phase 02 implementation decisions
+
+Anthony approved deferring Apple enrollment/signing and real-iPhone acceptance while identity implementation and later phases proceed. Phase 02 stays open until device gates pass. No release or unconditional iCloud-recovery claim follows from that deferral.
+
+The implementation owner selected 7-day independent sessions, renewal within 24 hours of expiry, 10-minute approved transfers, 256-bit bearer credentials, persisted idempotent proposals and PostgreSQL-backed rate limits. These are documented in [IDENTITY.md](IDENTITY.md), with configurable bounds and dedicated tests. The existing Expo project and default per-app Keychain access group are retained; permanent signing/access-group continuity still requires device validation.

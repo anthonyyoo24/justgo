@@ -7,12 +7,16 @@ import {
   readinessResponseSchema,
 } from '@justgo/contracts';
 import { loggerOptions } from './diagnostics.js';
+import { IdentityError, type IdentityService } from './identity/service.js';
+import { identityRoutes } from './identity/routes.js';
 
 export function buildApp(
   options: {
     checkDatabase: () => Promise<void>;
     origins?: string[];
     logger?: FastifyServerOptions['logger'];
+    identity?: IdentityService;
+    onVercel?: boolean;
   },
   createServer: typeof Fastify = Fastify,
 ) {
@@ -27,7 +31,7 @@ export function buildApp(
   app.register(helmet);
   app.register(cors, {
     origin: options.origins ?? [],
-    methods: ['GET'],
+    methods: ['GET', 'POST'],
     credentials: false,
   });
   app.addHook('onRequest', async (request, reply) => {
@@ -37,6 +41,14 @@ export function buildApp(
   app.get('/health', async () =>
     healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
   );
+  if (options.identity)
+    app.register(
+      async (scope) =>
+        identityRoutes(scope, options.identity!, options.onVercel),
+      {
+        prefix: '/v1/identity',
+      },
+    );
   app.get('/ready', async (request, reply) => {
     try {
       await options.checkDatabase();
@@ -52,6 +64,31 @@ export function buildApp(
     }
   });
   app.setErrorHandler<{ statusCode?: number }>((error, request, reply) => {
+    if (request.url.startsWith('/v1/identity')) {
+      if (error instanceof IdentityError) {
+        if (error.code === 'RATE_LIMITED') reply.header('retry-after', '600');
+        void reply
+          .code(error.status)
+          .send({ code: error.code, requestId: request.id });
+        return;
+      }
+      const dbCode =
+        (error as { code?: string; cause?: { code?: string } }).code ??
+        (error as { cause?: { code?: string } }).cause?.code;
+      const code =
+        dbCode === '23505'
+          ? 'CONFLICT'
+          : error.statusCode === 400
+            ? 'INVALID_REQUEST'
+            : 'UNAVAILABLE';
+      request.log.error({ err: error }, 'Identity operation failed');
+      void reply
+        .code(
+          code === 'CONFLICT' ? 409 : code === 'INVALID_REQUEST' ? 400 : 503,
+        )
+        .send({ code, requestId: request.id });
+      return;
+    }
     request.log.error({ err: error }, 'Request failed');
     const statusCode =
       error.statusCode && error.statusCode >= 400 && error.statusCode < 500

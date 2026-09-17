@@ -62,6 +62,8 @@ export async function checkDatabase(pool: Pool): Promise<void> {
       and not pg_has_role(current_user, 'justgo_migrator', 'MEMBER')
       and not has_schema_privilege(current_user, 'justgo', 'CREATE') as role_ok,
       has_schema_privilege(current_user, 'justgo', 'USAGE')
+      and to_regclass('justgo.device_sessions') is not null
+      and to_regclass('justgo.recovery_credentials') is not null
       and justgo.current_user_id() is null as foundation_ok
     from pg_roles where rolname = current_user
   `);

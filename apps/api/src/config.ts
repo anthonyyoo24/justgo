@@ -13,6 +13,18 @@ const configSchema = z.object({
     .enum(['silent', 'error', 'warn', 'info', 'debug'])
     .default('info'),
   CORS_ORIGINS: z.string().default(''),
+  IDENTITY_RATE_LIMIT_KEY: z
+    .string()
+    .min(32)
+    .default('local-development-rate-key-not-for-deployment'),
+  IDENTITY_SESSION_HOURS: z.coerce.number().int().min(1).max(720).default(168),
+  IDENTITY_TRANSFER_MINUTES: z.coerce.number().int().min(1).max(30).default(10),
+  IDENTITY_RECOVERY_RATE_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(30),
 });
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {
@@ -21,6 +33,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   const config = result.data;
   if (config.NODE_ENV === 'production' && !config.DATABASE_URL)
     throw new Error('DATABASE_URL is required in production');
+  if (
+    config.NODE_ENV === 'production' &&
+    config.IDENTITY_RATE_LIMIT_KEY ===
+      'local-development-rate-key-not-for-deployment'
+  )
+    throw new Error('IDENTITY_RATE_LIMIT_KEY is required in production');
   if (config.DATABASE_URL) {
     const url = new URL(config.DATABASE_URL);
     if (!['postgres:', 'postgresql:'].includes(url.protocol))
