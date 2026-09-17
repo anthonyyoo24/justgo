@@ -1,0 +1,49 @@
+{
+  "name": "justgo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": "24.x",
+    "npm": ">=11 <12"
+  },
+  "packageManager": "npm@11.16.0",
+  "scripts": {
+    "dev:mobile": "npm run start -w @justgo/mobile",
+    "dev:web": "npm run web -w @justgo/mobile",
+    "dev:api": "npm run dev -w @justgo/api",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces",
+    "test:db": "npm run test:db -w @justgo/api",
+    "db:migrate": "npm run db:migrate -w @justgo/api",
+    "db:generate": "npm run db:generate -w @justgo/api",
+    "check": "npm run build:contracts && npm run typecheck && npm run lint && npm run format:check && npm test",
+    "db:local": "node scripts/local-database.mjs",
+    "db:stop": "node scripts/local-database.mjs --stop",
+    "build:contracts": "npm run build -w @justgo/contracts",
+    "prepare": "npm run build:contracts"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.3",
+    "eslint": "10.10.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "expo-doctor": "1.20.4",
+    "prettier": "3.9.7",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.1"
+  },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-test-renderer": "19.2.3"
+  }
+}

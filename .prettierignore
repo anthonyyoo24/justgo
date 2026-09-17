@@ -1,0 +1,11 @@
+node_modules
+package-lock.json
+.local
+.vercel
+apps/mobile/ios
+apps/mobile/android
+apps/mobile/.expo
+**/dist
+docs/IMPLEMENTATION_PLAN.html
+docs/design-source
+docs/screen-refs

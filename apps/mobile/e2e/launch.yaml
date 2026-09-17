@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+---
+- launchApp
+- openLink: 'justgo://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
+- extendedWaitUntil:
+    visible: 'DEVELOPMENT PREVIEW'
+    timeout: 60000
+- assertVisible: 'Small steps.*'
+- tapOn: 'Check connection'
+- extendedWaitUntil:
+    visible: 'Connected. Everything is ready.'
+    timeout: 15000
