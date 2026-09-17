@@ -5,6 +5,7 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["jest", "node"]
   },
   "include": ["**/*.ts", "**/*.tsx"],

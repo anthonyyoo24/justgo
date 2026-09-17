@@ -1,5 +1,5 @@
 import { z } from 'zod';
-export * from './identity.js';
+export * from './identity.ts';
 
 // Operational response contracts; identity contracts are exported above.
 export const healthResponseSchema = z

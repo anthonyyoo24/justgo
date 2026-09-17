@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-- **Status:** In progress — implementation and browser/backend verification complete; native UI and physical-device acceptance remain pending.
+- **Status:** In progress — implementation and browser/backend verification complete; native UI verification partial; physical-device acceptance remains pending.
 - **Updated / author:** September 17, 2026 / Codex.
 - **Scope:** [Phase 02](../IMPLEMENTATION_PLAN.md#phase-02), PRD AC-01, Tech acceptance 1–4 and relevant security checks.
 - **Dependency:** [Phase 01 handoff](phase-01-foundation.md), reread before implementation. Its original uncommitted baseline was subsequently committed as `fe0fa015f99f652388344ab9c2dee5bd6e8bfaf8` and pushed to the private GitHub repository `anthonyyoo24/justgo`.
@@ -75,6 +75,14 @@ All evidence below was recorded on September 17, 2026. Test fixtures are disposa
 
 Browser and service tests together exercise protocol behavior; they do not prove iCloud synchronization, Keychain access while locked, reinstall continuity or device signing.
 
+### Simulator follow-up — September 17, 2026
+
+The Mac was accessible on the follow-up attempt. The retained EAS binary initially exposed an iOS Metro resolution error: the contracts source re-exported `./identity.js`, which Metro could not resolve to `identity.ts`. Web used the compiled package export and therefore had not exposed this. The source now imports the real `.ts` path; TypeScript rewrites that path to `.js` for the Node build. Mobile type checking permits TypeScript import extensions. CI now includes `npm run export:ios -w @justgo/mobile` as a native bundle regression check.
+
+After the fix, the native app created and connected account `8d1d2903` using its Keychain vault. Terminating and relaunching the app restored the same account, and tapping **Renew this session** succeeded. `npm run check` passed all 34 unit/component tests, and both iOS and web exports passed. Browser account creation and session renewal were also rechecked through the real local API. No Swift changes or new native compilation were needed.
+
+Native recovery controls below the fold are still awaiting inspection: Computer Use taps work, but its drag/scroll actions did not move either JustGO or the iOS home screen. A manual swipe was requested so the remaining controls can be tested. This is a different blocker from the earlier Mac lock; it is not evidence of a JustGO scrolling defect. The physical-device matrix remains deferred.
+
 GitHub [phase two CI run 35274014833](https://github.com/anthonyyoo24/justgo/actions/runs/35274014833) passed against implementation commit `fd48e48`: clean dependency install, `npm run check`, database migration and integration tests, web export and Expo Doctor. It completed on September 17, 2026 at 21:00:57 UTC.
 
 ## Environment and deployment record
@@ -88,7 +96,7 @@ GitHub [phase two CI run 35274014833](https://github.com/anthonyyoo24/justgo/act
 
 ## Remaining work and next steps
 
-1. **Finish simulator UI smoke after unlocking the Mac.** Start local DB/API and Metro with one worker, boot the retained simulator, open the installed development app and verify first launch, account readiness, relaunch, session renewal and secure key/transfer UI. Record screenshots/state evidence through Computer Use. Reuse the existing EAS binary; these JS/UI changes need no new native build.
+1. **Finish the remaining simulator recovery UI smoke.** First launch, account readiness, relaunch and session renewal passed on the follow-up. Resolve the Computer Use gesture limitation or use a manual swipe to reach key/transfer controls, then record their behavior. Start local DB/API and Metro with one worker and reuse the retained EAS binary. These JS/UI changes need no new native build.
 2. **Finish physical acceptance when Apple setup is available.** Confirm the permanent identifier and signing/access group, register two iPhones, build the device profile, establish a reachable HTTPS staging route without bundling a protection secret, and execute every physical matrix item above. Preserve account separation when sync is delayed. Phase 02 stays open until these pass.
 3. **Phase 03 may proceed under the sequencing exception.** Use the verified session boundary and public schemas. Build shared query/account-cache cancellation and navigation around authenticated account changes. Do not substitute a fake user, bypass recovery failures or grant paid access. Approved onboarding questions/branching are still a separate phase 03 product prerequisite.
 4. **Before release:** complete identity security review, measured rate/capacity limits, retention/backup/deletion behavior and scheduled bounded maintenance. Do not delete credential tombstones or claim million-user capacity. Dependency audit findings from Expo/Drizzle tooling remain tracked for compatible upstream updates.

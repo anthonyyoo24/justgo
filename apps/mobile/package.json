@@ -44,6 +44,7 @@
     "test": "jest --runInBand",
     "test:native": "maestro test e2e/launch.yaml",
     "export:web": "expo export --platform web",
+    "export:ios": "expo export --platform ios",
     "doctor": "expo-doctor"
   },
   "private": true

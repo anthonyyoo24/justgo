@@ -36,5 +36,6 @@ jobs:
           MIGRATION_DATABASE_URL: postgresql://justgo_migrator:migration-ci-only@localhost:5432/justgo_test
           DATABASE_SSL: disable
       - run: npm run export:web -w @justgo/mobile
+      - run: npm run export:ios -w @justgo/mobile
       - run: npx expo-doctor
         working-directory: apps/mobile
