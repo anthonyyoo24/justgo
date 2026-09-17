@@ -6,7 +6,7 @@
 - **Updated / author:** September 17, 2026 / Codex.
 - **Scope:** [Phase 02](../IMPLEMENTATION_PLAN.md#phase-02), PRD AC-01, Tech acceptance 1–4 and relevant security checks.
 - **Dependency:** [Phase 01 handoff](phase-01-foundation.md), reread before implementation. Its original uncommitted baseline was subsequently committed as `fe0fa015f99f652388344ab9c2dee5bd6e8bfaf8` and pushed to the private GitHub repository `anthonyyoo24/justgo`.
-- **Branch:** `phase-02-identity`. This handoff is saved with the implementation; use that branch’s Git history for the resulting commit.
+- **Branch:** `phase-02-identity`. Implementation commit: [`fd48e48`](https://github.com/anthonyyoo24/justgo/commit/fd48e4844161b12bd26c4b19c117cc5de105e674).
 - **Sequencing decision:** Anthony authorized phase 02 implementation with Apple enrollment/signing and physical-iPhone acceptance deferred. Later feature implementation may use the verified account boundary while phase 02 stays open. This does not waive device acceptance before valuable-data external testing or release.
 - **Summary:** Custom identity API, real owner-scoped database tables, independent expiring sessions, idempotent bootstrap/renewal, revocable keys, approved transfers, durable rate limits, a Swift Keychain module, typed client storage/protocol and minimal recovery UI now exist. No signup, purchases, onboarding, journal data or silent account merging was added.
 
@@ -74,6 +74,8 @@ All evidence below was recorded on September 17, 2026. Test fixtures are disposa
 | Physical iPhone matrix                                 | **Not run**, by the approved deferral: reinstall, two iPhones/same iCloud account, different Apple account, locked/disabled/delayed sync, signing/access groups, real-device recovery-key/transfer and revocation.                                                                                                                                                                                                                                      |
 
 Browser and service tests together exercise protocol behavior; they do not prove iCloud synchronization, Keychain access while locked, reinstall continuity or device signing.
+
+GitHub [phase two CI run 35274014833](https://github.com/anthonyyoo24/justgo/actions/runs/35274014833) passed against implementation commit `fd48e48`: clean dependency install, `npm run check`, database migration and integration tests, web export and Expo Doctor. It completed on September 17, 2026 at 21:00:57 UTC.
 
 ## Environment and deployment record
 
