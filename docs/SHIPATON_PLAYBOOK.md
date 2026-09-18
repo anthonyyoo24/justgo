@@ -1,5 +1,7 @@
 # Shipaton 2026 Field Guide
 
+> **Historical strategy — implementation scope superseded (September 18, 2026).** This document preserves the August 3 competition research and strategy. The [current PRD](PRD.md) owns product requirements, and the [implementation plan](IMPLEMENTATION_PLAN.md) owns phases and release gates. All product, personalization, onboarding, analytics, demo and scheduling proposals below are historical ideas, not additional launch requirements. In particular, the five-level challenge catalogue, difficulty swaps, XP/awards and anxiety scoring do not define the approved launch scope. Follow the current PRD/plan for onboarding decisions as well. Competition information retains its original last-checked date below.
+
 ## Build Courage. Ship Early. Prove Momentum.
 
 **Last checked:** August 3, 2026  
@@ -73,7 +75,7 @@ Tag public posts with **#Shipaton** and preserve every link.
 
 The daily-challenge habit is a natural fit for supportive reminders. Add OneSignal only after the core app and RevenueCat purchases are stable. Eligibility requires a live app, a deployed campaign, the OneSignal App ID, and an implementation description.
 
-## Build Strategy
+## Historical Build Strategy (superseded)
 
 ### The Core Loop
 
@@ -88,7 +90,7 @@ Choose goals
 → return tomorrow
 ```
 
-### Ship Scope
+### Historical Ship Scope (superseded)
 
 - Five onboarding focus areas
 - 35–40 curated challenges across five difficulty levels
@@ -103,7 +105,7 @@ Choose goals
 
 Initial personalization should use selected goals, current difficulty, and recent variety. Collect richer signals now; improve the recommendation logic after launch.
 
-## Compressed Release Plan
+## Historical Compressed Release Plan (superseded)
 
 | Date          | Mission                      | Deliverable                                            |
 | ------------- | ---------------------------- | ------------------------------------------------------ |

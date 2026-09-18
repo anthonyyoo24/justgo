@@ -1,6 +1,6 @@
 # Frontend architecture checklist
 
-Technical topics from the PDF's system design section, compared with [TECH_STACK.md](/Users/anthonyyoo/Documents/apps/justgo/docs/TECH_STACK.md). Updated September 15, 2026.
+Technical topics from the PDF's system design section, compared with [TECH_STACK.md](TECH_STACK.md). Updated September 15, 2026.
 
 “Represented” means included in the plan, not implemented. Related concepts are grouped; partly covered areas appear again where clarification is needed.
 

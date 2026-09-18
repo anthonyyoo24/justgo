@@ -6,7 +6,7 @@
 - **Updated / author:** September 17, 2026 / Codex, with Anthony's account/project decisions.
 - **Scope:** [Phase 01](../IMPLEMENTATION_PLAN.md#phase-01); PRD §§2, 10, 13 and Tech §§2, 3, 12.
 - **Dependencies:** None. Historical context: [planning baseline](00-planning-baseline.md) and [iOS release scope](01-ios-release-scope.md).
-- **Branch / commits:** Git initialized on `master`; no starting or ending commit. All implementation/docs are uncommitted. Original workspace contained documentation only.
+- **Baseline commit:** Phase 01 was committed as `fe0fa015f99f652388344ab9c2dee5bd6e8bfaf8`. The original pre-commit handoff described Git initialization on `master` and uncommitted implementation/docs; those statements describe the workspace before that commit. The original workspace contained documentation only.
 - **Environment:** macOS arm64, Node 24.18.0, npm 11.16.0, PostgreSQL 17; exact mobile/backend versions in [FOUNDATION.md](../FOUNDATION.md).
 - **Summary:** Workspace, mobile foundation preview, API, real database isolation tests, a verified deployed staging API, Supabase staging and EAS linkage now exist. The EAS-built iOS app passed native launch and connectivity. No domain feature or user data was added.
 
