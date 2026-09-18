@@ -12,8 +12,8 @@ Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versi
 | -------------------------------- | -------------------------------------------------------------------------------- |
 | Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                       |
 | TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                     |
-| Expo / React Native / React      | 57.0.23 / 0.86.3 / 19.2.3                                                        |
-| Expo Router / development client | 57.0.21 / 57.0.19                                                                |
+| Expo / React Native / React      | 57.0.24 / 0.86.3 / 19.2.3                                                        |
+| Expo Router / development client | 57.0.22 / 57.0.19                                                                |
 | Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                        |
 | Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                  |
 | Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                         |
