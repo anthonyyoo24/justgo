@@ -11,7 +11,11 @@ Run from the repository root:
 node docs/checks/check-plan.mjs
 ```
 
-Result: **11 checks passed**. The checks parse the shipped JavaScript, exercise its actual import/completion validator, inspect internal links and compare Markdown/HTML phase titles, dependencies, gate text and handoff paths.
+Historical result for the September 16 scope revision: **11 checks passed**, as recorded at the time. The later [Phase 01 handoff](../handoffs/phase-01-foundation.md#verification-evidence) records **12 checks passed** on September 17, including phase-completion/gates/handoff consistency; the current script defines 12 checks. These are separate recorded runs, not a new execution result.
+
+**Reproduction limitation (September 18):** The current checkout does not contain `docs/IMPLEMENTATION_PLAN.html`, which the script reads before running its checks. Restore the matching tracker artifact before rerunning this historical verification. Neither the historical automated result nor the browser results below establish a pass for the current checkout.
+
+The checks parse the shipped JavaScript, exercise its actual import/completion validator, inspect internal links and compare Markdown/HTML phase titles, dependencies, gate text and handoff paths.
 
 Coverage includes nine launch stages, three deferred stages, lock-screen phase 05 no longer blocking billing, dependency order, four gates per phase, valid fresh state, completion prerequisites, invalid/oversized import fields, rejection of old v1 exports, JSON round-trip, handoff template/index, isolated v2 storage and dynamic totals. All launch stages can complete while phases 05, 11 and 12 remain deferred.
 
