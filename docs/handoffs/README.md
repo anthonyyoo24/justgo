@@ -4,6 +4,8 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
+Phase 03 app-shell implementation is recorded in [phase-03-app-shell.md](phase-03-app-shell.md). Welcome/questionnaire onboarding is deferred by the owner; native acceptance status remains explicit. Staging now includes the transfer-verification upgrade and access boundary.
+
 Phase 02 identity/recovery is implemented with passing browser/backend verification recorded in [phase-02-identity.md](phase-02-identity.md). Apple-dependent physical-device acceptance remains open. Anthony authorized later feature implementation to proceed against the verified identity boundary while those gates stay pending.
 
 Phase 01 is complete: workspace, foundation app/API, restricted-role database infrastructure and the existing Expo project are verified. The cloud-built iOS app passed native launch and connectivity. See [phase-01-foundation.md](phase-01-foundation.md) for evidence and next steps. [00-planning-baseline.md](00-planning-baseline.md) records the historical starting point. [01-ios-release-scope.md](01-ios-release-scope.md) records the current scope revision; neither is a completed build phase.
@@ -26,7 +28,7 @@ The filenames below are reserved names, not claims that those files exist. Turn 
 | -------------------------------------------- | ------------- | ------------ | ------------------------------------------------ |
 | 01 — Foundation & implementation decisions   | Complete      | None         | [phase-01-foundation.md](phase-01-foundation.md) |
 | 02 — No-signup identity & recovery           | In progress   | 01           | [phase-02-identity.md](phase-02-identity.md)     |
-| 03 — App shell, shared API & onboarding      | Not started   | 02           | `phase-03-app-shell-onboarding.md`               |
+| 03 — App shell & shared API                  | In progress   | 02           | [phase-03-app-shell.md](phase-03-app-shell.md)   |
 | 04 — Challenge deck & reliable attempts      | Not started   | 03           | `phase-04-challenge-loop.md`                     |
 | 06 — Feelings & typed reflections            | Not started   | 04           | `phase-06-reflections.md`                        |
 | 07 — Progress calendar & saved history       | Not started   | 06           | `phase-07-progress.md`                           |

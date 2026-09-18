@@ -1,6 +1,6 @@
 # JustGO
 
-An iOS-first social-confidence app. Phase 01 provides the Expo development app, Fastify API, shared contracts, database foundation and test infrastructure. Phase 02 adds real account bootstrap, independent sessions, recovery keys, approved device transfers and a Swift Keychain module. [Identity setup](docs/IDENTITY.md) and the [phase 02 handoff](docs/handoffs/phase-02-identity.md) record implementation, verification and deferred physical-device acceptance. `npm ci` builds the shared contracts for Node; re-run `npm run build:contracts` after editing contracts during API development.
+An iOS-first social-confidence app. Phase 01 provides the Expo development app, Fastify API, shared contracts, database foundation and test infrastructure. Phase 02 adds real account bootstrap, independent sessions, recovery keys, approved device transfers and a Swift Keychain module. [Identity setup](docs/IDENTITY.md) and the [phase 02 handoff](docs/handoffs/phase-02-identity.md) record implementation, verification and deferred physical-device acceptance. Phase 03 adds the [app shell and shared API](docs/APP_SHELL.md), account-scoped queries, protected navigation and a development-only screen preview. Welcome/questionnaire onboarding is deferred; live billing remains phase 08. `npm ci` builds the shared contracts for Node; re-run `npm run build:contracts` after editing contracts during API development.
 
 ## Start locally
 
@@ -17,7 +17,7 @@ npm run dev:web
 
 `db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere set `JUSTGO_PG_BIN` to their directory. It creates a dedicated, loopback-only cluster at `.local/postgres` on port **54329** and the `justgo_test` database, generates local role credentials and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Local host authentication is trusted on this disposable cluster; never expose its port or use it for personal data.
 
-The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The identity preview uses authenticated account endpoints; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
+The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 08, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
 
 For environment-managed development, copy the workspace `.env.example` files to `.env` and configure the separate runtime and migration URLs. Never commit credentials. Identity traffic requires HTTPS, except loopback during development. A physical iPhone needs a reachable HTTPS API route; `localhost` on a phone refers to the phone. Do not embed a Vercel protection bypass secret in the app.
 
@@ -27,6 +27,7 @@ For environment-managed development, copy the workspace `.env.example` files to 
 npm run check          # strict TypeScript, lint, formatting and unit/component tests
 npm run test:db        # real PostgreSQL isolation/rollback/pool tests; db:local + migrate first
 npm run export:web -w @justgo/mobile
+npm run export:ios -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
@@ -53,7 +54,7 @@ A native smoke flow lives in `apps/mobile/e2e/launch.yaml`. With Maestro install
 
 ## Workspace
 
-- `apps/mobile`: Expo Router, typed design tokens, native Keychain storage and the identity/recovery preview.
+- `apps/mobile`: Expo Router, typed design tokens, native Keychain storage, shared network/query handling, guarded app shells and recovery.
 - `apps/api`: Fastify, Drizzle, `pg`, reviewed SQL and operational endpoints.
 - `packages/contracts`: public Zod response schemas shared by mobile and API.
 - `docs`: product scope, implementation plan, extracted design references and durable phase handoffs.

@@ -1,18 +1,18 @@
 # JustGO — Implementation Plan
 
-**Version:** 2 · Updated September 17, 2026  
-**Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native UI verification is partial and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
+**Version:** 3 · Updated September 17, 2026  
+**Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](PRD.md) · [Tech stack](TECH_STACK.md)  
 **Handoffs:** [Index](handoffs/README.md) · [Template](handoffs/TEMPLATE.md) · [Planning baseline](handoffs/00-planning-baseline.md)
 
 This is the Markdown companion to the saved HTML plan: nine iOS release stages and three deferred stages. Each phase defines what to implement, what to exclude, its completion checks and the context to hand forward.
 
-**First release:** iOS, onboarding, one general easy Level 1 challenge collection, the in-app timer, Success, typed reflections, the full Progress summary/calendar/day sheet, native subscriptions, and essential Settings/privacy/recovery.
+**First release:** iOS, one general easy Level 1 challenge collection, the in-app timer, Success, typed reflections, the full Progress summary/calendar/day sheet, native subscriptions, and essential Settings/privacy/recovery.
 
-**Deferred:** Levels and progression rules, venue/category filters, custom dictation, lock-screen display, Android release, Stripe and AI coaching. Stable challenge/revision/Level 1 history is kept now; thresholds and how prior completions count are decided later.
+**Deferred:** Welcome screens and questionnaire onboarding (owner decision September 17), Levels and progression rules, venue/category filters, custom dictation, lock-screen display, Android release, Stripe and AI coaching. Stable challenge/revision/Level 1 history is kept now; thresholds and how prior completions count are decided later.
 
-Phase IDs stay stable: phase 05 (lock-screen display) moves after launch and no longer blocks billing. Tracker v2 uses separate browser storage and rejects v1 exports so old completion checks cannot imply completion under the revised scope. Phase 01 is complete; the remaining implementation phases have not started.
+Phase IDs stay stable: phase 05 (lock-screen display) moves after launch and no longer blocks billing. Tracker v2 uses separate browser storage and rejects v1 exports so old completion checks cannot imply completion under the revised scope. Phase 01 is complete; see the stage table for current implementation status.
 
 ## How to use this plan
 
@@ -20,6 +20,7 @@ Phase IDs stay stable: phase 05 (lock-screen display) moves after launch and no 
 - Run relevant tests and UI verification during every phase. Phase 10 integrates and releases work already verified in its own stage.
 - Mark a phase complete only after its checks and dependency phases pass, and its handoff is saved with evidence.
 - **September 17 sequencing exception:** Anthony approved implementing phase 02 while Apple enrollment/signing and physical-iPhone recovery acceptance remain pending. Phase 03 and later feature implementation may proceed after the backend/client identity checks pass. Keep phase 02 open and retain those device gates before valuable-data external testing and release.
+- **September 17 scope revision:** Anthony deferred welcome/questionnaire onboarding and authorized phase 02 follow-up plus phase 03 app-shell work. Build the existing screens first; onboarding is not a prerequisite for this phase. Paid access remains phase 08.
 - Update this file and the handoff index when recording progress. The HTML checklist is browser-local; it does not automatically update this Markdown file or the handoffs. Export/import the HTML checklist to move it between browsers.
 - Keep scope changes synchronized between the HTML and Markdown plans. Saved handoffs and actual implementation/test evidence remain authoritative.
 
@@ -29,7 +30,7 @@ Phase IDs stay stable: phase 05 (lock-screen display) moves after launch and no 
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------- | ------------- |
 | [01 — Foundation & implementation decisions](#phase-01)   | A reproducible workspace and a clear list of decisions to settle before each feature.                   | None       | Complete      |
 | [02 — No-signup identity & recovery](#phase-02)           | A real account survives supported recovery paths, without exposing another person’s history.            | 01         | In progress   |
-| [03 — App shell, shared API & onboarding](#phase-03)      | The app restores the right account and onboarding step, with consistent network behavior.               | 02         | Not started   |
+| [03 — App shell & shared API](#phase-03)                  | The app restores the right account and provides consistent navigation and network behavior.             | 02         | In progress   |
 | [04 — Challenge deck & reliable attempts](#phase-04)      | Browse → accept → complete or give up works against real cloud data exactly once.                       | 03         | Not started   |
 | [06 — Feelings & typed reflections](#phase-06)            | A completed attempt can have optional private feedback and typed reflection text.                       | 04         | Not started   |
 | [07 — Progress calendar & saved history](#phase-07)       | Users can view the full Progress summary/calendar and read day details and saved reflections.           | 06         | Not started   |
@@ -48,7 +49,7 @@ These remain open in PRD §13. Resolve each with the product owner and update th
 
 | Decision                        | Before phase                | What needs an answer                                                                                                                                                        |
 | ------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Onboarding content              | 03                          | Questions, branching, validation and final designs.                                                                                                                         |
+| Onboarding content              | Deferred                    | Welcome/questionnaire flow deferred by Anthony; revisit scope and designs separately. No phase 03 gate.                                                                     |
 | Launch catalog                  | 04                          | Easy Level 1 general challenge copy, durations, helpers, art, safety rules and a useful catalog size; no threshold or venue taxonomy. CURRICULUM.md remains a future draft. |
 | Deck counter                    | 04                          | Meaning of position/denominator, reset behavior and exhausted-collection copy.                                                                                              |
 | Future levels                   | Later; not a launch blocker | Thresholds, unlocking/skipping, historical-credit policy and later taxonomy; retain Level 1 history now without implementing progression.                                   |
@@ -63,7 +64,7 @@ These remain open in PRD §13. Resolve each with the product owner and update th
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 01, in parallel         | Choose individual or organization enrollment; begin/confirm Apple Developer membership and account access. Owner completes required identity/business verification, paid-app agreement, banking and tax details.                                                                                                                                                                | Record status and outstanding items; Apple verification does not prevent local development. Membership and agreements must be ready for distribution/sales. |
 | Phase 01 onward; ready for 08 | Reserve a stable bundle identifier, create the App Store Connect app record and Expo/EAS project, configure signing access. In the existing JustGO RevenueCat project, connect the iOS app/store credentials, create the agreed App Store subscription group/products, and map product → entitlement → offering/paywall. Keep secret credentials out of docs and mobile source. | Matching identifiers and configured sandbox purchase path; final offer decisions settled before billing validation.                                         |
-| During development, before 10 | Use iOS development builds and physical iPhones. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight.                                                                                                                                                                                                                          | Purchase/restore, onboarding, recovery, challenge loop and Progress pass on the actual binary. External testers may need beta review.                       |
+| During development, before 10 | Use iOS development builds and physical iPhones. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight.                                                                                                                                                                                                                          | Purchase/restore, recovery, challenge loop and Progress pass on the actual binary. External testers may need beta review.                                   |
 | Phase 10                      | Complete App Store metadata, current screenshots, icon, privacy disclosures/policy, support URL, age/content declarations, subscription information and review notes explaining no-signup access. Give reviewers the access needed to inspect the paid app. Submit the first subscription with the app version when required.                                                   | Select the tested build and explicitly submit in App Store Connect for App Review; choose the intended release control and address review feedback.         |
 | After approval/release        | Verify the public listing and purchase/restore flow. Complete the separate hackathon submission using its current rules and required demo/assets.                                                                                                                                                                                                                               | Record the submitted entry and released build. Do not assume later app updates will be included in judging without checking the event rules.                |
 
@@ -146,38 +147,38 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 <a id="phase-03"></a>
 
-### Phase 03 — App shell, shared API & onboarding
+### Phase 03 — App shell & shared API
 
-**Status:** Not started  
+**Status:** Implemented — full accessibility/device acceptance pending  
 **Depends on:** 02  
 **Acceptance references:** PRD AC-02, 17 · Tech acceptance 8, 10, 16, 17
 
-**Outcome:** The app restores the right account and onboarding step, with consistent network behavior.
+**Outcome:** The app restores the right account and provides consistent navigation and network behavior.
 
 #### Implement
 
 - Build Router entry gates, Home/Progress tabs, Settings access and focused Success/Reflection routes. Use the agreed feature folders, shared accessible components and typed platform adapters.
 - Implement shared Zod/OpenAPI contracts and HTTP client: typed errors, bounded timeouts, one retry policy, coordinated session renewal, account-scoped query keys, cancellation and stale-response protection.
-- Implement approved onboarding steps and branching with in-memory Zustand edits, per-step atomic cloud saves, schema/revision checks and relaunch restoration. React owns local UI; TanStack Query owns server data.
+- Defer onboarding, welcome screens, questionnaires, onboarding tables and Zustand. Build from the existing approved core screen references. React owns local UI; TanStack Query owns server data. Feature content/actions arrive in their consuming phases.
 - Establish a server entitlement-check boundary and unavailable/unpaid/verified navigation states. Use explicitly isolated test fixtures until phase 08; no production billing bypass. Add consent-aware telemetry interfaces with export disabled until choices exist.
 
 #### Keep out of this phase
 
-- No persistent Zustand/query cache, offline journal database, duplicate server-state stores or hard-coded final onboarding copy.
+- No onboarding/welcome flow, persistent query cache, offline journal database, duplicate server-state stores or fabricated challenge/history data. No billing implementation before phase 08.
 - No assumption that timeout means a write failed; do not stack transport retries under TanStack retries.
 
 #### Ready to hand off when
 
-- [ ] Approved onboarding content and branching are recorded; saves, backtracking, dirty edits, conflicts and relaunch restoration pass.
-- [ ] API tests cover typed errors, retry budgets, stable action IDs, coordinated renewal and late responses after account changes.
+- [x] Home/Progress tabs, Settings/recovery access and guarded Success/Reflection route shells work; no onboarding or welcome flow is introduced.
+- [x] API tests cover typed errors, retry budgets, stable action IDs, coordinated renewal and late responses after account changes.
 - [ ] Navigation, keyboard, screen-reader labels and reduced motion work on iOS; expired/unverified access has no release bypass.
-- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
-**Carry forward:** Route/gate map, shared component conventions, contracts/error codes, retry/renewal rules and onboarding state/save boundaries.
+**Carry forward:** Route/gate map, shared component conventions, contracts/error codes, retry/renewal rules, account clearing, entitlement gates and deferred feature boundaries.
 
-**Handoff file to create:** `handoffs/phase-03-app-shell-onboarding.md`
+**Saved handoff:** [handoffs/phase-03-app-shell.md](handoffs/phase-03-app-shell.md)
 
-**Working notes / blocker:** None recorded.
+**Working notes / blocker:** See the saved handoff for browser/backend/native evidence. Onboarding is deferred, not a blocker. Phase 02 physical-device acceptance remains open under the approved sequencing exception.
 
 <a id="phase-04"></a>
 

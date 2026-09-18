@@ -40,8 +40,10 @@ function TextButton({
 }
 export function IdentityScreen({
   controller: provided,
+  managed = false,
 }: {
   controller?: IdentityController;
+  managed?: boolean;
 }) {
   const [controller] = useState(
     () =>
@@ -56,6 +58,9 @@ export function IdentityScreen({
     controller.getSnapshot,
     controller.getSnapshot,
   );
+  const [panel, setPanel] = useState<
+    'account' | 'keys' | 'transfer' | 'devices'
+  >('account');
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryKey, setRecoveryKey] = useState('');
   const [transferCode, setTransferCode] = useState('');
@@ -65,24 +70,44 @@ export function IdentityScreen({
     action: () => Promise<void>;
   } | null>(null);
   useEffect(() => {
-    void controller.initialize();
-  }, [controller]);
+    if (!managed) void controller.initialize();
+  }, [controller, managed]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
       if (next !== 'active') {
         controller.hideKey();
         setRecoveryKey('');
-      } else {
+      } else if (!managed) {
         void controller.retry();
       }
     });
-    return () => subscription.remove();
-  }, [controller]);
+    return () => {
+      subscription.remove();
+      controller.hideKey();
+    };
+  }, [controller, managed]);
   const act = (work: () => Promise<void>) => {
     void work();
   };
   const confirm = (message: string, action: () => Promise<void>) =>
     setConfirmation({ message, action });
+  const reviewTransfer = async () => {
+    if (state.busy) return;
+    setVerification('');
+    await controller.inspectTransfer(transferCode);
+  };
+  const approveTransfer = async () => {
+    if (state.busy) return;
+    await controller.approveTransfer(verification);
+    setVerification('');
+    if (!controller.getSnapshot().inspection) setTransferCode('');
+  };
+  const recoverWithKey = async () => {
+    if (state.busy) return;
+    const value = recoveryKey;
+    setRecoveryKey('');
+    await controller.recoverKey(value);
+  };
   const button = (label: string, action: () => Promise<void>) => (
     <PrimaryButton
       label={label}
@@ -93,13 +118,14 @@ export function IdentityScreen({
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
+        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scroll}
       >
         <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.wordmark}>JustGO</Text>
-            <Text style={styles.eyebrow}>ACCOUNT & RECOVERY PREVIEW</Text>
+            <Text style={styles.eyebrow}>ACCOUNT & RECOVERY</Text>
           </View>
           {controller.vault.kind === 'memory' && (
             <View style={styles.notice}>
@@ -110,26 +136,50 @@ export function IdentityScreen({
               </Text>
             </View>
           )}
-          <View style={styles.hero}>
-            <View style={styles.art}>
-              <Image
-                source={require('../../../assets/illustrations/small-medal.png')}
-                style={styles.image}
-                contentFit="contain"
-                accessible={false}
-              />
+          {!managed && (
+            <View style={styles.hero}>
+              <View style={styles.art}>
+                <Image
+                  source={require('../../../assets/illustrations/small-medal.png')}
+                  style={styles.image}
+                  contentFit="contain"
+                  accessible={false}
+                />
+              </View>
+              <Text accessibilityRole="header" style={styles.heading}>
+                {state.account
+                  ? 'A place for your progress.'
+                  : 'Your courage.\nYour account.'}
+              </Text>
+              <Text style={styles.body}>
+                {state.account
+                  ? 'Your private account is connected. No email, password or signup form needed.'
+                  : 'Your progress belongs to you. Connect securely, or recover an account you already have.'}
+              </Text>
             </View>
-            <Text accessibilityRole="header" style={styles.heading}>
-              {state.account
-                ? 'A place for your progress.'
-                : 'Your courage.\nYour account.'}
-            </Text>
-            <Text style={styles.body}>
-              {state.account
-                ? 'Your private account is connected. No email, password or signup form needed.'
-                : 'Your progress belongs to you. Connect securely, or recover an account you already have.'}
-            </Text>
-          </View>
+          )}
+          {managed && state.account && (
+            <View style={styles.panels}>
+              {(
+                [
+                  ['account', 'Account'],
+                  ['keys', 'Recovery keys'],
+                  ['transfer', 'Device transfer'],
+                  ['devices', 'Manage devices'],
+                ] as const
+              ).map(([id, label]) => (
+                <TextButton
+                  key={id}
+                  label={label}
+                  onPress={() => {
+                    controller.hideKey();
+                    setPanel(id);
+                  }}
+                  disabled={state.busy}
+                />
+              ))}
+            </View>
+          )}
           {!!state.message && (
             <View style={styles.notice}>
               <Text accessibilityLiveRegion="polite" style={styles.body}>
@@ -162,146 +212,155 @@ export function IdentityScreen({
           )}
           {state.account ? (
             <>
-              <View style={styles.card}>
-                <View style={styles.row}>
-                  <Text style={styles.title}>Connected</Text>
-                  <Text style={styles.badge}>PRIVATE ACCOUNT</Text>
+              {(!managed || panel === 'account') && (
+                <View style={styles.card}>
+                  <View style={styles.row}>
+                    <Text style={styles.title}>Connected</Text>
+                    <Text style={styles.badge}>PRIVATE ACCOUNT</Text>
+                  </View>
+                  <Text selectable style={styles.small}>
+                    Account {state.account.userId.slice(0, 8)}
+                  </Text>
+                  <Text style={styles.body}>
+                    Challenges and your progress are coming in the next phases.
+                  </Text>
+                  <TextButton
+                    label="Refresh account"
+                    onPress={() => act(controller.refresh)}
+                    disabled={state.busy}
+                  />
+                  <TextButton
+                    label="Renew this session"
+                    onPress={() => act(controller.renew)}
+                    disabled={state.busy}
+                  />
                 </View>
-                <Text selectable style={styles.small}>
-                  Account {state.account.userId.slice(0, 8)}
-                </Text>
-                <Text style={styles.body}>
-                  Challenges and your progress are coming in the next phases.
-                </Text>
-                <TextButton
-                  label="Refresh account"
-                  onPress={() => act(controller.refresh)}
-                  disabled={state.busy}
-                />
-                <TextButton
-                  label="Renew this session"
-                  onPress={() => act(controller.renew)}
-                  disabled={state.busy}
-                />
-              </View>
-              <View style={styles.card}>
-                <Text accessibilityRole="header" style={styles.title}>
-                  Keep a way back.
-                </Text>
-                <Text style={styles.body}>
-                  iCloud Keychain recovery depends on your device settings. A
-                  private recovery key gives you another way back.
-                </Text>
-                {button('Show recovery key', controller.saveKey)}
-                {state.key && (
-                  <View style={styles.keyBox}>
-                    <Text style={styles.small}>
-                      Save this somewhere private. Anyone with it can access
-                      your account.
-                    </Text>
-                    <Text selectable style={styles.secret}>
-                      {state.key.match(/.{1,8}/g)?.join(' ')}
-                    </Text>
-                    <TextButton
-                      label="Hide recovery key"
-                      onPress={controller.hideKey}
-                    />
-                  </View>
-                )}
-                {state.recoveryKeys
-                  .filter((k) => k.kind === 'key' && !k.revokedAt)
-                  .map((key) => (
-                    <TextButton
-                      key={key.id}
-                      label={`Revoke recovery key ${key.id.slice(0, 8)}`}
-                      disabled={state.busy}
-                      onPress={() =>
-                        confirm(
-                          'This key will stop recovering your account. Your active devices will remain signed in.',
-                          () => controller.revokeCredential(key.id),
-                        )
-                      }
-                    />
-                  ))}
-              </View>
-              <View style={styles.card}>
-                <Text accessibilityRole="header" style={styles.title}>
-                  Approve a new device.
-                </Text>
-                <Text style={styles.body}>
-                  On your new device, choose “Transfer from another device.”
-                  Enter the code shown there.
-                </Text>
-                <TextInput
-                  accessibilityLabel="Transfer code"
-                  placeholder="XXXX-XXXX-XXXX-XXXX"
-                  placeholderTextColor={colors.ink}
-                  value={transferCode}
-                  onChangeText={setTransferCode}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  maxLength={24}
-                  style={styles.input}
-                />
-                {button('Review transfer', async () => {
-                  setVerification('');
-                  await controller.inspectTransfer(transferCode);
-                })}
-                {state.inspection && (
-                  <View style={styles.keyBox}>
-                    <Text style={styles.body}>
-                      Enter the six verification digits shown on your new
-                      device. Only approve a device you are setting up.
-                    </Text>
-                    <TextInput
-                      accessibilityLabel="Verification digits"
-                      placeholder="Six digits from your new device"
-                      placeholderTextColor={colors.ink}
-                      value={verification}
-                      onChangeText={setVerification}
-                      keyboardType="number-pad"
-                      autoCorrect={false}
-                      maxLength={6}
-                      style={styles.input}
-                    />
-                    {button('Approve this device', async () => {
-                      await controller.approveTransfer(verification);
-                      setVerification('');
-                      if (!controller.getSnapshot().inspection)
-                        setTransferCode('');
-                    })}
-                  </View>
-                )}
-              </View>
-              <View style={styles.card}>
-                <Text accessibilityRole="header" style={styles.title}>
-                  Your devices
-                </Text>
-                {state.devices.map((device) => (
-                  <View key={device.id} style={styles.device}>
-                    <Text style={styles.body}>
-                      {device.id === state.account!.deviceId
-                        ? 'This device'
-                        : 'Other device'}{' '}
-                      · {device.id.slice(0, 8)}
-                    </Text>
-                    {device.revokedAt ? (
-                      <Text style={styles.small}>Revoked</Text>
-                    ) : (
+              )}
+              {(!managed || panel === 'keys') && (
+                <View style={styles.card}>
+                  <Text accessibilityRole="header" style={styles.title}>
+                    Keep a way back.
+                  </Text>
+                  <Text style={styles.body}>
+                    iCloud Keychain recovery depends on your device settings. A
+                    private recovery key gives you another way back.
+                  </Text>
+                  {button('Show recovery key', controller.saveKey)}
+                  {state.key && (
+                    <View style={styles.keyBox}>
+                      <Text style={styles.small}>
+                        Save this somewhere private. Anyone with it can access
+                        your account.
+                      </Text>
+                      <Text selectable style={styles.secret}>
+                        {state.key.match(/.{1,8}/g)?.join(' ')}
+                      </Text>
                       <TextButton
-                        label={`Revoke device ${device.id.slice(0, 8)}`}
+                        label="Hide recovery key"
+                        onPress={controller.hideKey}
+                      />
+                    </View>
+                  )}
+                  {state.recoveryKeys
+                    .filter((k) => k.kind === 'key' && !k.revokedAt)
+                    .map((key) => (
+                      <TextButton
+                        key={key.id}
+                        label={`Revoke recovery key ${key.id.slice(0, 8)}`}
                         disabled={state.busy}
                         onPress={() =>
                           confirm(
-                            'This device’s sessions will stop working. Recovery credentials remain valid until separately revoked.',
-                            () => controller.revokeDevice(device.id),
+                            'This key will stop recovering your account. Your active devices will remain signed in.',
+                            () => controller.revokeCredential(key.id),
                           )
                         }
                       />
-                    )}
-                  </View>
-                ))}
-              </View>
+                    ))}
+                </View>
+              )}
+              {(!managed || panel === 'transfer') && (
+                <View style={styles.card}>
+                  <Text accessibilityRole="header" style={styles.title}>
+                    Approve a new device.
+                  </Text>
+                  <Text style={styles.body}>
+                    On your new device, choose “Transfer from another device.”
+                    Enter the code shown there.
+                  </Text>
+                  <TextInput
+                    accessibilityLabel="Transfer code"
+                    returnKeyType="done"
+                    onSubmitEditing={() => act(reviewTransfer)}
+                    placeholder="XXXX-XXXX-XXXX-XXXX"
+                    placeholderTextColor={colors.ink}
+                    value={transferCode}
+                    onChangeText={setTransferCode}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={24}
+                    style={styles.input}
+                  />
+                  {button('Review transfer', reviewTransfer)}
+                  {state.inspection && (
+                    <View style={styles.keyBox}>
+                      <Text style={styles.body}>
+                        Enter the six verification digits shown on your new
+                        device. Only approve a device you are setting up.
+                      </Text>
+                      <TextInput
+                        accessibilityLabel="Verification digits"
+                        returnKeyType="done"
+                        onSubmitEditing={() => act(approveTransfer)}
+                        placeholder="Six digits from your new device"
+                        placeholderTextColor={colors.ink}
+                        value={verification}
+                        onChangeText={setVerification}
+                        keyboardType="number-pad"
+                        autoCorrect={false}
+                        maxLength={6}
+                        style={styles.input}
+                      />
+                      {button('Approve this device', approveTransfer)}
+                    </View>
+                  )}
+                </View>
+              )}
+              {(!managed || panel === 'devices') && (
+                <View style={styles.card}>
+                  <Text accessibilityRole="header" style={styles.title}>
+                    Your devices
+                  </Text>
+                  <TextButton
+                    label="Refresh devices"
+                    onPress={() => act(controller.refresh)}
+                    disabled={state.busy}
+                  />
+                  {state.devices.map((device) => (
+                    <View key={device.id} style={styles.device}>
+                      <Text style={styles.body}>
+                        {device.id === state.account!.deviceId
+                          ? 'This device'
+                          : 'Other device'}{' '}
+                        · {device.id.slice(0, 8)}
+                      </Text>
+                      {device.revokedAt ? (
+                        <Text style={styles.small}>Revoked</Text>
+                      ) : (
+                        <TextButton
+                          label={`Revoke device ${device.id.slice(0, 8)}`}
+                          disabled={state.busy}
+                          onPress={() =>
+                            confirm(
+                              'This device’s sessions will stop working. Recovery credentials remain valid until separately revoked.',
+                              () => controller.revokeDevice(device.id),
+                            )
+                          }
+                        />
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
             </>
           ) : (
             <>
@@ -381,6 +440,8 @@ export function IdentityScreen({
               </Text>
               <TextInput
                 accessibilityLabel="Recovery key"
+                returnKeyType="done"
+                onSubmitEditing={() => act(recoverWithKey)}
                 placeholder="Enter your private recovery key"
                 placeholderTextColor={colors.ink}
                 value={recoveryKey}
@@ -392,11 +453,7 @@ export function IdentityScreen({
                 maxLength={80}
                 style={styles.input}
               />
-              {button('Recover with key', async () => {
-                const value = recoveryKey;
-                setRecoveryKey('');
-                await controller.recoverKey(value);
-              })}
+              {button('Recover with key', recoverWithKey)}
               {state.credentials.map((credential, index) => (
                 <TextButton
                   key={credential.id}
@@ -435,7 +492,7 @@ export function IdentityScreen({
               disabled={state.busy}
             />
           )}
-          <Text style={styles.footer}>JustGO · Identity development build</Text>
+          <Text style={styles.footer}>JustGO · Your account, kept private</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -495,6 +552,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.small,
   },
   row: { gap: spacing.sm },
+  panels: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: spacing.lg,
+    justifyContent: 'center',
+  },
   badge: { ...typography.caption, color: colors.ink, letterSpacing: 1 },
   textButton: {
     minHeight: 44,

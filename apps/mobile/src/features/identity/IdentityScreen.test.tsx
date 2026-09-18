@@ -89,7 +89,7 @@ it('asks for verification from the new device and submits the entered digits onl
     'ABCD-EF01-2345-6789',
   );
   fireEvent.changeText(screen.getByLabelText('Verification digits'), '012345');
-  fireEvent.press(screen.getByRole('button', { name: 'Approve this device' }));
+  fireEvent(screen.getByLabelText('Verification digits'), 'submitEditing');
   await waitFor(() =>
     expect(screen.getByText(/Transfer approved/)).toBeTruthy(),
   );
@@ -162,4 +162,41 @@ it('shows the browser limitation, recovery inputs, busy state and recoverable fa
   ).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
   expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
+});
+
+it('shares the app account and makes device tools reachable without a long recovery page', async () => {
+  const controller = new IdentityController(
+    createMemoryVault(),
+    createIdentityApi(
+      'http://localhost:3000',
+      jest.fn(async (_url, init) => {
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        return {
+          ok: true,
+          json: async () =>
+            _url.toString().endsWith('/bootstrap')
+              ? {
+                  userId: '00000000-0000-4000-8000-000000000003',
+                  deviceId: body.deviceId,
+                  sessionId: body.sessionId,
+                  expiresAt: new Date(Date.now() + 86400000).toISOString(),
+                }
+              : _url.toString().endsWith('/devices')
+                ? { devices: [] }
+                : { credentials: [] },
+        } as Response;
+      }),
+    ),
+  );
+  await controller.initialize();
+  await controller.createAccount();
+  const screen = render(<IdentityScreen controller={controller} managed />);
+  expect(screen.getByText('Connected')).toBeTruthy();
+  expect(screen.queryByText('Your courage.\nYour account.')).toBeNull();
+  expect(screen.queryByLabelText('Transfer code')).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Device transfer' }));
+  expect(screen.getByLabelText('Transfer code')).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: 'Manage devices' }));
+  expect(screen.getByText('Your devices')).toBeTruthy();
+  expect(screen.queryByLabelText('Transfer code')).toBeNull();
 });

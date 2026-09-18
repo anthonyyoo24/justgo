@@ -2,9 +2,9 @@
 
 **Status:** Revised draft aligned to the final core-app designs; unresolved product decisions are listed in section 13.  
 **Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.  
-**Updated:** September 16, 2026.  
+**Updated:** September 17, 2026.  
 **Implementation specification:** [TECH_STACK.md](TECH_STACK.md).  
-**Implementation plan:** [Stages and handoffs](IMPLEMENTATION_PLAN.html).  
+**Implementation plan:** [Stages and handoffs](IMPLEMENTATION_PLAN.md).  
 **Design source:** [Paper — Version 3](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0), reviewed through Paper MCP on September 16, 2026.
 
 ## 1. Product summary and scope
@@ -12,14 +12,14 @@
 JustGO helps adults build social confidence through short, real-world social challenges. Users find an appropriate challenge, attempt it, acknowledge completion, optionally reflect, and see their activity history and progress.
 
 ```text
-First use: Credential bootstrap → Onboarding → Hard paywall → Home
-Returning use: Recover account → Resume onboarding / verify access / restore active attempt
+First use: Credential bootstrap → Verify paid access / Hard paywall → Home
+Returning use: Recover account → Verify access / restore active attempt
 Core loop: Home → Active Challenge → Success → Reflection → Home
 Primary destinations: Home · Progress
 Supporting surfaces: Settings · Calendar day sheet
 ```
 
-The first iOS release includes onboarding, native paid access, recovery, cloud saves, one general Level 1 challenge deck, the in-app timer, Success, optional typed reflections, and the complete Progress screen with its calendar and day sheet. Levels and their progression rules, venue/category filters, custom dictation, and lock-screen timers are deferred. The reviewed core screens do not provide final onboarding or paywall designs. Their absence does not remove those features from scope, and their detailed content remains to be specified.
+The first iOS release includes native paid access, recovery, cloud saves, one general Level 1 challenge deck, the in-app timer, Success, optional typed reflections, and the complete Progress screen with its calendar and day sheet. Levels and their progression rules, venue/category filters, custom dictation, and lock-screen timers are deferred. On September 17, Anthony deferred welcome screens and questionnaire onboarding so implementation can focus on the approved core screens. This is a deferral, not permanent removal. Paywall and native subscriptions remain phase 08; their final designs and offer remain to be specified.
 
 Goals:
 
@@ -64,7 +64,7 @@ Explicit interpretation rules:
 | Previous PRD                                               | Revised requirement                                                                               |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | Earlier cross-platform launch plan                         | iOS first; Android implementation and release gates deferred                                      |
-| Core loop only; onboarding excluded                        | Core loop plus required onboarding, hard paywall, and account recovery                            |
+| Core loop only; onboarding excluded                        | Core loop plus hard paywall and account recovery; onboarding deferred                             |
 | Swipe up to replace; double tap to accept                  | Swipe left / X to replace; swipe right / heart to accept                                          |
 | Venue-filtered deck and Levels page                        | One collection of general, easy Level 1 challenges; no filters, level selector, or Levels page    |
 | Hide navigation throughout an attempt                      | Active Challenge retains navigation; leaving it does not end the attempt                          |
@@ -95,16 +95,15 @@ On supported iPhone paths, a synchronized recovery credential can restore the sa
 
 Credential access failures show retry/recovery states rather than silently creating a new account. Restoring paid access alone never discloses another account’s private history.
 
-### 4.2 Onboarding
+### 4.2 Onboarding — deferred
 
-- Include onboarding before the paywall; exact length, steps, questions, branching, and copy remain a content/design decision.
-- Save validated answers and the completed step to the server together before advancing. Relaunch resumes from the last confirmed step.
-- Failed saves keep current input visible and offer retry. Revisiting an earlier answer revalidates dependent steps without silently discarding unsaved changes.
-- Onboarding is not a required clinical assessment. Its presence does not authorize adaptive challenge selection based on sensitive answers.
+Welcome screens, questionnaire steps, warming-up copy, branching and onboarding persistence are deferred by Anthony’s September 17 scope decision. Do not invent them or block phase 03 on them. Revisit whether/when to add them with separate product approval. Secure account bootstrap/recovery remains required behind the scenes and is not a signup or welcome flow.
+
+If onboarding is scheduled later, settle content/design first and retain the original cloud-save, revision-conflict and relaunch-restoration requirements. No onboarding tables, answer collection or Zustand store are needed now.
 
 ### 4.3 Hard paywall
 
-After onboarding, verified paid access is required to enter the core paid experience and start new challenges. Initial purchases use native store billing through RevenueCat. Pricing, products, trials, and paywall copy are not determined by the core-app screens.
+After account connection, verified paid access is required to enter the core paid experience and start new challenges. Initial purchases use native store billing through RevenueCat. Pricing, products, trials, and paywall copy are not determined by the core-app screens.
 
 Purchase, restore, cancellation, failure, and purchased-but-still-verifying states must be distinct. Unlock after immediate server verification; do not wait for scheduled billing processing or ask someone to purchase again to fix a verification failure.
 
@@ -249,7 +248,7 @@ Persist:
 - A versioned nullable feeling choice with submitted/skipped state where applicable; missing is distinct from neutral.
 - Optional per-attempt reflection body, draft/final status, revision, and known input method.
 - Preserve Level 1 context in attempts; defer earned-level credits, level selection, completion/skipping states, and requirement snapshots until progression is designed.
-- Onboarding answers/schema/last confirmed step, preferences/consent, and verified billing state.
+- Preferences/consent (onboarding answers/schema/last confirmed step only if later scheduled), and verified billing state.
 
 The original challenge content and level context must remain readable in history after content edits. Keep attempts separate from published challenges, feelings, and reflection text.
 
@@ -299,7 +298,7 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 | ID    | Required result                                                                                                                                                                                            |
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AC-01 | On iOS, account bootstrap requires no signup form; valid recovery restores only the authorized account. Credential failures cannot create duplicate accounts silently.                                     |
-| AC-02 | Onboarding advances only after a confirmed save and resumes at the server’s last completed step. Its final content/design must be supplied before release.                                                 |
+| AC-02 | Deferred: welcome/questionnaire onboarding is outside current implementation. If scheduled later, approve content and confirm cloud saves/relaunch restoration before shipping it.                         |
 | AC-03 | The hard paywall supports purchase, restore, and honest pending/failed verification; essential recovery, subscription, legal, and data controls remain reachable when unpaid.                              |
 | AC-04 | The single general Level 1 deck excludes completed challenges. Left swipe/X replaces; right swipe/heart starts exactly one attempt after confirmation. Neither browsing nor the deck counter earns credit. |
 | AC-05 | Home handles exhausted content, loading, and errors without offering completed challenges or fabricating progress.                                                                                         |
@@ -319,7 +318,7 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 ## 12. Validation and implementation order
 
 1. Begin Apple Developer enrollment/account readiness, App Store Connect app setup, and RevenueCat product setup alongside development; record unresolved offer/design decisions with the phase they block.
-2. Prove no-signup iPhone identity/recovery and its fallback, then build onboarding and shared API/navigation boundaries.
+2. Prove no-signup iPhone identity/recovery and its fallback, then build shared API/navigation boundaries; welcome/questionnaire onboarding is deferred.
 3. Build the general Level 1 deck, server-confirmed attempt lifecycle, reliable in-app countdown and Success.
 4. Add typed reflections and the full Progress summary/calendar/day sheet against real cloud data.
 5. Finish native iOS purchases, billing recovery, Settings/privacy controls, TestFlight testing and App Store submission preparation.
@@ -334,7 +333,7 @@ These are intentionally unresolved. A final visual layout does not settle the fo
 
 | Decision                             | Proposed default / work needed                                                                                                                                                                                                      |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Onboarding and commercial offer      | Define the full question/branching flow, purchase products/pricing/trials, and paywall designs. Keep no-signup entry and native-first paid access.                                                                                  |
+| Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 08. Keep no-signup entry and native-first paid access.                                                                |
 | Launch catalog                       | Approve the easy Level 1, non-venue-specific challenge copy, durations, helpers, illustrations, safety rules, and useful catalog size. No threshold or venue taxonomy is required before launch.                                    |
 | Home deck indicator                  | Use browsing position within the available general deck, clearly separate from earned progress. Define when its count resets/changes or replace its copy if it is meant to represent curriculum progress.                           |
 | Reflection optionality and dismissal | Retain an optional overall step; allow feeling-only, text-only, or both. Finalize empty/save-button behavior and Back/X save/discard flow.                                                                                          |

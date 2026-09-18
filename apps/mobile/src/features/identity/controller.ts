@@ -64,6 +64,9 @@ const messages: Record<string, string> = {
   UNAVAILABLE: 'The account service is unavailable. Please retry shortly.',
 };
 export class IdentityController {
+  private lastError: IdentityClientError | null = null;
+  private sessionRefresh: Promise<{ userId: string; token: string }> | null =
+    null;
   private data: DeviceState | null = null;
   private listeners = new Set<() => void>();
   private snapshot: Snapshot = {
@@ -91,6 +94,46 @@ export class IdentityController {
     };
   };
   getSnapshot = () => this.snapshot;
+  currentSession = () => {
+    const account = this.snapshot.account;
+    const session = this.data?.session;
+    return account && session && account.userId === session.info.userId
+      ? { userId: account.userId, token: session.token }
+      : null;
+  };
+  rejectSession = (token: string, code: 'SESSION_REVOKED' | 'UNAUTHORIZED') => {
+    if (this.currentSession()?.token === token)
+      this.update({
+        account: null,
+        devices: [],
+        recoveryKeys: [],
+        key: null,
+        message: messages[code]!,
+      });
+  };
+  refreshSession = (failedToken: string) => {
+    if (this.sessionRefresh) return this.sessionRefresh;
+    const work = async () => {
+      if (this.snapshot.busy)
+        await new Promise<void>((resolve) => {
+          const unsubscribe = this.subscribe(() => {
+            if (!this.snapshot.busy) {
+              unsubscribe();
+              resolve();
+            }
+          });
+        });
+      if (this.currentSession()?.token === failedToken) await this.retry();
+      if (this.lastError) throw this.lastError;
+      const session = this.currentSession();
+      if (!session) throw new IdentityClientError('UNAUTHORIZED');
+      return session;
+    };
+    this.sessionRefresh = work().finally(() => {
+      this.sessionRefresh = null;
+    });
+    return this.sessionRefresh;
+  };
   private update(value: Partial<Snapshot>) {
     this.snapshot = { ...this.snapshot, ...value };
     this.listeners.forEach((fn) => fn());
@@ -127,12 +170,14 @@ export class IdentityController {
   }
   private async run(work: () => Promise<void>) {
     if (this.snapshot.busy) return;
+    this.lastError = null;
     this.update({ busy: true, message: '', key: null });
     try {
       await work();
     } catch (error) {
       const code =
         error instanceof IdentityClientError ? error.code : 'STORAGE';
+      this.lastError = new IdentityClientError(code);
       // Never silently mint another account after a revoked session or storage failure.
       if (
         [
@@ -344,7 +389,7 @@ export class IdentityController {
           (c) => c.id === this.data!.selectedId,
         );
         if (credential) {
-          await this.prepareRecovery(credential);
+          await this.prepareRecovery(credential, false, true);
           return;
         }
       }
@@ -354,6 +399,7 @@ export class IdentityController {
   private async prepareRecovery(
     credential: StoredCredential,
     newDevice = false,
+    preserveAccount = false,
   ) {
     if (newDevice)
       await this.save({ ...this.data!, deviceId: this.random.id() });
@@ -369,13 +415,14 @@ export class IdentityController {
         proposal: this.proposal(),
       },
     });
-    this.update({
-      account: null,
-      devices: [],
-      recoveryKeys: [],
-      transfer: null,
-      inspection: null,
-    });
+    if (!preserveAccount)
+      this.update({
+        account: null,
+        devices: [],
+        recoveryKeys: [],
+        transfer: null,
+        inspection: null,
+      });
     await this.resume();
   }
   recoverCredential = (id: string) =>

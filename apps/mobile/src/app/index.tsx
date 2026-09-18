@@ -1,1 +1,1 @@
-export { IdentityScreen as default } from '../features/identity/IdentityScreen';
+export { AccessScreen as default } from '../features/access/AccessScreen';

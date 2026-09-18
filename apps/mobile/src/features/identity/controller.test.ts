@@ -320,3 +320,31 @@ it('can replace a recovery key revoked from another device without reusing the r
   expect(controller.getSnapshot().key).not.toBeNull();
   expect(keys).toHaveLength(2);
 });
+
+it('coordinates request-driven recovery for an expired session without clearing the same-account cache boundary', async () => {
+  let expired = false;
+  const server = connected((path) => {
+    if (path === '/me' && expired)
+      throw new IdentityClientError('SESSION_EXPIRED');
+  });
+  const controller = new IdentityController(nativeVault(), server, random);
+  await controller.initialize();
+  const current = controller.currentSession()!;
+  expired = true;
+  const accounts: (string | null)[] = [];
+  const unsubscribe = controller.subscribe(() =>
+    accounts.push(controller.getSnapshot().account?.userId ?? null),
+  );
+  const [a, b] = await Promise.all([
+    controller.refreshSession(current.token),
+    controller.refreshSession(current.token),
+  ]);
+  unsubscribe();
+  expect(a).toEqual(b);
+  expect(a.userId).toBe(current.userId);
+  expect(a.token).not.toBe(current.token);
+  expect(accounts).not.toContain(null);
+  expect(
+    server.calls.mock.calls.filter((c) => c[0] === '/recover'),
+  ).toHaveLength(1);
+});
