@@ -3,7 +3,7 @@
 ## Snapshot
 
 - **Status:** Implementation complete with passing browser and native smoke; full accessibility/device acceptance remains open. Phase 02 physical-device gates remain deferred under the approved sequencing exception.
-- **Updated / author:** September 17, 2026 / Codex.
+- **Updated / author:** September 18, 2026 / Codex.
 - **Branch:** `phase-03-app-shell`, based on merged main `96bfe2c`.
 - **Scope decision:** Anthony explicitly deferred welcome screens and questionnaire onboarding. Build the approved core screens first. This removes onboarding as a phase 03 prerequisite; it does not approve questions, permanently delete onboarding from the product, or move billing out of phase 08.
 - **Dependencies:** [Phase 02 handoff](phase-02-identity.md), [plan](../IMPLEMENTATION_PLAN.md), [app-shell implementation guide](../APP_SHELL.md).
@@ -59,3 +59,11 @@ Browser/component tests do not establish physical-device Keychain behavior, Voic
 3. Phase 06/07 consume the focused routes and Progress shell with real completed-attempt/reflection/history contracts; the current placeholders do not claim those features exist.
 4. Phase 08 implements the actual billing reader/paywall/purchase/restore flow. Default access remains unavailable until then. Do not turn development preview into a paid-access bypass.
 5. Welcome/questionnaire onboarding remains deferred and needs separate scope/content approval if resumed.
+
+## PR 3 review follow-up — September 18, 2026
+
+- Fixed shared renewal lifetime in both AccountClient and IdentityController. A stalled operation releases its waiters after ten seconds; later attempts can retry. A shorter individual request deadline does not cancel another waiter's renewal. Identity I/O is bounded and late API completions cannot publish state. Native storage remains serialized; timed-out writes force a reread of durable state before retry, preserving pending proposals. Permanently unresponsive native storage still fails closed and cannot be safely bypassed.
+- Added five regression tests covering renewed attempts after timeout, late results during a newer renewal, independent waiter deadlines, busy-controller timeout cleanup, and delayed native writes. Updated the current phase 02 staging/rollback records and marked obsolete deployment evidence historical.
+- The newer PR CI run exposed Expo patch mismatches after the original branch checks passed. Updated exact pins and lockfile: Expo 57.0.24, build-properties 57.0.21, constants 57.0.19, router 57.0.22, with their resolved dependencies. Expo Doctor passes 21/21; web and iOS production exports pass. This follow-up did not rebuild or revalidate a native binary with the upgraded native packages; physical/signing/accessibility gates remain open.
+- `npm run check` passes: API 8, mobile 55, contracts 5 = 68 unit/component tests. `npm run test:db` also passes all 21 integration tests: **89 total**.
+- In-app browser: created disposable local account `c772f4c1`, paused the local API during session renewal, observed the error and re-enabled recovery controls, then retried after the API restarted and reconnected to the same account. The access gate and Home/Progress preview navigation also passed with the upgraded router. No staging or production deployment was changed during this follow-up.

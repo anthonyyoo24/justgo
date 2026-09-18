@@ -97,8 +97,8 @@ GitHub [phase two CI run 35274014833](https://github.com/anthonyyoo24/justgo/act
 
 ## Environment and deployment record
 
-- **Staging database:** existing project `kmcpcauaxlgpevkkenwd`, Canada Central. Drizzle migrations `0001` and `0002` applied through the separate migration role with verified TLS. Runtime remains restricted.
-- **Staging API:** [phase two preview](https://justgo-e1207ajek-anthony-youngshin-yoos-projects.vercel.app), deployment `dpl_FqGbYcCxJXGzpUHTnQhXYwnpekNm`. Vercel inspect confirmed **preview / Ready**, function region `yul1`. Deployment protection remains enabled. This is not a production release.
+- **Staging database:** existing project `kmcpcauaxlgpevkkenwd`, Canada Central. Drizzle migrations `0000`–`0003` applied through the separate migration role with verified TLS. Runtime remains restricted.
+- **Staging API:** [current protected preview](https://justgo-gfm5y2xz7-anthony-youngshin-yoos-projects.vercel.app), deployment `dpl_Dp4DDzSyDRV1xw1rya1ZB5c2FX25`, compatible with schema 0003. Vercel inspect confirmed **preview / Ready**, function region `yul1`. Deployment protection remains enabled. This is not a production release.
 - **New server secret:** `IDENTITY_RATE_LIMIT_KEY`, saved as a Vercel preview Secret. Secret values and temporary smoke fixtures remain in ignored local files; do not commit them or bundle them into mobile.
 - **Native build:** [EAS build 7fb7ae73](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/7fb7ae73-3144-458e-9f21-96263e94a6dd), profile `development-simulator`, Expo SDK 57, provisional `dev.justgo.foundation`, completed `2026-09-17T20:43:35.000Z`. Build metadata references the phase one Git commit because it compiled the uploaded working tree; it is not a claim that phase two was already in that commit.
 - **Retained native app:** `.local/phase02-simulator/JustGO.app`. Existing simulator ID `A194AE2D-F06F-42EB-9804-0BE17A547594`, iPhone 17 / iOS 26.4. Only that simulator was booted; it was shut down after the blocked UI check. No heavy local native compilation was run. Existing phase one artifacts, Pods and DerivedData were preserved.
@@ -110,7 +110,7 @@ All seven findings from [PR review](https://github.com/anthonyyoo24/justgo/pull/
 
 - Transfer inspection now uses a strict response without verification digits. Approval takes digits entered from the new device; it never reuses the inspection response as proof.
 - Transfer digits derive from a server-keyed HMAC. Only a separately domain-separated, transfer-ID-bound HMAC verifier is stored. Failed guesses commit to a per-transfer counter; five cancel the transfer, including concurrent attempts across accounts. Existing HTTP rate limiting remains.
-- Drizzle generated migration `0003_transfer_verification.sql` erases legacy plaintext values, cancels old transfer requests, adds the attempt counter and enforces the HMAC format. It was applied and tested **locally only**. Staging still has the earlier implementation: deploy the new API/client and migration together using the maintenance sequence in [IDENTITY.md](../IDENTITY.md#transfer-verification-upgrade). Never roll back to the old transfer API against the upgraded schema.
+- Drizzle generated migration `0003_transfer_verification.sql` erases legacy plaintext values, cancels old transfer requests, adds the attempt counter and enforces the HMAC format. At the time of that review it was tested locally only. **The phase 03 follow-up below supersedes that deployment status:** staging now has migration 0003 and the compatible API; the older deployment is retired. Future upgrades must follow the maintenance sequence in [IDENTITY.md](../IDENTITY.md#transfer-verification-upgrade). Never roll back to the old transfer API against the upgraded schema.
 - Malformed API URLs map to service-unavailable errors rather than secure-storage errors.
 - The native launch harness allows up to 30 seconds for account bootstrap. Execution was attempted but remains blocked by `maestro: command not found`; this is not recorded as a native test pass.
 - README documents both CI exports. FOUNDATION is maintained as the current operations guide, with historical evidence identified and newer identity behavior linked. The implementation plan points to the saved handoff.
@@ -124,7 +124,7 @@ Verification: `npm run check` passed (API 8, mobile 28, contracts 2 = **38**); `
 3. **Phase 03 may proceed under the sequencing exception.** Use the verified session boundary and public schemas. Build shared query/account-cache cancellation and navigation around authenticated account changes. Do not substitute a fake user, bypass recovery failures or grant paid access. The original onboarding prerequisite was superseded by Anthony’s later September 17 decision: welcome/questionnaire onboarding is deferred. See the phase 03 handoff.
 4. **Before release:** complete identity security review, measured rate/capacity limits, retention/backup/deletion behavior and scheduled bounded maintenance. Do not delete credential tombstones or claim million-user capacity. Dependency audit findings from Expo/Drizzle tooling remain tracked for compatible upstream updates.
 
-Rollback remains additive: revert the Vercel deployment independently and repair schema problems with new reviewed migrations. Do not reset a shared database, erase recovery history or deploy migration credentials.
+Rollback remains additive: select only an API deployment compatible with schema 0003 and repair schema problems with new reviewed migrations. Never restore the retired pre-HMAC transfer API against the upgraded database. Do not reset a shared database, erase recovery history or deploy migration credentials.
 
 ## Phase 03 staging follow-up — September 17, 2026
 

@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import { QueryClient } from '@tanstack/react-query';
 import { ApiError, type HttpClient, type RequestOptions } from './http';
+import { Deadline } from './deadline';
 
 export type AccountSession = { userId: string; token: string };
 export interface SessionSource {
@@ -29,6 +30,7 @@ export class AccountClient {
   private accountId: string | null = null;
   private inflight = new Set<AbortController>();
   private renewal: Promise<AccountSession> | null = null;
+  private renewalDeadline: Deadline | null = null;
   constructor(
     private readonly http: HttpClient,
     private readonly session: SessionSource,
@@ -40,6 +42,8 @@ export class AccountClient {
     this.epoch++;
     this.inflight.forEach((controller) => controller.abort());
     this.inflight.clear();
+    this.renewalDeadline?.cancel('ACCOUNT_CHANGED');
+    this.renewalDeadline = null;
     this.renewal = null;
     void this.queries.cancelQueries();
     this.queries.clear();
@@ -108,11 +112,20 @@ export class AccountClient {
           }
           if (error.code === 'SESSION_EXPIRED') {
             if (!this.renewal) {
-              const renewal = this.session.renew(session.token);
+              // A cancelled/short-lived request must not cancel other renewal waiters.
+              const deadline = new Deadline();
+              this.renewalDeadline = deadline;
+              const renewal = deadline.wait(() =>
+                this.session.renew(session.token),
+              );
               this.renewal = renewal;
               void renewal
                 .finally(() => {
-                  if (this.renewal === renewal) this.renewal = null;
+                  deadline.dispose();
+                  if (this.renewal === renewal) {
+                    this.renewal = null;
+                    this.renewalDeadline = null;
+                  }
                 })
                 .catch(() => {});
             }

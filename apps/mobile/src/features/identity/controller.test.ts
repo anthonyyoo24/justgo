@@ -348,3 +348,127 @@ it('coordinates request-driven recovery for an expired session without clearing 
     server.calls.mock.calls.filter((c) => c[0] === '/recover'),
   ).toHaveLength(1);
 });
+
+it('retries a timed-out recovery with the saved proposal and ignores a late response', async () => {
+  jest.useFakeTimers();
+  try {
+    const vault = nativeVault();
+    const write = jest.spyOn(vault, 'write');
+    let expired = false;
+    let finishOld!: (value: unknown) => void;
+    let recoveries = 0;
+    const server = connected((path) => {
+      if (path === '/me' && expired)
+        throw new IdentityClientError('SESSION_EXPIRED');
+      if (path === '/recover' && ++recoveries === 1)
+        return new Promise((resolve) => {
+          finishOld = resolve;
+        });
+    });
+    const controller = new IdentityController(vault, server, random);
+    await controller.initialize();
+    const original = controller.currentSession()!;
+    expired = true;
+    const first = expect(
+      controller.refreshSession(original.token),
+    ).rejects.toMatchObject({ code: 'TIMEOUT' });
+    await jest.advanceTimersByTimeAsync(10_001);
+    await first;
+    expect(controller.getSnapshot().busy).toBe(false);
+    expect((await vault.read())!.pending?.kind).toBe('recover');
+    const next = await controller.refreshSession(original.token);
+    expect(next.userId).toBe(original.userId);
+    expect(next.token).not.toBe(original.token);
+    const calls = server.calls.mock.calls.filter(
+      ([path]) => path === '/recover',
+    );
+    expect(calls).toHaveLength(2);
+    expect(calls[0]![1]).toEqual(calls[1]![1]);
+    const state = await vault.read();
+    const writes = write.mock.calls.length;
+    finishOld({ ...state!.session!.info, userId: id() });
+    await jest.advanceTimersByTimeAsync(0);
+    expect(controller.currentSession()).toEqual(next);
+    expect(await vault.read()).toEqual(state);
+    expect(write).toHaveBeenCalledTimes(writes);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('releases a refresh waiting on busy identity work without leaving a stale waiter', async () => {
+  jest.useFakeTimers();
+  try {
+    const vault = nativeVault();
+    let hang = false;
+    const server = connected(async (path) => {
+      if (path === '/me') {
+        if (hang) return new Promise(() => {});
+        throw new IdentityClientError('SESSION_EXPIRED');
+      }
+    });
+    const controller = new IdentityController(vault, server, random);
+    await controller.initialize();
+    const old = controller.currentSession()!;
+    hang = true;
+    const busy = controller.refresh();
+    const waiting = expect(
+      controller.refreshSession(old.token),
+    ).rejects.toBeInstanceOf(IdentityClientError);
+    await jest.advanceTimersByTimeAsync(10_001);
+    await busy;
+    await waiting;
+    expect(controller.getSnapshot().busy).toBe(false);
+    hang = false;
+    const next = await controller.refreshSession(old.token);
+    expect(next.token).not.toBe(old.token);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('serializes a late native write and rereads its saved intent before retry', async () => {
+  jest.useFakeTimers();
+  try {
+    const memory = nativeVault();
+    let delay = false;
+    let release!: () => void;
+    const writes = jest.fn(async (value: DeviceState) => {
+      if (delay) {
+        delay = false;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      await memory.write(value);
+    });
+    const vault = { ...memory, write: writes };
+    const server = connected(async (path, body) => {
+      if (path === '/renew')
+        return {
+          ...(await memory.read())!.session!.info,
+          sessionId: (body as { sessionId: string }).sessionId,
+        };
+    });
+    const controller = new IdentityController(vault, server, random);
+    await controller.initialize();
+    delay = true;
+    const first = controller.renew();
+    await jest.advanceTimersByTimeAsync(10_001);
+    await first;
+    const count = writes.mock.calls.length;
+    const retry = controller.retry();
+    await jest.advanceTimersByTimeAsync(0);
+    expect(writes).toHaveBeenCalledTimes(count);
+    release();
+    await retry;
+    expect((await memory.read())!.pending).toBeNull();
+    expect(controller.currentSession()).not.toBeNull();
+    expect(
+      server.calls.mock.calls.filter(([path]) => path === '/renew'),
+    ).toHaveLength(1);
+    expect(controller.getSnapshot().busy).toBe(false);
+  } finally {
+    jest.useRealTimers();
+  }
+});

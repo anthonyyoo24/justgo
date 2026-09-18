@@ -7,6 +7,7 @@ export interface IdentityApi {
     schema: z.ZodType<T>,
     body?: unknown,
     token?: string,
+    signal?: AbortSignal,
   ): Promise<T>;
 }
 export function createIdentityApi(
@@ -20,11 +21,13 @@ export function createIdentityApi(
       schema: z.ZodType<T>,
       body?: unknown,
       token?: string,
+      signal?: AbortSignal,
     ) {
       try {
         return await http.request(`/v1/identity${path}`, schema, {
           ...(body === undefined ? {} : { body }),
           ...(token ? { token } : {}),
+          ...(signal ? { signal } : {}),
         });
       } catch (error) {
         if (error instanceof ApiError && error.code === 'TIMEOUT')

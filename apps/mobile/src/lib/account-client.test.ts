@@ -9,7 +9,10 @@ import { ApiError, createHttpClient } from './http';
 
 const clients: AccountClient[] = [];
 afterEach(() => {
-  clients.splice(0).forEach((client) => client.queries.clear());
+  clients.splice(0).forEach((client) => {
+    client.changeAccount(null);
+    client.queries.clear();
+  });
 });
 function setup(fetcher: jest.Mock) {
   let session = { userId: 'owner-a', token: 'old-token' };
@@ -222,6 +225,86 @@ it('bounds a renewal that never finishes and never replays after timeout', async
     await assertion;
     expect(renew).toHaveBeenCalledTimes(1);
     expect(fetcher).toHaveBeenCalledTimes(1);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('releases a stalled shared renewal and ignores its late result during a fresh renewal', async () => {
+  jest.useFakeTimers();
+  try {
+    const fetcher = jest.fn(async (_url, init) =>
+      init.headers.authorization === 'Bearer old-token'
+        ? failure('SESSION_EXPIRED')
+        : ok(),
+    );
+    const { client, renew } = setup(fetcher);
+    let finishOld!: (session: { userId: string; token: string }) => void;
+    let finishNew!: (session: { userId: string; token: string }) => void;
+    renew.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishOld = resolve;
+        }),
+    );
+    renew.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishNew = resolve;
+        }),
+    );
+    const first = expect(
+      client.request('/v1/test', okSchema),
+    ).rejects.toMatchObject({ code: 'TIMEOUT' });
+    await jest.advanceTimersByTimeAsync(10_001);
+    await first;
+    const second = client.request('/v1/test', okSchema);
+    await jest.advanceTimersByTimeAsync(0);
+    finishOld({ userId: 'owner-a', token: 'obsolete-token' });
+    await jest.advanceTimersByTimeAsync(0);
+    const third = client.request('/v1/test', okSchema);
+    await jest.advanceTimersByTimeAsync(0);
+    expect(renew).toHaveBeenCalledTimes(2);
+    finishNew({ userId: 'owner-a', token: 'new-token' });
+    await expect(Promise.all([second, third])).resolves.toEqual([
+      { ok: true },
+      { ok: true },
+    ]);
+    expect(
+      fetcher.mock.calls.some(
+        ([, init]) => init.headers.authorization === 'Bearer obsolete-token',
+      ),
+    ).toBe(false);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('keeps shared renewal alive when one waiter reaches its shorter deadline', async () => {
+  jest.useFakeTimers();
+  try {
+    const fetcher = jest.fn(async (_url, init) =>
+      init.headers.authorization === 'Bearer old-token'
+        ? failure('SESSION_EXPIRED')
+        : ok(),
+    );
+    const { client, renew } = setup(fetcher);
+    let finish!: (session: { userId: string; token: string }) => void;
+    renew.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const short = expect(
+      client.request('/v1/test', okSchema, { timeoutMs: 100 }),
+    ).rejects.toMatchObject({ code: 'TIMEOUT' });
+    const long = client.request('/v1/test', okSchema);
+    await jest.advanceTimersByTimeAsync(101);
+    await short;
+    finish({ userId: 'owner-a', token: 'new-token' });
+    await expect(long).resolves.toEqual({ ok: true });
+    expect(renew).toHaveBeenCalledTimes(1);
   } finally {
     jest.useRealTimers();
   }
