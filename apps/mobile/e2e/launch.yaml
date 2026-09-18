@@ -3,10 +3,11 @@ appId: ${APP_ID}
 - launchApp
 - openLink: 'justgo://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
 - extendedWaitUntil:
-    visible: 'ACCOUNT & RECOVERY PREVIEW'
+    visible: 'We can’t verify access yet.'
     timeout: 60000
+- tapOn: 'Account & recovery'
 - extendedWaitUntil:
-    visible: 'A place for your progress.'
+    visible: 'ACCOUNT & RECOVERY'
     timeout: 30000
 - scrollUntilVisible:
     element: 'Refresh account'

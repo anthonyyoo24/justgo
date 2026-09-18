@@ -40,7 +40,7 @@ Use React Native `StyleSheet` and imported tokens, with no second styling framew
 
 Owner: Anthony (product/design), with implementation measurements recorded in each consuming phase.
 
-- Phase 03: onboarding content/branching, paywall and supporting empty/error states.
+- Phase 03: navigation and supporting empty/error states using existing references. Welcome/questionnaire onboarding is deferred; paywall designs belong to phase 08.
 - Phase 04: final challenge art/catalog, three Home variant semantics, deck counter/exhaustion copy.
 - Phase 06: neutral feeling asset, final dismissal/save behavior and text-input layout without Dictate.
 - Phase 07: saved reflection reading, exact raster-derived calendar styling and duration formatting.

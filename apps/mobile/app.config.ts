@@ -29,7 +29,11 @@ const config: ExpoConfig = {
     'expo-image',
     ['expo-build-properties', { ios: { deploymentTarget: '16.4' } }],
   ],
-  web: { bundler: 'metro', output: 'single', name: 'JustGO Identity Preview' },
+  web: {
+    bundler: 'metro',
+    output: 'single',
+    name: 'JustGO Development Preview',
+  },
   extra: { eas: { projectId } },
 };
 export default config;

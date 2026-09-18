@@ -5,10 +5,12 @@ import helmet from '@fastify/helmet';
 import {
   healthResponseSchema,
   readinessResponseSchema,
+  openApiDocument,
 } from '@justgo/contracts';
 import { loggerOptions } from './diagnostics.js';
 import { IdentityError, type IdentityService } from './identity/service.js';
-import { identityRoutes } from './identity/routes.js';
+import { bearer, identityRoutes } from './identity/routes.js';
+import { AccessService, type EntitlementReader } from './access/service.js';
 
 export function buildApp(
   options: {
@@ -17,6 +19,7 @@ export function buildApp(
     logger?: FastifyServerOptions['logger'];
     identity?: IdentityService;
     onVercel?: boolean;
+    entitlementReader?: EntitlementReader;
   },
   createServer: typeof Fastify = Fastify,
 ) {
@@ -41,6 +44,13 @@ export function buildApp(
   app.get('/health', async () =>
     healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
   );
+  app.get('/openapi.json', async () => openApiDocument);
+  app.get('/v1/access', async (request) => {
+    if (!options.identity) throw new IdentityError('UNAVAILABLE', 503);
+    return new AccessService(options.identity, options.entitlementReader).get(
+      bearer(request),
+    );
+  });
   if (options.identity)
     app.register(
       async (scope) =>
@@ -64,7 +74,7 @@ export function buildApp(
     }
   });
   app.setErrorHandler<{ statusCode?: number }>((error, request, reply) => {
-    if (request.url.startsWith('/v1/identity')) {
+    if (request.url.startsWith('/v1/')) {
       if (error instanceof IdentityError) {
         if (error.code === 'RATE_LIMITED') reply.header('retry-after', '600');
         void reply
@@ -81,7 +91,7 @@ export function buildApp(
           : error.statusCode === 400
             ? 'INVALID_REQUEST'
             : 'UNAVAILABLE';
-      request.log.error({ err: error }, 'Identity operation failed');
+      request.log.error({ err: error }, 'API operation failed');
       void reply
         .code(
           code === 'CONFLICT' ? 409 : code === 'INVALID_REQUEST' ? 400 : 503,
@@ -100,7 +110,13 @@ export function buildApp(
     });
   });
   app.setNotFoundHandler((request, reply) =>
-    reply.code(404).send({ error: 'Not found', requestId: request.id }),
+    reply
+      .code(404)
+      .send(
+        request.url.startsWith('/v1/')
+          ? { code: 'NOT_FOUND', requestId: request.id }
+          : { error: 'Not found', requestId: request.id },
+      ),
   );
   return app;
 }

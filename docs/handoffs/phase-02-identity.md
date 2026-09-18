@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-- **Status:** In progress — implementation and browser/backend verification complete; native UI verification partial; physical-device acceptance remains pending.
+- **Status:** In progress — implementation and browser/backend verification complete; native recovery UI smoke verified; physical-device acceptance remains pending.
 - **Updated / author:** September 17, 2026 / Codex.
 - **Scope:** [Phase 02](../IMPLEMENTATION_PLAN.md#phase-02), PRD AC-01, Tech acceptance 1–4 and relevant security checks.
 - **Dependency:** [Phase 01 handoff](phase-01-foundation.md), reread before implementation. Its original uncommitted baseline was subsequently committed as `fe0fa015f99f652388344ab9c2dee5bd6e8bfaf8` and pushed to the then-private GitHub repository `anthonyyoo24/justgo`.
@@ -97,8 +97,8 @@ GitHub [phase two CI run 35274014833](https://github.com/anthonyyoo24/justgo/act
 
 ## Environment and deployment record
 
-- **Staging database:** existing project `kmcpcauaxlgpevkkenwd`, Canada Central. Drizzle migrations `0001` and `0002` applied through the separate migration role with verified TLS. Runtime remains restricted.
-- **Staging API:** [phase two preview](https://justgo-e1207ajek-anthony-youngshin-yoos-projects.vercel.app), deployment `dpl_FqGbYcCxJXGzpUHTnQhXYwnpekNm`. Vercel inspect confirmed **preview / Ready**, function region `yul1`. Deployment protection remains enabled. This is not a production release.
+- **Staging database:** existing project `kmcpcauaxlgpevkkenwd`, Canada Central. Drizzle migrations `0000`–`0003` applied through the separate migration role with verified TLS. Runtime remains restricted.
+- **Staging API:** [current protected preview](https://justgo-gfm5y2xz7-anthony-youngshin-yoos-projects.vercel.app), deployment `dpl_Dp4DDzSyDRV1xw1rya1ZB5c2FX25`, compatible with schema 0003. Vercel inspect confirmed **preview / Ready**, function region `yul1`. Deployment protection remains enabled. This is not a production release.
 - **New server secret:** `IDENTITY_RATE_LIMIT_KEY`, saved as a Vercel preview Secret. Secret values and temporary smoke fixtures remain in ignored local files; do not commit them or bundle them into mobile.
 - **Native build:** [EAS build 7fb7ae73](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/7fb7ae73-3144-458e-9f21-96263e94a6dd), profile `development-simulator`, Expo SDK 57, provisional `dev.justgo.foundation`, completed `2026-09-17T20:43:35.000Z`. Build metadata references the phase one Git commit because it compiled the uploaded working tree; it is not a claim that phase two was already in that commit.
 - **Retained native app:** `.local/phase02-simulator/JustGO.app`. Existing simulator ID `A194AE2D-F06F-42EB-9804-0BE17A547594`, iPhone 17 / iOS 26.4. Only that simulator was booted; it was shut down after the blocked UI check. No heavy local native compilation was run. Existing phase one artifacts, Pods and DerivedData were preserved.
@@ -110,7 +110,7 @@ All seven findings from [PR review](https://github.com/anthonyyoo24/justgo/pull/
 
 - Transfer inspection now uses a strict response without verification digits. Approval takes digits entered from the new device; it never reuses the inspection response as proof.
 - Transfer digits derive from a server-keyed HMAC. Only a separately domain-separated, transfer-ID-bound HMAC verifier is stored. Failed guesses commit to a per-transfer counter; five cancel the transfer, including concurrent attempts across accounts. Existing HTTP rate limiting remains.
-- Drizzle generated migration `0003_transfer_verification.sql` erases legacy plaintext values, cancels old transfer requests, adds the attempt counter and enforces the HMAC format. It was applied and tested **locally only**. Staging still has the earlier implementation: deploy the new API/client and migration together using the maintenance sequence in [IDENTITY.md](../IDENTITY.md#transfer-verification-upgrade). Never roll back to the old transfer API against the upgraded schema.
+- Drizzle generated migration `0003_transfer_verification.sql` erases legacy plaintext values, cancels old transfer requests, adds the attempt counter and enforces the HMAC format. At the time of that review it was tested locally only. **The phase 03 follow-up below supersedes that deployment status:** staging now has migration 0003 and the compatible API; the older deployment is retired. Future upgrades must follow the maintenance sequence in [IDENTITY.md](../IDENTITY.md#transfer-verification-upgrade). Never roll back to the old transfer API against the upgraded schema.
 - Malformed API URLs map to service-unavailable errors rather than secure-storage errors.
 - The native launch harness allows up to 30 seconds for account bootstrap. Execution was attempted but remains blocked by `maestro: command not found`; this is not recorded as a native test pass.
 - README documents both CI exports. FOUNDATION is maintained as the current operations guide, with historical evidence identified and newer identity behavior linked. The implementation plan points to the saved handoff.
@@ -119,9 +119,25 @@ Verification: `npm run check` passed (API 8, mobile 28, contracts 2 = **38**); `
 
 ## Remaining work and next steps
 
-1. **Finish the remaining simulator recovery UI smoke.** First launch, account readiness, relaunch, session renewal and the key checks above passed on the follow-ups. Resolve the Computer Use gesture limitation or use a manual swipe to reach transfer/device-management controls, then record their behavior. Start local DB/API and Metro with one worker and reuse the retained EAS binary. These JS/UI changes need no new native build.
+1. **Simulator recovery UI smoke completed in the phase 03 follow-up below.** Historical next step before that follow-up: First launch, account readiness, relaunch, session renewal and the key checks above passed on the follow-ups. Resolve the Computer Use gesture limitation or use a manual swipe to reach transfer/device-management controls, then record their behavior. Start local DB/API and Metro with one worker and reuse the retained EAS binary. These JS/UI changes need no new native build.
 2. **Finish physical acceptance when Apple setup is available.** Confirm the permanent identifier and signing/access group, register two iPhones, build the device profile, establish a reachable HTTPS staging route without bundling a protection secret, and execute every physical matrix item above. Preserve account separation when sync is delayed. Phase 02 stays open until these pass.
-3. **Phase 03 may proceed under the sequencing exception.** Use the verified session boundary and public schemas. Build shared query/account-cache cancellation and navigation around authenticated account changes. Do not substitute a fake user, bypass recovery failures or grant paid access. Approved onboarding questions/branching are still a separate phase 03 product prerequisite.
+3. **Phase 03 may proceed under the sequencing exception.** Use the verified session boundary and public schemas. Build shared query/account-cache cancellation and navigation around authenticated account changes. Do not substitute a fake user, bypass recovery failures or grant paid access. The original onboarding prerequisite was superseded by Anthony’s later September 17 decision: welcome/questionnaire onboarding is deferred. See the phase 03 handoff.
 4. **Before release:** complete identity security review, measured rate/capacity limits, retention/backup/deletion behavior and scheduled bounded maintenance. Do not delete credential tombstones or claim million-user capacity. Dependency audit findings from Expo/Drizzle tooling remain tracked for compatible upstream updates.
 
-Rollback remains additive: revert the Vercel deployment independently and repair schema problems with new reviewed migrations. Do not reset a shared database, erase recovery history or deploy migration credentials.
+Rollback remains additive: select only an API deployment compatible with schema 0003 and repair schema problems with new reviewed migrations. Never restore the retired pre-HMAC transfer API against the upgraded database. Do not reset a shared database, erase recovery history or deploy migration credentials.
+
+## Phase 03 staging follow-up — September 17, 2026
+
+On feature branch `phase-03-app-shell`, the existing `0003_transfer_verification.sql` was applied to staging using Drizzle and the separate `justgo_migrator` connection, with verified TLS. Its journal previously contained 0000–0002. The old phase 02 preview deployment `dpl_FqGbYcCxJXGzpUHTnQhXYwnpekNm` was retired before migration so the obsolete transfer API could no longer serve traffic. Historical phase 01 previews were not changed.
+
+The replacement [protected preview](https://justgo-gfm5y2xz7-anthony-youngshin-yoos-projects.vercel.app), deployment `dpl_Dp4DDzSyDRV1xw1rya1ZB5c2FX25`, is Ready in preview with runtime region `yul1`. Its build used the feature branch working tree; no production promotion occurred. The API/client source and shared transfer contracts now agree with the upgraded schema. Reload development clients and start fresh transfers; do not restore the old API against this schema.
+
+Authenticated CLI smoke checks passed: health/readiness, idempotent bootstrap, independent-device recovery, owner isolation, renewal/replay, revoked-session rejection, key recovery/revocation, pending transfer rejection, inspection without verification digits, wrong-code rejection, correct approval, same-result redemption replay, device revocation and other-session continuity. The new `/v1/access` requires an active session and returns unavailable until billing exists. OpenAPI is served. Both disposable staging fixture accounts were retired through the existing identity primitive and their sessions were verified rejected; tombstones remain.
+
+Supabase security advisor returned no findings. Performance advisor reported only two informational unused cleanup indexes (rate window and transfer expiry), retained for the documented maintenance access paths. No roles, grants, Auth provider, database reset or production infrastructure was introduced.
+
+Physical-iPhone acceptance remains deferred. See [phase 03 handoff](phase-03-app-shell.md) for the current native/UI follow-up and shared-client regression evidence.
+
+Native follow-up on the retained iPhone 17 / iOS 26.4 binary loaded the new app shell and restored the existing `8d1d2903` account. The compact recovery tool navigation removes the previous need to swipe through every tool to reach transfer/device controls. Native transfer-code inspection, entry of claimant verification digits and approval via keyboard Return passed; the browser claimant then recovered account `8d1d2903`. Refreshing the native device list showed that new device. Native paste through Computer Use timed out, but typed input succeeded. No native module/signing change or rebuild was required. Physical-device gates remain open.
+
+The native device-management follow-up also passed: refreshed the device list, confirmed revocation of only the newly transferred disposable browser device `f32a9c5a`, observed **Revoked** on iOS, and verified the browser client returned to explicit recovery with a session-revoked message. The original native device remained connected. This completes the previously pending simulator transfer/device-management smoke; it does not close the physical-iPhone gate.

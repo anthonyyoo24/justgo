@@ -17,6 +17,7 @@ import {
 import type { z } from 'zod';
 import { IdentityClientError, type IdentityApi } from './api';
 import type { CredentialVault, DeviceState, StoredCredential } from './storage';
+import { Deadline } from '../../lib/deadline';
 
 type Snapshot = {
   busy: boolean;
@@ -64,6 +65,11 @@ const messages: Record<string, string> = {
   UNAVAILABLE: 'The account service is unavailable. Please retry shortly.',
 };
 export class IdentityController {
+  private operation: Deadline | null = null;
+  private storageTail: Promise<unknown> = Promise.resolve();
+  private lastError: IdentityClientError | null = null;
+  private sessionRefresh: Promise<{ userId: string; token: string }> | null =
+    null;
   private data: DeviceState | null = null;
   private listeners = new Set<() => void>();
   private snapshot: Snapshot = {
@@ -91,29 +97,104 @@ export class IdentityController {
     };
   };
   getSnapshot = () => this.snapshot;
+  currentSession = () => {
+    const account = this.snapshot.account;
+    const session = this.data?.session;
+    return account && session && account.userId === session.info.userId
+      ? { userId: account.userId, token: session.token }
+      : null;
+  };
+  rejectSession = (token: string, code: 'SESSION_REVOKED' | 'UNAUTHORIZED') => {
+    if (this.currentSession()?.token === token)
+      this.update({
+        account: null,
+        devices: [],
+        recoveryKeys: [],
+        key: null,
+        message: messages[code]!,
+      });
+  };
+  /** Releases shared refresh waiters on timeout without abandoning saved recovery intent. */
+  refreshSession = (failedToken: string) => {
+    if (this.sessionRefresh) return this.sessionRefresh;
+    const deadline = new Deadline();
+    const userId = this.snapshot.account?.userId;
+    let unsubscribe = () => {};
+    const work = async () => {
+      if (this.snapshot.busy)
+        await deadline.wait(
+          () =>
+            new Promise<void>((resolve) => {
+              unsubscribe = this.subscribe(() => {
+                if (!this.snapshot.busy) resolve();
+              });
+            }),
+        );
+      deadline.check();
+      if (this.snapshot.account?.userId !== userId)
+        throw new IdentityClientError('ACCOUNT_CHANGED');
+      if (this.currentSession()?.token === failedToken || this.data?.pending)
+        await deadline.wait(() => this.retry());
+      deadline.check();
+      if (this.lastError) throw this.lastError;
+      const session = this.currentSession();
+      if (!session) throw new IdentityClientError('UNAUTHORIZED');
+      return session;
+    };
+    const refresh = work().finally(() => {
+      unsubscribe();
+      deadline.dispose();
+      if (this.sessionRefresh === refresh) this.sessionRefresh = null;
+    });
+    this.sessionRefresh = refresh;
+    return refresh;
+  };
+  private request<T>(
+    path: string,
+    schema: z.ZodType<T>,
+    body?: unknown,
+    token?: string,
+  ) {
+    const operation = this.operation!;
+    return operation.wait(() =>
+      this.api.request(path, schema, body, token, operation.signal),
+    );
+  }
+  /** Native writes cannot be undone. Serialize storage even after the caller times out. */
+  private storage<T>(work: () => Promise<T>): Promise<T> {
+    const operation = this.operation!;
+    const pending = this.storageTail.then(() => {
+      operation.check();
+      return work();
+    });
+    this.storageTail = pending.catch(() => {});
+    return operation.wait(() => pending);
+  }
   private update(value: Partial<Snapshot>) {
     this.snapshot = { ...this.snapshot, ...value };
     this.listeners.forEach((fn) => fn());
   }
   private async save(value: DeviceState) {
     try {
-      await this.vault.write(value);
+      await this.storage(() => this.vault.write(value));
       this.data = value;
       this.update({ hasPending: value.pending !== null });
     } catch {
+      // A timed-out native write may still finish; reread it before any later action.
+      this.data = null;
       throw new IdentityClientError('STORAGE');
     }
   }
   private async credentials() {
     try {
-      return await this.vault.credentials();
+      return await this.storage(() => this.vault.credentials());
     } catch {
       throw new IdentityClientError('STORAGE');
     }
   }
   private async add(credential: StoredCredential) {
     try {
-      await this.vault.add(credential);
+      await this.storage(() => this.vault.add(credential));
     } catch {
       throw new IdentityClientError('STORAGE');
     }
@@ -127,12 +208,16 @@ export class IdentityController {
   }
   private async run(work: () => Promise<void>) {
     if (this.snapshot.busy) return;
+    const operation = new Deadline();
+    this.operation = operation;
+    this.lastError = null;
     this.update({ busy: true, message: '', key: null });
     try {
       await work();
     } catch (error) {
       const code =
         error instanceof IdentityClientError ? error.code : 'STORAGE';
+      this.lastError = new IdentityClientError(code);
       // Never silently mint another account after a revoked session or storage failure.
       if (
         [
@@ -149,13 +234,15 @@ export class IdentityController {
           message: 'Couldn’t connect. Check your connection and retry.',
         });
     } finally {
+      operation.dispose();
+      this.operation = null;
       this.update({ busy: false, initialized: true });
     }
   }
   private async ensureData() {
     if (this.data) return;
     try {
-      this.data = await this.vault.read();
+      this.data = await this.storage(() => this.vault.read());
       this.update({ hasPending: this.data?.pending != null });
     } catch {
       throw new IdentityClientError('STORAGE');
@@ -260,7 +347,7 @@ export class IdentityController {
       this.update({
         credentials: (await this.credentials()).map((c) => ({ id: c.id })),
       });
-      const transfer = await this.api.request(
+      const transfer = await this.request(
         '/transfers/start',
         transferResponseSchema,
         pending.input,
@@ -275,7 +362,7 @@ export class IdentityController {
     if (pending.kind === 'renew') {
       const current = this.data!.session;
       if (!current) throw new IdentityClientError('UNAUTHORIZED');
-      const info = await this.api.request(
+      const info = await this.request(
         '/renew',
         sessionResponseSchema,
         {
@@ -295,7 +382,7 @@ export class IdentityController {
       (c) => c.id === pending.credentialId,
     );
     if (!credential) throw new IdentityClientError('STORAGE');
-    const info = await this.api.request(
+    const info = await this.request(
       pending.kind === 'bootstrap' ? '/bootstrap' : '/recover',
       sessionResponseSchema,
       { ...pending.proposal, credential: credential.secret },
@@ -316,7 +403,7 @@ export class IdentityController {
   private async verify() {
     const session = this.data!.session!;
     try {
-      const info = await this.api.request(
+      const info = await this.request(
         '/me',
         sessionResponseSchema,
         undefined,
@@ -344,7 +431,7 @@ export class IdentityController {
           (c) => c.id === this.data!.selectedId,
         );
         if (credential) {
-          await this.prepareRecovery(credential);
+          await this.prepareRecovery(credential, false, true);
           return;
         }
       }
@@ -354,6 +441,7 @@ export class IdentityController {
   private async prepareRecovery(
     credential: StoredCredential,
     newDevice = false,
+    preserveAccount = false,
   ) {
     if (newDevice)
       await this.save({ ...this.data!, deviceId: this.random.id() });
@@ -369,13 +457,14 @@ export class IdentityController {
         proposal: this.proposal(),
       },
     });
-    this.update({
-      account: null,
-      devices: [],
-      recoveryKeys: [],
-      transfer: null,
-      inspection: null,
-    });
+    if (!preserveAccount)
+      this.update({
+        account: null,
+        devices: [],
+        recoveryKeys: [],
+        transfer: null,
+        inspection: null,
+      });
     await this.resume();
   }
   recoverCredential = (id: string) =>
@@ -407,7 +496,7 @@ export class IdentityController {
     const registration = this.data!.registration;
     if (!registration) return;
     await this.add(registration);
-    await this.api.request(
+    await this.request(
       '/credentials',
       okSchema,
       { id: registration.id, credential: registration.secret, kind: 'sync' },
@@ -422,13 +511,13 @@ export class IdentityController {
   private async loadLists() {
     if (this.data!.registration) await this.registerSync();
     const token = this.data!.session!.token;
-    const devices = await this.api.request(
+    const devices = await this.request(
       '/devices',
       devicesResponseSchema,
       undefined,
       token,
     );
-    const keys = await this.api.request(
+    const keys = await this.request(
       '/credentials',
       credentialsResponseSchema,
       undefined,
@@ -476,7 +565,7 @@ export class IdentityController {
           },
         });
       const key = this.data!.savedKey!;
-      await this.api.request(
+      await this.request(
         '/credentials',
         okSchema,
         { id: key.id, credential: key.secret, kind: 'key' },
@@ -496,7 +585,7 @@ export class IdentityController {
   hideKey = () => this.update({ key: null });
   revokeCredential = (id: string) =>
     this.run(async () => {
-      await this.api.request(
+      await this.request(
         `/credentials/${id}/revoke`,
         okSchema,
         {},
@@ -512,7 +601,7 @@ export class IdentityController {
     });
   revokeDevice = (id: string) =>
     this.run(async () => {
-      await this.api.request(
+      await this.request(
         `/devices/${id}/revoke`,
         okSchema,
         {},
@@ -555,7 +644,7 @@ export class IdentityController {
       const pending = this.data?.pending;
       if (pending?.kind !== 'transfer')
         throw new IdentityClientError('NOT_FOUND');
-      const info = await this.api.request(
+      const info = await this.request(
         '/transfers/redeem',
         sessionResponseSchema,
         { code: pending.input.code, claimSecret: pending.input.claimSecret },
@@ -569,7 +658,7 @@ export class IdentityController {
         value.replace(/[\s-]/g, '').toUpperCase(),
       );
       if (!parsed.success) throw new IdentityClientError('INVALID_REQUEST');
-      const transfer = await this.api.request(
+      const transfer = await this.request(
         '/transfers/inspect',
         transferInspectionResponseSchema,
         { code: parsed.data },
@@ -584,7 +673,7 @@ export class IdentityController {
       const verification = transferVerificationSchema.safeParse(value.trim());
       if (!verification.success)
         throw new IdentityClientError('INVALID_REQUEST');
-      await this.api.request(
+      await this.request(
         '/transfers/approve',
         okSchema,
         { code: transfer.code, verification: verification.data },

@@ -20,7 +20,7 @@ import {
 import { IdentityError, type IdentityService } from './service.js';
 import { rateAddress } from './address.js';
 
-function bearer(request: FastifyRequest) {
+export function bearer(request: FastifyRequest) {
   const value = request.headers.authorization;
   const parsed = secretSchema.safeParse(
     value?.startsWith('Bearer ') ? value.slice(7) : undefined,

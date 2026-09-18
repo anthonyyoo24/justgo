@@ -10,14 +10,14 @@
 
 This is a fresh specification based on the current request and the product discussion in [TechStack&Architecture](thread://019fc40c-2517-7693-a477-5290a4cc3eb7?hostId=local). Previous project documents are not requirements for this spec.
 
-The first iOS release includes onboarding, a hard paywall, one collection of general easy Level 1 challenges, timed attempts, completion, feelings and typed reflections, the full progress summary/calendar/day sheet, and scoped settings. The [PRD](PRD.md) owns release scope and the five feeling choices; the [implementation plan](IMPLEMENTATION_PLAN.md) owns sequencing. Levels/progression, venue/category filters, custom dictation, lock-screen display, Android release, and the text coach are deferred. Preserve stable content/attempt history now; decide progression thresholds and prior-credit treatment later.
+The first iOS release includes a hard paywall, one collection of general easy Level 1 challenges, timed attempts, completion, feelings and typed reflections, the full progress summary/calendar/day sheet, and scoped settings. The [PRD](PRD.md) owns release scope and the five feeling choices; the [implementation plan](IMPLEMENTATION_PLAN.md) owns sequencing. Welcome/questionnaire onboarding, levels/progression, venue/category filters, custom dictation, lock-screen display, Android release, and the text coach are deferred. Preserve stable content/attempt history now; decide progression thresholds and prior-credit treatment later.
 
 | Decision                                                              | Status                                                                                                           |
 | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | React Native, Expo, TypeScript                                        | Required                                                                                                         |
 | Server database is the source of truth                                | Required; PostgreSQL recommended                                                                                 |
 | API hosting                                                           | Vercel Functions running the Fastify API                                                                         |
-| Shared onboarding state                                               | Zustand in memory; save and restore onboarding progress through the API                                          |
+| Deferred onboarding state                                             | Zustand in memory; save and restore onboarding progress through the API                                          |
 | Reflection input                                                      | Typed private text at launch; custom dictation and its native dependency/permissions deferred                    |
 | AI text coach                                                         | Planned later in the same API and database; no voice coach in scope                                              |
 | Background processing                                                 | QStash for managed subscription-update delivery and retries from launch; job handlers run on Vercel              |
@@ -49,7 +49,7 @@ The Moonly example informs the frictionless experience. Its reported user count 
 | Detail sheets                  | `@gorhom/bottom-sheet`                                                                               | Scrollable day-detail sheets; validate the chosen dependency versions together                   |
 | Insets/native navigation       | `react-native-safe-area-context`, Router dependencies                                                | Safe areas and platform navigation behavior                                                      |
 | Server state                   | TanStack Query                                                                                       | Fetching, in-memory caching, invalidation, optimistic display, and request status                |
-| Shared onboarding state        | Zustand, without persistence middleware                                                              | Answers and unsaved edits shared across onboarding screens; PostgreSQL owns saved progress       |
+| Deferred onboarding state      | Zustand, without persistence middleware                                                              | Answers and unsaved edits shared across onboarding screens; PostgreSQL owns saved progress       |
 | Screen-local UI state          | React hooks/context; Reanimated shared values for gestures                                           | Selected month, sheet visibility, local inputs, and animation state                              |
 | Validation                     | Zod                                                                                                  | Runtime API/input validation and shared TypeScript contracts                                     |
 | Session secrets                | `expo-secure-store`                                                                                  | Per-device credentials protected by iOS Keychain/Android Keystore                                |
@@ -134,7 +134,9 @@ There is no SQLite database, durable offline mutation queue, or local-first sync
 
 **Network behavior:** account bootstrap, loading uncached history, starting an attempt, completing it, and saving a reflection require the API. A previously loaded countdown can continue rendering during a connection loss, but a save is only confirmed after the server accepts it. Keep unsaved input visible with retry status; autosave drafts to PostgreSQL when connected. Without local draft persistence, force-quitting while offline can lose unsaved input. The UI must distinguish unsaved, saving, saved, and failed states.
 
-### Onboarding: state, saving, and restoration
+### Deferred onboarding: state, saving, and restoration
+
+**Deferred September 17:** this onboarding design is retained for future scheduling, not phase 03 implementation. No onboarding tables or Zustand dependency are introduced now.
 
 Expo Router owns navigation, Zustand holds shared in-memory answers/unsaved edits, and TanStack Query performs API reads and mutations. PostgreSQL owns saved answers, onboarding schema version, last completed step, completion timestamp, and edit revision. Keep screen-local state in React and gesture state in Reanimated; do not copy the entire query cache into Zustand. [Zustand](https://github.com/pmndrs/zustand).
 
@@ -569,7 +571,7 @@ Acceptance coverage: the first release targets iOS. Conditional future-feature c
 7. If Stripe is enabled: eligible/ineligible storefronts, forged checkout/redirect, delayed payment, invalid/replayed webhooks, browser return, refund/cancel, and duplicate native/web subscriptions.
 8. Offline/error states make no false save claims; analytics opt-out blocks both client and server forwarding without disabling cloud journaling.
 9. Native iOS accessibility, gestures, keyboard/sheets, and any implemented notification permission behavior. Dictation and Android checks are deferred until those features are built.
-10. Onboarding: cross-screen answers, back-navigation and dependent answers, per-step saves, failed-save retries, relaunch restoration, schema/revision conflicts, dirty-state hydration, and account-switch clearing.
+10. Deferred onboarding (only when separately scheduled): cross-screen answers, back-navigation and dependent answers, per-step saves, failed-save retries, relaunch restoration, schema/revision conflicts, dirty-state hydration, and account-switch clearing.
 11. When the coach is implemented: real-device streaming, ownership isolation across every context source, context-consent changes, bounded history, duplicate sends, concurrent allowance enforcement, provider failures, cancellation/timeout recovery, and message/context deletion. Add representative response-quality evaluations.
 12. Challenge lifecycle on real devices: browsing/left swipes create nothing; acceptance creates once; lock, background, and force-quit/reopen recover the original deadline; zero awaits an outcome; explicit give-up ends the same attempt. Test failed-start/save states. Native lock-screen implementations and their permission/dismissal/stale-display tests are deferred.
 13. Launch catalog: every published challenge has stable Level 1 context and explicit unrestricted venue scope; completed challenge IDs are not reoffered across revisions. Verify concurrent requests, honest exhausted-catalog state, calendar totals and original content preservation. Defer level-credit uniqueness, threshold/pool, skip/selection and historical-credit tests until progression is implemented.
