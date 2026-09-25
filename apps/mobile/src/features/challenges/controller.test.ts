@@ -163,6 +163,106 @@ it('recovers the original active attempt after a new controller loads', async ()
     active.deadlineAt,
   );
 });
+it('publishes give-up and its next card together, without exposing the old deck or changing the active theme', async () => {
+  let finished = false;
+  let releaseQueue!: (queue: ChallengeQueue) => void;
+  let queueRequested!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    queueRequested = resolve;
+  });
+  const before = { ...queue, version: 4 };
+  const next = { ...queue, version: 5, cards: [queue.cards[1]!, card] };
+  const { controller, calls } = fixture((path) => {
+    if (path.endsWith('/state')) return { ...base, active };
+    if (path.endsWith('/finish')) {
+      finished = true;
+      return {
+        attempt: { ...active, status: 'given_up' },
+        serverNow: base.serverNow,
+      };
+    }
+    if (path.endsWith('/queue/streets')) {
+      if (!finished) return before;
+      queueRequested();
+      return new Promise<ChallengeQueue>((resolve) => {
+        releaseQueue = resolve;
+      });
+    }
+  });
+  await controller.refresh();
+  const frames: ReturnType<typeof controller.getSnapshot>[] = [];
+  controller.subscribe(() => frames.push(controller.getSnapshot()));
+  const finishing = controller.finish('given_up');
+  await requested;
+  expect(controller.getSnapshot().state?.active).toEqual(active);
+  expect(controller.getSnapshot().queues.streets?.version).toBe(4);
+  await controller.finish('completed');
+  expect(
+    calls.mock.calls.filter(([path]) => path.endsWith('/finish')),
+  ).toHaveLength(1);
+  releaseQueue(next);
+  await finishing;
+  expect(controller.getSnapshot()).toMatchObject({
+    busy: false,
+    pending: null,
+    state: { active: null },
+  });
+  expect(controller.getSnapshot().queues.streets).toEqual(next);
+  for (const frame of frames) {
+    if (frame.state?.active) expect(frame.queues.streets).toEqual(before);
+    else {
+      expect(frame.queues.streets).toEqual(next);
+      expect(frame.busy).toBe(false);
+    }
+  }
+});
+it('keeps the active screen on a failed queue refresh and retries the confirmed give-up safely', async () => {
+  let finished = false,
+    queueFailed = false;
+  const bodies: unknown[] = [];
+  const next = { ...queue, version: 1, cards: [queue.cards[1]!, card] };
+  const { controller } = fixture((path, body) => {
+    if (path.endsWith('/state')) return { ...base, active };
+    if (path.endsWith('/finish')) {
+      bodies.push(body);
+      finished = true;
+      return {
+        attempt: { ...active, status: 'given_up' },
+        serverNow: base.serverNow,
+      };
+    }
+    if (path.endsWith('/queue/streets') && finished) {
+      if (!queueFailed) {
+        queueFailed = true;
+        throw new ApiError('NETWORK');
+      }
+      return next;
+    }
+  });
+  await controller.refresh();
+  await controller.finish('given_up');
+  expect(controller.getSnapshot().state?.active).toEqual(active);
+  expect(controller.getSnapshot().queues.streets).toEqual(queue);
+  expect(controller.getSnapshot().pending?.kind).toBe('finish');
+  await controller.retry();
+  expect(bodies[1]).toEqual(bodies[0]);
+  expect(controller.getSnapshot().state?.active).toBeNull();
+  expect(controller.getSnapshot().queues.streets).toEqual(next);
+});
+it('restores an active attempt only with its queue color available', async () => {
+  const restoredQueue = { ...queue, version: 5 };
+  const { controller } = fixture((path) => {
+    if (path.endsWith('/state')) return { ...base, active };
+    if (path.endsWith('/queue/streets')) return restoredQueue;
+  });
+  const frames: ReturnType<typeof controller.getSnapshot>[] = [];
+  controller.subscribe(() => frames.push(controller.getSnapshot()));
+  await controller.refresh();
+  const activeFrames = frames.filter((frame) => frame.state?.active);
+  expect(activeFrames.length).toBeGreaterThan(0);
+  for (const frame of activeFrames)
+    expect(frame.queues.streets).toEqual(restoredQueue);
+});
 it('discards late responses and pending actions on account changes', async () => {
   let resolve!: (x: unknown) => void;
   const { controller } = fixture((path) =>

@@ -65,6 +65,7 @@ export function ChallengeScreen() {
         <ActiveChallenge
           key={state.state.active.id}
           attempt={state.state.active}
+          turn={state.queues[state.state.active.card.venue]?.version ?? 0}
           offset={state.clockOffset}
           disabled={state.busy || !!state.pending || !focused}
           finish={challenges.finish}
@@ -91,14 +92,20 @@ export function ChallengeScreen() {
             </View>
           ) : (
             <ChallengeDeck
-              key={`${venue.id}:${queue.version}:${focused}`}
+              key={`${account?.userId}:${venue.id}:${focused}`}
               cards={queue.cards}
               venue={venue.id}
               label={venue.label}
               turn={queue.version}
               disabled={state.busy || !!state.pending || !focused}
               onBusyChange={setMoving}
-              onAction={challenges.act}
+              onAction={async (direction) => {
+                await challenges.act(direction);
+                return (
+                  challenges.getSnapshot().queues[venue.id]?.version ??
+                  queue.version
+                );
+              }}
             />
           )}
           {state.state?.latestOutcome?.status === 'completed' && (
@@ -119,19 +126,20 @@ export function ChallengeScreen() {
 }
 export function ActiveChallenge({
   attempt,
+  turn = 0,
   offset,
   disabled,
   finish,
 }: {
   attempt: Attempt;
+  turn?: number;
   offset: number;
   disabled: boolean;
   finish: (outcome: 'completed' | 'given_up') => Promise<void>;
 }) {
   const { width, fontScale } = useWindowDimensions();
   const scale = challengeScale(width);
-  const [now, setNow] = useState(Date.now),
-    [confirm, setConfirm] = useState(false);
+  const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(timer);
@@ -189,96 +197,73 @@ export function ActiveChallenge({
       </View>
       <ChallengeCard
         card={attempt.card}
+        turn={turn}
         venue={attempt.card.venue}
         label={venues.find((v) => v.id === attempt.card.venue)!.label}
       />
-      {confirm ? (
-        <View accessibilityViewIsModal style={styles.notice}>
-          <Text style={styles.heading}>Give up this challenge?</Text>
-          <Text style={styles.body}>
-            No rep will be added. You can try another small step.
-          </Text>
-          <PrimaryButton
-            label="Keep trying"
-            busy={disabled}
-            onPress={() => setConfirm(false)}
-          />
-          <PrimaryButton
-            label="Yes, give up"
-            busy={disabled}
-            onPress={() => void finish('given_up')}
-          />
-        </View>
-      ) : (
-        <View
+      <View
+        style={[
+          styles.outcomes,
+          { flexWrap: fontScale > 1.4 ? 'wrap' : 'nowrap' },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Give up"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={() => void finish('given_up')}
           style={[
-            styles.outcomes,
-            { flexWrap: fontScale > 1.4 ? 'wrap' : 'nowrap' },
+            styles.outcomeTarget,
+            {
+              flex: fontScale > 1.4 ? undefined : 106,
+              width: fontScale > 1.4 ? '100%' : undefined,
+            },
           ]}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Give up"
-            accessibilityState={{ disabled }}
-            disabled={disabled}
-            onPress={() => setConfirm(true)}
-            style={[
-              styles.outcomeTarget,
-              {
-                flex: fontScale > 1.4 ? undefined : 106,
-                width: fontScale > 1.4 ? '100%' : undefined,
-              },
-            ]}
-          >
-            <View style={styles.secondary}>
-              <Svg width={14} height={14} viewBox="0 0 14 14" aria-hidden>
-                <Path
-                  d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5"
-                  stroke={colors.ink}
-                  strokeWidth={1.3}
-                  strokeLinecap="round"
-                />
-              </Svg>
-              <Text style={styles.outcomeText}>Give up</Text>
-            </View>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Completed"
-            accessibilityState={{ disabled }}
-            disabled={disabled}
-            onPress={() => void finish('completed')}
-            style={[
-              styles.outcomeTarget,
-              {
-                flex: fontScale > 1.4 ? undefined : 148,
-                width: fontScale > 1.4 ? '100%' : undefined,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.secondary,
-                { backgroundColor: colors.ink, opacity: disabled ? 0.6 : 1 },
-              ]}
-            >
-              <Svg width={16} height={14} viewBox="0 0 16 14" aria-hidden>
-                <Path
-                  d="M1.75 7L6 11.25L14.25 2.75"
-                  stroke={colors.white}
-                  strokeWidth={1.3}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-              </Svg>
-              <Text style={[styles.outcomeText, { color: colors.white }]}>
-                Completed
-              </Text>
-            </View>
-          </Pressable>
-        </View>
-      )}
+          <View style={styles.secondary}>
+            <Svg width={14} height={14} viewBox="0 0 14 14" aria-hidden>
+              <Path
+                d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5"
+                stroke={colors.ink}
+                strokeWidth={1.3}
+                strokeLinecap="round"
+              />
+            </Svg>
+            <Text style={styles.outcomeText}>Give up</Text>
+          </View>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Completed"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={() => void finish('completed')}
+          style={[
+            styles.outcomeTarget,
+            {
+              flex: fontScale > 1.4 ? undefined : 148,
+              width: fontScale > 1.4 ? '100%' : undefined,
+            },
+          ]}
+        >
+          <View style={[styles.secondary, { backgroundColor: colors.ink }]}>
+            <Svg width={16} height={14} viewBox="0 0 16 14" aria-hidden>
+              <Path
+                d="M1.75 7L6 11.25L14.25 2.75"
+                stroke={colors.white}
+                strokeWidth={1.3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </Svg>
+            <Text style={[styles.outcomeText, { color: colors.white }]}>
+              Completed
+            </Text>
+          </View>
+        </Pressable>
+      </View>
     </View>
   );
 }

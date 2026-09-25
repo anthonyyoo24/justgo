@@ -230,7 +230,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 - [x] Reviewed content and venue-selection rules are recorded; all six venues filter correctly, per-user stacks cycle independently, shared placements stay independent, and empty/small queues are handled without claiming an undefined level threshold was reached.
 - [ ] The 39O deck follows the thumb, cancels cleanly, flies out and advances/straightens/reveals the next cards with overlapping motion and rotating colors. Buttons, rapid input, venue changes, interrupted motion and reduced-motion/screen-reader alternatives pass browser/simulator checks; record physical-iPhone motion evidence or carry it explicitly to the release gate.
 - [x] Lost start/completion responses and simultaneous device requests return the original result with one attempt and one completed rep; conflicts are rejected.
-- [ ] The full loop, give-up confirmation, zero, relaunch and switching tabs preserve the correct attempt and deadline.
+- [ ] The full loop, direct give-up, zero, relaunch and switching tabs preserve the correct attempt and deadline.
 - [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Content/revision schema, endpoint contracts, attempt state transitions, retry keys, Level 1 history, independent venue-queue rules, card color/motion settings, test fixtures and data/query indexes.

@@ -93,8 +93,8 @@ panel region `(155,280,20,100)` of the original fill normalized to 620 × 628 is
 backings have the same pale tone. Use the shared `#F8EFE7` reconstruction for both.
 
 Each card now carries its surface, panel and artwork theme together, indexed by
-the same deck turn/position before and after promotion. The active card retains
-the light reference. Original irregular panel geometry, adaptive text bounds,
+the same deck turn/position before and after promotion. The active card now retains
+the accepted card’s theme (updated in the active handoff correction below). Original irregular panel geometry, adaptive text bounds,
 fixed frame, font sizing and flourish positions are retained.
 
 The six `*-cream.png` variants retain the original illustration alpha masks and
@@ -102,6 +102,65 @@ all navy pixels with red ≤ 100. `cream-artwork.mjs` shifts the warm background
 toward the sampled cream and feathers the change through antialiased edges.
 Texture and shapes remain intact. Run `node --test scripts/design/cream-artwork.test.mjs`
 after pipeline changes; regenerate with the documented `sharp` runtime.
+
+## Swipe handoff correction — September 25
+
+The temporary light buttons were a 50% opacity style applied whenever the deck
+was animating or saving. The card flash had two lifecycle causes: the live screen
+key included the queue version (remounting the whole deck on every skip), and a
+queued card was replaced by a separate front-card component. Animation values
+also reset in the action promise's `finally`, independently of React committing
+the confirmed queue.
+
+The deck now stays mounted for the same account/venue/focus, and one keyed
+`DeckLayer` owns each card through promotion. Motion uses an absolute queue slot,
+so the incoming card has the same position before and after the queue update.
+The callback returns the authoritative queue version; the deck waits for that
+version to render before rebasing its animation and unlocking input. Failed saves
+settle the original card back. Controls remain opaque during this temporary lock;
+persistent external disabled states still dim them. Only the incoming front card
+reveals its content during motion; the other fanned edges stay clean instead of
+briefly exposing text/flourishes and hiding them again at the handoff.
+
+`npm run check` passed: 92 mobile, 8 API and 8 contract tests plus type checking,
+lint and formatting. New coverage checks mounted view identity, delayed queue
+commits, input exclusion without opacity changes, unsuccessful saves and the
+pose on both sides of promotion. In-app browser samples during a skip showed
+button opacity fixed at 1, with the incoming card approaching and retaining the
+identity transform as its label became the front label. Browser drag, acceptance
+and native button-driven promotion were checked. Automated drags through the
+simulator mirror still did not trigger a native swipe; physical touch verification
+remains separate from those passing transition checks.
+
+## Active challenge handoff correction — September 25
+
+Give up now saves directly without a confirmation panel. Both outcome controls
+keep their normal opacity while duplicate actions are blocked. Previously the
+Completed button dimmed on every save, even when Give up was tapped.
+
+The finish response cleared the active attempt before the server’s rotated
+queue had arrived. The deck therefore briefly showed the just-ended card. The
+controller now keeps the active screen until the confirmed next queue is ready,
+then publishes the outcome, queue and unlocked controls together. If fetching
+the queue fails, the active view stays stable and Retry save reuses the original
+attempt/outcome/time zone. Initial refresh also publishes the active attempt
+with its venue queue, so restoration does not briefly use a fallback color.
+
+Active cards use the same queue turn and shared surface/panel/artwork theme as
+the accepted deck card. The server leaves the queue unchanged during an active
+attempt, so its version also restores the correct theme after reload. The
+preview follows the same rule.
+
+Validation: full check passed (101 mobile, 8 API, 8 contract tests, type checking,
+lint and formatting). Regressions cover delayed and failed next-queue reads,
+stable active colors until handoff, duplicate outcome protection without dimming,
+restoration with a queue, and matching all three theme parts on acceptance.
+In-app browser checks against the real local API confirmed both darker themes
+on acceptance and the next card in every sampled post-give-up frame, with the
+deck controls at full opacity. The mirrored native app also retained both
+darker themes and returned directly to the next challenge. The mirror’s bundle
+reload control stalled the development session; restarting the installed app
+restored the same active card color and original deadline.
 
 ## September 25 contrast verification
 

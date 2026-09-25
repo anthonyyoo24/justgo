@@ -66,6 +66,7 @@ export class ChallengeController {
   private listeners = new Set<() => void>();
   private userId: string | null = null;
   private epoch = 0;
+  private cacheBatches = 0;
   constructor(
     private readonly client: Pick<AccountClient, 'request' | 'queries'>,
     private readonly id = randomUUID,
@@ -74,7 +75,10 @@ export class ChallengeController {
     client.queries.getQueryCache().subscribe((event) => {
       // useQuery can create/update observers while another route renders. Those
       // events (and unrelated access queries) must not notify ChallengeScreen.
-      if (!this.key().every((part, i) => event.query.queryKey[i] === part))
+      if (
+        this.cacheBatches ||
+        !this.key().every((part, i) => event.query.queryKey[i] === part)
+      )
         return;
       if (
         event.type === 'removed' ||
@@ -123,6 +127,16 @@ export class ChallengeController {
   private assert(epoch: number) {
     if (epoch !== this.epoch) throw new ApiError('ACCOUNT_CHANGED');
   }
+  // Publish a screen transition only after its state and queue agree. Cache
+  // notifications between these writes would expose a stale deck or theme.
+  private async batchCache(work: () => Promise<void>) {
+    this.cacheBatches++;
+    try {
+      await work();
+    } finally {
+      this.cacheBatches--;
+    }
+  }
   private queue(value: ChallengeQueue) {
     this.client.queries.setQueryData<ChallengeQueue>(
       this.key('queue', value.venue),
@@ -148,26 +162,27 @@ export class ChallengeController {
     });
   }
   private async canonical(epoch: number) {
-    const state = await this.client.queries.fetchQuery({
-      queryKey: this.key('state'),
-      gcTime: Infinity,
-      queryFn: async ({ signal }) => {
-        const value = await this.client.request(
-          '/v1/challenges/state',
-          challengeStateSchema,
-          { signal },
-        );
-        this.assert(epoch);
-        return value;
-      },
+    const state = await this.client.request(
+      '/v1/challenges/state',
+      challengeStateSchema,
+    );
+    this.assert(epoch);
+    await this.batchCache(async () => {
+      await this.readQueue(
+        state.active?.card.venue ?? state.selectedVenue,
+        epoch,
+      );
+      this.assert(epoch);
+      this.client.queries.setQueryDefaults(this.key('state'), {
+        gcTime: Infinity,
+      });
+      this.client.queries.setQueryData(this.key('state'), state);
     });
     this.assert(epoch);
     this.update({
       selected: state.selectedVenue,
       clockOffset: Date.parse(state.serverNow) - Date.now(),
     });
-    await this.readQueue(state.selectedVenue, epoch);
-    this.assert(epoch);
   }
   refresh = async () => {
     if (!this.userId || this.snapshot.busy || this.snapshot.pending) return;
@@ -269,26 +284,39 @@ export class ChallengeController {
           { body: pending.body },
         );
         this.assert(epoch);
+        await this.batchCache(async () => {
+          // Finishing rotates the queue on the server. Keep the active screen
+          // until that confirmed queue is available, including on save retries.
+          if (result.attempt.status !== 'active')
+            await this.readQueue(result.attempt.card.venue, epoch);
+          this.assert(epoch);
+          this.client.queries.setQueryData<ChallengeState>(
+            this.key('state'),
+            (state) =>
+              state
+                ? {
+                    ...state,
+                    active:
+                      result.attempt.status === 'active'
+                        ? result.attempt
+                        : null,
+                    latestOutcome:
+                      result.attempt.status === 'active'
+                        ? state.latestOutcome
+                        : result.attempt,
+                  }
+                : undefined,
+          );
+        });
+        this.assert(epoch);
         this.update({
           clockOffset: Date.parse(result.serverNow) - Date.now(),
           success:
             result.attempt.status === 'completed' ? result.attempt : null,
+          pending: null,
+          busy: false,
         });
-        this.client.queries.setQueryData<ChallengeState>(
-          this.key('state'),
-          (state) =>
-            state
-              ? {
-                  ...state,
-                  active:
-                    result.attempt.status === 'active' ? result.attempt : null,
-                  latestOutcome:
-                    result.attempt.status === 'active'
-                      ? state.latestOutcome
-                      : result.attempt,
-                }
-              : undefined,
-        );
+        return;
       }
       this.update({ pending: null });
       await this.canonical(epoch);

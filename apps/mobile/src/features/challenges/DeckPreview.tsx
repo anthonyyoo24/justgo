@@ -35,6 +35,7 @@ export function DeckPreview({ insetTop = true }: { insetTop?: boolean }) {
       {active ? (
         <ActiveChallenge
           attempt={active}
+          turn={turn}
           offset={0}
           disabled={false}
           finish={async () => {
@@ -60,7 +61,7 @@ export function DeckPreview({ insetTop = true }: { insetTop?: boolean }) {
             onAction={async (direction) => {
               if (direction === -1) {
                 setTurn(turn + 1);
-                return;
+                return turn + 1;
               }
               const started = Date.now();
               setActive({

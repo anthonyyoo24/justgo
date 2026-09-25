@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/refs -- Gesture Handler registers callbacks; it does not execute these event handlers during render. */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Pressable,
@@ -26,7 +26,14 @@ import {
   challengeStyle,
   type ChallengeCardTheme,
 } from '../../theme/tokens';
-import { cardColor, cardPose, deckMotion, swipeDirection } from './deck-model';
+import {
+  cardColor,
+  cardVisual,
+  deckMotion,
+  restingMotion,
+  swipeDirection,
+  type DeckMotion,
+} from './deck-model';
 import { VenueArt, PaperTexture, LowerFlourish } from './VenueArt';
 import {
   challengeScale,
@@ -56,19 +63,22 @@ export function ChallengeDeck({
   turn: number;
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
-  onAction: (direction: -1 | 1) => Promise<void>;
+  // Resolve with the authoritative queue version, even when it did not advance.
+  onAction: (direction: -1 | 1) => Promise<number | void>;
 }) {
   const { width } = useWindowDimensions();
   const scale = challengeScale(width);
   const frame = cardFrame(scale);
-  const x = useSharedValue(0),
-    y = useSharedValue(0),
-    progress = useSharedValue(0),
-    locked = useSharedValue(false);
+  const motion = useSharedValue(restingMotion(turn));
+  const locked = useSharedValue(false);
   const busy = useRef(false),
     alive = useRef(true);
   const [working, setWorking] = useState(false),
     [reduced, setReduced] = useState(false);
+  const [settlement, setSettlement] = useState<{
+    from: number;
+    to: number;
+  } | null>(null);
   useEffect(() => {
     alive.current = true;
     void AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
@@ -79,12 +89,45 @@ export function ChallengeDeck({
     return () => {
       alive.current = false;
       listener.remove();
-      cancelAnimation(x);
-      cancelAnimation(y);
-      cancelAnimation(progress);
+      cancelAnimation(motion);
       onBusyChange?.(false);
     };
-  }, [x, y, progress, onBusyChange]);
+  }, [motion, onBusyChange]);
+
+  // Rebase only after React has committed the queue acknowledged by the action.
+  // Resetting shared values in the promise's finally can reveal the old card
+  // for a frame before the new props arrive on the native UI thread.
+  useLayoutEffect(() => {
+    if (!busy.current) {
+      motion.set(restingMotion(turn));
+      return;
+    }
+    if (!settlement || turn < settlement.to) return;
+    const unlock = () => {
+      if (!alive.current) return;
+      locked.set(false);
+      busy.current = false;
+      setWorking(false);
+      setSettlement(null);
+      onBusyChange?.(false);
+    };
+    if (turn === settlement.from && !reduced) {
+      // An unconfirmed/failed save restores the same card without a snap.
+      motion.set(
+        withTiming(
+          restingMotion(turn),
+          { duration: deckMotion.settle },
+          (done) => {
+            if (done) scheduleOnRN(unlock);
+          },
+        ),
+      );
+    } else {
+      motion.set(restingMotion(turn));
+      unlock();
+    }
+  }, [turn, settlement, reduced, motion, locked, onBusyChange]);
+
   async function commit(direction: -1 | 1) {
     if (busy.current) return;
     if (disabled || !cards.length) {
@@ -95,20 +138,19 @@ export function ChallengeDeck({
     locked.set(true);
     setWorking(true);
     onBusyChange?.(true);
+    const from = turn;
     const animation = new Promise<void>((resolve) => {
       if (reduced) {
         resolve();
         return;
       }
-      x.set(
-        withTiming(direction * (width + 320), {
-          duration: deckMotion.duration,
-          easing: Easing.out(Easing.cubic),
-        }),
-      );
-      progress.set(
+      motion.set(
         withTiming(
-          1,
+          {
+            ...motion.get(),
+            x: direction * (width + 320),
+            progress: 1,
+          },
           {
             duration: deckMotion.duration,
             easing: Easing.bezier(0.22, 1, 0.36, 1),
@@ -119,21 +161,13 @@ export function ChallengeDeck({
         ),
       );
     });
-    // Domain updates happen after motion, and remain authoritative on failure.
     await animation;
     if (!alive.current) return;
+    let to = from;
     try {
-      await onAction(direction);
+      to = (await onAction(direction)) ?? from;
     } finally {
-      if (alive.current) {
-        x.set(0);
-        y.set(0);
-        progress.set(0);
-        locked.set(false);
-        busy.current = false;
-        setWorking(false);
-      }
-      onBusyChange?.(false);
+      if (alive.current) setSettlement({ from, to });
     }
   }
   const gesture = Gesture.Pan()
@@ -142,8 +176,11 @@ export function ChallengeDeck({
     .failOffsetY([-22, 22])
     .onUpdate((event) => {
       if (!locked.get()) {
-        x.set(event.translationX);
-        y.set(event.translationY * 0.35);
+        motion.set({
+          ...motion.get(),
+          x: event.translationX,
+          y: event.translationY * 0.35,
+        });
       }
     })
     .onEnd((event) => {
@@ -153,74 +190,45 @@ export function ChallengeDeck({
         locked.set(true);
         scheduleOnRN(commit, direction);
       } else {
-        x.set(withTiming(0, { duration: deckMotion.settle }));
-        y.set(withTiming(0, { duration: deckMotion.settle }));
+        motion.set(
+          withTiming(restingMotion(turn), { duration: deckMotion.settle }),
+        );
       }
     })
     .onFinalize((_event, success) => {
       if (!success && !locked.get()) {
-        x.set(withTiming(0));
-        y.set(withTiming(0));
+        motion.set(
+          withTiming(restingMotion(turn), { duration: deckMotion.settle }),
+        );
       }
     });
-  const front = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: reduced ? 0 : x.get() },
-      { translateY: reduced ? 0 : y.get() },
-      { rotate: `${reduced ? 0 : x.get() / 22}deg` },
-    ],
-  }));
   return (
     <View style={styles.container}>
-      <View
-        testID="challenge-stage"
-        style={[
-          styles.stage,
-          { height: frame.height + 30, width: 292 * scale },
-        ]}
-      >
-        {cards.slice(1, 4).map((card, i) => (
-          <StackCard
-            key={card.id}
-            index={i + 1}
-            progress={progress}
-            reveal={x}
-            theme={cardThemes[cardColor(turn, i + 1)]!}
-            reduced={reduced}
-            card={card}
-            venue={venue}
-            label={label}
-            scale={scale}
-          />
-        ))}
-        {cards[0] && (
-          <GestureDetector gesture={gesture}>
-            <Animated.View
-              testID="challenge-card"
-              accessible
-              accessibilityLabel={`${label}. ${cards[0].text}. Five minutes.`}
-              style={[
-                styles.card,
-                frame,
-                {
-                  backgroundColor: cardThemes[cardColor(turn, 0)]!.surface,
-                  zIndex: 4,
-                },
-                front,
-              ]}
-            >
-              <PaperTexture />
-              <CardContent
-                card={cards[0]}
-                venue={venue}
-                label={label}
-                scale={scale}
-                theme={cardThemes[cardColor(turn, 0)]!}
-              />
-            </Animated.View>
-          </GestureDetector>
-        )}
-      </View>
+      <GestureDetector gesture={gesture}>
+        <View
+          testID="challenge-stage"
+          collapsable={false}
+          style={[
+            styles.stage,
+            { height: frame.height + 30, width: 292 * scale },
+          ]}
+        >
+          {cards.slice(0, 4).map((card, index) => (
+            <DeckLayer
+              key={card.id}
+              index={index}
+              turn={turn}
+              motion={motion}
+              theme={cardThemes[cardColor(turn, index)]!}
+              reduced={reduced}
+              card={card}
+              venue={venue}
+              label={label}
+              scale={scale}
+            />
+          ))}
+        </View>
+      </GestureDetector>
       <View style={styles.actions}>
         {([-1, 1] as const).map((direction) => (
           <View key={direction} style={styles.action}>
@@ -232,7 +240,7 @@ export function ChallengeDeck({
               accessibilityState={{ disabled: disabled || working }}
               disabled={disabled || working || !cards.length}
               onPress={() => void commit(direction)}
-              style={[styles.button, (disabled || working) && { opacity: 0.5 }]}
+              style={[styles.button, disabled && !working && { opacity: 0.5 }]}
             >
               <Svg
                 width={direction === -1 ? 22 : 24}
@@ -262,10 +270,10 @@ export function ChallengeDeck({
     </View>
   );
 }
-function StackCard({
+function DeckLayer({
   index,
-  progress,
-  reveal,
+  turn,
+  motion,
   theme,
   reduced,
   card,
@@ -274,8 +282,8 @@ function StackCard({
   scale,
 }: {
   index: number;
-  progress: SharedValue<number>;
-  reveal: SharedValue<number>;
+  turn: number;
+  motion: SharedValue<DeckMotion>;
   theme: ChallengeCardTheme;
   reduced: boolean;
   card: DeckCard;
@@ -283,40 +291,43 @@ function StackCard({
   label: string;
   scale: number;
 }) {
+  const slot = turn + index;
   const style = useAnimatedStyle(() => {
-    const pose = cardPose(index, reduced ? 0 : progress.get());
+    const visual = cardVisual(
+      slot,
+      reduced ? restingMotion(turn) : motion.get(),
+    );
     return {
-      opacity:
-        index === 3
-          ? Math.max(0, Math.min(1, (progress.get() - 0.4) / 0.35))
-          : 1,
+      opacity: visual.opacity,
       transform: [
-        { translateX: pose.x },
-        { translateY: pose.y },
-        { rotate: `${pose.angle}deg` },
+        { translateX: visual.x },
+        { translateY: visual.y },
+        { rotate: `${visual.angle}deg` },
       ],
     };
   });
   const contentStyle = useAnimatedStyle(() => ({
-    // Paper shows clean fanned edges at rest. Reveal the next card's contents
-    // during the swipe, before it becomes the live front card.
-    opacity: reduced
-      ? 0
-      : Math.min(1, Math.max(Math.abs(reveal.get()) / 80, progress.get() * 2)),
+    opacity: cardVisual(slot, reduced ? restingMotion(turn) : motion.get())
+      .contentOpacity,
   }));
+  const isFront = index === 0;
   return (
     <Animated.View
-      testID={`challenge-back-${card.id}`}
-      aria-hidden
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
+      testID={isFront ? 'challenge-card' : `challenge-back-${card.id}`}
+      accessible={isFront}
+      accessibilityLabel={
+        isFront ? `${label}. ${card.text}. Five minutes.` : undefined
+      }
+      aria-hidden={!isFront}
+      accessibilityElementsHidden={!isFront}
+      importantForAccessibility={isFront ? 'auto' : 'no-hide-descendants'}
       style={[
         styles.card,
         cardFrame(scale),
         {
           backgroundColor: theme.surface,
           zIndex: 4 - index,
-          pointerEvents: 'none',
+          pointerEvents: isFront ? 'auto' : 'none',
         },
         style,
       ]}
@@ -432,13 +443,16 @@ export function ChallengeCard({
   card,
   venue,
   label,
+  turn = 0,
 }: {
   card: DeckCard;
   venue: string;
   label: string;
+  turn?: number;
 }) {
   const { width } = useWindowDimensions();
   const scale = challengeScale(width);
+  const theme = cardThemes[cardColor(turn, 0)]!;
   return (
     <View
       testID="challenge-card"
@@ -448,7 +462,7 @@ export function ChallengeCard({
         {
           position: 'relative',
           alignSelf: 'center',
-          backgroundColor: cardThemes[0].surface,
+          backgroundColor: theme.surface,
         },
       ]}
     >
@@ -458,7 +472,7 @@ export function ChallengeCard({
         venue={venue}
         label={label}
         scale={scale}
-        theme={cardThemes[0]}
+        theme={theme}
       />
     </View>
   );

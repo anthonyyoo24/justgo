@@ -70,6 +70,39 @@ const cards = [
   { id: '3', text: 'Give a compliment.' },
   { id: '4', text: 'Ask for a recommendation.' },
 ];
+it.each([0, 1, 2, 5])(
+  'preserves the full deck theme on acceptance at turn %s',
+  async (turn) => {
+    const props = { venue: 'cafe', label: 'Cafe', turn };
+    const deck = render(
+      <ChallengeDeck {...props} cards={cards} onAction={async () => {}} />,
+    );
+    await act(async () => {});
+    const surface = StyleSheet.flatten(
+      deck.getByTestId('challenge-card').props.style,
+    ).backgroundColor;
+    const accent = within(deck.getByTestId('challenge-face-1'))
+      .UNSAFE_getAllByType(Path)
+      .find((path) => path.props.d === panelOutline)!.props.fill;
+    const artwork = within(
+      deck.getByTestId('challenge-face-1'),
+    ).UNSAFE_getByType(VenueArt).props.background;
+    deck.unmount();
+    const activeCard = render(<ChallengeCard {...props} card={cards[0]!} />);
+    expect(
+      StyleSheet.flatten(activeCard.getByTestId('challenge-card').props.style)
+        .backgroundColor,
+    ).toBe(surface);
+    expect(
+      activeCard
+        .UNSAFE_getAllByType(Path)
+        .find((path) => path.props.d === panelOutline)!.props.fill,
+    ).toBe(accent);
+    expect(activeCard.UNSAFE_getByType(VenueArt).props.background).toBe(
+      artwork,
+    );
+  },
+);
 it('keeps button input exclusive while the same confirmed action is pending', async () => {
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
@@ -99,6 +132,32 @@ it('keeps button input exclusive while the same confirmed action is pending', as
     screen.getByRole('button', { name: 'Accept challenge' }).props
       .accessibilityState.disabled,
   ).toBe(true);
+  // Saving still blocks duplicate input, but does not flash both controls pale.
+  screen.rerender(
+    <ChallengeDeck
+      cards={cards}
+      venue="cafe"
+      label="Cafe"
+      turn={0}
+      disabled
+      onAction={action}
+    />,
+  );
+  for (const name of ['Skip challenge', 'Accept challenge']) {
+    expect(
+      StyleSheet.flatten(screen.getByRole('button', { name }).props.style)
+        .opacity ?? 1,
+    ).toBe(1);
+  }
+  screen.rerender(
+    <ChallengeDeck
+      cards={cards}
+      venue="cafe"
+      label="Cafe"
+      turn={0}
+      onAction={action}
+    />,
+  );
   await act(async () => finish());
   expect(
     screen.getByRole('button', { name: 'Accept challenge' }).props
@@ -221,6 +280,8 @@ it('preserves the flourish coordinate system when a queued card becomes the fron
     left: 0,
   });
   screen.rerender(<ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />);
+  // Keep the native face and its image instances mounted through promotion.
+  expect(screen.getByTestId('challenge-face-2')).toBe(queued);
   expect(
     StyleSheet.flatten(screen.getByTestId('challenge-face-2').props.style),
   ).toEqual(queuedFace);
@@ -234,6 +295,53 @@ it('preserves the flourish coordinate system when a queued card becomes the fron
   expect(
     StyleSheet.flatten(screen.getByTestId('challenge-card').props.style),
   ).toMatchObject({ width: back.width, height: back.height });
+});
+
+it('holds the promoted stack and locks input until the acknowledged queue is rendered', async () => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+  const action = jest.fn(async () => 1);
+  const props = { venue: 'cafe', label: 'Cafe', onAction: action };
+  const screen = render(<ChallengeDeck {...props} cards={cards} turn={0} />);
+  await act(async () => {});
+  const queued = screen.getByTestId('challenge-face-2', {
+    includeHiddenElements: true,
+  });
+  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  await act(async () => {});
+  // A resolved save is not proof that React has committed its new queue yet.
+  expect(screen.getByRole('button', { name: 'Skip challenge' })).toBeDisabled();
+  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  expect(action).toHaveBeenCalledTimes(1);
+  screen.rerender(<ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />);
+  expect(screen.getByTestId('challenge-face-2')).toBe(queued);
+  expect(
+    screen.getByRole('button', { name: 'Skip challenge' }),
+  ).not.toBeDisabled();
+});
+
+it('restores the original card when a save does not advance the queue', async () => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(false);
+  const screen = render(
+    <ChallengeDeck
+      cards={cards}
+      venue="cafe"
+      label="Cafe"
+      turn={8}
+      onAction={async () => 8}
+    />,
+  );
+  await act(async () => {});
+  const original = screen.getByTestId('challenge-face-1');
+  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  await act(async () => {});
+  expect(screen.getByTestId('challenge-face-1')).toBe(original);
+  expect(
+    screen.getByRole('button', { name: 'Skip challenge' }),
+  ).not.toBeDisabled();
 });
 
 it.each(['streets', 'park', 'gym', 'cafe', 'bookstore', 'bars'])(
