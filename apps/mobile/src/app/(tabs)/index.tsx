@@ -1,1 +1,1 @@
-export { HomeScreen as default } from '../../features/shell/ShellScreens';
+export { ChallengeScreen as default } from '../../features/challenges/ChallengeScreen';

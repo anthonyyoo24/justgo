@@ -9,3 +9,6 @@ apps/mobile/.expo
 docs/IMPLEMENTATION_PLAN.html
 docs/design-source
 docs/screen-refs
+
+# Generated design references and image-generation artifacts
+output/

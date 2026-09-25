@@ -8,7 +8,12 @@ export function NavigationIcon({
   color: ColorValue;
 }) {
   return (
-    <Svg width={24} height={24} viewBox="0 0 24 24" aria-hidden={true}>
+    <Svg
+      width={name === 'home' ? 28 : 20}
+      height={name === 'home' ? 28 : 20}
+      viewBox="0 0 24 24"
+      aria-hidden={true}
+    >
       {name === 'home' ? (
         <>
           <Path

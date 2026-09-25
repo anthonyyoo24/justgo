@@ -77,3 +77,18 @@ export const theme = {
   radii,
   layout,
 } as const;
+
+// 39O card reconstruction; shadow is the editable NAZ-0 Paper value.
+export const challengeStyle = {
+  // Paper cream/peach-front variants invert the accents. #F8EFE7 is sampled
+  // from the original raster fill, not an editable Paper color token.
+  cards: [
+    { surface: colors.cream, accent: '#FBE3CC', artwork: 'peach' },
+    { surface: '#F9E3D0', accent: '#F8EFE7', artwork: 'cream' },
+    { surface: '#FCD9B9', accent: '#F8EFE7', artwork: 'cream' },
+  ],
+  border: '#FFFCF8',
+  shadow: '0px 4px 12px #5937163D, 0px 1px 3px #59371629',
+} as const;
+
+export type ChallengeCardTheme = (typeof challengeStyle.cards)[number];

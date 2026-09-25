@@ -1,5 +1,11 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { ScreenPreview } from './ScreenPreview';
+jest.mock('../challenges/DeckPreview', () => ({
+  DeckPreview: () => {
+    const { Text } = require('react-native');
+    return <Text>Find a challenge</Text>;
+  },
+}));
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   return {
@@ -20,7 +26,7 @@ it('switches between isolated Home and Progress screens with accessible selected
     screen.getByRole('tab', { name: 'Progress' }).props.accessibilityState
       .selected,
   ).toBe(true);
-  expect(screen.queryByText('Your next challenge')).toBeNull();
+  expect(screen.queryByText('Find a challenge')).toBeNull();
   fireEvent.press(screen.getByRole('tab', { name: 'Home' }));
-  expect(screen.getByText('Your next challenge')).toBeTruthy();
+  expect(screen.getByText('Find a challenge')).toBeTruthy();
 });

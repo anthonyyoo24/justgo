@@ -1,3 +1,4 @@
+import { ChallengeController } from '../challenges/controller';
 import {
   createContext,
   useContext,
@@ -30,6 +31,7 @@ export function createAppRuntime(
     reject: identity.rejectSession,
   });
   const telemetry = createTelemetry();
+  const challenges = new ChallengeController(client);
   let accountId: string | null = null;
   const sync = () => {
     const next = identity.getSnapshot().account?.userId ?? null;
@@ -38,12 +40,14 @@ export function createAppRuntime(
       accountId = next;
     }
     client.changeAccount(next);
+    challenges.changeAccount(next);
   };
   sync();
   return {
     identity,
     client,
     telemetry,
+    challenges,
     subscribe: () => identity.subscribe(sync),
   };
 }
@@ -67,6 +71,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       else {
         void runtime.identity.retry();
         void runtime.client.queries.invalidateQueries();
+        void runtime.challenges.refresh();
         runtime.telemetry.track('app_foregrounded');
       }
     });

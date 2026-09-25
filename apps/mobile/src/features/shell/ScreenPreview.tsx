@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, Redirect } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { HomeScreen, ProgressScreen } from './ShellScreens';
+import { ProgressScreen } from './ShellScreens';
+import { DeckPreview } from '../challenges/DeckPreview';
 import { NavigationIcon } from '../../components/NavigationIcon';
 import { colors, spacing, typography } from '../../theme/tokens';
 // Presentation fixtures only. No API, account impersonation, or entitlement override.
@@ -18,7 +19,7 @@ export function ScreenPreview() {
         </Link>
       </SafeAreaView>
       {tab === 'home' ? (
-        <HomeScreen insetTop={false} />
+        <DeckPreview insetTop={false} />
       ) : (
         <ProgressScreen insetTop={false} />
       )}
@@ -38,14 +39,6 @@ export function ScreenPreview() {
                 name={name}
                 color={tab === name ? colors.white : colors.border}
               />
-              <Text
-                style={[
-                  styles.label,
-                  { color: tab === name ? colors.white : colors.border },
-                ]}
-              >
-                {name === 'home' ? 'Home' : 'Progress'}
-              </Text>
             </Pressable>
           ))}
         </View>
@@ -73,9 +66,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: 'center',
-    gap: spacing.xs,
-    padding: spacing.lg,
-    minHeight: 64,
+    justifyContent: 'center',
+    minHeight: 50,
   },
-  label: typography.caption,
 });

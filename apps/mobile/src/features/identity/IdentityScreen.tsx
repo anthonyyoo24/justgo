@@ -222,7 +222,7 @@ export function IdentityScreen({
                     Account {state.account.userId.slice(0, 8)}
                   </Text>
                   <Text style={styles.body}>
-                    Challenges and your progress are coming in the next phases.
+                    Your account keeps your challenges and activity together.
                   </Text>
                   <TextButton
                     label="Refresh account"
