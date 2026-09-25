@@ -1,3 +1,5 @@
+import { ChallengeService } from './challenges/service.js';
+import { challengeRoutes } from './challenges/routes.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
@@ -51,6 +53,15 @@ export function buildApp(
       bearer(request),
     );
   });
+  if (options.identity)
+    app.register(
+      async (scope) =>
+        challengeRoutes(
+          scope,
+          new ChallengeService(options.identity!, options.entitlementReader),
+        ),
+      { prefix: '/v1/challenges' },
+    );
   if (options.identity)
     app.register(
       async (scope) =>

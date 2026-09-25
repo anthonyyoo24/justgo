@@ -29,7 +29,7 @@ const admin = new Pool(
   poolOptions(readConfig({ ...process.env, DATABASE_URL: migrationUrl! })),
 );
 const service = new IdentityService(db.db, {
-  rateKey: 'isolated-identity-integration-tests',
+  rateKey: `isolated-identity-integration-tests-${randomUUID()}`,
   rateLimit: 3,
 });
 const app = buildApp({

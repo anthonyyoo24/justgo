@@ -94,6 +94,7 @@ export const identityErrorCodeSchema = z.enum([
   'SESSION_REVOKED',
   'CREDENTIAL_REJECTED',
   'CONFLICT',
+  'ACCESS_REQUIRED',
   'NOT_FOUND',
   'TRANSFER_EXPIRED',
   'TRANSFER_PENDING',

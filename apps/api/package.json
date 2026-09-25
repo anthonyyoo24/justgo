@@ -8,9 +8,10 @@
     "start": "tsx --env-file-if-exists=.env src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/database.integration.test.ts tests/identity.integration.test.ts",
+    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/database.integration.test.ts tests/identity.integration.test.ts tests/challenges.integration.test.ts",
     "db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "dev:challenges": "tsx --env-file-if-exists=.env scripts/challenge-dev.ts"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
