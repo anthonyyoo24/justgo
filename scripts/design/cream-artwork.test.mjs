@@ -1,6 +1,33 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { creamArtwork } from './cream-artwork.mjs';
+import { creamArtwork, peachArtwork } from './cream-artwork.mjs';
+
+test('matches the light illustration backing to the peach text panel', () => {
+  const pixels = Uint8Array.from([
+    240,
+    220,
+    205,
+    255, // Warm source backing.
+    16,
+    44,
+    73,
+    255, // Navy illustration line.
+    240,
+    220,
+    205,
+    110, // Soft outer edge.
+    249,
+    239,
+    232,
+    0, // Transparent paper matte.
+  ]);
+  const result = peachArtwork(pixels);
+  assert.deepEqual(
+    Array.from(result),
+    [251, 227, 204, 255, 16, 44, 73, 255, 251, 227, 204, 110, 249, 239, 232, 0],
+  );
+  assert.deepEqual(Array.from(pixels.slice(4, 8)), [16, 44, 73, 255]);
+});
 
 test('adapts the backing without changing navy strokes or the original silhouette', () => {
   const pixels = Uint8Array.from([

@@ -10,6 +10,7 @@ import { Path } from 'react-native-svg';
 import { ChallengeCard, ChallengeDeck } from './ChallengeDeck';
 import { VenueArt } from './VenueArt';
 import { panelOutline } from './challenge-design';
+import { colors } from '../../theme/tokens';
 jest.mock('react-native-gesture-handler', () => {
   const chain = () => {
     const g: Record<string, unknown> = {};
@@ -103,6 +104,15 @@ it.each([0, 1, 2, 5])(
     );
   },
 );
+it('uses the same cream surface for the light card as the challenge page', () => {
+  const screen = render(
+    <ChallengeCard card={cards[0]!} venue="cafe" label="Cafe" />,
+  );
+  expect(
+    StyleSheet.flatten(screen.getByTestId('challenge-card').props.style)
+      .backgroundColor,
+  ).toBe(colors.cream);
+});
 it('keeps button input exclusive while the same confirmed action is pending', async () => {
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
@@ -225,7 +235,18 @@ it('keeps the frame and action area stable when short and long challenges advanc
   const stage = StyleSheet.flatten(
     screen.getByTestId('challenge-stage').props.style,
   );
-  expect(frame.height).toBeGreaterThan(0);
+  const scale = frame.width / 220;
+  expect(frame.height).toBe(273 * scale);
+  expect((stage.height - frame.height) / 2 + stage.marginBottom).toBeCloseTo(
+    32 * scale + 8,
+  );
+  expect(
+    StyleSheet.flatten(screen.getByTestId('challenge-action-space').props.style)
+      .justifyContent,
+  ).toBe('flex-start');
+  expect(
+    StyleSheet.flatten(screen.getByText(cards[0]!.text).props.style).fontSize,
+  ).toBe(20 * scale);
   screen.rerender(
     <ChallengeDeck {...props} cards={[long, cards[0]!]} turn={1} />,
   );
@@ -235,10 +256,14 @@ it('keeps the frame and action area stable when short and long challenges advanc
     width: frame.width,
     height: frame.height,
   });
+
   expect(
     StyleSheet.flatten(screen.getByTestId('challenge-stage').props.style),
   ).toEqual(stage);
   expect(screen.getByText(long.text).props.numberOfLines).toBeUndefined();
+  expect(
+    StyleSheet.flatten(screen.getByText(long.text).props.style).fontSize,
+  ).toBe(20 * scale);
   expect(screen.getByTestId('challenge-copy-scroll-long')).toBeTruthy();
   // Accepting the same challenge preserves the frame too.
   screen.unmount();
@@ -250,6 +275,87 @@ it('keeps the frame and action area stable when short and long challenges advanc
     height: frame.height,
   });
 });
+
+it.each([
+  'Comment on the song to someone beside you on the dance floor.',
+  'Ask someone sitting beside you to watch your things while you use the bathroom.',
+])('uses the regular type treatment for catalog copy: %s', (text) => {
+  const screen = render(
+    <ChallengeCard card={{ id: 'catalog', text }} venue="cafe" label="Cafe" />,
+  );
+  const frame = StyleSheet.flatten(
+    screen.getByTestId('challenge-card').props.style,
+  );
+  const scale = frame.width / 220;
+  expect(StyleSheet.flatten(screen.getByText(text).props.style)).toMatchObject({
+    fontSize: 20 * scale,
+    lineHeight: 23 * scale,
+    padding: 10 * scale,
+  });
+});
+
+it('reserves room for four lines of regular challenge copy', () => {
+  const card = {
+    id: 'four-lines',
+    text: 'Ask someone nearby where they like to go when they need a quiet break.',
+  };
+  const screen = render(
+    <ChallengeCard card={card} venue="cafe" label="Cafe" />,
+  );
+  const frame = StyleSheet.flatten(
+    screen.getByTestId('challenge-card').props.style,
+  );
+  const face = StyleSheet.flatten(
+    screen.getByTestId('challenge-face-four-lines').props.style,
+  );
+  const copy = StyleSheet.flatten(screen.getByText(card.text).props.style);
+  const scale = frame.width / 220;
+  const available =
+    frame.height -
+    Number(face.paddingTop) -
+    Number(face.paddingBottom) -
+    3 * Number(face.gap) -
+    (14 + 63 + 27) * scale;
+  const needed = 4 * Number(copy.lineHeight) + 2 * Number(copy.padding);
+
+  expect(copy.fontSize).toBe(20 * scale);
+  expect(available).toBeGreaterThanOrEqual(needed + 4 * scale);
+});
+
+it.each([
+  ['streets', 2.875],
+  ['park', -2.625],
+  ['gym', 1.125],
+  ['cafe', 6.75],
+  ['bookstore', 0.875],
+  ['bars', -0.875],
+] as const)(
+  'centers the drawn %s artwork with the venue and copy',
+  (venue, offset) => {
+    const screen = render(
+      <ChallengeCard card={cards[0]!} venue={venue} label={venue} />,
+    );
+    const face = StyleSheet.flatten(
+      screen.getByTestId('challenge-face-1').props.style,
+    );
+    const art = StyleSheet.flatten(
+      screen.getByTestId('challenge-illustration', {
+        includeHiddenElements: true,
+      }).props.style,
+    );
+    const copy = StyleSheet.flatten(
+      screen.getByTestId('challenge-copy-panel').props.style,
+    );
+    const frame = StyleSheet.flatten(
+      screen.getByTestId('challenge-card').props.style,
+    );
+    expect(face.alignItems).toBe('center');
+    expect(copy.maxWidth).toBe('100%');
+    expect(art.transform[0].translateX).toBeCloseTo(
+      offset * (frame.width / 220),
+    );
+  },
+);
 
 it('preserves the flourish coordinate system when a queued card becomes the front card', async () => {
   const props = { venue: 'cafe', label: 'Cafe', onAction: async () => {} };
@@ -367,7 +473,7 @@ it.each(['streets', 'park', 'gym', 'cafe', 'bookstore', 'bars'])(
     for (const [index, surface] of [
       [1, '#F9E3D0'],
       [2, '#FCD9B9'],
-      [3, '#F8F0E9'],
+      [3, colors.cream],
     ] as const) {
       const id = cards[index]!.id;
       const queued = accents(id);

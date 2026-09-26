@@ -4,7 +4,7 @@
 import { createRequire } from 'node:module';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { creamArtwork } from './cream-artwork.mjs';
+import { creamArtwork, peachArtwork } from './cream-artwork.mjs';
 const loadDependency = createRequire(import.meta.url);
 const sharp = loadDependency('sharp');
 const source = path.resolve('output/challenge-fidelity/source');
@@ -115,16 +115,20 @@ async function main() {
     path.join(destination, 'streets.png'),
     await removePaper(streets),
   );
-  // The same original silhouettes and strokes on the darker cards, with the
-  // pale backing used in Paper's cream-front and peach-front variants.
+  // Match each illustration backing to its card's intrinsic text panel. Both
+  // variants retain the original silhouettes, ink, alpha and paper texture.
   for (const name of ['gym', 'park', 'bookstore', 'bars', 'cafe', 'streets']) {
     const { data, info } = await sharp(path.join(destination, name + '.png'))
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
+    const peach = await sharp(Buffer.from(peachArtwork(data)), { raw: info })
+      .png()
+      .toBuffer();
     await sharp(Buffer.from(creamArtwork(data)), { raw: info })
       .png()
       .toFile(path.join(destination, name + '-cream.png'));
+    await fs.writeFile(path.join(destination, name + '.png'), peach);
   }
   const gym = await sheet('gym');
   await fs.writeFile(

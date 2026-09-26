@@ -119,6 +119,18 @@ describe('real challenge loop through restricted PostgreSQL role', () => {
         });
     }
     expect(total).toBe(61);
+    const bars = await queue(a.sessionToken, 'bars');
+    expect(bars.cards.find((card) => card.id === 'BC-10')).toMatchObject({
+      revisionId: 'bc-10-v2',
+      text: 'Comment on the song to someone beside you on the dance floor.',
+    });
+    const historical = await admin.query(
+      'select text from justgo.challenge_revisions where id=$1',
+      ['bc-10-v1'],
+    );
+    expect(historical.rows[0]?.text).toBe(
+      'Make a friendly comment about the song to someone beside you on the dance floor.',
+    );
     await expect(
       admin.query(
         "update justgo.challenge_revisions set text='changed' where id='st-01-v1'",

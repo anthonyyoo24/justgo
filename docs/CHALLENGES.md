@@ -1,6 +1,6 @@
 # JustGO — Level 1 challenges
 
-**Updated:** September 24, 2026
+**Updated:** September 26, 2026
 
 **Content status:** Finalized in discussion with Anthony, including the latest revisions. This is a human-readable content reference, not an import file. Creating this document does not insert challenges into the database.
 
@@ -13,6 +13,7 @@
 - **Subtext:** The accompanying line below the challenge text. Example wording can be adapted naturally; bracketed words such as `[item]` or `[name]` are conversational placeholders.
 - **Venue stacks:** Each user has an independent card order for each venue. Completing a card moves it to the back of that venue's stack. A shared challenge's card in another venue stays in place. Each new accepted repetition has its own attempt history.
 - **Shared content:** A challenge can supply content for multiple venue cards without coupling their ordering. The overlap index below identifies related actions while preserving the reviewed wording for every card.
+- **Card copy length:** Review each new batch on the actual card at the standard type size, including database, preview, and demo text. Every challenge should render in two to four complete lines without scrolling; character count alone cannot reliably predict wrapping.
 
 The earlier no-replay and grouped-venue proposals are superseded by the venue list and cycling-stack decisions above. The app's consuming implementation and plan must reflect these decisions when phase 04 is implemented.
 
@@ -123,18 +124,18 @@ Situations: approaching staff, browsing beside someone, and approaching someone 
 
 Situations: the entrance line, waiting at the bar, nearby tables, and the dance floor.
 
-| Card  | Challenge text                                                                   | Subtext                                           |
-| ----- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
-| BC-01 | Introduce yourself to someone nearby.                                            | “Hey, I’m [name]. What’s your name?”              |
-| BC-02 | Ask someone nearby what drink they ordered.                                      | “That looks good—what are you drinking?”          |
-| BC-03 | Ask the bartender to recommend a drink.                                          | “What would you recommend?”                       |
-| BC-04 | Give someone nearby a genuine compliment.                                        | “I really like your [item]—where did you get it?” |
-| BC-05 | Ask someone in the entrance line whether it’s been moving.                       | “Hey, has the line been moving pretty quickly?”   |
-| BC-06 | Ask someone near you on the dance floor if they know the song.                   | “Do you know what this song’s called?”            |
-| BC-07 | Raise your drink and say cheers to someone nearby.                               | Smile, raise your glass, and say “Cheers!”        |
-| BC-08 | Ask someone nearby if they’re celebrating anything tonight.                      | “Are you out for anything special tonight?”       |
-| BC-09 | Ask someone near the bar what drink they’re going to order.                      | “What are you thinking of getting?”               |
-| BC-10 | Make a friendly comment about the song to someone beside you on the dance floor. | Smile and say, “This is a good one!”              |
+| Card  | Challenge text                                                 | Subtext                                           |
+| ----- | -------------------------------------------------------------- | ------------------------------------------------- |
+| BC-01 | Introduce yourself to someone nearby.                          | “Hey, I’m [name]. What’s your name?”              |
+| BC-02 | Ask someone nearby what drink they ordered.                    | “That looks good—what are you drinking?”          |
+| BC-03 | Ask the bartender to recommend a drink.                        | “What would you recommend?”                       |
+| BC-04 | Give someone nearby a genuine compliment.                      | “I really like your [item]—where did you get it?” |
+| BC-05 | Ask someone in the entrance line whether it’s been moving.     | “Hey, has the line been moving pretty quickly?”   |
+| BC-06 | Ask someone near you on the dance floor if they know the song. | “Do you know what this song’s called?”            |
+| BC-07 | Raise your drink and say cheers to someone nearby.             | Smile, raise your glass, and say “Cheers!”        |
+| BC-08 | Ask someone nearby if they’re celebrating anything tonight.    | “Are you out for anything special tonight?”       |
+| BC-09 | Ask someone near the bar what drink they’re going to order.    | “What are you thinking of getting?”               |
+| BC-10 | Comment on the song to someone beside you on the dance floor.  | Smile and say, “This is a good one!”              |
 
 ## Cross-venue overlap index
 

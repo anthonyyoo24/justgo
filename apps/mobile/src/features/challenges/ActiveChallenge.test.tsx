@@ -71,6 +71,20 @@ it('blocks both outcomes during a save without dimming either button', () => {
   expect(finish).not.toHaveBeenCalled();
   expect(screen.queryByText('Give up this challenge?')).toBeNull();
 });
+it('leaves extra space between the active card and outcome buttons', () => {
+  const screen = render(
+    <ActiveChallenge
+      attempt={attempt}
+      offset={0}
+      disabled={false}
+      finish={async () => {}}
+    />,
+  );
+  expect(
+    StyleSheet.flatten(screen.getByTestId('active-outcomes').props.style)
+      ?.marginTop,
+  ).toBeGreaterThanOrEqual(12);
+});
 it('passes the accepted queue turn to the active card', () => {
   render(
     <ActiveChallenge

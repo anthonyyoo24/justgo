@@ -22,6 +22,16 @@ const creamSources: Record<string, ImageSourcePropType> = {
   bookstore: require('../../../assets/challenges/bookstore-cream.png'),
   bars: require('../../../assets/challenges/bars-cream.png'),
 };
+// The Paper crops have uneven transparent/paper margins. Center the drawn
+// artwork, rather than its image canvas, against the venue label and copy.
+const artworkCenterOffset: Record<string, number> = {
+  streets: 2.875,
+  park: -2.625,
+  gym: 1.125,
+  cafe: 6.75,
+  bookstore: 0.875,
+  bars: -0.875,
+};
 // Original Paper illustration pixels, cropped and paper-matted by the documented
 // extraction script. Text, controls and panel geometry stay native and scalable.
 export function VenueArt({
@@ -54,6 +64,9 @@ export function VenueArt({
         style={{
           width: (venue === 'streets' ? 60 : 78) * scale,
           height: (venue === 'streets' ? 58 : 63) * scale,
+          transform: [
+            { translateX: (artworkCenterOffset[venue] ?? 0) * scale },
+          ],
         }}
       />
     </View>
@@ -65,7 +78,7 @@ export function PaperTexture() {
       aria-hidden
       style={[
         StyleSheet.absoluteFill,
-        { opacity: 0.25, mixBlendMode: 'multiply', pointerEvents: 'none' },
+        { opacity: 0.25, pointerEvents: 'none' },
       ]}
     >
       <Image

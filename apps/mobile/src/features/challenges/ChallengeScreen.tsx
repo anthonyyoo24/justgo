@@ -46,6 +46,7 @@ export function ChallengeScreen() {
   return (
     <ChallengeLayout
       title={state.state?.active ? 'Active challenge' : 'Find a challenge'}
+      fillContent={!state.state?.active}
     >
       {!!state.error && (
         <View style={styles.notice}>
@@ -204,8 +205,12 @@ export function ActiveChallenge({
       <View
         style={[
           styles.outcomes,
-          { flexWrap: fontScale > 1.4 ? 'wrap' : 'nowrap' },
+          {
+            flexWrap: fontScale > 1.4 ? 'wrap' : 'nowrap',
+            marginTop: 12 * scale,
+          },
         ]}
+        testID="active-outcomes"
       >
         <Pressable
           accessibilityRole="button"

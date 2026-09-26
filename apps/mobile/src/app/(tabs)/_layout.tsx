@@ -12,14 +12,15 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.white,
         tabBarInactiveTintColor: colors.border,
         tabBarShowLabel: false,
+        tabBarIconStyle: { marginTop: 5 + Math.min(insets.bottom, 5) },
         tabBarStyle: {
           backgroundColor: colors.navy,
           borderTopColor: colors.navyBorder,
-          height: 50 + insets.bottom,
+          height: 52 + Math.min(insets.bottom, 12),
           paddingTop: 0,
-          paddingBottom: insets.bottom,
+          paddingBottom: Math.min(insets.bottom, 8),
         },
-        sceneStyle: { backgroundColor: colors.paper },
+        sceneStyle: { backgroundColor: colors.cream },
       }}
     >
       <Tabs.Screen

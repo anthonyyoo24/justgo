@@ -1,7 +1,6 @@
 // Palette adaptation of the original extracted RGBA art. Keep the alpha mask,
-// texture and navy strokes; shift only the warm backing toward Paper's cream.
-// #F8EFE7 is the median backing sampled from the O4X-0 original image fill.
-export function creamArtwork(pixels) {
+// texture and navy strokes; shift only the warm backing to the panel color.
+function adaptArtwork(pixels, target) {
   const result = Uint8Array.from(pixels);
   const samples = [[], [], []];
   for (let i = 0; i < pixels.length; i += 4) {
@@ -17,7 +16,6 @@ export function creamArtwork(pixels) {
   const peach = samples.map(
     (channel) => channel.sort((a, b) => a - b)[Math.floor(channel.length / 2)],
   );
-  const cream = [248, 239, 231];
   for (let i = 0; i < pixels.length; i += 4) {
     if (!pixels[i + 3]) continue;
     // Protect dark ink exactly; feather the shift through antialiased edges.
@@ -28,10 +26,19 @@ export function creamArtwork(pixels) {
         0,
         Math.min(
           255,
-          Math.round(pixels[i + c] + weight * (cream[c] - peach[c])),
+          Math.round(pixels[i + c] + weight * (target[c] - peach[c])),
         ),
       );
     }
   }
   return result;
+}
+
+export function peachArtwork(pixels) {
+  return adaptArtwork(pixels, [251, 227, 204]);
+}
+
+// #F8EFE7 is the median backing sampled from the O4X-0 original image fill.
+export function creamArtwork(pixels) {
+  return adaptArtwork(pixels, [248, 239, 231]);
 }

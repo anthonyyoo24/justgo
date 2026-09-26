@@ -46,7 +46,7 @@ const cardThemes = challengeStyle.cards;
 // A queue advances within one frame; only the copy panel changes with its text.
 const cardFrame = (scale: number) => ({
   width: 220 * scale,
-  height: 310 * scale,
+  height: 273 * scale,
 });
 export function ChallengeDeck({
   cards,
@@ -210,7 +210,11 @@ export function ChallengeDeck({
           collapsable={false}
           style={[
             styles.stage,
-            { height: frame.height + 30, width: 292 * scale },
+            {
+              height: frame.height + 30 * scale,
+              width: 292 * scale,
+              marginBottom: 17 * scale + 8,
+            },
           ]}
         >
           {cards.slice(0, 4).map((card, index) => (
@@ -229,43 +233,48 @@ export function ChallengeDeck({
           ))}
         </View>
       </GestureDetector>
-      <View style={styles.actions}>
-        {([-1, 1] as const).map((direction) => (
-          <View key={direction} style={styles.action}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                direction === -1 ? 'Skip challenge' : 'Accept challenge'
-              }
-              accessibilityState={{ disabled: disabled || working }}
-              disabled={disabled || working || !cards.length}
-              onPress={() => void commit(direction)}
-              style={[styles.button, disabled && !working && { opacity: 0.5 }]}
-            >
-              <Svg
-                width={direction === -1 ? 22 : 24}
-                height={direction === -1 ? 22 : 24}
-                viewBox="0 0 24 24"
-                aria-hidden
+      <View testID="challenge-action-space" style={styles.actionSpace}>
+        <View style={styles.actions}>
+          {([-1, 1] as const).map((direction) => (
+            <View key={direction} style={styles.action}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  direction === -1 ? 'Skip challenge' : 'Accept challenge'
+                }
+                accessibilityState={{ disabled: disabled || working }}
+                disabled={disabled || working || !cards.length}
+                onPress={() => void commit(direction)}
+                style={[
+                  styles.button,
+                  disabled && !working && { opacity: 0.5 },
+                ]}
               >
-                <Path
-                  d={
-                    direction === -1
-                      ? 'M5.7 5.7L18.3 18.3M18.3 5.7L5.7 18.3'
-                      : 'M12.1 21C10.7 19.5 4.5 15 3.1 11.1C1.7 7.4 3.2 3.6 6.5 3.4C9.1 3.2 10.7 4.8 12 6.8C13.4 4.5 15.2 3.1 17.8 3.5C21 4 22.1 7 21 10.2C19.8 13.5 16.3 17 12.1 21Z'
-                  }
-                  fill="none"
-                  stroke={colors.white}
-                  strokeWidth={direction === -1 ? 1.45 : 1.25}
-                  strokeLinecap="round"
-                />
-              </Svg>
-            </Pressable>
-            <Text style={styles.caption}>
-              {direction === -1 ? 'Swipe left' : 'Swipe right'}
-            </Text>
-          </View>
-        ))}
+                <Svg
+                  width={direction === -1 ? 22 : 24}
+                  height={direction === -1 ? 22 : 24}
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  <Path
+                    d={
+                      direction === -1
+                        ? 'M5.7 5.7L18.3 18.3M18.3 5.7L5.7 18.3'
+                        : 'M12.1 21C10.7 19.5 4.5 15 3.1 11.1C1.7 7.4 3.2 3.6 6.5 3.4C9.1 3.2 10.7 4.8 12 6.8C13.4 4.5 15.2 3.1 17.8 3.5C21 4 22.1 7 21 10.2C19.8 13.5 16.3 17 12.1 21Z'
+                    }
+                    fill="none"
+                    stroke={colors.white}
+                    strokeWidth={direction === -1 ? 1.45 : 1.25}
+                    strokeLinecap="round"
+                  />
+                </Svg>
+              </Pressable>
+              <Text style={styles.caption}>
+                {direction === -1 ? 'Swipe left' : 'Swipe right'}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -366,7 +375,12 @@ function CardContent({
       testID={`challenge-face-${card.id}`}
       style={[
         styles.face,
-        { padding: 16 * scale, paddingTop: 27 * scale, gap: 8 * scale },
+        {
+          paddingHorizontal: 16 * scale,
+          paddingTop: 23 * scale,
+          paddingBottom: 13 * scale,
+          gap: 5 * scale,
+        },
       ]}
     >
       <Svg
@@ -478,8 +492,9 @@ export function ChallengeCard({
   );
 }
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', gap: 14, paddingTop: 18 },
+  container: { flexGrow: 1, alignItems: 'center', paddingTop: 18 },
   stage: {
+    flexShrink: 0,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -518,6 +533,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     textAlign: 'center',
     color: colors.ink,
+  },
+  actionSpace: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
   },
   actions: { flexDirection: 'row', gap: 20 },
   action: { alignItems: 'center', gap: 4 },

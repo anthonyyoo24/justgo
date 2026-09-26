@@ -5,7 +5,7 @@ export const colors = {
   ink: '#102C49',
   navy: '#142F46',
   navyBorder: '#0D2539',
-  cream: '#F8F0E9',
+  cream: '#F9EFE8',
   paper: '#FCF9F3',
   white: '#FFFFFF',
   peach: '#FCE1CB',

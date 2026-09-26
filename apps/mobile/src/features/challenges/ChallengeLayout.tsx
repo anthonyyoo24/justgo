@@ -17,11 +17,17 @@ export function ChallengeLayout({
   title,
   children,
   insetTop = true,
-}: PropsWithChildren<{ title: string; insetTop?: boolean }>) {
+  fillContent = false,
+}: PropsWithChildren<{
+  title: string;
+  insetTop?: boolean;
+  fillContent?: boolean;
+}>) {
   const { width } = useWindowDimensions();
   const scale = challengeScale(width);
   return (
     <SafeAreaView
+      testID="challenge-screen-surface"
       style={styles.safe}
       edges={insetTop ? ['top', 'left', 'right'] : ['left', 'right']}
     >
@@ -29,7 +35,13 @@ export function ChallengeLayout({
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.content, { paddingHorizontal: 14 * scale }]}>
+        <View
+          style={[
+            styles.content,
+            fillContent && styles.fillContent,
+            { paddingHorizontal: 14 * scale },
+          ]}
+        >
           <View style={styles.header}>
             <View style={styles.slot} />
             <Text
@@ -82,7 +94,7 @@ export function ChallengeLayout({
   );
 }
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.white },
+  safe: { flex: 1, backgroundColor: colors.cream },
   scroll: { flexGrow: 1, alignItems: 'center' },
   content: {
     width: '100%',
@@ -91,6 +103,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 12,
   },
+  fillContent: { flexGrow: 1, paddingBottom: 0 },
   header: { flexDirection: 'row', alignItems: 'center', minHeight: 44 },
   slot: { width: 44, minHeight: 44, flexShrink: 0 },
   profile: {

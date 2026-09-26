@@ -10,13 +10,13 @@ the surrounding paper matte. Original color/stroke pixels remain; only alpha is
 derived from the paper background. The lower flourish is an ink-only extraction.
 The texture is a blank paper region. Output is 4× to keep strokes sharp on iPhone.
 
-The `*-cream.png` variants adapt the warm illustration backing to `#F8EFE7`
-for both darker card colors. This is the median cream sampled from the original
-Paper cream-front fill, also checked against the peach-front fill. The extractor
-keeps every alpha value and dark navy pixel unchanged; a smooth tonal mask shifts
-the backing and antialiased edges while retaining their texture. These are palette
-adaptations of the original six illustrations, not newly drawn silhouettes. The
-light card continues to use the untouched peach artwork.
+The light `*.png` illustrations adapt the warm backing to the matching text-panel
+color `#FBE3CC`. The `*-cream.png` variants use `#F8EFE7` for both darker card
+colors, the median cream sampled from the original Paper cream-front fill. The
+extractor keeps every alpha value and dark navy pixel unchanged; a smooth tonal
+mask shifts the backing and antialiased edges while retaining their texture.
+These are palette adaptations of the original six illustrations, not newly drawn
+silhouettes.
 
 Run `node --test scripts/design/cream-artwork.test.mjs` when changing the
 extraction pipeline. Component tests also cover all six venues through the

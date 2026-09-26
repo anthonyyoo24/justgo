@@ -47,7 +47,7 @@ instead of the 12MB full-screen source images.
 At widths above 320, illustration/card dimensions and the compact type scale grow
 up to 1.2×; overall content caps at 384pt. Safe areas, touch targets and navigation
 height are independent of that scale. Resting back cards show clean paper edges;
-their native text appears during the gesture/transition. Every front, queued and active card uses a 220 × 310 frame before viewport scaling.
+their native text appears during the gesture/transition. Every front, queued and active card uses a 220 × 273 frame before viewport scaling.
 Preserve font scaling, scroll overflow and Reduce Motion. Desktop is a centered mobile composition, not a separate design.
 
 ## Stable layout and text containers
@@ -57,7 +57,37 @@ copy to grow the frame and move the action buttons. The panel itself had a 100pt
 minimum height and full width, preventing it from hugging short copy. Now the
 outer frame is fixed, the illustration/footer have stable positions, and a
 bounded copy region centers an intrinsic-width/height accent panel. The copy has
-10pt scaled padding and no line limit. A vertical ScrollView handles overflow.
+10pt scaled padding and no line limit. All catalog copy uses the same 20/23
+type treatment; the venue copy is reviewed to fit in two to four lines on the
+native card. A vertical ScrollView remains an overflow fallback.
+
+The base card now uses 23pt top padding, 13pt bottom padding and 5pt gaps
+between the venue label, illustration, copy and lower flourish. That leaves
+about 116pt for the copy region at 320pt width. Four lines at the normal 20/23 type
+with 10pt text padding need 112pt, so the panel fits without changing the
+220 × 273 outer frame or shrinking the type. This spacing change addresses
+four-line copy. Check future challenge batches in the native card before release,
+including database cards and any preview or demo cards shown in the app.
+On September 26, the iPhone 17 native audit covered 61 database placements and
+all eight preview examples (six venue references and two rotating cards). All
+rendered in two to four lines with the text panel inside its available space.
+
+The [OMO card screen](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0/OMO-0)
+has a 320 × 611 artboard. Its front card measures about 220 × 273 within the
+raster card stack, consistent with the editable 220 × 273 card in the active
+reference. The source's 44pt action circles start about 32pt below the front-card bottom.
+The previous native frame was 220 × 310 and its flexible action area centered
+the buttons in the remaining screen space. The shorter shared frame and a
+32pt scaled card-to-button gap followed that source spacing; the buttons now sit
+8pt lower by request. Short and long challenges keep the same outer size. A
+short panel still hugs its text, so some
+interior paper space remains by design.
+
+The venue label, illustration view and intrinsic text panel use the same card
+center. Original Paper illustration crops have asymmetric margins inside their
+image canvases; the café artwork is 27 source pixels left of center. Small
+per-venue image offsets center the drawn art on the label and panel without
+changing the original image pixels or card geometry.
 
 The queued card previously added a padded inner wrapper that the front card did
 not have. Absolute flourish offsets therefore used different origins, producing
@@ -79,11 +109,11 @@ cards instead use pale cream behind both the illustration and challenge copy.
 The earlier implementation varied only the card surface, leaving every text
 panel and baked illustration backing peach.
 
-| Card surface         | Text panel      | Illustration backing   |
-| -------------------- | --------------- | ---------------------- |
-| Light `#F8F0E9`      | Peach `#FBE3CC` | Original peach artwork |
-| Warm cream `#F9E3D0` | Cream `#F8EFE7` | Cream artwork variant  |
-| Peach `#FCD9B9`      | Cream `#F8EFE7` | Cream artwork variant  |
+| Card surface         | Text panel      | Illustration backing           |
+| -------------------- | --------------- | ------------------------------ |
+| Light `#F9EFE8`      | Peach `#FBE3CC` | Peach artwork matched to panel |
+| Warm cream `#F9E3D0` | Cream `#F8EFE7` | Cream artwork variant          |
+| Peach `#FCD9B9`      | Cream `#F8EFE7` | Cream artwork variant          |
 
 These references are raster overlays, not editable accent fills. Exact JSX and
 original fill URLs are in `design-source/challenge-color-variants.json`. The cream
@@ -97,11 +127,20 @@ the same deck turn/position before and after promotion. The active card now reta
 the accepted card’s theme (updated in the active handoff correction below). Original irregular panel geometry, adaptive text bounds,
 fixed frame, font sizing and flourish positions are retained.
 
-The six `*-cream.png` variants retain the original illustration alpha masks and
-all navy pixels with red ≤ 100. `cream-artwork.mjs` shifts the warm background
-toward the sampled cream and feathers the change through antialiased edges.
+Both artwork variants retain the original illustration alpha masks and all navy
+pixels with red ≤ 100. `cream-artwork.mjs` shifts the warm background to the
+matching text-panel color and feathers the change through antialiased edges.
 Texture and shapes remain intact. Run `node --test scripts/design/cream-artwork.test.mjs`
 after pipeline changes; regenerate with the documented `sharp` runtime.
+
+The OMO source raster uses approximately `#F9EFE8` for both its paper page and
+light card. Previously the native page was white and a multiply-blended texture
+darkened the `#F8F0E9` card into a grayish cream. The challenge screen and light
+card now share `#F9EFE8`; the original paper texture is composited normally at
+25% opacity so it adds grain without changing the base hue. The source venue
+illustrations contain different warm backings, so their light variants are
+palette-matched to the native `#FBE3CC` copy panel. Cream variants remain matched
+to `#F8EFE7`.
 
 ## Swipe handoff correction — September 25
 

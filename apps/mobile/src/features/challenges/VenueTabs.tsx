@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -12,9 +12,9 @@ import { venues, type Venue } from '@justgo/contracts';
 import { colors, fontFamilies } from '../../theme/tokens';
 import { challengeScale } from './challenge-design';
 
-// Exact paths from Paper's editable venue row, separate from the card illustrations.
-const paths: Record<string, string> = {
-  streets: 'M3 20h18M4 18l3-7h10l3 7M12 11V3m-3 3h6M7 14h10M6 17h12',
+// Other venue paths come from Paper's editable row, separate from the cards.
+const paths: Record<Venue, string> = {
+  streets: 'M8 3 3.5 21M16 3l4.5 18M12 4v3m0 3v3m0 3v4',
   park: 'M12 22V7m0 8c-8 1-11-6-7-8 0-6 7-8 9-3 6-2 9 6 4 8 0 3-3 4-6 3ZM5 22h14',
   gym: 'M7 10h10v4H7M1 9v6m22-6v6',
   cafe: 'M4 9h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Zm12 1h2a3 3 0 0 1 0 6h-2M2 22h18M7 2v4m4-4v4m4-4v4',
@@ -22,6 +22,21 @@ const paths: Record<string, string> = {
     'M3 5c3-1 6-1 9 1v14c-3-2-6-2-9-1V5Zm18 0c-3-1-6-1-9 1v14c3-2 6-2 9-1V5Z',
   bars: 'm3 3 7 1-1 6a3.5 3.5 0 0 1-7-1l1-6Zm3 10-1 7m-3 1 6 1M14 4l7-1 1 6a3.5 3.5 0 0 1-7 1l-1-6Zm4 9 1 7m-3 2 6-1',
 };
+
+export function selectedPillOffset(
+  pill: { x: number; width: number },
+  viewportWidth: number,
+  contentWidth: number,
+) {
+  return Math.max(
+    0,
+    Math.min(
+      pill.x - (viewportWidth - pill.width) / 2,
+      contentWidth - viewportWidth,
+    ),
+  );
+}
+
 export function VenueTabs({
   selected,
   disabled = false,
@@ -34,27 +49,50 @@ export function VenueTabs({
   const scroll = useRef<ScrollView>(null);
   const { width, fontScale } = useWindowDimensions();
   const scale = challengeScale(width);
-  const pillWidth =
-    ((Math.min(width, 384) - 40 * scale) / 3) * Math.max(1, fontScale);
-  const selectedIndex = venues.findIndex((v) => v.id === selected);
-  useEffect(() => {
+  const verticalInset = 4 * scale;
+  const pillPositions = useRef<
+    Partial<Record<Venue, { x: number; width: number }>>
+  >({});
+  const viewportWidth = useRef(0);
+  const contentWidth = useRef(0);
+  const showSelected = useCallback(() => {
+    const pill = pillPositions.current[selected];
+    if (!pill || !viewportWidth.current || !contentWidth.current) return;
     scroll.current?.scrollTo({
-      x: Math.max(0, selectedIndex - 1) * (pillWidth + 6 * scale),
+      x: selectedPillOffset(pill, viewportWidth.current, contentWidth.current),
       animated: false,
     });
-  }, [selectedIndex, pillWidth, scale]);
+  }, [selected]);
+  useEffect(() => {
+    showSelected();
+  }, [showSelected]);
   return (
     <ScrollView
       ref={scroll}
+      testID="venue-tabs-scroll"
       horizontal
       showsHorizontalScrollIndicator={false}
       accessibilityLabel="Challenge venues"
+      onLayout={(event) => {
+        viewportWidth.current = event.nativeEvent.layout.width;
+        showSelected();
+      }}
+      onContentSizeChange={(content) => {
+        contentWidth.current = content;
+        showSelected();
+      }}
       style={{
+        width: '100%',
         flexGrow: 0,
         flexShrink: 0,
-        height: Math.max(44, 36 * scale * fontScale),
+        height: Math.max(44, 36 * scale * fontScale) + 2 * verticalInset,
       }}
-      contentContainerStyle={{ gap: 6 * scale, alignItems: 'center' }}
+      contentContainerStyle={{
+        gap: 6 * scale,
+        alignItems: 'center',
+        paddingVertical: verticalInset,
+        paddingRight: 14 * scale,
+      }}
     >
       {venues.map((v) => {
         const active = v.id === selected;
@@ -68,8 +106,12 @@ export function VenueTabs({
             accessibilityState={{ selected: active, disabled }}
             disabled={disabled}
             onPress={() => onSelect(v.id)}
+            onLayout={(event) => {
+              const { x, width: pillWidth } = event.nativeEvent.layout;
+              pillPositions.current[v.id] = { x, width: pillWidth };
+              if (active) showSelected();
+            }}
             style={{
-              width: pillWidth,
               minHeight: 44,
               justifyContent: 'center',
             }}
@@ -78,7 +120,7 @@ export function VenueTabs({
               style={[
                 styles.pill,
                 {
-                  minHeight: 29 * scale * fontScale,
+                  minHeight: Math.max(44, 29 * scale * fontScale),
                   gap: 5 * scale,
                   backgroundColor: active ? colors.ink : colors.white,
                   borderColor: active ? colors.ink : '#75838B',
@@ -116,7 +158,7 @@ export function VenueTabs({
                   </>
                 )}
                 <Path
-                  d={paths[v.id]!}
+                  d={paths[v.id]}
                   stroke={color}
                   strokeWidth={v.id === 'gym' ? 1.5 : 1.4}
                   fill="none"
@@ -147,7 +189,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.6,
-    borderRadius: 18,
-    paddingHorizontal: 4,
+    borderRadius: 22,
+    paddingHorizontal: 28,
   },
 });
