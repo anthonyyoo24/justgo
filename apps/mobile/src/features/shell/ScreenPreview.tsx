@@ -4,12 +4,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProgressScreen } from './ShellScreens';
 import { DeckPreview } from '../challenges/DeckPreview';
+import { SuccessView } from '../challenges/SuccessView';
 import { NavigationIcon } from '../../components/NavigationIcon';
 import { colors, spacing, typography } from '../../theme/tokens';
 // Presentation fixtures only. No API, account impersonation, or entitlement override.
 export function ScreenPreview() {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
+  const [showSuccess, setShowSuccess] = useState(false);
   if (!__DEV__) return <Redirect href="/" />;
+  if (showSuccess)
+    return <SuccessView onContinue={() => setShowSuccess(false)} />;
   return (
     <View style={{ flex: 1 }}>
       <SafeAreaView edges={['top']} style={styles.notice}>
@@ -19,7 +23,10 @@ export function ScreenPreview() {
         </Link>
       </SafeAreaView>
       {tab === 'home' ? (
-        <DeckPreview insetTop={false} />
+        <DeckPreview
+          insetTop={false}
+          onCompleted={() => setShowSuccess(true)}
+        />
       ) : (
         <ProgressScreen insetTop={false} />
       )}

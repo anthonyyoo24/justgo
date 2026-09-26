@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import { ChallengeScreen } from './ChallengeScreen';
 
 const mockMounted = jest.fn();
@@ -16,7 +16,7 @@ let mockSnapshot = {
   error: '',
   busy: false,
   pending: null,
-  success: null,
+  success: null as null | { id: string },
   queues: { cafe: { version: 0, cards: [{ id: 'a', text: 'Say hello.' }] } },
 };
 jest.mock('expo-router', () => ({
@@ -42,6 +42,12 @@ jest.mock('./ChallengeDeck', () => ({
   },
 }));
 
+beforeEach(() => {
+  mockRouter.push.mockClear();
+  mockMounted.mockClear();
+  mockSnapshot = { ...mockSnapshot, success: null };
+});
+
 it('keeps the deck mounted through queue updates from a confirmed skip', () => {
   const screen = render(<ChallengeScreen />);
   expect(mockMounted).toHaveBeenCalledTimes(1);
@@ -53,4 +59,17 @@ it('keeps the deck mounted through queue updates from a confirmed skip', () => {
   };
   screen.rerender(<ChallengeScreen />);
   expect(mockMounted).toHaveBeenCalledTimes(1);
+});
+
+it('opens the success route when a completed attempt is confirmed', () => {
+  const screen = render(<ChallengeScreen />);
+  expect(mockRouter.push).not.toHaveBeenCalled();
+  act(() => {
+    mockSnapshot = { ...mockSnapshot, success: { id: 'finished-attempt' } };
+    screen.rerender(<ChallengeScreen />);
+  });
+  expect(mockRouter.push).toHaveBeenCalledWith({
+    pathname: '/success',
+    params: { attemptId: 'finished-attempt' },
+  });
 });

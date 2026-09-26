@@ -5,7 +5,13 @@ import { ChallengeDeck } from './ChallengeDeck';
 import { ActiveChallenge } from './ChallengeScreen';
 import { VenueTabs } from './VenueTabs';
 import { previewCardsForVenue } from './preview-copy';
-export function DeckPreview({ insetTop = true }: { insetTop?: boolean }) {
+export function DeckPreview({
+  insetTop = true,
+  onCompleted,
+}: {
+  insetTop?: boolean;
+  onCompleted: () => void;
+}) {
   const [selected, setSelected] = useState<Venue>('cafe');
   const [turn, setTurn] = useState(0);
   const [active, setActive] = useState<Attempt | null>(null);
@@ -24,9 +30,10 @@ export function DeckPreview({ insetTop = true }: { insetTop?: boolean }) {
           turn={turn}
           offset={0}
           disabled={false}
-          finish={async () => {
+          finish={async (outcome) => {
             setActive(null);
-            setTurn(turn + 1);
+            setTurn((current) => current + 1);
+            if (outcome === 'completed') onCompleted();
           }}
         />
       ) : (

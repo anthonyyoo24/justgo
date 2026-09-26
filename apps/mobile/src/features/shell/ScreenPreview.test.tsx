@@ -1,9 +1,16 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { ScreenPreview } from './ScreenPreview';
 jest.mock('../challenges/DeckPreview', () => ({
-  DeckPreview: () => {
-    const { Text } = require('react-native');
-    return <Text>Find a challenge</Text>;
+  DeckPreview: ({ onCompleted }: { onCompleted: () => void }) => {
+    const { Pressable, Text } = require('react-native');
+    return (
+      <>
+        <Text>Find a challenge</Text>
+        <Pressable accessibilityRole="button" onPress={onCompleted}>
+          <Text>Complete preview</Text>
+        </Pressable>
+      </>
+    );
   },
 }));
 jest.mock('expo-router', () => {
@@ -29,4 +36,18 @@ it('switches between isolated Home and Progress screens with accessible selected
   expect(screen.queryByText('Find a challenge')).toBeNull();
   fireEvent.press(screen.getByRole('tab', { name: 'Home' }));
   expect(screen.getByText('Find a challenge')).toBeTruthy();
+});
+
+it('shows the full success view after preview completion and returns on Continue', () => {
+  const screen = render(<ScreenPreview />);
+  fireEvent.press(screen.getByRole('button', { name: 'Complete preview' }));
+  expect(screen.getByText('That’s a win!')).toBeTruthy();
+  expect(
+    screen.queryByText('SCREEN PREVIEW · No activity is saved'),
+  ).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.getByText('Find a challenge')).toBeTruthy();
+  expect(
+    screen.getByText('SCREEN PREVIEW · No activity is saved'),
+  ).toBeTruthy();
 });

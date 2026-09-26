@@ -2,7 +2,6 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useIsFocused } from 'expo-router';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -20,6 +19,7 @@ import { VenueTabs } from './VenueTabs';
 import { challengeScale, timerOutline } from './challenge-design';
 import { ChallengeCard, ChallengeDeck } from './ChallengeDeck';
 import { remainingSeconds } from './countdown';
+import { SuccessView } from './SuccessView';
 export function ChallengeScreen() {
   const { challenges } = useRuntime();
   const { account } = useIdentity();
@@ -306,43 +306,20 @@ export function SuccessScreen() {
     challenges.dismissSuccess();
     router.replace('/(tabs)');
   };
+  if (attempt?.status === 'completed') return <SuccessView onContinue={back} />;
   return (
     <Screen title="Your completed challenge">
       <View style={styles.active}>
-        {attempt?.status === 'completed' ? (
-          <>
-            <View
-              style={{ alignSelf: 'center', backgroundColor: colors.paper }}
-              accessibilityElementsHidden
-            >
-              <View style={{ mixBlendMode: 'multiply' }}>
-                <Image
-                  source={require('../../../assets/illustrations/small-medal.png')}
-                  accessibilityElementsHidden
-                  resizeMode="contain"
-                  style={{ width: 180, height: 200 }}
-                />
-              </View>
-            </View>
-            <Text style={styles.heading}>That’s a win!</Text>
-            <Text style={styles.body}>{attempt.card.text}</Text>
-            <Text style={styles.body}>You showed up. Your rep is saved.</Text>
-            <PrimaryButton label="Continue" onPress={back} />
-          </>
-        ) : (
-          <>
-            <Text style={styles.body}>
-              {error
-                ? 'We couldn’t load this result. Your saved activity is safe.'
-                : attempt
-                  ? 'This challenge hasn’t been completed.'
-                  : attemptId
-                    ? 'Checking your saved result…'
-                    : 'Complete a challenge to see its result here.'}
-            </Text>
-            <PrimaryButton label="Back to Home" onPress={back} />
-          </>
-        )}
+        <Text style={styles.body}>
+          {error
+            ? 'We couldn’t load this result. Your saved activity is safe.'
+            : attempt
+              ? 'This challenge hasn’t been completed.'
+              : attemptId
+                ? 'Checking your saved result…'
+                : 'Complete a challenge to see its result here.'}
+        </Text>
+        <PrimaryButton label="Back to Home" onPress={back} />
       </View>
     </Screen>
   );

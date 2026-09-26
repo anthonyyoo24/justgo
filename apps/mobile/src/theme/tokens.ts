@@ -6,6 +6,7 @@ export const colors = {
   navy: '#142F46',
   navyBorder: '#0D2539',
   cream: '#F9EFE8',
+  successCanvas: '#F8F0E9',
   paper: '#FCF9F3',
   white: '#FFFFFF',
   peach: '#FCE1CB',
