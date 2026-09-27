@@ -99,7 +99,7 @@ it('shows a retry only for a failed background draft', () => {
   expect(onRetryDraft).toHaveBeenCalledTimes(1);
 });
 
-it('matches the challenge screens’ top header size', () => {
+it('matches the challenge screens’ top header typography', () => {
   const reflection = render(<ReflectionView {...props()} />);
   const challenge = render(<ChallengeLayout title="Find a challenge" />);
   const reflectionHeader = StyleSheet.flatten(
@@ -110,4 +110,7 @@ it('matches the challenge screens’ top header size', () => {
   );
   expect(reflectionHeader.fontSize).toBe(challengeHeader.fontSize);
   expect(reflectionHeader.lineHeight).toBe(challengeHeader.lineHeight);
+  expect(reflectionHeader.fontFamily).toBe(challengeHeader.fontFamily);
+  expect(reflectionHeader.fontWeight).toBe(challengeHeader.fontWeight);
+  expect(reflectionHeader.letterSpacing).toBe(challengeHeader.letterSpacing);
 });

@@ -13,7 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, fontFamilies } from '../../theme/tokens';
-import { challengeScale } from '../challenges/challenge-design';
+import {
+  challengeDisplayFont,
+  challengeScale,
+} from '../challenges/challenge-design';
 import { FeelingFace } from './FeelingFace';
 
 export const feelingOptions: readonly {
@@ -320,9 +323,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontFamily: fontFamilies.display,
-    fontWeight: '600',
+    fontFamily: challengeDisplayFont,
+    fontWeight: '700',
     color: colors.ink,
+    letterSpacing: -0.15,
   },
   title: {
     marginTop: 18,
