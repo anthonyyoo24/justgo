@@ -245,10 +245,7 @@ export function ChallengeDeck({
                 accessibilityState={{ disabled: disabled || working }}
                 disabled={disabled || working || !cards.length}
                 onPress={() => void commit(direction)}
-                style={[
-                  styles.button,
-                  disabled && !working && { opacity: 0.5 },
-                ]}
+                style={styles.button}
               >
                 <Svg
                   width={direction === -1 ? 22 : 24}

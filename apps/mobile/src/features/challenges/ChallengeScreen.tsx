@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useIsFocused } from 'expo-router';
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Pressable,
   StyleSheet,
@@ -114,17 +114,6 @@ export function ChallengeScreen() {
                 );
               }}
             />
-          )}
-          {state.state?.latestOutcome?.status === 'completed' && (
-            <Link
-              href={{
-                pathname: '/success',
-                params: { attemptId: state.state.latestOutcome.id },
-              }}
-              style={styles.lastWin}
-            >
-              View your last completed challenge
-            </Link>
           )}
         </>
       )}
@@ -366,14 +355,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.regular,
     color: colors.white,
     textAlign: 'center',
-  },
-  lastWin: {
-    ...typography.caption,
-    color: colors.ink,
-    textAlign: 'center',
-    paddingVertical: 10,
-    minHeight: 44,
-    textDecorationLine: 'underline',
   },
   outcomes: {
     flexDirection: 'row',

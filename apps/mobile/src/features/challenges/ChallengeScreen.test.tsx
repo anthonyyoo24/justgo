@@ -34,7 +34,10 @@ const finishedAttempt: Attempt = {
 };
 let mockSnapshot = {
   selected: 'cafe',
-  state: { active: null as Attempt | null, latestOutcome: null },
+  state: {
+    active: null as Attempt | null,
+    latestOutcome: null as Attempt | null,
+  },
   error: '',
   busy: false,
   pending: null,
@@ -45,7 +48,10 @@ let mockSnapshot = {
 jest.mock('expo-router', () => ({
   useIsFocused: () => true,
   useRouter: () => mockRouter,
-  Link: () => null,
+  Link: ({ children }: { children: React.ReactNode }) => {
+    const { Text } = require('react-native');
+    return <Text>{children}</Text>;
+  },
 }));
 jest.mock('../shell/AppProvider', () => ({
   useRuntime: () => ({ challenges: mockController }),
@@ -88,6 +94,16 @@ it('keeps the deck mounted through queue updates from a confirmed skip', () => {
   };
   screen.rerender(<ChallengeScreen />);
   expect(mockMounted).toHaveBeenCalledTimes(1);
+});
+
+it('does not show a completed-challenge link on the deck after continuing', () => {
+  mockSnapshot = {
+    ...mockSnapshot,
+    state: { active: null, latestOutcome: finishedAttempt },
+  };
+  const screen = render(<ChallengeScreen />);
+  expect(screen.getByTestId('mock-deck')).toBeTruthy();
+  expect(screen.queryByText('View your last completed challenge')).toBeNull();
 });
 
 it('keeps the active card visible until the success route takes over', () => {

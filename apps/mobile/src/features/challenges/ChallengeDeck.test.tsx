@@ -175,6 +175,24 @@ it('keeps button input exclusive while the same confirmed action is pending', as
   ).toBe(false);
   expect(screen.getByLabelText('Cafe. Say hello.. Five minutes.')).toBeTruthy();
 });
+it('keeps action buttons fully opaque during a background refresh', async () => {
+  const screen = render(
+    <ChallengeDeck
+      cards={cards}
+      venue="cafe"
+      label="Cafe"
+      turn={0}
+      disabled
+      onAction={async () => {}}
+    />,
+  );
+  await act(async () => {});
+  for (const name of ['Skip challenge', 'Accept challenge']) {
+    const button = screen.getByRole('button', { name });
+    expect(button.props.accessibilityState.disabled).toBe(true);
+    expect(StyleSheet.flatten(button.props.style).opacity ?? 1).toBe(1);
+  }
+});
 it('hides queued content from screen readers and renders no duplicate cards for a one-card queue', async () => {
   const screen = render(
     <ChallengeDeck
