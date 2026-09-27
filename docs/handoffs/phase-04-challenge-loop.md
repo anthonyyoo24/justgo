@@ -2,11 +2,11 @@
 
 ## Snapshot
 
-- **Status:** In progress — implementation and local verification complete; physical-device acceptance and staging deployment remain open. Phases 02/03 device gates remain open under the approved sequencing exception.
-- **Updated / author:** September 27, 2026 / Codex, audited against the current Phase 04 branch after the September 25–27 follow-ups.
+- **Status:** Phase 04 code merged to main; physical-device acceptance and staging deployment remain open. Phases 02/03 device gates remain open under the approved sequencing exception.
+- **Updated / author:** September 27, 2026 / Codex, audited through the merged Phase 04 PR and its September 25–27 follow-ups.
 - **Scope:** [Plan phase 04](../IMPLEMENTATION_PLAN.md#phase-04), [current scope decisions](../PHASE_04_SCOPE.md), [61 reviewed placements](../CHALLENGES.md).
 - **Dependencies:** [Phase 02](phase-02-identity.md), [phase 03](phase-03-app-shell.md).
-- **Checkout:** `phase-04-challenge-loop`. Phase 04 was first handed off in `27c0064`; later commits include the card/content, success-navigation, deck-link and action-opacity corrections below.
+- **Integration:** Built on `phase-04-challenge-loop` and merged through [PR #5](https://github.com/anthonyyoo24/justgo/pull/5) on September 27, 2026 (`27334e2`). This handoff includes review fixes through `25cbc3f`.
 - **Environment:** Node 24/npm 11, Expo 57.0.25 / React Native 0.86.3, PostgreSQL 17 local `justgo_test`. Existing EAS development binary `dev.justgo.foundation` on iPhone 17 Simulator / iOS 26.4. The Expo, build-properties, linking and router patch pins were updated after PR review; no new binary was built.
 - **Result:** Six independent cycling venue decks, skip/accept, a recoverable server-deadline timer, direct give-up and confirmed Success use real authenticated local API/database data. The development preview uses presentation-only cards and the same full Success view. Normal deployed entitlement behavior remains closed until verified billing.
 
@@ -126,6 +126,7 @@ Three visible native cards and at most one incoming card. Distance threshold 80 
 | Local migration state                         | PostgreSQL 17 `justgo_test`                                  | Migrations 0004–0006 are present locally; the database integration test reads BC-10 as v2 and its retained v1 text. No staging/production migration.                                                           |
 | `npm run check`                               | Workspace, September 27 PR review follow-up                  | Passed: contract build, strict typecheck, ESLint, formatting, 127 mobile tests, 8 API unit tests and 8 contract tests.                                                                                         |
 | `npm run test:db -w @justgo/api`              | Restricted runtime role, uniquely owned disposable fixtures  | 28 tests passed September 27, including 61 placement/BC-10 v2 and historical v1 checks.                                                                                                                        |
+| PR #5 Foundation checks                       | GitHub Actions on review-fix commit `25cbc3f`                | Both push and pull-request runs passed, including workspace checks, database tests, web/iOS exports and Expo Doctor. CodeRabbit's final pass was a skipped automated review, not a new substantive approval.   |
 | Content comparison                            | Read-only parse of migrations 0004/0006 and CHALLENGES.md    | All 61 current placement texts match; 59 stored revisions, 58 referenced by current cards.                                                                                                                     |
 | Production exports / Expo Doctor              | Expo 57.0.25 patch pins, one Metro worker                    | Web and iOS exports passed after the review fixes; Expo Doctor passed 21/21 checks. No new native binary was built.                                                                                            |
 | Six venues and persistence                    | In-app browser, 390×844                                      | All six load; a Cafe skip remains advanced after other venue selections.                                                                                                                                       |
@@ -171,4 +172,4 @@ Phase 05 should begin with the existing attempt contract and owner-scoped attemp
 
 ## Record updates
 
-Implementation plan, scope decisions, handoff index, PRD, tech stack, design guide, decision register and README are synchronized. This September 26 audit corrected the scope's give-up wording, the plan's local migration note and the handoff index's date. The historical HTML tracker is absent, so no browser-local completion state was claimed. Phase 04 remains in progress because device/dependency gates and deployment remain open.
+Implementation plan, scope decisions, handoff index, PRD, tech stack, design guide, decision register and README are synchronized. The September 26 audit corrected the scope's give-up wording, the plan's local migration note and the handoff index's date. The September 27 review follow-up aligned the PRD's give-up and expiry rules, removed superseded catalog/deck-counter decisions, and corrected migration and Expo version references. Both CI runs passed and PR #5 merged afterward. The historical HTML tracker is absent, so no browser-local completion state was claimed. Device/dependency gates and deployment remain open.
