@@ -134,7 +134,7 @@ Keychain remembers how to authenticate; PostgreSQL remembers the user's app stat
 
 There is no SQLite database, durable offline mutation queue, or local-first sync layer. In-memory screen data and ordinary image caching are implementation details, not a second source of truth. Do not persist the entire query cache containing private journal data.
 
-**Network behavior:** account bootstrap, loading uncached history, starting an attempt, completing it, and saving a reflection require the API. A previously loaded countdown can continue rendering during a connection loss, but a save is only confirmed after the server accepts it. Keep unsaved input visible with retry status; autosave drafts to PostgreSQL when connected. Without local draft persistence, force-quitting while offline can lose unsaved input. The UI must distinguish unsaved, saving, saved, and failed states.
+**Network behavior:** account bootstrap, loading uncached history, starting an attempt, completing it, and saving a reflection require the API. A previously loaded countdown can continue rendering during a connection loss, but a save is only confirmed after the server accepts it. Keep unsaved input visible with retry status; autosave drafts to PostgreSQL when connected. Without local draft persistence, force-quitting while offline can lose unsaved input. Reflection draft autosaves run quietly; show an inline retry message on failure and a saving state for explicit final submission.
 
 ### Deferred onboarding: state, saving, and restoration
 

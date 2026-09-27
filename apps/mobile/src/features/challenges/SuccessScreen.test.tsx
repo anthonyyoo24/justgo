@@ -107,7 +107,10 @@ it('does not show the previous success when another result is loading or fails',
   expect(screen.queryByText('Your completed challenge')).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   expect(mockRuntime.challenges.dismissSuccess).toHaveBeenCalledTimes(1);
-  expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)');
+  expect(mockRouter.replace).toHaveBeenCalledWith({
+    pathname: '/reflection',
+    params: { attemptId: 'first' },
+  });
   mockAttemptId = 'another';
   screen.rerender(<SuccessScreen />);
   expect(screen.queryByText('That’s a win!')).toBeNull();

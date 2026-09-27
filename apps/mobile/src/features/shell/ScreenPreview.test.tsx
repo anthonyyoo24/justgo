@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { ScreenPreview } from './ScreenPreview';
 jest.mock('../challenges/DeckPreview', () => ({
   DeckPreview: ({ onCompleted }: { onCompleted: () => void }) => {
@@ -38,7 +38,8 @@ it('switches between isolated Home and Progress screens with accessible selected
   expect(screen.getByText('Find a challenge')).toBeTruthy();
 });
 
-it('shows the full success view after preview completion and returns on Continue', () => {
+it('previews Success then optional Reflection without saving activity', () => {
+  jest.useFakeTimers();
   const screen = render(<ScreenPreview />);
   fireEvent.press(screen.getByRole('button', { name: 'Complete preview' }));
   expect(screen.getByText('That’s a win!')).toBeTruthy();
@@ -46,8 +47,38 @@ it('shows the full success view after preview completion and returns on Continue
     screen.queryByText('SCREEN PREVIEW · No activity is saved'),
   ).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.getByText('How do you feel?')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
+  expect(screen.queryByText('Skip')).toBeNull();
+  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Skipping reflection' }),
+  ).toBeDisabled();
+  act(() => jest.advanceTimersByTime(1200));
   expect(screen.getByText('Find a challenge')).toBeTruthy();
   expect(
     screen.getByText('SCREEN PREVIEW · No activity is saved'),
   ).toBeTruthy();
+  jest.useRealTimers();
+});
+
+it('previews a failed discard and labels its retry as a skip', () => {
+  jest.useFakeTimers();
+  const screen = render(<ScreenPreview simulateSkipFailure />);
+  fireEvent.press(screen.getByRole('button', { name: 'Complete preview' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.changeText(screen.getByLabelText('Your reflection'), 'My draft');
+  fireEvent.press(screen.getByRole('button', { name: 'Close reflection' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Discard and skip' }));
+
+  expect(screen.getByRole('button', { name: 'Retry Skip' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Save Reflection' })).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Retry Skip' }));
+  expect(
+    screen.getByRole('button', { name: 'Skipping reflection' }),
+  ).toBeDisabled();
+  act(() => jest.advanceTimersByTime(1200));
+  expect(screen.getByText('Find a challenge')).toBeTruthy();
+  jest.useRealTimers();
 });

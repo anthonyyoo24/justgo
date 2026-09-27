@@ -10,6 +10,7 @@ import {
   primaryKey,
   foreignKey,
   check,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 
 // Private schema. Tables, indexes and their RLS policies arrive with each feature.
@@ -250,5 +251,74 @@ export const attempts = appSchema.table(
       sql`(${t.status} = 'active' and ${t.endedAt} is null and ${t.timeZone} is null and ${t.elapsedSeconds} is null and ${t.completionDate} is null) or (${t.status} <> 'active' and ${t.endedAt} is not null and ${t.elapsedSeconds} is not null and ${t.endedAt} >= ${t.startedAt} and ${t.timeZone} is not null and ${t.elapsedSeconds} >= 0 and ((${t.status} = 'completed' and ${t.completionDate} is not null) or (${t.status} = 'given_up' and ${t.completionDate} is null)))`,
     ),
     check('attempt_deadline', sql`${t.deadlineAt} > ${t.startedAt}`),
+  ],
+);
+
+export const reflections = appSchema.table(
+  'reflections',
+  {
+    userId: uuid('user_id').notNull(),
+    attemptId: uuid('attempt_id').notNull(),
+    revision: integer().notNull().default(1),
+    status: text().notNull(),
+    feelingVersion: integer('feeling_version').notNull().default(1),
+    feeling: text(),
+    reflectionText: text('reflection_text'),
+    inputMethod: text('input_method'),
+    updatedAt: time('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.attemptId] }),
+    foreignKey({
+      columns: [t.userId, t.attemptId],
+      foreignColumns: [attempts.userId, attempts.id],
+    }),
+    check('reflection_revision_positive', sql`${t.revision} > 0`),
+    check('reflection_scale_version', sql`${t.feelingVersion} = 1`),
+    check(
+      'reflection_status',
+      sql`${t.status} in ('draft','submitted','skipped')`,
+    ),
+    check(
+      'reflection_feeling',
+      sql`${t.feeling} is null or ${t.feeling} in ('a_lot_worse','a_little_worse','about_the_same','a_little_better','a_lot_better')`,
+    ),
+    check(
+      'reflection_input_method',
+      sql`(${t.reflectionText} is null and ${t.inputMethod} is null) or (${t.reflectionText} is not null and ${t.inputMethod} = 'typed')`,
+    ),
+    check(
+      'reflection_terminal_content',
+      sql`(${t.status} = 'draft') or (${t.status} = 'skipped' and ${t.feeling} is null and ${t.reflectionText} is null) or (${t.status} = 'submitted' and (${t.feeling} is not null or ${t.reflectionText} is not null))`,
+    ),
+    check(
+      'reflection_text_length',
+      sql`${t.reflectionText} is null or char_length(${t.reflectionText}) <= 10000`,
+    ),
+  ],
+);
+
+export const reflectionActions = appSchema.table(
+  'reflection_actions',
+  {
+    userId: uuid('user_id').notNull(),
+    id: uuid().notNull(),
+    attemptId: uuid('attempt_id').notNull(),
+    action: text().notNull(),
+    inputDigest: text('input_digest').notNull(),
+    response: jsonb().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.id] }),
+    foreignKey({
+      columns: [t.userId, t.attemptId],
+      foreignColumns: [attempts.userId, attempts.id],
+    }),
+    check(
+      'reflection_action_kind',
+      sql`${t.action} in ('draft','final','skip')`,
+    ),
+    check('reflection_action_digest', sql`${t.inputDigest} ~ '^[a-f0-9]{64}$'`),
+    index('reflection_actions_attempt_idx').on(t.userId, t.attemptId),
   ],
 );

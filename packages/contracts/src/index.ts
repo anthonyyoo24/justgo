@@ -2,6 +2,7 @@ import { z } from 'zod';
 export * from './identity.ts';
 export * from './access.ts';
 export * from './challenges.ts';
+export * from './reflections.ts';
 export * from './openapi.ts';
 
 // Operational response contracts; identity contracts are exported above.

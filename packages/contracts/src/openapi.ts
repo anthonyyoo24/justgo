@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import * as challenges from './challenges.ts';
 import * as identity from './identity.ts';
+import * as reflections from './reflections.ts';
 import { accessResponseSchema } from './access.ts';
 
 const json = (schema: z.ZodType) => ({
@@ -77,6 +78,38 @@ export const openApiDocument = {
       ],
       get: operation(challenges.attemptResultSchema),
     },
+    '/v1/reflections/{attemptId}': {
+      parameters: [
+        {
+          name: 'attemptId',
+          in: 'path',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+        },
+      ],
+      get: operation(reflections.reflectionStateSchema),
+    },
+    ...Object.fromEntries(
+      (['draft', 'final', 'skip'] as const).map((action) => [
+        `/v1/reflections/{attemptId}/${action}`,
+        {
+          parameters: [
+            {
+              name: 'attemptId',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          post: operation(
+            reflections.reflectionStateSchema,
+            action === 'skip'
+              ? reflections.reflectionSkipSchema
+              : reflections.reflectionWriteSchema,
+          ),
+        },
+      ]),
+    ),
     '/v1/access': { get: operation(accessResponseSchema) },
     '/v1/identity/bootstrap': {
       post: operation(

@@ -23,6 +23,7 @@ in `design-source/challenge-paper-extract.json` (token hash `55c015ad`).
 | Venue label     | Inter medium 10/14; tracking .16em                                                                  | Dedicated label style, independent of generic body text                                                   |
 | Venue art       | 78 × 63 crop; original raster at 320 × 611, offset -123/-240 for Park/Gym/Bookstore                 | Extracted original illustration rectangles with transparent paper matte; no replacement geometry          |
 | Upper flourish  | 34 × 24; #102C49; 1.05 stroke                                                                       | Original SVG path                                                                                         |
+| Lower flourish  | 88 × 27; traced from the original 4× crop                                                           | SVG stroke in the same card position                                                                      |
 | Skip/accept     | 44 × 44; X 22px/1.45 stroke; heart 24px/1.25 stroke; captions 9.5/12                                | Exact paths and proportions; accessible action names                                                      |
 | Timer           | 180 × 86; original asymmetric SVG; Baskerville semibold 50/52; Inter 11/14 caption                  | Original path behind scalable native text; grows for accessibility                                        |
 | Outcome buttons | 106/148 widths; 8px gap; 40px visible height; Inter 12/16                                           | 44pt outer targets; grow for large text                                                                   |
@@ -39,8 +40,9 @@ line breaks. Bodoni 72 preserves the high-contrast serif appearance; both Bodoni
 and Baskerville were verified in Paper. Native uses
 the iOS system face; web falls back through Didot and Times New Roman. The timer
 retains the editable source Baskerville semibold. The peach panel has a deterministic asymmetric SVG contour.
-The lower flourish and illustrations reuse original pixels. Texture uses a blank
-region of the original paper fill, extracted behind native content. The asset pipeline
+The lower flourish uses a traced SVG stroke; its original PNG remains as a visual
+reference. Illustrations reuse original pixels. Texture uses a blank region of
+the original paper fill, extracted behind native content. The asset pipeline
 is `scripts/design/extract-challenge-assets.mjs`; the app ships about 1MB of art
 instead of the 12MB full-screen source images.
 

@@ -1,19 +1,80 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Redirect } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProgressScreen } from './ShellScreens';
 import { DeckPreview } from '../challenges/DeckPreview';
 import { SuccessView } from '../challenges/SuccessView';
+import { ReflectionView } from '../reflections/ReflectionView';
+import type { FeelingCode } from '@justgo/contracts';
 import { NavigationIcon } from '../../components/NavigationIcon';
 import { colors, spacing, typography } from '../../theme/tokens';
 // Presentation fixtures only. No API, account impersonation, or entitlement override.
-export function ScreenPreview() {
+export function ScreenPreview({
+  simulateSkipFailure = false,
+}: {
+  simulateSkipFailure?: boolean;
+}) {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
+  const [feeling, setFeeling] = useState<FeelingCode | null>(null);
+  const [reflection, setReflection] = useState('');
+  const [dismissOpen, setDismissOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'skip' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (submitTimer.current) clearTimeout(submitTimer.current);
+    },
+    [],
+  );
   if (!__DEV__) return <Redirect href="/" />;
-  if (showSuccess)
-    return <SuccessView onContinue={() => setShowSuccess(false)} />;
+  if (step === 'success')
+    return <SuccessView onContinue={() => setStep('reflection')} />;
+  if (step === 'reflection') {
+    const done = () => {
+      setStep('deck');
+      setFeeling(null);
+      setReflection('');
+      setDismissOpen(false);
+      setSubmitting(false);
+      setPendingAction(null);
+      setError(null);
+    };
+    return (
+      <ReflectionView
+        feeling={feeling}
+        text={reflection}
+        onFeelingChange={setFeeling}
+        onTextChange={setReflection}
+        onSubmit={() => {
+          setSubmitting(true);
+          submitTimer.current = setTimeout(() => {
+            submitTimer.current = null;
+            done();
+          }, 1200);
+        }}
+        onClose={() =>
+          feeling || reflection.trim() ? setDismissOpen(true) : done()
+        }
+        dismissOpen={dismissOpen}
+        busy={submitting}
+        locked={pendingAction !== null}
+        pendingAction={pendingAction}
+        error={error}
+        onKeepEditing={() => setDismissOpen(false)}
+        onDiscard={() => {
+          if (simulateSkipFailure) {
+            setDismissOpen(false);
+            setPendingAction('skip');
+            setError('Couldn’t skip. Retry to leave safely.');
+          } else done();
+        }}
+      />
+    );
+  }
   return (
     <View style={{ flex: 1 }}>
       <SafeAreaView edges={['top']} style={styles.notice}>
@@ -23,10 +84,7 @@ export function ScreenPreview() {
         </Link>
       </SafeAreaView>
       {tab === 'home' ? (
-        <DeckPreview
-          insetTop={false}
-          onCompleted={() => setShowSuccess(true)}
-        />
+        <DeckPreview insetTop={false} onCompleted={() => setStep('success')} />
       ) : (
         <ProgressScreen insetTop={false} />
       )}
