@@ -1,6 +1,6 @@
 # Phase 04 — Current scope decisions
 
-Updated September 24, 2026. The six venues, cycling stacks, no-subtext presentation and 39O animation below supersede the September 21 grouped-venue/no-replay proposal.
+Scope approved September 24, 2026; implementation wording updated September 26. The six venues, cycling stacks, no-subtext presentation and 39O animation below supersede the September 21 grouped-venue/no-replay proposal.
 
 Owner: Anthony. Status: implemented locally; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
 
@@ -21,7 +21,7 @@ Pills across the top filter the offered challenges; allow horizontal scrolling w
 
 ## Challenge loop and content
 
-Phase 04 builds the deck, active challenge screen, confirmed completion/Success, give-up confirmation and database/API behavior. Acceptance saves one attempt with its server start/deadline; navigation and relaunch preserve it. Zero awaits an explicit outcome. Reflections remain phase 06, full Progress phase 07, and payments phase 08.
+Phase 04 builds the deck, active challenge screen, confirmed completion/Success, direct give-up and database/API behavior. Acceptance saves one attempt with its server start/deadline; navigation and relaunch preserve it. Zero awaits an explicit outcome. Reflections remain phase 05, full Progress phase 06, and payments phase 07.
 
 Author-facing challenge content is recorded in [CHALLENGES.md](CHALLENGES.md): 61 reviewed venue cards. Use that document as a human-readable reference for entering database content; no separate JSON catalog/import workflow or admin dashboard is required. Do not show challenge subtext in this version; an optional nullable model field may remain for future use, and the document's earlier subtext drafts do not make it required UI. No separate hints, per-challenge illustration requirements or safety-guideline fields are required. Existing general respectful-content principles are unchanged.
 
@@ -39,7 +39,7 @@ Use the existing React Native/Expo stack with Gesture Handler, Reanimated and Wo
 
 ## Access and development testing
 
-On confirmed expiry of paid access, lock paid functionality; there is no special allowance to finish an attempt or save a reflection. Already saved records are retained. Recovery and existing always-available account/data controls remain accessible. Implement actual payments and provider-state testing in phase 08.
+On confirmed expiry of paid access, lock paid functionality; there is no special allowance to finish an attempt or save a reflection. Already saved records are retained. Recovery and existing always-available account/data controls remain accessible. Implement actual payments and provider-state testing in phase 07.
 
 Before billing, exercise the real challenge loop with isolated local/test entitlement fixtures and disposable data. The existing presentation-only preview must not acquire domain writes or become a production access bypass.
 

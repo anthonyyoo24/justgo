@@ -86,12 +86,25 @@ it('leaves extra space between the active card and outcome buttons', () => {
   ).toBeGreaterThanOrEqual(12);
 });
 it('passes the accepted queue turn to the active card', () => {
-  render(
+  const screen = render(
     <ActiveChallenge
       attempt={attempt}
       turn={5}
       offset={0}
       disabled={false}
+      finish={async () => {}}
+    />,
+  );
+  expect(jest.mocked(ChallengeCard).mock.lastCall?.[0]).toMatchObject({
+    card: attempt.card,
+    turn: 5,
+  });
+  screen.rerender(
+    <ActiveChallenge
+      attempt={attempt}
+      turn={6}
+      offset={0}
+      disabled
       finish={async () => {}}
     />,
   );

@@ -4,7 +4,7 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
-September 24: [Phase 04 implementation](phase-04-challenge-loop.md) adds the six venue decks, 61 placements, reliable attempts, timer, give-up and confirmed Success. The local browser/backend loop and native button/relaunch checks pass; physical-device acceptance and deployment remain open. [Current scope decisions](../PHASE_04_SCOPE.md) supersede earlier general-only and no-replay proposals. Apple signing/device gates remain open.
+September 26: [Phase 04 implementation](phase-04-challenge-loop.md) has six venue decks, 61 placements, reliable attempts, timer, direct give-up and the full confirmed Success view. The handoff includes the later card/content, queue-handoff and preview corrections. Current automated checks and earlier browser/native button/relaunch checks pass; physical-device acceptance and deployment remain open. [Current scope decisions](../PHASE_04_SCOPE.md) supersede earlier general-only and no-replay proposals. Apple signing/device gates remain open.
 
 Phase 03 app-shell implementation is recorded in [phase-03-app-shell.md](phase-03-app-shell.md). Welcome/questionnaire onboarding is deferred by the owner; native acceptance status remains explicit. Staging now includes the transfer-verification upgrade and access boundary.
 
@@ -26,19 +26,21 @@ If later work invalidates a completed phase, add a dated correction and reopen a
 
 The filenames below are reserved names, not claims that those files exist. Turn each filename into a link after writing that phase’s record.
 
+The launch path was aligned with number order on September 26: reflections through launch are 05–09, and post-launch lock-screen work is 10. Post-launch phases 10–12 may be scheduled independently. Historical browser tracker exports retain the former IDs and need migration before use.
+
 | Phase                                        | Status        | Dependencies | Handoff filename                                         |
 | -------------------------------------------- | ------------- | ------------ | -------------------------------------------------------- |
 | 01 — Foundation & implementation decisions   | Complete      | None         | [phase-01-foundation.md](phase-01-foundation.md)         |
 | 02 — No-signup identity & recovery           | In progress   | 01           | [phase-02-identity.md](phase-02-identity.md)             |
 | 03 — App shell & shared API                  | In progress   | 02           | [phase-03-app-shell.md](phase-03-app-shell.md)           |
 | 04 — Challenge deck & reliable attempts      | In progress   | 03           | [phase-04-challenge-loop.md](phase-04-challenge-loop.md) |
-| 06 — Feelings & typed reflections            | Not started   | 04           | `phase-06-reflections.md`                                |
-| 07 — Progress calendar & saved history       | Not started   | 06           | `phase-07-progress.md`                                   |
-| 08 — Native subscriptions & reliable billing | Not started   | 07           | `phase-08-billing.md`                                    |
-| 09 — Settings, privacy & measurement         | Not started   | 08           | `phase-09-settings-privacy.md`                           |
-| 10 — Release validation & launch             | Not started   | 09           | `phase-10-release.md`                                    |
-| 05 — Lock-screen countdowns                  | Not scheduled | 10           | `phase-05-native-timers.md`                              |
-| 11 — Optional US iOS web checkout            | Not scheduled | 10           | `phase-11-optional-stripe.md`                            |
-| 12 — Future AI text coach                    | Not scheduled | 10           | `phase-12-future-text-coach.md`                          |
+| 05 — Feelings & typed reflections            | Not started   | 04           | `phase-05-reflections.md`                                |
+| 06 — Progress calendar & saved history       | Not started   | 05           | `phase-06-progress.md`                                   |
+| 07 — Native subscriptions & reliable billing | Not started   | 06           | `phase-07-billing.md`                                    |
+| 08 — Settings, privacy & measurement         | Not started   | 07           | `phase-08-settings-privacy.md`                           |
+| 09 — Release validation & launch             | Not started   | 08           | `phase-09-release.md`                                    |
+| 10 — Lock-screen countdowns                  | Not scheduled | 09           | `phase-10-native-timers.md`                              |
+| 11 — Optional US iOS web checkout            | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
+| 12 — Future AI text coach                    | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The release path is 01 → 02 → 03 → 04 → 06 → 07 → 08 → 09 → 10. Deferred stages 05, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.
+The release path is 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.

@@ -31,11 +31,11 @@ The implementation owner selected 7-day independent sessions, renewal within 24 
 
 ## September 17 phase 03 scope decision
 
-Anthony authorized phase 02 staging follow-up and phase 03 on a feature branch. Welcome screens and questionnaire onboarding are deferred; build the existing approved screen shells and shared navigation/API/account infrastructure. No onboarding schema or Zustand store is introduced. Native subscriptions and the paywall remain phase 08. Development screen fixtures must be isolated from paid access and real domain writes.
+Anthony authorized phase 02 staging follow-up and phase 03 on a feature branch. Welcome screens and questionnaire onboarding are deferred; build the existing approved screen shells and shared navigation/API/account infrastructure. No onboarding schema or Zustand store is introduced. Native subscriptions and the paywall remain phase 07. Development screen fixtures must be isolated from paid access and real domain writes.
 
 ## September 21 phase 04 scope decisions
 
-Anthony approved venue filtering in phase 04 using Street & Park, Gym, Café & Bookshop, Bar & Party, and Errands & Transit from the reference in the “Clarify venue exclusions” task. The counter is future level progress and is omitted at launch. Per-challenge illustration, separate hint and safety-guideline fields are not required. Confirmed expired paid access locks paid functionality without a finish/reflection exception; billing remains phase 08. See [PHASE_04_SCOPE.md](PHASE_04_SCOPE.md) for approved scope, proposals and remaining details.
+Anthony approved venue filtering in phase 04 using Street & Park, Gym, Café & Bookshop, Bar & Party, and Errands & Transit from the reference in the “Clarify venue exclusions” task. The counter is future level progress and is omitted at launch. Per-challenge illustration, separate hint and safety-guideline fields are not required. Confirmed expired paid access locks paid functionality without a finish/reflection exception; billing remains phase 07. See [PHASE_04_SCOPE.md](PHASE_04_SCOPE.md) for approved scope, proposals and remaining details.
 
 Apple Developer enrollment is complete according to Anthony; account/team access, permanent identifier, signing and physical-device evidence have not been verified. The existing device-gate deferral remains in effect. Small device checks during development are recommended, with the full acceptance pass before release.
 

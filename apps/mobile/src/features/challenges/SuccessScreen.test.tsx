@@ -5,7 +5,7 @@ let mockAttemptId: string | undefined = 'first';
 const mockRequest = jest.fn();
 const mockRuntime = {
   client: { request: mockRequest },
-  challenges: { dismissSuccess: jest.fn() },
+  challenges: { dismissSuccess: jest.fn(), getSnapshot: jest.fn() },
 };
 const mockRouter = { replace: jest.fn() };
 jest.mock('expo-router', () => ({
@@ -59,7 +59,32 @@ beforeEach(() => {
   mockAttemptId = 'first';
   mockRequest.mockReset();
   mockRuntime.challenges.dismissSuccess.mockReset();
+  mockRuntime.challenges.getSnapshot.mockReturnValue({ success: null });
   mockRouter.replace.mockReset();
+});
+it('keeps the confirmed completion visible while lookup loads or fails', async () => {
+  let reject!: (reason: Error) => void;
+  mockRuntime.challenges.getSnapshot.mockReturnValue({ success: completed });
+  mockRequest.mockImplementationOnce(
+    () =>
+      new Promise((_resolve, no) => {
+        reject = no;
+      }),
+  );
+  const screen = render(<SuccessScreen />);
+  expect(screen.getByText('That’s a win!')).toBeTruthy();
+  expect(screen.queryByText('Checking your saved result…')).toBeNull();
+  expect(mockRequest).toHaveBeenCalledWith(
+    '/v1/challenges/attempt/first',
+    expect.anything(),
+  );
+  await act(async () => reject(new Error('offline')));
+  expect(screen.getByText('That’s a win!')).toBeTruthy();
+  expect(
+    screen.queryByText(
+      'We couldn’t load this result. Your saved activity is safe.',
+    ),
+  ).toBeNull();
 });
 it('does not show the previous success when another result is loading or fails', async () => {
   let reject!: (reason: Error) => void;

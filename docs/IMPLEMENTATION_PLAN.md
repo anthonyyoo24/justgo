@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 6 · Updated September 24, 2026
+**Version:** 7 · Updated September 26, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -15,19 +15,19 @@ This is the Markdown companion to the saved HTML plan: nine iOS release stages a
 
 **Deferred:** Welcome screens and questionnaire onboarding (owner decision September 17), Levels and progression rules, additional category filters, custom dictation, lock-screen display, Android release, Stripe and AI coaching. Stable challenge/revision/Level 1 history is kept now; thresholds and how prior completions count are decided later.
 
-Phase IDs stay stable: phase 05 (lock-screen display) moves after launch and no longer blocks billing. Tracker v2 uses separate browser storage and rejects v1 exports so old completion checks cannot imply completion under the revised scope. Phase 01 is complete; see the stage table for current implementation status.
+**September 26 numbering correction:** The launch path now runs in number order, 01–09. Former phases 06–10 are now 05–09; the deferred lock-screen phase moves from 05 to 10. Post-launch phases 10–12 may be scheduled independently. Historical browser tracker exports use the former IDs and must not be imported without an explicit migration. Phase 01 is complete; see the stage table for current implementation status.
 
 ## How to use this plan
 
 - Build each slice through the database, API and UI it needs; introduce tables and indexes with their consuming feature.
-- Run relevant tests and UI verification during every phase. Phase 10 integrates and releases work already verified in its own stage.
+- Run relevant tests and UI verification during every phase. Phase 09 integrates and releases work already verified in its own stage.
 - Mark a phase complete only after its checks and dependency phases pass, and its handoff is saved with evidence.
 - **September 17 sequencing exception:** Anthony approved implementing phase 02 while Apple enrollment/signing and physical-iPhone recovery acceptance remain pending. Phase 03 and later feature implementation may proceed after the backend/client identity checks pass. Keep phase 02 open and retain those device gates before valuable-data external testing and release.
-- **September 17 scope revision:** Anthony deferred welcome/questionnaire onboarding and authorized phase 02 follow-up plus phase 03 app-shell work. Build the existing screens first; onboarding is not a prerequisite for this phase. Paid access remains phase 08.
+- **September 17 scope revision:** Anthony deferred welcome/questionnaire onboarding and authorized phase 02 follow-up plus phase 03 app-shell work. Build the existing screens first; onboarding is not a prerequisite for this phase. Paid access remains phase 07.
 - **September 21 scope revision:** Venue selection/filtering is included in phase 04: Street & Park, Gym, Café & Bookshop, Bar & Party, and Errands & Transit. The level-progress indicator is omitted until levels ship. See [current phase 04 decisions](PHASE_04_SCOPE.md), which supersede the earlier general-only scope. Anthony reports Apple Developer enrollment complete; signing/device verification remains open.
 - **September 24 phase 04 revision:** The current venues are Streets, Park, Gym, Cafe, Bookstore, and Bars & Clubs, with independent cycling stacks and top venue pills. Use the original 39O fanned deck, omit challenge subtext, and implement the gesture/motion specification below with the existing libraries. These decisions supersede the earlier grouped venues and no-replay rules for phase 04.
-- Update this file and the handoff index when recording progress. The HTML checklist is browser-local; it does not automatically update this Markdown file or the handoffs. Export/import the HTML checklist to move it between browsers.
-- Keep scope changes synchronized between the HTML and Markdown plans. Saved handoffs and actual implementation/test evidence remain authoritative.
+- Update this file and the handoff index when recording progress. The historical HTML checklist is absent from this checkout and cannot update this Markdown file or the handoffs.
+- If the HTML checklist is restored, migrate its phase IDs and saved exports before using it. Saved handoffs and actual implementation/test evidence remain authoritative.
 
 ## Stage overview
 
@@ -37,16 +37,16 @@ Phase IDs stay stable: phase 05 (lock-screen display) moves after launch and no 
 | [02 — No-signup identity & recovery](#phase-02)           | A real account survives supported recovery paths, without exposing another person’s history.            | 01         | In progress   |
 | [03 — App shell & shared API](#phase-03)                  | The app restores the right account and provides consistent navigation and network behavior.             | 02         | In progress   |
 | [04 — Challenge deck & reliable attempts](#phase-04)      | Browse → accept → complete or give up works against real cloud data exactly once.                       | 03         | In progress   |
-| [06 — Feelings & typed reflections](#phase-06)            | A completed attempt can have optional private feedback and typed reflection text.                       | 04         | Not started   |
-| [07 — Progress calendar & saved history](#phase-07)       | Users can view the full Progress summary/calendar and read day details and saved reflections.           | 06         | Not started   |
-| [08 — Native subscriptions & reliable billing](#phase-08) | A verified purchase unlocks promptly, and later subscription changes recover reliably.                  | 07         | Not started   |
-| [09 — Settings, privacy & measurement](#phase-09)         | Users control recovery, private data and preferences; useful measurement respects their choices.        | 08         | Not started   |
-| [10 — Release validation & launch](#phase-10)             | The complete paid product is verified, operable and ready for store submission.                         | 09         | Not started   |
-| [05 — Lock-screen countdowns](#phase-05)                  | The same accepted challenge is visible on supported lock screens without a JavaScript background timer. | 10         | Not scheduled |
-| [11 — Optional US iOS web checkout](#phase-11)            | Eligible users can purchase on the web using the same authenticated app identity.                       | 10         | Not scheduled |
-| [12 — Future AI text coach](#phase-12)                    | A separately approved text coach uses bounded, permitted context in the existing backend.               | 10         | Not scheduled |
+| [05 — Feelings & typed reflections](#phase-05)            | A completed attempt can have optional private feedback and typed reflection text.                       | 04         | Not started   |
+| [06 — Progress calendar & saved history](#phase-06)       | Users can view the full Progress summary/calendar and read day details and saved reflections.           | 05         | Not started   |
+| [07 — Native subscriptions & reliable billing](#phase-07) | A verified purchase unlocks promptly, and later subscription changes recover reliably.                  | 06         | Not started   |
+| [08 — Settings, privacy & measurement](#phase-08)         | Users control recovery, private data and preferences; useful measurement respects their choices.        | 07         | Not started   |
+| [09 — Release validation & launch](#phase-09)             | The complete paid product is verified, operable and ready for store submission.                         | 08         | Not started   |
+| [10 — Lock-screen countdowns](#phase-10)                  | The same accepted challenge is visible on supported lock screens without a JavaScript background timer. | 09         | Not scheduled |
+| [11 — Optional US iOS web checkout](#phase-11)            | Eligible users can purchase on the web using the same authenticated app identity.                       | 09         | Not scheduled |
+| [12 — Future AI text coach](#phase-12)                    | A separately approved text coach uses bounded, permitted context in the existing backend.               | 09         | Not scheduled |
 
-Release order: 01 → 02 → 03 → 04 → 06 → 07 → 08 → 09 → 10. Apple account and purchase-product preparation starts during 01 alongside development. Lock-screen timers (05), Stripe (11) and coaching (12) follow release when scheduled; none blocks the first submission or depends on another later phase.
+Release order: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09. Apple account and purchase-product preparation starts during 01 alongside development. Lock-screen timers (10), Stripe (11) and coaching (12) follow release when scheduled; none blocks the first submission or depends on another later phase.
 
 ## Decisions to settle before dependent work
 
@@ -58,9 +58,9 @@ These remain open in PRD §13. Resolve each with the product owner and update th
 | Launch catalog                  | 04                          | Settled: CHALLENGES.md supplies 61 placements in six venues; five minutes, no displayed subtext. Seeded by phase 04. CURRICULUM.md remains a future draft. |
 | Deck counter                    | 04                          | Settled: omit level progress; each venue cycles. New accounts start in Streets. Empty venues offer another venue; see PHASE_04_SCOPE.md.                   |
 | Future levels                   | Later; not a launch blocker | Thresholds, unlocking/skipping, historical-credit policy and later taxonomy; retain Level 1 history now without implementing progression.                  |
-| Reflection save & dismissal     | 06                          | Feeling-only/text-only/both, empty save, Back/X and draft handling.                                                                                        |
-| Reading saved reflections       | 07                          | Per-attempt detail/expansion and whether editing/deletion is offered there.                                                                                |
-| Apple account & offer           | Start in 01; ready for 08   | Enrollment status, bundle ID/app record, subscription product IDs/pricing/trials and RevenueCat mapping. Finalize paywall and expiry behavior before 08.   |
+| Reflection save & dismissal     | 05                          | Feeling-only/text-only/both, empty save, Back/X and draft handling.                                                                                        |
+| Reading saved reflections       | 06                          | Per-attempt detail/expansion and whether editing/deletion is offered there.                                                                                |
+| Apple account & offer           | Start in 01; ready for 07   | Enrollment status, bundle ID/app record, subscription product IDs/pricing/trials and RevenueCat mapping. Finalize paywall and expiry behavior before 07.   |
 | Supporting designs & formatting | Relevant phase              | Home color variants, Settings rows, reminder defaults, duration rounding and small-screen/accessibility states.                                            |
 
 ## App Store setup — start alongside development
@@ -68,9 +68,9 @@ These remain open in PRD §13. Resolve each with the product owner and update th
 | When                          | Work                                                                                                                                                                                                                                                                                                                                                                            | Finish line                                                                                                                                                 |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 01, in parallel         | Choose individual or organization enrollment; begin/confirm Apple Developer membership and account access. Owner completes required identity/business verification, paid-app agreement, banking and tax details.                                                                                                                                                                | Record status and outstanding items; Apple verification does not prevent local development. Membership and agreements must be ready for distribution/sales. |
-| Phase 01 onward; ready for 08 | Reserve a stable bundle identifier, create the App Store Connect app record and Expo/EAS project, configure signing access. In the existing JustGO RevenueCat project, connect the iOS app/store credentials, create the agreed App Store subscription group/products, and map product → entitlement → offering/paywall. Keep secret credentials out of docs and mobile source. | Matching identifiers and configured sandbox purchase path; final offer decisions settled before billing validation.                                         |
-| During development, before 10 | Use iOS development builds and physical iPhones. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight.                                                                                                                                                                                                                          | Purchase/restore, recovery, challenge loop and Progress pass on the actual binary. External testers may need beta review.                                   |
-| Phase 10                      | Complete App Store metadata, current screenshots, icon, privacy disclosures/policy, support URL, age/content declarations, subscription information and review notes explaining no-signup access. Give reviewers the access needed to inspect the paid app. Submit the first subscription with the app version when required.                                                   | Select the tested build and explicitly submit in App Store Connect for App Review; choose the intended release control and address review feedback.         |
+| Phase 01 onward; ready for 07 | Reserve a stable bundle identifier, create the App Store Connect app record and Expo/EAS project, configure signing access. In the existing JustGO RevenueCat project, connect the iOS app/store credentials, create the agreed App Store subscription group/products, and map product → entitlement → offering/paywall. Keep secret credentials out of docs and mobile source. | Matching identifiers and configured sandbox purchase path; final offer decisions settled before billing validation.                                         |
+| During development, before 09 | Use iOS development builds and physical iPhones. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight.                                                                                                                                                                                                                          | Purchase/restore, recovery, challenge loop and Progress pass on the actual binary. External testers may need beta review.                                   |
+| Phase 09                      | Complete App Store metadata, current screenshots, icon, privacy disclosures/policy, support URL, age/content declarations, subscription information and review notes explaining no-signup access. Give reviewers the access needed to inspect the paid app. Submit the first subscription with the app version when required.                                                   | Select the tested build and explicitly submit in App Store Connect for App Review; choose the intended release control and address review feedback.         |
 | After approval/release        | Verify the public listing and purchase/restore flow. Complete the separate hackathon submission using its current rules and required demo/assets.                                                                                                                                                                                                                               | Record the submitted entry and released build. Do not assume later app updates will be included in judging without checking the event rules.                |
 
 EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does not replace Apple membership or automatically complete listing/review submission. Recheck current requirements during setup; build queues, account verification and review times vary. References: [Expo iOS submission](https://docs.expo.dev/submit/ios/), [Apple enrollment](https://developer.apple.com/programs/enroll/), [first in-app purchase submission](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase).
@@ -165,11 +165,11 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 - Build Router entry gates, Home/Progress tabs, Settings access and focused Success/Reflection routes. Use the agreed feature folders, shared accessible components and typed platform adapters.
 - Implement shared Zod/OpenAPI contracts and HTTP client: typed errors, bounded timeouts, one retry policy, coordinated session renewal, account-scoped query keys, cancellation and stale-response protection.
 - Defer onboarding, welcome screens, questionnaires, onboarding tables and Zustand. Build from the existing approved core screen references. React owns local UI; TanStack Query owns server data. Feature content/actions arrive in their consuming phases.
-- Establish a server entitlement-check boundary and unavailable/unpaid/verified navigation states. Use explicitly isolated test fixtures until phase 08; no production billing bypass. Add consent-aware telemetry interfaces with export disabled until choices exist.
+- Establish a server entitlement-check boundary and unavailable/unpaid/verified navigation states. Use explicitly isolated test fixtures until phase 07; no production billing bypass. Add consent-aware telemetry interfaces with export disabled until choices exist.
 
 #### Keep out of this phase
 
-- No onboarding/welcome flow, persistent query cache, offline journal database, duplicate server-state stores or fabricated challenge/history data. No billing implementation before phase 08.
+- No onboarding/welcome flow, persistent query cache, offline journal database, duplicate server-state stores or fabricated challenge/history data. No billing implementation before phase 07.
 - No assumption that timeout means a write failed; do not stack transport retries under TanStack retries.
 
 #### Ready to hand off when
@@ -217,7 +217,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 #### Implementation and verification order
 
 1. Build the 39O card/deck component with sample challenges in an isolated development/test harness. Keep the iOS simulator open alongside development and use Fast Refresh to tune offsets, tilt, shadow, release thresholds and overlapping timing. Existing presentation-only previews must remain free of domain writes.
-2. Connect the tested deck to real venue queues, prefetching, persisted ordering, acceptance and the active challenge flow. Do not perform frame-by-frame network writes. Exercise the loop with the existing isolated test entitlement fixtures while payments remain phase 08.
+2. Connect the tested deck to real venue queues, prefetching, persisted ordering, acceptance and the active challenge flow. Do not perform frame-by-frame network writes. Exercise the loop with the existing isolated test entitlement fixtures while payments remain phase 07.
 3. Add meaningful automated coverage for queue rotation, independent shared venue placements, color cycling, cancelled gestures, duplicate actions, failed/uncertain saves and recovery. Verify actual motion and buttons in the browser and iOS simulator; automated component tests alone do not establish animation quality. Use a physical iPhone to judge touch responsiveness, smoothness and reduced motion before release.
 
 #### Keep out of this phase
@@ -237,11 +237,11 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 **Saved handoff:** [handoffs/phase-04-challenge-loop.md](handoffs/phase-04-challenge-loop.md)
 
-**Working notes / blocker:** The full local loop, database concurrency/isolation, browser gestures/buttons and native button flow, zero and relaunch are verified. Native touch gestures could not be established through Simulator computer automation; physical-iPhone motion, VoiceOver, large text, Reduce Motion and lock/background checks remain explicit release gates alongside phases 02/03. Migrations 0004–0005 are applied locally, not staging. Streets is the initial venue; empty copy and retry behavior are recorded in the handoff. Production access remains closed until verified billing.
+**Working notes / blocker:** The full local loop, database concurrency/isolation, browser gestures/buttons and native button flow, zero and relaunch are verified. Native touch gestures could not be established through Simulator computer automation; physical-iPhone motion, VoiceOver, large text, Reduce Motion and lock/background checks remain explicit release gates alongside phases 02/03. Migrations 0004–0006 are applied locally, not staging. Streets is the initial venue; empty copy and retry behavior are recorded in the handoff. Production access remains closed until verified billing.
 
-<a id="phase-06"></a>
+<a id="phase-05"></a>
 
-### Phase 06 — Feelings & typed reflections
+### Phase 05 — Feelings & typed reflections
 
 **Status:** Not started  
 **Depends on:** 04  
@@ -269,16 +269,17 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 **Carry forward:** Feeling schema/version, draft/final contract, conflict behavior, iPhone keyboard/device results and the agreed dismissal flow.
 
-**Handoff file to create:** `handoffs/phase-06-reflections.md`
+**Handoff file to create:** `handoffs/phase-05-reflections.md`
 
 **Working notes / blocker:** None recorded.
 
-<a id="phase-07"></a>
+<a id="phase-06"></a>
 
-### Phase 07 — Progress calendar & saved history
+### Phase 06 — Progress calendar & saved history
 
 **Status:** Not started  
-**Depends on:** 06  
+**Depends on:** 05
+
 **Acceptance references:** PRD AC-13–14, 17 · Tech acceptance 5, 9, 12–13, 17
 
 **Outcome:** Users can view the full Progress summary/calendar and read day details and saved reflections.
@@ -304,16 +305,17 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 **Carry forward:** Aggregation definitions, query/index evidence, paging/cache choices, date semantics and saved-reflection interaction.
 
-**Handoff file to create:** `handoffs/phase-07-progress.md`
+**Handoff file to create:** `handoffs/phase-06-progress.md`
 
 **Working notes / blocker:** None recorded.
 
-<a id="phase-08"></a>
+<a id="phase-07"></a>
 
-### Phase 08 — Native subscriptions & reliable billing
+### Phase 07 — Native subscriptions & reliable billing
 
 **Status:** Not started  
-**Depends on:** 07  
+**Depends on:** 06
+
 **Acceptance references:** PRD AC-03 · Tech acceptance 6, 14–17
 
 **Outcome:** A verified purchase unlocks promptly, and later subscription changes recover reliably.
@@ -339,16 +341,17 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 **Carry forward:** Product/entitlement mappings (no secrets), paywall gates, restore policy, event/claim state machines, QStash and cron configuration, failure matrix and replay runbook.
 
-**Handoff file to create:** `handoffs/phase-08-billing.md`
+**Handoff file to create:** `handoffs/phase-07-billing.md`
 
 **Working notes / blocker:** None recorded.
 
-<a id="phase-09"></a>
+<a id="phase-08"></a>
 
-### Phase 09 — Settings, privacy & measurement
+### Phase 08 — Settings, privacy & measurement
 
 **Status:** Not started  
-**Depends on:** 08  
+**Depends on:** 07
+
 **Acceptance references:** PRD AC-15–17 · Tech acceptance 3–4, 8–9, 17
 
 **Outcome:** Users control recovery, private data and preferences; useful measurement respects their choices.
@@ -374,16 +377,17 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 **Carry forward:** Settings scope, recovery/data-control flows, reminder scheduling, consent and event schemas, retention/deletion runbook and redaction evidence.
 
-**Handoff file to create:** `handoffs/phase-09-settings-privacy.md`
+**Handoff file to create:** `handoffs/phase-08-settings-privacy.md`
 
 **Working notes / blocker:** None recorded.
 
-<a id="phase-10"></a>
+<a id="phase-09"></a>
 
-### Phase 10 — Release validation & launch
+### Phase 09 — Release validation & launch
 
 **Status:** Not started  
-**Depends on:** 09  
+**Depends on:** 08
+
 **Acceptance references:** PRD AC-01–06, 08–11, 13–17 · applicable iOS tech acceptance
 
 **Outcome:** The complete paid product is verified, operable and ready for store submission.
@@ -409,7 +413,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 **Carry forward:** Release/build identifiers and commits, acceptance evidence, measured capacity/budgets, known limits, rollback/incident playbooks and post-release verification.
 
-**Handoff file to create:** `handoffs/phase-10-release.md`
+**Handoff file to create:** `handoffs/phase-09-release.md`
 
 **Working notes / blocker:** None recorded.
 
@@ -417,12 +421,13 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 These stages do not count toward first-release readiness. Lock-screen display is deferred until scheduled; Stripe and coaching need separate feature approval. Levels/filters, custom dictation and Android also remain deferred; write their detailed phases when their product rules and target platforms are settled. None is a prerequisite for launch.
 
-<a id="phase-05"></a>
+<a id="phase-10"></a>
 
-### Phase 05 — Lock-screen countdowns
+### Phase 10 — Lock-screen countdowns
 
 **Status:** Not scheduled  
-**Depends on:** 10  
+**Depends on:** 09
+
 **Acceptance references:** PRD AC-06–07, 17 · Tech acceptance 9, 12, 17
 
 **Outcome:** The same accepted challenge is visible on supported lock screens without a JavaScript background timer.
@@ -447,7 +452,7 @@ These stages do not count toward first-release readiness. Lock-screen display is
 
 **Carry forward:** Native module/library configuration, OS support, permission behavior, lifecycle integration and real-device recordings/results.
 
-**Handoff file to create:** `handoffs/phase-05-native-timers.md`
+**Handoff file to create:** `handoffs/phase-10-native-timers.md`
 
 **Working notes / blocker:** None recorded.
 
@@ -456,7 +461,8 @@ These stages do not count toward first-release readiness. Lock-screen display is
 ### Phase 11 — Optional US iOS web checkout
 
 **Status:** Not scheduled  
-**Depends on:** 10  
+**Depends on:** 09
+
 **Acceptance references:** PRD §4.3, §9 · Tech §8; acceptance 7, 14–17
 
 **Outcome:** Eligible users can purchase on the web using the same authenticated app identity.
@@ -489,7 +495,8 @@ These stages do not count toward first-release readiness. Lock-screen display is
 ### Phase 12 — Future AI text coach
 
 **Status:** Not scheduled  
-**Depends on:** 10  
+**Depends on:** 09
+
 **Acceptance references:** PRD §9 · Tech §10; acceptance 11, 16–17
 
 **Outcome:** A separately approved text coach uses bounded, permitted context in the existing backend.

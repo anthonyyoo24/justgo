@@ -73,7 +73,7 @@ Apply migrations with the operator’s separate migration connection before depl
 
 Device state uses a separate non-synchronizing `WhenUnlockedThisDeviceOnly` item. A UserDefaults installation marker selects that installation’s item; UserDefaults contains no secret. Secure state includes only credentials, session metadata and pending identity operations, with no journal or persistent domain cache. Storage errors, malformed contents, and locked Keychain access are failures, never an empty-store result. A missing native module fails visibly; there is no insecure native fallback.
 
-The controller preserves all discovered credentials. Multiple candidates require explicit selection. A late candidate is listed without switching an authenticated account. Recovery keys and explicit transfer provide fallback when sync is unavailable. The recovery UI hides a displayed key when the app backgrounds and rechecks identity on foreground. Final Settings design, exports and deletion UI remain phase 09 work.
+The controller preserves all discovered credentials. Multiple candidates require explicit selection. A late candidate is listed without switching an authenticated account. Recovery keys and explicit transfer provide fallback when sync is unavailable. The recovery UI hides a displayed key when the app backgrounds and rechecks identity on foreground. Final Settings design, exports and deletion UI remain phase 08 work.
 
 The web page is explicitly a development test surface. Its vault lives only in JavaScript memory; reload/closing the tab loses those credentials. It uses real API authentication but proves no Keychain persistence, iCloud sharing or real-device security. Do not point browser testing at valuable user accounts.
 
@@ -81,7 +81,7 @@ References checked during implementation: [Expo SDK 57](https://docs.expo.dev/ve
 
 ## Retention and recovery operations
 
-Do not purge revoked/deleted recovery digests: retaining their tombstones prevents credential resurrection. Session history supports rotation/revocation and uncertain-response recovery; retain it until a reviewed retention policy exists. The phase 09 privacy/deletion work must define policy and backups before release.
+Do not purge revoked/deleted recovery digests: retaining their tombstones prevents credential resurrection. Session history supports rotation/revocation and uncertain-response recovery; retain it until a reviewed retention policy exists. The phase 08 privacy/deletion work must define policy and backups before release.
 
 Rate buckets older than 30 days and unredeemed transfers expired more than 24 hours ago can be removed by the migration operator in bounded batches using their indexed timestamps. No scheduler or production retention job is claimed in phase 02. Protect any future maintenance endpoint separately; do not grant the mobile runtime administrative deletion access. Never run test suites against staging; integration tests refuse non-loopback databases and use unique fixtures in `justgo_test`.
 

@@ -15,6 +15,8 @@ Historical result for the September 16 scope revision: **11 checks passed**, as 
 
 **Reproduction limitation (September 18):** The current checkout does not contain `docs/IMPLEMENTATION_PLAN.html`, which the script reads before running its checks. Restore the matching tracker artifact before rerunning this historical verification. Neither the historical automated result nor the browser results below establish a pass for the current checkout.
 
+**September 26 numbering correction:** The current Markdown plan uses phases 05–09 for reflections through launch and phase 10 for post-launch lock-screen work. This file and `check-plan.mjs` describe the absent historical HTML tracker’s older IDs; they do not validate the renumbered plan. Any restored tracker or saved export needs an explicit ID migration before use.
+
 The checks parse the shipped JavaScript, exercise its actual import/completion validator, inspect internal links and compare Markdown/HTML phase titles, dependencies, gate text and handoff paths.
 
 Coverage includes nine launch stages, three deferred stages, lock-screen phase 05 no longer blocking billing, dependency order, four gates per phase, valid fresh state, completion prerequisites, invalid/oversized import fields, rejection of old v1 exports, JSON round-trip, handoff template/index, isolated v2 storage and dynamic totals. All launch stages can complete while phases 05, 11 and 12 remain deferred.

@@ -43,10 +43,14 @@ export function ChallengeScreen() {
   }, [state.success, focused, router]);
   const queue = state.queues[state.selected];
   const venue = venues.find((v) => v.id === state.selected)!;
+  // Keep the completed card in place while the success route opens. The
+  // controller clears active before navigation, but showing the deck here
+  // would expose it for a frame between the two screens.
+  const visibleAttempt = state.state?.active ?? state.success;
   return (
     <ChallengeLayout
-      title={state.state?.active ? 'Active challenge' : 'Find a challenge'}
-      fillContent={!state.state?.active}
+      title={visibleAttempt ? 'Active challenge' : 'Find a challenge'}
+      fillContent={!visibleAttempt}
     >
       {!!state.error && (
         <View style={styles.notice}>
@@ -62,13 +66,15 @@ export function ChallengeScreen() {
           />
         </View>
       )}
-      {state.state?.active ? (
+      {visibleAttempt ? (
         <ActiveChallenge
-          key={state.state.active.id}
-          attempt={state.state.active}
-          turn={state.queues[state.state.active.card.venue]?.version ?? 0}
+          key={visibleAttempt.id}
+          attempt={visibleAttempt}
+          turn={state.queues[visibleAttempt.card.venue]?.version ?? 0}
           offset={state.clockOffset}
-          disabled={state.busy || !!state.pending || !focused}
+          disabled={
+            state.busy || !!state.pending || !!state.success || !focused
+          }
           finish={challenges.finish}
         />
       ) : (
@@ -140,6 +146,9 @@ export function ActiveChallenge({
 }) {
   const { width, fontScale } = useWindowDimensions();
   const scale = challengeScale(width);
+  // The next queue arrives before the success route opens. Keep this card's
+  // original color instead of briefly applying the next queue's turn.
+  const [cardTurn] = useState(turn);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 500);
@@ -198,7 +207,7 @@ export function ActiveChallenge({
       </View>
       <ChallengeCard
         card={attempt.card}
-        turn={turn}
+        turn={cardTurn}
         venue={attempt.card.venue}
         label={venues.find((v) => v.id === attempt.card.venue)!.label}
       />
@@ -281,8 +290,12 @@ export function SuccessScreen() {
     error?: boolean;
   } | null>(null);
   // Route changes must never render a prior attempt as the requested result.
-  const attempt = result?.id === attemptId ? result?.attempt : null;
-  const error = result?.id === attemptId && result?.error;
+  // The finish response is already server-confirmed. Render it immediately
+  // while the owner-scoped lookup refreshes, without a loading-screen flash.
+  const confirmed = challenges.getSnapshot().success;
+  const recent = confirmed?.id === attemptId ? confirmed : null;
+  const attempt = (result?.id === attemptId ? result?.attempt : null) ?? recent;
+  const error = result?.id === attemptId && result?.error && !recent;
   const router = useRouter();
   useEffect(() => {
     let alive = true;

@@ -42,11 +42,11 @@ Use React Native `StyleSheet` and imported tokens, with no second styling framew
 
 Owner: Anthony (product/design), with implementation measurements recorded in each consuming phase.
 
-- Phase 03: navigation and supporting empty/error states using existing references. Welcome/questionnaire onboarding is deferred; paywall designs belong to phase 08.
+- Phase 03: navigation and supporting empty/error states using existing references. Welcome/questionnaire onboarding is deferred; paywall designs belong to phase 07.
 - Phase 04: implemented per [handoff](handoffs/phase-04-challenge-loop.md). Physical-iPhone motion/large-text/VoiceOver/Reduce Motion acceptance remains open. Original venue illustrations and the lower flourish are extracted from the source image fills; native text and irregular panel geometry remain separate. The [fidelity specification](CHALLENGE_FIDELITY.md) supersedes generic foundation type/spacing defaults for these screens.
-- Phase 06: neutral feeling asset, final dismissal/save behavior and text-input layout without Dictate.
-- Phase 07: saved reflection reading, exact raster-derived calendar styling and duration formatting.
-- Phase 09: approved Settings rows/reminder defaults and accessibility adaptations.
+- Phase 05: neutral feeling asset, final dismissal/save behavior and text-input layout without Dictate.
+- Phase 06: saved reflection reading, exact raster-derived calendar styling and duration formatting.
+- Phase 08: approved Settings rows/reminder defaults and accessibility adaptations.
 
 The foundation preview borrows approved visual elements to verify fonts, controls, layout and connectivity. Its introductory copy is temporary development copy; it does not approve onboarding or implement the challenge loop.
 

@@ -514,7 +514,7 @@ export class IdentityService {
       return issued;
     });
   }
-  // Phase 09 will call this within its confirmed deletion flow before removing private content.
+  // Phase 08 will call this within its confirmed deletion flow before removing private content.
   retireAccount(token: string) {
     return this.withSession(token, async (tx, session) => {
       await tx.execute(

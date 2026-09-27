@@ -21,7 +21,7 @@ Primary destinations: Home · Progress
 Supporting surfaces: Settings · Calendar day sheet
 ```
 
-The first iOS release includes native paid access, recovery, cloud saves, one Level 1 collection with six venue decks, the in-app timer, Success, optional typed reflections, and the complete Progress screen with its calendar and day sheet. Levels and their progression rules, additional category filters, custom dictation, and lock-screen timers are deferred. On September 17, Anthony deferred welcome screens and questionnaire onboarding so implementation can focus on the approved core screens. This is a deferral, not permanent removal. Paywall and native subscriptions remain phase 08; their final designs and offer remain to be specified.
+The first iOS release includes native paid access, recovery, cloud saves, one Level 1 collection with six venue decks, the in-app timer, Success, optional typed reflections, and the complete Progress screen with its calendar and day sheet. Levels and their progression rules, additional category filters, custom dictation, and lock-screen timers are deferred. On September 17, Anthony deferred welcome screens and questionnaire onboarding so implementation can focus on the approved core screens. This is a deferral, not permanent removal. Paywall and native subscriptions remain phase 07; their final designs and offer remain to be specified.
 
 Goals:
 
@@ -333,7 +333,7 @@ These are intentionally unresolved. A final visual layout does not settle the fo
 
 | Decision                             | Proposed default / work needed                                                                                                                                                                                                      |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 08. Keep no-signup entry and native-first paid access.                                                                |
+| Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 07. Keep no-signup entry and native-first paid access.                                                                |
 | Launch catalog                       | Approve the easy Level 1, non-venue-specific challenge copy, durations, helpers, illustrations, safety rules, and useful catalog size. No threshold or venue taxonomy is required before launch.                                    |
 | Home deck indicator                  | Use browsing position within the available general deck, clearly separate from earned progress. Define when its count resets/changes or replace its copy if it is meant to represent curriculum progress.                           |
 | Reflection optionality and dismissal | Retain an optional overall step; allow feeling-only, text-only, or both. Finalize empty/save-button behavior and Back/X save/discard flow.                                                                                          |
