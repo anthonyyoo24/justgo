@@ -207,11 +207,11 @@ Tapping an active date opens a scrollable sheet with:
 
 The **After** indicator uses the same five-choice feeling vocabulary as D1. Missing/skipped feedback is **Not recorded**, never a neutral face. A compact indicator must expose its exact label accessibly; the three sample faces in P31 do not reduce the five-option scale.
 
-Duration means elapsed time between the stored start and completion, including background time and any time after zero. It is not the configured time limit or remaining countdown. The daily duration is the sum for completed entries only. Final rounding/display rules are an open formatting decision.
+Duration means elapsed time between the stored start and completion, including background time and any time after zero. It is not the configured time limit or remaining countdown. The daily duration is the sum for completed entries only. Phase 06 displays elapsed hours/minutes/seconds without rounding.
 
 **Do not include the Day note label, quote, input, or any day-level note data.** The final compact rows also do not require the old PRD’s two ratings or a visible level label on every row. Preserve the original level and challenge revision in the underlying history.
 
-Saved per-attempt reflection text needs a reading interaction, but P31 does not specify one once Day note is removed. The proposed follow-up design is to expand/tap a challenge entry to read its full instruction, feeling, and saved reflection. This is an unresolved supporting state, not permission to reintroduce a day note or standalone journal destination.
+Saved per-attempt reflection text is read from an expanded challenge entry showing its full instruction, feeling and submitted reflection. Anthony approved reading only for phase 06 on September 27; this does not add a day note or standalone journal destination. Editing and deletion controls are outside phase 06.
 
 ### 5.8 Settings
 
@@ -336,6 +336,6 @@ The remaining rows are unresolved. The reflection save and dismissal rule was ap
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 07. Keep no-signup entry and native-first paid access.                                                   |
 | Reflection optionality and dismissal | Approved September 27: optional overall step; feeling-only, text-only or both; Skip when empty, Save Reflection when either has input; empty Back/X skips, dirty Back/X offers save, keep editing or discard and skip. |
-| Reading saved reflection text        | Add a per-attempt expansion/detail interaction from a day entry; confirm editing/deletion affordances and obtain a matching design. Do not use a day-level note.                                                       |
+| Reading saved reflection text        | Approved September 27: expand a day entry to read its submitted per-attempt reflection. Phase 06 has no editing/deletion controls. Do not use a day-level note.                                                        |
 | Future levels — not a launch blocker | Decide thresholds, unlocking/skipping, partial/final-level behavior and treatment of prior Level 1 completions when scheduling levels. Preserve history now; do not implement hidden progression.                      |
-| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, day-duration rounding, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.      |
+| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.                             |

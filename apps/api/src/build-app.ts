@@ -2,6 +2,8 @@ import { ChallengeService } from './challenges/service.js';
 import { challengeRoutes } from './challenges/routes.js';
 import { ReflectionService } from './reflections/service.js';
 import { reflectionRoutes } from './reflections/routes.js';
+import { ProgressService } from './progress/service.js';
+import { progressRoutes } from './progress/routes.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
@@ -72,6 +74,15 @@ export function buildApp(
           new ReflectionService(options.identity!, options.entitlementReader),
         ),
       { prefix: '/v1/reflections' },
+    );
+  if (options.identity)
+    app.register(
+      async (scope) =>
+        progressRoutes(
+          scope,
+          new ProgressService(options.identity!, options.entitlementReader),
+        ),
+      { prefix: '/v1/progress' },
     );
   if (options.identity)
     app.register(

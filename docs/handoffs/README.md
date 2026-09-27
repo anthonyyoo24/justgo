@@ -4,6 +4,8 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
+September 27: [Phase 06 implementation](phase-06-progress.md) is in progress on `codex/phase-06`. Local history API/database checks and the in-app browser Progress preview pass. The phase remains open for physical-iPhone accessibility/gesture acceptance and staging deployment, with earlier dependency gates also open.
+
 September 27: [Phase 05 implementation](phase-05-reflections.md) now connects confirmed Success to the optional Paper-based feelings and typed reflection screen. The revisioned API/database flow, retry/conflict behavior, automated tests and in-app browser preview pass locally. Real-iPhone accessibility/keyboard checks and staging deployment remain open, so Phase 05 is In progress.
 
 September 26: [Phase 04 implementation](phase-04-challenge-loop.md) has six venue decks, 61 placements, reliable attempts, timer, direct give-up and the full confirmed Success view. The handoff includes the later card/content, queue-handoff and preview corrections. Current automated checks and earlier browser/native button/relaunch checks pass; physical-device acceptance and deployment remain open. [Current scope decisions](../PHASE_04_SCOPE.md) supersede earlier general-only and no-replay proposals. Apple signing/device gates remain open.
@@ -37,7 +39,7 @@ The launch path was aligned with number order on September 26: reflections throu
 | 03 — App shell & shared API                  | In progress   | 02           | [phase-03-app-shell.md](phase-03-app-shell.md)           |
 | 04 — Challenge deck & reliable attempts      | In progress   | 03           | [phase-04-challenge-loop.md](phase-04-challenge-loop.md) |
 | 05 — Feelings & typed reflections            | In progress   | 04           | [phase-05-reflections.md](phase-05-reflections.md)       |
-| 06 — Progress calendar & saved history       | Not started   | 05           | `phase-06-progress.md`                                   |
+| 06 — Progress calendar & saved history       | In progress   | 05           | [phase-06-progress.md](phase-06-progress.md)             |
 | 07 — Native subscriptions & reliable billing | Not started   | 06           | `phase-07-billing.md`                                    |
 | 08 — Settings, privacy & measurement         | Not started   | 07           | `phase-08-settings-privacy.md`                           |
 | 09 — Release validation & launch             | Not started   | 08           | `phase-09-release.md`                                    |

@@ -1,1 +1,1 @@
-export { ProgressScreen as default } from '../../features/shell/ShellScreens';
+export { ProgressScreen as default } from '../../features/progress/ProgressScreen';

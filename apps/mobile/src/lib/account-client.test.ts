@@ -45,6 +45,27 @@ const failure = (code: string) => ({
   ok: false,
   json: async () => ({ code, requestId: 'safe-id' }),
 });
+it('accepts encoded read query parameters only within the API origin and v1 path', async () => {
+  const fetcher = jest.fn(async (url: string) => {
+    expect(url).toContain('/v1/progress?');
+    return ok();
+  });
+  const { client } = setup(fetcher);
+  await client.request(
+    '/v1/progress?month=2026-09&timeZone=America%2FToronto',
+    okSchema,
+  );
+  expect(fetcher.mock.calls[0]![0]).toBe(
+    'http://localhost:3000/v1/progress?month=2026-09&timeZone=America%2FToronto',
+  );
+  await expect(
+    client.request('/v1/../private?x=1', okSchema),
+  ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  await expect(
+    client.request('/v1/test#fragment', okSchema),
+  ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
 it('coordinates concurrent expired-session recovery and replays each read once', async () => {
   const fetcher = jest.fn(async (_url, init) =>
     init.headers.authorization === 'Bearer old-token'

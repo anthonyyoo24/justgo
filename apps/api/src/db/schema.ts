@@ -242,6 +242,9 @@ export const attempts = appSchema.table(
       .on(t.userId)
       .where(sql`${t.status} = 'active'`),
     index('attempt_owner_end_idx').on(t.userId, t.endedAt),
+    index('attempt_history_day_idx')
+      .on(t.userId, t.completionDate, t.endedAt, t.id)
+      .where(sql`${t.status} = 'completed'`),
     check(
       'attempt_status',
       sql`${t.status} in ('active','completed','given_up')`,

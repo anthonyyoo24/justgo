@@ -1,9 +1,10 @@
 # JustGO — Implementation Plan
 
-**Version:** 7 · Updated September 26, 2026
+**Version:** 8 · Updated September 27, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
+Phase 06 Progress/history now passes local automated and browser checks; physical-device acceptance and staging deployment remain open. See the [phase 06 handoff](handoffs/phase-06-progress.md).
 
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](PRD.md) · [Tech stack](TECH_STACK.md)  
@@ -38,7 +39,7 @@ This is the Markdown companion to the saved HTML plan: nine iOS release stages a
 | [03 — App shell & shared API](#phase-03)                  | The app restores the right account and provides consistent navigation and network behavior.             | 02         | In progress   |
 | [04 — Challenge deck & reliable attempts](#phase-04)      | Browse → accept → complete or give up works against real cloud data exactly once.                       | 03         | In progress   |
 | [05 — Feelings & typed reflections](#phase-05)            | A completed attempt can have optional private feedback and typed reflection text.                       | 04         | In progress   |
-| [06 — Progress calendar & saved history](#phase-06)       | Users can view the full Progress summary/calendar and read day details and saved reflections.           | 05         | Not started   |
+| [06 — Progress calendar & saved history](#phase-06)       | Users can view the full Progress summary/calendar and read day details and saved reflections.           | 05         | In progress   |
 | [07 — Native subscriptions & reliable billing](#phase-07) | A verified purchase unlocks promptly, and later subscription changes recover reliably.                  | 06         | Not started   |
 | [08 — Settings, privacy & measurement](#phase-08)         | Users control recovery, private data and preferences; useful measurement respects their choices.        | 07         | Not started   |
 | [09 — Release validation & launch](#phase-09)             | The complete paid product is verified, operable and ready for store submission.                         | 08         | Not started   |
@@ -278,7 +279,8 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 06 — Progress calendar & saved history
 
-**Status:** Not started  
+**Status:** In progress
+
 **Depends on:** 05
 
 **Acceptance references:** PRD AC-13–14, 17 · Tech acceptance 5, 9, 12–13, 17
@@ -300,15 +302,15 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 #### Ready to hand off when
 
 - [ ] The full Progress summary/calendar and tappable day sheet match the approved references, with honest empty/error states and no Day note block.
-- [ ] Streaks, monthly totals and ordered day entries pass midnight, DST, travel, missing feedback and multi-completion cases.
+- [x] Streaks, monthly totals and ordered day entries pass midnight, DST, travel, missing feedback and multi-completion cases.
 - [ ] Saved reflection reading/edit/delete scope is agreed and implemented; long histories, sheet gestures and accessible labels work.
-- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Aggregation definitions, query/index evidence, paging/cache choices, date semantics and saved-reflection interaction.
 
-**Handoff file to create:** `handoffs/phase-06-progress.md`
+**Saved handoff:** [handoffs/phase-06-progress.md](handoffs/phase-06-progress.md)
 
-**Working notes / blocker:** None recorded.
+**Working notes / blocker:** Local implementation and browser/API tests pass on `codex/phase-06`. Anthony confirmed saved reflections are read-only in this phase; submitted text is available from an expanded attempt entry in the day sheet. Physical-iPhone sheet/accessibility acceptance and staging deployment remain open, alongside Phase 05 dependency gates.
 
 <a id="phase-07"></a>
 

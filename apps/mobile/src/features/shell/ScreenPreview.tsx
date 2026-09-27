@@ -2,13 +2,94 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Redirect } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ProgressScreen } from './ShellScreens';
+import { ProgressView } from '../progress/ProgressView';
+import { moveMonth } from '../progress/calendar';
 import { DeckPreview } from '../challenges/DeckPreview';
 import { SuccessView } from '../challenges/SuccessView';
 import { ReflectionView } from '../reflections/ReflectionView';
-import type { FeelingCode } from '@justgo/contracts';
+import type {
+  FeelingCode,
+  ProgressEntry,
+  ProgressResponse,
+} from '@justgo/contracts';
 import { NavigationIcon } from '../../components/NavigationIcon';
 import { colors, spacing, typography } from '../../theme/tokens';
+const previewEntries: ProgressEntry[] = [
+  {
+    attemptId: '00000000-0000-4000-8000-000000000001',
+    completedAt: '2026-09-18T13:15:00.000Z',
+    timeZone: 'America/Toronto',
+    elapsedSeconds: 122,
+    cardId: 'preview-card-1',
+    venue: 'streets',
+    challengeId: 'preview-challenge-1',
+    revisionId: 'preview-revision-1',
+    levelId: 'level-1',
+    instruction: 'Say hello to someone',
+    feelingVersion: 1,
+    reflectionStatus: 'submitted',
+    feeling: 'about_the_same',
+    reflectionText: 'I felt more at ease with each try.',
+  },
+  {
+    attemptId: '00000000-0000-4000-8000-000000000002',
+    completedAt: '2026-09-18T16:40:00.000Z',
+    timeZone: 'America/Toronto',
+    elapsedSeconds: 302,
+    cardId: 'preview-card-2',
+    venue: 'streets',
+    challengeId: 'preview-challenge-2',
+    revisionId: 'preview-revision-2',
+    levelId: 'level-1',
+    instruction: 'Ask for a recommendation',
+    feelingVersion: 1,
+    reflectionStatus: 'skipped',
+    feeling: null,
+    reflectionText: null,
+  },
+  {
+    attemptId: '00000000-0000-4000-8000-000000000003',
+    completedAt: '2026-09-18T22:10:00.000Z',
+    timeZone: 'America/Toronto',
+    elapsedSeconds: 185,
+    cardId: 'preview-card-3',
+    venue: 'park',
+    challengeId: 'preview-challenge-3',
+    revisionId: 'preview-revision-3',
+    levelId: 'level-1',
+    instruction: 'Say hello to someone',
+    feelingVersion: 1,
+    reflectionStatus: 'submitted',
+    feeling: 'a_little_better',
+    reflectionText: null,
+  },
+];
+const previewMonth: ProgressResponse = {
+  month: '2026-09',
+  today: '2026-09-18',
+  currentStreak: 7,
+  bestStreak: 12,
+  totalReps: 63,
+  monthlyReps: 21,
+  activeDays: 12,
+  days: [
+    [1, 2],
+    [3, 1],
+    [5, 2],
+    [8, 1],
+    [10, 2],
+    [12, 1],
+    [13, 2],
+    [14, 1],
+    [15, 3],
+    [16, 1],
+    [17, 2],
+    [18, 3],
+  ].map(([day, reps]) => ({
+    date: `2026-09-${String(day).padStart(2, '0')}`,
+    reps: reps!,
+  })),
+};
 // Presentation fixtures only. No API, account impersonation, or entitlement override.
 export function ScreenPreview({
   simulateSkipFailure = false,
@@ -16,6 +97,8 @@ export function ScreenPreview({
   simulateSkipFailure?: boolean;
 }) {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
+  const [progressMonth, setProgressMonth] = useState('2026-09');
+  const [progressDay, setProgressDay] = useState<string | null>(null);
   const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
   const [feeling, setFeeling] = useState<FeelingCode | null>(null);
   const [reflection, setReflection] = useState('');
@@ -86,7 +169,38 @@ export function ScreenPreview({
       {tab === 'home' ? (
         <DeckPreview insetTop={false} onCompleted={() => setStep('success')} />
       ) : (
-        <ProgressScreen insetTop={false} />
+        <ProgressView
+          insetTop={false}
+          month={progressMonth}
+          data={
+            progressMonth === '2026-09'
+              ? previewMonth
+              : {
+                  ...previewMonth,
+                  month: progressMonth,
+                  monthlyReps: 0,
+                  activeDays: 0,
+                  days: [],
+                }
+          }
+          selectedDate={progressDay}
+          day={
+            progressDay
+              ? {
+                  date: progressDay,
+                  totalReps: 3,
+                  totalElapsedSeconds: 609,
+                  entries: previewEntries,
+                }
+              : undefined
+          }
+          onMonth={(offset) => {
+            setProgressDay(null);
+            setProgressMonth((month) => moveMonth(month, offset));
+          }}
+          onOpenDay={setProgressDay}
+          onCloseDay={() => setProgressDay(null)}
+        />
       )}
       <SafeAreaView edges={['bottom']} style={styles.nav}>
         <View style={styles.row}>
