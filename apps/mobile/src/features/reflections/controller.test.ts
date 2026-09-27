@@ -60,7 +60,7 @@ it('saves text alone and retries an uncertain final write with the same action',
   controller.setText('I tried.');
   await controller.submit();
   expect(controller.getSnapshot().text).toBe('I tried.');
-  expect(controller.getSnapshot().pendingFinal).toBe(true);
+  expect(controller.getSnapshot().pendingAction).toBe('final');
   expect(finished).not.toHaveBeenCalled();
   await controller.submit();
   const first = request.mock.calls[1][2].body;
@@ -68,6 +68,33 @@ it('saves text alone and retries an uncertain final write with the same action',
   expect(first).toEqual(second);
   expect(first.feeling).toBeNull();
   expect(first.text).toBe('I tried.');
+  expect(finished).toHaveBeenCalledTimes(1);
+  controller.dispose();
+});
+
+it('keeps a failed discard-and-skip retry identified as a skip', async () => {
+  const request = jest
+    .fn()
+    .mockResolvedValueOnce(record())
+    .mockRejectedValueOnce(new ApiError('NETWORK'))
+    .mockResolvedValueOnce(record({ revision: 1, status: 'skipped' }));
+  const { controller, finished } = make(request);
+  await controller.load();
+  controller.setText('An unfinished note');
+
+  await controller.discard();
+  expect(controller.getSnapshot()).toMatchObject({
+    text: 'An unfinished note',
+    pendingAction: 'skip',
+    error: 'Couldn’t skip. Retry to leave safely.',
+  });
+  expect(finished).not.toHaveBeenCalled();
+
+  await controller.submit();
+  expect(request.mock.calls[1][0]).toBe(`/v1/reflections/${attemptId}/skip`);
+  expect(request.mock.calls[2][0]).toBe(`/v1/reflections/${attemptId}/skip`);
+  expect(request.mock.calls[2][2].body).toEqual(request.mock.calls[1][2].body);
+  expect(controller.getSnapshot().pendingAction).toBeNull();
   expect(finished).toHaveBeenCalledTimes(1);
   controller.dispose();
 });

@@ -106,7 +106,6 @@ export function LowerFlourish({ scale = 1 }: { scale?: number }) {
     <Svg
       testID="challenge-lower-flourish"
       aria-hidden
-      accessible={false}
       width={88 * scale}
       height={27 * scale}
       viewBox="0 0 352 108"

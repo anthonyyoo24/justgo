@@ -142,3 +142,46 @@ it('replaces the submit label with a centered loading ring during submission', (
   expect(screen.getByText('Save Reflection')).toBeTruthy();
   expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
 });
+
+it('labels a failed skip retry correctly even while unsaved text remains visible', () => {
+  const base = props();
+  const screen = render(
+    <ReflectionView
+      {...base}
+      text="An unfinished note"
+      pendingAction="skip"
+      locked
+      error="Couldn’t skip. Retry to leave safely."
+    />,
+  );
+  expect(screen.getByRole('button', { name: 'Retry Skip' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Save Reflection' })).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Close reflection' }),
+  ).toBeDisabled();
+  fireEvent.press(screen.getByRole('button', { name: 'Retry Skip' }));
+  expect(base.onSubmit).toHaveBeenCalledTimes(1);
+
+  screen.rerender(
+    <ReflectionView
+      {...base}
+      text="An unfinished note"
+      pendingAction="skip"
+      locked
+      busy
+    />,
+  );
+  expect(
+    screen.getByRole('button', { name: 'Skipping reflection' }),
+  ).toBeDisabled();
+
+  screen.rerender(
+    <ReflectionView
+      {...base}
+      text="An unfinished note"
+      pendingAction="final"
+      locked
+    />,
+  );
+  expect(screen.getByRole('button', { name: 'Retry Save' })).toBeTruthy();
+});

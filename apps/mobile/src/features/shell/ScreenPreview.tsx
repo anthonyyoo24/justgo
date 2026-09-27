@@ -10,13 +10,19 @@ import type { FeelingCode } from '@justgo/contracts';
 import { NavigationIcon } from '../../components/NavigationIcon';
 import { colors, spacing, typography } from '../../theme/tokens';
 // Presentation fixtures only. No API, account impersonation, or entitlement override.
-export function ScreenPreview() {
+export function ScreenPreview({
+  simulateSkipFailure = false,
+}: {
+  simulateSkipFailure?: boolean;
+}) {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
   const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
   const [feeling, setFeeling] = useState<FeelingCode | null>(null);
   const [reflection, setReflection] = useState('');
   const [dismissOpen, setDismissOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'skip' | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -34,6 +40,8 @@ export function ScreenPreview() {
       setReflection('');
       setDismissOpen(false);
       setSubmitting(false);
+      setPendingAction(null);
+      setError(null);
     };
     return (
       <ReflectionView
@@ -53,8 +61,17 @@ export function ScreenPreview() {
         }
         dismissOpen={dismissOpen}
         busy={submitting}
+        locked={pendingAction !== null}
+        pendingAction={pendingAction}
+        error={error}
         onKeepEditing={() => setDismissOpen(false)}
-        onDiscard={done}
+        onDiscard={() => {
+          if (simulateSkipFailure) {
+            setDismissOpen(false);
+            setPendingAction('skip');
+            setError('Couldn’t skip. Retry to leave safely.');
+          } else done();
+        }}
       />
     );
   }

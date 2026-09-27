@@ -77,7 +77,8 @@ export function ReflectionScreen() {
       onSubmit={controller.submit}
       onClose={controller.close}
       busy={state.saving}
-      locked={state.pendingFinal || state.conflict}
+      locked={state.pendingAction !== null || state.conflict}
+      pendingAction={state.pendingAction}
       error={state.error}
       draftError={state.draftError}
       onRetryDraft={state.draftError ? controller.retryDraft : undefined}

@@ -26,7 +26,7 @@ export type ReflectionSnapshot = Form & {
   terminalConflict: boolean;
   dismissOpen: boolean;
   error: string | null;
-  pendingFinal: boolean;
+  pendingAction: 'final' | 'skip' | null;
 };
 
 const empty: Form = { feeling: null, text: '' };
@@ -63,7 +63,7 @@ export class ReflectionController {
     terminalConflict: false,
     dismissOpen: false,
     error: null,
-    pendingFinal: false,
+    pendingAction: null,
   };
 
   constructor(
@@ -127,7 +127,7 @@ export class ReflectionController {
       conflict: false,
       terminalConflict: false,
       dismissOpen: false,
-      pendingFinal: false,
+      pendingAction: null,
       error: null,
     });
   }
@@ -235,7 +235,9 @@ export class ReflectionController {
   };
   submit = () => {
     this.publish({ dismissOpen: false });
-    return this.finish(hasInput(this.snapshot) ? 'final' : 'skip');
+    return this.finish(
+      this.finalRetry?.kind ?? (hasInput(this.snapshot) ? 'final' : 'skip'),
+    );
   };
   private async finish(kind: 'final' | 'skip'): Promise<boolean> {
     if (
@@ -245,13 +247,18 @@ export class ReflectionController {
     )
       return false;
     this.clearTimer();
-    this.publish({ saving: true, error: null });
+    this.publish({
+      saving: true,
+      pendingAction: this.finalRetry?.kind ?? kind,
+      error: null,
+    });
     if (this.draftInFlight) await this.draftInFlight;
     if (this.draftRetry) {
       const resolved = await this.saveDraft();
       if (!resolved) {
         this.publish({
           saving: false,
+          pendingAction: null,
           error:
             'Your draft has not saved yet. Retry the draft, then try again.',
         });
@@ -259,7 +266,7 @@ export class ReflectionController {
       }
     }
     if (this.snapshot.conflict) {
-      this.publish({ saving: false });
+      this.publish({ saving: false, pendingAction: null });
       return false;
     }
     if (!this.finalRetry) {
@@ -278,7 +285,6 @@ export class ReflectionController {
       this.finalRetry = { kind, body };
     }
     const action = this.finalRetry;
-    this.publish({ pendingFinal: true });
     try {
       await this.client.request(
         `${pathFor(this.attemptId)}/${action.kind}`,
@@ -289,7 +295,7 @@ export class ReflectionController {
       this.publish({
         phase: 'already',
         saving: false,
-        pendingFinal: false,
+        pendingAction: null,
         error: null,
       });
       if (this.alive) this.onFinished();
@@ -299,14 +305,14 @@ export class ReflectionController {
         this.finalRetry = null;
         this.publish({
           conflict: true,
-          pendingFinal: false,
+          pendingAction: null,
           error:
             'This reflection changed on another device. Choose which version to keep.',
         });
       } else {
         this.publish({
           error:
-            kind === 'skip'
+            action.kind === 'skip'
               ? 'Couldn’t skip. Retry to leave safely.'
               : 'Couldn’t save. Your reflection is still here. Retry save.',
         });

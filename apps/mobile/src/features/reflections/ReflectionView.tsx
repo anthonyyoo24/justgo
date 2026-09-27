@@ -95,6 +95,7 @@ export function ReflectionView({
   onClose,
   busy = false,
   locked = false,
+  pendingAction = null,
   error,
   draftError = false,
   onRetryDraft,
@@ -113,6 +114,7 @@ export function ReflectionView({
   onClose: () => void;
   busy?: boolean;
   locked?: boolean;
+  pendingAction?: 'final' | 'skip' | null;
   error?: string | null;
   draftError?: boolean;
   onRetryDraft?: (() => void) | undefined;
@@ -127,7 +129,18 @@ export function ReflectionView({
   const scale = Math.min(width, 390) / 390;
   const headerScale = challengeScale(width);
   const hasInput = feeling !== null || text.trim().length > 0;
-  const buttonLabel = hasInput ? 'Save Reflection' : 'Skip';
+  const buttonLabel =
+    pendingAction === 'skip'
+      ? 'Retry Skip'
+      : pendingAction === 'final'
+        ? 'Retry Save'
+        : hasInput
+          ? 'Save Reflection'
+          : 'Skip';
+  const busyLabel =
+    pendingAction === 'skip' || (!pendingAction && !hasInput)
+      ? 'Skipping reflection'
+      : 'Saving reflection';
   const size = 60 * scale;
   return (
     <SafeAreaView
@@ -312,13 +325,7 @@ export function ReflectionView({
         <View style={[styles.footer, { paddingHorizontal: 15 * scale }]}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={
-              busy
-                ? hasInput
-                  ? 'Saving reflection'
-                  : 'Skipping reflection'
-                : buttonLabel
-            }
+            accessibilityLabel={busy ? busyLabel : buttonLabel}
             accessibilityState={{ disabled: busy || conflict, busy }}
             disabled={busy || conflict}
             onPress={onSubmit}
