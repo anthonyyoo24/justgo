@@ -21,6 +21,8 @@ Updated September 27, 2026. Anthony owns product/account decisions; the implemen
 | Settings rows/reminder defaults                                                 | Anthony                        | Before 09                       | Open.                                                                                                                                                                                            |
 | Future levels/credit/taxonomy, Android, dictation, lock-screen display          | Anthony                        | Respective deferred phase       | Intentionally deferred; not launch blockers.                                                                                                                                                     |
 
+September 27 reflection follow-up: tapping the selected face again clears the feeling. “Choose one.” stays visible, and any written reflection remains intact.
+
 Never treat Paper's sample counts, preselected feelings, dates or content as approved defaults. No paid-access bypass, fake user account, permanent local journal or domain table has been added in phase 01.
 
 ## September 17 phase 02 implementation decisions

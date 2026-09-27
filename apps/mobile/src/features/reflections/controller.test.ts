@@ -96,6 +96,34 @@ it('uses the confirmed draft revision when submitting a feeling', async () => {
   controller.dispose();
 });
 
+it('clears an autosaved feeling and can skip when the form is empty again', async () => {
+  const request = jest
+    .fn()
+    .mockResolvedValueOnce(record())
+    .mockResolvedValueOnce(
+      record({ revision: 1, status: 'draft', feeling: 'a_little_better' }),
+    )
+    .mockResolvedValueOnce(record({ revision: 2, status: 'draft' }))
+    .mockResolvedValueOnce(record({ revision: 3, status: 'skipped' }));
+  const { controller, finished } = make(request);
+  await controller.load();
+  controller.setFeeling('a_little_better');
+  await controller.retryDraft();
+  controller.setFeeling(null);
+  await controller.retryDraft();
+  expect(request.mock.calls[2][2].body).toMatchObject({
+    expectedRevision: 1,
+    feeling: null,
+    text: null,
+  });
+  expect(controller.getSnapshot().feeling).toBeNull();
+  await controller.submit();
+  expect(request.mock.calls[3][0]).toBe(`/v1/reflections/${attemptId}/skip`);
+  expect(request.mock.calls[3][2].body.expectedRevision).toBe(2);
+  expect(finished).toHaveBeenCalledTimes(1);
+  controller.dispose();
+});
+
 it('keeps local edits after a conflicting draft and requires an explicit resolution', async () => {
   jest.useFakeTimers();
   const request = jest

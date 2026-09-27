@@ -166,6 +166,7 @@ Below the feeling choices, provide **Your reflection — optional**, the prompts
 
 - The reflection step remains optional, preserving the previous PRD’s optionality. Skipping never affects a completed rep or streak.
 - **Approved September 27:** allow a feeling alone, nonempty text alone, or both. With neither, the bottom action says **Skip**; otherwise it says **Save Reflection**. An empty submission records a skip, never a fabricated neutral answer.
+- Tapping the selected face again clears the feeling choice without changing typed text. The visible prompt remains “Choose one.”
 - Back/X provides an explicit route out. With no input it skips; with input it offers Save Reflection, Keep editing, or Discard and skip. A cloud draft is never silently treated as submitted.
 - Save reflection persists the selected feeling and/or text for that attempt before returning Home. Preserve unsaved input and offer retry after failure.
 - Autosaved cloud drafts are separate from submitted feelings/final reflections. A draft must not appear as completed feedback in history or analytics.

@@ -142,7 +142,7 @@ export class ReflectionController {
       void this.saveDraft();
     }, 700);
   }
-  setFeeling(feeling: FeelingCode) {
+  setFeeling(feeling: FeelingCode | null) {
     if (
       this.snapshot.phase !== 'ready' ||
       this.snapshot.saving ||

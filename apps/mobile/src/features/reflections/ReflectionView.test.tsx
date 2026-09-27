@@ -28,6 +28,11 @@ it('starts unselected and offers Skip until a feeling or written text is present
     screen.getByRole('radio', { name: 'A little bit better' }).props
       .accessibilityState.checked,
   ).toBe(true);
+  fireEvent.press(screen.getByRole('radio', { name: 'A little bit better' }));
+  expect(base.onFeelingChange).toHaveBeenLastCalledWith(null);
+  screen.rerender(<ReflectionView {...base} feeling={null} />);
+  expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
+  expect(screen.getByText('Choose one.')).toBeTruthy();
   screen.rerender(<ReflectionView {...base} text="A small win" />);
   expect(screen.getByRole('button', { name: 'Save Reflection' })).toBeTruthy();
   screen.rerender(<ReflectionView {...base} text="   " />);

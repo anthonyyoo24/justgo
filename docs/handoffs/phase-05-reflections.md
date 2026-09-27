@@ -86,3 +86,4 @@ The authenticated mobile UI against a live account and physical iPhone text/keyb
 - Handoff index and Phase 05 plan status updated September 27, 2026.
 - The historical HTML tracker is absent from this checkout; no browser-local export is authoritative.
 - PRD §5.4, `DECISIONS.md` and `DESIGN.md` reflect the approved behavior.
+- September 27 follow-up: tapping the selected face again clears only that feeling. “Choose one.” remains visible; the button returns to Skip only when text is also empty. Component and controller tests cover clearing an autosaved feeling, and the updated native/browser preview was rechecked.

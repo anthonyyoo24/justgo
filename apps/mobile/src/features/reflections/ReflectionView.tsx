@@ -47,7 +47,7 @@ export function ReflectionView({
 }: {
   feeling: FeelingCode | null;
   text: string;
-  onFeelingChange: (value: FeelingCode) => void;
+  onFeelingChange: (value: FeelingCode | null) => void;
   onTextChange: (value: string) => void;
   onSubmit: () => void;
   onClose: () => void;
@@ -140,13 +140,16 @@ export function ReflectionView({
                   key={option.code}
                   accessibilityRole="radio"
                   accessibilityLabel={option.label}
+                  accessibilityHint={
+                    selected ? 'Tap again to clear this feeling' : undefined
+                  }
                   accessibilityState={{
                     checked: selected,
                     disabled: busy || locked,
                   }}
                   aria-checked={selected}
                   disabled={busy || locked}
-                  onPress={() => onFeelingChange(option.code)}
+                  onPress={() => onFeelingChange(selected ? null : option.code)}
                   style={styles.feelingChoice}
                   testID={`feeling-${option.code}`}
                 >
