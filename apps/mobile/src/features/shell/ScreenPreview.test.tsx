@@ -50,7 +50,7 @@ it('previews Success then optional Reflection without saving activity', () => {
   expect(screen.getByText('How do you feel?')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
-  expect(screen.getByText('Skip')).toBeTruthy();
+  expect(screen.queryByText('Skip')).toBeNull();
   expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
   expect(
     screen.getByRole('button', { name: 'Skipping reflection' }),

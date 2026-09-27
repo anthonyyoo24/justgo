@@ -115,14 +115,16 @@ it('matches the challenge screens’ top header typography', () => {
   expect(reflectionHeader.letterSpacing).toBe(challengeHeader.letterSpacing);
 });
 
-it('keeps Skip and Save Reflection labels steady with a spinner during submission', () => {
+it('replaces the submit label with a centered loading ring during submission', () => {
   const base = props();
   const screen = render(<ReflectionView {...base} />);
   expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
   screen.rerender(<ReflectionView {...base} busy />);
-  expect(screen.getByText('Skip')).toBeTruthy();
+  expect(screen.queryByText('Skip')).toBeNull();
   expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
-  expect(screen.queryByText(/skipping|saving/i)).toBeNull();
+  expect(
+    StyleSheet.flatten(screen.getByTestId('reflection-submit').props.style),
+  ).toMatchObject({ alignItems: 'center', justifyContent: 'center' });
   expect(
     screen.getByRole('button', { name: 'Skipping reflection' }).props
       .accessibilityState,
@@ -131,9 +133,12 @@ it('keeps Skip and Save Reflection labels steady with a spinner during submissio
     busy: true,
   });
   screen.rerender(<ReflectionView {...base} text="A small win" busy />);
-  expect(screen.getByText('Save Reflection')).toBeTruthy();
+  expect(screen.queryByText('Save Reflection')).toBeNull();
   expect(
     screen.getByRole('button', { name: 'Saving reflection' }),
   ).toBeTruthy();
   expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+  screen.rerender(<ReflectionView {...base} text="A small win" />);
+  expect(screen.getByText('Save Reflection')).toBeTruthy();
+  expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
 });

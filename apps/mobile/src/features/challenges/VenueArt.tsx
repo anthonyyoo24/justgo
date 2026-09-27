@@ -4,7 +4,8 @@ import {
   View,
   type ImageSourcePropType,
 } from 'react-native';
-import type { ChallengeCardTheme } from '../../theme/tokens';
+import Svg, { Path } from 'react-native-svg';
+import { colors, type ChallengeCardTheme } from '../../theme/tokens';
 
 const sources: Record<string, ImageSourcePropType> = {
   streets: require('../../../assets/challenges/streets.png'),
@@ -32,6 +33,8 @@ const artworkCenterOffset: Record<string, number> = {
   bookstore: 0.875,
   bars: -0.875,
 };
+const lowerFlourishPath =
+  'M10 38 C38.4 25.7 73.8 15.3 112 19 C134.9 20.7 159.1 25.5 158 52 C153.1 68.7 140.6 84 120 82 C107.4 75.9 119.1 62.1 128 59 C140.1 53.7 153.4 51.2 168 52 C210.9 50.3 234.6 71.6 264 83 C281.8 90.8 313.9 91.7 331 83';
 // Original Paper illustration pixels, cropped and paper-matted by the documented
 // extraction script. Text, controls and panel geometry stay native and scalable.
 export function VenueArt({
@@ -100,12 +103,33 @@ export function PaperTexture() {
 }
 export function LowerFlourish({ scale = 1 }: { scale?: number }) {
   return (
-    <Image
-      source={require('../../../assets/challenges/lower-flourish.png')}
+    <Svg
+      testID="challenge-lower-flourish"
       aria-hidden
       accessible={false}
-      resizeMode="contain"
+      width={88 * scale}
+      height={27 * scale}
+      viewBox="0 0 352 108"
       style={{ alignSelf: 'flex-start', width: 88 * scale, height: 27 * scale }}
-    />
+    >
+      {/* Traced from the original 4x Paper crop, retaining its canvas margins. */}
+      <Path
+        d={lowerFlourishPath}
+        fill="none"
+        stroke={colors.ink}
+        strokeWidth={4.2}
+        strokeOpacity={0.53}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d={lowerFlourishPath}
+        fill="none"
+        stroke={colors.ink}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
   );
 }

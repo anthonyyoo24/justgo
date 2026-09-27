@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import type { FeelingCode } from '@justgo/contracts';
 import {
-  ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,7 +13,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { colors, fontFamilies } from '../../theme/tokens';
 import {
   challengeDisplayFont,
@@ -30,6 +31,60 @@ export const feelingOptions: readonly {
   { code: 'a_little_better', label: 'A little bit better' },
   { code: 'a_lot_better', label: 'A lot better' },
 ];
+
+function ReflectionSpinner() {
+  const [rotation] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.timing(rotation, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [rotation]);
+
+  return (
+    <Animated.View
+      accessible={false}
+      testID="reflection-submit-spinner"
+      style={{
+        width: 22,
+        height: 22,
+        transform: [
+          {
+            rotate: rotation.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0deg', '360deg'],
+            }),
+          },
+        ],
+      }}
+    >
+      <Svg width={22} height={22} viewBox="0 0 24 24" aria-hidden>
+        <Circle
+          cx={12}
+          cy={12}
+          r={9}
+          fill="none"
+          stroke={colors.white}
+          strokeOpacity={0.25}
+          strokeWidth={2.5}
+        />
+        <Path
+          d="M12 3 A9 9 0 0 1 21 12"
+          fill="none"
+          stroke={colors.white}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
 
 export function ReflectionView({
   feeling,
@@ -270,15 +325,11 @@ export function ReflectionView({
             testID="reflection-submit"
             style={styles.primaryButton}
           >
-            {busy && (
-              <ActivityIndicator
-                color={colors.white}
-                size="small"
-                accessible={false}
-                testID="reflection-submit-spinner"
-              />
+            {busy ? (
+              <ReflectionSpinner />
+            ) : (
+              <Text style={styles.primaryLabel}>{buttonLabel}</Text>
             )}
-            <Text style={styles.primaryLabel}>{buttonLabel}</Text>
           </Pressable>
         </View>
         {dismissOpen && (
@@ -465,8 +516,6 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderRadius: 999,
     backgroundColor: colors.ink,
-    flexDirection: 'row',
-    gap: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
