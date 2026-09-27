@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { ReflectionView } from './ReflectionView';
 
 const props = () => ({
@@ -44,6 +45,10 @@ it('has native multiline entry and an accessible dismissal choice without a Dict
   const screen = render(<ReflectionView {...base} />);
   const input = screen.getByLabelText('Your reflection');
   expect(input.props.multiline).toBe(true);
+  const { width } = Dimensions.get('window');
+  expect(StyleSheet.flatten(input.props.style).minHeight).toBe(
+    (228 * Math.min(width, 390)) / 390,
+  );
   fireEvent.changeText(input, 'I tried even though I was nervous.');
   expect(base.onTextChange).toHaveBeenCalledWith(
     'I tried even though I was nervous.',

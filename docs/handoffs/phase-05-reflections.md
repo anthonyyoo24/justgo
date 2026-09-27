@@ -88,3 +88,4 @@ The authenticated mobile UI against a live account and physical iPhone text/keyb
 - PRD §5.4, `DECISIONS.md` and `DESIGN.md` reflect the approved behavior.
 - September 27 follow-up: tapping the selected face again clears only that feeling. “Choose one.” remains visible; the button returns to Skip only when text is also empty. Component and controller tests cover clearing an autosaved feeling, and the updated native/browser preview was rechecked.
 - September 27 follow-up: background draft autosaves no longer show a transient status below the text box. Failures still show an inline retry, and explicit final saves still show button progress.
+- September 27 follow-up: doubled the reflection text box’s initial height from 114 to 228 scaled points.

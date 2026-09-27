@@ -196,7 +196,7 @@ export function ReflectionView({
               onChangeText={onTextChange}
               editable={!busy && !locked}
               maxLength={10000}
-              style={[styles.input, { minHeight: 114 * scale }]}
+              style={[styles.input, { minHeight: 228 * scale }]}
             />
           </View>
           {draftError && (
