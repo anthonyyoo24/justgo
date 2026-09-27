@@ -215,7 +215,11 @@ export function ProgressView({
                 const selected = date === selectedDate;
                 const future = !data || date > data.today;
                 return (
-                  <View key={date} style={styles.cell}>
+                  <View
+                    key={date}
+                    testID={`calendar-cell-${date}`}
+                    style={styles.cell}
+                  >
                     {today && active && (
                       <Svg
                         width={60}
@@ -672,11 +676,11 @@ const styles = StyleSheet.create({
     width: '14.2857%',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 43,
+    height: 44,
   },
   dayCircle: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -690,7 +694,11 @@ const styles = StyleSheet.create({
   activeDay: { backgroundColor: colors.white, borderColor: '#EEE2D8' },
   inactiveDay: { backgroundColor: '#E9E3DC', borderColor: '#E8DED5' },
   today: { borderColor: '#F4A46C', borderWidth: 2 },
-  todayActive: { backgroundColor: colors.ink, borderColor: colors.ink },
+  todayActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+    borderWidth: 1,
+  },
   todayRays: {
     position: 'absolute',
     top: -7,
@@ -705,14 +713,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
-  activeNumber: { transform: [{ translateY: -7 }] },
+  activeNumber: { transform: [{ translateY: -3 }] },
   todayNumber: { color: colors.cream },
   selectedText: { color: colors.white },
   badge: {
     position: 'absolute',
-    bottom: -7,
+    bottom: -5,
     minWidth: 20,
-    height: 20,
+    height: 18,
     borderRadius: 10,
     backgroundColor: '#FFE2C8',
     alignItems: 'center',

@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import type { ProgressEntry, ProgressResponse } from '@justgo/contracts';
 import { colors } from '../../theme/tokens';
 import { ProgressView } from './ProgressView';
@@ -82,7 +83,7 @@ it('opens only active days and shows draft and skipped feedback as Not recorded'
   expect(actions.onCloseDay).toHaveBeenCalledTimes(1);
 });
 
-it('keeps the active today date legible above its rep badge', () => {
+it('keeps the today badge clear of the next row and the day tappable', () => {
   const actions = callbacks();
   const screen = render(
     <ProgressView
@@ -101,14 +102,16 @@ it('keeps the active today date legible above its rep badge', () => {
     name: 'Sunday, September 27, today, 10 reps',
   });
   expect(today).toHaveStyle({ backgroundColor: colors.ink });
-  expect(screen.getByText('27')).toHaveStyle({
-    color: colors.cream,
-    transform: [{ translateY: -7 }],
-  });
-  expect(screen.getByTestId('rep-badge-2026-09-27')).toHaveStyle({
-    bottom: -7,
-    height: 20,
-  });
+  expect(screen.getByText('27')).toHaveStyle({ color: colors.cream });
+  const cell = StyleSheet.flatten(
+    screen.getByTestId('calendar-cell-2026-09-27').props.style,
+  );
+  const circle = StyleSheet.flatten(today.props.style);
+  const badge = StyleSheet.flatten(
+    screen.getByTestId('rep-badge-2026-09-27').props.style,
+  );
+  expect(cell.height - circle.height + badge.bottom).toBeGreaterThanOrEqual(3);
+  expect(badge.minWidth).toBeGreaterThan(badge.height);
   fireEvent.press(today);
   expect(actions.onOpenDay).toHaveBeenCalledWith('2026-09-27');
 });
