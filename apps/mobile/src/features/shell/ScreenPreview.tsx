@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Redirect } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,14 @@ export function ScreenPreview() {
   const [feeling, setFeeling] = useState<FeelingCode | null>(null);
   const [reflection, setReflection] = useState('');
   const [dismissOpen, setDismissOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (submitTimer.current) clearTimeout(submitTimer.current);
+    },
+    [],
+  );
   if (!__DEV__) return <Redirect href="/" />;
   if (step === 'success')
     return <SuccessView onContinue={() => setStep('reflection')} />;
@@ -25,6 +33,7 @@ export function ScreenPreview() {
       setFeeling(null);
       setReflection('');
       setDismissOpen(false);
+      setSubmitting(false);
     };
     return (
       <ReflectionView
@@ -32,11 +41,18 @@ export function ScreenPreview() {
         text={reflection}
         onFeelingChange={setFeeling}
         onTextChange={setReflection}
-        onSubmit={done}
+        onSubmit={() => {
+          setSubmitting(true);
+          submitTimer.current = setTimeout(() => {
+            submitTimer.current = null;
+            done();
+          }, 1200);
+        }}
         onClose={() =>
           feeling || reflection.trim() ? setDismissOpen(true) : done()
         }
         dismissOpen={dismissOpen}
+        busy={submitting}
         onKeepEditing={() => setDismissOpen(false)}
         onDiscard={done}
       />

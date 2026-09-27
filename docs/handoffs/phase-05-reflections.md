@@ -90,3 +90,5 @@ The authenticated mobile UI against a live account and physical iPhone text/keyb
 - September 27 follow-up: background draft autosaves no longer show a transient status below the text box. Failures still show an inline retry, and explicit final saves still show button progress.
 - September 27 follow-up: doubled the reflection text box’s initial height from 114 to 228 scaled points.
 - September 27 follow-up: matched the Reflection top header size, line height, typeface, weight and letter spacing to the challenge/active challenge header.
+- September 27 follow-up: final Skip and Save Reflection submissions now retain their button labels and show the app’s native inline spinner while busy; accessibility announces the action in progress.
+- The dev-only preview briefly simulates submission so the spinner can be reviewed in the simulator side panel; production submission remains tied to the API response.

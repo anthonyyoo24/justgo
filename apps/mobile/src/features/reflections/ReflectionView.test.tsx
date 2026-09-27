@@ -114,3 +114,26 @@ it('matches the challenge screens’ top header typography', () => {
   expect(reflectionHeader.fontWeight).toBe(challengeHeader.fontWeight);
   expect(reflectionHeader.letterSpacing).toBe(challengeHeader.letterSpacing);
 });
+
+it('keeps Skip and Save Reflection labels steady with a spinner during submission', () => {
+  const base = props();
+  const screen = render(<ReflectionView {...base} />);
+  expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
+  screen.rerender(<ReflectionView {...base} busy />);
+  expect(screen.getByText('Skip')).toBeTruthy();
+  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+  expect(screen.queryByText(/skipping|saving/i)).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Skipping reflection' }).props
+      .accessibilityState,
+  ).toMatchObject({
+    disabled: true,
+    busy: true,
+  });
+  screen.rerender(<ReflectionView {...base} text="A small win" busy />);
+  expect(screen.getByText('Save Reflection')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Saving reflection' }),
+  ).toBeTruthy();
+  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+});

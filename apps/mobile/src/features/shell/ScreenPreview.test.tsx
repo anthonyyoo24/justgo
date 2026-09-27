@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { ScreenPreview } from './ScreenPreview';
 jest.mock('../challenges/DeckPreview', () => ({
   DeckPreview: ({ onCompleted }: { onCompleted: () => void }) => {
@@ -39,6 +39,7 @@ it('switches between isolated Home and Progress screens with accessible selected
 });
 
 it('previews Success then optional Reflection without saving activity', () => {
+  jest.useFakeTimers();
   const screen = render(<ScreenPreview />);
   fireEvent.press(screen.getByRole('button', { name: 'Complete preview' }));
   expect(screen.getByText('That’s a win!')).toBeTruthy();
@@ -49,8 +50,15 @@ it('previews Success then optional Reflection without saving activity', () => {
   expect(screen.getByText('How do you feel?')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
+  expect(screen.getByText('Skip')).toBeTruthy();
+  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Skipping reflection' }),
+  ).toBeDisabled();
+  act(() => jest.advanceTimersByTime(1200));
   expect(screen.getByText('Find a challenge')).toBeTruthy();
   expect(
     screen.getByText('SCREEN PREVIEW · No activity is saved'),
   ).toBeTruthy();
+  jest.useRealTimers();
 });
