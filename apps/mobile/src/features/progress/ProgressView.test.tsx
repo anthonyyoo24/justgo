@@ -101,10 +101,13 @@ it('keeps the active today date legible above its rep badge', () => {
     name: 'Sunday, September 27, today, 10 reps',
   });
   expect(today).toHaveStyle({ backgroundColor: colors.ink });
-  expect(screen.getByText('27')).toHaveStyle({ color: colors.cream });
+  expect(screen.getByText('27')).toHaveStyle({
+    color: colors.cream,
+    transform: [{ translateY: -7 }],
+  });
   expect(screen.getByTestId('rep-badge-2026-09-27')).toHaveStyle({
-    bottom: -5,
-    height: 21,
+    bottom: -7,
+    height: 20,
   });
   fireEvent.press(today);
   expect(actions.onOpenDay).toHaveBeenCalledWith('2026-09-27');
