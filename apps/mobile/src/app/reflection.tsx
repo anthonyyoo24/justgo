@@ -1,4 +1,1 @@
-import { FocusedScreen } from '../features/shell/ShellScreens';
-export default function ReflectionRoute() {
-  return <FocusedScreen kind="reflection" />;
-}
+export { ReflectionScreen as default } from '../features/reflections/ReflectionScreen';

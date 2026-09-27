@@ -1,0 +1,88 @@
+# Phase 05 — Feelings & typed reflections
+
+## Snapshot
+
+- **Status:** In progress. Implementation and local API/browser verification pass; native iPhone acceptance and staging deployment remain open. Phase 04 and earlier device/deployment gates are still open.
+- **Updated / author:** September 27, 2026 / Codex.
+- **Scope:** [Plan phase 05](../IMPLEMENTATION_PLAN.md#phase-05), PRD §5.4 and AC-09–11, 17.
+- **Dependency:** [Phase 04 handoff](phase-04-challenge-loop.md).
+- **Checkout:** `codex/phase-05-reflections`, based on `27334e2`; this handoff is committed with the Phase 05 implementation.
+- **Environment:** Node 24/npm 11, Expo 57.0.25 / React Native 0.86.3, local PostgreSQL 17 `justgo_test`, in-app browser at 390 × 844 and 320 × 568.
+- **Result:** A confirmed Success continues to an optional, private reflection for the same completed attempt. The screen has five unselected feeling choices and typed text. An empty form says **Skip**; either input changes it to **Save Reflection**. Empty Back/X skips, while dirty Back/X asks whether to save, keep editing or discard and skip.
+
+## What changed
+
+| Path or migration                                                                        | Behavior and reason                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/contracts/src/reflections.ts`, `index.ts`, `openapi.ts`                        | Defines version 1 of the five relative feeling codes, nullable feeling/text, draft/submitted/skipped state, action UUIDs and expected revisions. Missing feeling stays distinct from neutral.                                                                             |
+| `apps/api/drizzle/0007_reflections.sql`, `meta/_journal.json`, `src/db/schema.ts`        | Adds one owner-scoped reflection per completed attempt and durable action receipts. Checks enforce status/content, text length, input method and scale version; RLS restricts runtime reads/writes to the owner.                                                          |
+| `apps/api/src/reflections/`, `src/build-app.ts`                                          | Adds authenticated, entitlement-checked GET state and POST draft/final/skip routes. Owner transactions save feeling and text together, serialize writes, detect revision conflicts and replay matching action IDs safely.                                                 |
+| `apps/mobile/src/features/reflections/`, `src/app/reflection.tsx`, `src/app/_layout.tsx` | Adds the Paper-based screen and controller: face art, accessible radio choices, multiline text, keyboard avoidance, 700 ms cloud draft debounce, retry/conflict handling and explicit dirty dismissal. Native swipe dismissal is disabled so it cannot bypass the choice. |
+| `apps/mobile/src/features/challenges/ChallengeScreen.tsx`                                | Confirmed Success Continue opens the reflection for that exact completed attempt.                                                                                                                                                                                         |
+| `apps/mobile/src/features/shell/ScreenPreview.tsx`                                       | Presentation-only Success → Reflection → deck flow for visual review, without account or activity writes.                                                                                                                                                                 |
+| `docs/PRD.md`, `DECISIONS.md`, `DESIGN.md`, `IMPLEMENTATION_PLAN.md`                     | Records the approved optionality, button/dismissal behavior, source design and phase progress.                                                                                                                                                                            |
+
+`GET /v1/reflections/:attemptId` returns `{attemptId, revision, status, feelingVersion, feeling, text, inputMethod, updatedAt}`. New records return revision `0` and status `none`. `POST /draft` and `/final` take `{actionId, expectedRevision, feeling, text}`; `POST /skip` takes `{actionId, expectedRevision}`. Final requires a feeling or nonblank text; skip clears both. Invalid input is 400, unpaid access 403, another owner's or unknown attempt 404, revision/action conflicts 409 and unavailable entitlement verification 503. A non-completed attempt also conflicts. Terminal states cannot be edited by these routes.
+
+No new package, microphone permission or native configuration was added. The normal OS keyboard supports typed input; custom dictation remains deferred.
+
+## Decisions and invariants
+
+| Decision                                                                                                                                                                        | Source                                                                           | Implication                                                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reflection is optional for the first version. Empty form and empty Back/X skip; either field alone permits final save. Dirty Back/X offers save, keep editing and discard/skip. | Owner instruction, September 27; synchronized in PRD §5.4 and `DECISIONS.md`.    | Measure page drop-off after launch; a skip-versus-required experiment can be considered later. No artificial default/neutral feeling.                                                                       |
+| A draft is separate from a submitted reflection and does not imply completion.                                                                                                  | Phase 05 plan.                                                                   | Progress/history in phase 06 must distinguish `none`, `draft`, `submitted` and `skipped`.                                                                                                                   |
+| Feeling and text are one revisioned record; final/skip use exact action IDs on uncertain retries.                                                                               | Phase 05 consistency requirement.                                                | Never show final success if only one field saved. A competing edit produces an explicit 409 and choice of saved version or local edits.                                                                     |
+| Reflection can attach only to an owner-scoped completed attempt with verified access.                                                                                           | Phase 04 attempt/entitlement boundary.                                           | Skipping or saving changes no attempt outcome or earned rep.                                                                                                                                                |
+| Paper's D1 image and existing local extraction guide layout, colors and face curves.                                                                                            | User's Paper link; `docs/design-source/reflection.png` and `paper-extract.json`. | Live Paper MCP basic info worked, but layer info/tree/screenshot calls required edit access. The neutral face and some spacing are approximated from the saved reference; native visual acceptance remains. |
+
+## Problems encountered and fixes
+
+| Symptom                                                                                      | Cause                                                                    | Fix / limitation                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Paper MCP could identify the file but could not return layer details or a fresh screenshot.  | The linked file requires edit access for those MCP operations.           | Used the checked-in Phase 05 Paper extraction and reference image, then compared the browser rendering at the reference width. Exact live layer inspection remains unavailable. |
+| A selected feeling did not initially expose checked state in the browser accessibility tree. | React Native Web's radio mapping omitted the expected checked value.     | Added `aria-checked` alongside native `accessibilityState`; verified the selected radio reports value `1` in Browser Use.                                                       |
+| Small-viewport copy could push content below the fold.                                       | The five fixed choices and reflection prompt compete for vertical space. | Scaled face/spacing with width, kept the form scrollable and footer visible; checked 320 × 568 in Browser Use. Native keyboard/Dynamic Type still need device checks.           |
+
+## Verification evidence
+
+| Command or scenario                         | Environment                             | Actual result                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check`                             | Local workspace                         | Passed typecheck, lint, format and unit/component suites: 26 mobile suites / 133 tests, 8 API unit tests and 8 contract tests.                                                                                                                                                                                                                  |
+| `npm run test:db -w @justgo/api`            | Local `justgo_test` with migration 0007 | Passed 4 files / 32 database integration tests, including reflection ownership, entitlement, draft/final/skip, retry receipts and revision conflicts.                                                                                                                                                                                           |
+| `npm run export:web -w @justgo/mobile`      | Expo                                    | Passed.                                                                                                                                                                                                                                                                                                                                         |
+| `npm run export:ios -w @justgo/mobile`      | Expo                                    | Passed; this is a bundle check, not native interaction evidence.                                                                                                                                                                                                                                                                                |
+| In-app Browser Use, `/preview` at 390 × 844 | Presentation fixture                    | Challenge accept → Completed → Success Continue → Reflection worked. Empty state showed Skip and no preselection; selecting a feeling showed selected ring/check, accessible checked state and Save Reflection. Text input accepted typing; dirty X showed all three choices, and Save/Discard returned to deck. No browser errors or warnings. |
+| In-app Browser Use, `/preview` at 320 × 568 | Presentation fixture                    | All choices, text field and sticky action remained reachable.                                                                                                                                                                                                                                                                                   |
+
+The authenticated mobile UI against a live account and physical iPhone text/keyboard, VoiceOver, large text and dismissal flows were not run. The development preview does not write reflections; database/API tests exercise the real save boundary. The iOS Simulator was not running during this pass, and a physical-device build remains an acceptance gate. There is no custom Dictate control or microphone prompt to test.
+
+## Setup, data and operations
+
+- Run `npm install`, local database setup from the earlier handoffs, `npm run db:migrate -w @justgo/api`, `npm run dev:challenges -w @justgo/api` and the Expo dev server. The local migration was applied to `justgo_test`; staging was not migrated.
+- Use the existing identity/database configuration from phases 01–04. No new environment variable names are introduced. The challenge development entrypoint grants local test entitlement only; production access remains closed until verified billing.
+- Apply migrations in journal order through `0007_reflections.sql` before deploying the API/mobile client. Use isolated test UUIDs; never place real reflection text in fixtures or handoffs.
+- The migration is additive. Older clients do not call the new routes; their completed attempts remain valid without reflection rows. Prefer a forward repair for a migration issue; do not remove user reflections or receipts. API monitoring should watch 409/503 reflection rates and save failures before rollout.
+
+## Remaining work and risks
+
+| Item                                                                                                                              | Impact                                                           | Required by             |
+| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------- |
+| Authenticated end-to-end mobile save/relaunch and real iPhone keyboard, long input, VoiceOver, Dynamic Type and dismissal checks. | Phase 05 cannot be marked complete from preview/API tests alone. | Phase 05 / release      |
+| Apply migration 0007 and deploy API with earlier outstanding migrations in staging; smoke owner-scoped draft/final/skip there.    | Feature unavailable outside local environment until deployed.    | Phase 05 / release      |
+| Finish phase 04 and earlier device/deployment gates.                                                                              | Dependency phases remain In progress.                            | Release                 |
+| Define saved reflection reading/edit/delete interaction in Phase 06.                                                              | Submitted/private history has no Progress reader yet.            | Phase 06                |
+| Optional-skip analytics/experiment design.                                                                                        | Product learning is deferred; no A/B test is running.            | Later product iteration |
+
+## Next phase: read this first
+
+1. Start Phase 06 from the owner-scoped attempt and reflection records in `apps/api/src/reflections/` and `apps/api/drizzle/0007_reflections.sql`; agree the saved-reading/edit/delete behavior first.
+2. Preserve the distinction between missing, draft, skipped and neutral; do not infer a feeling from a skipped reflection.
+3. Rerun `npm run check`, `npm run test:db -w @justgo/api` and the Success → Reflection browser smoke after touching these boundaries.
+4. Keep reflection text private and owner-scoped in any Progress query or UI.
+
+## Record updates
+
+- Handoff index and Phase 05 plan status updated September 27, 2026.
+- The historical HTML tracker is absent from this checkout; no browser-local export is authoritative.
+- PRD §5.4, `DECISIONS.md` and `DESIGN.md` reflect the approved behavior.

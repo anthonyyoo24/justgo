@@ -162,11 +162,11 @@ Reflection asks **“How do you feel?”** with the qualifier **“Compared to b
 
 Use the labeled facial choices in the final D1 design, with a visible and accessible selected state. Do not preselect the positive example shown in the mockup. This is one retrospective report of perceived change; the app has not collected a separate before measurement and must not calculate a clinical or measured before/after improvement from it.
 
-Below the feeling choices, provide **Your reflection — optional**, the prompts “What went well? What was hard? What would you try next time?”, a multiline text field and **Save reflection**. The custom Dictate control is deferred.
+Below the feeling choices, provide **Your reflection — optional**, the prompts “What went well? What was hard? What would you try next time?”, a multiline text field and the bottom action described below. The custom Dictate control is deferred.
 
 - The reflection step remains optional, preserving the previous PRD’s optionality. Skipping never affects a completed rep or streak.
-- **Proposed save rule:** allow a feeling alone, nonempty text alone, or both. With neither, the user can close/skip; do not create a fabricated neutral answer. This permissive rule is a product default to confirm, since the image labels only the writing field optional.
-- Back/X provides an explicit route out. If input is unsaved, offer to save, keep editing, or discard it; do not silently treat a draft as submitted. Exact dismissal copy remains to be designed.
+- **Approved September 27:** allow a feeling alone, nonempty text alone, or both. With neither, the bottom action says **Skip**; otherwise it says **Save Reflection**. An empty submission records a skip, never a fabricated neutral answer.
+- Back/X provides an explicit route out. With no input it skips; with input it offers Save Reflection, Keep editing, or Discard and skip. A cloud draft is never silently treated as submitted.
 - Save reflection persists the selected feeling and/or text for that attempt before returning Home. Preserve unsaved input and offer retry after failure.
 - Autosaved cloud drafts are separate from submitted feelings/final reflections. A draft must not appear as completed feedback in history or analytics.
 - Do not add a custom speech-recognition dependency, microphone prompt, or Dictate control at launch. Ordinary system-keyboard features are not a custom app dictation implementation.
@@ -329,12 +329,12 @@ Include duplicate completion, offline/uncertain writes, expired countdown, concu
 
 ## 13. Remaining decisions and design gaps
 
-These are intentionally unresolved. A final visual layout does not settle the following product rules; proposed defaults below are recommendations, not newly approved scope.
+The remaining rows are unresolved. The reflection save and dismissal rule was approved September 27; other proposed defaults are recommendations, not newly approved scope.
 
-| Decision                             | Proposed default / work needed                                                                                                                                                                                    |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 07. Keep no-signup entry and native-first paid access.                                              |
-| Reflection optionality and dismissal | Retain an optional overall step; allow feeling-only, text-only, or both. Finalize empty/save-button behavior and Back/X save/discard flow.                                                                        |
-| Reading saved reflection text        | Add a per-attempt expansion/detail interaction from a day entry; confirm editing/deletion affordances and obtain a matching design. Do not use a day-level note.                                                  |
-| Future levels — not a launch blocker | Decide thresholds, unlocking/skipping, partial/final-level behavior and treatment of prior Level 1 completions when scheduling levels. Preserve history now; do not implement hidden progression.                 |
-| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, day-duration rounding, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants. |
+| Decision                             | Proposed default / work needed                                                                                                                                                                                         |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 07. Keep no-signup entry and native-first paid access.                                                   |
+| Reflection optionality and dismissal | Approved September 27: optional overall step; feeling-only, text-only or both; Skip when empty, Save Reflection when either has input; empty Back/X skips, dirty Back/X offers save, keep editing or discard and skip. |
+| Reading saved reflection text        | Add a per-attempt expansion/detail interaction from a day entry; confirm editing/deletion affordances and obtain a matching design. Do not use a day-level note.                                                       |
+| Future levels — not a launch blocker | Decide thresholds, unlocking/skipping, partial/final-level behavior and treatment of prior Level 1 completions when scheduling levels. Preserve history now; do not implement hidden progression.                      |
+| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, day-duration rounding, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.      |

@@ -1,5 +1,7 @@
 import { ChallengeService } from './challenges/service.js';
 import { challengeRoutes } from './challenges/routes.js';
+import { ReflectionService } from './reflections/service.js';
+import { reflectionRoutes } from './reflections/routes.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
@@ -61,6 +63,15 @@ export function buildApp(
           new ChallengeService(options.identity!, options.entitlementReader),
         ),
       { prefix: '/v1/challenges' },
+    );
+  if (options.identity)
+    app.register(
+      async (scope) =>
+        reflectionRoutes(
+          scope,
+          new ReflectionService(options.identity!, options.entitlementReader),
+        ),
+      { prefix: '/v1/reflections' },
     );
   if (options.identity)
     app.register(

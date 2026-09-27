@@ -323,7 +323,18 @@ export function SuccessScreen() {
     challenges.dismissSuccess();
     router.replace('/(tabs)');
   };
-  if (attempt?.status === 'completed') return <SuccessView onContinue={back} />;
+  if (attempt?.status === 'completed')
+    return (
+      <SuccessView
+        onContinue={() => {
+          challenges.dismissSuccess();
+          router.replace({
+            pathname: '/reflection',
+            params: { attemptId: attempt.id },
+          });
+        }}
+      />
+    );
   return (
     <Screen title="Your completed challenge">
       <View style={styles.active}>

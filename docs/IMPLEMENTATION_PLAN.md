@@ -37,7 +37,7 @@ This is the Markdown companion to the saved HTML plan: nine iOS release stages a
 | [02 — No-signup identity & recovery](#phase-02)           | A real account survives supported recovery paths, without exposing another person’s history.            | 01         | In progress   |
 | [03 — App shell & shared API](#phase-03)                  | The app restores the right account and provides consistent navigation and network behavior.             | 02         | In progress   |
 | [04 — Challenge deck & reliable attempts](#phase-04)      | Browse → accept → complete or give up works against real cloud data exactly once.                       | 03         | In progress   |
-| [05 — Feelings & typed reflections](#phase-05)            | A completed attempt can have optional private feedback and typed reflection text.                       | 04         | Not started   |
+| [05 — Feelings & typed reflections](#phase-05)            | A completed attempt can have optional private feedback and typed reflection text.                       | 04         | In progress   |
 | [06 — Progress calendar & saved history](#phase-06)       | Users can view the full Progress summary/calendar and read day details and saved reflections.           | 05         | Not started   |
 | [07 — Native subscriptions & reliable billing](#phase-07) | A verified purchase unlocks promptly, and later subscription changes recover reliably.                  | 06         | Not started   |
 | [08 — Settings, privacy & measurement](#phase-08)         | Users control recovery, private data and preferences; useful measurement respects their choices.        | 07         | Not started   |
@@ -58,7 +58,7 @@ These remain open in PRD §13. Resolve each with the product owner and update th
 | Launch catalog                  | 04                          | Settled: CHALLENGES.md supplies 61 placements in six venues; five minutes, no displayed subtext. Seeded by phase 04. CURRICULUM.md remains a future draft. |
 | Deck counter                    | 04                          | Settled: omit level progress; each venue cycles. New accounts start in Streets. Empty venues offer another venue; see PHASE_04_SCOPE.md.                   |
 | Future levels                   | Later; not a launch blocker | Thresholds, unlocking/skipping, historical-credit policy and later taxonomy; retain Level 1 history now without implementing progression.                  |
-| Reflection save & dismissal     | 05                          | Feeling-only/text-only/both, empty save, Back/X and draft handling.                                                                                        |
+| Reflection save & dismissal     | Approved September 27       | Feeling-only/text-only/both; empty bottom action and empty Back/X skip; dirty Back/X offers save, keep editing or discard and skip.                        |
 | Reading saved reflections       | 06                          | Per-attempt detail/expansion and whether editing/deletion is offered there.                                                                                |
 | Apple account & offer           | Start in 01; ready for 07   | Enrollment status, bundle ID/app record, subscription product IDs/pricing/trials and RevenueCat mapping. Finalize paywall and expiry behavior before 07.   |
 | Supporting designs & formatting | Relevant phase              | Home color variants, Settings rows, reminder defaults, duration rounding and small-screen/accessibility states.                                            |
@@ -243,7 +243,8 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 05 — Feelings & typed reflections
 
-**Status:** Not started  
+**Status:** In progress
+
 **Depends on:** 04  
 **Acceptance references:** PRD AC-09–11, 17 · Tech acceptance 5, 8–9, 17
 
@@ -251,7 +252,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 #### Implement
 
-- Build the five labeled relative feeling choices with no preselection, optional reflection text, save and the approved skip/save/discard flow. Continue from Success to the same attempt.
+- Build the five labeled relative feeling choices with no preselection and optional reflection text. The bottom action is **Skip** when both fields are empty and **Save Reflection** when either has input. Empty Back/X skips; dirty Back/X offers save, keep editing or discard and skip. Continue from Success to the same attempt.
 - Add versioned feedback/reflection records and consistent final saves; separate cloud autosaved drafts from submitted feedback. Keep unsaved edits visible, reject revision conflicts and preserve already-earned completion credit.
 - Use the normal keyboard and multiline text input. Custom dictation, its button, speech-recognition packages and microphone permission are deferred.
 
@@ -262,16 +263,16 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 #### Ready to hand off when
 
-- [ ] Reflection optionality and dismissal rules are approved; feeling-only/text-only/both cases match that decision and missing differs from neutral.
-- [ ] Draft/final state, consistent feeling/text saves, dirty-input retry and concurrent-device edit conflicts pass; skipped reflection keeps credit.
+- [x] Reflection optionality and dismissal rules are approved; feeling-only/text-only/both cases match that decision and missing differs from neutral.
+- [x] Draft/final state, consistent feeling/text saves, dirty-input retry and concurrent-device edit conflicts pass locally; skipped reflection keeps credit.
 - [ ] Real iPhone text entry, keyboard avoidance, long input, dismissal and screen-reader behavior pass; no custom microphone prompt or Dictate control is shipped.
-- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Feeling schema/version, draft/final contract, conflict behavior, iPhone keyboard/device results and the agreed dismissal flow.
 
 **Handoff file to create:** `handoffs/phase-05-reflections.md`
 
-**Working notes / blocker:** None recorded.
+**Working notes / blocker:** Local API/database, component and browser-preview checks pass. See the [Phase 05 handoff](handoffs/phase-05-reflections.md). Real-iPhone input/accessibility acceptance and staging deployment remain open; the linked Paper file allowed MCP basic info but required edit access for live layer/screenshot inspection.
 
 <a id="phase-06"></a>
 

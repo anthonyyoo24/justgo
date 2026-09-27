@@ -5,15 +5,43 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProgressScreen } from './ShellScreens';
 import { DeckPreview } from '../challenges/DeckPreview';
 import { SuccessView } from '../challenges/SuccessView';
+import { ReflectionView } from '../reflections/ReflectionView';
+import type { FeelingCode } from '@justgo/contracts';
 import { NavigationIcon } from '../../components/NavigationIcon';
 import { colors, spacing, typography } from '../../theme/tokens';
 // Presentation fixtures only. No API, account impersonation, or entitlement override.
 export function ScreenPreview() {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
+  const [feeling, setFeeling] = useState<FeelingCode | null>(null);
+  const [reflection, setReflection] = useState('');
+  const [dismissOpen, setDismissOpen] = useState(false);
   if (!__DEV__) return <Redirect href="/" />;
-  if (showSuccess)
-    return <SuccessView onContinue={() => setShowSuccess(false)} />;
+  if (step === 'success')
+    return <SuccessView onContinue={() => setStep('reflection')} />;
+  if (step === 'reflection') {
+    const done = () => {
+      setStep('deck');
+      setFeeling(null);
+      setReflection('');
+      setDismissOpen(false);
+    };
+    return (
+      <ReflectionView
+        feeling={feeling}
+        text={reflection}
+        onFeelingChange={setFeeling}
+        onTextChange={setReflection}
+        onSubmit={done}
+        onClose={() =>
+          feeling || reflection.trim() ? setDismissOpen(true) : done()
+        }
+        dismissOpen={dismissOpen}
+        onKeepEditing={() => setDismissOpen(false)}
+        onDiscard={done}
+      />
+    );
+  }
   return (
     <View style={{ flex: 1 }}>
       <SafeAreaView edges={['top']} style={styles.notice}>
@@ -23,10 +51,7 @@ export function ScreenPreview() {
         </Link>
       </SafeAreaView>
       {tab === 'home' ? (
-        <DeckPreview
-          insetTop={false}
-          onCompleted={() => setShowSuccess(true)}
-        />
+        <DeckPreview insetTop={false} onCompleted={() => setStep('success')} />
       ) : (
         <ProgressScreen insetTop={false} />
       )}

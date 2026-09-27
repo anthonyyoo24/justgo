@@ -63,7 +63,7 @@ function Navigation() {
       <Stack.Protected guard={access.verified}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="success" />
-        <Stack.Screen name="reflection" />
+        <Stack.Screen name="reflection" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Protected guard={__DEV__}>
         <Stack.Screen name="preview" />

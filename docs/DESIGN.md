@@ -44,7 +44,7 @@ Owner: Anthony (product/design), with implementation measurements recorded in ea
 
 - Phase 03: navigation and supporting empty/error states using existing references. Welcome/questionnaire onboarding is deferred; paywall designs belong to phase 07.
 - Phase 04: implemented per [handoff](handoffs/phase-04-challenge-loop.md). Physical-iPhone motion/large-text/VoiceOver/Reduce Motion acceptance remains open. Original venue illustrations and the lower flourish are extracted from the source image fills; native text and irregular panel geometry remain separate. The [fidelity specification](CHALLENGE_FIDELITY.md) supersedes generic foundation type/spacing defaults for these screens.
-- Phase 05: neutral feeling asset, final dismissal/save behavior and text-input layout without Dictate.
+- Phase 05: D1 is reconstructed as native text, five SVG faces and a multiline text field. The neutral fill is a close visual reconstruction because the reference only exposes it as raster; the other four face colors and expression paths come from the saved Paper extraction. The September 27 approved bottom action reads Skip with no input and Save Reflection with a feeling or nonblank text. Empty Back/X skips; dirty Back/X offers save, keep editing or discard and skip. No Dictate control is present. Physical-iPhone keyboard, long-text and VoiceOver acceptance remain open in the phase 05 handoff.
 - Phase 06: saved reflection reading, exact raster-derived calendar styling and duration formatting.
 - Phase 08: approved Settings rows/reminder defaults and accessibility adaptations.
 

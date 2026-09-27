@@ -38,7 +38,7 @@ it('switches between isolated Home and Progress screens with accessible selected
   expect(screen.getByText('Find a challenge')).toBeTruthy();
 });
 
-it('shows the full success view after preview completion and returns on Continue', () => {
+it('previews Success then optional Reflection without saving activity', () => {
   const screen = render(<ScreenPreview />);
   fireEvent.press(screen.getByRole('button', { name: 'Complete preview' }));
   expect(screen.getByText('That’s a win!')).toBeTruthy();
@@ -46,6 +46,9 @@ it('shows the full success view after preview completion and returns on Continue
     screen.queryByText('SCREEN PREVIEW · No activity is saved'),
   ).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.getByText('How do you feel?')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
   expect(screen.getByText('Find a challenge')).toBeTruthy();
   expect(
     screen.getByText('SCREEN PREVIEW · No activity is saved'),
