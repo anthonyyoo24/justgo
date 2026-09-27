@@ -81,7 +81,7 @@ it('opens only active days and shows draft and skipped feedback as Not recorded'
   expect(actions.onCloseDay).toHaveBeenCalledTimes(1);
 });
 
-it('does not turn an API error into zero activity and explains a genuinely empty month', () => {
+it('keeps the calendar visible without presenting a failed request as zero activity', () => {
   const actions = callbacks();
   const retry = jest.fn();
   const screen = render(
@@ -94,16 +94,55 @@ it('does not turn an API error into zero activity and explains a genuinely empty
     />,
   );
   expect(screen.getByText('We couldn’t load your progress.')).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'September 2026' })).toBeTruthy();
+  expect(screen.getAllByText('—')).toHaveLength(4);
+  expect(screen.getByText('reps this month')).toBeTruthy();
+  expect(
+    screen.getByLabelText('Friday, September 18, activity unavailable').props
+      .accessibilityState.disabled,
+  ).toBe(true);
   expect(screen.queryByText('0')).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Retry progress' }));
   expect(retry).toHaveBeenCalledTimes(1);
-  screen.rerender(
+});
+
+it('shows real zero totals, a complete calendar, and a first challenge hint for a new account', () => {
+  const actions = callbacks();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={{
+        ...month,
+        totalReps: 0,
+        monthlyReps: 0,
+        activeDays: 0,
+        days: [],
+      }}
+      selectedDate={null}
+      {...actions}
+    />,
+  );
+  expect(screen.getAllByText('0 days')).toHaveLength(2);
+  expect(screen.getAllByText('0')).toHaveLength(2);
+  expect(screen.getByText('on 0 active days')).toBeTruthy();
+  expect(
+    screen.getByText('Your first completed challenge will appear here.'),
+  ).toBeTruthy();
+  expect(
+    screen.getByLabelText('Sunday, September 27, today, 0 reps'),
+  ).toBeTruthy();
+  expect(screen.queryByText('We couldn’t load your progress.')).toBeNull();
+  expect(screen.queryByText('—')).toBeNull();
+});
+
+it('explains an empty month when the account has earlier activity', () => {
+  const actions = callbacks();
+  const screen = render(
     <ProgressView
       month="2026-08"
       data={{
         ...month,
         month: '2026-08',
-        totalReps: 2,
         monthlyReps: 0,
         activeDays: 0,
         days: [],

@@ -57,6 +57,12 @@
 
 The browser preview does not exercise a live authenticated account. Database/API integration tests cover the real owner-scoped data path; physical-iPhone sheet gestures, VoiceOver, Dynamic Type and staged API/mobile use remain unverified.
 
+### September 27 local Progress follow-up
+
+- The simulator's Progress request initially returned `404 NOT_FOUND` because the local API process on port 3000 predated the Phase 06 route. Restarting `npm run dev:challenges -w @justgo/api` from this branch registered the route. The live simulator then showed the account's 10 saved reps on September 27 and the day sheet's chronological entries.
+- A successful account with no completions now shows the full calendar, zero totals, no rep badges and “Your first completed challenge will appear here.” A failed or pending month request keeps the same layout but shows unavailable values (`—`), muted disabled dates and an error/Retry or loading message. It does not report zero activity until the API confirms it.
+- `npm run check` passed after this follow-up, including 29 mobile suites / 150 tests. In-app Browser Use verified the new-account empty state, unavailable state and Retry recovery in the presentation preview; the live iPhone 17 simulator still displayed the 10-rep account after the UI change.
+
 ## Remaining work and risks
 
 | Item                                                                                                  | Impact                                                                 | Required by        |

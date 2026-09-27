@@ -126,23 +126,25 @@ export function ProgressView({
             </Link>
           </View>
           <View style={styles.card}>
-            {data && (
-              <View style={styles.stats}>
-                <Metric
-                  icon="streak"
-                  label="Current streak"
-                  value={data.currentStreak}
-                  suffix="days"
-                />
-                <Metric
-                  icon="best"
-                  label="Best streak"
-                  value={data.bestStreak}
-                  suffix="days"
-                />
-                <Metric icon="reps" label="Total reps" value={data.totalReps} />
-              </View>
-            )}
+            <View style={styles.stats}>
+              <Metric
+                icon="streak"
+                label="Current streak"
+                value={data?.currentStreak ?? null}
+                suffix="days"
+              />
+              <Metric
+                icon="best"
+                label="Best streak"
+                value={data?.bestStreak ?? null}
+                suffix="days"
+              />
+              <Metric
+                icon="reps"
+                label="Total reps"
+                value={data?.totalReps ?? null}
+              />
+            </View>
             <View style={styles.monthHeader}>
               <Text accessibilityRole="header" style={styles.monthTitle}>
                 {monthLabel(month)}
@@ -166,113 +168,120 @@ export function ProgressView({
                 </Pressable>
               </View>
             </View>
-            {loading && !data ? (
+            {!data && (
               <View style={styles.state}>
-                <ActivityIndicator
-                  accessibilityLabel="Loading progress"
-                  color={colors.ink}
-                />
-                <Text style={styles.stateText}>Loading your progress…</Text>
-              </View>
-            ) : error && !data ? (
-              <View style={styles.state}>
-                <Text accessibilityRole="alert" style={styles.stateText}>
-                  We couldn’t load your progress.
-                </Text>
-                <Retry label="Retry progress" onPress={onRetryMonth} />
-              </View>
-            ) : data ? (
-              <>
-                {error && (
-                  <Text accessibilityRole="alert" style={styles.warning}>
-                    Your activity may be out of date.{' '}
+                {loading && !error ? (
+                  <>
+                    <ActivityIndicator
+                      accessibilityLabel="Loading progress"
+                      color={colors.ink}
+                    />
+                    <Text style={styles.stateText}>Loading your progress…</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text accessibilityRole="alert" style={styles.stateText}>
+                      We couldn’t load your progress.
+                    </Text>
                     <Retry label="Retry progress" onPress={onRetryMonth} />
-                  </Text>
+                  </>
                 )}
-                <View style={styles.weekdays}>
-                  {weekdays.map((name, index) => (
-                    <Text key={index} style={styles.weekday}>
-                      {name}
-                    </Text>
-                  ))}
-                </View>
-                <View style={styles.grid}>
-                  {cells.map((date, index) => {
-                    if (!date)
-                      return (
-                        <View key={`gap-${index}`} style={styles.cell}>
-                          <View
-                            style={[styles.dayCircle, styles.placeholder]}
-                          />
-                        </View>
-                      );
-                    const count = counts.get(date) ?? 0;
-                    const active = count > 0;
-                    const today = date === data.today;
-                    const selected = date === selectedDate;
-                    const future = date > data.today;
-                    return (
-                      <View key={date} style={styles.cell}>
-                        <Pressable
-                          accessibilityRole={active ? 'button' : undefined}
-                          accessibilityLabel={`${dayLabel(date)}${today ? ', today' : ''}, ${count} ${count === 1 ? 'rep' : 'reps'}`}
-                          accessibilityState={{
-                            disabled: !active || future,
-                            selected,
-                          }}
-                          disabled={!active || future}
-                          onPress={() => onOpenDay(date)}
-                          style={[
-                            styles.dayCircle,
-                            active ? styles.activeDay : styles.inactiveDay,
-                            today && styles.today,
-                            selected && styles.selectedDay,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.dayNumber,
-                              selected && styles.selectedText,
-                            ]}
-                          >
-                            {Number(date.slice(-2))}
-                          </Text>
-                          {active && (
-                            <View style={styles.badge}>
-                              <Text style={styles.badgeText}>{count}</Text>
-                            </View>
-                          )}
-                        </Pressable>
-                      </View>
-                    );
-                  })}
-                </View>
-                <View style={styles.monthSummary}>
-                  <Text style={styles.summaryNumber}>{data.monthlyReps}</Text>
-                  <View style={styles.summaryCopy}>
-                    <Text style={styles.summaryHeading}>reps this month</Text>
-                    <Text style={styles.summarySub}>
-                      on {data.activeDays} active{' '}
-                      {data.activeDays === 1 ? 'day' : 'days'}
-                    </Text>
-                  </View>
-                  <View style={styles.legend}>
-                    <View style={styles.legendDot}>
-                      <Text style={styles.badgeText}>#</Text>
+              </View>
+            )}
+            {data && error && (
+              <Text accessibilityRole="alert" style={styles.warning}>
+                Your activity may be out of date.{' '}
+                <Retry label="Retry progress" onPress={onRetryMonth} />
+              </Text>
+            )}
+            <View style={styles.weekdays}>
+              {weekdays.map((name, index) => (
+                <Text key={index} style={styles.weekday}>
+                  {name}
+                </Text>
+              ))}
+            </View>
+            <View style={[styles.grid, !data && styles.unavailableCalendar]}>
+              {cells.map((date, index) => {
+                if (!date)
+                  return (
+                    <View key={`gap-${index}`} style={styles.cell}>
+                      <View style={[styles.dayCircle, styles.placeholder]} />
                     </View>
-                    <Text style={styles.legendText}>
-                      Small numbers{'\n'}show reps
-                    </Text>
+                  );
+                const count = counts.get(date) ?? 0;
+                const active = !!data && count > 0;
+                const today = date === data?.today;
+                const selected = date === selectedDate;
+                const future = !data || date > data.today;
+                return (
+                  <View key={date} style={styles.cell}>
+                    <Pressable
+                      accessibilityRole={active ? 'button' : undefined}
+                      accessibilityLabel={
+                        data
+                          ? `${dayLabel(date)}${today ? ', today' : ''}, ${count} ${count === 1 ? 'rep' : 'reps'}`
+                          : `${dayLabel(date)}, activity unavailable`
+                      }
+                      accessibilityState={{
+                        disabled: !active || future,
+                        selected,
+                      }}
+                      disabled={!active || future}
+                      onPress={() => onOpenDay(date)}
+                      style={[
+                        styles.dayCircle,
+                        active ? styles.activeDay : styles.inactiveDay,
+                        today && styles.today,
+                        selected && styles.selectedDay,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayNumber,
+                          selected && styles.selectedText,
+                        ]}
+                      >
+                        {Number(date.slice(-2))}
+                      </Text>
+                      {active && (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>{count}</Text>
+                        </View>
+                      )}
+                    </Pressable>
                   </View>
+                );
+              })}
+            </View>
+            <View style={styles.monthSummary}>
+              <Text style={styles.summaryNumber}>
+                {data?.monthlyReps ?? '—'}
+              </Text>
+              <View style={styles.summaryCopy}>
+                <Text style={styles.summaryHeading}>reps this month</Text>
+                <Text style={styles.summarySub}>
+                  on {data?.activeDays ?? '—'} active{' '}
+                  {data?.activeDays === 1 ? 'day' : 'days'}
+                </Text>
+              </View>
+              <View style={styles.legend}>
+                <View style={styles.legendDot}>
+                  <Text style={styles.badgeText}>#</Text>
                 </View>
-              </>
-            ) : null}
+                <Text style={styles.legendText}>
+                  Small numbers{'\n'}show reps
+                </Text>
+              </View>
+            </View>
           </View>
           {!!data && (
             <Text style={styles.instruction}>
-              {data.monthlyReps
-                ? 'Tap an active day to see your challenges.'
-                : 'No completed challenges this month yet.'}
+              {data.totalReps === 0
+                ? 'Your first completed challenge will appear here.'
+                : data.monthlyReps
+                  ? 'Tap an active day to see your challenges.'
+                  : 'No completed challenges this month yet.'}
             </Text>
           )}
         </View>
@@ -301,7 +310,7 @@ function Metric({
 }: {
   icon: 'streak' | 'best' | 'reps';
   label: string;
-  value: number;
+  value: number | null;
   suffix?: string;
 }) {
   return (
@@ -336,8 +345,10 @@ function Metric({
       </Svg>
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>
-        {value}
-        {suffix && <Text style={styles.metricSuffix}> {suffix}</Text>}
+        {value ?? '—'}
+        {value !== null && suffix && (
+          <Text style={styles.metricSuffix}> {suffix}</Text>
+        )}
       </Text>
     </View>
   );
@@ -636,6 +647,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 12 },
+  unavailableCalendar: { opacity: 0.45 },
   cell: {
     width: '14.2857%',
     alignItems: 'center',
@@ -735,7 +747,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
   },
-  state: { paddingVertical: 58, alignItems: 'center', gap: 12 },
+  state: { paddingVertical: 12, alignItems: 'center', gap: 4 },
   stateText: { ...typography.body, color: colors.ink, textAlign: 'center' },
   retry: {
     minWidth: 44,

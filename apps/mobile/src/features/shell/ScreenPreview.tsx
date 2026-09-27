@@ -90,15 +90,27 @@ const previewMonth: ProgressResponse = {
     reps: reps!,
   })),
 };
+const emptyMonth: ProgressResponse = {
+  ...previewMonth,
+  currentStreak: 0,
+  bestStreak: 0,
+  totalReps: 0,
+  monthlyReps: 0,
+  activeDays: 0,
+  days: [],
+};
 // Presentation fixtures only. No API, account impersonation, or entitlement override.
 export function ScreenPreview({
   simulateSkipFailure = false,
+  progressState = 'default',
 }: {
   simulateSkipFailure?: boolean;
+  progressState?: 'default' | 'empty' | 'error';
 }) {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
   const [progressMonth, setProgressMonth] = useState('2026-09');
   const [progressDay, setProgressDay] = useState<string | null>(null);
+  const [progressError, setProgressError] = useState(progressState === 'error');
   const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
   const [feeling, setFeeling] = useState<FeelingCode | null>(null);
   const [reflection, setReflection] = useState('');
@@ -173,16 +185,21 @@ export function ScreenPreview({
           insetTop={false}
           month={progressMonth}
           data={
-            progressMonth === '2026-09'
-              ? previewMonth
-              : {
-                  ...previewMonth,
-                  month: progressMonth,
-                  monthlyReps: 0,
-                  activeDays: 0,
-                  days: [],
-                }
+            progressError
+              ? undefined
+              : progressState === 'empty'
+                ? { ...emptyMonth, month: progressMonth }
+                : progressMonth === '2026-09'
+                  ? previewMonth
+                  : {
+                      ...previewMonth,
+                      month: progressMonth,
+                      monthlyReps: 0,
+                      activeDays: 0,
+                      days: [],
+                    }
           }
+          error={progressError}
           selectedDate={progressDay}
           day={
             progressDay
@@ -200,6 +217,7 @@ export function ScreenPreview({
           }}
           onOpenDay={setProgressDay}
           onCloseDay={() => setProgressDay(null)}
+          onRetryMonth={() => setProgressError(false)}
         />
       )}
       <SafeAreaView edges={['bottom']} style={styles.nav}>
