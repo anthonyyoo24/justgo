@@ -157,7 +157,8 @@ so the incoming card has the same position before and after the queue update.
 The callback returns the authoritative queue version; the deck waits for that
 version to render before rebasing its animation and unlocking input. Failed saves
 settle the original card back. Controls remain opaque during this temporary lock;
-persistent external disabled states still dim them. Only the incoming front card
+a September 27 correction also keeps them opaque during the return-to-deck
+refresh while input is temporarily disabled. Only the incoming front card
 reveals its content during motion; the other fanned edges stay clean instead of
 briefly exposing text/flourishes and hiding them again at the handoff.
 
