@@ -116,3 +116,139 @@ export const rateBuckets = appSchema.table(
   },
   (t) => [index('identity_rate_window_idx').on(t.windowStart)],
 );
+
+// Phase 04 content is immutable; venue placements and owner queues are independent.
+export const levels = appSchema.table('levels', {
+  id: text().primaryKey(),
+  name: text().notNull(),
+});
+export const venues = appSchema.table('venues', {
+  id: text().primaryKey(),
+  name: text().notNull(),
+});
+export const challenges = appSchema.table('challenges', {
+  id: text().primaryKey(),
+});
+export const challengeRevisions = appSchema.table(
+  'challenge_revisions',
+  {
+    id: text().primaryKey(),
+    challengeId: text('challenge_id')
+      .notNull()
+      .references(() => challenges.id),
+    levelId: text('level_id')
+      .notNull()
+      .references(() => levels.id),
+    text: text().notNull(),
+    subtext: text(),
+    durationSeconds: integer('duration_seconds').notNull(),
+  },
+  (t) => [check('positive_duration', sql`${t.durationSeconds} > 0`)],
+);
+export const venueCards = appSchema.table(
+  'venue_cards',
+  {
+    id: text().primaryKey(),
+    venueId: text('venue_id')
+      .notNull()
+      .references(() => venues.id),
+    revisionId: text('revision_id')
+      .notNull()
+      .references(() => challengeRevisions.id),
+    position: integer().notNull(),
+  },
+  (t) => [uniqueIndex('venue_card_position').on(t.venueId, t.position)],
+);
+export const challengePreferences = appSchema.table('challenge_preferences', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id),
+  venueId: text('venue_id')
+    .notNull()
+    .references(() => venues.id),
+});
+export const venueQueues = appSchema.table(
+  'venue_queues',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    venueId: text('venue_id')
+      .notNull()
+      .references(() => venues.id),
+    version: integer().notNull().default(0),
+    cardIds: text('card_ids').array().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.venueId] }),
+    check('queue_version_positive', sql`${t.version} >= 0`),
+  ],
+);
+export const deckSkips = appSchema.table(
+  'deck_skips',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    id: uuid().notNull(),
+    venueId: text('venue_id')
+      .notNull()
+      .references(() => venues.id),
+    cardId: text('card_id')
+      .notNull()
+      .references(() => venueCards.id),
+    revisionId: text('revision_id')
+      .notNull()
+      .references(() => challengeRevisions.id),
+    queueVersion: integer('queue_version').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.id] })],
+);
+export const attempts = appSchema.table(
+  'attempts',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    id: uuid().notNull(),
+    cardId: text('card_id')
+      .notNull()
+      .references(() => venueCards.id),
+    venueId: text('venue_id')
+      .notNull()
+      .references(() => venues.id),
+    challengeId: text('challenge_id')
+      .notNull()
+      .references(() => challenges.id),
+    revisionId: text('revision_id')
+      .notNull()
+      .references(() => challengeRevisions.id),
+    levelId: text('level_id')
+      .notNull()
+      .references(() => levels.id),
+    queueVersion: integer('queue_version').notNull(),
+    status: text().notNull().default('active'),
+    startedAt: time('started_at').notNull(),
+    deadlineAt: time('deadline_at').notNull(),
+    endedAt: time('ended_at'),
+    completionDate: text('completion_date'),
+    timeZone: text('time_zone'),
+    elapsedSeconds: integer('elapsed_seconds'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.id] }),
+    uniqueIndex('one_active_attempt')
+      .on(t.userId)
+      .where(sql`${t.status} = 'active'`),
+    index('attempt_owner_end_idx').on(t.userId, t.endedAt),
+    check(
+      'attempt_status',
+      sql`${t.status} in ('active','completed','given_up')`,
+    ),
+    check(
+      'attempt_outcome_fields',
+      sql`(${t.status} = 'active' and ${t.endedAt} is null and ${t.timeZone} is null and ${t.elapsedSeconds} is null and ${t.completionDate} is null) or (${t.status} <> 'active' and ${t.endedAt} is not null and ${t.elapsedSeconds} is not null and ${t.endedAt} >= ${t.startedAt} and ${t.timeZone} is not null and ${t.elapsedSeconds} >= 0 and ((${t.status} = 'completed' and ${t.completionDate} is not null) or (${t.status} = 'given_up' and ${t.completionDate} is null)))`,
+    ),
+    check('attempt_deadline', sql`${t.deadlineAt} > ${t.startedAt}`),
+  ],
+);

@@ -10,7 +10,7 @@ Phase 03 implements navigation and account/network infrastructure. Anthony defer
 - `/settings` and `/recovery`: reachable regardless of paid access. The recovery route exposes Account / Recovery keys / Device transfer / Manage devices directly, with Return-key submission and automatic keyboard insets. It shares the one app-level identity controller; it does not create another vault or account.
 - `/preview`: development-only presentation fixture. It has no domain queries or writes and never changes an account's entitlement. The route guard and module load both require `__DEV__`. There is no runtime flag, API parameter or production environment switch that unlocks it.
 
-`AccessService` calls `IdentityService.withSession` and passes the same verified owner transaction into an entitlement reader. The default reader returns **unavailable** until phase 08 implements a verified billing projection. Tests inject readers only into isolated app instances. Mobile accepts a verification for at most 60 seconds and never past its expiry; checks repeat every 30 seconds and on foreground. A failed recheck closes access. Future premium mutation endpoints must enforce their own server entitlement checks; a navigation guard is not authorization.
+`AccessService` calls `IdentityService.withSession` and passes the same verified owner transaction into an entitlement reader. The default reader returns **unavailable** until phase 07 implements a verified billing projection. Tests inject readers only into isolated app instances. Mobile accepts a verification for at most 60 seconds and never past its expiry; checks repeat every 30 seconds and on foreground. A failed recheck closes access. Future premium mutation endpoints must enforce their own server entitlement checks; a navigation guard is not authorization.
 
 Settings currently offers the existing recovery tools and an honest analytics-off notice. Privacy/export/deletion, reminders, billing purchases and final Settings rows remain later work.
 
@@ -24,7 +24,7 @@ TanStack Query 5.103.1 has query and mutation retries disabled, with in-memory c
 
 `stableAction(id, input)` snapshots a user action for manual retries. Generate its ID once, retain the action through an uncertain response, and enforce owner/matching-input idempotency in each future consuming endpoint. This helper alone is not server deduplication.
 
-`lib/telemetry.ts` accepts only a small event-name allowlist and a consent state. It has no exporter or payload API. Nothing is transmitted, even with granted consent, until phase 09 approves privacy choices and provider configuration. Account changes reset consent.
+`lib/telemetry.ts` accepts only a small event-name allowlist and a consent state. It has no exporter or payload API. Nothing is transmitted, even with granted consent, until phase 08 approves privacy choices and provider configuration. Account changes reset consent.
 
 ## Contracts and extension points
 

@@ -5,7 +5,7 @@
 - **Status:** Implementation complete with passing browser and native smoke; full accessibility/device acceptance remains open. Phase 02 physical-device gates remain deferred under the approved sequencing exception.
 - **Updated / author:** September 18, 2026 / Codex.
 - **Branch:** `phase-03-app-shell`, based on merged main `96bfe2c`.
-- **Scope decision:** Anthony explicitly deferred welcome screens and questionnaire onboarding. Build the approved core screens first. This removes onboarding as a phase 03 prerequisite; it does not approve questions, permanently delete onboarding from the product, or move billing out of phase 08.
+- **Scope decision:** Anthony explicitly deferred welcome screens and questionnaire onboarding. Build the approved core screens first. This removes onboarding as a phase 03 prerequisite; it does not approve questions, permanently delete onboarding from the product, or move billing out of phase 07.
 - **Dependencies:** [Phase 02 handoff](phase-02-identity.md), [plan](../IMPLEMENTATION_PLAN.md), [app-shell implementation guide](../APP_SHELL.md).
 
 ## What changed
@@ -13,9 +13,9 @@
 - Shared typed HTTP transport with strict Zod responses, redacted errors, ten-second budgets and cancellation; identity uses the same transport without automatic write retries.
 - Account-scoped TanStack Query and domain requests: one bounded read/authentication replay, coordinated same-account expired-session recovery, stable action snapshots, synchronous cache clearing and late-response rejection after account changes.
 - One app-level identity controller/vault and foreground handling. No persistent query cache, offline data store, new fake user or Zustand dependency.
-- Home/Progress tab shells, Settings/recovery access, guarded Success/Reflection route shells and distinct loading/unavailable/unpaid/verified entry states. Feature content and mutations remain phases 04/06/07.
+- Home/Progress tab shells, Settings/recovery access, guarded Success/Reflection route shells and distinct loading/unavailable/unpaid/verified entry states. Feature content and mutations remain phases 04/05/06.
 - A separate `__DEV__` screen preview has no domain queries/writes and cannot unlock paid routes. No environment-variable billing bypass exists. Settings states that analytics is off.
-- Authenticated `/v1/access` executes its entitlement reader in `IdentityService.withSession`'s verified owner transaction. The default reports unavailable until phase 08; isolated tests inject fixture readers. No billing tables or provider calls were added.
+- Authenticated `/v1/access` executes its entitlement reader in `IdentityService.withSession`'s verified owner transaction. The default reports unavailable until phase 07; isolated tests inject fixture readers. No billing tables or provider calls were added.
 - `/openapi.json` publishes OpenAPI 3.1 generated from the shared Zod identity/access contracts. Vercel's source allowlist includes the new files.
 - Consent-aware telemetry interface with no exporter or private payload API; no analytics is transmitted. Route transitions are disabled, respecting reduced motion.
 - Updated PRD, implementation plan, decisions, architecture/design guides and README to reflect deferred onboarding and the implemented shell.
@@ -56,8 +56,8 @@ Browser/component tests do not establish physical-device Keychain behavior, Voic
 
 1. Finish the full iOS VoiceOver, large-text and software-keyboard acceptance matrix; finish the phase 02 two-physical-iPhone/signing matrix before valuable-data external testing or release.
 2. Phase 04 requires owner-approved challenge catalog/art/helpers/durations/safety and deck counter/exhaustion decisions. Replace Home's empty shell with real challenge queries/mutations through the shared account client; add authenticated and entitlement-aware server guards.
-3. Phase 06/07 consume the focused routes and Progress shell with real completed-attempt/reflection/history contracts; the current placeholders do not claim those features exist.
-4. Phase 08 implements the actual billing reader/paywall/purchase/restore flow. Default access remains unavailable until then. Do not turn development preview into a paid-access bypass.
+3. Phases 05/06 consume the focused routes and Progress shell with real completed-attempt/reflection/history contracts; the current placeholders do not claim those features exist.
+4. Phase 07 implements the actual billing reader/paywall/purchase/restore flow. Default access remains unavailable until then. Do not turn development preview into a paid-access bypass.
 5. Welcome/questionnaire onboarding remains deferred and needs separate scope/content approval if resumed.
 
 ## PR 3 review follow-up — September 18, 2026

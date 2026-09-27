@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import * as challenges from './challenges.ts';
 import * as identity from './identity.ts';
 import { accessResponseSchema } from './access.ts';
 
@@ -24,7 +25,7 @@ function operation(
 }
 export const openApiDocument = {
   openapi: '3.1.0',
-  info: { title: 'JustGO API', version: '0.3.0' },
+  info: { title: 'JustGO API', version: '0.4.0' },
   components: {
     securitySchemes: {
       deviceSession: {
@@ -35,6 +36,47 @@ export const openApiDocument = {
     },
   },
   paths: {
+    '/v1/challenges/state': { get: operation(challenges.challengeStateSchema) },
+    '/v1/challenges/venue': {
+      post: operation(identity.okSchema, challenges.selectVenueSchema),
+    },
+    '/v1/challenges/skip': {
+      post: operation(challenges.queueSchema, challenges.skipChallengeSchema),
+    },
+    '/v1/challenges/start': {
+      post: operation(
+        challenges.attemptResultSchema,
+        challenges.startAttemptSchema,
+      ),
+    },
+    '/v1/challenges/finish': {
+      post: operation(
+        challenges.attemptResultSchema,
+        challenges.finishAttemptSchema,
+      ),
+    },
+    '/v1/challenges/queue/{venue}': {
+      parameters: [
+        {
+          name: 'venue',
+          in: 'path',
+          required: true,
+          schema: z.toJSONSchema(challenges.venueSchema),
+        },
+      ],
+      get: operation(challenges.queueSchema),
+    },
+    '/v1/challenges/attempt/{id}': {
+      parameters: [
+        {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+        },
+      ],
+      get: operation(challenges.attemptResultSchema),
+    },
     '/v1/access': { get: operation(accessResponseSchema) },
     '/v1/identity/bootstrap': {
       post: operation(

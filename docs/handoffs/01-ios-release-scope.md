@@ -7,8 +7,8 @@
 
 - [PRD](../PRD.md): iOS first, onboarding, one general easy Level 1 deck, in-app timer, Success, typed reflection, the full Progress summary/calendar/day sheet and scoped Settings. No levels page, filters, custom dictation or lock-screen display at launch.
 - [Tech stack](../TECH_STACK.md): preserved architecture and billing reliability; retained stable challenge/revision/Level 1 history. Level progress/credit records, thresholds and selection endpoints are deferred. General content explicitly has no venue restriction; unknown classification is distinct.
-- [Markdown plan](../IMPLEMENTATION_PLAN.md) and [HTML plan](../IMPLEMENTATION_PLAN.html): nine launch stages, with phase 05 moved after release. Phase IDs remain stable. Apple/RevenueCat setup starts alongside phase 01. EAS build/upload, TestFlight and App Review are separate steps.
-- [Handoff index](README.md): current order, dependencies and reserved names. Phase 07’s reserved filename is now `phase-07-progress.md`; no implementation handoff was renamed because none existed.
+- [Markdown plan](../IMPLEMENTATION_PLAN.md) and the historical HTML checklist (absent from this checkout): nine launch stages, with lock-screen work deferred until after release. The current Markdown plan renumbered phases on September 26; older HTML tracker IDs require migration. Apple/RevenueCat setup starts alongside phase 01. EAS build/upload, TestFlight and App Review are separate steps.
+- [Handoff index](README.md): current order, dependencies and reserved names. Phase 06’s reserved filename is now `phase-06-progress.md`; no implementation handoff was renamed because none existed.
 - Frontend learning checklist: removed its assumption that custom dictation ships initially.
 
 ## Decisions and invariants
@@ -22,7 +22,7 @@
 
 ## Problems encountered and fixes
 
-The earlier docs coupled launch to Android, levels/progression, native timer surfaces and dictation. Phase 08 also depended on the native timer phase. Revised the product rules, schema scope, acceptance gates and phase dependencies together to remove those contradictions.
+The earlier docs coupled launch to Android, levels/progression, native timer surfaces and dictation. Phase 07 also depended on the native timer phase. Revised the product rules, schema scope, acceptance gates and phase dependencies together to remove those contradictions.
 
 The HTML checklist’s previous saved checks referred to broader v1 gates. Tracker v2 uses a new storage key and export version; v1 imports are rejected instead of silently treating old evidence as current. Old v1 browser data is left intact. The current baseline has no completed implementation stages.
 
@@ -33,7 +33,7 @@ See [planning checks](../checks/plan-check-results.md) for automated validator/d
 ## Remaining work and next actions
 
 1. Begin phase 01 workspace scaffolding and record the compatible iOS/native version matrix.
-2. Start Apple account/app-record and RevenueCat product setup in parallel, recording access/status without secrets. Finalize offer details before phase 08.
+2. Start Apple account/app-record and RevenueCat product setup in parallel, recording access/status without secrets. Finalize offer details before phase 07.
 3. Resolve onboarding content before phase 03 and approve a useful, safe general Level 1 catalog before phase 04.
 4. Decide the deck counter/exhausted state, reflection dismissal/reading interaction, and access-expiry behavior before their consuming phases.
 5. Keep future levels/venue taxonomy, dictation and Android decisions out of launch prerequisites. Detailed phases for those features will be written when scheduled.

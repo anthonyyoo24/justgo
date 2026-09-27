@@ -1,4 +1,1 @@
-import { FocusedScreen } from '../features/shell/ShellScreens';
-export default function SuccessRoute() {
-  return <FocusedScreen kind="success" />;
-}
+export { SuccessScreen as default } from '../features/challenges/ChallengeScreen';
