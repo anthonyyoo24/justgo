@@ -36,7 +36,7 @@ export function ReflectionView({
   busy = false,
   locked = false,
   error,
-  draftNotice,
+  draftError = false,
   onRetryDraft,
   conflict = false,
   onLoadLatest,
@@ -54,7 +54,7 @@ export function ReflectionView({
   busy?: boolean;
   locked?: boolean;
   error?: string | null;
-  draftNotice?: string | null;
+  draftError?: boolean;
   onRetryDraft?: (() => void) | undefined;
   conflict?: boolean;
   onLoadLatest?: () => void;
@@ -199,9 +199,11 @@ export function ReflectionView({
               style={[styles.input, { minHeight: 114 * scale }]}
             />
           </View>
-          {!!draftNotice && (
+          {draftError && (
             <View style={styles.inlineNotice}>
-              <Text style={styles.notice}>{draftNotice}</Text>
+              <Text accessibilityRole="alert" style={styles.notice}>
+                Draft not saved. Your edits are still here.
+              </Text>
               {!!onRetryDraft && (
                 <Pressable
                   accessibilityRole="button"

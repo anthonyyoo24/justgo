@@ -63,3 +63,30 @@ it('has native multiline entry and an accessible dismissal choice without a Dict
   expect(screen.getByRole('button', { name: 'Discard and skip' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Keep editing' })).toBeTruthy();
 });
+
+it('shows a retry only for a failed background draft', () => {
+  const base = props();
+  const onRetryDraft = jest.fn();
+  const screen = render(
+    <ReflectionView
+      {...base}
+      text="I showed up."
+      onRetryDraft={onRetryDraft}
+    />,
+  );
+  expect(screen.queryByText(/draft/i)).toBeNull();
+  expect(screen.getByRole('button', { name: 'Save Reflection' })).toBeTruthy();
+  screen.rerender(
+    <ReflectionView
+      {...base}
+      text="I showed up."
+      draftError
+      onRetryDraft={onRetryDraft}
+    />,
+  );
+  expect(screen.getByRole('alert').props.children).toBe(
+    'Draft not saved. Your edits are still here.',
+  );
+  fireEvent.press(screen.getByRole('button', { name: 'Retry draft' }));
+  expect(onRetryDraft).toHaveBeenCalledTimes(1);
+});

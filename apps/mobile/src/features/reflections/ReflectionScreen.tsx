@@ -79,13 +79,7 @@ export function ReflectionScreen() {
       busy={state.saving}
       locked={state.pendingFinal || state.conflict}
       error={state.error}
-      draftNotice={
-        state.draftError
-          ? 'Draft not saved. Your edits are still here.'
-          : state.draftSaving
-            ? 'Saving draft…'
-            : null
-      }
+      draftError={state.draftError}
       onRetryDraft={state.draftError ? controller.retryDraft : undefined}
       conflict={state.conflict}
       onLoadLatest={() => void controller.useLatest()}

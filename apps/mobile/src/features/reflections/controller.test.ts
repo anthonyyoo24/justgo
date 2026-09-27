@@ -124,6 +124,31 @@ it('clears an autosaved feeling and can skip when the form is empty again', asyn
   controller.dispose();
 });
 
+it('keeps a draft failure visible through retry until the draft is saved', async () => {
+  let finishRetry: ((response: ReturnType<typeof record>) => void) | undefined;
+  const request = jest
+    .fn()
+    .mockResolvedValueOnce(record())
+    .mockRejectedValueOnce(new ApiError('NETWORK'))
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishRetry = resolve;
+        }),
+    );
+  const { controller } = make(request);
+  await controller.load();
+  controller.setText('I showed up.');
+  await controller.retryDraft();
+  expect(controller.getSnapshot().draftError).toBe(true);
+  const retry = controller.retryDraft();
+  expect(controller.getSnapshot().draftError).toBe(true);
+  finishRetry?.(record({ revision: 1, status: 'draft', text: 'I showed up.' }));
+  await retry;
+  expect(controller.getSnapshot().draftError).toBe(false);
+  controller.dispose();
+});
+
 it('keeps local edits after a conflicting draft and requires an explicit resolution', async () => {
   jest.useFakeTimers();
   const request = jest

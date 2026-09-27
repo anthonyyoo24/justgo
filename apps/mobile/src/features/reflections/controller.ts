@@ -21,7 +21,6 @@ export type ReflectionSnapshot = Form & {
   revision: number;
   status: ReflectionResponse['status'];
   saving: boolean;
-  draftSaving: boolean;
   draftError: boolean;
   conflict: boolean;
   terminalConflict: boolean;
@@ -59,7 +58,6 @@ export class ReflectionController {
     revision: 0,
     status: 'none',
     saving: false,
-    draftSaving: false,
     draftError: false,
     conflict: false,
     terminalConflict: false,
@@ -182,7 +180,6 @@ export class ReflectionController {
         text: payloadText(this.snapshot.text),
       });
     this.draftRetry = action;
-    this.publish({ draftSaving: true, draftError: false });
     const work = (async () => {
       try {
         const response = await this.client.request(
@@ -195,7 +192,6 @@ export class ReflectionController {
         this.publish({
           revision: response.revision,
           status: response.status,
-          draftSaving: false,
           draftError: false,
           error: null,
         });
@@ -212,7 +208,6 @@ export class ReflectionController {
         } else {
           this.publish({ draftError: true });
         }
-        this.publish({ draftSaving: false });
         return false;
       } finally {
         this.draftInFlight = null;
