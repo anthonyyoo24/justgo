@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, fontFamilies } from '../../theme/tokens';
+import { challengeScale } from '../challenges/challenge-design';
 import { FeelingFace } from './FeelingFace';
 
 export const feelingOptions: readonly {
@@ -65,6 +66,7 @@ export function ReflectionView({
 }) {
   const { width, fontScale } = useWindowDimensions();
   const scale = Math.min(width, 390) / 390;
+  const headerScale = challengeScale(width);
   const hasInput = feeling !== null || text.trim().length > 0;
   const buttonLabel = hasInput ? 'Save Reflection' : 'Skip';
   const size = 60 * scale;
@@ -105,7 +107,14 @@ export function ReflectionView({
                 />
               </Svg>
             </Pressable>
-            <Text style={styles.headerTitle}>Reflection</Text>
+            <Text
+              style={[
+                styles.headerTitle,
+                { fontSize: 17 * headerScale, lineHeight: 22 * headerScale },
+              ]}
+            >
+              Reflection
+            </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close reflection"
@@ -313,7 +322,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: fontFamilies.display,
     fontWeight: '600',
-    fontSize: 16,
     color: colors.ink,
   },
   title: {

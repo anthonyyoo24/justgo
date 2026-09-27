@@ -1,6 +1,9 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
+import { ChallengeLayout } from '../challenges/ChallengeLayout';
 import { ReflectionView } from './ReflectionView';
+
+jest.mock('expo-router', () => ({ Link: () => null }));
 
 const props = () => ({
   feeling: null,
@@ -94,4 +97,17 @@ it('shows a retry only for a failed background draft', () => {
   );
   fireEvent.press(screen.getByRole('button', { name: 'Retry draft' }));
   expect(onRetryDraft).toHaveBeenCalledTimes(1);
+});
+
+it('matches the challenge screens’ top header size', () => {
+  const reflection = render(<ReflectionView {...props()} />);
+  const challenge = render(<ChallengeLayout title="Find a challenge" />);
+  const reflectionHeader = StyleSheet.flatten(
+    reflection.getByText('Reflection').props.style,
+  );
+  const challengeHeader = StyleSheet.flatten(
+    challenge.getByText('Find a challenge').props.style,
+  );
+  expect(reflectionHeader.fontSize).toBe(challengeHeader.fontSize);
+  expect(reflectionHeader.lineHeight).toBe(challengeHeader.lineHeight);
 });
