@@ -4,6 +4,7 @@ import { ChallengeScreen } from './ChallengeScreen';
 
 const mockMounted = jest.fn();
 const mockRouter = { push: jest.fn(), replace: jest.fn() };
+let mockFocused = true;
 const mockAccount = { userId: 'deck-owner' };
 const mockController = {
   subscribe: () => () => {},
@@ -46,7 +47,7 @@ let mockSnapshot = {
   queues: { cafe: { version: 0, cards: [{ id: 'a', text: 'Say hello.' }] } },
 };
 jest.mock('expo-router', () => ({
-  useIsFocused: () => true,
+  useIsFocused: () => mockFocused,
   useRouter: () => mockRouter,
   Link: ({ children }: { children: React.ReactNode }) => {
     const { Text } = require('react-native');
@@ -76,6 +77,8 @@ jest.mock('./ChallengeDeck', () => ({
 beforeEach(() => {
   mockRouter.push.mockClear();
   mockMounted.mockClear();
+  mockController.dismissSuccess.mockClear();
+  mockFocused = true;
   mockSnapshot = {
     ...mockSnapshot,
     state: { active: null, latestOutcome: null },
@@ -133,4 +136,23 @@ it('keeps the active card visible until the success route takes over', () => {
   expect(screen.getByTestId('active-outcomes')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Completed' })).toBeDisabled();
   expect(screen.queryByText('That’s a win!')).toBeNull();
+});
+
+it('dismisses an already-opened result when native back returns to the challenge', () => {
+  const screen = render(<ChallengeScreen />);
+  mockSnapshot = { ...mockSnapshot, success: finishedAttempt };
+  screen.rerender(<ChallengeScreen />);
+  expect(mockRouter.push).toHaveBeenCalledTimes(1);
+
+  // Renders during the navigation handoff must not clear the result before
+  // the Success screen can use it.
+  screen.rerender(<ChallengeScreen />);
+  expect(mockController.dismissSuccess).not.toHaveBeenCalled();
+
+  mockFocused = false;
+  screen.rerender(<ChallengeScreen />);
+  mockFocused = true;
+  screen.rerender(<ChallengeScreen />);
+  expect(mockController.dismissSuccess).toHaveBeenCalledTimes(1);
+  expect(mockRouter.push).toHaveBeenCalledTimes(1);
 });

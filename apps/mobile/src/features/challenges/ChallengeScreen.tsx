@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useIsFocused } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -30,17 +30,32 @@ export function ChallengeScreen() {
   );
   const focused = useIsFocused();
   const [moving, setMoving] = useState(false);
+  const successRouteAttemptId = useRef<string | null>(null);
+  const wasFocused = useRef(focused);
   const router = useRouter();
   useEffect(() => {
     if (focused && account) void challenges.refresh();
   }, [focused, account, challenges]);
   useEffect(() => {
-    if (focused && state.success)
-      router.push({
-        pathname: '/success',
-        params: { attemptId: state.success.id },
-      });
-  }, [state.success, focused, router]);
+    if (!focused) {
+      wasFocused.current = false;
+      return;
+    }
+    const returnedToScreen = !wasFocused.current;
+    wasFocused.current = true;
+    if (!state.success) return;
+    if (successRouteAttemptId.current === state.success.id) {
+      // A native back gesture can return here without pressing Continue.
+      // Clear the result instead of immediately opening Success again.
+      if (returnedToScreen) challenges.dismissSuccess();
+      return;
+    }
+    successRouteAttemptId.current = state.success.id;
+    router.push({
+      pathname: '/success',
+      params: { attemptId: state.success.id },
+    });
+  }, [state.success, focused, router, challenges]);
   const queue = state.queues[state.selected];
   const venue = venues.find((v) => v.id === state.selected)!;
   // Keep the completed card in place while the success route opens. The

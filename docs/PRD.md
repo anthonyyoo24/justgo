@@ -109,7 +109,7 @@ After account connection, verified paid access is required to enter the core pai
 
 Purchase, restore, cancellation, failure, and purchased-but-still-verifying states must be distinct. Unlock after immediate server verification; do not wait for scheduled billing processing or ask someone to purchase again to fix a verification failure.
 
-Restore Purchases, subscription management, recovery, privacy/terms, and data controls remain reachable without paid access. The proposed expiry behavior for an already active attempt is listed in section 13. Stripe checkout and the AI coach are later phases, not launch requirements.
+Restore Purchases, subscription management, recovery, privacy/terms, and data controls remain reachable without paid access. Confirmed expiry immediately locks paid actions, including finishing an already active attempt and saving a reflection; its existing records remain intact. Stripe checkout and the AI coach are later phases, not launch requirements.
 
 ## 5. Core screens and interactions
 
@@ -137,7 +137,7 @@ The screen shows the accepted challenge’s full instruction, venue illustration
 
 - Begin the countdown from the server-confirmed start and deadline. A pending/failed start is not an active attempt.
 - **Completed** submits the completion. Show Success only once the server confirms it; a retry must not award credit twice.
-- **Give up** requires confirmation. Confirming ends the attempt without a rep or streak credit and returns to an eligible Home card. Cancelling the confirmation keeps the original deadline.
+- **Give up** submits directly. Once the server confirms it, return to an eligible Home card without a rep or streak credit. An uncertain save keeps the same attempt and deadline available for retry.
 - Navigating to another tab or Settings, backgrounding, locking, or closing the app leaves the same attempt active. There is no pause/reset implied by navigation.
 - Recover the active attempt before allowing another start after relaunch or on another device.
 - At zero, display zero and retain the outcome actions. Expiry does not automatically complete, fail, give up, or restart the attempt.
@@ -331,13 +331,10 @@ Include duplicate completion, offline/uncertain writes, expired countdown, concu
 
 These are intentionally unresolved. A final visual layout does not settle the following product rules; proposed defaults below are recommendations, not newly approved scope.
 
-| Decision                             | Proposed default / work needed                                                                                                                                                                                                      |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 07. Keep no-signup entry and native-first paid access.                                                                |
-| Launch catalog                       | Approve the easy Level 1, non-venue-specific challenge copy, durations, helpers, illustrations, safety rules, and useful catalog size. No threshold or venue taxonomy is required before launch.                                    |
-| Home deck indicator                  | Use browsing position within the available general deck, clearly separate from earned progress. Define when its count resets/changes or replace its copy if it is meant to represent curriculum progress.                           |
-| Reflection optionality and dismissal | Retain an optional overall step; allow feeling-only, text-only, or both. Finalize empty/save-button behavior and Back/X save/discard flow.                                                                                          |
-| Reading saved reflection text        | Add a per-attempt expansion/detail interaction from a day entry; confirm editing/deletion affordances and obtain a matching design. Do not use a day-level note.                                                                    |
-| Future levels — not a launch blocker | Decide thresholds, unlocking/skipping, partial/final-level behavior and treatment of prior Level 1 completions when scheduling levels. Preserve history now; do not implement hidden progression.                                   |
-| Access expiry during an attempt      | Recommended: allow the existing attempt’s outcome and associated reflection to be saved; require renewed access before another start. Define private-history viewing after expiry separately from always-available export/deletion. |
-| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, day-duration rounding, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.                   |
+| Decision                             | Proposed default / work needed                                                                                                                                                                                    |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 07. Keep no-signup entry and native-first paid access.                                              |
+| Reflection optionality and dismissal | Retain an optional overall step; allow feeling-only, text-only, or both. Finalize empty/save-button behavior and Back/X save/discard flow.                                                                        |
+| Reading saved reflection text        | Add a per-attempt expansion/detail interaction from a day entry; confirm editing/deletion affordances and obtain a matching design. Do not use a day-level note.                                                  |
+| Future levels — not a launch blocker | Decide thresholds, unlocking/skipping, partial/final-level behavior and treatment of prior Level 1 completions when scheduling levels. Preserve history now; do not implement hidden progression.                 |
+| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, day-duration rounding, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants. |
