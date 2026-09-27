@@ -222,17 +222,17 @@ export function ProgressView({
                   >
                     {today && active && (
                       <Svg
-                        width={60}
-                        height={16}
-                        viewBox="0 0 60 16"
+                        width={52}
+                        height={14}
+                        viewBox="0 0 52 14"
                         pointerEvents="none"
                         style={styles.todayRays}
                       >
                         <Path
-                          d="M7 13 2 9M10 7 8 1m42 6 2-6m1 12 5-4"
+                          d="M1.5 9.5 7 12.2M9 1.4 11.6 7.2M43 1.4 40.4 7.2M50.5 9.5 45 12.2"
                           fill="none"
                           stroke="#F4A46C"
-                          strokeWidth={1.5}
+                          strokeWidth={1.3}
                           strokeLinecap="round"
                         />
                       </Svg>
@@ -701,9 +701,9 @@ const styles = StyleSheet.create({
   },
   todayRays: {
     position: 'absolute',
-    top: -7,
+    top: -5,
     left: '50%',
-    transform: [{ translateX: -30 }],
+    transform: [{ translateX: -26 }],
     zIndex: 1,
   },
   selectedDay: { backgroundColor: colors.ink, borderColor: colors.ink },
