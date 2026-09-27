@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import type { ProgressEntry, ProgressResponse } from '@justgo/contracts';
+import { colors } from '../../theme/tokens';
 import { ProgressView } from './ProgressView';
 
 jest.mock('expo-router', () => ({ Link: () => null }));
@@ -79,6 +80,34 @@ it('opens only active days and shows draft and skipped feedback as Not recorded'
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
   );
   expect(actions.onCloseDay).toHaveBeenCalledTimes(1);
+});
+
+it('keeps the active today date legible above its rep badge', () => {
+  const actions = callbacks();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={{
+        ...month,
+        totalReps: 10,
+        monthlyReps: 10,
+        days: [{ date: '2026-09-27', reps: 10 }],
+      }}
+      selectedDate={null}
+      {...actions}
+    />,
+  );
+  const today = screen.getByRole('button', {
+    name: 'Sunday, September 27, today, 10 reps',
+  });
+  expect(today).toHaveStyle({ backgroundColor: colors.ink });
+  expect(screen.getByText('27')).toHaveStyle({ color: colors.cream });
+  expect(screen.getByTestId('rep-badge-2026-09-27')).toHaveStyle({
+    bottom: -5,
+    height: 21,
+  });
+  fireEvent.press(today);
+  expect(actions.onOpenDay).toHaveBeenCalledWith('2026-09-27');
 });
 
 it('keeps the calendar visible without presenting a failed request as zero activity', () => {

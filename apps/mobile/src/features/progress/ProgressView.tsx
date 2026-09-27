@@ -216,6 +216,23 @@ export function ProgressView({
                 const future = !data || date > data.today;
                 return (
                   <View key={date} style={styles.cell}>
+                    {today && active && (
+                      <Svg
+                        width={60}
+                        height={16}
+                        viewBox="0 0 60 16"
+                        pointerEvents="none"
+                        style={styles.todayRays}
+                      >
+                        <Path
+                          d="M7 13 2 9M10 7 8 1m42 6 2-6m1 12 5-4"
+                          fill="none"
+                          stroke="#F4A46C"
+                          strokeWidth={1.5}
+                          strokeLinecap="round"
+                        />
+                      </Svg>
+                    )}
                     <Pressable
                       accessibilityRole={active ? 'button' : undefined}
                       accessibilityLabel={
@@ -233,19 +250,22 @@ export function ProgressView({
                         styles.dayCircle,
                         active ? styles.activeDay : styles.inactiveDay,
                         today && styles.today,
+                        today && active && styles.todayActive,
                         selected && styles.selectedDay,
                       ]}
                     >
                       <Text
                         style={[
                           styles.dayNumber,
+                          active && styles.activeNumber,
+                          today && active && styles.todayNumber,
                           selected && styles.selectedText,
                         ]}
                       >
                         {Number(date.slice(-2))}
                       </Text>
                       {active && (
-                        <View style={styles.badge}>
+                        <View testID={`rep-badge-${date}`} style={styles.badge}>
                           <Text style={styles.badgeText}>{count}</Text>
                         </View>
                       )}
@@ -670,6 +690,14 @@ const styles = StyleSheet.create({
   activeDay: { backgroundColor: colors.white, borderColor: '#EEE2D8' },
   inactiveDay: { backgroundColor: '#E9E3DC', borderColor: '#E8DED5' },
   today: { borderColor: '#F4A46C', borderWidth: 2 },
+  todayActive: { backgroundColor: colors.ink, borderColor: colors.ink },
+  todayRays: {
+    position: 'absolute',
+    top: -7,
+    left: '50%',
+    transform: [{ translateX: -30 }],
+    zIndex: 1,
+  },
   selectedDay: { backgroundColor: colors.ink, borderColor: colors.ink },
   dayNumber: {
     color: colors.ink,
@@ -677,13 +705,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
+  activeNumber: { transform: [{ translateY: -4 }] },
+  todayNumber: { color: colors.cream },
   selectedText: { color: colors.white },
   badge: {
     position: 'absolute',
-    bottom: -1,
-    minWidth: 20,
-    height: 15,
-    borderRadius: 9,
+    bottom: -5,
+    minWidth: 21,
+    height: 21,
+    borderRadius: 11,
     backgroundColor: '#FFE2C8',
     alignItems: 'center',
     justifyContent: 'center',
