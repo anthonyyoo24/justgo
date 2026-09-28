@@ -47,8 +47,8 @@ it('matches the Paper success layout and type scale', () => {
   });
   expect(copy).toMatchObject({ marginTop: 16 * scale, gap: 14 * scale });
   expect(heading).toMatchObject({
-    fontFamily: fontFamilies.display,
-    fontWeight: '600',
+    fontFamily: fontFamilies.editorial,
+    fontWeight: '700',
     fontSize: 29 * scale,
     letterSpacing: -0.725 * scale,
     textAlign: 'center',

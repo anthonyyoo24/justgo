@@ -401,8 +401,8 @@ const styles = StyleSheet.create({
   },
   title: {
     marginTop: 18,
-    fontFamily: fontFamilies.display,
-    fontWeight: '600',
+    fontFamily: fontFamilies.editorial,
+    fontWeight: '700',
     fontSize: 30,
     lineHeight: 35,
     letterSpacing: -0.5,
@@ -452,10 +452,11 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   reflectionHeading: {
-    fontFamily: fontFamilies.display,
-    fontWeight: '600',
+    fontFamily: fontFamilies.editorial,
+    fontWeight: '700',
     fontSize: 25,
     lineHeight: 30,
+    letterSpacing: -0.25,
     color: colors.ink,
   },
   optional: {

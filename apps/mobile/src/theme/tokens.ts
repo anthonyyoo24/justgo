@@ -24,6 +24,12 @@ export const fontFamilies = {
     web: 'Baskerville, Georgia, serif',
     default: 'serif',
   }),
+  // Narrow serif used for the Paper-inspired editorial headings and journal rows.
+  editorial: Platform.select({
+    ios: 'Bodoni 72',
+    web: "'Bodoni 72', Didot, 'Times New Roman', serif",
+    default: 'serif',
+  }),
   regular: 'Inter_400Regular',
   medium: 'Inter_500Medium',
   semibold: 'Inter_600SemiBold',

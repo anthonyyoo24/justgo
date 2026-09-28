@@ -643,9 +643,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   monthTitle: {
-    fontFamily: fontFamilies.display,
+    fontFamily: fontFamilies.editorial,
     fontSize: 23,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: -0.25,
     color: colors.ink,
   },
   monthButtons: { flexDirection: 'row', gap: 2 },
@@ -748,9 +749,10 @@ const styles = StyleSheet.create({
   summaryCopy: { flex: 1 },
   summaryHeading: {
     color: colors.ink,
-    fontFamily: fontFamilies.display,
-    fontWeight: '600',
+    fontFamily: fontFamilies.editorial,
+    fontWeight: '700',
     fontSize: 16,
+    letterSpacing: -0.15,
   },
   summarySub: {
     color: '#6C7D8D',
@@ -840,10 +842,11 @@ const styles = StyleSheet.create({
     lineHeight: 40,
   },
   dayTitle: {
-    fontFamily: fontFamilies.display,
+    fontFamily: fontFamilies.editorial,
     color: colors.ink,
     fontSize: 30,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: -0.5,
     paddingTop: 10,
     paddingRight: 35,
   },
@@ -876,10 +879,11 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
   },
   entryTitle: {
-    fontFamily: fontFamilies.display,
+    fontFamily: fontFamilies.editorial,
     color: colors.ink,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: -0.15,
     lineHeight: 20,
   },
   entryMeta: {
