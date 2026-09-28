@@ -235,6 +235,7 @@ export function ScreenPreview({
               <NavigationIcon
                 name={name}
                 color={tab === name ? colors.white : colors.border}
+                active={tab === name}
               />
             </Pressable>
           ))}

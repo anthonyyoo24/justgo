@@ -28,8 +28,8 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarAccessibilityLabel: 'Home',
-          tabBarIcon: ({ color }) => (
-            <NavigationIcon name="home" color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <NavigationIcon name="home" color={color} active={focused} />
           ),
         }}
       />
@@ -38,8 +38,8 @@ export default function TabLayout() {
         options={{
           title: 'Progress',
           tabBarAccessibilityLabel: 'Progress',
-          tabBarIcon: ({ color }) => (
-            <NavigationIcon name="progress" color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <NavigationIcon name="progress" color={color} active={focused} />
           ),
         }}
       />

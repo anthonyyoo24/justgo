@@ -526,35 +526,35 @@ OS-rendered time continues without keeping the React Native JavaScript process a
 
 ## 12. Build, testing, and operations
 
-Use an npm workspace with `apps/mobile`, `apps/api`, and `packages/contracts`. Keep one API codebase and one PostgreSQL schema. Add feature folders for onboarding, challenges, reflections, progress, identity, and billing; add a coaching module when it is implemented. Isolate native Keychain handling behind a typed adapter. Add speech-recognition and lock-screen adapters only when implementing those deferred features. Keep billing business logic independent of the QStash delivery handler and Vercel entrypoint, and keep coaching behind its future provider adapter. Deploy the API workspace and job endpoints to Vercel with access to shared contracts; EAS builds and distributes the mobile app.
+Use an npm workspace with `apps/mobile`, `apps/api`, and `packages/contracts`. Keep one API codebase and one PostgreSQL schema. Add feature folders when their behavior is implemented; onboarding, billing, and coaching do not need empty directories in advance. Isolate native Keychain handling behind a typed adapter. Add speech-recognition and lock-screen adapters only when implementing those deferred features. Keep billing business logic independent of the QStash delivery handler and Vercel entrypoint, and keep coaching behind its future provider adapter. Deploy the API workspace and job endpoints to Vercel with access to shared contracts; EAS builds and distributes the mobile app.
 
 ### Frontend folders and responsibilities
 
-Organize the mobile source by feature, keeping each feature's UI, logic, API functions, and tests together:
+Organize the mobile source by feature, keeping each feature's UI, logic, API functions, and tests together. The current layout is:
 
 ```text
 apps/mobile/src/
 ├── app/                 # Expo Router routes and layouts
 ├── features/
-│   ├── onboarding/
+│   ├── access/              # Access and paywall states
 │   ├── challenges/
+│   ├── foundation/          # Connection and readiness UI
 │   ├── reflections/
 │   ├── progress/
-│   ├── billing/
-│   └── identity/
+│   ├── identity/            # CredentialVault interface and Keychain adapter
+│   └── shell/               # App-wide runtime, providers, and screen composition
 ├── components/          # UI reused across features
-├── lib/
-│   ├── api/             # Shared HTTP client and error handling
-│   └── query-client.ts  # TanStack Query instance and defaults
-└── platform/            # Keychain adapter now; others only when built
+├── lib/                 # HTTP, account-scoped client/query defaults, telemetry
+└── theme/               # Design tokens
 ```
 
-For example, `features/challenges/` can contain `ChallengeScreen.tsx`, `ChallengeCard.tsx`, `useChallengeAttempt.ts`, `api.ts`, and colocated tests. Add subfolders as a feature grows rather than creating empty layers upfront.
+The Swift implementation lives in `apps/mobile/modules/justgo-keychain`; `features/identity/vault.ts` is its typed mobile adapter and browser fallback. `lib/account-client.ts` currently owns the TanStack Query defaults alongside account-scoped request behavior. These are placement choices, not required filenames for future features. For example, `features/challenges/` can contain a screen, card, hook, API function, and colocated tests as needed. Add files and subfolders as a feature grows rather than creating empty layers upfront.
 
 - Keep `app/` files focused on routes/layouts and connecting navigation to feature screens. Keep helpers and reusable components outside the routing directory. [Expo Router structure](https://docs.expo.dev/router/basics/notation/).
 - Feature components handle presentation; feature hooks coordinate behavior and queries; feature API functions call the shared client. Keep feature-specific state with its feature using the existing React/Zustand/TanStack Query responsibilities.
 - Move UI into shared `components/` when it is reused across features. Shared UI and infrastructure must not import feature-specific screens or business logic; features may depend on shared code. Use explicit interfaces when features need to collaborate.
-- Keep native platform access behind `platform/` adapters. Put shared public request/response schemas and types in `packages/contracts`; server implementation and secrets stay in `apps/api`.
+- Keep native platform access behind typed adapters; the current Keychain adapter is in `features/identity/`. Put shared public request/response schemas and types in `packages/contracts`; server implementation and secrets stay in `apps/api`.
+- Import contracts from either app through `@justgo/contracts`, whose root export is `packages/contracts/src/index.ts`. Mobile must not import API implementation, and API must not import mobile code. Shared mobile `components/`, `lib/`, `theme/`, and any future `platform/` must not import from `features/`. The `shell/` feature may compose other features; other cross-feature collaboration should use explicit interfaces. ESLint checks these import directions, including re-exports, and `npm run check` runs the boundary tests in CI.
 
 This structure supports growth in features and contributors. Runtime capacity remains governed by the performance and capacity requirements below; new features do not require a separate app or service by default.
 

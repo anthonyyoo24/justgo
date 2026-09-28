@@ -1,23 +1,28 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import {
   feelingChoices,
   type FeelingCode,
   type ProgressEntry,
   type ProgressResponse,
 } from '@justgo/contracts';
-import { Link } from 'expo-router';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { challengeScale } from '../challenges/challenge-design';
 import { colors, fontFamilies, layout, typography } from '../../theme/tokens';
 import { FeelingFace } from '../reflections/FeelingFace';
 import {
@@ -55,6 +60,8 @@ export type ProgressViewProps = {
 };
 
 const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const entryMetaInk = '#5F7391';
+const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 const feelingLabel = (feeling: FeelingCode | null) =>
   feelingChoices.find((option) => option.code === feeling)?.label ??
   'Not recorded';
@@ -78,6 +85,8 @@ export function ProgressView({
   onRetryDay,
   onLoadMore,
 }: ProgressViewProps) {
+  const { width } = useWindowDimensions();
+  const headerScale = challengeScale(width);
   const cells = useMemo(() => calendarCells(month), [month]);
   const counts = useMemo(
     () => new Map(data?.days.map((item) => [item.date, item.reps]) ?? []),
@@ -90,42 +99,15 @@ export function ProgressView({
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
-          <View style={styles.header}>
-            <Text accessibilityRole="header" style={styles.title}>
-              Progress
-            </Text>
-            <Link
-              href="/settings"
-              accessibilityLabel="Open Settings"
-              style={styles.settings}
-            >
-              <Svg width={27} height={27} viewBox="0 0 27 27" aria-hidden>
-                <Circle
-                  cx={13.5}
-                  cy={13.5}
-                  r={11.5}
-                  fill="none"
-                  stroke={colors.ink}
-                  strokeWidth={1.5}
-                />
-                <Circle
-                  cx={13.5}
-                  cy={10}
-                  r={3.2}
-                  fill="none"
-                  stroke={colors.ink}
-                  strokeWidth={1.3}
-                />
-                <Path
-                  d="M6.5 21c.4-4.3 3-6.2 7-6.2s6.6 1.9 7 6.2"
-                  fill="none"
-                  stroke={colors.ink}
-                  strokeWidth={1.3}
-                />
-              </Svg>
-            </Link>
+          <View
+            style={[
+              styles.header,
+              { width: Math.min(width, 384) - 28 * headerScale },
+            ]}
+          >
+            <ScreenHeader title="Progress" scale={headerScale} />
           </View>
-          <View style={styles.card}>
+          <View testID="progress-calendar-card" style={styles.card}>
             <View style={styles.stats}>
               <Metric
                 icon="streak"
@@ -255,15 +237,14 @@ export function ProgressView({
                         active ? styles.activeDay : styles.inactiveDay,
                         today && styles.today,
                         today && active && styles.todayActive,
-                        selected && styles.selectedDay,
                       ]}
                     >
                       <Text
                         style={[
                           styles.dayNumber,
+                          !active && styles.inactiveNumber,
                           active && styles.activeNumber,
                           today && active && styles.todayNumber,
-                          selected && styles.selectedText,
                         ]}
                       >
                         {Number(date.slice(-2))}
@@ -291,7 +272,7 @@ export function ProgressView({
               </View>
               <View style={styles.legend}>
                 <View style={styles.legendDot}>
-                  <Text style={styles.badgeText}>#</Text>
+                  <Text style={styles.legendBadgeText}>#</Text>
                 </View>
                 <Text style={styles.legendText}>
                   Small numbers{'\n'}show reps
@@ -339,39 +320,114 @@ function Metric({
 }) {
   return (
     <View style={styles.metric}>
-      <Svg width={35} height={38} viewBox="0 0 36 38" aria-hidden>
+      <Svg
+        width={icon === 'reps' ? 44 : 36}
+        height={38}
+        viewBox={icon === 'reps' ? '0 0 44 38' : '0 0 36 38'}
+        testID={`progress-metric-icon-${icon}`}
+        aria-hidden
+      >
         {icon === 'streak' ? (
           <Path
-            d="M18 4c-1 5-9 8-10 17-1 7 3 12 10 13 7-1 11-6 10-13-1-5-4-9-5-11-1 4-3 5-5 6 1-4 1-8 0-12Zm-1 17c-1 3-4 5-4 8 0 3 2 5 5 5s5-2 5-5c0-3-2-5-3-7-1 2-2 3-3 3v-4Z"
+            d="M18.23 3.70 C22.93 6.81 26.00 11.27 24.65 17.69 C26.46 16.11 27.53 14.53 28.69 13.23 C31.76 18.20 32.27 24.20 29.85 28.61 C28.27 31.49 25.44 33.91 22.32 35.07 C23.95 32.05 24.28 29.17 22.42 26.99 C21.81 27.64 20.93 28.24 20.28 28.43 C18.79 26.52 18.79 23.03 18.56 20.20 C15.35 22.10 12.00 25.08 11.26 28.10 C10.66 30.47 11.31 32.66 12.65 34.56 C8.28 32.56 5.31 28.43 5.31 23.92 C5.31 19.97 7.68 16.20 10.98 13.74 L11.45 16.34 C15.26 13.13 18.74 8.49 18.23 3.70 Z"
             fill="none"
             stroke={colors.ink}
-            strokeWidth={1.7}
+            strokeWidth={1.65}
+            strokeLinecap="round"
             strokeLinejoin="round"
           />
         ) : icon === 'best' ? (
           <Path
-            d="M10 6h16v11c0 7-4 11-8 11s-8-4-8-11V6Zm0 3H4v4c0 5 3 8 7 8m15-12h6v4c0 5-3 8-7 8M18 28v5m-8 1h16"
+            d="M9 4.5h18v11c0 7-4 11.5-9 11.5S9 22.5 9 15.5v-11Zm0 4H3.5v4c0 5 2.5 8 7.2 8m16.3-12h5.5v4c0 5-2.5 8-7.2 8M18 27v5m-7.5 3c.5-2.3 2.7-3 7.5-3s7 .7 7.5 3h-15Z"
             fill="none"
             stroke={colors.ink}
-            strokeWidth={1.7}
+            strokeWidth={1.9}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         ) : (
-          <Path
-            d="M4 13v12m3-15v18m4-18v18m3-12h8m3-6v18m4-18v18m3-15v12M4 13h3m-3 12h3m22-12h3m-3 12h3"
-            fill="none"
-            stroke={colors.ink}
-            strokeWidth={1.8}
-            strokeLinecap="round"
-          />
+          <>
+            {/* Paper's silhouette is about 43 × 25 points, aligned at the bottom. */}
+            <Rect
+              x={1.5}
+              y={21.1}
+              width={2.6}
+              height={4.2}
+              rx={0.5}
+              fill="none"
+              stroke={colors.ink}
+              strokeWidth={1.6}
+            />
+            <Rect
+              x={4.1}
+              y={15.2}
+              width={4.1}
+              height={16}
+              rx={0.8}
+              fill="none"
+              stroke={colors.ink}
+              strokeWidth={1.6}
+            />
+            <Rect
+              x={8.2}
+              y={11.5}
+              width={5.4}
+              height={23.5}
+              rx={1.1}
+              fill="none"
+              stroke={colors.ink}
+              strokeWidth={1.6}
+            />
+            <Rect
+              x={13.6}
+              y={21.1}
+              width={16.8}
+              height={4.2}
+              fill="none"
+              stroke={colors.ink}
+              strokeWidth={1.6}
+            />
+            <Rect
+              x={30.4}
+              y={11.5}
+              width={5.4}
+              height={23.5}
+              rx={1.1}
+              fill="none"
+              stroke={colors.ink}
+              strokeWidth={1.6}
+            />
+            <Rect
+              x={35.8}
+              y={15.2}
+              width={4.1}
+              height={16}
+              rx={0.8}
+              fill="none"
+              stroke={colors.ink}
+              strokeWidth={1.6}
+            />
+            <Rect
+              x={39.9}
+              y={21.1}
+              width={2.6}
+              height={4.2}
+              rx={0.5}
+              fill="none"
+              stroke={colors.ink}
+              strokeWidth={1.6}
+            />
+          </>
         )}
       </Svg>
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>
         {value ?? '—'}
         {value !== null && suffix && (
-          <Text style={styles.metricSuffix}> {suffix}</Text>
+          <>
+            {'\u2009'}
+            <Text style={styles.metricSuffix}>{suffix}</Text>
+          </>
         )}
       </Text>
     </View>
@@ -398,6 +454,64 @@ function Retry({
   );
 }
 
+function EntryClockIcon() {
+  return (
+    <Svg
+      testID="entry-clock-icon"
+      width={16}
+      height={16}
+      viewBox="0 0 16 16"
+      aria-hidden
+    >
+      <Circle
+        cx={8}
+        cy={8}
+        r={6.25}
+        fill="none"
+        stroke={entryMetaInk}
+        strokeWidth={1.3}
+      />
+      <Path
+        d="M8 4.2v4.2l2.7 1.8"
+        fill="none"
+        stroke={entryMetaInk}
+        strokeWidth={1.3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function EntryStopwatchIcon() {
+  return (
+    <Svg
+      testID="entry-stopwatch-icon"
+      width={16}
+      height={16}
+      viewBox="0 0 16 16"
+      aria-hidden
+    >
+      <Circle
+        cx={8}
+        cy={9.4}
+        r={5.8}
+        fill="none"
+        stroke={entryMetaInk}
+        strokeWidth={1.3}
+      />
+      <Path
+        d="M5.9 1.2h4.2M8 1.2v2.3M13 4.5l1.1-1.1M8 6.2v3.2"
+        fill="none"
+        stroke={entryMetaInk}
+        strokeWidth={1.3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function DaySheet({
   date,
   day,
@@ -420,10 +534,32 @@ function DaySheet({
   onLoadMore?: (() => void) | undefined;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const close = () => {
-    setExpanded(null);
-    onClose();
-  };
+  const [backdropVisible, setBackdropVisible] = useState(true);
+  const { height } = useWindowDimensions();
+  const [sheetOffset] = useState(() => new Animated.Value(height));
+  const open = useCallback(() => {
+    sheetOffset.setValue(height);
+    Animated.timing(sheetOffset, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [height, sheetOffset]);
+  const close = useCallback(() => {
+    setBackdropVisible(false);
+    Animated.timing(sheetOffset, {
+      toValue: height,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    }).start(({ finished }) => {
+      if (finished) {
+        setExpanded(null);
+        onClose();
+      }
+    });
+  }, [height, onClose, sheetOffset]);
   const responder = useMemo(
     () =>
       PanResponder.create({
@@ -431,31 +567,33 @@ function DaySheet({
           gesture.dy > 12 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
         onPanResponderRelease: (_event, gesture) => {
           if (gesture.dy > 90 || gesture.vy > 0.8) {
-            setExpanded(null);
-            onClose();
+            close();
           }
         },
       }),
-    [onClose],
+    [close],
   );
   return (
     <Modal
       visible={date !== null}
       transparent
-      animationType="slide"
+      animationType="none"
+      onShow={open}
       onRequestClose={close}
       statusBarTranslucent
     >
       <View style={styles.modalRoot}>
         <Pressable
+          testID="day-sheet-backdrop"
           accessibilityRole="button"
           accessibilityLabel="Close day details"
           onPress={close}
-          style={styles.backdrop}
+          style={[styles.backdrop, !backdropVisible && styles.backdropHidden]}
         />
-        <SafeAreaView
+        <AnimatedSafeAreaView
+          testID="day-sheet-panel"
           edges={['bottom']}
-          style={styles.sheet}
+          style={[styles.sheet, { transform: [{ translateY: sheetOffset }] }]}
           accessibilityViewIsModal
         >
           <View {...responder.panHandlers} style={styles.handleArea}>
@@ -533,10 +671,27 @@ function DaySheet({
                         >
                           {entry.instruction}
                         </Text>
-                        <Text style={styles.entryMeta}>
-                          ◷ {completionTime(entry.completedAt, entry.timeZone)}{' '}
-                          │ ◴ {durationLabel(entry.elapsedSeconds)}
-                        </Text>
+                        <View
+                          testID="entry-metadata-row"
+                          style={styles.entryMeta}
+                        >
+                          <View style={styles.entryMetaItem}>
+                            <EntryClockIcon />
+                            <Text style={styles.entryMetaText}>
+                              {completionTime(
+                                entry.completedAt,
+                                entry.timeZone,
+                              )}
+                            </Text>
+                          </View>
+                          <View style={styles.entryMetaDivider} />
+                          <View style={styles.entryMetaItem}>
+                            <EntryStopwatchIcon />
+                            <Text style={styles.entryMetaText}>
+                              {durationLabel(entry.elapsedSeconds)}
+                            </Text>
+                          </View>
+                        </View>
                         {opened && reflection && (
                           <View style={styles.reflection}>
                             <Text style={styles.reflectionLabel}>
@@ -548,7 +703,7 @@ function DaySheet({
                           </View>
                         )}
                       </View>
-                      <View style={styles.feeling}>
+                      <View testID="entry-feeling" style={styles.feeling}>
                         <Text style={styles.after}>After</Text>
                         {feeling ? (
                           <FeelingFace
@@ -582,7 +737,7 @@ function DaySheet({
               </ScrollView>
             </>
           ) : null}
-        </SafeAreaView>
+        </AnimatedSafeAreaView>
       </View>
     </Modal>
   );
@@ -597,20 +752,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingBottom: 32,
   },
-  header: { height: 62, justifyContent: 'center', alignItems: 'center' },
-  title: { fontFamily: fontFamilies.display, fontSize: 31, color: colors.ink },
-  settings: {
-    position: 'absolute',
-    right: 2,
-    top: 7,
-    width: 44,
-    height: 44,
-    textAlign: 'center',
-    paddingTop: 8,
+  header: {
+    alignSelf: 'center',
+    paddingTop: 4,
+    paddingBottom: 12,
   },
   card: {
-    backgroundColor: '#FFF7EF',
-    borderColor: '#ECDDD1',
+    backgroundColor: '#FCF4EA',
+    borderColor: '#E6D6C8',
     borderWidth: 1,
     borderRadius: 10,
     padding: 14,
@@ -620,7 +769,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#EDE1D7',
+    borderBottomColor: '#E9D8CB',
   },
   metric: { flex: 1, alignItems: 'center', minWidth: 0, paddingBottom: 14 },
   metricLabel: {
@@ -629,13 +778,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   metricValue: {
-    fontFamily: fontFamilies.display,
+    fontFamily: fontFamilies.editorial,
     fontSize: 28,
     color: colors.ink,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: -0.25,
     textAlign: 'center',
   },
-  metricSuffix: { fontFamily: fontFamilies.display, fontSize: 19 },
+  metricSuffix: {
+    fontFamily: fontFamilies.editorial,
+    fontSize: 28,
+    letterSpacing: -0.15,
+  },
   monthHeader: {
     minHeight: 52,
     flexDirection: 'row',
@@ -692,8 +846,8 @@ const styles = StyleSheet.create({
     borderColor: '#BAC6CD',
     borderStyle: 'dashed',
   },
-  activeDay: { backgroundColor: colors.white, borderColor: '#EEE2D8' },
-  inactiveDay: { backgroundColor: '#E9E3DC', borderColor: '#E8DED5' },
+  activeDay: { backgroundColor: colors.white, borderColor: '#E6D9CE' },
+  inactiveDay: { backgroundColor: '#EBDFD4', borderColor: '#DCCDC0' },
   today: { borderColor: '#F4A46C', borderWidth: 2 },
   todayActive: {
     backgroundColor: colors.ink,
@@ -707,16 +861,15 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -26 }],
     zIndex: 1,
   },
-  selectedDay: { backgroundColor: colors.ink, borderColor: colors.ink },
   dayNumber: {
     color: colors.ink,
     fontFamily: fontFamilies.medium,
     fontSize: 12,
     lineHeight: 16,
   },
+  inactiveNumber: { color: '#77797B' },
   activeNumber: { transform: [{ translateY: -3 }] },
   todayNumber: { color: colors.cream },
-  selectedText: { color: colors.white },
   badge: {
     position: 'absolute',
     bottom: -5,
@@ -734,7 +887,7 @@ const styles = StyleSheet.create({
   },
   monthSummary: {
     borderTopWidth: 1,
-    borderColor: '#E9DDD2',
+    borderColor: '#E8D7C9',
     paddingTop: 11,
     flexDirection: 'row',
     alignItems: 'center',
@@ -775,6 +928,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  legendBadgeText: {
+    color: colors.ink,
+    fontFamily: fontFamilies.semibold,
+    fontSize: 16,
+  },
   legendText: {
     color: '#7D8790',
     fontFamily: fontFamilies.regular,
@@ -810,6 +968,7 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: '#102C49AA',
   },
+  backdropHidden: { backgroundColor: 'transparent' },
   sheet: {
     backgroundColor: colors.white,
     borderTopLeftRadius: 24,
@@ -871,6 +1030,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#5F7391',
     width: 30,
+    transform: [{ translateY: 6 }],
   },
   entryMain: {
     flex: 1,
@@ -881,25 +1041,48 @@ const styles = StyleSheet.create({
   entryTitle: {
     fontFamily: fontFamilies.editorial,
     color: colors.ink,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     letterSpacing: -0.15,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   entryMeta: {
-    fontFamily: fontFamilies.regular,
-    color: '#7287A3',
-    fontSize: 12,
-    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 17,
+    marginTop: 7,
   },
-  feeling: { width: 61, alignItems: 'center' },
+  entryMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  entryMetaDivider: {
+    width: 1,
+    height: 15,
+    backgroundColor: '#D8D8D8',
+    marginHorizontal: 12,
+    flexShrink: 0,
+  },
+  entryMetaText: {
+    fontFamily: fontFamilies.regular,
+    color: entryMetaInk,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  feeling: {
+    width: 61,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
   after: { fontFamily: fontFamilies.regular, color: '#7287A3', fontSize: 11 },
   notRecorded: {
     fontFamily: fontFamilies.regular,
     color: '#7287A3',
     fontSize: 9,
     textAlign: 'center',
-    marginTop: 3,
   },
   reflection: {
     backgroundColor: colors.paper,
