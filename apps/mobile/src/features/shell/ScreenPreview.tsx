@@ -61,7 +61,7 @@ const previewEntries: ProgressEntry[] = [
     feelingVersion: 1,
     reflectionStatus: 'submitted',
     feeling: 'a_little_better',
-    reflectionText: null,
+    reflectionText: 'Saying hello felt easier the second time.',
   },
 ];
 const previewMonth: ProgressResponse = {

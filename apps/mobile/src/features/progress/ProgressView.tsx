@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   Modal,
   PanResponder,
   Platform,
@@ -13,6 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import {
@@ -29,7 +31,6 @@ import {
   calendarCells,
   completionTime,
   dayLabel,
-  durationLabel,
   monthLabel,
 } from './calendar';
 
@@ -483,32 +484,241 @@ function EntryClockIcon() {
   );
 }
 
-function EntryStopwatchIcon() {
+function ReflectionPencil() {
   return (
-    <Svg
-      testID="entry-stopwatch-icon"
-      width={16}
-      height={16}
-      viewBox="0 0 16 16"
+    <Image
+      source={require('../../../assets/icons/reflection-pencil.png')}
+      style={styles.reflectionPencil}
+      resizeMode="contain"
       aria-hidden
+    />
+  );
+}
+
+function SlidingReflection({
+  open,
+  text,
+  reduceMotion,
+}: {
+  open: boolean;
+  text: string;
+  reduceMotion: boolean;
+}) {
+  const [contentHeight, setContentHeight] = useState(0);
+  const [progress] = useState(() => new Animated.Value(open ? 1 : 0));
+
+  useEffect(() => {
+    if (contentHeight === 0) return;
+    if (reduceMotion) {
+      progress.setValue(open ? 1 : 0);
+      return;
+    }
+    const animation = Animated.timing(progress, {
+      toValue: open ? 1 : 0,
+      duration: open ? 240 : 230,
+      easing: open ? Easing.out(Easing.cubic) : Easing.inOut(Easing.cubic),
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [contentHeight, open, progress, reduceMotion]);
+
+  return (
+    <Animated.View
+      testID="sliding-reflection"
+      aria-hidden={!open}
+      accessibilityElementsHidden={!open}
+      importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
+      style={[
+        styles.reflectionClip,
+        {
+          height: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, contentHeight],
+          }),
+          opacity: progress,
+        },
+      ]}
     >
-      <Circle
-        cx={8}
-        cy={9.4}
-        r={5.8}
-        fill="none"
-        stroke={entryMetaInk}
-        strokeWidth={1.3}
-      />
-      <Path
-        d="M5.9 1.2h4.2M8 1.2v2.3M13 4.5l1.1-1.1M8 6.2v3.2"
-        fill="none"
-        stroke={entryMetaInk}
-        strokeWidth={1.3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
+      <Animated.View
+        style={[
+          styles.reflectionContentLayer,
+          {
+            transform: [
+              {
+                translateY: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-12, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <View
+          testID="reflection-content"
+          style={styles.reflection}
+          onLayout={({ nativeEvent }) => {
+            const height = nativeEvent.layout.height + 12;
+            if (height <= 12) return;
+            setContentHeight((current) =>
+              Math.abs(current - height) > 0.5 ? height : current,
+            );
+          }}
+        >
+          <View style={styles.reflectionHeading}>
+            <ReflectionPencil />
+            <Text style={styles.reflectionLabel}>Saved reflection</Text>
+          </View>
+          <Text style={styles.reflectionText}>{text}</Text>
+        </View>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+function ProgressEntryRow({
+  entry,
+  index,
+  expanded,
+  onToggle,
+  reduceMotion,
+}: {
+  entry: ProgressEntry;
+  index: number;
+  expanded: boolean;
+  onToggle: () => void;
+  reduceMotion: boolean;
+}) {
+  const submitted = entry.reflectionStatus === 'submitted';
+  const feeling = submitted ? entry.feeling : null;
+  const reflection = submitted ? entry.reflectionText?.trim() : null;
+  const opened = !!reflection && expanded;
+  const action = opened ? 'Hide Reflection' : 'View Reflection';
+  const Row = reflection ? Pressable : View;
+
+  return (
+    <View style={styles.entry}>
+      <Row
+        accessible
+        accessibilityRole={reflection ? 'button' : undefined}
+        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}. ${completionTime(entry.completedAt, entry.timeZone)}. After: ${feelingLabel(feeling)}${reflection ? `. ${action}` : ''}`}
+        accessibilityState={reflection ? { expanded: opened } : undefined}
+        onPress={reflection ? onToggle : undefined}
+        style={styles.entryRow}
+      >
+        <Text style={styles.ordinal}>{String(index + 1).padStart(2, '0')}</Text>
+        <View style={styles.entryMain}>
+          <Text
+            numberOfLines={opened ? undefined : 2}
+            style={styles.entryTitle}
+          >
+            {entry.instruction}
+          </Text>
+          <View testID="entry-metadata-row" style={styles.entryMeta}>
+            <View style={styles.entryMetaItem}>
+              <EntryClockIcon />
+              <Text style={styles.entryMetaText}>
+                {completionTime(entry.completedAt, entry.timeZone)}
+              </Text>
+            </View>
+            {!!reflection && (
+              <View testID="reflection-action" style={styles.reflectionAction}>
+                <View style={styles.reflectionDivider} aria-hidden />
+                <ReflectionPencil />
+                <Text style={styles.reflectionActionText}>{action}</Text>
+                <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>
+                  <Path
+                    d={opened ? 'm1.5 7 4-4 4 4' : 'm1.5 4 4 4 4-4'}
+                    fill="none"
+                    stroke="#647D99"
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Svg>
+              </View>
+            )}
+          </View>
+        </View>
+        <View testID="entry-feeling" style={styles.feeling}>
+          <Text style={styles.after}>After</Text>
+          {feeling ? (
+            <FeelingFace feeling={feeling} size={36} selected={false} />
+          ) : (
+            <Text style={styles.notRecorded}>Not{'\n'}recorded</Text>
+          )}
+        </View>
+      </Row>
+      {!!reflection && (
+        <SlidingReflection
+          open={opened}
+          text={reflection}
+          reduceMotion={reduceMotion}
+        />
+      )}
+    </View>
+  );
+}
+
+function DayHeading({ date }: { date: string }) {
+  const { fontScale } = useWindowDimensions();
+  const [titleWidth, setTitleWidth] = useState(0);
+  const label = dayLabel(date);
+
+  return (
+    <View style={styles.dayHeading}>
+      <View
+        testID="day-title-underline-layer"
+        collapsable={false}
+        style={styles.dayUnderline}
+        pointerEvents="none"
+        aria-hidden
+      >
+        {titleWidth > 0 && (
+          <Svg
+            testID="day-title-underline"
+            width={titleWidth * 0.87}
+            height={18}
+            viewBox="0 0 280 14"
+            preserveAspectRatio="none"
+            style={styles.dayMarker}
+            aria-hidden
+          >
+            {/* Uneven edges and a finer trailing end suggest a single marker pass. */}
+            <Path
+              d="M3 8.4 C37 4.1 72 2.6 108 2.9 C133 2.6 153 3.8 175 3.6 C204 3.9 233 5.5 258 6.6 C267 7 273 7.5 277.7 8.2 C280.2 8.6 280.3 10 277.4 10.4 C270 10.6 264 9.8 256 9.8 C231 9.6 206 8.5 175 8.6 C150 8.8 130 7.7 108 8 C72 7.5 38 8.8 4.1 13 C1.8 13.4 0.2 12.5 0.4 10.8 C0.5 9.5 1.3 8.7 3 8.4 Z"
+              fill="#FEC9A2"
+            />
+          </Svg>
+        )}
+      </View>
+      {/* Separate native layers keep the SVG below the text's descenders. */}
+      <View
+        testID="day-title-text-layer"
+        collapsable={false}
+        style={styles.dayTitleLayer}
+      >
+        <Text
+          key={fontScale}
+          accessibilityRole="header"
+          accessibilityLabel={label}
+          onTextLayout={({ nativeEvent }) =>
+            setTitleWidth(
+              Math.max(0, ...nativeEvent.lines.map((line) => line.width)),
+            )
+          }
+          onLayout={
+            Platform.OS === 'web'
+              ? ({ nativeEvent }) => setTitleWidth(nativeEvent.layout.width)
+              : undefined
+          }
+          style={[styles.dayTitle, Platform.OS === 'web' && styles.dayTitleWeb]}
+        >
+          {label.replace(/ (\d+)$/, '\u00a0$1')}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -535,6 +745,7 @@ function DaySheet({
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [backdropVisible, setBackdropVisible] = useState(true);
+  const reduceMotion = useReducedMotion();
   const { height } = useWindowDimensions();
   const [sheetOffset] = useState(() => new Animated.Value(height));
   const open = useCallback(() => {
@@ -607,11 +818,7 @@ function DaySheet({
           >
             <Text style={styles.closeText}>×</Text>
           </Pressable>
-          {date && (
-            <Text accessibilityRole="header" style={styles.dayTitle}>
-              {dayLabel(date)}
-            </Text>
-          )}
+          {date && <DayHeading date={date} />}
           {loading && !day ? (
             <View style={styles.state}>
               <ActivityIndicator
@@ -630,8 +837,7 @@ function DaySheet({
           ) : day ? (
             <>
               <Text style={styles.daySummary}>
-                {day.totalReps} {day.totalReps === 1 ? 'rep' : 'reps'} ·{' '}
-                {durationLabel(day.totalElapsedSeconds)} total
+                {day.totalReps} {day.totalReps === 1 ? 'rep' : 'reps'}
               </Text>
               {error && (
                 <Text accessibilityRole="alert" style={styles.warning}>
@@ -640,86 +846,20 @@ function DaySheet({
                 </Text>
               )}
               <ScrollView contentContainerStyle={styles.entries}>
-                {day.entries.map((entry, index) => {
-                  const opened = expanded === entry.attemptId;
-                  const feeling =
-                    entry.reflectionStatus === 'submitted'
-                      ? entry.feeling
-                      : null;
-                  const reflection =
-                    entry.reflectionStatus === 'submitted'
-                      ? entry.reflectionText
-                      : null;
-                  return (
-                    <Pressable
-                      key={entry.attemptId}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}. ${completionTime(entry.completedAt, entry.timeZone)}. ${durationLabel(entry.elapsedSeconds)}. After: ${feelingLabel(feeling)}${reflection ? '. Saved reflection' : ''}`}
-                      accessibilityState={{ expanded: opened }}
-                      onPress={() =>
-                        setExpanded(opened ? null : entry.attemptId)
-                      }
-                      style={styles.entry}
-                    >
-                      <Text style={styles.ordinal}>
-                        {String(index + 1).padStart(2, '0')}
-                      </Text>
-                      <View style={styles.entryMain}>
-                        <Text
-                          numberOfLines={opened ? undefined : 2}
-                          style={styles.entryTitle}
-                        >
-                          {entry.instruction}
-                        </Text>
-                        <View
-                          testID="entry-metadata-row"
-                          style={styles.entryMeta}
-                        >
-                          <View style={styles.entryMetaItem}>
-                            <EntryClockIcon />
-                            <Text style={styles.entryMetaText}>
-                              {completionTime(
-                                entry.completedAt,
-                                entry.timeZone,
-                              )}
-                            </Text>
-                          </View>
-                          <View style={styles.entryMetaDivider} />
-                          <View style={styles.entryMetaItem}>
-                            <EntryStopwatchIcon />
-                            <Text style={styles.entryMetaText}>
-                              {durationLabel(entry.elapsedSeconds)}
-                            </Text>
-                          </View>
-                        </View>
-                        {opened && reflection && (
-                          <View style={styles.reflection}>
-                            <Text style={styles.reflectionLabel}>
-                              Saved reflection
-                            </Text>
-                            <Text style={styles.reflectionText}>
-                              {reflection}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View testID="entry-feeling" style={styles.feeling}>
-                        <Text style={styles.after}>After</Text>
-                        {feeling ? (
-                          <FeelingFace
-                            feeling={feeling}
-                            size={36}
-                            selected={false}
-                          />
-                        ) : (
-                          <Text style={styles.notRecorded}>
-                            Not{'\n'}recorded
-                          </Text>
-                        )}
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                {day.entries.map((entry, index) => (
+                  <ProgressEntryRow
+                    key={entry.attemptId}
+                    entry={entry}
+                    index={index}
+                    expanded={expanded === entry.attemptId}
+                    reduceMotion={reduceMotion}
+                    onToggle={() =>
+                      setExpanded(
+                        expanded === entry.attemptId ? null : entry.attemptId,
+                      )
+                    }
+                  />
+                ))}
                 {hasMore && (
                   <Pressable
                     accessibilityRole="button"
@@ -1000,31 +1140,41 @@ const styles = StyleSheet.create({
     color: colors.ink,
     lineHeight: 40,
   },
+  dayHeading: { paddingTop: 10, paddingRight: 20, paddingBottom: 14 },
+  dayTitleLayer: { zIndex: 1 },
   dayTitle: {
     fontFamily: fontFamilies.editorial,
     color: colors.ink,
-    fontSize: 30,
+    fontSize: 36,
+    lineHeight: 40,
     fontWeight: '700',
     letterSpacing: -0.5,
-    paddingTop: 10,
-    paddingRight: 35,
   },
+  dayTitleWeb: { alignSelf: 'flex-start', maxWidth: '100%' },
+  dayUnderline: {
+    position: 'absolute',
+    left: 0,
+    bottom: 0,
+    height: 14,
+    zIndex: 0,
+  },
+  dayMarker: { transform: [{ translateY: -6 }] },
   daySummary: {
     fontFamily: fontFamilies.regular,
     color: '#647895',
-    fontSize: 15,
-    marginTop: 12,
-    marginBottom: 14,
+    fontSize: 17,
+    lineHeight: 22,
+    marginTop: 14,
+    marginBottom: 16,
   },
   entries: { paddingBottom: 24 },
   entry: {
-    flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: '#E8E3DE',
     minHeight: 73,
     paddingVertical: 12,
-    gap: 9,
   },
+  entryRow: { flexDirection: 'row', gap: 9 },
   ordinal: {
     fontFamily: fontFamilies.display,
     fontSize: 17,
@@ -1049,6 +1199,9 @@ const styles = StyleSheet.create({
   entryMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    columnGap: 8,
+    rowGap: 4,
     minHeight: 17,
     marginTop: 7,
   },
@@ -1058,21 +1211,34 @@ const styles = StyleSheet.create({
     gap: 6,
     flexShrink: 0,
   },
-  entryMetaDivider: {
-    width: 1,
-    height: 15,
-    backgroundColor: '#D8D8D8',
-    marginHorizontal: 12,
-    flexShrink: 0,
-  },
   entryMetaText: {
     fontFamily: fontFamilies.regular,
     color: entryMetaInk,
     fontSize: 12,
     lineHeight: 17,
   },
+  reflectionAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+    minHeight: 17,
+  },
+  reflectionDivider: {
+    width: 1,
+    height: 15,
+    backgroundColor: '#C7CDD2',
+    marginRight: 2,
+  },
+  reflectionPencil: { width: 15.305, height: 16.464, flexShrink: 0 },
+  reflectionActionText: {
+    fontFamily: fontFamilies.regular,
+    color: '#6B809B',
+    fontSize: 12,
+    lineHeight: 17,
+  },
   feeling: {
-    width: 61,
+    width: 48,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
@@ -1085,13 +1251,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   reflection: {
-    backgroundColor: colors.paper,
+    backgroundColor: '#FAEFEB',
     borderRadius: 8,
     padding: 12,
     marginTop: 12,
   },
-  reflectionLabel: { ...typography.caption, color: '#7287A3' },
-  reflectionText: { ...typography.body, color: colors.ink, marginTop: 4 },
+  reflectionClip: { overflow: 'hidden' },
+  reflectionContentLayer: { position: 'absolute', top: 0, left: 0, right: 0 },
+  reflectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reflectionLabel: { ...typography.caption, color: '#6B809B' },
+  reflectionText: {
+    fontFamily: fontFamilies.display,
+    fontStyle: 'italic',
+    fontSize: 18,
+    lineHeight: 24,
+    color: colors.ink,
+    marginTop: 6,
+  },
   more: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   moreText: {
     ...typography.label,

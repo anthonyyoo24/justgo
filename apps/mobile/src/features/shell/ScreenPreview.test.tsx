@@ -1,5 +1,6 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { ScreenPreview } from './ScreenPreview';
+jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
 jest.mock('../challenges/DeckPreview', () => ({
   DeckPreview: ({ onCompleted }: { onCompleted: () => void }) => {
     const { Pressable, Text } = require('react-native');
@@ -46,12 +47,15 @@ it('shows progress activity, read-only saved reflection, and an empty adjacent m
   fireEvent.press(
     screen.getByRole('button', { name: 'Friday, September 18, today, 3 reps' }),
   );
-  expect(screen.getByText('3 reps  ·  10 min 9 sec total')).toBeTruthy();
+  expect(screen.getByText('3 reps')).toBeTruthy();
+  expect(screen.queryByText(/min.*total/)).toBeNull();
+  expect(screen.getAllByText('View Reflection')).toHaveLength(2);
   expect(screen.getByText('Not\nrecorded')).toBeTruthy();
   fireEvent.press(
     screen.getByRole('button', { name: /Rep 1\. Say hello to someone/ }),
   );
   expect(screen.getByText('I felt more at ease with each try.')).toBeTruthy();
+  expect(screen.getByText('Hide Reflection')).toBeTruthy();
   expect(screen.queryByRole('button', { name: /edit reflection/i })).toBeNull();
   fireEvent.press(
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,

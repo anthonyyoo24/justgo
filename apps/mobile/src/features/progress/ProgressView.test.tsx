@@ -1,11 +1,12 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Modal, StyleSheet, Text } from 'react-native';
+import { Animated, Modal, StyleSheet, Text } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import type { ProgressEntry, ProgressResponse } from '@justgo/contracts';
 import { colors } from '../../theme/tokens';
 import { ProgressView } from './ProgressView';
 
 jest.mock('expo-router', () => ({ Link: () => null }));
+jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
 
 const month: ProgressResponse = {
   month: '2026-09',
@@ -244,6 +245,64 @@ it('shows a full-screen backdrop while only the day sheet slides', () => {
   expect(panelStyle.transform[0]).toHaveProperty('translateY');
 });
 
+it('keeps the marker behind the date and resizes it when the heading reflows', () => {
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-30"
+      day={{
+        date: '2026-09-30',
+        totalReps: 2,
+        totalElapsedSeconds: 244,
+        entries: [],
+      }}
+      {...callbacks()}
+    />,
+  );
+
+  const title = screen.getByRole('header', {
+    name: 'Wednesday, September 30',
+  });
+  // Keep the month and number together instead of orphaning "30" on its own line.
+  expect(title.props.children).toBe('Wednesday, September\u00a030');
+  expect(title.props.numberOfLines).toBeUndefined();
+  expect(title).toHaveStyle({ fontSize: 36 });
+  const markerLayer = screen.getByTestId('day-title-underline-layer', {
+    includeHiddenElements: true,
+  });
+  const textLayer = screen.getByTestId('day-title-text-layer');
+  expect(textLayer.props.collapsable).toBe(false);
+  expect(markerLayer.props.collapsable).toBe(false);
+  expect(StyleSheet.flatten(textLayer.props.style).zIndex).toBeGreaterThan(
+    StyleSheet.flatten(markerLayer.props.style).zIndex,
+  );
+  expect(markerLayer).toHaveStyle({ position: 'absolute', bottom: 0 });
+
+  const underline = () =>
+    screen.getByTestId('day-title-underline', {
+      includeHiddenElements: true,
+    });
+
+  fireEvent(title, 'textLayout', {
+    nativeEvent: { lines: [{ width: 320 }] },
+  });
+  expect(underline().props.width).toBeCloseTo(278.4);
+  expect(underline().findByType(Path).props.fill).toBe('#FEC9A2');
+
+  // A narrower screen or larger system text can cause the date to wrap.
+  fireEvent(title, 'textLayout', {
+    nativeEvent: { lines: [{ width: 180 }, { width: 240 }] },
+  });
+  expect(underline().props.width).toBeCloseTo(208.8);
+  expect(underline().props.height).toBe(18);
+  expect(underline()).toHaveStyle({ transform: [{ translateY: -6 }] });
+  expect(screen.getByText('2 reps')).toHaveStyle({
+    fontSize: 17,
+    marginTop: 14,
+  });
+});
+
 it('clears the backdrop immediately when the sheet close button is pressed', async () => {
   const actions = callbacks();
   const screen = render(
@@ -297,7 +356,7 @@ it('keeps a past active day white while its details sheet is open', () => {
   expect(today).toHaveStyle({ backgroundColor: colors.ink });
 });
 
-it('uses aligned clock and stopwatch icons for every day-sheet entry', () => {
+it('shows rep count and completion times without duration totals in the day sheet', () => {
   const screen = render(
     <ProgressView
       month="2026-09"
@@ -322,12 +381,21 @@ it('uses aligned clock and stopwatch icons for every day-sheet entry', () => {
   const clocks = screen.getAllByTestId('entry-clock-icon', {
     includeHiddenElements: true,
   });
-  const stopwatches = screen.getAllByTestId('entry-stopwatch-icon', {
-    includeHiddenElements: true,
-  });
+  expect(screen.getByText('2 reps')).toBeTruthy();
+  expect(screen.queryByText(/4 min 4 sec total/)).toBeNull();
+  expect(screen.queryByText('2 min 2 sec')).toBeNull();
+  expect(
+    screen.getByLabelText(
+      'Rep 1. Say hello to someone. 9:15 AM. After: Not recorded',
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.queryByTestId('entry-stopwatch-icon', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
   expect(rows).toHaveLength(2);
   expect(clocks).toHaveLength(2);
-  expect(stopwatches).toHaveLength(2);
   for (const row of rows) {
     expect(row).toHaveStyle({ flexDirection: 'row', alignItems: 'center' });
   }
@@ -336,12 +404,153 @@ it('uses aligned clock and stopwatch icons for every day-sheet entry', () => {
     expect(clock.findAllByType(Circle)).toHaveLength(1);
     expect(clock.findAllByType(Path).length).toBeGreaterThan(0);
   }
-  for (const stopwatch of stopwatches) {
-    expect(stopwatch.props.width).toBe(16);
-    expect(stopwatch.findAllByType(Circle)).toHaveLength(1);
-    expect(stopwatch.findAllByType(Path).length).toBeGreaterThan(0);
-  }
   expect(screen.queryByText(/◷|◴/)).toBeNull();
+});
+
+it('opens and hides saved reflections by tapping a row, keeping one open at a time', () => {
+  const entries: ProgressEntry[] = [
+    {
+      ...entry('first', 'submitted'),
+      reflectionText: 'I felt more at ease with each try.',
+    },
+    entry('second', 'skipped'),
+    {
+      ...entry('third', 'submitted'),
+      reflectionText: 'Saying hello felt easier the second time.',
+    },
+  ];
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: entries.length,
+        totalElapsedSeconds: 366,
+        entries,
+      }}
+      {...callbacks()}
+    />,
+  );
+  expect(screen.getAllByText('View Reflection')).toHaveLength(2);
+  expect(screen.queryByText('Saved reflection')).toBeNull();
+
+  const first = screen.getByRole('button', { name: /Rep 1.*View Reflection/ });
+  expect(first.props.accessibilityState).toEqual({ expanded: false });
+  fireEvent.press(first);
+  expect(
+    screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }).props
+      .accessibilityState,
+  ).toEqual({ expanded: true });
+  expect(screen.getByText(entries[0]!.reflectionText!)).toBeTruthy();
+  expect(screen.getAllByText('Saved reflection')).toHaveLength(1);
+  expect(screen.getAllByText('View Reflection')).toHaveLength(1);
+
+  fireEvent.press(
+    screen.getByRole('button', { name: /Rep 3.*View Reflection/ }),
+  );
+  expect(screen.queryByText(entries[0]!.reflectionText!)).toBeNull();
+  expect(screen.getByText(entries[2]!.reflectionText!)).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: /Rep 1.*View Reflection/ }).props
+      .accessibilityState,
+  ).toEqual({ expanded: false });
+
+  fireEvent.press(
+    screen.getByRole('button', { name: /Rep 3.*Hide Reflection/ }),
+  );
+  expect(screen.queryByText('Saved reflection')).toBeNull();
+  expect(screen.queryByText(entries[2]!.reflectionText!)).toBeNull();
+  expect(screen.getAllByText('View Reflection')).toHaveLength(2);
+});
+
+it('animates the saved reflection both into and out of the row', () => {
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: jest.fn(),
+    stop: jest.fn(),
+  } as unknown as ReturnType<typeof Animated.timing>);
+  try {
+    const screen = render(
+      <ProgressView
+        month="2026-09"
+        data={month}
+        selectedDate="2026-09-18"
+        day={{
+          date: '2026-09-18',
+          totalReps: 1,
+          totalElapsedSeconds: 122,
+          entries: [
+            {
+              ...entry('first', 'submitted'),
+              reflectionText: 'I felt more at ease with each try.',
+            },
+          ],
+        }}
+        {...callbacks()}
+      />,
+    );
+    const content = screen.getByTestId('reflection-content', {
+      includeHiddenElements: true,
+    });
+    expect(
+      StyleSheet.flatten(content.parent?.parent?.props.style),
+    ).toMatchObject({
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+    });
+    fireEvent(content, 'layout', {
+      nativeEvent: { layout: { height: 72 } },
+    });
+    timing.mockClear();
+
+    fireEvent.press(screen.getByRole('button', { name: /View Reflection/ }));
+    expect(timing).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ toValue: 1, useNativeDriver: false }),
+    );
+    timing.mockClear();
+
+    fireEvent.press(screen.getByRole('button', { name: /Hide Reflection/ }));
+    expect(timing).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ toValue: 0, useNativeDriver: false }),
+    );
+  } finally {
+    timing.mockRestore();
+  }
+});
+
+it('omits reflection controls for empty, unsaved, or skipped reflections', () => {
+  const entries: ProgressEntry[] = [
+    entry('no-text', 'submitted'),
+    { ...entry('empty', 'submitted'), reflectionText: '' },
+    { ...entry('whitespace', 'submitted'), reflectionText: ' \n ' },
+    { ...entry('draft', 'draft'), reflectionText: 'Not submitted yet' },
+    { ...entry('skipped', 'skipped'), reflectionText: 'Not submitted' },
+  ];
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: entries.length,
+        totalElapsedSeconds: 610,
+        entries,
+      }}
+      {...callbacks()}
+    />,
+  );
+
+  expect(screen.queryByTestId('reflection-action')).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Rep / })).toBeNull();
+  fireEvent.press(screen.getByLabelText(/^Rep 1\./));
+  expect(screen.queryByText('Saved reflection')).toBeNull();
+  expect(screen.queryByText('Hide Reflection')).toBeNull();
 });
 
 it('centers each After rating with four points between its label and result', () => {
