@@ -44,6 +44,7 @@ export type ProgressViewProps = {
   month: string;
   data?: ProgressResponse | undefined;
   loading?: boolean;
+  updatingMonth?: boolean;
   error?: boolean;
   selectedDate: string | null;
   day?: Day | undefined;
@@ -71,6 +72,7 @@ export function ProgressView({
   month,
   data,
   loading = false,
+  updatingMonth = false,
   error = false,
   selectedDate,
   day,
@@ -133,6 +135,13 @@ export function ProgressView({
                 {monthLabel(month)}
               </Text>
               <View style={styles.monthButtons}>
+                {updatingMonth && (
+                  <ActivityIndicator
+                    accessibilityLabel="Loading month"
+                    color={colors.ink}
+                    size="small"
+                  />
+                )}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Previous month"
@@ -602,7 +611,7 @@ function ProgressEntryRow({
       <Row
         accessible
         accessibilityRole={reflection ? 'button' : undefined}
-        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}. ${completionTime(entry.completedAt, entry.timeZone)}. After: ${feelingLabel(feeling)}${reflection ? `. ${action}` : ''}`}
+        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}. ${completionTime(entry.completedAt, entry.timeZone)}. Feeling: ${feelingLabel(feeling)}${reflection ? `. ${action}` : ''}`}
         accessibilityState={reflection ? { expanded: opened } : undefined}
         onPress={reflection ? onToggle : undefined}
         style={styles.entryRow}
@@ -642,11 +651,28 @@ function ProgressEntryRow({
           </View>
         </View>
         <View testID="entry-feeling" style={styles.feeling}>
-          <Text style={styles.after}>After</Text>
+          <Text style={styles.after}>Feeling</Text>
           {feeling ? (
             <FeelingFace feeling={feeling} size={36} selected={false} />
           ) : (
-            <Text style={styles.notRecorded}>Not{'\n'}recorded</Text>
+            <Svg
+              testID="empty-feeling-circle"
+              width={36}
+              height={36}
+              viewBox="0 0 36 36"
+              aria-hidden
+            >
+              <Circle
+                cx="18"
+                cy="18"
+                r="16.5"
+                fill="none"
+                stroke="#9AAAC0"
+                strokeWidth="1.6"
+                strokeDasharray="0.1 4.2"
+                strokeLinecap="round"
+              />
+            </Svg>
           )}
         </View>
       </Row>
@@ -836,16 +862,17 @@ function DaySheet({
             </View>
           ) : day ? (
             <>
-              <Text style={styles.daySummary}>
-                {day.totalReps} {day.totalReps === 1 ? 'rep' : 'reps'}
-              </Text>
               {error && (
                 <Text accessibilityRole="alert" style={styles.warning}>
                   Some entries couldn’t load.{' '}
                   <Retry label="Retry day details" onPress={onRetry} />
                 </Text>
               )}
-              <ScrollView contentContainerStyle={styles.entries}>
+              <ScrollView
+                testID="day-sheet-entry-list"
+                style={styles.entriesScroll}
+                contentContainerStyle={styles.entries}
+              >
                 {day.entries.map((entry, index) => (
                   <ProgressEntryRow
                     key={entry.attemptId}
@@ -1159,15 +1186,8 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
   dayMarker: { transform: [{ translateY: -6 }] },
-  daySummary: {
-    fontFamily: fontFamilies.regular,
-    color: '#647895',
-    fontSize: 17,
-    lineHeight: 22,
-    marginTop: 14,
-    marginBottom: 16,
-  },
-  entries: { paddingBottom: 24 },
+  entriesScroll: { marginTop: 12 },
+  entries: { paddingRight: 12, paddingBottom: 24 },
   entry: {
     borderTopWidth: 1,
     borderTopColor: '#E8E3DE',
@@ -1244,12 +1264,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   after: { fontFamily: fontFamilies.regular, color: '#7287A3', fontSize: 11 },
-  notRecorded: {
-    fontFamily: fontFamilies.regular,
-    color: '#7287A3',
-    fontSize: 9,
-    textAlign: 'center',
-  },
   reflection: {
     backgroundColor: '#FAEFEB',
     borderRadius: 8,

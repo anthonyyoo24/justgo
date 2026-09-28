@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
   progressDayResponseSchema,
   progressResponseSchema,
+  type ProgressResponse,
 } from '@justgo/contracts';
 import { accountKey } from '../../lib/account-client';
 import { useIdentity, useRuntime } from '../shell/AppProvider';
@@ -20,9 +21,16 @@ export function ProgressScreen() {
   const userId = account?.userId ?? 'disconnected';
   const monthKey = accountKey(userId, 'progress', 'month', month, timeZone);
   const dayKey = accountKey(userId, 'progress', 'day', selectedDate);
-  const summary = useQuery({
+  const summary = useQuery<ProgressResponse>({
     queryKey: monthKey,
     enabled: !!account && focused,
+    // Keep the last complete month visible until the requested month arrives.
+    // Never reuse another account's (or time zone's) progress as a placeholder.
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === userId &&
+      previousQuery.queryKey[5] === timeZone
+        ? previousData
+        : undefined,
     queryFn: ({ signal }) =>
       client.request(
         `/v1/progress?month=${month}&timeZone=${encodeURIComponent(timeZone)}`,
@@ -61,9 +69,10 @@ export function ProgressScreen() {
     : undefined;
   return (
     <ProgressView
-      month={month}
+      month={summary.data?.month ?? month}
       data={summary.data}
       loading={summary.isPending}
+      updatingMonth={summary.isPlaceholderData}
       error={summary.isError}
       selectedDate={selectedDate}
       day={day}

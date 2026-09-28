@@ -175,7 +175,7 @@ it('matches the Paper dumbbell proportions with a long grip and touching plates'
   }
 });
 
-it('opens only active days and shows draft and skipped feedback as Not recorded', async () => {
+it('opens only active days and shows empty circles for draft and skipped feedback', async () => {
   const actions = callbacks();
   const screen = render(
     <ProgressView
@@ -209,7 +209,12 @@ it('opens only active days and shows draft and skipped feedback as Not recorded'
       {...actions}
     />,
   );
-  expect(screen.getAllByText('Not\nrecorded')).toHaveLength(2);
+  expect(
+    screen.getAllByTestId('empty-feeling-circle', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(2);
+  expect(screen.queryByText('Not\nrecorded')).toBeNull();
   expect(screen.queryByText('Saved reflection')).toBeNull();
   fireEvent.press(
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
@@ -297,9 +302,14 @@ it('keeps the marker behind the date and resizes it when the heading reflows', (
   expect(underline().props.width).toBeCloseTo(208.8);
   expect(underline().props.height).toBe(18);
   expect(underline()).toHaveStyle({ transform: [{ translateY: -6 }] });
-  expect(screen.getByText('2 reps')).toHaveStyle({
-    fontSize: 17,
-    marginTop: 14,
+  expect(screen.queryByText('2 reps')).toBeNull();
+  const entryList = screen.getByTestId('day-sheet-entry-list');
+  expect(entryList).toHaveStyle({ marginTop: 12 });
+  expect(
+    StyleSheet.flatten(entryList.props.contentContainerStyle),
+  ).toMatchObject({
+    paddingRight: 12,
+    paddingBottom: 24,
   });
 });
 
@@ -356,7 +366,7 @@ it('keeps a past active day white while its details sheet is open', () => {
   expect(today).toHaveStyle({ backgroundColor: colors.ink });
 });
 
-it('shows rep count and completion times without duration totals in the day sheet', () => {
+it('shows completion times without a day total or duration in the day sheet', () => {
   const screen = render(
     <ProgressView
       month="2026-09"
@@ -381,12 +391,12 @@ it('shows rep count and completion times without duration totals in the day shee
   const clocks = screen.getAllByTestId('entry-clock-icon', {
     includeHiddenElements: true,
   });
-  expect(screen.getByText('2 reps')).toBeTruthy();
+  expect(screen.queryByText('2 reps')).toBeNull();
   expect(screen.queryByText(/4 min 4 sec total/)).toBeNull();
   expect(screen.queryByText('2 min 2 sec')).toBeNull();
   expect(
     screen.getByLabelText(
-      'Rep 1. Say hello to someone. 9:15 AM. After: Not recorded',
+      'Rep 1. Say hello to someone. 9:15 AM. Feeling: Not recorded',
     ),
   ).toBeTruthy();
   expect(
@@ -553,7 +563,7 @@ it('omits reflection controls for empty, unsaved, or skipped reflections', () =>
   expect(screen.queryByText('Hide Reflection')).toBeNull();
 });
 
-it('centers each After rating with four points between its label and result', () => {
+it('centers each Feeling rating with four points between its label and result', () => {
   const screen = render(
     <ProgressView
       month="2026-09"
@@ -586,8 +596,14 @@ it('centers each After rating with four points between its label and result', ()
       gap: 4,
     });
   }
-  expect(screen.getAllByText('After')).toHaveLength(2);
-  expect(screen.getByText('Not\nrecorded')).toBeTruthy();
+  expect(screen.getAllByText('Feeling')).toHaveLength(2);
+  const emptyCircle = screen.getByTestId('empty-feeling-circle', {
+    includeHiddenElements: true,
+  });
+  expect(emptyCircle.props.width).toBe(36);
+  expect(emptyCircle.props.height).toBe(36);
+  expect(emptyCircle.findByType(Circle).props.strokeDasharray).toBe('0.1 4.2');
+  expect(screen.queryByText('Not\nrecorded')).toBeNull();
 });
 
 it('keeps the today badge clear of the next row and the day tappable', () => {
