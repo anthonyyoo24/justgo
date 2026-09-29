@@ -15,16 +15,21 @@ export function ReflectionScreen() {
   const controller = useMemo(
     () =>
       attemptId
-        ? new ReflectionController(client, attemptId, () => {
-            challenges.dismissSuccess();
-            router.replace('/(tabs)');
-          })
+        ? new ReflectionController(
+            client,
+            attemptId,
+            () => {
+              challenges.dismissSuccess();
+              router.dismissTo('/(tabs)');
+            },
+            { fresh: challenges.getSnapshot().success?.id === attemptId },
+          )
         : null,
     [attemptId, client, challenges, router],
   );
   useEffect(() => {
     if (!controller) return;
-    void controller.load();
+    if (controller.getSnapshot().phase === 'loading') void controller.load();
     return () => controller.dispose();
   }, [controller]);
   const state = useSyncExternalStore(
@@ -35,7 +40,6 @@ export function ReflectionScreen() {
   if (
     !controller ||
     !state ||
-    state.phase === 'loading' ||
     state.phase === 'load-error' ||
     state.phase === 'already'
   ) {
@@ -45,11 +49,9 @@ export function ReflectionScreen() {
           <Text style={{ ...typography.body, color: colors.ink }}>
             {!attemptId
               ? 'Complete a challenge before adding a reflection.'
-              : state?.phase === 'loading'
-                ? 'Loading your reflection…'
-                : state?.phase === 'load-error'
-                  ? state.error
-                  : 'This reflection has already been finished.'}
+              : state?.phase === 'load-error'
+                ? state.error
+                : 'This reflection has already been finished.'}
           </Text>
           {state?.phase === 'load-error' && (
             <PrimaryButton
@@ -61,7 +63,7 @@ export function ReflectionScreen() {
             label="Back to Home"
             onPress={() => {
               challenges.dismissSuccess();
-              router.replace('/(tabs)');
+              router.dismissTo('/(tabs)');
             }}
           />
         </View>
@@ -72,6 +74,7 @@ export function ReflectionScreen() {
     <ReflectionView
       feeling={state.feeling}
       text={state.text}
+      loading={state.phase === 'loading'}
       onFeelingChange={controller.setFeeling.bind(controller)}
       onTextChange={controller.setText.bind(controller)}
       onSubmit={controller.submit}

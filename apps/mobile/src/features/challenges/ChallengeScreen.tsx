@@ -327,7 +327,6 @@ export function SuccessScreen() {
     return (
       <SuccessView
         onContinue={() => {
-          challenges.dismissSuccess();
           router.replace({
             pathname: '/reflection',
             params: { attemptId: attempt.id },

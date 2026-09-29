@@ -93,6 +93,7 @@ export function ReflectionView({
   onTextChange,
   onSubmit,
   onClose,
+  loading = false,
   busy = false,
   locked = false,
   pendingAction = null,
@@ -112,6 +113,7 @@ export function ReflectionView({
   onTextChange: (value: string) => void;
   onSubmit: () => void;
   onClose: () => void;
+  loading?: boolean;
   busy?: boolean;
   locked?: boolean;
   pendingAction?: 'final' | 'skip' | null;
@@ -129,6 +131,7 @@ export function ReflectionView({
   const scale = Math.min(width, 390) / 390;
   const headerScale = challengeScale(width);
   const hasInput = feeling !== null || text.trim().length > 0;
+  const inactive = loading || busy || locked;
   const buttonLabel =
     pendingAction === 'skip'
       ? 'Retry Skip'
@@ -163,8 +166,8 @@ export function ReflectionView({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Back"
-              accessibilityState={{ disabled: busy || locked }}
-              disabled={busy || locked}
+              accessibilityState={{ disabled: inactive }}
+              disabled={inactive}
               onPress={onClose}
               style={styles.iconButton}
             >
@@ -190,8 +193,8 @@ export function ReflectionView({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close reflection"
-              accessibilityState={{ disabled: busy || locked }}
-              disabled={busy || locked}
+              accessibilityState={{ disabled: inactive }}
+              disabled={inactive}
               onPress={onClose}
               style={styles.iconButton}
             >
@@ -226,10 +229,10 @@ export function ReflectionView({
                   }
                   accessibilityState={{
                     checked: selected,
-                    disabled: busy || locked,
+                    disabled: inactive,
                   }}
                   aria-checked={selected}
-                  disabled={busy || locked}
+                  disabled={inactive}
                   onPress={() => onFeelingChange(selected ? null : option.code)}
                   style={styles.feelingChoice}
                   testID={`feeling-${option.code}`}
@@ -275,7 +278,7 @@ export function ReflectionView({
               placeholderTextColor="#526B80"
               value={text}
               onChangeText={onTextChange}
-              editable={!busy && !locked}
+              editable={!inactive}
               maxLength={10000}
               style={[styles.input, { minHeight: 228 * scale }]}
             />
@@ -325,14 +328,19 @@ export function ReflectionView({
         <View style={[styles.footer, { paddingHorizontal: 15 * scale }]}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={busy ? busyLabel : buttonLabel}
-            accessibilityState={{ disabled: busy || conflict, busy }}
-            disabled={busy || conflict}
+            accessibilityLabel={
+              loading ? 'Loading reflection' : busy ? busyLabel : buttonLabel
+            }
+            accessibilityState={{
+              disabled: loading || busy || conflict,
+              busy: loading || busy,
+            }}
+            disabled={loading || busy || conflict}
             onPress={onSubmit}
             testID="reflection-submit"
             style={styles.primaryButton}
           >
-            {busy ? (
+            {loading || busy ? (
               <ReflectionSpinner />
             ) : (
               <Text style={styles.primaryLabel}>{buttonLabel}</Text>
