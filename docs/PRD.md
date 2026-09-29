@@ -201,13 +201,12 @@ Month navigation updates both the calendar and monthly totals. All-time totals a
 Tapping an active date opens a scrollable sheet with:
 
 - The full day/date heading, such as “Friday, September 18”.
-- That day’s completed rep count and summed elapsed time.
-- Every completed challenge in chronological order, with an ordinal, readable instruction/summary, completion time, elapsed duration, and its submitted feeling indicator.
+- Every completed challenge in chronological order, with an ordinal, readable instruction/summary, completion time, and its submitted feeling indicator.
 - An accessible close action and drag handle.
 
-The **After** indicator uses the same five-choice feeling vocabulary as D1. Missing/skipped feedback is **Not recorded**, never a neutral face. A compact indicator must expose its exact label accessibly; the three sample faces in P31 do not reduce the five-option scale.
+The sheet omits the day-level rep count and elapsed-duration displays by Anthony’s later decision; the calendar still shows each active day’s rep badge. Existing attempt timing data remains stored, without a Phase 06 display requirement.
 
-Duration means elapsed time between the stored start and completion, including background time and any time after zero. It is not the configured time limit or remaining countdown. The daily duration is the sum for completed entries only. Phase 06 displays elapsed hours/minutes/seconds without rounding.
+The **Feeling** indicator uses the same five-choice vocabulary as D1. Missing/skipped feedback is **Not recorded**, never a neutral face; the compact empty-circle treatment must expose “Not recorded” accessibly. The three sample faces in P31 do not reduce the five-option scale.
 
 **Do not include the Day note label, quote, input, or any day-level note data.** The final compact rows also do not require the old PRD’s two ratings or a visible level label on every row. Preserve the original level and challenge revision in the underlying history.
 
@@ -296,25 +295,25 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 
 ## 11. Acceptance criteria
 
-| ID    | Required result                                                                                                                                                                                      |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AC-01 | On iOS, account bootstrap requires no signup form; valid recovery restores only the authorized account. Credential failures cannot create duplicate accounts silently.                               |
-| AC-02 | Deferred: welcome/questionnaire onboarding is outside current implementation. If scheduled later, approve content and confirm cloud saves/relaunch restoration before shipping it.                   |
-| AC-03 | The hard paywall supports purchase, restore, and honest pending/failed verification; essential recovery, subscription, legal, and data controls remain reachable when unpaid.                        |
-| AC-04 | Six Level 1 venue decks cycle independently. Left/X skips without an attempt; right/heart starts exactly one confirmed attempt. Repeated accepted cards get new IDs; retries cannot duplicate a rep. |
-| AC-05 | Home handles empty/small venue queues, loading and errors without duplicate selectable cards or fabricated progress. Omit level progress.                                                            |
-| AC-06 | The full challenge remains readable with a correct countdown after tab changes, locking, backgrounding, and relaunch. Returning Home restores the active attempt.                                    |
-| AC-07 | **Deferred:** lock-screen display; not an iOS launch gate. The in-app lifecycle remains covered by AC-06.                                                                                            |
-| AC-08 | Confirmed completion grants one rep and preserves Level 1/revision context; retries and concurrent devices cannot duplicate completion. Give-up grants no rep.                                       |
-| AC-09 | Success celebrates the confirmed completion and continues to that attempt’s Reflection without requiring a streak message.                                                                           |
-| AC-10 | Reflection uses the five specified relative choices with no default answer, optional text, accessible selected states, and normal keyboard editing. Skipping preserves earned credit.                |
-| AC-11 | Saved feedback/text belongs to the correct attempt; failed saves preserve visible input, drafts remain distinct from submissions, and concurrent edits do not silently overwrite.                    |
-| AC-12 | **Deferred:** Levels UI, thresholds, unlocking, skipping and historical-credit policy. Preserving Level 1 context does not implement these rules.                                                    |
-| AC-13 | Progress correctly shows current/best streak, all-time reps, month reps/active days, and per-day rep counts without an anxiety/confidence heatmap.                                                   |
-| AC-14 | An active date opens all its completed entries in order with completion time, elapsed duration, and exact feeling labels or Not recorded. P31 has no Day note block or day-note field.               |
-| AC-15 | Settings implements only the scoped capabilities, describes cloud persistence accurately, and does not add Reset progress solely from the reference image.                                           |
-| AC-16 | Cloud saves and paid access work with analytics declined; no journal text, audio, or credentials enter analytics or diagnostic payloads.                                                             |
-| AC-17 | Controls work with screen readers, text scaling, reduced motion, platform back navigation, and keyboard/sheet interactions on iOS. Android verification is deferred.                                 |
+| ID    | Required result                                                                                                                                                                                                                     |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC-01 | On iOS, account bootstrap requires no signup form; valid recovery restores only the authorized account. Credential failures cannot create duplicate accounts silently.                                                              |
+| AC-02 | Deferred: welcome/questionnaire onboarding is outside current implementation. If scheduled later, approve content and confirm cloud saves/relaunch restoration before shipping it.                                                  |
+| AC-03 | The hard paywall supports purchase, restore, and honest pending/failed verification; essential recovery, subscription, legal, and data controls remain reachable when unpaid.                                                       |
+| AC-04 | Six Level 1 venue decks cycle independently. Left/X skips without an attempt; right/heart starts exactly one confirmed attempt. Repeated accepted cards get new IDs; retries cannot duplicate a rep.                                |
+| AC-05 | Home handles empty/small venue queues, loading and errors without duplicate selectable cards or fabricated progress. Omit level progress.                                                                                           |
+| AC-06 | The full challenge remains readable with a correct countdown after tab changes, locking, backgrounding, and relaunch. Returning Home restores the active attempt.                                                                   |
+| AC-07 | **Deferred:** lock-screen display; not an iOS launch gate. The in-app lifecycle remains covered by AC-06.                                                                                                                           |
+| AC-08 | Confirmed completion grants one rep and preserves Level 1/revision context; retries and concurrent devices cannot duplicate completion. Give-up grants no rep.                                                                      |
+| AC-09 | Success celebrates the confirmed completion and continues to that attempt’s Reflection without requiring a streak message.                                                                                                          |
+| AC-10 | Reflection uses the five specified relative choices with no default answer, optional text, accessible selected states, and normal keyboard editing. Skipping preserves earned credit.                                               |
+| AC-11 | Saved feedback/text belongs to the correct attempt; failed saves preserve visible input, drafts remain distinct from submissions, and concurrent edits do not silently overwrite.                                                   |
+| AC-12 | **Deferred:** Levels UI, thresholds, unlocking, skipping and historical-credit policy. Preserving Level 1 context does not implement these rules.                                                                                   |
+| AC-13 | Progress correctly shows current/best streak, all-time reps, month reps/active days, and per-day rep counts without an anxiety/confidence heatmap.                                                                                  |
+| AC-14 | An active date opens all its completed entries in order with completion time and accessible exact feeling labels or Not recorded. The sheet has no elapsed-duration display, day-level rep count, Day note block or day-note field. |
+| AC-15 | Settings implements only the scoped capabilities, describes cloud persistence accurately, and does not add Reset progress solely from the reference image.                                                                          |
+| AC-16 | Cloud saves and paid access work with analytics declined; no journal text, audio, or credentials enter analytics or diagnostic payloads.                                                                                            |
+| AC-17 | Controls work with screen readers, text scaling, reduced motion, platform back navigation, and keyboard/sheet interactions on iOS. Android verification is deferred.                                                                |
 
 ## 12. Validation and implementation order
 

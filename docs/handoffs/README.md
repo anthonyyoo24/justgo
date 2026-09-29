@@ -4,7 +4,7 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
-September 27: [Phase 06 implementation](phase-06-progress.md) is in progress on `codex/phase-06`. Local history API/database checks and the in-app browser Progress preview pass. The phase remains open for physical-iPhone accessibility/gesture acceptance and staging deployment, with earlier dependency gates also open.
+September 29: [Phase 06 implementation](phase-06-progress.md) remains in progress on `phase-06-progress-calendar-saved-history` because its dependency phase remains open. Local checks and the live simulator day sheet pass against the clarified scope, which omits elapsed-duration displays and uses **Feeling**. A day with 21 entries verified automatic paging, both failure states and retry recovery. Physical-iPhone testing is planned after the full app build; staging deployment is an integration/release task. The handoff records current evidence and later UI changes.
 
 September 27: [Phase 05 implementation](phase-05-reflections.md) now connects confirmed Success to the optional Paper-based feelings and typed reflection screen. The revisioned API/database flow, retry/conflict behavior, automated tests and in-app browser preview pass locally. Real-iPhone accessibility/keyboard checks and staging deployment remain open, so Phase 05 is In progress.
 

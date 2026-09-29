@@ -64,6 +64,22 @@ const previewEntries: ProgressEntry[] = [
     reflectionText: 'Saying hello felt easier the second time.',
   },
 ];
+const previewPagedEntries: ProgressEntry[] = [
+  ...previewEntries,
+  ...[
+    ['Take a short walk', '2026-09-19T00:22:00.000Z'],
+    ['Compliment someone', '2026-09-19T01:03:00.000Z'],
+    ['Send a thank you note', '2026-09-19T01:28:00.000Z'],
+  ].map(([instruction, completedAt], index) => ({
+    ...previewEntries[index]!,
+    attemptId: `preview-page-two-${index}`,
+    instruction: instruction!,
+    completedAt: completedAt!,
+    reflectionStatus: 'skipped' as const,
+    feeling: null,
+    reflectionText: null,
+  })),
+];
 const previewMonth: ProgressResponse = {
   month: '2026-09',
   today: '2026-09-18',
@@ -103,13 +119,17 @@ const emptyMonth: ProgressResponse = {
 export function ScreenPreview({
   simulateSkipFailure = false,
   progressState = 'default',
+  progressDayState = 'default',
 }: {
   simulateSkipFailure?: boolean;
   progressState?: 'default' | 'empty' | 'error';
+  progressDayState?:
+    'default' | 'initial-error' | 'load-more-error' | 'loading-more';
 }) {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
   const [progressMonth, setProgressMonth] = useState('2026-09');
   const [progressDay, setProgressDay] = useState<string | null>(null);
+  const [dayState, setDayState] = useState(progressDayState);
   const [progressError, setProgressError] = useState(progressState === 'error');
   const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
   const [feeling, setFeeling] = useState<FeelingCode | null>(null);
@@ -202,22 +222,34 @@ export function ScreenPreview({
           error={progressError}
           selectedDate={progressDay}
           day={
-            progressDay
+            progressDay && dayState !== 'initial-error'
               ? {
                   date: progressDay,
-                  totalReps: 3,
+                  totalReps: dayState === 'default' ? 3 : 12,
                   totalElapsedSeconds: 609,
-                  entries: previewEntries,
+                  entries:
+                    dayState === 'default'
+                      ? previewEntries
+                      : previewPagedEntries,
                 }
               : undefined
           }
+          dayError={progressDay !== null && dayState === 'initial-error'}
+          loadMoreError={progressDay !== null && dayState === 'load-more-error'}
+          loadingMore={progressDay !== null && dayState === 'loading-more'}
+          fetchingDay={progressDay !== null && dayState === 'loading-more'}
+          hasMore={progressDay !== null && dayState !== 'default'}
           onMonth={(offset) => {
             setProgressDay(null);
             setProgressMonth((month) => moveMonth(month, offset));
           }}
-          onOpenDay={setProgressDay}
+          onOpenDay={(date) => {
+            setDayState(progressDayState);
+            setProgressDay(date);
+          }}
           onCloseDay={() => setProgressDay(null)}
           onRetryMonth={() => setProgressError(false)}
+          onRetryDay={() => setDayState('default')}
         />
       )}
       <SafeAreaView edges={['bottom']} style={styles.nav}>

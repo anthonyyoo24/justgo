@@ -47,10 +47,11 @@ it('shows progress activity, read-only saved reflection, and an empty adjacent m
   fireEvent.press(
     screen.getByRole('button', { name: 'Friday, September 18, today, 3 reps' }),
   );
-  expect(screen.getByText('3 reps')).toBeTruthy();
+  expect(screen.getByText('Friday, September 18')).toBeTruthy();
+  expect(screen.queryByText('3 reps')).toBeNull();
   expect(screen.queryByText(/min.*total/)).toBeNull();
   expect(screen.getAllByText('View Reflection')).toHaveLength(2);
-  expect(screen.getByText('Not\nrecorded')).toBeTruthy();
+  expect(screen.getByLabelText(/Rep 2\..*Feeling: Not recorded/)).toBeTruthy();
   fireEvent.press(
     screen.getByRole('button', { name: /Rep 1\. Say hello to someone/ }),
   );
@@ -68,6 +69,33 @@ it('shows progress activity, read-only saved reflection, and an empty adjacent m
   expect(
     screen.getByText('SCREEN PREVIEW · No activity is saved'),
   ).toBeTruthy();
+});
+
+it.each([
+  ['initial-error', 'Couldn’t load attempts'],
+  ['load-more-error', 'Couldn’t load more attempts'],
+  ['loading-more', null],
+] as const)('previews the %s day sheet state', (progressDayState, message) => {
+  const screen = render(<ScreenPreview progressDayState={progressDayState} />);
+  fireEvent.press(screen.getByRole('tab', { name: 'Progress' }));
+  fireEvent.press(
+    screen.getByRole('button', {
+      name: 'Friday, September 18, today, 3 reps',
+    }),
+  );
+  if (message) expect(screen.getByText(message)).toBeTruthy();
+  else {
+    expect(screen.getByLabelText('Loading more attempts')).toBeTruthy();
+    expect(screen.queryByText('Loading more attempts…')).toBeNull();
+  }
+  if (progressDayState === 'initial-error') {
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Try loading attempts again' }),
+    );
+    expect(screen.getByLabelText(/Rep 1\. Say hello to someone/)).toBeTruthy();
+  } else {
+    expect(screen.getByLabelText(/Rep 6\. Send a thank you note/)).toBeTruthy();
+  }
 });
 
 it('previews Success then optional Reflection without saving activity', () => {

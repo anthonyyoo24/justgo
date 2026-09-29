@@ -332,6 +332,25 @@ it('clears the backdrop immediately when the sheet close button is pressed', asy
   expect(backdrop).toHaveStyle({ backgroundColor: 'transparent' });
   expect(actions.onCloseDay).not.toHaveBeenCalled();
   await waitFor(() => expect(actions.onCloseDay).toHaveBeenCalledTimes(1));
+  screen.rerender(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate={null}
+      {...actions}
+    />,
+  );
+  screen.rerender(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-27"
+      {...actions}
+    />,
+  );
+  expect(
+    screen.getByTestId('day-sheet-backdrop', { includeHiddenElements: true }),
+  ).toHaveStyle({ backgroundColor: '#102C49AA' });
 });
 
 it('keeps a past active day white while its details sheet is open', () => {
@@ -683,6 +702,167 @@ it('keeps the calendar visible without presenting a failed request as zero activ
   expect(screen.queryByText('0')).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Retry progress' }));
   expect(retry).toHaveBeenCalledTimes(1);
+});
+
+it('shows a retry in the sheet when its first page fails', () => {
+  const retry = jest.fn();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      dayError
+      onRetryDay={retry}
+      {...callbacks()}
+    />,
+  );
+
+  expect(screen.getByText('Couldn’t load attempts')).toBeTruthy();
+  expect(
+    screen.getByText(
+      'We couldn’t get your challenge attempts. Please try again.',
+    ),
+  ).toBeTruthy();
+  const illustration = screen.getByTestId('day-initial-error-illustration', {
+    includeHiddenElements: true,
+  });
+  expect(illustration.props.source).toEqual(
+    require('../../../assets/illustrations/disconnected-plugs.png'),
+  );
+  expect(illustration.props.resizeMode).toBe('contain');
+  expect(illustration.props['aria-hidden']).toBe(true);
+  expect(screen.queryByTestId('day-sheet-entry-list')).toBeNull();
+  fireEvent.press(
+    screen.getByRole('button', { name: 'Try loading attempts again' }),
+  );
+  expect(retry).toHaveBeenCalledTimes(1);
+});
+
+it('keeps loaded entries and shows a bottom retry when a later page fails', () => {
+  const retry = jest.fn();
+  const loadMore = jest.fn();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: 21,
+        totalElapsedSeconds: 122,
+        entries: [entry('first', 'skipped')],
+      }}
+      hasMore
+      loadMoreError
+      onRetryDay={retry}
+      onLoadMore={loadMore}
+      {...callbacks()}
+    />,
+  );
+
+  expect(screen.getByLabelText(/Rep 1\. Say hello to someone/)).toBeTruthy();
+  const footer = screen.getByTestId('day-load-more-error');
+  expect(
+    footer.findAllByType(Text).map(({ props }) => props.children),
+  ).toContain('Couldn’t load more attempts');
+  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), {
+    nativeEvent: {
+      contentOffset: { y: 900 },
+      contentSize: { height: 1600 },
+      layoutMeasurement: { height: 700 },
+    },
+  });
+  expect(loadMore).not.toHaveBeenCalled();
+  fireEvent.press(
+    screen.getByRole('button', { name: 'Try loading more attempts again' }),
+  );
+  expect(retry).toHaveBeenCalledTimes(1);
+});
+
+it('keeps loaded attempts visible while the next page loads', () => {
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: 21,
+        totalElapsedSeconds: 122,
+        entries: [entry('first', 'skipped')],
+      }}
+      hasMore
+      loadingMore
+      fetchingDay
+      {...callbacks()}
+    />,
+  );
+
+  expect(screen.getByLabelText(/Rep 1\. Say hello to someone/)).toBeTruthy();
+  expect(screen.getByTestId('day-loading-more')).toBeTruthy();
+  expect(screen.getByLabelText('Loading more attempts')).toBeTruthy();
+  expect(screen.queryByText('Loading more attempts…')).toBeNull();
+  expect(screen.queryByTestId('day-load-more-error')).toBeNull();
+});
+
+it('fetches once near the end of each page as the sheet scrolls', () => {
+  const loadMore = jest.fn();
+  const first = Array.from({ length: 20 }, (_, index) =>
+    entry(`attempt-${index}`, 'skipped'),
+  );
+  const renderDay = (entries: ProgressEntry[], fetchingDay = false) => (
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: 21,
+        totalElapsedSeconds: 122,
+        entries,
+      }}
+      hasMore
+      fetchingDay={fetchingDay}
+      onLoadMore={loadMore}
+      {...callbacks()}
+    />
+  );
+  const screen = render(renderDay(first));
+  const scroll = (y: number) =>
+    fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), {
+      nativeEvent: {
+        contentOffset: { y },
+        contentSize: { height: 1600 },
+        layoutMeasurement: { height: 700 },
+      },
+    });
+
+  scroll(0);
+  scroll(500);
+  expect(loadMore).not.toHaveBeenCalled();
+  scroll(900);
+  scroll(900);
+  expect(loadMore).toHaveBeenCalledTimes(1);
+  screen.rerender(renderDay(first, true));
+  scroll(900);
+  expect(loadMore).toHaveBeenCalledTimes(1);
+  screen.rerender(renderDay([...first, entry('attempt-20', 'skipped')]));
+  scroll(900);
+  expect(loadMore).toHaveBeenCalledTimes(2);
+  screen.rerender(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate={null}
+      {...callbacks()}
+    />,
+  );
+  screen.rerender(renderDay(first));
+  scroll(900);
+  expect(loadMore).toHaveBeenCalledTimes(3);
+  expect(
+    screen.queryByRole('button', { name: 'Load more challenges' }),
+  ).toBeNull();
 });
 
 it('shows real zero totals, a complete calendar, and a first challenge hint for a new account', () => {

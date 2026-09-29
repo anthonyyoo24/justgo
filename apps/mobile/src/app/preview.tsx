@@ -1,9 +1,11 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 export default function PreviewRoute() {
-  const { simulateSkipFailure, progressState } = useLocalSearchParams<{
-    simulateSkipFailure?: string;
-    progressState?: string;
-  }>();
+  const { simulateSkipFailure, progressState, progressDayState } =
+    useLocalSearchParams<{
+      simulateSkipFailure?: string;
+      progressState?: string;
+      progressDayState?: string;
+    }>();
   if (!__DEV__) return <Redirect href="/" />;
   const { ScreenPreview } =
     require('../features/shell/ScreenPreview') as typeof import('../features/shell/ScreenPreview');
@@ -13,6 +15,13 @@ export default function PreviewRoute() {
       progressState={
         progressState === 'empty' || progressState === 'error'
           ? progressState
+          : 'default'
+      }
+      progressDayState={
+        progressDayState === 'initial-error' ||
+        progressDayState === 'load-more-error' ||
+        progressDayState === 'loading-more'
+          ? progressDayState
           : 'default'
       }
     />

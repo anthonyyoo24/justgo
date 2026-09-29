@@ -77,9 +77,11 @@ export function ProgressScreen() {
       selectedDate={selectedDate}
       day={day}
       dayLoading={details.isPending}
-      dayError={details.isError || details.isFetchNextPageError}
+      dayError={details.isError && !details.data}
+      loadMoreError={details.isFetchNextPageError}
       hasMore={details.hasNextPage}
       loadingMore={details.isFetchingNextPage}
+      fetchingDay={details.isFetching}
       onMonth={(offset) => {
         setSelectedDate(null);
         setMonth((current) => moveMonth(current, offset));
@@ -92,7 +94,10 @@ export function ProgressScreen() {
           ? details.fetchNextPage()
           : details.refetch())
       }
-      onLoadMore={() => void details.fetchNextPage()}
+      onLoadMore={() => {
+        if (details.hasNextPage && !details.isFetching)
+          void details.fetchNextPage();
+      }}
     />
   );
 }

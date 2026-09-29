@@ -1,6 +1,10 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ProgressResponse } from '@justgo/contracts';
+import type {
+  ProgressDayResponse,
+  ProgressEntry,
+  ProgressResponse,
+} from '@justgo/contracts';
 import { accountKey } from '../../lib/account-client';
 import { ProgressScreen } from './ProgressScreen';
 
@@ -115,4 +119,97 @@ it('does not show another account’s previous progress while its month loads', 
   expect(screen.getAllByText('—')).toHaveLength(4);
   expect(screen.queryByText('on 1 active day')).toBeNull();
   await act(async () => finishOther({ ...september, monthlyReps: 0 }));
+});
+
+it('retries the first page and a failed later page without losing loaded entries', async () => {
+  const sample: ProgressEntry = {
+    attemptId: 'attempt-0',
+    completedAt: '2026-09-18T13:15:00.000Z',
+    timeZone: 'America/Toronto',
+    elapsedSeconds: 122,
+    cardId: 'card-1',
+    venue: 'streets',
+    challengeId: 'challenge-1',
+    revisionId: 'revision-1',
+    levelId: 'level-1',
+    instruction: 'Say hello to someone',
+    feelingVersion: 1,
+    reflectionStatus: 'skipped',
+    feeling: null,
+    reflectionText: null,
+  };
+  const firstPage: ProgressDayResponse = {
+    date: '2026-09-18',
+    totalReps: 21,
+    totalElapsedSeconds: 2562,
+    entries: Array.from({ length: 20 }, (_, index) => ({
+      ...sample,
+      attemptId: `attempt-${index}`,
+    })),
+    nextCursor: 'second-page',
+  };
+  let failNextPage!: (error: Error) => void;
+  const pendingNextPage = new Promise<ProgressDayResponse>(
+    (_resolve, reject) => {
+      failNextPage = reject;
+    },
+  );
+  let dayRequests = 0;
+  mockClient.request.mockImplementation((path: string) => {
+    if (!path.includes('/v1/progress/days/')) return Promise.resolve(september);
+    dayRequests++;
+    if (dayRequests === 1)
+      return Promise.reject(new Error('Temporary connection failure'));
+    if (dayRequests === 3) return pendingNextPage;
+    return Promise.resolve(
+      dayRequests === 2
+        ? firstPage
+        : {
+            ...firstPage,
+            entries: [{ ...sample, attemptId: 'attempt-20' }],
+            nextCursor: null,
+          },
+    );
+  });
+  const screen = render(
+    <QueryClientProvider client={mockClient.queries}>
+      <ProgressScreen />
+    </QueryClientProvider>,
+  );
+
+  fireEvent.press(screen.getByLabelText('Friday, September 18, 2 reps'));
+  await waitFor(() =>
+    expect(screen.getByText('Couldn’t load attempts')).toBeTruthy(),
+  );
+  fireEvent.press(
+    screen.getByRole('button', { name: 'Try loading attempts again' }),
+  );
+  await waitFor(() =>
+    expect(screen.getByLabelText(/Rep 20\. Say hello to someone/)).toBeTruthy(),
+  );
+  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), {
+    nativeEvent: {
+      contentOffset: { y: 900 },
+      contentSize: { height: 1600 },
+      layoutMeasurement: { height: 700 },
+    },
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText('Loading more attempts')).toBeTruthy(),
+  );
+  await act(async () =>
+    failNextPage(new Error('Temporary connection failure')),
+  );
+  await waitFor(() =>
+    expect(screen.getByText('Couldn’t load more attempts')).toBeTruthy(),
+  );
+  expect(screen.getByLabelText(/Rep 20\. Say hello to someone/)).toBeTruthy();
+  fireEvent.press(
+    screen.getByRole('button', { name: 'Try loading more attempts again' }),
+  );
+  await waitFor(() =>
+    expect(screen.getByLabelText(/Rep 21\. Say hello to someone/)).toBeTruthy(),
+  );
+  expect(screen.queryByText('Couldn’t load more attempts')).toBeNull();
+  expect(dayRequests).toBe(4);
 });

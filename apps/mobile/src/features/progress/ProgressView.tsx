@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Easing,
   Image,
   Modal,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   PanResponder,
   Platform,
   Pressable,
@@ -50,8 +52,10 @@ export type ProgressViewProps = {
   day?: Day | undefined;
   dayLoading?: boolean;
   dayError?: boolean;
+  loadMoreError?: boolean;
   hasMore?: boolean;
   loadingMore?: boolean;
+  fetchingDay?: boolean;
   insetTop?: boolean;
   onMonth: (offset: number) => void;
   onOpenDay: (date: string) => void;
@@ -78,8 +82,10 @@ export function ProgressView({
   day,
   dayLoading = false,
   dayError = false,
+  loadMoreError = false,
   hasMore = false,
   loadingMore = false,
+  fetchingDay = false,
   insetTop = true,
   onMonth,
   onOpenDay,
@@ -307,8 +313,10 @@ export function ProgressView({
         day={day}
         loading={dayLoading}
         error={dayError}
+        loadMoreError={loadMoreError}
         hasMore={hasMore}
         loadingMore={loadingMore}
+        fetching={fetchingDay}
         onClose={onCloseDay}
         onRetry={onRetryDay}
         onLoadMore={onLoadMore}
@@ -461,6 +469,33 @@ function Retry({
     >
       <Text style={styles.retryText}>Retry</Text>
     </Pressable>
+  );
+}
+
+function RetryArrow({ color = colors.white }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 20 20" aria-hidden>
+      <Path
+        d="M16.6 8.2a6.8 6.8 0 0 0-11.7-2.9L3 7.2m0-3.5v3.5h3.5M3.4 11.8a6.8 6.8 0 0 0 11.7 2.9l1.9-1.9m0 3.5v-3.5h-3.5"
+        fill="none"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function DisconnectedPlugs() {
+  return (
+    <Image
+      testID="day-initial-error-illustration"
+      source={require('../../../assets/illustrations/disconnected-plugs.png')}
+      style={styles.initialErrorIllustration}
+      resizeMode="contain"
+      aria-hidden
+    />
   );
 }
 
@@ -753,8 +788,10 @@ function DaySheet({
   day,
   loading,
   error,
+  loadMoreError,
   hasMore,
   loadingMore,
+  fetching,
   onClose,
   onRetry,
   onLoadMore,
@@ -763,13 +800,16 @@ function DaySheet({
   day?: Day | undefined;
   loading: boolean;
   error: boolean;
+  loadMoreError: boolean;
   hasMore: boolean;
   loadingMore: boolean;
+  fetching: boolean;
   onClose: () => void;
   onRetry?: (() => void) | undefined;
   onLoadMore?: (() => void) | undefined;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const lastRequestedCount = useRef<number | null>(null);
   const [backdropVisible, setBackdropVisible] = useState(true);
   const reduceMotion = useReducedMotion();
   const { height } = useWindowDimensions();
@@ -783,6 +823,9 @@ function DaySheet({
       useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [height, sheetOffset]);
+  useEffect(() => {
+    if (date !== null) open();
+  }, [date, open]);
   const close = useCallback(() => {
     setBackdropVisible(false);
     Animated.timing(sheetOffset, {
@@ -810,6 +853,18 @@ function DaySheet({
       }),
     [close],
   );
+  const loadNearEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!day || !hasMore || fetching || loadMoreError || !onLoadMore) return;
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    if (
+      contentOffset.y <= 0 ||
+      contentOffset.y + layoutMeasurement.height < contentSize.height - 160 ||
+      lastRequestedCount.current === day.entries.length
+    )
+      return;
+    lastRequestedCount.current = day.entries.length;
+    onLoadMore();
+  };
   return (
     <Modal
       visible={date !== null}
@@ -830,7 +885,11 @@ function DaySheet({
         <AnimatedSafeAreaView
           testID="day-sheet-panel"
           edges={['bottom']}
-          style={[styles.sheet, { transform: [{ translateY: sheetOffset }] }]}
+          style={[
+            styles.sheet,
+            error && !day && { minHeight: Math.min(470, height * 0.78) },
+            { transform: [{ translateY: sheetOffset }] },
+          ]}
           accessibilityViewIsModal
         >
           <View {...responder.panHandlers} style={styles.handleArea}>
@@ -854,24 +913,34 @@ function DaySheet({
               <Text style={styles.stateText}>Loading this day…</Text>
             </View>
           ) : error && !day ? (
-            <View style={styles.state}>
-              <Text accessibilityRole="alert" style={styles.stateText}>
-                We couldn’t load this day.
+            <View testID="day-initial-error" style={styles.initialError}>
+              <DisconnectedPlugs />
+              <Text accessibilityRole="alert" style={styles.initialErrorTitle}>
+                Couldn’t load attempts
               </Text>
-              <Retry label="Retry day details" onPress={onRetry} />
+              <Text style={styles.initialErrorBody}>
+                We couldn’t get your challenge attempts. Please try again.
+              </Text>
+              {onRetry && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Try loading attempts again"
+                  onPress={onRetry}
+                  style={styles.initialRetry}
+                >
+                  <RetryArrow />
+                  <Text style={styles.initialRetryText}>Try again</Text>
+                </Pressable>
+              )}
             </View>
           ) : day ? (
             <>
-              {error && (
-                <Text accessibilityRole="alert" style={styles.warning}>
-                  Some entries couldn’t load.{' '}
-                  <Retry label="Retry day details" onPress={onRetry} />
-                </Text>
-              )}
               <ScrollView
                 testID="day-sheet-entry-list"
                 style={styles.entriesScroll}
                 contentContainerStyle={styles.entries}
+                onScroll={loadNearEnd}
+                scrollEventThrottle={16}
               >
                 {day.entries.map((entry, index) => (
                   <ProgressEntryRow
@@ -887,20 +956,35 @@ function DaySheet({
                     }
                   />
                 ))}
-                {hasMore && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Load more challenges"
-                    disabled={loadingMore}
-                    accessibilityState={{ disabled: loadingMore }}
-                    onPress={onLoadMore}
-                    style={styles.more}
+                {loadMoreError ? (
+                  <View
+                    testID="day-load-more-error"
+                    style={styles.moreErrorState}
                   >
-                    <Text style={styles.moreText}>
-                      {loadingMore ? 'Loading…' : 'Load more challenges'}
+                    <Text accessibilityRole="alert" style={styles.moreError}>
+                      Couldn’t load more attempts
                     </Text>
-                  </Pressable>
-                )}
+                    {onRetry && (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Try loading more attempts again"
+                        onPress={onRetry}
+                        style={styles.moreRetry}
+                      >
+                        <RetryArrow color={colors.ink} />
+                        <Text style={styles.moreRetryText}>Try again</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : loadingMore ? (
+                  <View testID="day-loading-more" style={styles.moreLoading}>
+                    <ActivityIndicator
+                      accessibilityLabel="Loading more attempts"
+                      color={colors.ink}
+                      size="small"
+                    />
+                  </View>
+                ) : null}
               </ScrollView>
             </>
           ) : null}
@@ -1186,6 +1270,49 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
   dayMarker: { transform: [{ translateY: -6 }] },
+  initialError: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 24,
+  },
+  initialErrorIllustration: { width: 250, height: 110 },
+  initialErrorTitle: {
+    fontFamily: fontFamilies.editorial,
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: '700',
+    color: colors.ink,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  initialErrorBody: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#617897',
+    textAlign: 'center',
+    maxWidth: 325,
+    marginTop: 8,
+  },
+  initialRetry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    minWidth: 184,
+    minHeight: 48,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    backgroundColor: colors.ink,
+    marginTop: 24,
+  },
+  initialRetryText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 16,
+    lineHeight: 20,
+    color: colors.white,
+  },
   entriesScroll: { marginTop: 12 },
   entries: { paddingRight: 12, paddingBottom: 24 },
   entry: {
@@ -1286,10 +1413,37 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginTop: 6,
   },
-  more: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  moreText: {
-    ...typography.label,
+  moreErrorState: {
+    minHeight: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#D8D6CF',
+  },
+  moreError: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#617897',
+    textAlign: 'center',
+  },
+  moreRetry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  moreRetryText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 16,
+    lineHeight: 20,
     color: colors.ink,
-    textDecorationLine: 'underline',
+  },
+  moreLoading: {
+    minHeight: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
