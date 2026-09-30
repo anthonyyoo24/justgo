@@ -21,7 +21,6 @@ const attempt: Attempt = {
   startedAt: '2026-09-24T20:00:00Z',
   deadlineAt: '2026-09-24T20:05:00Z',
   endedAt: null,
-  elapsedSeconds: null,
   completionDate: null,
   timeZone: null,
 };
@@ -30,6 +29,20 @@ beforeEach(() => {
   jest.setSystemTime(new Date('2026-09-24T20:06:00Z'));
 });
 afterEach(() => jest.useRealTimers());
+it('shows time remaining before the deadline', () => {
+  jest.setSystemTime(new Date('2026-09-24T20:03:00Z'));
+  const screen = render(
+    <ActiveChallenge
+      attempt={attempt}
+      offset={0}
+      disabled={false}
+      finish={async () => {}}
+    />,
+  );
+  expect(screen.getByText('02:00')).toBeTruthy();
+  expect(screen.getByText('Time remaining')).toBeTruthy();
+  expect(screen.getByLabelText('2 minutes 0 seconds remaining')).toBeTruthy();
+});
 it.each(['Give up', 'Completed'] as const)(
   'keeps outcomes explicit at zero and submits %s with one press',
   (name) => {
@@ -43,7 +56,8 @@ it.each(['Give up', 'Completed'] as const)(
       />,
     );
     expect(screen.getByText('00:00')).toBeTruthy();
-    expect(screen.getByText('Time’s up. How did it go?')).toBeTruthy();
+    expect(screen.getByText("Time's up. Give it a go.")).toBeTruthy();
+    expect(screen.getByLabelText("Time's up. Give it a go.")).toBeTruthy();
     expect(finish).not.toHaveBeenCalled();
     fireEvent.press(screen.getByRole('button', { name }));
     expect(finish).toHaveBeenCalledTimes(1);

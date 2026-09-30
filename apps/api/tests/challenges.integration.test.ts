@@ -104,6 +104,13 @@ afterAll(async () => {
   await Promise.all([db.pool.end(), admin.end()]);
 });
 describe('real challenge loop through restricted PostgreSQL role', () => {
+  it('has no elapsed-duration column in the attempts table', async () => {
+    const columns = await admin.query(
+      `select column_name from information_schema.columns
+       where table_schema='justgo' and table_name='attempts' and column_name='elapsed_seconds'`,
+    );
+    expect(columns.rows).toHaveLength(0);
+  });
   it('seeds exactly the reviewed 61 placements, six queues and stable Level 1 revisions', async () => {
     const a = await account();
     let total = 0;
@@ -183,6 +190,7 @@ describe('real challenge loop through restricted PostgreSQL role', () => {
     ]);
     for (const r of starts) expect(r.statusCode, r.body).toBe(200);
     expect(starts[0]!.json().attempt).toEqual(starts[1]!.json().attempt);
+    expect(starts[0]!.json().attempt).not.toHaveProperty('elapsedSeconds');
     expect(
       Date.parse(starts[0]!.json().attempt.deadlineAt) -
         Date.parse(starts[0]!.json().attempt.startedAt),
@@ -281,7 +289,7 @@ describe('real challenge loop through restricted PostgreSQL role', () => {
     expect(repeated.attempt.card.id).toBe(original.card.id);
     expect(repeated.attempt.id).not.toBe(original.id);
   });
-  it('keeps zero active, freezes completion day/time zone and includes after-zero duration', async () => {
+  it('keeps zero active and freezes the completion day in the selected time zone', async () => {
     const a = await account(),
       s = await start(a.sessionToken, await queue(a.sessionToken));
     await admin.query(
@@ -298,7 +306,7 @@ describe('real challenge loop through restricted PostgreSQL role', () => {
     });
     expect(done.statusCode, done.body).toBe(200);
     const result = done.json().attempt as Attempt;
-    expect(result.elapsedSeconds).toBeGreaterThanOrEqual(480);
+    expect(result).not.toHaveProperty('elapsedSeconds');
     expect(result.completionDate).toBe(
       new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Pacific/Kiritimati',

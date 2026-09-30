@@ -25,7 +25,6 @@ const entry = (
   attemptId,
   completedAt: '2026-09-18T13:15:00.000Z',
   timeZone: 'America/Toronto',
-  elapsedSeconds: 122,
   cardId: 'card-1',
   venue: 'streets',
   challengeId: 'challenge-1',
@@ -200,7 +199,6 @@ it('opens only active days and shows empty circles for draft and skipped feedbac
       day={{
         date: '2026-09-18',
         totalReps: 2,
-        totalElapsedSeconds: 244,
         entries: [
           entry('00000000-0000-4000-8000-000000000001', 'draft'),
           entry('00000000-0000-4000-8000-000000000002', 'skipped'),
@@ -259,7 +257,6 @@ it('keeps the marker behind the date and resizes it when the heading reflows', (
       day={{
         date: '2026-09-30',
         totalReps: 2,
-        totalElapsedSeconds: 244,
         entries: [],
       }}
       {...callbacks()}
@@ -394,7 +391,6 @@ it('shows completion times without a day total or duration in the day sheet', ()
       day={{
         date: '2026-09-18',
         totalReps: 2,
-        totalElapsedSeconds: 244,
         entries: [
           entry('00000000-0000-4000-8000-000000000001', 'draft'),
           entry('00000000-0000-4000-8000-000000000002', 'skipped'),
@@ -456,7 +452,6 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
       day={{
         date: '2026-09-18',
         totalReps: entries.length,
-        totalElapsedSeconds: 366,
         entries,
       }}
       {...callbacks()}
@@ -508,7 +503,6 @@ it('animates the saved reflection both into and out of the row', () => {
         day={{
           date: '2026-09-18',
           totalReps: 1,
-          totalElapsedSeconds: 122,
           entries: [
             {
               ...entry('first', 'submitted'),
@@ -568,7 +562,6 @@ it('omits reflection controls for empty, unsaved, or skipped reflections', () =>
       day={{
         date: '2026-09-18',
         totalReps: entries.length,
-        totalElapsedSeconds: 610,
         entries,
       }}
       {...callbacks()}
@@ -591,7 +584,6 @@ it('centers each Feeling rating with four points between its label and result', 
       day={{
         date: '2026-09-18',
         totalReps: 2,
-        totalElapsedSeconds: 244,
         entries: [
           {
             ...entry('00000000-0000-4000-8000-000000000001', 'submitted'),
@@ -749,7 +741,6 @@ it('keeps loaded entries and shows a bottom retry when a later page fails', () =
       day={{
         date: '2026-09-18',
         totalReps: 21,
-        totalElapsedSeconds: 122,
         entries: [entry('first', 'skipped')],
       }}
       hasMore
@@ -788,7 +779,6 @@ it('keeps loaded attempts visible while the next page loads', () => {
       day={{
         date: '2026-09-18',
         totalReps: 21,
-        totalElapsedSeconds: 122,
         entries: [entry('first', 'skipped')],
       }}
       hasMore
@@ -818,7 +808,6 @@ it('fetches once near the end of each page as the sheet scrolls', () => {
       day={{
         date: '2026-09-18',
         totalReps: 21,
-        totalElapsedSeconds: 122,
         entries,
       }}
       hasMore

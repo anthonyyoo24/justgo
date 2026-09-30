@@ -19,7 +19,6 @@ const previewEntries: ProgressEntry[] = [
     attemptId: '00000000-0000-4000-8000-000000000001',
     completedAt: '2026-09-18T13:15:00.000Z',
     timeZone: 'America/Toronto',
-    elapsedSeconds: 122,
     cardId: 'preview-card-1',
     venue: 'streets',
     challengeId: 'preview-challenge-1',
@@ -35,7 +34,6 @@ const previewEntries: ProgressEntry[] = [
     attemptId: '00000000-0000-4000-8000-000000000002',
     completedAt: '2026-09-18T16:40:00.000Z',
     timeZone: 'America/Toronto',
-    elapsedSeconds: 302,
     cardId: 'preview-card-2',
     venue: 'streets',
     challengeId: 'preview-challenge-2',
@@ -51,7 +49,6 @@ const previewEntries: ProgressEntry[] = [
     attemptId: '00000000-0000-4000-8000-000000000003',
     completedAt: '2026-09-18T22:10:00.000Z',
     timeZone: 'America/Toronto',
-    elapsedSeconds: 185,
     cardId: 'preview-card-3',
     venue: 'park',
     challengeId: 'preview-challenge-3',
@@ -226,7 +223,6 @@ export function ScreenPreview({
               ? {
                   date: progressDay,
                   totalReps: dayState === 'default' ? 3 : 12,
-                  totalElapsedSeconds: 609,
                   entries:
                     dayState === 'default'
                       ? previewEntries

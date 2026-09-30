@@ -82,7 +82,6 @@ export const attemptSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable(),
     timeZone: z.string().nullable(),
-    elapsedSeconds: z.number().int().nonnegative().nullable(),
   })
   .strict();
 export type Attempt = z.infer<typeof attemptSchema>;

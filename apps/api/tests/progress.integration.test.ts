@@ -74,27 +74,19 @@ async function insertCompletion(
   userId: string,
   date: string,
   endedAt: string,
-  options: { seconds?: number; timeZone?: string } = {},
+  options: { timeZone?: string } = {},
 ) {
   const id = randomUUID();
   await admin.query(
     `insert into justgo.attempts
        (user_id,id,card_id,venue_id,challenge_id,revision_id,level_id,
-        queue_version,status,started_at,deadline_at,ended_at,completion_date,time_zone,elapsed_seconds)
+        queue_version,status,started_at,deadline_at,ended_at,completion_date,time_zone)
      select $1,$2,c.id,c.venue_id,r.challenge_id,r.id,r.level_id,0,'completed',
-       $4::timestamptz - $6::integer * interval '1 second',
-       $4::timestamptz - $6::integer * interval '1 second' + interval '300 seconds',
-       $4::timestamptz,$3,$5,$6
+       $4::timestamptz - interval '5 minutes',
+       $4::timestamptz,$4::timestamptz,$3,$5
      from justgo.venue_cards c join justgo.challenge_revisions r on r.id=c.revision_id
      order by c.position limit 1`,
-    [
-      userId,
-      id,
-      date,
-      endedAt,
-      options.timeZone ?? 'UTC',
-      options.seconds ?? 400,
-    ],
+    [userId, id, date, endedAt, options.timeZone ?? 'UTC'],
   );
   return id;
 }
@@ -176,19 +168,15 @@ describe('owner-scoped Progress history', () => {
     const ids = [
       await insertCompletion(a.userId, date, '2024-11-03T05:30:00.123456Z', {
         timeZone: 'America/Toronto',
-        seconds: 401,
       }),
       await insertCompletion(a.userId, date, '2024-11-03T05:30:00.123789Z', {
         timeZone: 'America/Toronto',
-        seconds: 402,
       }),
       await insertCompletion(a.userId, date, '2024-11-03T06:30:00Z', {
         timeZone: 'America/Toronto',
-        seconds: 403,
       }),
       await insertCompletion(a.userId, date, '2024-11-04T04:30:00Z', {
         timeZone: 'America/Toronto',
-        seconds: 404,
       }),
     ];
     await admin.query(
@@ -207,8 +195,9 @@ describe('owner-scoped Progress history', () => {
     expect(page1).toMatchObject({
       date,
       totalReps: 4,
-      totalElapsedSeconds: 1610,
     });
+    expect(page1).not.toHaveProperty('totalElapsedSeconds');
+    expect(page1.entries[0]).not.toHaveProperty('elapsedSeconds');
     expect(page1.entries[0]).toMatchObject({
       attemptId: ids[0],
       reflectionStatus: 'draft',
@@ -291,7 +280,6 @@ describe('owner-scoped Progress history', () => {
       (await request(a.sessionToken, '/v1/progress/days/2026-09-01')).json(),
     ).toMatchObject({
       totalReps: 0,
-      totalElapsedSeconds: 0,
       entries: [],
       nextCursor: null,
     });

@@ -39,17 +39,6 @@ export function dayLabel(date: string) {
   }).format(new Date(Date.UTC(year!, month! - 1, day)));
 }
 
-export function durationLabel(seconds: number) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const rest = seconds % 60;
-  return (
-    [hours && `${hours} hr`, minutes && `${minutes} min`, rest && `${rest} sec`]
-      .filter(Boolean)
-      .join(' ') || '0 sec'
-  );
-}
-
 export function completionTime(iso: string, timeZone: string) {
   return new Intl.DateTimeFormat('en', {
     hour: 'numeric',

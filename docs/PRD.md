@@ -140,7 +140,7 @@ The screen shows the accepted challenge’s full instruction, venue illustration
 - **Give up** submits directly. Once the server confirms it, return to an eligible Home card without a rep or streak credit. An uncertain save keeps the same attempt and deadline available for retry.
 - Navigating to another tab or Settings, backgrounding, locking, or closing the app leaves the same attempt active. There is no pause/reset implied by navigation.
 - Recover the active attempt before allowing another start after relaunch or on another device.
-- At zero, display zero and retain the outcome actions. Expiry does not automatically complete, fail, give up, or restart the attempt.
+- At zero, display zero with a neutral goal-reached caption and retain the outcome actions. Expiry does not automatically complete, fail, give up, or restart the attempt. The timer continues against the original deadline while the app is closed and stops at zero rather than counting overtime.
 - Lock-screen display is deferred. Locking the phone still preserves the original deadline; reopening computes the remaining time without restarting it.
 - Pending/failed completion or give-up remains visible with retry/reconciliation. Do not falsely display saved progress or stop the authoritative attempt because a response was lost.
 
@@ -204,7 +204,7 @@ Tapping an active date opens a scrollable sheet with:
 - Every completed challenge in chronological order, with an ordinal, readable instruction/summary, completion time, and its submitted feeling indicator.
 - An accessible close action and drag handle.
 
-The sheet omits the day-level rep count and elapsed-duration displays by Anthony’s later decision; the calendar still shows each active day’s rep badge. Existing attempt timing data remains stored, without a Phase 06 display requirement.
+The sheet omits the day-level rep count and elapsed-duration displays by Anthony’s later decision; the calendar still shows each active day’s rep badge. Attempts retain start/deadline and completion timestamps for timer recovery and calendar history, but no elapsed-duration field or aggregate is stored.
 
 The **Feeling** indicator uses the same five-choice vocabulary as D1. Missing/skipped feedback is **Not recorded**, never a neutral face; the compact empty-circle treatment must expose “Not recorded” accessibly. The three sample faces in P31 do not reduce the five-option scale.
 
@@ -289,7 +289,7 @@ Initial metrics are onboarding/paywall conversion, challenge start and completio
 
 Keep the proposed React Native + Expo + TypeScript application, API, and PostgreSQL architecture. These screens use the already planned card gestures, animations, sheets, native text input, the in-app countdown, and server-backed history. No new charting engine, real-time backend, database type, or AI feature is required by the designs.
 
-Implementation must align contracts with the venue placements, independent queues and immutable content, five relative feeling values, day-duration aggregates, and navigation that preserves an active attempt. Exact fonts, artwork, tokens, and responsive measurements need a fresh export from the final Paper references; the older Analog design tokens are not the approved final palette/type system.
+Implementation must align contracts with the venue placements, independent queues and immutable content, five relative feeling values, and navigation that preserves an active attempt. Exact fonts, artwork, tokens, and responsive measurements need a fresh export from the final Paper references; the older Analog design tokens are not the approved final palette/type system.
 
 This PRD carries product behavior; native-library compatibility, secure recovery, billing processing, API retry/concurrency mechanics, and deployment remain governed by [TECH_STACK.md](TECH_STACK.md).
 

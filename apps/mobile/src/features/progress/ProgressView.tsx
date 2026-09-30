@@ -39,7 +39,6 @@ import {
 type Day = {
   date: string;
   totalReps: number;
-  totalElapsedSeconds: number;
   entries: ProgressEntry[];
 };
 export type ProgressViewProps = {

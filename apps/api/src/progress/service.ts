@@ -36,7 +36,6 @@ type DayRow = Row & {
   ended_at: Date | string;
   cursor_ended_at: string;
   time_zone: string;
-  elapsed_seconds: number;
   card_id: string;
   venue_id: ProgressEntry['venue'];
   challenge_id: string;
@@ -52,7 +51,6 @@ const entry = (r: DayRow): ProgressEntry => ({
   attemptId: r.id,
   completedAt: new Date(r.ended_at).toISOString(),
   timeZone: r.time_zone,
-  elapsedSeconds: r.elapsed_seconds,
   cardId: r.card_id,
   venue: r.venue_id,
   challengeId: r.challenge_id,
@@ -137,17 +135,15 @@ export class ProgressService {
     return this.run(token, async (tx, userId): Promise<ProgressDayResponse> => {
       const totals = (await one<{
         total_reps: number;
-        total_elapsed_seconds: number;
       }>(
         tx,
-        sql`select count(*)::integer as total_reps,
-          coalesce(sum(elapsed_seconds),0)::double precision as total_elapsed_seconds
+        sql`select count(*)::integer as total_reps
           from justgo.attempts
           where user_id=${userId} and status='completed' and completion_date=${date}`,
       ))!;
       const rows = (
         await tx.execute<DayRow>(sql`
-          select a.id,a.ended_at,a.ended_at::text as cursor_ended_at,a.time_zone,a.elapsed_seconds,
+          select a.id,a.ended_at,a.ended_at::text as cursor_ended_at,a.time_zone,
             a.card_id,a.venue_id,a.challenge_id,a.revision_id,a.level_id,
             cr.text as instruction,coalesce(r.status,'none') as reflection_status,
             r.feeling_version,
@@ -165,7 +161,6 @@ export class ProgressService {
       return {
         date,
         totalReps: totals.total_reps,
-        totalElapsedSeconds: totals.total_elapsed_seconds,
         entries: page.map(entry),
         nextCursor:
           rows.length > limit && last

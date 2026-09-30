@@ -31,7 +31,6 @@ const active: Attempt = {
   startedAt: '2026-09-24T16:00:00.000Z',
   deadlineAt: '2026-09-24T16:05:00.000Z',
   endedAt: null,
-  elapsedSeconds: null,
   timeZone: null,
   completionDate: null,
 };
@@ -131,7 +130,6 @@ it('shows success only after confirmed completion and keeps the same frozen time
     endedAt: base.serverNow,
     completionDate: '2026-09-24',
     timeZone: 'UTC',
-    elapsedSeconds: 0,
   };
   const { controller } = fixture((path, body) => {
     if (path.endsWith('/state'))

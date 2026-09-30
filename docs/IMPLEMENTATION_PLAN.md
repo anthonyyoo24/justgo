@@ -292,7 +292,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 - Preserve the full P37 Progress content: current/best streak, all-time reps, navigable month/year calendar, per-day counts, monthly reps and active days. Do not replace it with a simple history list or implement Levels here.
 - Build current/best streak, all-time reps, month navigation, monthly reps/active days and per-date counts using frozen local completion dates/time zones.
-- Build the scrollable chronological day sheet with completion time, five feeling labels or an accessible Not recorded state, plus the approved per-attempt reflection-reading interaction. Do not display elapsed durations or a day-level rep total.
+- Build the scrollable chronological day sheet with completion time, five feeling labels or an accessible Not recorded state, plus the approved per-attempt reflection-reading interaction. Do not store or display elapsed durations or a day-level rep total.
 - Choose pagination/caching and indexes for the actual history queries now; verify them on representative data. Preserve original content revisions, Level 1 context and dirty edits.
 
 #### Keep out of this phase

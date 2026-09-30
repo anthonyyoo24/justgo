@@ -42,7 +42,6 @@ export const progressEntrySchema = z
     attemptId: z.uuid(),
     completedAt: z.iso.datetime(),
     timeZone: timeZoneSchema,
-    elapsedSeconds: z.number().int().nonnegative(),
     cardId: z.string().min(1),
     venue: venueSchema,
     challengeId: z.string().min(1),
@@ -60,7 +59,6 @@ export const progressDayResponseSchema = z
   .object({
     date: calendarDateSchema,
     totalReps: z.number().int().nonnegative(),
-    totalElapsedSeconds: z.number().int().nonnegative(),
     entries: z.array(progressEntrySchema),
     nextCursor: z.string().nullable(),
   })

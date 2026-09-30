@@ -64,6 +64,13 @@
       "when": 1790550000000,
       "tag": "0008_progress_history",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790683200000,
+      "tag": "0009_drop_attempt_elapsed_seconds",
+      "breakpoints": true
     }
   ]
 }

@@ -63,7 +63,6 @@ export function ProgressScreen() {
     ? {
         date: first.date,
         totalReps: first.totalReps,
-        totalElapsedSeconds: first.totalElapsedSeconds,
         entries: details.data!.pages.flatMap((page) => page.entries),
       }
     : undefined;

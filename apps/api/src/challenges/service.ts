@@ -49,7 +49,6 @@ type AttemptRow = Row & {
   ended_at: Date | null;
   completion_date: string | null;
   time_zone: string | null;
-  elapsed_seconds: number | null;
   queue_version: number;
 };
 const attempt = (r: AttemptRow): Attempt => ({
@@ -69,7 +68,6 @@ const attempt = (r: AttemptRow): Attempt => ({
   endedAt: r.ended_at ? new Date(r.ended_at).toISOString() : null,
   completionDate: r.completion_date,
   timeZone: r.time_zone,
-  elapsedSeconds: r.elapsed_seconds,
 });
 const attemptQuery = sql`select a.*, r.text, r.duration_seconds from justgo.attempts a join justgo.challenge_revisions r on r.id=a.revision_id`;
 export class ChallengeService {
@@ -255,11 +253,10 @@ export class ChallengeService {
           conflict();
         return { attempt: attempt(old), serverNow: await serverNow(tx) };
       }
-      // One DB timestamp freezes local day and duration, including time after zero.
+      // One DB timestamp freezes the completion time and local day.
       await tx.execute(sql`with ending as (select clock_timestamp() as at)
         update justgo.attempts set status=${input.outcome},ended_at=ending.at,time_zone=${input.timeZone},
-        completion_date=case when ${input.outcome}='completed' then to_char(ending.at at time zone ${input.timeZone},'YYYY-MM-DD') else null end,
-        elapsed_seconds=greatest(0,floor(extract(epoch from ending.at-started_at)))::integer
+        completion_date=case when ${input.outcome}='completed' then to_char(ending.at at time zone ${input.timeZone},'YYYY-MM-DD') else null end
         from ending where user_id=${userId} and id=${input.attemptId}`);
       await this.advance(tx, userId, old.venue_id, old.card_id);
       return {

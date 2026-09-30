@@ -126,7 +126,6 @@ it('retries the first page and a failed later page without losing loaded entries
     attemptId: 'attempt-0',
     completedAt: '2026-09-18T13:15:00.000Z',
     timeZone: 'America/Toronto',
-    elapsedSeconds: 122,
     cardId: 'card-1',
     venue: 'streets',
     challengeId: 'challenge-1',
@@ -141,7 +140,6 @@ it('retries the first page and a failed later page without losing loaded entries
   const firstPage: ProgressDayResponse = {
     date: '2026-09-18',
     totalReps: 21,
-    totalElapsedSeconds: 2562,
     entries: Array.from({ length: 20 }, (_, index) => ({
       ...sample,
       attemptId: `attempt-${index}`,
