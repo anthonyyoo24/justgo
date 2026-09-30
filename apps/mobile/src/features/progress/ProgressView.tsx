@@ -29,6 +29,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { challengeScale } from '../challenges/challenge-design';
 import { colors, fontFamilies, layout, typography } from '../../theme/tokens';
 import { FeelingFace } from '../reflections/FeelingFace';
+import { ProgressSkeleton, useProgressShimmer } from './ProgressSkeleton';
 import {
   calendarCells,
   completionTime,
@@ -96,6 +97,8 @@ export function ProgressView({
   const { width } = useWindowDimensions();
   const headerScale = challengeScale(width);
   const cells = useMemo(() => calendarCells(month), [month]);
+  const skeletonLoading = !data && loading && !error;
+  const shimmer = useProgressShimmer(skeletonLoading);
   const counts = useMemo(
     () => new Map(data?.days.map((item) => [item.date, item.reps]) ?? []),
     [data],
@@ -115,24 +118,37 @@ export function ProgressView({
           >
             <ScreenHeader title="Progress" scale={headerScale} />
           </View>
-          <View testID="progress-calendar-card" style={styles.card}>
+          <View
+            testID="progress-calendar-card"
+            style={styles.card}
+            accessibilityLabel={
+              skeletonLoading ? 'Loading progress' : undefined
+            }
+            accessibilityState={{ busy: skeletonLoading }}
+          >
             <View style={styles.stats}>
               <Metric
                 icon="streak"
                 label="Current streak"
                 value={data?.currentStreak ?? null}
                 suffix="days"
+                loading={skeletonLoading}
+                shimmer={shimmer}
               />
               <Metric
                 icon="best"
                 label="Best streak"
                 value={data?.bestStreak ?? null}
                 suffix="days"
+                loading={skeletonLoading}
+                shimmer={shimmer}
               />
               <Metric
                 icon="reps"
                 label="Total reps"
                 value={data?.totalReps ?? null}
+                loading={skeletonLoading}
+                shimmer={shimmer}
               />
             </View>
             <View style={styles.monthHeader}>
@@ -165,24 +181,12 @@ export function ProgressView({
                 </Pressable>
               </View>
             </View>
-            {!data && (
+            {!data && !skeletonLoading && (
               <View style={styles.state}>
-                {loading && !error ? (
-                  <>
-                    <ActivityIndicator
-                      accessibilityLabel="Loading progress"
-                      color={colors.ink}
-                    />
-                    <Text style={styles.stateText}>Loading your progress…</Text>
-                  </>
-                ) : (
-                  <>
-                    <Text accessibilityRole="alert" style={styles.stateText}>
-                      We couldn’t load your progress.
-                    </Text>
-                    <Retry label="Retry progress" onPress={onRetryMonth} />
-                  </>
-                )}
+                <Text accessibilityRole="alert" style={styles.stateText}>
+                  We couldn’t load your progress.
+                </Text>
+                <Retry label="Retry progress" onPress={onRetryMonth} />
               </View>
             )}
             {data && error && (
@@ -198,8 +202,24 @@ export function ProgressView({
                 </Text>
               ))}
             </View>
-            <View style={[styles.grid, !data && styles.unavailableCalendar]}>
+            <View
+              testID="progress-calendar-grid"
+              style={[
+                styles.grid,
+                !data && !skeletonLoading && styles.unavailableCalendar,
+              ]}
+            >
               {cells.map((date, index) => {
+                if (skeletonLoading)
+                  return (
+                    <View key={date ?? `gap-${index}`} style={styles.cell}>
+                      <ProgressSkeleton
+                        testID="progress-calendar-skeleton"
+                        animation={shimmer}
+                        style={styles.calendarSkeleton}
+                      />
+                    </View>
+                  );
                 if (!date)
                   return (
                     <View key={`gap-${index}`} style={styles.cell}>
@@ -217,7 +237,7 @@ export function ProgressView({
                     testID={`calendar-cell-${date}`}
                     style={styles.cell}
                   >
-                    {today && active && (
+                    {today && (
                       <Svg
                         width={52}
                         height={14}
@@ -251,7 +271,6 @@ export function ProgressView({
                         styles.dayCircle,
                         active ? styles.activeDay : styles.inactiveDay,
                         today && styles.today,
-                        today && active && styles.todayActive,
                       ]}
                     >
                       <Text
@@ -259,7 +278,7 @@ export function ProgressView({
                           styles.dayNumber,
                           !active && styles.inactiveNumber,
                           active && styles.activeNumber,
-                          today && active && styles.todayNumber,
+                          today && styles.todayNumber,
                         ]}
                       >
                         {Number(date.slice(-2))}
@@ -275,15 +294,55 @@ export function ProgressView({
               })}
             </View>
             <View style={styles.monthSummary}>
-              <Text style={styles.summaryNumber}>
-                {data?.monthlyReps ?? '—'}
-              </Text>
+              {skeletonLoading ? (
+                <View style={styles.summaryNumberSlot}>
+                  <Text
+                    aria-hidden
+                    style={[
+                      styles.summaryNumber,
+                      styles.sizingText,
+                      { marginRight: 0 },
+                    ]}
+                  >
+                    00
+                  </Text>
+                  <ProgressSkeleton
+                    testID="progress-month-reps-skeleton"
+                    animation={shimmer}
+                    style={StyleSheet.absoluteFill}
+                  />
+                </View>
+              ) : (
+                <Text style={styles.summaryNumber}>
+                  {data?.monthlyReps ?? '—'}
+                </Text>
+              )}
               <View style={styles.summaryCopy}>
                 <Text style={styles.summaryHeading}>reps this month</Text>
-                <Text style={styles.summarySub}>
-                  on {data?.activeDays ?? '—'} active{' '}
-                  {data?.activeDays === 1 ? 'day' : 'days'}
-                </Text>
+                {skeletonLoading ? (
+                  <View style={styles.activeDaysLoading}>
+                    <Text style={styles.summarySub}>on </Text>
+                    <View>
+                      <Text
+                        aria-hidden
+                        style={[styles.summarySub, styles.sizingText]}
+                      >
+                        00
+                      </Text>
+                      <ProgressSkeleton
+                        testID="progress-active-days-skeleton"
+                        animation={shimmer}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    </View>
+                    <Text style={styles.summarySub}> active days</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.summarySub}>
+                    on {data?.activeDays ?? '—'} active{' '}
+                    {data?.activeDays === 1 ? 'day' : 'days'}
+                  </Text>
+                )}
               </View>
               <View style={styles.legend}>
                 <View style={styles.legendDot}>
@@ -295,13 +354,15 @@ export function ProgressView({
               </View>
             </View>
           </View>
-          {!!data && (
+          {(!!data || skeletonLoading) && (
             <Text style={styles.instruction}>
-              {data.totalReps === 0
-                ? 'Your first completed challenge will appear here.'
-                : data.monthlyReps
-                  ? 'Tap an active day to see your challenges.'
-                  : 'No completed challenges this month yet.'}
+              {skeletonLoading
+                ? 'Tap an active day to see your challenges'
+                : data!.totalReps === 0
+                  ? 'Your first completed challenge will appear here.'
+                  : data!.monthlyReps
+                    ? 'Tap an active day to see your challenges'
+                    : 'No completed challenges this month yet.'}
             </Text>
           )}
         </View>
@@ -329,11 +390,15 @@ function Metric({
   label,
   value,
   suffix,
+  loading,
+  shimmer,
 }: {
   icon: 'streak' | 'best' | 'reps';
   label: string;
   value: number | null;
   suffix?: string;
+  loading: boolean;
+  shimmer: Animated.Value | null;
 }) {
   return (
     <View style={styles.metric}>
@@ -438,15 +503,28 @@ function Metric({
         )}
       </Svg>
       <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>
-        {value ?? '—'}
-        {value !== null && suffix && (
-          <>
-            {'\u2009'}
-            <Text style={styles.metricSuffix}>{suffix}</Text>
-          </>
-        )}
-      </Text>
+      {loading ? (
+        <View>
+          <Text aria-hidden style={[styles.metricValue, styles.sizingText]}>
+            {suffix ? `0\u2009${suffix}` : '00'}
+          </Text>
+          <ProgressSkeleton
+            testID={`progress-metric-skeleton-${icon}`}
+            animation={shimmer}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      ) : (
+        <Text style={styles.metricValue}>
+          {value ?? '—'}
+          {value !== null && suffix && (
+            <>
+              {'\u2009'}
+              <Text style={styles.metricSuffix}>{suffix}</Text>
+            </>
+          )}
+        </Text>
+      )}
     </View>
   );
 }
@@ -1077,6 +1155,10 @@ const styles = StyleSheet.create({
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 12 },
   unavailableCalendar: { opacity: 0.45 },
+  calendarSkeleton: { width: 36, height: 36, borderRadius: 20 },
+  sizingText: { opacity: 0 },
+  summaryNumberSlot: { marginRight: 12 },
+  activeDaysLoading: { flexDirection: 'row', alignItems: 'center' },
   cell: {
     width: '14.2857%',
     alignItems: 'center',
@@ -1098,8 +1180,7 @@ const styles = StyleSheet.create({
   },
   activeDay: { backgroundColor: colors.white, borderColor: '#E6D9CE' },
   inactiveDay: { backgroundColor: '#EBDFD4', borderColor: '#DCCDC0' },
-  today: { borderColor: '#F4A46C', borderWidth: 2 },
-  todayActive: {
+  today: {
     backgroundColor: colors.ink,
     borderColor: colors.ink,
     borderWidth: 1,

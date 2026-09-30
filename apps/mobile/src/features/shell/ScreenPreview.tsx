@@ -119,7 +119,7 @@ export function ScreenPreview({
   progressDayState = 'default',
 }: {
   simulateSkipFailure?: boolean;
-  progressState?: 'default' | 'empty' | 'error';
+  progressState?: 'default' | 'empty' | 'error' | 'loading';
   progressDayState?:
     'default' | 'initial-error' | 'load-more-error' | 'loading-more';
 }) {
@@ -128,6 +128,9 @@ export function ScreenPreview({
   const [progressDay, setProgressDay] = useState<string | null>(null);
   const [dayState, setDayState] = useState(progressDayState);
   const [progressError, setProgressError] = useState(progressState === 'error');
+  const [progressLoading, setProgressLoading] = useState(
+    progressState === 'loading',
+  );
   const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
   const [feeling, setFeeling] = useState<FeelingCode | null>(null);
   const [reflection, setReflection] = useState('');
@@ -194,6 +197,24 @@ export function ScreenPreview({
         <Link href="/" replace style={styles.close}>
           Exit preview
         </Link>
+        {progressState === 'loading' && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              progressLoading
+                ? 'Show loaded progress'
+                : 'Replay progress loading'
+            }
+            onPress={() => setProgressLoading((current) => !current)}
+            style={styles.close}
+          >
+            <Text style={styles.note}>
+              {progressLoading
+                ? 'Show loaded progress'
+                : 'Replay progress loading'}
+            </Text>
+          </Pressable>
+        )}
       </SafeAreaView>
       {tab === 'home' ? (
         <DeckPreview insetTop={false} onCompleted={() => setStep('success')} />
@@ -202,7 +223,7 @@ export function ScreenPreview({
           insetTop={false}
           month={progressMonth}
           data={
-            progressError
+            progressError || progressLoading
               ? undefined
               : progressState === 'empty'
                 ? { ...emptyMonth, month: progressMonth }
@@ -217,6 +238,7 @@ export function ScreenPreview({
                     }
           }
           error={progressError}
+          loading={progressLoading}
           selectedDate={progressDay}
           day={
             progressDay && dayState !== 'initial-error'

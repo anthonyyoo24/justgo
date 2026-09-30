@@ -1,5 +1,11 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Animated, Modal, StyleSheet, Text } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Modal,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import type { ProgressEntry, ProgressResponse } from '@justgo/contracts';
 import { colors } from '../../theme/tokens';
@@ -42,6 +48,95 @@ const callbacks = () => ({
   onCloseDay: jest.fn(),
 });
 
+it('keeps loading inside the calendar and numeric slots, then enables loaded days', () => {
+  const actions = callbacks();
+  const screen = render(
+    <ProgressView month="2026-09" loading selectedDate={null} {...actions} />,
+  );
+  expect(
+    screen.getByLabelText('Loading progress').props.accessibilityState.busy,
+  ).toBe(true);
+  expect(
+    screen.getAllByTestId('progress-calendar-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(35);
+  const skeletonShape = StyleSheet.flatten(
+    screen.getAllByTestId('progress-calendar-skeleton', {
+      includeHiddenElements: true,
+    })[0]!.props.style,
+  );
+  for (const id of ['streak', 'best', 'reps'])
+    expect(
+      screen.getByTestId(`progress-metric-skeleton-${id}`, {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+  expect(
+    screen.getByTestId('progress-month-reps-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('progress-active-days-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getByText('Tap an active day to see your challenges'),
+  ).toBeTruthy();
+  expect(screen.queryByText('Loading your progress…')).toBeNull();
+  expect(screen.queryByText('We couldn’t load your progress.')).toBeNull();
+  expect(screen.queryByText('0')).toBeNull();
+  expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
+  expect(screen.queryByRole('button', { name: /September 18/ })).toBeNull();
+
+  screen.rerender(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate={null}
+      {...actions}
+    />,
+  );
+  expect(screen.queryByLabelText('Loading progress')).toBeNull();
+  expect(
+    screen.queryAllByTestId('progress-calendar-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(0);
+  const dayShape = StyleSheet.flatten(
+    screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }).props
+      .style,
+  );
+  expect(skeletonShape.width).toBe(dayShape.width);
+  expect(skeletonShape.height).toBe(dayShape.height);
+  expect(skeletonShape.borderRadius).toBe(dayShape.borderRadius);
+  expect(skeletonShape.borderRadius).toBeGreaterThanOrEqual(
+    skeletonShape.width / 2,
+  );
+  fireEvent.press(
+    screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }),
+  );
+  expect(actions.onOpenDay).toHaveBeenCalledWith('2026-09-18');
+});
+
+it('preserves available progress during a refresh and stops skeletons on a failure', () => {
+  const props = { month: '2026-09', selectedDate: null, ...callbacks() };
+  const screen = render(<ProgressView {...props} data={month} loading />);
+  expect(screen.queryByLabelText('Loading progress')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }),
+  ).toBeTruthy();
+  screen.rerender(<ProgressView {...props} loading error />);
+  expect(screen.getByText('We couldn’t load your progress.')).toBeTruthy();
+  expect(
+    screen.queryAllByTestId('progress-calendar-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(0);
+});
+
 it('uses the warm Paper calendar panel and inactive day colors', () => {
   const screen = render(
     <ProgressView
@@ -66,7 +161,7 @@ it('uses the warm Paper calendar panel and inactive day colors', () => {
   });
 });
 
-it('mutes zero-activity date numbers while keeping active dates dark', () => {
+it('mutes zero-activity date numbers while keeping active dates dark and today light', () => {
   const screen = render(
     <ProgressView
       month="2026-09"
@@ -82,7 +177,7 @@ it('mutes zero-activity date numbers while keeping active dates dark', () => {
     ).color;
 
   expect(numberColor('Wednesday, September 2, 0 reps')).toBe('#77797B');
-  expect(numberColor('Sunday, September 27, today, 0 reps')).toBe('#77797B');
+  expect(numberColor('Sunday, September 27, today, 0 reps')).toBe(colors.cream);
   expect(numberColor('Friday, September 18, 2 reps')).toBe(colors.ink);
 });
 
@@ -615,6 +710,31 @@ it('centers each Feeling rating with four points between its label and result', 
   expect(emptyCircle.props.height).toBe(36);
   expect(emptyCircle.findByType(Circle).props.strokeDasharray).toBe('0.1 4.2');
   expect(screen.queryByText('Not\nrecorded')).toBeNull();
+});
+
+it('highlights today with navy and orange rays before any reps without a badge or day action', () => {
+  const actions = callbacks();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={{ ...month, today: '2026-09-30' }}
+      selectedDate={null}
+      {...actions}
+    />,
+  );
+  const today = screen.getByLabelText('Wednesday, September 30, today, 0 reps');
+  expect(today).toHaveStyle({
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+    borderWidth: 1,
+  });
+  expect(today.props.accessibilityState.disabled).toBe(true);
+  expect(screen.getByText('30')).toHaveStyle({ color: colors.cream });
+  const rays = screen.getByTestId('calendar-cell-2026-09-30').findByType(Svg);
+  expect(rays.findByType(Path).props.stroke).toBe('#F4A46C');
+  expect(screen.queryByTestId('rep-badge-2026-09-30')).toBeNull();
+  fireEvent.press(today);
+  expect(actions.onOpenDay).not.toHaveBeenCalled();
 });
 
 it('keeps the today badge clear of the next row and the day tappable', () => {

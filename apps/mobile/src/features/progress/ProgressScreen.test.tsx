@@ -115,10 +115,40 @@ it('does not show another account’s previous progress while its month loads', 
     </QueryClientProvider>,
   );
 
-  expect(screen.getByText('Loading your progress…')).toBeTruthy();
-  expect(screen.getAllByText('—')).toHaveLength(4);
+  expect(screen.getByLabelText('Loading progress')).toBeTruthy();
+  expect(
+    screen.getAllByTestId('progress-calendar-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(35);
+  expect(screen.queryByText('—')).toBeNull();
   expect(screen.queryByText('on 1 active day')).toBeNull();
   await act(async () => finishOther({ ...september, monthlyReps: 0 }));
+});
+
+it('replaces the first-visit skeleton with the response as soon as it arrives', async () => {
+  mockClient.queries.clear();
+  let finish!: (value: ProgressResponse) => void;
+  mockClient.request.mockImplementation(
+    () =>
+      new Promise<ProgressResponse>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const screen = render(
+    <QueryClientProvider client={mockClient.queries}>
+      <ProgressScreen />
+    </QueryClientProvider>,
+  );
+  expect(screen.getByLabelText('Loading progress')).toBeTruthy();
+  await act(async () => finish(september));
+  await waitFor(() =>
+    expect(screen.queryByLabelText('Loading progress')).toBeNull(),
+  );
+  expect(
+    screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }),
+  ).toBeTruthy();
+  expect(screen.getByText('on 1 active day')).toBeTruthy();
 });
 
 it('retries the first page and a failed later page without losing loaded entries', async () => {

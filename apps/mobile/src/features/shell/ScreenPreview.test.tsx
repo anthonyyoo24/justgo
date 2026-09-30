@@ -39,6 +39,19 @@ it('switches between isolated Home and Progress screens with accessible selected
   expect(screen.getByText('Find a challenge')).toBeTruthy();
 });
 
+it('previews loading and loaded Progress without saving any activity', () => {
+  const screen = render(<ScreenPreview progressState="loading" />);
+  fireEvent.press(screen.getByRole('tab', { name: 'Progress' }));
+  expect(screen.getByLabelText('Loading progress')).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: 'Show loaded progress' }));
+  expect(screen.queryByLabelText('Loading progress')).toBeNull();
+  expect(screen.getByText('63')).toBeTruthy();
+  fireEvent.press(
+    screen.getByRole('button', { name: 'Replay progress loading' }),
+  );
+  expect(screen.getByLabelText('Loading progress')).toBeTruthy();
+});
+
 it('shows progress activity, read-only saved reflection, and an empty adjacent month without writing', () => {
   const screen = render(<ScreenPreview />);
   fireEvent.press(screen.getByRole('tab', { name: 'Progress' }));

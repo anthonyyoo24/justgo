@@ -13,7 +13,9 @@ export default function PreviewRoute() {
     <ScreenPreview
       simulateSkipFailure={simulateSkipFailure === '1'}
       progressState={
-        progressState === 'empty' || progressState === 'error'
+        progressState === 'empty' ||
+        progressState === 'error' ||
+        progressState === 'loading'
           ? progressState
           : 'default'
       }
