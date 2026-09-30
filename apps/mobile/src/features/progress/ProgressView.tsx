@@ -891,18 +891,18 @@ function DaySheet({
   const reduceMotion = useReducedMotion();
   const { height } = useWindowDimensions();
   const [sheetOffset] = useState(() => new Animated.Value(height));
+  const openingStarted = useRef(false);
   const open = useCallback(() => {
-    sheetOffset.setValue(height);
+    // Layout/show may both fire; never reset a slide that's already started.
+    if (date === null || openingStarted.current) return;
+    openingStarted.current = true;
     Animated.timing(sheetOffset, {
       toValue: 0,
       duration: 280,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: Platform.OS !== 'web',
     }).start();
-  }, [height, sheetOffset]);
-  useEffect(() => {
-    if (date !== null) open();
-  }, [date, open]);
+  }, [date, sheetOffset]);
   const close = useCallback(() => {
     setBackdropVisible(false);
     Animated.timing(sheetOffset, {
@@ -961,6 +961,7 @@ function DaySheet({
         />
         <AnimatedSafeAreaView
           testID="day-sheet-panel"
+          onLayout={open}
           edges={['bottom']}
           style={[
             styles.sheet,

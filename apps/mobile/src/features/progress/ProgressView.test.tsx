@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import {
   ActivityIndicator,
   Animated,
@@ -341,6 +341,145 @@ it('shows a full-screen backdrop while only the day sheet slides', () => {
     screen.getByTestId('day-sheet-panel').props.style,
   );
   expect(panelStyle.transform[0]).toHaveProperty('translateY');
+});
+
+it.each(['layout', 'show'])(
+  'starts on %s and ignores repeated layout/show events midway through opening',
+  (firstEvent) => {
+    const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+      start: jest.fn(),
+      stop: jest.fn(),
+    } as unknown as ReturnType<typeof Animated.timing>);
+    try {
+      const screen = render(
+        <ProgressView
+          month="2026-09"
+          data={month}
+          selectedDate="2026-09-18"
+          {...callbacks()}
+        />,
+      );
+      expect(timing).not.toHaveBeenCalled();
+
+      const layout = () =>
+        fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', {
+          nativeEvent: { layout: { x: 0, y: 514, width: 402, height: 360 } },
+        });
+      if (firstEvent === 'layout') layout();
+      else fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      expect(timing).toHaveBeenCalledTimes(1);
+      const offset = timing.mock.calls[0]![0] as Animated.Value;
+      let observedOffset = 0;
+      const listener = offset.addListener(({ value }) => {
+        observedOffset = value;
+      });
+
+      act(() => offset.setValue(300));
+      layout();
+      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      expect(timing).toHaveBeenCalledTimes(1);
+      expect(observedOffset).toBe(300);
+
+      act(() => offset.setValue(0));
+      layout();
+      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      expect(timing).toHaveBeenCalledTimes(1);
+      expect(observedOffset).toBe(0);
+      offset.removeListener(listener);
+    } finally {
+      timing.mockRestore();
+    }
+  },
+);
+
+it('keeps the current slide when day data arrives and a show event arrives during closing', () => {
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: jest.fn(),
+    stop: jest.fn(),
+  } as unknown as ReturnType<typeof Animated.timing>);
+  try {
+    const actions = callbacks();
+    const screen = render(
+      <ProgressView
+        month="2026-09"
+        data={month}
+        selectedDate="2026-09-18"
+        dayLoading
+        {...actions}
+      />,
+    );
+    fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+    const offset = timing.mock.calls[0]![0] as Animated.Value;
+    const reset = jest.spyOn(offset, 'setValue');
+    screen.rerender(
+      <ProgressView
+        month="2026-09"
+        data={month}
+        selectedDate="2026-09-18"
+        day={{
+          date: '2026-09-18',
+          totalReps: 1,
+          entries: [entry('one', 'skipped')],
+        }}
+        {...actions}
+      />,
+    );
+    expect(timing).toHaveBeenCalledTimes(1);
+    expect(reset).not.toHaveBeenCalled();
+    fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 192, width: 402, height: 682 } },
+    });
+    expect(timing).toHaveBeenCalledTimes(1);
+    expect(reset).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText('×'));
+    expect(timing).toHaveBeenCalledTimes(2);
+    expect(timing.mock.calls[1]![1]).toMatchObject({ duration: 220 });
+    fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+    expect(timing).toHaveBeenCalledTimes(2);
+    expect(reset).not.toHaveBeenCalled();
+    reset.mockRestore();
+  } finally {
+    timing.mockRestore();
+  }
+});
+
+it('starts a fresh slide for each active day and when reopening the same day', () => {
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: jest.fn(),
+    stop: jest.fn(),
+  } as unknown as ReturnType<typeof Animated.timing>);
+  try {
+    const actions = callbacks();
+    const view = (selectedDate: string | null) => (
+      <ProgressView
+        month="2026-09"
+        data={month}
+        selectedDate={selectedDate}
+        {...actions}
+      />
+    );
+    const screen = render(view(null));
+    fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+    expect(timing).not.toHaveBeenCalled();
+    for (const [index, date] of [
+      '2026-09-27',
+      '2026-09-28',
+      '2026-09-29',
+      '2026-09-27',
+    ].entries()) {
+      screen.rerender(view(date));
+      expect(timing).toHaveBeenCalledTimes(index);
+      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      expect(timing).toHaveBeenCalledTimes(index + 1);
+      screen.rerender(view(null));
+    }
+    const values = timing.mock.calls.map(([value]) => value);
+    expect(new Set(values).size).toBe(4);
+  } finally {
+    timing.mockRestore();
+  }
 });
 
 it('keeps the marker behind the date and resizes it when the heading reflows', () => {
