@@ -2,6 +2,7 @@ import { z } from 'zod';
 import * as challenges from './challenges.ts';
 import * as identity from './identity.ts';
 import * as reflections from './reflections.ts';
+import * as progress from './progress.ts';
 import { accessResponseSchema } from './access.ts';
 
 const json = (schema: z.ZodType) => ({
@@ -88,6 +89,46 @@ export const openApiDocument = {
         },
       ],
       get: operation(reflections.reflectionStateSchema),
+    },
+    '/v1/progress': {
+      parameters: [
+        {
+          name: 'month',
+          in: 'query',
+          required: true,
+          schema: z.toJSONSchema(progress.calendarMonthSchema),
+        },
+        {
+          name: 'timeZone',
+          in: 'query',
+          required: true,
+          schema: z.toJSONSchema(challenges.timeZoneSchema),
+        },
+      ],
+      get: operation(progress.progressResponseSchema),
+    },
+    '/v1/progress/days/{date}': {
+      parameters: [
+        {
+          name: 'date',
+          in: 'path',
+          required: true,
+          schema: z.toJSONSchema(progress.calendarDateSchema),
+        },
+        {
+          name: 'limit',
+          in: 'query',
+          required: false,
+          schema: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
+        },
+        {
+          name: 'cursor',
+          in: 'query',
+          required: false,
+          schema: { type: 'string' },
+        },
+      ],
+      get: operation(progress.progressDayResponseSchema),
     },
     ...Object.fromEntries(
       (['draft', 'final', 'skip'] as const).map((action) => [

@@ -1,15 +1,17 @@
 # JustGO — Implementation Plan
 
-**Version:** 7 · Updated September 26, 2026
+**Version:** 9 · Updated September 30, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
+Phase 06 Progress/history passes local automated and simulator checks, including a live day with 21 entries, automatic paging and both retry states. Physical-device acceptance is scheduled for release validation after the app is built; staging deployment is an integration/release task. See the [phase 06 handoff](handoffs/phase-06-progress.md).
+The next implementation phase is [06A — Code quality & test hardening](#phase-06a), planned before billing. It covers existing functionality; implementation has not started.
 
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](PRD.md) · [Tech stack](TECH_STACK.md)  
 **Handoffs:** [Index](handoffs/README.md) · [Template](handoffs/TEMPLATE.md) · [Planning baseline](handoffs/00-planning-baseline.md)
 
-This is the Markdown companion to the saved HTML plan: nine iOS release stages and three deferred stages. Each phase defines what to implement, what to exclude, its completion checks and the context to hand forward.
+This authoritative Markdown plan contains ten iOS release stages, including the inserted quality phase 06A, and three deferred stages. Each phase defines what to implement, what to exclude, its completion checks and the context to hand forward.
 
 **First release:** iOS, one easy Level 1 challenge collection with manual venue filtering, the in-app timer, Success, typed reflections, the full Progress summary/calendar/day sheet, native subscriptions, and essential Settings/privacy/recovery.
 
@@ -17,10 +19,14 @@ This is the Markdown companion to the saved HTML plan: nine iOS release stages a
 
 **September 26 numbering correction:** The launch path now runs in number order, 01–09. Former phases 06–10 are now 05–09; the deferred lock-screen phase moves from 05 to 10. Post-launch phases 10–12 may be scheduled independently. Historical browser tracker exports use the former IDs and must not be imported without an explicit migration. Phase 01 is complete; see the stage table for current implementation status.
 
+**September 30 quality-phase insertion:** Anthony approved planning code-quality and test hardening as the next phase after the local Progress implementation. Use 06A between 06 and 07 to preserve existing phase IDs and handoff references. API route and persistence redesign is being discussed separately; it is outside this phase's scope.
+
 ## How to use this plan
 
 - Build each slice through the database, API and UI it needs; introduce tables and indexes with their consuming feature.
 - Run relevant tests and UI verification during every phase. Phase 09 integrates and releases work already verified in its own stage.
+- **September 29 validation timing:** Anthony will do physical-iPhone acceptance after the full app is built, during release validation. Earlier feature phases use local automated checks and the iOS simulator; carry device-specific VoiceOver, large-text, gesture and recovery checks to Phase 09. Stage the integrated API/mobile build before release, without treating staging as a Phase 06 feature gate.
+- **September 30 quality-phase sequencing:** Phase 06A may start and complete against verified local implementations from phases 02–06 while their previously deferred physical-device and staging gates remain open. Preserve those gates in their original handoffs and Phase 09; they do not block 06A. Phase 07 implementation follows the 06A handoff.
 - Mark a phase complete only after its checks and dependency phases pass, and its handoff is saved with evidence.
 - **September 17 sequencing exception:** Anthony approved implementing phase 02 while Apple enrollment/signing and physical-iPhone recovery acceptance remain pending. Phase 03 and later feature implementation may proceed after the backend/client identity checks pass. Keep phase 02 open and retain those device gates before valuable-data external testing and release.
 - **September 17 scope revision:** Anthony deferred welcome/questionnaire onboarding and authorized phase 02 follow-up plus phase 03 app-shell work. Build the existing screens first; onboarding is not a prerequisite for this phase. Paid access remains phase 07.
@@ -31,22 +37,23 @@ This is the Markdown companion to the saved HTML plan: nine iOS release stages a
 
 ## Stage overview
 
-| Phase                                                     | Outcome                                                                                                 | Depends on | Status        |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------- | ------------- |
-| [01 — Foundation & implementation decisions](#phase-01)   | A reproducible workspace and a clear list of decisions to settle before each feature.                   | None       | Complete      |
-| [02 — No-signup identity & recovery](#phase-02)           | A real account survives supported recovery paths, without exposing another person’s history.            | 01         | In progress   |
-| [03 — App shell & shared API](#phase-03)                  | The app restores the right account and provides consistent navigation and network behavior.             | 02         | In progress   |
-| [04 — Challenge deck & reliable attempts](#phase-04)      | Browse → accept → complete or give up works against real cloud data exactly once.                       | 03         | In progress   |
-| [05 — Feelings & typed reflections](#phase-05)            | A completed attempt can have optional private feedback and typed reflection text.                       | 04         | In progress   |
-| [06 — Progress calendar & saved history](#phase-06)       | Users can view the full Progress summary/calendar and read day details and saved reflections.           | 05         | Not started   |
-| [07 — Native subscriptions & reliable billing](#phase-07) | A verified purchase unlocks promptly, and later subscription changes recover reliably.                  | 06         | Not started   |
-| [08 — Settings, privacy & measurement](#phase-08)         | Users control recovery, private data and preferences; useful measurement respects their choices.        | 07         | Not started   |
-| [09 — Release validation & launch](#phase-09)             | The complete paid product is verified, operable and ready for store submission.                         | 08         | Not started   |
-| [10 — Lock-screen countdowns](#phase-10)                  | The same accepted challenge is visible on supported lock screens without a JavaScript background timer. | 09         | Not scheduled |
-| [11 — Optional US iOS web checkout](#phase-11)            | Eligible users can purchase on the web using the same authenticated app identity.                       | 09         | Not scheduled |
-| [12 — Future AI text coach](#phase-12)                    | A separately approved text coach uses bounded, permitted context in the existing backend.               | 09         | Not scheduled |
+| Phase                                                     | Outcome                                                                                                         | Depends on | Status        |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------- | ------------- |
+| [01 — Foundation & implementation decisions](#phase-01)   | A reproducible workspace and a clear list of decisions to settle before each feature.                           | None       | Complete      |
+| [02 — No-signup identity & recovery](#phase-02)           | A real account survives supported recovery paths, without exposing another person’s history.                    | 01         | In progress   |
+| [03 — App shell & shared API](#phase-03)                  | The app restores the right account and provides consistent navigation and network behavior.                     | 02         | In progress   |
+| [04 — Challenge deck & reliable attempts](#phase-04)      | Browse → accept → complete or give up works against real cloud data exactly once.                               | 03         | In progress   |
+| [05 — Feelings & typed reflections](#phase-05)            | A completed attempt can have optional private feedback and typed reflection text.                               | 04         | In progress   |
+| [06 — Progress calendar & saved history](#phase-06)       | Users can view the full Progress summary/calendar and read day details and saved reflections.                   | 05         | In progress   |
+| [06A — Code quality & test hardening](#phase-06a)         | Existing code is easier to understand and change, with meaningful regression tests and durable coding guidance. | 06 (local) | Not started   |
+| [07 — Native subscriptions & reliable billing](#phase-07) | A verified purchase unlocks promptly, and later subscription changes recover reliably.                          | 06A        | Not started   |
+| [08 — Settings, privacy & measurement](#phase-08)         | Users control recovery, private data and preferences; useful measurement respects their choices.                | 07         | Not started   |
+| [09 — Release validation & launch](#phase-09)             | The complete paid product is verified, operable and ready for store submission.                                 | 08         | Not started   |
+| [10 — Lock-screen countdowns](#phase-10)                  | The same accepted challenge is visible on supported lock screens without a JavaScript background timer.         | 09         | Not scheduled |
+| [11 — Optional US iOS web checkout](#phase-11)            | Eligible users can purchase on the web using the same authenticated app identity.                               | 09         | Not scheduled |
+| [12 — Future AI text coach](#phase-12)                    | A separately approved text coach uses bounded, permitted context in the existing backend.                       | 09         | Not scheduled |
 
-Release order: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09. Apple account and purchase-product preparation starts during 01 alongside development. Lock-screen timers (10), Stripe (11) and coaching (12) follow release when scheduled; none blocks the first submission or depends on another later phase.
+Release order: 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 → 08 → 09. Apple account and purchase-product preparation starts during 01 alongside development. Lock-screen timers (10), Stripe (11) and coaching (12) follow release when scheduled; none blocks the first submission or depends on another later phase.
 
 ## Decisions to settle before dependent work
 
@@ -65,17 +72,17 @@ These remain open in PRD §13. Resolve each with the product owner and update th
 
 ## App Store setup — start alongside development
 
-| When                          | Work                                                                                                                                                                                                                                                                                                                                                                            | Finish line                                                                                                                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 01, in parallel         | Choose individual or organization enrollment; begin/confirm Apple Developer membership and account access. Owner completes required identity/business verification, paid-app agreement, banking and tax details.                                                                                                                                                                | Record status and outstanding items; Apple verification does not prevent local development. Membership and agreements must be ready for distribution/sales. |
-| Phase 01 onward; ready for 07 | Reserve a stable bundle identifier, create the App Store Connect app record and Expo/EAS project, configure signing access. In the existing JustGO RevenueCat project, connect the iOS app/store credentials, create the agreed App Store subscription group/products, and map product → entitlement → offering/paywall. Keep secret credentials out of docs and mobile source. | Matching identifiers and configured sandbox purchase path; final offer decisions settled before billing validation.                                         |
-| During development, before 09 | Use iOS development builds and physical iPhones. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight.                                                                                                                                                                                                                          | Purchase/restore, recovery, challenge loop and Progress pass on the actual binary. External testers may need beta review.                                   |
-| Phase 09                      | Complete App Store metadata, current screenshots, icon, privacy disclosures/policy, support URL, age/content declarations, subscription information and review notes explaining no-signup access. Give reviewers the access needed to inspect the paid app. Submit the first subscription with the app version when required.                                                   | Select the tested build and explicitly submit in App Store Connect for App Review; choose the intended release control and address review feedback.         |
-| After approval/release        | Verify the public listing and purchase/restore flow. Complete the separate hackathon submission using its current rules and required demo/assets.                                                                                                                                                                                                                               | Record the submitted entry and released build. Do not assume later app updates will be included in judging without checking the event rules.                |
+| When                                | Work                                                                                                                                                                                                                                                                                                                                                                            | Finish line                                                                                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 01, in parallel               | Choose individual or organization enrollment; begin/confirm Apple Developer membership and account access. Owner completes required identity/business verification, paid-app agreement, banking and tax details.                                                                                                                                                                | Record status and outstanding items; Apple verification does not prevent local development. Membership and agreements must be ready for distribution/sales. |
+| Phase 01 onward; ready for 07       | Reserve a stable bundle identifier, create the App Store Connect app record and Expo/EAS project, configure signing access. In the existing JustGO RevenueCat project, connect the iOS app/store credentials, create the agreed App Store subscription group/products, and map product → entitlement → offering/paywall. Keep secret credentials out of docs and mobile source. | Matching identifiers and configured sandbox purchase path; final offer decisions settled before billing validation.                                         |
+| After the full app build, during 09 | Use physical iPhones for release acceptance. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight.                                                                                                                                                                                                                              | Purchase/restore, recovery, challenge loop and Progress pass on the actual binary. External testers may need beta review.                                   |
+| Phase 09                            | Complete App Store metadata, current screenshots, icon, privacy disclosures/policy, support URL, age/content declarations, subscription information and review notes explaining no-signup access. Give reviewers the access needed to inspect the paid app. Submit the first subscription with the app version when required.                                                   | Select the tested build and explicitly submit in App Store Connect for App Review; choose the intended release control and address review feedback.         |
+| After approval/release              | Verify the public listing and purchase/restore flow. Complete the separate hackathon submission using its current rules and required demo/assets.                                                                                                                                                                                                                               | Record the submitted entry and released build. Do not assume later app updates will be included in judging without checking the event rules.                |
 
 EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does not replace Apple membership or automatically complete listing/review submission. Recheck current requirements during setup; build queues, account verification and review times vary. References: [Expo iOS submission](https://docs.expo.dev/submit/ios/), [Apple enrollment](https://developer.apple.com/programs/enroll/), [first in-app purchase submission](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase).
 
-## Initial iOS release — nine stages
+## Initial iOS release — ten stages
 
 <a id="phase-01"></a>
 
@@ -278,7 +285,8 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 06 — Progress calendar & saved history
 
-**Status:** Not started  
+**Status:** In progress
+
 **Depends on:** 05
 
 **Acceptance references:** PRD AC-13–14, 17 · Tech acceptance 5, 9, 12–13, 17
@@ -289,7 +297,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 - Preserve the full P37 Progress content: current/best streak, all-time reps, navigable month/year calendar, per-day counts, monthly reps and active days. Do not replace it with a simple history list or implement Levels here.
 - Build current/best streak, all-time reps, month navigation, monthly reps/active days and per-date counts using frozen local completion dates/time zones.
-- Build the scrollable chronological day sheet with completion time, elapsed duration (including background and after-zero time), five feeling labels or Not recorded, plus the approved per-attempt reflection-reading interaction.
+- Build the scrollable chronological day sheet with completion time, five feeling labels or an accessible Not recorded state, plus the approved per-attempt reflection-reading interaction. Do not store or display elapsed durations or a day-level rep total.
 - Choose pagination/caching and indexes for the actual history queries now; verify them on representative data. Preserve original content revisions, Level 1 context and dirty edits.
 
 #### Keep out of this phase
@@ -299,23 +307,72 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 #### Ready to hand off when
 
-- [ ] The full Progress summary/calendar and tappable day sheet match the approved references, with honest empty/error states and no Day note block.
-- [ ] Streaks, monthly totals and ordered day entries pass midnight, DST, travel, missing feedback and multi-completion cases.
-- [ ] Saved reflection reading/edit/delete scope is agreed and implemented; long histories, sheet gestures and accessible labels work.
-- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [x] The full Progress summary/calendar and tappable day sheet match the clarified references in local browser/simulator checks, with honest empty/error states and no Day note block.
+- [x] Streaks, monthly totals and ordered day entries pass midnight, DST, travel, missing feedback and multi-completion cases.
+- [x] Read-only saved reflection scope is agreed and implemented; verify automatic paging beyond 20 day entries and local sheet scrolling/close/accessibility labels. Carry physical-iPhone VoiceOver, text scaling and gesture acceptance to Phase 09.
+- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Aggregation definitions, query/index evidence, paging/cache choices, date semantics and saved-reflection interaction.
 
-**Handoff file to create:** `handoffs/phase-06-progress.md`
+**Saved handoff:** [handoffs/phase-06-progress.md](handoffs/phase-06-progress.md)
 
-**Working notes / blocker:** None recorded.
+**Working notes (September 30 final handoff audit):** Local implementation through `0515a00` is ready for review, including loading skeletons, today highlighting without reps and the repeated day-sheet animation fix. Fresh workspace checks passed 226 tests and 5 database suites / 36 tests; in-app browser fixtures verified loading recovery, empty-account today highlighting, reflection expansion and sheet close/reopen. The sheet’s **Feeling** label and omission of elapsed-duration fields/displays and the day-level rep total match PRD §5.7 / AC-14. September 29 simulator evidence covers a live 21-entry day, automatic paging and both Retry states. Staging requires migrations through 0009 and coordinated API/mobile versions. Physical-iPhone acceptance remains in Phase 09, and staging belongs to integration/release validation. Earlier dependency gates stay recorded in their own handoffs; Phase 06A may proceed against verified local behavior under the approved sequencing decision. See the handoff for exact evidence and limits.
+
+<a id="phase-06a"></a>
+
+### Phase 06A — Code quality & test hardening
+
+**Status:** Not started
+
+**Depends on:** 06 (verified local implementation under the September 30 sequencing decision)
+
+**Acceptance references:** Existing implemented behavior from phases 02–06; repository coding, test and UI-verification instructions. This phase adds no product features or physical-device acceptance gates.
+
+**Outcome:** Existing code is easier to understand, test and maintain. Important behavior has meaningful regression coverage, large components have clear responsibilities, and future agents can find the agreed coding standards in repository instructions.
+
+#### Implement
+
+1. **Refresh the baseline and choose bounded work.** Read applicable `AGENTS.md` files, project setup/architecture guidance and the relevant phase handoffs before editing. Record the checkout, existing changes, current test results, coverage gaps and concrete refactor candidates. Run `npm run check` and `npm run test:db` against the dedicated local test database. Collect mobile, API and contract coverage across production source, including files not imported by tests. Distinguish unit, component, integration and UI evidence; identify gaps by behavior and risk, not just by filenames or line counts.
+2. **Protect important behavior before refactoring.** Add tests for the real app runtime/provider wiring: initialization, account changes, cache clearing, session coordination, access freshness and foreground/background handling. Test the existing JavaScript secure-storage adapter's payload validation, native-module calls and failure handling with controlled test doubles. Preserve existing identity, ownership-isolation, retry, completion and history tests. Recheck the previously reported Progress `act(...)` warning; it did not reproduce in the Phase 06 closeout. If it recurs, resolve it with correct asynchronous assertions and cleanup rather than suppressing console output. Review the documented browser `pointerEvents` deprecation warning. Fix confirmed regressions in the affected existing behavior and rerun its checks.
+3. **Refactor Progress first, in small steps.** Separate the calendar/summary, day sheet and entry rows where they have independent responsibilities. Keep related styles and helpers close to their components; extract reusable icons or motion helpers only when doing so improves understanding. Preserve existing rendering, loading/error/empty states, month changes, paging, sheet behavior, reflection expansion, accessibility labels and reduced motion. Add or update relevant tests, then verify each affected UI flow before proceeding.
+4. **Review the other maintenance hotspots.** Assess the identity controller/screen, challenge deck/screen and reflection view based on their responsibilities and change risk. Split presentation from orchestration and extract cohesive pieces when justified; keep storage, networking, time and randomness easy to control in tests. Reuse repeated rules when they represent the same behavior. Preserve enforced feature/shared-code boundaries, strict TypeScript and shared runtime validation. Do not split files merely to hit a line limit or add abstraction layers without a concrete benefit. If a candidate depends on an unresolved API decision, leave that candidate open and continue independent quality work.
+5. **Improve automated safeguards.** Add reproducible coverage commands/reporting and CI collection for mobile, API and contracts, including database-backed service coverage where applicable. Choose and document meaningful branch thresholds and exclusions after reviewing the fresh baseline, with stronger protection for critical behavior and an explicit approach to preventing coverage regressions. Avoid a blanket 100% target or tests that only mirror implementation. Extend the existing import-boundary checks to dynamic `import()` and `require()` calls; preserve permitted asset, test and app-preview requires. Add forbidden and permitted cases to `scripts/import-boundaries.test.mjs`, and update its assertions to cover the added rules. Introduce targeted type-aware lint rules for unsafe promise/async handling where they add value; document intentional fire-and-forget behavior instead of broad lint disables.
+6. **Verify existing user journeys and maintain guidance.** Exercise the implemented challenge → completion → reflection → Progress flow and relevant recovery/failure paths with disposable local data and the existing isolated test-access setup. For every code change, write or update relevant tests and run them, then use Browser Use in the in-app browser to test affected UI behavior; use Computer Use in Google Chrome if the in-app browser is unavailable or has issues. Fix failures and repeat until tests and affected UI pass. Reuse an existing simulator development build only when an affected native behavior needs verification that a browser cannot provide; physical iPhones and new signing/build work are outside this phase.
+7. **Make coding standards durable for future agents.** Review and update `AGENTS.md` and other repository files consulted before code changes, including README/setup, architecture guidance, this plan and relevant handoffs. Add a root `AGENTS.md` if the shared standards are not already recorded in one, and keep directory-specific instructions focused on actual local requirements. Record expectations for clear responsibilities, existing import boundaries, strict typing/runtime validation, meaningful tests, dependency seams, small reviewable changes and required browser UI verification. Preserve the existing mobile instruction to consult exact versioned Expo documentation before coding. Keep one clear source for shared standards and link to it from other guidance; reconcile conflicting or stale instructions. Verify that the resulting instructions are discoverable before the next coding task. Updating agent/instruction files is a phase deliverable, not a reminder left only in chat.
+
+#### Implementation and verification order
+
+- **First batch:** refresh the baseline, record the worklist and initial coding standards in the handoff and agent/setup guidance before application edits, add runtime/storage regression tests and clean up asynchronous test warnings. Do not infer that an untested file needs a standalone unit test if its behavior is better covered through an integration test.
+- **Second batch:** refactor Progress with its tests and browser checks. Review the smaller maintenance candidates after this establishes the pattern; preserve behavior during each extraction.
+- **Final batch:** finish justified extractions, coverage/lint safeguards and existing-journey verification; reconcile repository coding guidance with the final responsibilities and commands. Complete the handoff with before/after evidence and explicitly deferred API-dependent candidates.
+- Run focused tests while changing each area. Run the full workspace and database checks after affected shared boundaries change and before handoff; do not treat the earlier assessment as a current pass.
+
+#### Keep out of this phase
+
+- API route renaming, HTTP-contract redesign, schema/persistence changes, or decisions about local versus backend ownership of attempts, venue queues and reflections. Those belong to the separate API discussion. Preserve current behavior and interfaces throughout this phase.
+- New billing/paywall, onboarding, levels, Android, dictation, analytics exporters or other unimplemented features. Missing tests for future features are not gaps in this phase.
+- Physical-device release acceptance, staging/production deployment, store submission, provider integration work, native signing/build upgrades, and full production load/security campaigns. Existing device and release gates remain in Phase 09 and their original handoffs.
+- A new offline sync engine, state-management framework, broad dependency upgrade, wholesale architecture rewrite, arbitrary file-size target, or blanket coverage goal. Use the current tools unless a demonstrated test requirement calls for a small, documented addition.
+
+#### Ready to hand off when
+
+- [ ] A fresh baseline and final evidence are recorded; meaningful runtime/provider and storage-adapter tests cover the selected critical gaps, existing implemented behavior remains protected, and `npm run check` plus `npm run test:db` pass with no unexplained asynchronous test warnings.
+- [ ] Progress responsibilities are separated and the agreed maintenance worklist is completed or explicitly deferred with reasons. Import boundaries, strict typing, current contracts and product behavior remain intact; affected browser UI checks pass, including applicable loading/error/retry and reduced-motion cases. Chrome fallback or any limited simulator verification is recorded accurately.
+- [ ] Coverage reports include all relevant production source, and CI enforces the documented thresholds/exclusions and selected type-aware lint rules. Existing user-journey checks pass using isolated fixtures; the evidence distinguishes automated, browser and simulator checks and makes no physical-device claims.
+- [ ] Repository agent/coding guidance is updated and discoverable, this plan and the handoff index agree, and the phase handoff records changed paths, tests, UI evidence, coverage changes, preserved decisions and remaining work before billing. Earlier physical-device/staging gates and API decisions retain their separate owners and phases.
+
+**Carry forward:** Refactored component/controller responsibilities, dependency interfaces, critical behavior tests, coverage commands/baselines/thresholds, lint decisions, agent instruction locations, browser verification evidence and deferred API-dependent work.
+
+**Handoff file to create:** `handoffs/phase-06a-code-quality.md`
+
+**Working notes / blocker:** Planning approved September 30; implementation has not started. The September 30 assessment recorded 222 standard tests plus 36 PostgreSQL integration tests passing, mobile line coverage of 80.24% and branch coverage of 77.23%, uncovered app-provider/storage-adapter wiring, and an unexpected Progress test warning. These are historical assessment results, not a phase completion or current-check claim. The later Phase 06 closeout passed 226 workspace tests and 36 database tests without reproducing the asynchronous warning; it also recorded a browser `pointerEvents` deprecation warning. The subsequent PR #8 Expo patch-version repair again passed the tests but reproduced the asynchronous warning, so its cleanup remains in this phase. Refresh coverage and checks when starting this phase; source changes since either assessment require a fresh baseline. API design is being discussed in a separate chat; only work directly dependent on an unresolved decision waits for it.
 
 <a id="phase-07"></a>
 
 ### Phase 07 — Native subscriptions & reliable billing
 
 **Status:** Not started  
-**Depends on:** 06
+**Depends on:** 06A
 
 **Acceptance references:** PRD AC-03 · Tech acceptance 6, 14–17
 
@@ -395,9 +452,9 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 #### Implement
 
-- Run the first-release PRD acceptance matrix and applicable iOS tech checks on release-like builds. Recheck identity, in-app countdown recovery, typed reflections, full calendar/day sheet, purchases, accessibility and keyboard/sheet behavior. Deferred Android, lock-screen, dictation and level tests do not block this release.
+- Run the first-release PRD acceptance matrix and applicable iOS tech checks on release-like builds and physical iPhones. Recheck identity, in-app countdown recovery, typed reflections, full calendar/day sheet, purchases, accessibility and keyboard/sheet behavior. Deferred Android, lock-screen, dictation and level tests do not block this release.
 - Load-test interactive saves/history/purchase checks together with billing bursts and reconciliation using provider test doubles. Measure database connections/CPU/locks, API latency, queue age/drain time and choose configurable capacity limits.
-- Verify environment isolation, restore from backup, additive migrations/rollback, older-client compatibility, alert delivery, scheduler heartbeat and incident/replay instructions. Confirm paid-plan allowances and operating budgets.
+- Deploy the integrated API and mobile build to a non-production staging environment, applying migration 0008 after its predecessors; verify end-to-end behavior before production. Verify environment isolation, restore from backup, additive migrations/rollback, older-client compatibility, alert delivery, scheduler heartbeat and incident/replay instructions. Confirm paid-plan allowances and operating budgets.
 - Follow the App Store checklist below: EAS production build/upload, TestFlight, listing/screenshots/privacy/support, reviewer access and App Review submission. Upload is not review approval. Record submission/release authorization and monitor real purchase/restore and errors after launch.
 
 #### Keep out of this phase

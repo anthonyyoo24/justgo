@@ -316,6 +316,10 @@ export class ChallengeController {
           pending: null,
           busy: false,
         });
+        if (result.attempt.status === 'completed' && this.userId)
+          void this.client.queries.invalidateQueries({
+            queryKey: accountKey(this.userId, 'progress'),
+          });
         return;
       }
       this.update({ pending: null });

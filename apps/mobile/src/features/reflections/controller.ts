@@ -41,6 +41,7 @@ const isConflict = (error: unknown) =>
   error instanceof ApiError && error.code === 'CONFLICT';
 
 export class ReflectionController {
+  private readonly id: () => string;
   private readonly listeners = new Set<() => void>();
   private readonly abort = new AbortController();
   private alive = true;
@@ -70,8 +71,11 @@ export class ReflectionController {
     private readonly client: Pick<AccountClient, 'request'>,
     private readonly attemptId: string,
     private readonly onFinished: () => void,
-    private readonly id: () => string = randomUUID,
-  ) {}
+    options: { id?: () => string; fresh?: boolean } = {},
+  ) {
+    this.id = options.id ?? randomUUID;
+    if (options.fresh) this.snapshot = { ...this.snapshot, phase: 'ready' };
+  }
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -292,12 +296,8 @@ export class ReflectionController {
         { body: action.body, signal: this.abort.signal },
       );
       this.finalRetry = null;
-      this.publish({
-        phase: 'already',
-        saving: false,
-        pendingAction: null,
-        error: null,
-      });
+      // Keep the saving view mounted until navigation finishes.
+      // Publishing "already" here briefly renders the fallback page first.
       if (this.alive) this.onFinished();
       return true;
     } catch (error) {

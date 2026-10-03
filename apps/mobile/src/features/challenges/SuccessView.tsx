@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
   copy: { width: '100%', alignItems: 'center' },
   heading: {
     width: '100%',
-    fontFamily: fontFamilies.display,
-    fontWeight: '600',
+    fontFamily: fontFamilies.editorial,
+    fontWeight: '700',
     textAlign: 'center',
     color: colors.ink,
   },

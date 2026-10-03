@@ -234,7 +234,6 @@ export const attempts = appSchema.table(
     endedAt: time('ended_at'),
     completionDate: text('completion_date'),
     timeZone: text('time_zone'),
-    elapsedSeconds: integer('elapsed_seconds'),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.id] }),
@@ -242,13 +241,16 @@ export const attempts = appSchema.table(
       .on(t.userId)
       .where(sql`${t.status} = 'active'`),
     index('attempt_owner_end_idx').on(t.userId, t.endedAt),
+    index('attempt_history_day_idx')
+      .on(t.userId, t.completionDate, t.endedAt, t.id)
+      .where(sql`${t.status} = 'completed'`),
     check(
       'attempt_status',
       sql`${t.status} in ('active','completed','given_up')`,
     ),
     check(
       'attempt_outcome_fields',
-      sql`(${t.status} = 'active' and ${t.endedAt} is null and ${t.timeZone} is null and ${t.elapsedSeconds} is null and ${t.completionDate} is null) or (${t.status} <> 'active' and ${t.endedAt} is not null and ${t.elapsedSeconds} is not null and ${t.endedAt} >= ${t.startedAt} and ${t.timeZone} is not null and ${t.elapsedSeconds} >= 0 and ((${t.status} = 'completed' and ${t.completionDate} is not null) or (${t.status} = 'given_up' and ${t.completionDate} is null)))`,
+      sql`(${t.status} = 'active' and ${t.endedAt} is null and ${t.timeZone} is null and ${t.completionDate} is null) or (${t.status} <> 'active' and ${t.endedAt} is not null and ${t.endedAt} >= ${t.startedAt} and ${t.timeZone} is not null and ((${t.status} = 'completed' and ${t.completionDate} is not null) or (${t.status} = 'given_up' and ${t.completionDate} is null)))`,
     ),
     check('attempt_deadline', sql`${t.deadlineAt} > ${t.startedAt}`),
   ],

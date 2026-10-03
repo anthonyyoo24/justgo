@@ -33,27 +33,6 @@ export function HomeScreen({ insetTop = true }: { insetTop?: boolean } = {}) {
     </Screen>
   );
 }
-export function ProgressScreen({
-  insetTop = true,
-}: { insetTop?: boolean } = {}) {
-  return (
-    <Screen
-      title="Your progress"
-      accessory={<SettingsLink />}
-      insetTop={insetTop}
-    >
-      <Text style={styles.body}>Small moments, meaningful steps.</Text>
-      <View style={styles.panel}>
-        <Text accessibilityRole="header" style={styles.cardTitle}>
-          Your story takes shape here.
-        </Text>
-        <Text style={styles.body}>
-          Your activity and saved reflections will appear here as you go.
-        </Text>
-      </View>
-    </Screen>
-  );
-}
 export function FocusedScreen({ kind }: { kind: 'success' | 'reflection' }) {
   return (
     <Screen

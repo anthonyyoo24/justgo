@@ -29,7 +29,6 @@ const finishedAttempt: Attempt = {
   startedAt: '2026-09-24T20:00:00Z',
   deadlineAt: '2026-09-24T20:05:00Z',
   endedAt: '2026-09-24T20:04:00Z',
-  elapsedSeconds: 240,
   completionDate: '2026-09-24',
   timeZone: 'America/Toronto',
 };

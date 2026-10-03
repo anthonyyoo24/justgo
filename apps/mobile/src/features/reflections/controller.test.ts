@@ -14,17 +14,74 @@ const record = (overrides: Record<string, unknown> = {}) => ({
   updatedAt: null,
   ...overrides,
 });
-const make = (request: jest.Mock) => {
+const make = (request: jest.Mock, fresh = false) => {
   const finished = jest.fn();
   let next = 1;
   const controller = new ReflectionController(
     { request } as unknown as Pick<AccountClient, 'request'>,
     attemptId,
     finished,
-    () => `00000000-0000-4000-8000-${String(next++).padStart(12, '0')}`,
+    {
+      id: () => `00000000-0000-4000-8000-${String(next++).padStart(12, '0')}`,
+      fresh,
+    },
   );
   return { controller, finished };
 };
+
+it('starts a newly completed reflection ready without a GET', async () => {
+  const request = jest
+    .fn()
+    .mockResolvedValueOnce(
+      record({ revision: 1, status: 'submitted', feeling: 'a_little_better' }),
+    );
+  const { controller, finished } = make(request, true);
+  expect(controller.getSnapshot().phase).toBe('ready');
+  expect(request).not.toHaveBeenCalled();
+
+  controller.setFeeling('a_little_better');
+  await controller.submit();
+
+  expect(request).toHaveBeenCalledTimes(1);
+  expect(request).toHaveBeenCalledWith(
+    `/v1/reflections/${attemptId}/final`,
+    expect.anything(),
+    {
+      body: expect.objectContaining({
+        expectedRevision: 0,
+        feeling: 'a_little_better',
+      }),
+      signal: expect.anything(),
+    },
+  );
+  expect(finished).toHaveBeenCalledTimes(1);
+  controller.dispose();
+});
+
+it('detects a conflicting draft even when a fresh form skipped the initial GET', async () => {
+  const request = jest
+    .fn()
+    .mockRejectedValueOnce(new ApiError('CONFLICT'))
+    .mockResolvedValueOnce(
+      record({ revision: 2, status: 'draft', text: 'Saved elsewhere' }),
+    );
+  const { controller } = make(request, true);
+  controller.setText('My new note');
+
+  await controller.submit();
+  expect(controller.getSnapshot()).toMatchObject({
+    conflict: true,
+    text: 'My new note',
+  });
+  await controller.useLatest();
+  expect(controller.getSnapshot()).toMatchObject({
+    phase: 'ready',
+    conflict: false,
+    revision: 2,
+    text: 'Saved elsewhere',
+  });
+  controller.dispose();
+});
 
 it('skips an empty reflection without inventing a neutral feeling', async () => {
   const request = jest
@@ -94,7 +151,10 @@ it('keeps a failed discard-and-skip retry identified as a skip', async () => {
   expect(request.mock.calls[1][0]).toBe(`/v1/reflections/${attemptId}/skip`);
   expect(request.mock.calls[2][0]).toBe(`/v1/reflections/${attemptId}/skip`);
   expect(request.mock.calls[2][2].body).toEqual(request.mock.calls[1][2].body);
-  expect(controller.getSnapshot().pendingAction).toBeNull();
+  expect(controller.getSnapshot()).toMatchObject({
+    pendingAction: 'skip',
+    saving: true,
+  });
   expect(finished).toHaveBeenCalledTimes(1);
   controller.dispose();
 });

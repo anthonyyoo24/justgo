@@ -40,6 +40,9 @@ export function createHttpClient(
       } catch {
         throw new ApiError('UNAVAILABLE');
       }
+      // Progress reads use encoded query parameters. Resolve the relative path
+      // against the trusted API origin so a query cannot redirect the request.
+      const target = new URL(path, base);
       if (
         (base.protocol !== 'https:' &&
           !(
@@ -52,7 +55,8 @@ export function createHttpClient(
         base.search ||
         base.hash ||
         !path.startsWith('/v1/') ||
-        path.includes('?') ||
+        target.origin !== base.origin ||
+        !target.pathname.startsWith('/v1/') ||
         path.includes('#')
       )
         throw new ApiError('UNAVAILABLE');

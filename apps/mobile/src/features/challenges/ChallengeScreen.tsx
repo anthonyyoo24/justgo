@@ -196,7 +196,11 @@ export function ActiveChallenge({
             styles.timerText,
             { fontSize: 50 * scale, lineHeight: 52 * scale },
           ]}
-          accessibilityLabel={`${Math.floor(seconds / 60)} minutes ${seconds % 60} seconds remaining`}
+          accessibilityLabel={
+            seconds
+              ? `${Math.floor(seconds / 60)} minutes ${seconds % 60} seconds remaining`
+              : "Time's up. Give it a go."
+          }
         >
           {timer}
         </Text>
@@ -206,7 +210,7 @@ export function ActiveChallenge({
             { fontSize: 11 * scale, lineHeight: 14 * scale },
           ]}
         >
-          {seconds ? 'Time remaining' : 'Time’s up. How did it go?'}
+          {seconds ? 'Time remaining' : "Time's up. Give it a go."}
         </Text>
       </View>
       <ChallengeCard
@@ -327,7 +331,6 @@ export function SuccessScreen() {
     return (
       <SuccessView
         onContinue={() => {
-          challenges.dismissSuccess();
           router.replace({
             pathname: '/reflection',
             params: { attemptId: attempt.id },

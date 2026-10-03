@@ -71,7 +71,6 @@ export function DeckPreview({
                 startedAt: new Date(started).toISOString(),
                 deadlineAt: new Date(started + 300_000).toISOString(),
                 endedAt: null,
-                elapsedSeconds: null,
                 completionDate: null,
                 timeZone: null,
               });

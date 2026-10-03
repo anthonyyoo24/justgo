@@ -3,14 +3,16 @@ import Svg, { Path, Rect } from 'react-native-svg';
 export function NavigationIcon({
   name,
   color,
+  active = false,
 }: {
   name: 'home' | 'progress';
   color: ColorValue;
+  active?: boolean;
 }) {
   return (
     <Svg
-      width={name === 'home' ? 28 : 20}
-      height={name === 'home' ? 28 : 20}
+      width={name === 'home' ? 28 : 24}
+      height={name === 'home' ? 28 : 24}
       viewBox="0 0 24 24"
       aria-hidden={true}
     >
@@ -44,14 +46,38 @@ export function NavigationIcon({
           />
         </>
       ) : (
-        <Path
-          d="M3.2 14.5H6.8V20.5H3.2V14.5ZM10.2 9.3H13.8V20.5H10.2V9.3ZM17.2 3.5H20.8V20.5H17.2V3.5Z"
-          fill="none"
-          stroke={color}
-          strokeWidth={1.4}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <>
+          <Rect
+            x={2.5}
+            y={14}
+            width={4.2}
+            height={7.5}
+            rx={0.8}
+            fill={active ? color : 'none'}
+            stroke={color}
+            strokeWidth={1.2}
+          />
+          <Rect
+            x={9.9}
+            y={9}
+            width={4.2}
+            height={12.5}
+            rx={0.8}
+            fill={active ? color : 'none'}
+            stroke={color}
+            strokeWidth={1.2}
+          />
+          <Rect
+            x={17.3}
+            y={3}
+            width={4.2}
+            height={18.5}
+            rx={0.8}
+            fill={active ? color : 'none'}
+            stroke={color}
+            strokeWidth={1.2}
+          />
+        </>
       )}
     </Svg>
   );

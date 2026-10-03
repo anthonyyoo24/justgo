@@ -140,7 +140,7 @@ The screen shows the accepted challenge’s full instruction, venue illustration
 - **Give up** submits directly. Once the server confirms it, return to an eligible Home card without a rep or streak credit. An uncertain save keeps the same attempt and deadline available for retry.
 - Navigating to another tab or Settings, backgrounding, locking, or closing the app leaves the same attempt active. There is no pause/reset implied by navigation.
 - Recover the active attempt before allowing another start after relaunch or on another device.
-- At zero, display zero and retain the outcome actions. Expiry does not automatically complete, fail, give up, or restart the attempt.
+- At zero, display zero with a neutral goal-reached caption and retain the outcome actions. Expiry does not automatically complete, fail, give up, or restart the attempt. The timer continues against the original deadline while the app is closed and stops at zero rather than counting overtime.
 - Lock-screen display is deferred. Locking the phone still preserves the original deadline; reopening computes the remaining time without restarting it.
 - Pending/failed completion or give-up remains visible with retry/reconciliation. Do not falsely display saved progress or stop the authoritative attempt because a response was lost.
 
@@ -201,17 +201,16 @@ Month navigation updates both the calendar and monthly totals. All-time totals a
 Tapping an active date opens a scrollable sheet with:
 
 - The full day/date heading, such as “Friday, September 18”.
-- That day’s completed rep count and summed elapsed time.
-- Every completed challenge in chronological order, with an ordinal, readable instruction/summary, completion time, elapsed duration, and its submitted feeling indicator.
+- Every completed challenge in chronological order, with an ordinal, readable instruction/summary, completion time, and its submitted feeling indicator.
 - An accessible close action and drag handle.
 
-The **After** indicator uses the same five-choice feeling vocabulary as D1. Missing/skipped feedback is **Not recorded**, never a neutral face. A compact indicator must expose its exact label accessibly; the three sample faces in P31 do not reduce the five-option scale.
+The sheet omits the day-level rep count and elapsed-duration displays by Anthony’s later decision; the calendar still shows each active day’s rep badge. Attempts retain start/deadline and completion timestamps for timer recovery and calendar history, but no elapsed-duration field or aggregate is stored.
 
-Duration means elapsed time between the stored start and completion, including background time and any time after zero. It is not the configured time limit or remaining countdown. The daily duration is the sum for completed entries only. Final rounding/display rules are an open formatting decision.
+The **Feeling** indicator uses the same five-choice vocabulary as D1. Missing/skipped feedback is **Not recorded**, never a neutral face; the compact empty-circle treatment must expose “Not recorded” accessibly. The three sample faces in P31 do not reduce the five-option scale.
 
 **Do not include the Day note label, quote, input, or any day-level note data.** The final compact rows also do not require the old PRD’s two ratings or a visible level label on every row. Preserve the original level and challenge revision in the underlying history.
 
-Saved per-attempt reflection text needs a reading interaction, but P31 does not specify one once Day note is removed. The proposed follow-up design is to expand/tap a challenge entry to read its full instruction, feeling, and saved reflection. This is an unresolved supporting state, not permission to reintroduce a day note or standalone journal destination.
+Saved per-attempt reflection text is read from an expanded challenge entry showing its full instruction, feeling and submitted reflection. Anthony approved reading only for phase 06 on September 27; this does not add a day note or standalone journal destination. Editing and deletion controls are outside phase 06.
 
 ### 5.8 Settings
 
@@ -290,31 +289,31 @@ Initial metrics are onboarding/paywall conversion, challenge start and completio
 
 Keep the proposed React Native + Expo + TypeScript application, API, and PostgreSQL architecture. These screens use the already planned card gestures, animations, sheets, native text input, the in-app countdown, and server-backed history. No new charting engine, real-time backend, database type, or AI feature is required by the designs.
 
-Implementation must align contracts with the venue placements, independent queues and immutable content, five relative feeling values, day-duration aggregates, and navigation that preserves an active attempt. Exact fonts, artwork, tokens, and responsive measurements need a fresh export from the final Paper references; the older Analog design tokens are not the approved final palette/type system.
+Implementation must align contracts with the venue placements, independent queues and immutable content, five relative feeling values, and navigation that preserves an active attempt. Exact fonts, artwork, tokens, and responsive measurements need a fresh export from the final Paper references; the older Analog design tokens are not the approved final palette/type system.
 
 This PRD carries product behavior; native-library compatibility, secure recovery, billing processing, API retry/concurrency mechanics, and deployment remain governed by [TECH_STACK.md](TECH_STACK.md).
 
 ## 11. Acceptance criteria
 
-| ID    | Required result                                                                                                                                                                                      |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AC-01 | On iOS, account bootstrap requires no signup form; valid recovery restores only the authorized account. Credential failures cannot create duplicate accounts silently.                               |
-| AC-02 | Deferred: welcome/questionnaire onboarding is outside current implementation. If scheduled later, approve content and confirm cloud saves/relaunch restoration before shipping it.                   |
-| AC-03 | The hard paywall supports purchase, restore, and honest pending/failed verification; essential recovery, subscription, legal, and data controls remain reachable when unpaid.                        |
-| AC-04 | Six Level 1 venue decks cycle independently. Left/X skips without an attempt; right/heart starts exactly one confirmed attempt. Repeated accepted cards get new IDs; retries cannot duplicate a rep. |
-| AC-05 | Home handles empty/small venue queues, loading and errors without duplicate selectable cards or fabricated progress. Omit level progress.                                                            |
-| AC-06 | The full challenge remains readable with a correct countdown after tab changes, locking, backgrounding, and relaunch. Returning Home restores the active attempt.                                    |
-| AC-07 | **Deferred:** lock-screen display; not an iOS launch gate. The in-app lifecycle remains covered by AC-06.                                                                                            |
-| AC-08 | Confirmed completion grants one rep and preserves Level 1/revision context; retries and concurrent devices cannot duplicate completion. Give-up grants no rep.                                       |
-| AC-09 | Success celebrates the confirmed completion and continues to that attempt’s Reflection without requiring a streak message.                                                                           |
-| AC-10 | Reflection uses the five specified relative choices with no default answer, optional text, accessible selected states, and normal keyboard editing. Skipping preserves earned credit.                |
-| AC-11 | Saved feedback/text belongs to the correct attempt; failed saves preserve visible input, drafts remain distinct from submissions, and concurrent edits do not silently overwrite.                    |
-| AC-12 | **Deferred:** Levels UI, thresholds, unlocking, skipping and historical-credit policy. Preserving Level 1 context does not implement these rules.                                                    |
-| AC-13 | Progress correctly shows current/best streak, all-time reps, month reps/active days, and per-day rep counts without an anxiety/confidence heatmap.                                                   |
-| AC-14 | An active date opens all its completed entries in order with completion time, elapsed duration, and exact feeling labels or Not recorded. P31 has no Day note block or day-note field.               |
-| AC-15 | Settings implements only the scoped capabilities, describes cloud persistence accurately, and does not add Reset progress solely from the reference image.                                           |
-| AC-16 | Cloud saves and paid access work with analytics declined; no journal text, audio, or credentials enter analytics or diagnostic payloads.                                                             |
-| AC-17 | Controls work with screen readers, text scaling, reduced motion, platform back navigation, and keyboard/sheet interactions on iOS. Android verification is deferred.                                 |
+| ID    | Required result                                                                                                                                                                                                                     |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC-01 | On iOS, account bootstrap requires no signup form; valid recovery restores only the authorized account. Credential failures cannot create duplicate accounts silently.                                                              |
+| AC-02 | Deferred: welcome/questionnaire onboarding is outside current implementation. If scheduled later, approve content and confirm cloud saves/relaunch restoration before shipping it.                                                  |
+| AC-03 | The hard paywall supports purchase, restore, and honest pending/failed verification; essential recovery, subscription, legal, and data controls remain reachable when unpaid.                                                       |
+| AC-04 | Six Level 1 venue decks cycle independently. Left/X skips without an attempt; right/heart starts exactly one confirmed attempt. Repeated accepted cards get new IDs; retries cannot duplicate a rep.                                |
+| AC-05 | Home handles empty/small venue queues, loading and errors without duplicate selectable cards or fabricated progress. Omit level progress.                                                                                           |
+| AC-06 | The full challenge remains readable with a correct countdown after tab changes, locking, backgrounding, and relaunch. Returning Home restores the active attempt.                                                                   |
+| AC-07 | **Deferred:** lock-screen display; not an iOS launch gate. The in-app lifecycle remains covered by AC-06.                                                                                                                           |
+| AC-08 | Confirmed completion grants one rep and preserves Level 1/revision context; retries and concurrent devices cannot duplicate completion. Give-up grants no rep.                                                                      |
+| AC-09 | Success celebrates the confirmed completion and continues to that attempt’s Reflection without requiring a streak message.                                                                                                          |
+| AC-10 | Reflection uses the five specified relative choices with no default answer, optional text, accessible selected states, and normal keyboard editing. Skipping preserves earned credit.                                               |
+| AC-11 | Saved feedback/text belongs to the correct attempt; failed saves preserve visible input, drafts remain distinct from submissions, and concurrent edits do not silently overwrite.                                                   |
+| AC-12 | **Deferred:** Levels UI, thresholds, unlocking, skipping and historical-credit policy. Preserving Level 1 context does not implement these rules.                                                                                   |
+| AC-13 | Progress correctly shows current/best streak, all-time reps, month reps/active days, and per-day rep counts without an anxiety/confidence heatmap.                                                                                  |
+| AC-14 | An active date opens all its completed entries in order with completion time and accessible exact feeling labels or Not recorded. The sheet has no elapsed-duration display, day-level rep count, Day note block or day-note field. |
+| AC-15 | Settings implements only the scoped capabilities, describes cloud persistence accurately, and does not add Reset progress solely from the reference image.                                                                          |
+| AC-16 | Cloud saves and paid access work with analytics declined; no journal text, audio, or credentials enter analytics or diagnostic payloads.                                                                                            |
+| AC-17 | Controls work with screen readers, text scaling, reduced motion, platform back navigation, and keyboard/sheet interactions on iOS. Android verification is deferred.                                                                |
 
 ## 12. Validation and implementation order
 
@@ -336,6 +335,6 @@ The remaining rows are unresolved. The reflection save and dismissal rule was ap
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Onboarding and commercial offer      | Question/branching flow is deferred. Define purchase products/pricing/trials and paywall designs before phase 07. Keep no-signup entry and native-first paid access.                                                   |
 | Reflection optionality and dismissal | Approved September 27: optional overall step; feeling-only, text-only or both; Skip when empty, Save Reflection when either has input; empty Back/X skips, dirty Back/X offers save, keep editing or discard and skip. |
-| Reading saved reflection text        | Add a per-attempt expansion/detail interaction from a day entry; confirm editing/deletion affordances and obtain a matching design. Do not use a day-level note.                                                       |
+| Reading saved reflection text        | Approved September 27: expand a day entry to read its submitted per-attempt reflection. Phase 06 has no editing/deletion controls. Do not use a day-level note.                                                        |
 | Future levels — not a launch blocker | Decide thresholds, unlocking/skipping, partial/final-level behavior and treatment of prior Level 1 completions when scheduling levels. Preserve history now; do not implement hidden progression.                      |
-| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, day-duration rounding, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.      |
+| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.                             |
