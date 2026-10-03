@@ -3,7 +3,7 @@
 ## Snapshot
 
 - **Status:** Local implementation is ready for review and handoff. The phase remains In progress while Phase 05 and earlier dependency gates remain open. Physical-iPhone acceptance and staging deployment are later release/integration work under the approved sequencing decisions.
-- **Updated / author:** September 30, 2026 / Codex.
+- **Updated / author:** October 3, 2026 / Codex.
 - **Scope:** [Plan phase 06](../IMPLEMENTATION_PLAN.md#phase-06), PRD §5.6–5.7 and AC-13–14, 17.
 - **Dependency:** [Phase 05 handoff](phase-05-reflections.md), whose native acceptance and staging deployment remain open under the previously approved sequencing exception.
 - **Checkout:** `phase-06-progress-calendar-saved-history`; implementation baseline `2a33cc7` (Phase 05 merge), latest application-source commit `0515a00` and documentation closeout `5a9a418` (September 30). The subsequent PR #8 CI repair updates Expo package pins and this handoff, as recorded below. The original implementation was developed on `codex/phase-06`.
@@ -125,20 +125,43 @@ Browser checks above confirm presentation, not a live authenticated data path. N
 
 ## Remaining work and risks
 
-| Item                                                                                                    | Impact                                                                                                                                                                                                              | Required by                |
-| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Test sheet gestures, VoiceOver and large-text layout on a physical iPhone after the full app is built.  | The simulator and component tests do not replace later device acceptance.                                                                                                                                           | Release validation         |
-| Apply migrations through 0009 and deploy coordinated API/mobile versions to staging.                    | Local migration tests pass; staged deployment and mixed-version compatibility are not verified. The dropped column/response field requires the cutover described above.                                             | Integration / release      |
-| Resolve Phase 05 and earlier device/deployment gates.                                                   | Dependency phases remain in progress under the approved sequencing exception.                                                                                                                                       | Release                    |
-| Complete the planned Phase 06A maintainability/test work and review the browser deprecation warning.    | Existing functionality is locally verified; quality implementation has not started. The earlier asynchronous warning reproduced in the later CI-repair checks and needs cleanup in Phase 06A.                       | Before billing / Phase 06A |
-| Extend import-boundary checks to dynamic imports and `require()` calls, with forbidden/permitted tests. | Current checks cover static imports and re-exports; these loading forms can bypass the restrictions. Preserve legitimate asset, test and app-preview requires. No current violation was found in the PR assessment. | Before billing / Phase 06A |
+| Item                                                                                                   | Impact                                                                                                                                                                  | Required by           |
+| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Test sheet gestures, VoiceOver and large-text layout on a physical iPhone after the full app is built. | The simulator and component tests do not replace later device acceptance.                                                                                               | Release validation    |
+| Apply migrations through 0009 and deploy coordinated API/mobile versions to staging.                   | Local migration tests pass; staged deployment and mixed-version compatibility are not verified. The dropped column/response field requires the cutover described above. | Integration / release |
+| Resolve Phase 05 and earlier device/deployment gates.                                                  | Dependency phases remain in progress under the approved sequencing exception.                                                                                           | Release               |
+
+### October 3 local handoff checklist and Phase 06A follow-up
+
+- [x] Progress summary/calendar, chronological paged day history and read-only
+      submitted reflections are implemented and locally verified.
+- [x] Local workspace/database checks and affected browser UI pass again on
+      `phase-06a-code-quality`: 292 workspace tests and 36 database tests.
+      See [Phase 06A](phase-06a-code-quality.md) for exact current evidence.
+- [x] Loading, empty, unavailable and both Retry states remain protected, with
+      sheet reopening, account isolation, today highlighting and reflection expansion.
+- [x] Phase 06A completes the quality follow-ups: separate Progress components,
+      actual provider/vault tests, asynchronous query-test cleanup, style-based
+      pointer events, reduced-motion sheet behavior and reproducible coverage gates.
+- [x] Dynamic import/require boundary checks now cover forbidden and permitted
+      paths, including legitimate assets, tests and guarded development previews.
+- [x] Current local handoff and plan/index are updated; historical evidence and
+      migration 0009 deployment requirements are retained.
+- [ ] Physical-iPhone gestures, VoiceOver and large-text acceptance after the full build.
+- [ ] Coordinated staging API/mobile deployment through migration 0009.
+- [ ] Earlier dependency device/deployment gates required for release.
+
+The checked items close the local Phase 06 handoff and its quality follow-ups.
+Overall Phase 06 remains In progress under the previously approved sequencing
+decision because the unchecked release/dependency gates remain open. Phase 06A
+does not claim physical-device or staging acceptance.
 
 ## Next phase: read this first
 
-1. Start [Phase 06A — Code quality & test hardening](../IMPLEMENTATION_PLAN.md#phase-06a) with a fresh baseline and the agreed worklist; create `phase-06a-code-quality.md` before implementation. Review `ProgressView.tsx`, runtime/provider wiring and the secure-storage adapter first. Billing follows that handoff.
+1. Read the completed [Phase 06A quality handoff](phase-06a-code-quality.md) and the latest [Phase 07 plan](../IMPLEMENTATION_PLAN.md#phase-07) before the API/offline implementation. Native billing follows separately in Phase 07A. The component boundaries and tests protect current behavior until those planned changes are implemented together.
 2. Preserve the owner-scoped aggregate/paged history contract, frozen completion dates, original revision/Level 1 context, draft-versus-submitted distinction, read-only reflections and omission of elapsed-duration fields.
 3. Preserve account/time-zone cache isolation, skeleton/reduced-motion behavior, active-date actions, automatic paging, both Retry states and opening/closing/reflection animations. Rerun relevant tests, full workspace/database checks and affected browser UI checks after changing these boundaries.
-4. Keep private reflection text out of analytics and unauthenticated responses. Leave API/persistence redesign to its separate discussion and carry device/staging gates to Phase 09.
+4. Keep private reflection text out of analytics and unauthenticated responses. Phase 07 owns API/persistence redesign; carry device/staging gates to Phase 09.
 
 ## Record updates
 
@@ -146,3 +169,5 @@ Browser checks above confirm presentation, not a live authenticated data path. N
 - PRD §5.7 / AC-14, the decision register and the Phase 04 handoff record removal of elapsed-duration storage/display. The configured challenge goal duration remains intact.
 - October 1 PR review follow-up removes the stale Phase 04 duration-formatting assignment and records the import-boundary loading-form gap in the Phase 06A plan. These documentation changes do not implement the deferred safeguards. See the [CodeRabbit findings](https://github.com/anthonyyoo24/justgo/pull/8#pullrequestreview-5373144937).
 - The historical HTML tracker is absent from this checkout; no tracker state or export was updated. This documentation commit does not claim Phase 06A implementation, physical-device acceptance or staged deployment.
+
+- October 3 Phase 06A closes the local quality follow-ups and adds the checked local handoff list above. See its saved handoff for current tests, coverage, browser evidence and preserved release gates.

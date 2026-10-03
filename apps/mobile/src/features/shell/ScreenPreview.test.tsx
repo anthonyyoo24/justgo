@@ -108,6 +108,15 @@ it.each([
     expect(screen.getByLabelText(/Rep 1\. Say hello to someone/)).toBeTruthy();
   } else {
     expect(screen.getByLabelText(/Rep 6\. Send a thank you note/)).toBeTruthy();
+    if (progressDayState === 'load-more-error') {
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Try loading more attempts again' }),
+      );
+      expect(screen.queryByText('Couldn’t load more attempts')).toBeNull();
+      expect(
+        screen.getByLabelText(/Rep 6\. Send a thank you note/),
+      ).toBeTruthy();
+    }
   }
 });
 

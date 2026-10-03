@@ -13,7 +13,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "4.6.5"

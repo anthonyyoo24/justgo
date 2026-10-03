@@ -65,6 +65,7 @@ export function createMemoryVault(): CredentialVault {
     },
     credentials: async () => credentials.map((value) => ({ ...value })),
     add: async (value) => {
+      value = credentialSchema.parse(value);
       const old = credentials.find((c) => c.id === value.id);
       if (old && old.secret !== value.secret)
         throw new Error('Credential collision');

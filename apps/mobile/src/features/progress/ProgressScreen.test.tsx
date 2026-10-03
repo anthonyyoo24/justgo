@@ -1,5 +1,15 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react-native';
+import {
+  QueryClient,
+  QueryClientProvider,
+  notifyManager,
+} from '@tanstack/react-query';
 import type {
   ProgressDayResponse,
   ProgressEntry,
@@ -47,6 +57,8 @@ const august: ProgressResponse = {
 };
 
 beforeEach(() => {
+  // Query notifications are scheduled outside React; flush them inside act.
+  notifyManager.setNotifyFunction((notify) => act(notify));
   mockAccount = { userId: 'user-one' };
   mockClient = {
     queries: new QueryClient({ defaultOptions: { queries: { retry: false } } }),
@@ -59,7 +71,13 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => mockClient.queries.clear());
+afterEach(async () => {
+  // Unsubscribe observers before clearing the cache and settle cancelled work.
+  cleanup();
+  await mockClient.queries.cancelQueries();
+  mockClient.queries.clear();
+  notifyManager.setNotifyFunction((notify) => notify());
+});
 
 it('keeps the displayed month and summary together until an uncached month loads', async () => {
   let finishAugust!: (value: ProgressResponse) => void;
@@ -124,17 +142,21 @@ it('does not show another account’s previous progress while its month loads', 
   expect(screen.queryByText('—')).toBeNull();
   expect(screen.queryByText('on 1 active day')).toBeNull();
   await act(async () => finishOther({ ...september, monthlyReps: 0 }));
+  await waitFor(() =>
+    expect(screen.queryByLabelText('Loading progress')).toBeNull(),
+  );
+  await waitFor(() => expect(mockClient.queries.isFetching()).toBe(0));
 });
 
 it('replaces the first-visit skeleton with the response as soon as it arrives', async () => {
   mockClient.queries.clear();
   let finish!: (value: ProgressResponse) => void;
-  mockClient.request.mockImplementation(
-    () =>
-      new Promise<ProgressResponse>((resolve) => {
-        finish = resolve;
-      }),
-  );
+  const response = new Promise<ProgressResponse>((resolve) => {
+    finish = resolve;
+  });
+  // Focus invalidation may request the same response; retain one controllable
+  // promise rather than leaving an earlier request unresolved.
+  mockClient.request.mockReturnValue(response);
   const screen = render(
     <QueryClientProvider client={mockClient.queries}>
       <ProgressScreen />

@@ -48,7 +48,6 @@ export function ProgressSkeleton({
     <View
       testID={testID}
       aria-hidden
-      pointerEvents="none"
       onLayout={({ nativeEvent }) => setWidth(nativeEvent.layout.width)}
       style={[styles.rectangle, style]}
     >
@@ -88,6 +87,7 @@ export function ProgressSkeleton({
 
 const styles = StyleSheet.create({
   rectangle: {
+    pointerEvents: 'none',
     backgroundColor: '#E7DCD0',
     borderRadius: 4,
     overflow: 'hidden',

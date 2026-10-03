@@ -2,7 +2,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import type { Attempt } from '@justgo/contracts';
 import { StyleSheet, View } from 'react-native';
 import { ChallengeCard } from './ChallengeDeck';
-import { ActiveChallenge } from './ChallengeScreen';
+import { ActiveChallenge } from './ActiveChallenge';
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../shell/AppProvider', () => ({}));
 jest.mock('./ChallengeDeck', () => ({ ChallengeCard: jest.fn(() => null) }));

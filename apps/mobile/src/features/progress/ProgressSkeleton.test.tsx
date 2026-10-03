@@ -1,6 +1,6 @@
-import { renderHook } from '@testing-library/react-native';
-import { Animated } from 'react-native';
-import { useProgressShimmer } from './ProgressSkeleton';
+import { render, renderHook } from '@testing-library/react-native';
+import { Animated, StyleSheet } from 'react-native';
+import { ProgressSkeleton, useProgressShimmer } from './ProgressSkeleton';
 
 let mockReduceMotion = false;
 jest.mock('react-native-reanimated', () => ({
@@ -48,4 +48,17 @@ it('stops an in-flight shimmer when the Progress screen unmounts', () => {
   const screen = renderHook(() => useProgressShimmer(true));
   screen.unmount();
   expect(stop).toHaveBeenCalledTimes(1);
+});
+
+it('keeps skeleton overlays decorative and ignores pointer input through styles', () => {
+  const screen = render(
+    <ProgressSkeleton animation={null} testID="skeleton" />,
+  );
+  const placeholder = screen.getByTestId('skeleton', {
+    includeHiddenElements: true,
+  });
+  expect(StyleSheet.flatten(placeholder.props.style).pointerEvents).toBe(
+    'none',
+  );
+  expect(placeholder.props['aria-hidden']).toBe(true);
 });

@@ -1,21 +1,14 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
-
-const workspaceBoundaries = {
-  patterns: [
-    {
-      group: ['@justgo/contracts/**', '**/packages/contracts/**'],
-      message: 'Import shared contracts through @justgo/contracts.',
-    },
-  ],
-};
+import importBoundaries from './scripts/import-boundaries.mjs';
 
 export default tseslint.config(
   {
     ignores: [
       '**/node_modules/**',
       '**/dist/**',
+      '**/coverage/**',
       '**/.expo/**',
       '**/ios/**',
       '**/android/**',
@@ -42,116 +35,32 @@ export default tseslint.config(
     },
   },
   {
+    files: ['apps/**/*.{ts,tsx}', 'packages/contracts/**/*.{ts,tsx}'],
+    plugins: { justgo: { rules: { 'import-boundaries': importBoundaries } } },
+    rules: { 'justgo/import-boundaries': 'error' },
+  },
+  {
     files: ['apps/mobile/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Metro assets, Jest factories and the guarded preview use literal requires.
       '@typescript-eslint/no-require-imports': 'off',
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@justgo/api',
-              message: 'Mobile cannot import API implementation.',
-            },
-          ],
-          patterns: [
-            ...workspaceBoundaries.patterns,
-            {
-              group: ['@justgo/api/**', '**/apps/api/**', '**/api/src/**'],
-              message: 'Mobile cannot import API implementation.',
-            },
-          ],
-        },
-      ],
     },
   },
   {
-    files: ['apps/mobile/src/{components,lib,theme,platform}/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@justgo/api',
-              message: 'Mobile cannot import API implementation.',
-            },
-          ],
-          patterns: [
-            ...workspaceBoundaries.patterns,
-            {
-              group: ['@justgo/api/**', '**/apps/api/**', '**/api/src/**'],
-              message: 'Mobile cannot import API implementation.',
-            },
-            {
-              group: ['**/features/**'],
-              message: 'Shared mobile code cannot import feature code.',
-            },
-          ],
-        },
-      ],
+    files: ['apps/*/src/**/*.{ts,tsx}', 'packages/contracts/src/**/*.ts'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
-  },
-  {
-    files: ['apps/api/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@justgo/mobile',
-              message: 'The API cannot import mobile code.',
-            },
-          ],
-          patterns: [
-            ...workspaceBoundaries.patterns,
-            {
-              group: [
-                '@justgo/mobile/**',
-                '**/apps/mobile/**',
-                '**/mobile/src/**',
-              ],
-              message: 'The API cannot import mobile code.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['packages/contracts/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@justgo/api',
-              message: 'Shared contracts cannot import app implementation.',
-            },
-            {
-              name: '@justgo/mobile',
-              message: 'Shared contracts cannot import app implementation.',
-            },
-          ],
-          patterns: [
-            {
-              group: [
-                '@justgo/api/**',
-                '@justgo/mobile/**',
-                '**/apps/api/**',
-                '**/apps/mobile/**',
-                '**/api/src/**',
-                '**/mobile/src/**',
-              ],
-              message: 'Shared contracts cannot import app implementation.',
-            },
-          ],
-        },
-      ],
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
     },
   },
 );

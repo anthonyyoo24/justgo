@@ -46,7 +46,8 @@
     "test:native": "maestro test -e APP_ID=\"${APP_ID:?Set APP_ID to the installed development app identifier}\" e2e/launch.yaml",
     "export:web": "expo export --platform web",
     "export:ios": "expo export --platform ios",
-    "doctor": "expo-doctor"
+    "doctor": "expo-doctor",
+    "test:coverage": "jest --runInBand --coverage"
   },
   "private": true
 }

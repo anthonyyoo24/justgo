@@ -37,7 +37,8 @@ export function createVault(): CredentialVault {
         credentialSchema.parse(value),
       ),
     add: async (value) => {
-      await module().addCredential(value.id, value.secret);
+      const credential = credentialSchema.parse(value);
+      await module().addCredential(credential.id, credential.secret);
     },
   };
 }

@@ -126,7 +126,9 @@ export function ScreenPreview({
   const [tab, setTab] = useState<'home' | 'progress'>('home');
   const [progressMonth, setProgressMonth] = useState('2026-09');
   const [progressDay, setProgressDay] = useState<string | null>(null);
-  const [dayState, setDayState] = useState(progressDayState);
+  const [dayState, setDayState] = useState<typeof progressDayState | 'loaded'>(
+    progressDayState,
+  );
   const [progressError, setProgressError] = useState(progressState === 'error');
   const [progressLoading, setProgressLoading] = useState(
     progressState === 'loading',
@@ -256,7 +258,10 @@ export function ScreenPreview({
           loadMoreError={progressDay !== null && dayState === 'load-more-error'}
           loadingMore={progressDay !== null && dayState === 'loading-more'}
           fetchingDay={progressDay !== null && dayState === 'loading-more'}
-          hasMore={progressDay !== null && dayState !== 'default'}
+          hasMore={
+            progressDay !== null &&
+            (dayState === 'load-more-error' || dayState === 'loading-more')
+          }
           onMonth={(offset) => {
             setProgressDay(null);
             setProgressMonth((month) => moveMonth(month, offset));
@@ -267,7 +272,9 @@ export function ScreenPreview({
           }}
           onCloseDay={() => setProgressDay(null)}
           onRetryMonth={() => setProgressError(false)}
-          onRetryDay={() => setDayState('default')}
+          onRetryDay={() =>
+            setDayState(dayState === 'initial-error' ? 'default' : 'loaded')
+          }
         />
       )}
       <SafeAreaView edges={['bottom']} style={styles.nav}>
