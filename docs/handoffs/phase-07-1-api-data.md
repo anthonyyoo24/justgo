@@ -64,14 +64,20 @@ historical; verify exact versions again in the consuming subphase.
 Registered SQL 0000–0009 is unchanged. Missing Drizzle snapshots 0007–0009 are
 reconciled to the actual applied schema and checked against PostgreSQL by the
 rehearsal. A metadata unit test guards both the existing SQL hashes and current
-schema/snapshot equality. `0010_attempt_resources_expand` and the forward index alignment
-`0011_compatibility_history_index` are newly registered.
+schema/snapshot equality. `0010_attempt_resources_expand` and the forward index
+alignment `0011_compatibility_history_index`, followed by data-only
+`0012_normalize_reflection_whitespace`, are newly registered.
 
 Expansion selects canonical wording through live placement revisions (including
 BC-10 v2), failing on ambiguous current choices instead of choosing by lexical
 ID. It retains inactive historical references. Historical completed IDs, owners,
-start timestamps, activity dates, challenge/level references and submitted
-feeling/text/revisions are copied exactly. Legacy start zone is unknown, so
+start timestamps, activity dates, challenge/level references, feelings and
+revisions are preserved. Nonblank submitted text is copied byte-for-byte; 0012
+normalizes whitespace-only text to null using the same character set as
+JavaScript trim, keeping legacy input_method consistent. It rejects an invalid
+blank-only/no-feeling submission before updates instead of silently deleting it.
+Receipt payloads/digests and historical revisions/timestamps remain unchanged.
+Legacy start zone is unknown, so
 `start_time_zone` stays null and the old completion zone is a separate display
 fallback. Drafts/skips stay unsubmitted. Active/given-up rows stay legacy-only.
 
@@ -95,8 +101,16 @@ canonical columns transactionally during the compatibility interval.
 3. Rehearse `scripts/rehearsals/phase07-contraction.sql` only on that disposable
    copy; verify completed history and receipt isolation survive.
 4. Restore the pre-expansion snapshot with PostgreSQL 17 `psql`, recheck the old
-   schema/data, reapply expansion/index alignment and compare again. Remove only the unique
-   rehearsal schema and its temporary snapshot.
+   schema/data, reapply expansion/index alignment/blank normalization and compare
+   again. Remove only the unique rehearsal schema and its temporary snapshot.
+
+Exact saved comparison queries are in `legacyRows` and `canonicalRows` in
+[`migrations.integration.test.ts`](../../apps/api/tests/migrations.integration.test.ts);
+they compare owner/ID/reference/date/start-zone/content/revision projections.
+The test also checks counts, schema metadata, ambiguity rollback and RLS, plus
+blank normalization and atomic rejection of invalid blank-only/no-feeling
+submissions in both representations. Nonblank whitespace is preserved exactly;
+accepted receipts and revisions/timestamps do not change.
 
 The proposed contraction is outside the Drizzle journal and guarded by a test
 DB/explicit rehearsal setting. It is not a deployment command. 07.5 must stop old
@@ -121,7 +135,7 @@ offline/lost-acknowledgement and reconciliation journeys are added in 07.2–07.
 | Check                                                                                  | Result                                                                                                                                                 |
 | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `npm run check`                                                                        | Passed contracts build, API/mobile/contracts/journey typechecks, lint, formatting and 351 tests: 56 safeguards, 45 API unit, 229 mobile, 21 contracts. |
-| `npm run test:db`                                                                      | Passed 58 product database cases in six suites plus one complete migration/restoration rehearsal (59 total), through 0011.                             |
+| `npm run test:db`                                                                      | Passed 58 product database cases in six suites plus one complete migration/restoration rehearsal (59 total), through 0012.                             |
 | `npm run test:coverage`                                                                | Passed unchanged global and critical-file floors; no exclusions or thresholds lowered.                                                                 |
 | `npm run test:journey`                                                                 | Passed the saved actual app/API identity-renewal/catalog/Progress smoke; services started and cleaned up by the harness.                               |
 | `npm run export:web -w @justgo/mobile -- --output-dir /tmp/justgo-phase071-export-web` | Passed.                                                                                                                                                |
@@ -153,10 +167,18 @@ claim a full saved offline/completion journey. Expo's optional local `simctl`
 discovery reports unavailable while the web journey succeeds; native evidence
 remains open. No external browser window or simulator was used.
 
-Hosted CI results and PR URL will be recorded before checkpoint acceptance.
+[PR #12](https://github.com/anthonyyoo24/justgo/pull/12) is open. Hosted CI
+acceptance will be recorded after the final revision passes. CodeRabbit reported
+a skipped review (its status is not an approval); independent agent reviews
+covered API/ownership/replay, migration preservation, fixtures/CI and documents.
 
 ## Issues and remaining work
 
+- Final reconciliation found legacy database constraints permit whitespace-only
+  submitted text even though the old API normalizes it. Forward migration 0012
+  closes that historical-data gap; its rehearsal covers spaces, control/Unicode
+  whitespace, exact nonblank content and atomic rejection of invalid empty
+  submissions.
 - Review caught a current-streak bug when an ahead-zone rep has a frozen date
   later than the viewer’s today. Both summaries now truncate only the current
   streak calculation to today; counts, recorded dates and best streak remain

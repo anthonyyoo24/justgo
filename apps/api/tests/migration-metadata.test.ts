@@ -9,7 +9,7 @@ describe('reviewed migration history', () => {
   it('keeps the current declarative schema equal to its latest Drizzle snapshot', async () => {
     const generated = generateDrizzleJson(schema, undefined, ['justgo']);
     const saved = JSON.parse(
-      await readFile(new URL('meta/0011_snapshot.json', root), 'utf8'),
+      await readFile(new URL('meta/0012_snapshot.json', root), 'utf8'),
     );
     expect({ ...generated, id: saved.id, prevId: saved.prevId }).toEqual(saved);
   });
@@ -30,7 +30,7 @@ describe('reviewed migration history', () => {
       await readFile(new URL('meta/_journal.json', root), 'utf8'),
     ) as { entries: { tag: string }[] };
     expect(journal.entries.at(-1)?.tag).toBe(
-      '0011_compatibility_history_index',
+      '0012_normalize_reflection_whitespace',
     );
     expect(journal.entries.some((entry) => /contract/i.test(entry.tag))).toBe(
       false,

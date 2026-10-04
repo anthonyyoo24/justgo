@@ -6,6 +6,27 @@ DO $$ BEGIN
   THEN RAISE EXCEPTION 'Contraction rehearsal requires its disposable fixture'; END IF;
 END $$;
 
+-- Repeat the 0012 normalization/preflight for any late legacy records before
+-- comparing representations. Preserve every nonblank byte and all receipts.
+DO $$
+DECLARE
+  trim_characters CONSTANT text := U&'\0009\000A\000B\000C\000D\0020\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000\FEFF';
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM justgo.reflections
+    WHERE status = 'submitted' AND feeling IS NULL
+      AND btrim(reflection_text, trim_characters) = ''
+  ) OR EXISTS (
+    SELECT 1 FROM justgo.attempts
+    WHERE reflection_revision > 0 AND reflection_feeling IS NULL
+      AND btrim(reflection_text, trim_characters) = ''
+  ) THEN RAISE EXCEPTION 'Blank-only submitted reflection requires review'; END IF;
+  UPDATE justgo.reflections SET reflection_text = NULL, input_method = NULL
+  WHERE status = 'submitted' AND btrim(reflection_text, trim_characters) = '';
+  UPDATE justgo.attempts SET reflection_text = NULL
+  WHERE btrim(reflection_text, trim_characters) = '';
+END $$;
+
 -- Reconcile legacy writes made after expansion, after stopping old writers.
 UPDATE justgo.attempts SET activity_date = coalesce(activity_date, completion_date),
   legacy_display_time_zone = coalesce(legacy_display_time_zone, time_zone)

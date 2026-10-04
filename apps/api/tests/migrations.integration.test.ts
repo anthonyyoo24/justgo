@@ -48,6 +48,12 @@ const ids = [sharedAttempt, ...Array.from({ length: 6 }, () => randomUUID())];
 const canonicalId = randomUUID();
 const retiredAttemptId = randomUUID();
 const receiptId = randomUUID();
+const whitespaceTexts = [
+  '',
+  ' \t\r\n',
+  '\u000b\u000c\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff',
+];
+const whitespaceIds = whitespaceTexts.map(() => randomUUID());
 const journal = JSON.parse(
   await readFile(new URL('meta/_journal.json', base), 'utf8'),
 ) as { entries: { idx: number; tag: string }[] };
@@ -297,7 +303,7 @@ async function seed() {
       id: ids[2],
       status: 'submitted',
       feeling: 'about_the_same',
-      text: 'Synthetic combined fixture',
+      text: ' \t\u00a0Synthetic combined fixture\n\ufeff ',
       revision: 9,
     },
     {
@@ -345,15 +351,42 @@ async function seed() {
   await admin.query(
     `UPDATE ${schema}.venue_cards SET revision_id='st-01-v1' WHERE id='MIGRATION-REPOINTED'`,
   );
+  for (const [position, text] of whitespaceTexts.entries()) {
+    const id = whitespaceIds[position]!;
+    await admin.query(
+      `INSERT INTO ${schema}.attempts (user_id,id,card_id,venue_id,challenge_id,revision_id,level_id,queue_version,status,started_at,deadline_at,ended_at,completion_date,time_zone)
+      SELECT user_id,$1,card_id,venue_id,challenge_id,revision_id,level_id,queue_version,status,started_at,deadline_at,ended_at,completion_date,time_zone
+      FROM ${schema}.attempts WHERE user_id=$2 AND id=$3`,
+      [id, owner, sharedAttempt],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.reflections (user_id,attempt_id,status,feeling,reflection_text,input_method,revision)
+      VALUES ($1,$2,'submitted','a_little_better',$3,'typed',$4)`,
+      [owner, id, text, 11 + position],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.reflection_actions (user_id,id,attempt_id,action,input_digest,response)
+      VALUES ($1,$2,$3,'final',repeat('d',64),$4::jsonb)`,
+      [
+        owner,
+        randomUUID(),
+        id,
+        JSON.stringify({ text, revision: 11 + position, inputMethod: 'typed' }),
+      ],
+    );
+  }
 }
 async function legacyRows() {
   return (
-    await admin.query(`SELECT a.user_id,a.id,a.challenge_id,a.level_id,a.started_at,a.completion_date AS activity_date,a.time_zone AS display_zone,
+    await admin.query(
+      `SELECT a.user_id,a.id,a.challenge_id,a.level_id,a.started_at,a.completion_date AS activity_date,a.time_zone AS display_zone,
     CASE WHEN r.status='submitted' THEN r.feeling END AS feeling,
     CASE WHEN r.status='submitted' THEN r.reflection_text END AS text,
     CASE WHEN r.status='submitted' THEN r.revision ELSE 0 END AS revision
     FROM ${schema}.attempts a LEFT JOIN ${schema}.reflections r ON (r.user_id,r.attempt_id)=(a.user_id,a.id)
-    WHERE a.status='completed' ORDER BY a.user_id,a.id`)
+    WHERE a.status='completed' AND a.id<>$1 ORDER BY a.user_id,a.id`,
+      [canonicalId],
+    )
   ).rows;
 }
 async function canonicalRows() {
@@ -365,6 +398,32 @@ async function canonicalRows() {
       [canonicalId],
     )
   ).rows;
+}
+async function normalizationRows() {
+  return {
+    legacy: (
+      await admin.query(
+        `SELECT * FROM ${schema}.reflections ORDER BY user_id,attempt_id`,
+      )
+    ).rows,
+    canonical: (
+      await admin.query(`SELECT * FROM ${schema}.attempts ORDER BY user_id,id`)
+    ).rows,
+  };
+}
+async function receipts() {
+  return {
+    legacy: (
+      await admin.query(
+        `SELECT * FROM ${schema}.reflection_actions ORDER BY user_id,id`,
+      )
+    ).rows,
+    canonical: (
+      await admin.query(
+        `SELECT * FROM ${schema}.attempt_patch_receipts ORDER BY user_id,id`,
+      )
+    ).rows,
+  };
 }
 function pgTool(name: string) {
   const configured = process.env.JUSTGO_PG_BIN;
@@ -402,6 +461,13 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
     }
     await seed();
     const before = await legacyRows();
+    const normalizedBefore = before.map((row) => ({
+      ...row,
+      text:
+        typeof row.text === 'string' && row.text.trim() === ''
+          ? null
+          : row.text,
+    }));
     snapshotFolder = await mkdtemp(join(tmpdir(), 'justgo-migration-fixture-'));
     const snapshot = join(snapshotFolder, 'pre-phase07.sql');
     await execute(
@@ -470,7 +536,7 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
       ).rows,
     ).toEqual([
       { status: 'active', count: 1 },
-      { status: 'completed', count: 7 },
+      { status: 'completed', count: 10 },
       { status: 'given_up', count: 1 },
     ]);
     expect(
@@ -550,6 +616,69 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
         ]),
       ),
     ).rejects.toMatchObject({ code: '42501' });
+    await admin.query(
+      `UPDATE ${schema}.attempts SET reflection_feeling='about_the_same',reflection_text=$1,reflection_revision=1 WHERE id=$2`,
+      ['\t\u00a0\ufeff', canonicalId],
+    );
+    const acceptedReceipts = await receipts();
+    // These rows satisfy the old constraints, but normalizing either would
+    // erase its only submitted content. Fail before updating any valid row.
+    await admin.query(
+      `UPDATE ${schema}.reflections SET feeling=NULL WHERE user_id=$1 AND attempt_id=$2`,
+      [owner, whitespaceIds[0]],
+    );
+    const invalidLegacy = await normalizationRows();
+    await expect(migration(12)).rejects.toThrow(
+      'Blank-only submitted reflection requires review',
+    );
+    expect(await normalizationRows()).toEqual(invalidLegacy);
+    await admin.query(
+      `UPDATE ${schema}.reflections SET feeling='a_little_better' WHERE user_id=$1 AND attempt_id=$2`,
+      [owner, whitespaceIds[0]],
+    );
+    await admin.query(
+      `UPDATE ${schema}.attempts SET reflection_feeling=NULL WHERE id=$1`,
+      [canonicalId],
+    );
+    const invalidCanonical = await normalizationRows();
+    await expect(migration(12)).rejects.toThrow(
+      'Blank-only submitted reflection requires review',
+    );
+    expect(await normalizationRows()).toEqual(invalidCanonical);
+    await admin.query(
+      `UPDATE ${schema}.attempts SET reflection_feeling='about_the_same' WHERE id=$1`,
+      [canonicalId],
+    );
+    const beforeNormalization = await normalizationRows();
+    await migration(12);
+    await compareMetadata(12);
+    expect(await canonicalRows()).toEqual(normalizedBefore);
+    expect(await legacyRows()).toEqual(normalizedBefore);
+    const afterNormalization = await normalizationRows();
+    expect(afterNormalization.legacy).toEqual(
+      beforeNormalization.legacy.map((row) =>
+        row.status === 'submitted' &&
+        typeof row.reflection_text === 'string' &&
+        row.reflection_text.trim() === ''
+          ? { ...row, reflection_text: null, input_method: null }
+          : row,
+      ),
+    );
+    expect(afterNormalization.canonical).toEqual(
+      beforeNormalization.canonical.map((row) =>
+        typeof row.reflection_text === 'string' &&
+        row.reflection_text.trim() === ''
+          ? { ...row, reflection_text: null }
+          : row,
+      ),
+    );
+    expect(await receipts()).toEqual(acceptedReceipts);
+    // A late legacy row must be normalized again by the proposed contraction,
+    // without changing its positive revision or conflicting with inline null.
+    await admin.query(
+      `UPDATE ${schema}.reflections SET reflection_text=$1,input_method='typed' WHERE user_id=$2 AND attempt_id=$3`,
+      ['\u00a0\t', owner, whitespaceIds[0]],
+    );
     const contraction = await readFile(
       new URL('../scripts/rehearsals/phase07-contraction.sql', import.meta.url),
       'utf8',
@@ -558,14 +687,14 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
       'Contraction rehearsal requires its disposable fixture',
     );
     await apply(`SET LOCAL justgo.phase07_rehearsal='on';\n${contraction}`);
-    expect(await canonicalRows()).toEqual(before);
+    expect(await canonicalRows()).toEqual(normalizedBefore);
     expect(
       (
         await admin.query(
           `SELECT count(*)::int AS count FROM ${schema}.attempts`,
         )
       ).rows[0].count,
-    ).toBe(8);
+    ).toBe(11);
     expect(
       (
         await owned(owner, (client) =>
@@ -595,5 +724,9 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
     await migration(11);
     await compareMetadata(11);
     expect(await canonicalRows()).toEqual(before);
+    await migration(12);
+    await compareMetadata(12);
+    expect(await canonicalRows()).toEqual(normalizedBefore);
+    expect(await legacyRows()).toEqual(normalizedBefore);
   }, 60_000);
 });

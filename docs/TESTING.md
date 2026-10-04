@@ -158,9 +158,11 @@ the saved smoke step alongside the existing checks.
 It builds migrations 0000–0009 in a uniquely named disposable schema within
 `justgo_test`, compares the restored Drizzle metadata with PostgreSQL, seeds
 synthetic history and creates a temporary SQL snapshot with PostgreSQL 17
-`pg_dump`. It verifies expansion 0010 and compatibility index 0011, rehearses the unregistered contraction,
-restores the snapshot using `psql`, reapplies expansion and compares preserved
-history again. Its schema and snapshot are removed after the test. Production
+`pg_dump`. It verifies expansion 0010, compatibility index 0011 and historical
+blank-text normalization 0012, rehearses the unregistered contraction, restores
+the snapshot using `psql`, reapplies the migrations and compares preserved
+history again. Normalization preserves nonblank text, receipts, revisions and
+timestamps, and rejects invalid blank-only/no-feeling submissions atomically. Its schema and snapshot are removed after the test. Production
 `justgo`/Drizzle migration state is not reset. The contraction SQL under
 `apps/api/scripts/rehearsals` is not a deployable migration; 07.5 owns its final
 review and acceptance. Set `JUSTGO_PG_BIN` when PostgreSQL 17 tools are not on
