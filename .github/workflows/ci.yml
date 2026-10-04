@@ -33,10 +33,20 @@ jobs:
           psql -h localhost -U postgres -d justgo_test -v ON_ERROR_STOP=1 -f apps/api/scripts/provision.sql
           psql -h localhost -U postgres -d justgo_test -v ON_ERROR_STOP=1 -c "alter role justgo_runtime password 'runtime-ci-only'; alter role justgo_migrator password 'migration-ci-only';"
       - run: npm run db:migrate && npm run test:db
-        env:
+        env: &database-test-env
           DATABASE_URL: postgresql://justgo_runtime:runtime-ci-only@localhost:5432/justgo_test
           MIGRATION_DATABASE_URL: postgresql://justgo_migrator:migration-ci-only@localhost:5432/justgo_test
           DATABASE_SSL: disable
+      - name: Collect and enforce all-source coverage (includes PostgreSQL services)
+        run: npm run test:coverage
+        env: *database-test-env
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: error
       - run: npm run export:web -w @justgo/mobile
       - run: npm run export:ios -w @justgo/mobile
       - run: npx expo-doctor

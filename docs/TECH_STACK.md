@@ -601,3 +601,14 @@ Use EAS Build for signed iOS binaries and EAS Submit to upload to App Store Conn
 Keep the same repository and shared mobile source for a later Android app. Use platform adapters and `.ios.ts` / `.android.ts` files when behavior actually differs; do not create speculative Android modules or make Android verification an iOS launch gate. Android will require its own build, store configuration and device testing when scheduled.
 
 The foundation remains **React Native + Expo + TypeScript + Zustand + Fastify on Vercel + PostgreSQL**, with no-signup credential recovery, **RevenueCat + QStash**, and scheduled billing recovery. Levels/filters, lock-screen timers, custom dictation, Android, optional Stripe and the future text coach extend this foundation later; they are not required for the first submission.
+
+## Current repository quality safeguards (Phase 06A)
+
+Shared coding standards live in [AGENTS.md](../AGENTS.md); exact test commands,
+coverage scope/floors and UI-verification rules live in [TESTING.md](TESTING.md).
+The import-boundary lint rule now enforces static imports/re-exports, dynamic
+imports and literal requires, with permitted fixture/asset/preview cases tested.
+Targeted type-aware lint guards promises in production TypeScript. All-source
+mobile/API/contracts coverage is collected in CI, including database service
+execution; the Phase 06A handoff owns measured evidence. This section updates
+quality tooling only; the Phase 07/07A product redesign remains owned by the plan.

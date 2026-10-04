@@ -33,3 +33,15 @@ TanStack Query 5.103.1 has query and mutation retries disabled, with in-memory c
 Routes stay thin. Shared visual components use `theme/tokens.ts`; tab artwork uses the extracted Paper SVG paths. Navigation has no animation, so reduced-motion users receive the same behavior. Screen content scrolls with safe areas and scalable text. Do not use reference screenshots as screen backgrounds or treat their sample data as approved product content.
 
 References checked: [Expo 57](https://docs.expo.dev/versions/v57.0.0/), [protected routes](https://docs.expo.dev/router/advanced/protected/), [query cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation), [query retries](https://tanstack.com/query/latest/docs/framework/react/guides/query-retries), [Zod JSON Schema](https://zod.dev/json-schema). Use only SDK 57 APIs; the newer `redirectTo` and SDK 58 custom-navigator APIs are not used.
+
+## Maintainer entrypoints after Phase 06A
+
+Follow [root coding instructions](../AGENTS.md) and [testing guidance](TESTING.md).
+`ProgressScreen` owns account-scoped queries; `ProgressView` composes
+`ProgressCalendar` (summary/calendar), `DaySheet` (modal/paging/retry) and
+`ProgressEntryRow` (metadata/reflection expansion). Each owns its related styles.
+`ChallengeScreen` owns deck orchestration; `ActiveChallenge` owns the countdown and
+outcome controls; `SuccessScreen` owns the confirmed-result route. The shared
+feeling choices come from the versioned contracts. No route or persistence policy
+changed in this refactor. Runtime/provider and vault adapter tests cover their real
+JavaScript wiring; native Keychain behavior still needs its separate device gates.

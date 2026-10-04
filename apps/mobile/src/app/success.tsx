@@ -1,1 +1,1 @@
-export { SuccessScreen as default } from '../features/challenges/ChallengeScreen';
+export { SuccessScreen as default } from '../features/challenges/SuccessScreen';

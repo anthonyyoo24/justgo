@@ -1,5 +1,12 @@
 module.exports = {
   preset: 'jest-expo',
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.test.{ts,tsx}',
+    '!src/**/*.d.ts',
+  ],
+  coverageDirectory: '../../coverage/mobile',
+  coverageReporters: ['text-summary', 'json-summary', 'lcov', 'html'],
   testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   moduleNameMapper: { '^(\\.{1,2}/.*)\\.js$': '$1' },
   transformIgnorePatterns: [

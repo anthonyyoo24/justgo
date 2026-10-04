@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { FeelingCode } from '@justgo/contracts';
+import { feelingChoices, type FeelingCode } from '@justgo/contracts';
 import {
   Animated,
   KeyboardAvoidingView,
@@ -21,16 +21,8 @@ import {
 } from '../challenges/challenge-design';
 import { FeelingFace } from './FeelingFace';
 
-export const feelingOptions: readonly {
-  code: FeelingCode;
-  label: string;
-}[] = [
-  { code: 'a_lot_worse', label: 'A lot worse' },
-  { code: 'a_little_worse', label: 'A little bit worse' },
-  { code: 'about_the_same', label: 'Pretty much the same' },
-  { code: 'a_little_better', label: 'A little bit better' },
-  { code: 'a_lot_better', label: 'A lot better' },
-];
+// Keep input choices and history labels on the same versioned feeling scale.
+export const feelingOptions = feelingChoices;
 
 function ReflectionSpinner() {
   const [rotation] = useState(() => new Animated.Value(0));

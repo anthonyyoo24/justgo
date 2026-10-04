@@ -70,6 +70,8 @@ export function ReflectionScreen() {
       </Screen>
     );
   }
+  // Controller actions publish their own busy/error/retry states; UI callbacks
+  // intentionally start them without returning a promise to the view.
   return (
     <ReflectionView
       feeling={state.feeling}
@@ -77,14 +79,16 @@ export function ReflectionScreen() {
       loading={state.phase === 'loading'}
       onFeelingChange={controller.setFeeling.bind(controller)}
       onTextChange={controller.setText.bind(controller)}
-      onSubmit={controller.submit}
-      onClose={controller.close}
+      onSubmit={() => void controller.submit()}
+      onClose={() => void controller.close()}
       busy={state.saving}
       locked={state.pendingAction !== null || state.conflict}
       pendingAction={state.pendingAction}
       error={state.error}
       draftError={state.draftError}
-      onRetryDraft={state.draftError ? controller.retryDraft : undefined}
+      onRetryDraft={
+        state.draftError ? () => void controller.retryDraft() : undefined
+      }
       conflict={state.conflict}
       onLoadLatest={() => void controller.useLatest()}
       onKeepMine={
@@ -92,7 +96,7 @@ export function ReflectionScreen() {
       }
       dismissOpen={state.dismissOpen}
       onKeepEditing={controller.keepEditing}
-      onDiscard={controller.discard}
+      onDiscard={() => void controller.discard()}
     />
   );
 }

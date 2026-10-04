@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { venues, type Attempt, type Venue } from '@justgo/contracts';
 import { ChallengeLayout } from './ChallengeLayout';
 import { ChallengeDeck } from './ChallengeDeck';
-import { ActiveChallenge } from './ChallengeScreen';
+import { ActiveChallenge } from './ActiveChallenge';
 import { VenueTabs } from './VenueTabs';
 import { previewCardsForVenue } from './preview-copy';
 export function DeckPreview({

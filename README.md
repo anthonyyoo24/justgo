@@ -1,6 +1,8 @@
 # JustGO
 
-An iOS-first social-confidence app. Phase 01 provides the Expo development app, Fastify API, shared contracts, database foundation and test infrastructure. Phase 02 adds real account bootstrap, independent sessions, recovery keys, approved device transfers and a Swift Keychain module. [Identity setup](docs/IDENTITY.md) and the [phase 02 handoff](docs/handoffs/phase-02-identity.md) record implementation, verification and deferred physical-device acceptance. Phase 03 adds the [app shell and shared API](docs/APP_SHELL.md), account-scoped queries, protected navigation and a development-only screen preview. Phase 04 adds [venue decks and reliable attempts](docs/handoffs/phase-04-challenge-loop.md), a server-deadline timer and confirmed Success. Welcome/questionnaire onboarding is deferred; live billing remains phase 07. `npm ci` builds the shared contracts for Node; re-run `npm run build:contracts` after editing contracts during API development.
+An iOS-first social-confidence app. Phase 01 provides the Expo development app, Fastify API, shared contracts, database foundation and test infrastructure. Phase 02 adds real account bootstrap, independent sessions, recovery keys, approved device transfers and a Swift Keychain module. [Identity setup](docs/IDENTITY.md) and the [phase 02 handoff](docs/handoffs/phase-02-identity.md) record implementation, verification and deferred physical-device acceptance. Phase 03 adds the [app shell and shared API](docs/APP_SHELL.md), account-scoped queries, protected navigation and a development-only screen preview. Phase 04 adds [venue decks and reliable attempts](docs/handoffs/phase-04-challenge-loop.md), a server-deadline timer and confirmed Success. Welcome/questionnaire onboarding is deferred; live billing remains phase 07A. `npm ci` builds the shared contracts for Node; re-run `npm run build:contracts` after editing contracts during API development.
+
+Read [repository coding and verification instructions](AGENTS.md) before changing code, plus directory-specific `AGENTS.md` files. Phase scope and handoffs live in the [implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
 ## Start locally
 
@@ -17,7 +19,7 @@ npm run dev:web
 
 `db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere set `JUSTGO_PG_BIN` to their directory. It creates a dedicated, loopback-only cluster at `.local/postgres` on port **54329** and the `justgo_test` database, generates local role credentials and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Local host authentication is trusted on this disposable cluster; never expose its port or use it for personal data.
 
-The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 07, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
+The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 07A, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
 
 To exercise phase 04 with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Create a disposable account using the normal recovery screen and choose Back to app. The presentation-only screen preview still makes no challenge writes. Apply migrations 0004–0006 first. See the phase 04 handoff for fixtures and remaining device gates.
 
@@ -28,12 +30,16 @@ For environment-managed development, copy the workspace `.env.example` files to 
 ```sh
 npm run check          # strict TypeScript, lint, formatting and unit/component tests
 npm run test:db        # real PostgreSQL isolation/rollback/pool tests; db:local + migrate first
+npm run test:coverage  # all-source reports + regression floors; uses the test DB
 npm run export:web -w @justgo/mobile
 npm run export:ios -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
 CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts and create/drop only their uniquely named fixture table. They run as `justgo_runtime`, not an administrator.
+
+Coverage scope, thresholds, focused commands and async/UI test conventions are in
+[testing guidance](docs/TESTING.md).
 
 ## iOS development
 

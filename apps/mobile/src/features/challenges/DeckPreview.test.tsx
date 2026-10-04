@@ -14,7 +14,7 @@ jest.mock('./ChallengeDeck', () => ({
     );
   },
 }));
-jest.mock('./ChallengeScreen', () => ({
+jest.mock('./ActiveChallenge', () => ({
   ActiveChallenge: ({
     finish,
   }: {
