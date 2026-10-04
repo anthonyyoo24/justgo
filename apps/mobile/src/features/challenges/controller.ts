@@ -1,13 +1,13 @@
 import { randomUUID } from 'expo-crypto';
 import {
-  legacyAttemptResultSchema as attemptResultSchema,
-  legacyChallengeStateSchema as challengeStateSchema,
+  attemptResultSchema,
+  challengeStateSchema,
   okSchema,
-  legacyQueueSchema as queueSchema,
+  queueSchema,
   venues,
-  type LegacyAttempt as Attempt,
-  type LegacyChallengeQueue as ChallengeQueue,
-  type LegacyChallengeState as ChallengeState,
+  type Attempt,
+  type ChallengeQueue,
+  type ChallengeState,
   type Venue,
 } from '@justgo/contracts';
 import { AccountClient, accountKey } from '../../lib/account-client';

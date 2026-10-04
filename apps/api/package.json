@@ -8,12 +8,11 @@
     "start": "tsx --env-file-if-exists=.env src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/database.integration.test.ts tests/identity.integration.test.ts tests/challenges.integration.test.ts tests/reflections.integration.test.ts tests/progress.integration.test.ts tests/attempts.integration.test.ts && npm run test:migrations",
+    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/database.integration.test.ts tests/identity.integration.test.ts tests/challenges.integration.test.ts tests/reflections.integration.test.ts tests/progress.integration.test.ts",
     "db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "dev:challenges": "tsx --env-file-if-exists=.env scripts/challenge-dev.ts",
-    "test:coverage": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run --coverage",
-    "test:migrations": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/migrations.integration.test.ts --fileParallelism=false"
+    "test:coverage": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run --coverage"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",

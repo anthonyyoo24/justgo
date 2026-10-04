@@ -72,18 +72,10 @@ const post = (
 ) =>
   app.inject({
     method: 'POST',
-    url: `/v1${path}`,
+    url: `/v1/identity${path}`,
     payload: payload as object,
     remoteAddress: ip,
     ...(token ? { headers: { authorization: `Bearer ${token}` } } : {}),
-  });
-const remove = (path: string, token: string, payload?: object) =>
-  app.inject({
-    method: 'DELETE',
-    url: `/v1${path}`,
-    remoteAddress: `127.1.0.${++address}`,
-    headers: { authorization: `Bearer ${token}` },
-    ...(payload ? { payload } : {}),
   });
 afterAll(async () => {
   try {
@@ -109,210 +101,6 @@ afterAll(async () => {
 });
 
 describe('identity protocol through the restricted runtime', () => {
-  it('creates, recovers and renews through the discriminated session resource with stable replay', async () => {
-    const input = request();
-    const created = await post('/sessions', { kind: 'bootstrap', ...input });
-    expect(created.statusCode).toBe(200);
-    const original = created.json<{
-      userId: string;
-      deviceId: string;
-      sessionId: string;
-    }>();
-    users.add(original.userId);
-    expect(
-      (await post('/sessions', { kind: 'bootstrap', ...input })).json(),
-    ).toEqual(original);
-    const current = await app.inject({
-      url: '/v1/sessions/current',
-      headers: { authorization: `Bearer ${input.sessionToken}` },
-    });
-    expect(current.json()).toEqual(original);
-    expect(
-      (await post('/sessions', { kind: 'recovery', ...request() })).json().code,
-    ).toBe('CREDENTIAL_REJECTED');
-    const recovery = { ...proposal(), credential: input.credential };
-    const recovered = await post('/sessions', {
-      kind: 'recovery',
-      ...recovery,
-    });
-    expect(recovered.statusCode).toBe(200);
-    expect(recovered.json().userId).toBe(original.userId);
-    const next = {
-      kind: 'renewal',
-      sessionId: randomUUID(),
-      sessionToken: secret(),
-    };
-    expect((await post('/sessions', next)).statusCode).toBe(401);
-    const renewed = await post('/sessions', next, recovery.sessionToken);
-    expect(renewed.statusCode).toBe(200);
-    expect(renewed.json()).toMatchObject({
-      userId: original.userId,
-      deviceId: recovery.deviceId,
-      sessionId: next.sessionId,
-    });
-    expect(
-      (await post('/sessions', next, recovery.sessionToken)).json(),
-    ).toEqual(renewed.json());
-    expect(
-      (
-        await app.inject({
-          url: '/v1/sessions/current',
-          headers: { authorization: `Bearer ${recovery.sessionToken}` },
-        })
-      ).json().code,
-    ).toBe('SESSION_REVOKED');
-  });
-  it('rejects malformed or mixed session proofs and all retired identity action routes', async () => {
-    for (const body of [
-      request(),
-      { kind: 'unknown', ...request() },
-      { kind: 'recovery', ...proposal() },
-      { kind: 'renewal', ...request() },
-      { kind: 'transfer', code: 'ABCDEF0123456789' },
-      { kind: 'transfer', code: 'ABCDEF0123456789', claimSecret: 'weak' },
-    ]) {
-      const result = await post('/sessions', body);
-      expect(result.statusCode).toBe(400);
-      expect(result.json().code).toBe('INVALID_REQUEST');
-    }
-    for (const path of [
-      'bootstrap',
-      'recover',
-      'renew',
-      'transfers/start',
-      'transfers/inspect',
-      'transfers/approve',
-      'transfers/redeem',
-      'transfers/cancel',
-      `devices/${randomUUID()}/revoke`,
-      `credentials/${randomUUID()}/revoke`,
-    ]) {
-      expect(
-        (
-          await app.inject({
-            method: 'POST',
-            url: `/v1/identity/${path}`,
-            payload: request(),
-          })
-        ).statusCode,
-      ).toBe(404);
-    }
-    for (const path of ['me', 'devices', 'credentials']) {
-      expect((await app.inject(`/v1/identity/${path}`)).statusCode).toBe(404);
-    }
-  });
-  it('keeps transfer claimant proof in the session body and validates cancellation resource ownership', async () => {
-    const owner = await account(),
-      other = await account();
-    const input = transfer();
-    const created = await post('/transfers', input);
-    expect(created.statusCode).toBe(200);
-    transfers.add(input.id);
-    const proof = {
-      kind: 'transfer',
-      code: input.code,
-      claimSecret: input.claimSecret,
-    };
-    expect((await post('/sessions', proof)).json().code).toBe(
-      'TRANSFER_PENDING',
-    );
-    expect(
-      (
-        await post(
-          '/transfer-approvals',
-          { code: input.code, verification: created.json().verification },
-          owner.input.sessionToken,
-        )
-      ).statusCode,
-    ).toBe(200);
-    expect(
-      (
-        await remove(`/transfers/${randomUUID()}`, owner.input.sessionToken, {
-          code: input.code,
-        })
-      ).statusCode,
-    ).toBe(404);
-    expect(
-      (
-        await remove(`/transfers/${input.id}`, other.input.sessionToken, {
-          code: input.code,
-        })
-      ).statusCode,
-    ).toBe(404);
-    expect(
-      (await post('/sessions', { ...proof, claimSecret: secret() })).json()
-        .code,
-    ).toBe('CREDENTIAL_REJECTED');
-    const redeemed = await post('/sessions', proof);
-    expect(redeemed.statusCode).toBe(200);
-    expect(redeemed.json().userId).toBe(owner.session.userId);
-    expect((await post('/sessions', proof)).json()).toEqual(redeemed.json());
-    expect(
-      (
-        await remove(`/transfers/${input.id}`, owner.input.sessionToken, {
-          code: input.code,
-        })
-      ).statusCode,
-    ).toBe(404);
-    const cancellable = await start();
-    await service.approveTransfer(
-      owner.input.sessionToken,
-      cancellable.input.code,
-      cancellable.result.verification,
-    );
-    expect(
-      (
-        await remove(
-          `/transfers/${cancellable.input.id}`,
-          owner.input.sessionToken,
-          { code: cancellable.input.code },
-        )
-      ).statusCode,
-    ).toBe(200);
-    expect(
-      (
-        await post('/sessions', {
-          kind: 'transfer',
-          code: cancellable.input.code,
-          claimSecret: cancellable.input.claimSecret,
-        })
-      ).json().code,
-    ).toBe('CREDENTIAL_REJECTED');
-  });
-  it('soft revokes owned device and credential resources with bodyless DELETE', async () => {
-    const owner = await account();
-    const key = {
-      id: randomUUID(),
-      kind: 'key' as const,
-      credential: secret(),
-    };
-    expect(
-      (await post('/credentials', key, owner.input.sessionToken)).statusCode,
-    ).toBe(200);
-    expect(
-      (await remove(`/credentials/${key.id}`, owner.input.sessionToken))
-        .statusCode,
-    ).toBe(200);
-    expect(
-      (
-        await service.listCredentials(owner.input.sessionToken)
-      ).credentials.find((item) => item.id === key.id)?.revokedAt,
-    ).not.toBeNull();
-    const recovered = { ...proposal(), credential: owner.input.credential };
-    await service.bootstrap(recovered, false);
-    expect(
-      (await remove(`/devices/${recovered.deviceId}`, owner.input.sessionToken))
-        .statusCode,
-    ).toBe(200);
-    await expect(service.me(recovered.sessionToken)).rejects.toMatchObject({
-      code: 'SESSION_REVOKED',
-    });
-    expect(
-      (await service.listDevices(owner.input.sessionToken)).devices.find(
-        (item) => item.id === recovered.deviceId,
-      )?.revokedAt,
-    ).not.toBeNull();
-  });
   it('erases legacy approval values and cancels old transfers when the forward migration runs', async () => {
     const client = await admin.connect();
     const table = `migration_fixture_${randomUUID().replaceAll('-', '')}`;
@@ -355,7 +143,7 @@ describe('identity protocol through the restricted runtime', () => {
       attacker = await account(),
       t = await start();
     const inspection = await post(
-      '/transfer-inspections',
+      '/transfers/inspect',
       { code: t.input.code },
       attacker.input.sessionToken,
     );
@@ -366,14 +154,14 @@ describe('identity protocol through the restricted runtime', () => {
       status: 'waiting',
     });
     const missingProof = await post(
-      '/transfer-approvals',
+      '/transfers/approve',
       { code: t.input.code },
       attacker.input.sessionToken,
     );
     expect(missingProof.statusCode).toBe(400);
     const wrong = t.result.verification === '000000' ? '000001' : '000000';
     const rejected = await post(
-      '/transfer-approvals',
+      '/transfers/approve',
       { code: t.input.code, verification: wrong },
       attacker.input.sessionToken,
     );
@@ -387,7 +175,7 @@ describe('identity protocol through the restricted runtime', () => {
       verification_attempts: 1,
     });
     const approved = await post(
-      '/transfer-approvals',
+      '/transfers/approve',
       { code: t.input.code, verification: t.result.verification },
       owner.input.sessionToken,
     );
@@ -504,24 +292,14 @@ describe('identity protocol through the restricted runtime', () => {
       service.bootstrap({ ...a.input, sessionToken: secret() }),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
     expect(
-      (
-        await post('/sessions', {
-          kind: 'bootstrap',
-          ...request(),
-          userId: a.session.userId,
-        })
-      ).statusCode,
+      (await post('/bootstrap', { ...request(), userId: a.session.userId }))
+        .statusCode,
     ).toBe(400);
     expect(
-      (
-        await post('/sessions', {
-          kind: 'bootstrap',
-          ...request(),
-          credential: 'password',
-        })
-      ).statusCode,
+      (await post('/bootstrap', { ...request(), credential: 'password' }))
+        .statusCode,
     ).toBe(400);
-    expect((await app.inject('/v1/sessions/current')).statusCode).toBe(401);
+    expect((await app.inject('/v1/identity/me')).statusCode).toBe(401);
     expect(
       bootstrapSchema.safeParse({ ...a.input, sessionToken: 'x'.repeat(64) })
         .success,
@@ -587,12 +365,17 @@ describe('identity protocol through the restricted runtime', () => {
     const cred = (await service.listCredentials(b.input.sessionToken))
       .credentials[0]!;
     expect(
-      (await remove(`/credentials/${cred.id}`, a.input.sessionToken))
+      (await post(`/credentials/${cred.id}/revoke`, {}, a.input.sessionToken))
         .statusCode,
     ).toBe(404);
     expect(
-      (await remove(`/devices/${b.input.deviceId}`, a.input.sessionToken))
-        .statusCode,
+      (
+        await post(
+          `/devices/${b.input.deviceId}/revoke`,
+          {},
+          a.input.sessionToken,
+        )
+      ).statusCode,
     ).toBe(404);
     const pairs = await Promise.all([
       service.listDevices(a.input.sessionToken),
@@ -673,11 +456,7 @@ describe('identity protocol through the restricted runtime', () => {
         t.result.verification,
       ),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
-    await service.cancelTransfer(
-      a.input.sessionToken,
-      t.input.id,
-      t.input.code,
-    );
+    await service.cancelTransfer(a.input.sessionToken, t.input.code);
     await expect(
       service.redeemTransfer(t.input.code, t.input.claimSecret),
     ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
@@ -694,9 +473,7 @@ describe('identity protocol through the restricted runtime', () => {
     const ip = `test-${randomUUID()}`,
       input: BootstrapRequest = request();
     const results = await Promise.all(
-      Array.from({ length: 5 }, () =>
-        post('/sessions', { kind: 'recovery', ...input }, undefined, ip),
-      ),
+      Array.from({ length: 5 }, () => post('/recover', input, undefined, ip)),
     );
     expect(results.filter((r) => r.statusCode === 429)).toHaveLength(2);
     expect(
@@ -704,17 +481,17 @@ describe('identity protocol through the restricted runtime', () => {
     ).toBe('600');
     const again = await app.inject({
       method: 'POST',
-      url: '/v1/sessions',
+      url: '/v1/identity/recover',
       remoteAddress: ip,
       headers: { 'x-forwarded-for': '1.2.3.4' },
-      payload: { kind: 'recovery', ...input },
+      payload: input,
     });
     expect(again.statusCode).toBe(429);
     expect(again.body).not.toContain(input.credential);
   });
   it('supports browser CORS and returns no-store responses without returning bearer material', async () => {
     const input = request();
-    const result = await post('/sessions', { kind: 'bootstrap', ...input });
+    const result = await post('/bootstrap', input);
     expect(result.statusCode).toBe(200);
     users.add(result.json().userId);
     expect(result.headers['cache-control']).toBe('no-store');
@@ -722,7 +499,7 @@ describe('identity protocol through the restricted runtime', () => {
     expect(result.body).not.toContain(input.sessionToken);
     const preflight = await app.inject({
       method: 'OPTIONS',
-      url: '/v1/sessions',
+      url: '/v1/identity/bootstrap',
       headers: {
         origin: 'http://localhost:8081',
         'access-control-request-method': 'POST',

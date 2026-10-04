@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
-import type { LegacyProgressResponse as ProgressResponse } from '@justgo/contracts';
+import type { ProgressResponse } from '@justgo/contracts';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { challengeScale } from '../challenges/challenge-design';
 import { colors, fontFamilies, layout, typography } from '../../theme/tokens';

@@ -7,10 +7,7 @@ import {
   Text,
 } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import type {
-  LegacyProgressEntry as ProgressEntry,
-  LegacyProgressResponse as ProgressResponse,
-} from '@justgo/contracts';
+import type { ProgressEntry, ProgressResponse } from '@justgo/contracts';
 import { colors } from '../../theme/tokens';
 import { ProgressView } from './ProgressView';
 

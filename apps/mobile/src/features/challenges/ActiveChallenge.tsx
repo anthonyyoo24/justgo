@@ -6,7 +6,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { venues, type LegacyAttempt as Attempt } from '@justgo/contracts';
+import { venues, type Attempt } from '@justgo/contracts';
 import Svg, { Path } from 'react-native-svg';
 import { colors, typography, fontFamilies } from '../../theme/tokens';
 import { challengeScale, timerOutline } from './challenge-design';

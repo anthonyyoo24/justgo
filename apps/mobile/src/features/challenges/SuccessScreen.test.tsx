@@ -1,5 +1,5 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import type { LegacyAttempt as Attempt } from '@justgo/contracts';
+import type { Attempt } from '@justgo/contracts';
 import { SuccessScreen } from './SuccessScreen';
 let mockAttemptId: string | undefined = 'first';
 const mockRequest = jest.fn();

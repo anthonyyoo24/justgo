@@ -3,12 +3,11 @@ import { sql, type SQL } from 'drizzle-orm';
 import {
   FEELING_SCALE_VERSION,
   hasVerifiedAccess,
-  type LegacyReflectionResponse,
-  type LegacyReflectionSkip,
-  type LegacyReflectionWrite,
+  type ReflectionResponse,
+  type ReflectionSkip,
+  type ReflectionWrite,
 } from '@justgo/contracts';
 import { IdentityError, type IdentityService } from '../identity/service.js';
-import { readAttempt, projectAttempt } from '../attempts/model.js';
 import type { EntitlementReader } from '../access/service.js';
 
 type Tx = Parameters<Parameters<IdentityService['withSession']>[1]>[0];
@@ -20,7 +19,7 @@ type ReflectionRow = Row & {
   revision: number;
   status: 'draft' | 'submitted' | 'skipped';
   feeling_version: 1;
-  feeling: LegacyReflectionResponse['feeling'];
+  feeling: ReflectionResponse['feeling'];
   reflection_text: string | null;
   input_method: 'typed' | null;
   updated_at: Date | string;
@@ -29,7 +28,7 @@ type ReceiptRow = Row & {
   attempt_id: string;
   action: 'draft' | 'final' | 'skip';
   input_digest: string;
-  response: LegacyReflectionResponse;
+  response: ReflectionResponse;
 };
 const conflict = (): never => {
   throw new IdentityError('CONFLICT', 409);
@@ -37,7 +36,7 @@ const conflict = (): never => {
 const response = (
   attemptId: string,
   row?: ReflectionRow,
-): LegacyReflectionResponse =>
+): ReflectionResponse =>
   row
     ? {
         attemptId,
@@ -95,42 +94,23 @@ export class ReflectionService {
   get(token: string, attemptId: string) {
     return this.run(token, async (tx, userId) => {
       await this.completed(tx, userId, attemptId);
-      const old = await this.read(tx, userId, attemptId);
-      const canonical = projectAttempt(
-        (await readAttempt(tx, userId, attemptId))!,
-      );
-      if (
-        !canonical.reflection ||
-        (old?.status === 'submitted' &&
-          old.revision === canonical.reflection.revision)
-      )
-        return response(attemptId, old);
-      return {
-        attemptId,
-        revision: canonical.reflection.revision,
-        status: 'submitted' as const,
-        feelingVersion: FEELING_SCALE_VERSION,
-        feeling: canonical.reflection.feeling,
-        text: canonical.reflection.text,
-        inputMethod: canonical.reflection.text ? ('typed' as const) : null,
-        updatedAt: null,
-      };
+      return response(attemptId, await this.read(tx, userId, attemptId));
     });
   }
   write(
     token: string,
     attemptId: string,
     action: 'draft' | 'final' | 'skip',
-    input: LegacyReflectionWrite | LegacyReflectionSkip,
+    input: ReflectionWrite | ReflectionSkip,
   ) {
     return this.run(token, async (tx, userId) => {
       await this.completed(tx, userId, attemptId);
       const feeling =
-        action === 'skip' ? null : (input as LegacyReflectionWrite).feeling;
+        action === 'skip' ? null : (input as ReflectionWrite).feeling;
       const text =
         action === 'skip'
           ? null
-          : normalizedText((input as LegacyReflectionWrite).text);
+          : normalizedText((input as ReflectionWrite).text);
       const digest = createHash('sha256')
         .update(
           JSON.stringify([
@@ -156,8 +136,6 @@ export class ReflectionService {
         return receipt.response;
       }
       const old = await this.read(tx, userId, attemptId);
-      if ((await readAttempt(tx, userId, attemptId))!.reflection_revision > 0)
-        conflict();
       if ((old?.revision ?? 0) !== input.expectedRevision) conflict();
       if (old && old.status !== 'draft') conflict();
       if (action === 'final' && !feeling && !text)
@@ -177,10 +155,6 @@ export class ReflectionService {
             tx,
             sql`insert into justgo.reflections (user_id,attempt_id,status,feeling,reflection_text,input_method,updated_at) values (${userId},${attemptId},${status},${feeling},${text},${text ? 'typed' : null},clock_timestamp()) returning *`,
           );
-      if (action === 'final')
-        await tx.execute(
-          sql`update justgo.attempts set reflection_feeling=${saved!.feeling},reflection_text=${saved!.reflection_text},reflection_revision=${saved!.revision} where user_id=${userId} and id=${attemptId}`,
-        );
       const result = response(attemptId, saved);
       await tx.execute(
         sql`insert into justgo.reflection_actions (user_id,id,attempt_id,action,input_digest,response) values (${userId},${input.actionId},${attemptId},${action},${digest},${JSON.stringify(result)}::jsonb)`,

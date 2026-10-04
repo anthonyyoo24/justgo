@@ -1,11 +1,6 @@
 import type { z } from 'zod';
 import { QueryClient } from '@tanstack/react-query';
-import {
-  requestMethod,
-  ApiError,
-  type HttpClient,
-  type RequestOptions,
-} from './http';
+import { ApiError, type HttpClient, type RequestOptions } from './http';
 import { Deadline } from './deadline';
 
 export type AccountSession = { userId: string; token: string };
@@ -141,7 +136,7 @@ export class AccountClient {
             return send(renewed.token, false);
           }
           if (
-            requestMethod(options) === 'GET' &&
+            options.body === undefined &&
             ['NETWORK', 'UNAVAILABLE'].includes(error.code)
           )
             return send(session.token, false);

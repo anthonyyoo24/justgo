@@ -11,9 +11,9 @@ import {
   notifyManager,
 } from '@tanstack/react-query';
 import type {
-  LegacyProgressDayResponse as ProgressDayResponse,
-  LegacyProgressEntry as ProgressEntry,
-  LegacyProgressResponse as ProgressResponse,
+  ProgressDayResponse,
+  ProgressEntry,
+  ProgressResponse,
 } from '@justgo/contracts';
 import { accountKey } from '../../lib/account-client';
 import { ProgressScreen } from './ProgressScreen';

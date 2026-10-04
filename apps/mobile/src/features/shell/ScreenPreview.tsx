@@ -9,8 +9,8 @@ import { SuccessView } from '../challenges/SuccessView';
 import { ReflectionView } from '../reflections/ReflectionView';
 import type {
   FeelingCode,
-  LegacyProgressEntry as ProgressEntry,
-  LegacyProgressResponse as ProgressResponse,
+  ProgressEntry,
+  ProgressResponse,
 } from '@justgo/contracts';
 import { NavigationIcon } from '../../components/NavigationIcon';
 import { colors, spacing, typography } from '../../theme/tokens';
@@ -32,17 +32,16 @@ const previewEntries: ProgressEntry[] = [
   },
   {
     attemptId: '00000000-0000-4000-8000-000000000002',
-    completedAt: null,
-    activityAt: '2026-09-18T16:40:00.000Z',
+    completedAt: '2026-09-18T16:40:00.000Z',
     timeZone: 'America/Toronto',
-    cardId: null,
+    cardId: 'preview-card-2',
     venue: 'streets',
     challengeId: 'preview-challenge-2',
-    revisionId: null,
+    revisionId: 'preview-revision-2',
     levelId: 'level-1',
     instruction: 'Ask for a recommendation',
     feelingVersion: 1,
-    reflectionStatus: 'none',
+    reflectionStatus: 'skipped',
     feeling: null,
     reflectionText: null,
   },
@@ -73,7 +72,6 @@ const previewPagedEntries: ProgressEntry[] = [
     attemptId: `preview-page-two-${index}`,
     instruction: instruction!,
     completedAt: completedAt!,
-    activityAt: completedAt!,
     reflectionStatus: 'skipped' as const,
     feeling: null,
     reflectionText: null,

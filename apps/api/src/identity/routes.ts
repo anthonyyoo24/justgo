@@ -1,17 +1,19 @@
 import { z } from 'zod';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  bootstrapSchema,
   credentialCreateSchema,
   credentialsResponseSchema,
   devicesResponseSchema,
   idSchema,
   okSchema,
+  renewSchema,
   secretSchema,
-  sessionCreateSchema,
   sessionResponseSchema,
   transferApproveSchema,
   transferInspectSchema,
   transferInspectionResponseSchema,
+  transferProofSchema,
   transferResponseSchema,
   transferStartSchema,
 } from '@justgo/contracts';
@@ -49,45 +51,28 @@ export function identityRoutes(
       rateAddress(request.ip, request.headers, onVercel),
       'recovery',
     );
-  app.post(
-    '/sessions',
-    {
-      preHandler: async (request) => {
-        // Classify before full validation so malformed recovery proofs also use
-        // the stricter budget. Renewals retain their existing general budget.
-        const renewal = z
-          .object({ kind: z.literal('renewal') })
-          .safeParse(request.body);
-        if (!renewal.success) await sensitive(request);
-      },
-    },
-    async (request) => {
-      const data = parse(sessionCreateSchema, request.body);
-      let session;
-      switch (data.kind) {
-        case 'bootstrap':
-          session = await service.bootstrap(data);
-          break;
-        case 'recovery':
-          session = await service.bootstrap(data, false);
-          break;
-        case 'renewal':
-          session = await service.renew(bearer(request), data);
-          break;
-        case 'transfer':
-          session = await service.redeemTransfer(data.code, data.claimSecret);
-          break;
-      }
-      return sessionResponseSchema.parse(session);
-    },
+  app.post('/bootstrap', { preHandler: sensitive }, async (request) =>
+    sessionResponseSchema.parse(
+      await service.bootstrap(parse(bootstrapSchema, request.body)),
+    ),
   );
-  app.get('/sessions/current', async (request) =>
+  app.post('/recover', { preHandler: sensitive }, async (request) =>
+    sessionResponseSchema.parse(
+      await service.bootstrap(parse(bootstrapSchema, request.body), false),
+    ),
+  );
+  app.post('/renew', async (request) =>
+    sessionResponseSchema.parse(
+      await service.renew(bearer(request), parse(renewSchema, request.body)),
+    ),
+  );
+  app.get('/me', async (request) =>
     sessionResponseSchema.parse(await service.me(bearer(request))),
   );
   app.get('/devices', async (request) =>
     devicesResponseSchema.parse(await service.listDevices(bearer(request))),
   );
-  app.delete('/devices/:id', async (request) =>
+  app.post('/devices/:id/revoke', async (request) =>
     okSchema.parse(
       await service.revokeDevice(
         bearer(request),
@@ -108,7 +93,7 @@ export function identityRoutes(
       ),
     ),
   );
-  app.delete('/credentials/:id', async (request) =>
+  app.post('/credentials/:id/revoke', async (request) =>
     okSchema.parse(
       await service.revokeCredential(
         bearer(request),
@@ -116,43 +101,41 @@ export function identityRoutes(
       ),
     ),
   );
-  app.post('/transfers', { preHandler: sensitive }, async (request) =>
+  app.post('/transfers/start', { preHandler: sensitive }, async (request) =>
     transferResponseSchema.parse(
       await service.startTransfer(parse(transferStartSchema, request.body)),
     ),
   );
-  app.post(
-    '/transfer-inspections',
-    { preHandler: sensitive },
-    async (request) =>
-      transferInspectionResponseSchema.parse(
-        await service.inspectTransfer(
-          bearer(request),
-          parse(transferInspectSchema, request.body).code,
-        ),
-      ),
-  );
-  app.post(
-    '/transfer-approvals',
-    { preHandler: sensitive },
-    async (request) => {
-      const data = parse(transferApproveSchema, request.body);
-      return okSchema.parse(
-        await service.approveTransfer(
-          bearer(request),
-          data.code,
-          data.verification,
-        ),
-      );
-    },
-  );
-  app.delete('/transfers/:id', async (request) =>
-    okSchema.parse(
-      await service.cancelTransfer(
+  app.post('/transfers/inspect', { preHandler: sensitive }, async (request) =>
+    transferInspectionResponseSchema.parse(
+      await service.inspectTransfer(
         bearer(request),
-        parse(idSchema, request.params).id,
         parse(transferInspectSchema, request.body).code,
       ),
     ),
   );
+  app.post('/transfers/approve', { preHandler: sensitive }, async (request) => {
+    const data = parse(transferApproveSchema, request.body);
+    return okSchema.parse(
+      await service.approveTransfer(
+        bearer(request),
+        data.code,
+        data.verification,
+      ),
+    );
+  });
+  app.post('/transfers/cancel', async (request) =>
+    okSchema.parse(
+      await service.cancelTransfer(
+        bearer(request),
+        parse(transferInspectSchema, request.body).code,
+      ),
+    ),
+  );
+  app.post('/transfers/redeem', { preHandler: sensitive }, async (request) => {
+    const data = parse(transferProofSchema, request.body);
+    return sessionResponseSchema.parse(
+      await service.redeemTransfer(data.code, data.claimSecret),
+    );
+  });
 }

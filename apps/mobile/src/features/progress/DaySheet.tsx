@@ -19,7 +19,7 @@ import {
 import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import type { LegacyProgressEntry as ProgressEntry } from '@justgo/contracts';
+import type { ProgressEntry } from '@justgo/contracts';
 import { colors, fontFamilies, typography } from '../../theme/tokens';
 import { dayLabel } from './calendar';
 import { ProgressEntryRow } from './ProgressEntryRow';

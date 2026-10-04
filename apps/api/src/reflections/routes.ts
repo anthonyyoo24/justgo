@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import {
-  legacyReflectionResponseSchema,
-  legacyReflectionMutationSchema,
-  legacyReflectionSkipSchema,
+  reflectionResponseSchema,
+  reflectionMutationSchema,
+  reflectionSkipSchema,
 } from '@justgo/contracts';
 import { bearer } from '../identity/routes.js';
 import { IdentityError } from '../identity/service.js';
@@ -20,28 +20,28 @@ export function reflectionRoutes(
   service: ReflectionService,
 ) {
   app.get('/:attemptId', async (req) =>
-    legacyReflectionResponseSchema.parse(
+    reflectionResponseSchema.parse(
       await service.get(bearer(req), parse(params, req.params).attemptId),
     ),
   );
   for (const action of ['draft', 'final'] as const)
     app.post(`/:attemptId/${action}`, async (req) =>
-      legacyReflectionResponseSchema.parse(
+      reflectionResponseSchema.parse(
         await service.write(
           bearer(req),
           parse(params, req.params).attemptId,
           action,
-          parse(legacyReflectionMutationSchema, req.body),
+          parse(reflectionMutationSchema, req.body),
         ),
       ),
     );
   app.post('/:attemptId/skip', async (req) =>
-    legacyReflectionResponseSchema.parse(
+    reflectionResponseSchema.parse(
       await service.write(
         bearer(req),
         parse(params, req.params).attemptId,
         'skip',
-        parse(legacyReflectionSkipSchema, req.body),
+        parse(reflectionSkipSchema, req.body),
       ),
     ),
   );

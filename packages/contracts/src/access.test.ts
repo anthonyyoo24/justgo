@@ -49,13 +49,13 @@ describe('verified access', () => {
     expect(openApiDocument.paths['/v1/access'].get.security).toEqual([
       { deviceSession: [] },
     ]);
-    expect(openApiDocument.paths['/v1/sessions'].post.security).toEqual([
-      {},
-      { deviceSession: [] },
-    ]);
+    expect(
+      openApiDocument.paths['/v1/identity/bootstrap'].post.security,
+    ).toEqual([]);
     const inspection =
-      openApiDocument.paths['/v1/transfer-inspections'].post.responses['200']
-        .content['application/json'].schema;
+      openApiDocument.paths['/v1/identity/transfers/inspect'].post.responses[
+        '200'
+      ].content['application/json'].schema;
     expect(inspection.properties).not.toHaveProperty('verification');
     expect(inspection.additionalProperties).toBe(false);
   });

@@ -22,11 +22,3 @@
 !packages/contracts/src/identity.ts
 !packages/contracts/src/access.ts
 !packages/contracts/src/openapi.ts
-
-!packages/contracts/src/challenges.ts
-!packages/contracts/src/attempts.ts
-!packages/contracts/src/reflections.ts
-!packages/contracts/src/progress.ts
-!packages/contracts/src/legacy-challenges.ts
-!packages/contracts/src/legacy-reflections.ts
-!packages/contracts/src/legacy-progress.ts

@@ -1,5 +1,5 @@
 import { act, render } from '@testing-library/react-native';
-import type { LegacyAttempt as Attempt } from '@justgo/contracts';
+import type { Attempt } from '@justgo/contracts';
 import { ChallengeScreen } from './ChallengeScreen';
 
 const mockMounted = jest.fn();

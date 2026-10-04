@@ -17,7 +17,6 @@ import {
 import type { z } from 'zod';
 import { IdentityClientError, type IdentityApi } from './api';
 import type { CredentialVault, DeviceState, StoredCredential } from './storage';
-import type { HttpMethod } from '../../lib/http';
 import { Deadline } from '../../lib/deadline';
 
 type Snapshot = {
@@ -151,7 +150,6 @@ export class IdentityController {
     return refresh;
   };
   private request<T>(
-    method: HttpMethod,
     path: string,
     schema: z.ZodType<T>,
     body?: unknown,
@@ -159,7 +157,7 @@ export class IdentityController {
   ) {
     const operation = this.operation!;
     return operation.wait(() =>
-      this.api.request(method, path, schema, body, token, operation.signal),
+      this.api.request(path, schema, body, token, operation.signal),
     );
   }
   /** Native writes cannot be undone. Serialize storage even after the caller times out. */
@@ -350,8 +348,7 @@ export class IdentityController {
         credentials: (await this.credentials()).map((c) => ({ id: c.id })),
       });
       const transfer = await this.request(
-        'POST',
-        '/transfers',
+        '/transfers/start',
         transferResponseSchema,
         pending.input,
       );
@@ -366,11 +363,9 @@ export class IdentityController {
       const current = this.data!.session;
       if (!current) throw new IdentityClientError('UNAUTHORIZED');
       const info = await this.request(
-        'POST',
-        '/sessions',
+        '/renew',
         sessionResponseSchema,
         {
-          kind: 'renewal',
           sessionId: pending.proposal.sessionId,
           sessionToken: pending.proposal.sessionToken,
         },
@@ -388,14 +383,9 @@ export class IdentityController {
     );
     if (!credential) throw new IdentityClientError('STORAGE');
     const info = await this.request(
-      'POST',
-      '/sessions',
+      pending.kind === 'bootstrap' ? '/bootstrap' : '/recover',
       sessionResponseSchema,
-      {
-        kind: pending.kind === 'bootstrap' ? 'bootstrap' : 'recovery',
-        ...pending.proposal,
-        credential: credential.secret,
-      },
+      { ...pending.proposal, credential: credential.secret },
     );
     await this.finish(info, pending.proposal, credential.id);
   }
@@ -414,8 +404,7 @@ export class IdentityController {
     const session = this.data!.session!;
     try {
       const info = await this.request(
-        'GET',
-        '/sessions/current',
+        '/me',
         sessionResponseSchema,
         undefined,
         session.token,
@@ -508,7 +497,6 @@ export class IdentityController {
     if (!registration) return;
     await this.add(registration);
     await this.request(
-      'POST',
       '/credentials',
       okSchema,
       { id: registration.id, credential: registration.secret, kind: 'sync' },
@@ -524,14 +512,12 @@ export class IdentityController {
     if (this.data!.registration) await this.registerSync();
     const token = this.data!.session!.token;
     const devices = await this.request(
-      'GET',
       '/devices',
       devicesResponseSchema,
       undefined,
       token,
     );
     const keys = await this.request(
-      'GET',
       '/credentials',
       credentialsResponseSchema,
       undefined,
@@ -580,7 +566,6 @@ export class IdentityController {
         });
       const key = this.data!.savedKey!;
       await this.request(
-        'POST',
         '/credentials',
         okSchema,
         { id: key.id, credential: key.secret, kind: 'key' },
@@ -601,10 +586,9 @@ export class IdentityController {
   revokeCredential = (id: string) =>
     this.run(async () => {
       await this.request(
-        'DELETE',
-        `/credentials/${id}`,
+        `/credentials/${id}/revoke`,
         okSchema,
-        undefined,
+        {},
         this.data!.session!.token,
       );
       if (this.data!.savedKey?.id === id)
@@ -618,10 +602,9 @@ export class IdentityController {
   revokeDevice = (id: string) =>
     this.run(async () => {
       await this.request(
-        'DELETE',
-        `/devices/${id}`,
+        `/devices/${id}/revoke`,
         okSchema,
-        undefined,
+        {},
         this.data!.session!.token,
       );
       if (id === this.data!.deviceId) {
@@ -662,14 +645,9 @@ export class IdentityController {
       if (pending?.kind !== 'transfer')
         throw new IdentityClientError('NOT_FOUND');
       const info = await this.request(
-        'POST',
-        '/sessions',
+        '/transfers/redeem',
         sessionResponseSchema,
-        {
-          kind: 'transfer',
-          code: pending.input.code,
-          claimSecret: pending.input.claimSecret,
-        },
+        { code: pending.input.code, claimSecret: pending.input.claimSecret },
       );
       await this.finish(info, pending.input, pending.credentialId);
     });
@@ -681,8 +659,7 @@ export class IdentityController {
       );
       if (!parsed.success) throw new IdentityClientError('INVALID_REQUEST');
       const transfer = await this.request(
-        'POST',
-        '/transfer-inspections',
+        '/transfers/inspect',
         transferInspectionResponseSchema,
         { code: parsed.data },
         this.data!.session!.token,
@@ -697,8 +674,7 @@ export class IdentityController {
       if (!verification.success)
         throw new IdentityClientError('INVALID_REQUEST');
       await this.request(
-        'POST',
-        '/transfer-approvals',
+        '/transfers/approve',
         okSchema,
         { code: transfer.code, verification: verification.data },
         this.data!.session!.token,

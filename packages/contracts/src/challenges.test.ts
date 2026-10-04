@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  legacyStartAttemptSchema,
-  legacyFinishAttemptSchema,
+  startAttemptSchema,
+  finishAttemptSchema,
   venueSchema,
-} from './index.js';
+} from './challenges.js';
 const id = '00000000-0000-4000-8000-000000000001';
 describe('challenge contracts', () => {
   it('requires stable input identity and rejects caller-supplied ownership/deadlines', () => {
@@ -14,14 +14,14 @@ describe('challenge contracts', () => {
       revisionId: 'st-01-v1',
       queueVersion: 0,
     };
-    expect(legacyStartAttemptSchema.safeParse(request).success).toBe(true);
+    expect(startAttemptSchema.safeParse(request).success).toBe(true);
     for (const extra of [
       { userId: id },
       { deadlineAt: '2026-09-24T12:00:00Z' },
       { queueVersion: -1 },
     ])
       expect(
-        legacyStartAttemptSchema.safeParse({ ...request, ...extra }).success,
+        startAttemptSchema.safeParse({ ...request, ...extra }).success,
       ).toBe(false);
   });
   it('accepts only the six approved venues and a valid explicit completion time zone', () => {
@@ -32,23 +32,20 @@ describe('challenge contracts', () => {
       outcome: 'completed',
       timeZone: 'America/Toronto',
     };
-    expect(legacyFinishAttemptSchema.safeParse(done).success).toBe(true);
+    expect(finishAttemptSchema.safeParse(done).success).toBe(true);
     expect(
-      legacyFinishAttemptSchema.safeParse({
-        ...done,
-        timeZone: 'invalid/timezone',
-      }).success,
+      finishAttemptSchema.safeParse({ ...done, timeZone: 'invalid/timezone' })
+        .success,
     ).toBe(false);
     expect(
-      legacyFinishAttemptSchema.safeParse({ ...done, outcome: 'expired' })
-        .success,
+      finishAttemptSchema.safeParse({ ...done, outcome: 'expired' }).success,
     ).toBe(false);
   });
 });
 
 it('rejects numeric UTC offsets, preserving named time-zone date semantics', () => {
   expect(
-    legacyFinishAttemptSchema.safeParse({
+    finishAttemptSchema.safeParse({
       attemptId: '00000000-0000-4000-8000-000000000001',
       outcome: 'completed',
       timeZone: '+05:30',

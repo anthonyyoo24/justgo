@@ -1,9 +1,8 @@
 import type { z } from 'zod';
-import { ApiError, createHttpClient, type HttpMethod } from '../../lib/http';
+import { ApiError, createHttpClient } from '../../lib/http';
 export { ApiError as IdentityClientError } from '../../lib/http';
 export interface IdentityApi {
   request<T>(
-    method: HttpMethod,
     path: string,
     schema: z.ZodType<T>,
     body?: unknown,
@@ -18,7 +17,6 @@ export function createIdentityApi(
   const http = createHttpClient(baseUrl, fetcher);
   return {
     async request<T>(
-      method: HttpMethod,
       path: string,
       schema: z.ZodType<T>,
       body?: unknown,
@@ -26,8 +24,7 @@ export function createIdentityApi(
       signal?: AbortSignal,
     ) {
       try {
-        return await http.request(`/v1${path}`, schema, {
-          method,
+        return await http.request(`/v1/identity${path}`, schema, {
           ...(body === undefined ? {} : { body }),
           ...(token ? { token } : {}),
           ...(signal ? { signal } : {}),

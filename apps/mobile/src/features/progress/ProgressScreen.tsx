@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useIsFocused } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
-  legacyProgressDayResponseSchema as progressDayResponseSchema,
-  legacyProgressResponseSchema as progressResponseSchema,
-  type LegacyProgressResponse as ProgressResponse,
+  progressDayResponseSchema,
+  progressResponseSchema,
+  type ProgressResponse,
 } from '@justgo/contracts';
 import { accountKey } from '../../lib/account-client';
 import { useIdentity, useRuntime } from '../shell/AppProvider';
