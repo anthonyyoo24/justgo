@@ -402,7 +402,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 07 — API & offline saving
 
-**Status:** In progress; 07.1 is the next verification checkpoint. Later subphases contain unfinished drafts, not accepted implementations.
+**Status:** In progress; 07.1 is complete. Continue with 07.2 after PR #12 merges. Later subphases contain unfinished drafts, not accepted implementations.
 
 **Depends on:** 06A; complete 07.1–07.5 in order before 07A.
 
