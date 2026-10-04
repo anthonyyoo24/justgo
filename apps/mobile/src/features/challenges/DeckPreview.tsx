@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { venues, type Attempt, type Venue } from '@justgo/contracts';
+import {
+  venues,
+  type LegacyAttempt as Attempt,
+  type Venue,
+} from '@justgo/contracts';
 import { ChallengeLayout } from './ChallengeLayout';
 import { ChallengeDeck } from './ChallengeDeck';
 import { ActiveChallenge } from './ActiveChallenge';

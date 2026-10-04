@@ -22,7 +22,8 @@ npm run export:ios -w @justgo/mobile
 
 `check` builds contracts, typechecks, lints, checks formatting and runs architecture,
 API unit, mobile component/controller and contract tests. `test:db` exercises real
-PostgreSQL transactions, ownership, isolation, idempotency, reflections and history.
+PostgreSQL transactions, ownership, isolation, idempotency, reflections and history,
+then runs the isolated migration/restoration rehearsal.
 It refuses non-loopback hosts and databases other than the disposable `justgo_test`.
 Never point fixtures at staging/production or real private data.
 
@@ -32,7 +33,7 @@ checks during each extraction and the full commands before handoff.
 
 `test:coverage` builds contracts, runs each workspace sequentially and enforces
 `scripts/coverage-thresholds.json` through `coverage:check`. The API coverage run
-includes all five database suites plus unit tests, so it requires the same migrated
+includes the database suites and migration rehearsal plus unit tests, so it requires the same migrated
 local database. Individual workspace `test:coverage` commands produce reports;
 run the root command for the combined gate. Reports are ignored generated output
 under `coverage/{mobile,api,contracts}/`: HTML, LCOV and count-based JSON summaries.
@@ -107,10 +108,37 @@ never creates user activity or grants production access. Record actual viewport,
 flow, fixtures, failures and recovery; keep automated/browser/native claims separate.
 The earlier physical-device and staging gates remain in their original handoffs.
 
-The full-journey CI suite is an open Phase 07 task. Phase 06A's one-off browser
-journey and passing unit/component/database suites do not substitute for it.
-When that harness is implemented, new or changed critical journeys must update
-its saved tests and pass the CI gate alongside the relevant lower-level tests.
+Phase 07.1 is split for review. **07.1A** retains application/unit/component,
+database, migration-restoration and coverage gates. The **07.1B** saved app/API
+journey is preserved on local `codex/phase-07.1b-journey-ci`, without a push or PR.
+Its root `e2e/` files, environment-guard test, runner, Playwright dependency,
+journey typecheck/scripts and browser CI/artifact steps move together. They are
+not part of A; `npm run test:journey` is available only on B. No review filters or
+coverage floors were weakened to meet the file limit.
+
+B must verify clean service startup/cleanup, disposable accounts/access fixtures,
+masked failure artifacts and the actual identity-renewal/catalog/Progress smoke,
+then publish its required CI step with owner permission. Full completion,
+reflection and offline/history journeys remain 07.2–07.5. A one-off side-panel
+walkthrough and A's lower-level tests do not replace B's saved journey gate.
+Complete both A and B before proceeding to 07.2. The existing mobile Maestro
+launch flow is unchanged.
+
+## Migration preservation rehearsal (07.1)
+
+`npm run test:migrations` runs the standalone rehearsal; `test:db` includes it.
+It builds migrations 0000–0009 in a uniquely named disposable schema within
+`justgo_test`, compares the restored Drizzle metadata with PostgreSQL, seeds
+synthetic history and creates a temporary SQL snapshot with PostgreSQL 17
+`pg_dump`. It verifies expansion 0010, compatibility index 0011 and historical
+blank-text normalization 0012, rehearses the unregistered contraction, restores
+the snapshot using `psql`, reapplies the migrations and compares preserved
+history again. Normalization preserves nonblank text, receipts, revisions and
+timestamps, and rejects invalid blank-only/no-feeling submissions atomically. Its schema and snapshot are removed after the test. Production
+`justgo`/Drizzle migration state is not reset. The contraction SQL under
+`apps/api/scripts/rehearsals` is not a deployable migration; 07.5 owns its final
+review and acceptance. Set `JUSTGO_PG_BIN` when PostgreSQL 17 tools are not on
+PATH or in the standard Apple Silicon Homebrew directory.
 
 ## Enforced code boundaries
 

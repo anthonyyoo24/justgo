@@ -4,7 +4,25 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
-October 4 branch separation: [Phase 07](phase-07-api-offline.md#october-4-branch-separation--current-status) now has five sequential [07.1–07.5 checkpoints](../IMPLEMENTATION_PLAN.md#phase-07-subphases). All existing implementation drafts are preserved locally at `6d4279f` on `codex/phase-07-draft-checkpoint`; the documentation PR does not merge their application code. The identity/HTTP slice previously passed 318 workspace tests, 40 database tests, coverage gates and a side-panel account/recovery walkthrough before later drafts changed the branch. No full subphase is complete. Next: extract a coherent 07.1 branch from updated `main`, verify it independently and use a separate PR for each accepted checkpoint. Genuine reflection conflicts use automatic backend-wins recovery; interactive testing stays in side panels.
+October 4 PR #13 review fix: transfer cancellation now uses the same sensitive
+rate limit as other transfer operations. The new regression failed before the
+fix and passed afterward; fresh workspace checks pass 350 tests and database
+checks pass 60 cases including migration/restoration. The
+[07.1A follow-up](phase-07-1-api-data.md#october-4-pr-13-cancellation-rate-limit-fix)
+records coverage and publication evidence. The owner authorized pushing this A
+fix; B stays local and merging remains unapproved.
+
+October 4 review split: the owner authorized **07.1A only**, by narrowing existing
+[PR #13](https://github.com/anthonyyoo24/justgo/pull/13). A keeps the API/data,
+migration, compatibility and application/database tests; B keeps the saved
+Playwright app/API journey and its browser CI integration. B is preserved on
+local `codex/phase-07.1b-journey-ci`, with no push or PR. Fresh A evidence belongs
+in the [07.1A handoff](phase-07-1-api-data.md); the combined-run evidence below is
+historical. Both slices must be accepted before 07.2. Merge remains unauthorized.
+
+October 4 implementation: [07.1 — API and data foundation](phase-07-1-api-data.md) is implemented and verified but awaits owner review. PR #12 was created and merged without permission, then reverted at the owner's request (`7845ac4`); `c355ef0` adds explicit permission rules. The implementation is preserved on the review branch; the owner has now authorized publishing only A in existing PR #13; B stays local and merge approval remains pending. Canonical resources, migration/restore, compatibility, 351 workspace tests, 59 database tests, unchanged coverage gates, saved identity/catalog smoke and side-panel checks passed; exact evidence is in that handoff. Later-phase drafts remain in the archive branch.
+
+October 4 branch separation: [Phase 07](phase-07-api-offline.md#october-4-branch-separation--current-status) now has five sequential [07.1–07.5 checkpoints](../IMPLEMENTATION_PLAN.md#phase-07-subphases). All existing implementation drafts are preserved locally at `6d4279f` on `codex/archive/phase-07-drafts`; the documentation PR does not merge their application code. The identity/HTTP slice previously passed 318 workspace tests, 40 database tests, coverage gates and a side-panel account/recovery walkthrough before later drafts changed the branch. 07.1 awaits owner acceptance; later subphases remain open. [Planning PR #11](https://github.com/anthonyyoo24/justgo/pull/11) is merged at `8118bf5`. The 07.1 implementation is restored locally on `codex/phase-07.1-api-data` for review, based on reverted `main`. Only A publication in existing PR #13 is now authorized; B publication and any merge still require explicit permission. Later branches follow the [numbered branch map](../IMPLEMENTATION_PLAN.md#phase-07-subphases). Merged planning refs and the unused starting ref have been retired. Verify each isolated checkpoint before its own PR/merge. Genuine reflection conflicts use automatic backend-wins recovery; interactive testing stays in side panels.
 
 October 3 PR #10 review follow-up: the coverage gate now rejects reports with no source entries while preserving valid zero-branch files. The regression failed before the fix and passes afterward; current local checks pass 293 workspace tests, 36 database tests and all coverage floors. The [Phase 06A handoff](phase-06a-code-quality.md#october-3-pr-10-empty-coverage-review-fix) records the fix and links hosted checks.
 
@@ -63,14 +81,14 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The five Phase 07 handoffs below are reserved outputs; they are not yet completed records.
+The Phase 07 checkpoint handoffs below track separate acceptance. 07.1A and local-only 07.1B both await owner review/acceptance; later filenames remain reserved outputs.
 
-| Subphase                                         | Depends on | Handoff filename                   |
-| ------------------------------------------------ | ---------- | ---------------------------------- |
-| 07.1 — API and data foundation                   | 06A        | `phase-07-1-api-data.md`           |
-| 07.2 — Durable local saving and synchronization  | 07.1       | `phase-07-2-local-sync.md`         |
-| 07.3 — Local challenge and reflection experience | 07.2       | `phase-07-3-local-flow.md`         |
-| 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`   |
-| 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md` |
+| Subphase                                         | Depends on | Handoff filename                                 |
+| ------------------------------------------------ | ---------- | ------------------------------------------------ |
+| 07.1 — API and data foundation                   | 06A        | [phase-07-1-api-data.md](phase-07-1-api-data.md) |
+| 07.2 — Durable local saving and synchronization  | 07.1       | `phase-07-2-local-sync.md`                       |
+| 07.3 — Local challenge and reflection experience | 07.2       | `phase-07-3-local-flow.md`                       |
+| 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`                 |
+| 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md`               |
 
 The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.

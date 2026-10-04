@@ -16,13 +16,18 @@ export class ApiError extends Error {
     super(code);
   }
 }
+export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 export type RequestOptions = {
+  method?: HttpMethod;
   body?: unknown;
   token?: string;
   signal?: AbortSignal;
   timeoutMs?: number;
   retryRead?: boolean;
 };
+export function requestMethod(options: RequestOptions): HttpMethod {
+  return options.method ?? (options.body === undefined ? 'GET' : 'POST');
+}
 export type HttpClient = ReturnType<typeof createHttpClient>;
 export function createHttpClient(
   baseUrl: string | undefined,
@@ -60,6 +65,7 @@ export function createHttpClient(
         path.includes('#')
       )
         throw new ApiError('UNAVAILABLE');
+      const method = requestMethod(options);
       const controller = new AbortController();
       let timedOut = false;
       const cancel = () => controller.abort();
@@ -90,10 +96,12 @@ export function createHttpClient(
           const response = await fetcher(
             `${baseUrl!.replace(/\/$/, '')}${path}`,
             {
-              method: body === undefined ? 'GET' : 'POST',
+              method,
               signal: controller.signal,
               headers: {
-                'content-type': 'application/json',
+                ...(body === undefined
+                  ? {}
+                  : { 'content-type': 'application/json' }),
                 ...(options.token
                   ? { authorization: `Bearer ${options.token}` }
                   : {}),
@@ -128,7 +136,7 @@ export function createHttpClient(
               return await attempt();
             } catch (error) {
               if (
-                body !== undefined ||
+                method !== 'GET' ||
                 !options.retryRead ||
                 !(error instanceof ApiError) ||
                 !['NETWORK', 'UNAVAILABLE'].includes(error.code)

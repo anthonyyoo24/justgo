@@ -1,0 +1,12 @@
+{
+  "0000_foundation.sql": "4f848bc09d987861155ff46ae6690c48345c15cda28a165ccc18baa059fbc84b",
+  "0001_identity.sql": "e32f36f34c5f3b2efe3442b2bb4d96e62894f65f0c5de68a56ddef45aff4d632",
+  "0002_identity_policy_read_paths.sql": "c8719495c7c5c42fb70aa21d48b5fa530ac3b95fcfa4c0bf8c5610a139cc5d1a",
+  "0003_transfer_verification.sql": "f6138b1e5b8b7ce48bdb5f29734a8a248dcf94aec6b1ac33881f7d0aa1780df3",
+  "0004_challenge_loop.sql": "4f0e34b57271e7166c6726359b857496a20c0db670391a69a71196e5551f7659",
+  "0005_complete_attempt_fields.sql": "b7f1bec6c4518e04bf4ab426c199b0cb2beffa5bc95b0f9b2bb9e28c7dee00a7",
+  "0006_bc10_copy.sql": "9f374eed1411a9bb9cf07f74b3dda3be361068836a950b68878ba18d2df0c786",
+  "0007_reflections.sql": "df1ff21eda4d1e8ce0214193188e1a5f1fc93d67aa172e4c69430d0f178b64f1",
+  "0008_progress_history.sql": "e975fecd23024c1a76ae5f72d3bbe46c5eee335e5c3291aab53c50f98f550af7",
+  "0009_drop_attempt_elapsed_seconds.sql": "54baf2771f02af68122da39648a8a3a4c3096e0ab8d510606624236d7f20c7fc"
+}

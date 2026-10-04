@@ -18,33 +18,18 @@ export const feelingChoices: { code: Feeling; label: string }[] = [
   { code: 'a_little_better', label: 'A little bit better' },
   { code: 'a_lot_better', label: 'A lot better' },
 ];
-export const reflectionStateSchema = z
+// Blank input has the same meaning in phone and API validation/digesting.
+export const normalizeReflectionText = (value: string | null | undefined) =>
+  value?.trim() ? value : null;
+export const reflectionSchema = z
   .object({
-    attemptId: z.uuid(),
-    revision: z.number().int().nonnegative(),
-    status: z.enum(['none', 'draft', 'submitted', 'skipped']),
-    feelingVersion: z.literal(FEELING_SCALE_VERSION),
-    feeling: feelingSchema.nullable(),
-    text: z.string().nullable(),
-    inputMethod: z.literal('typed').nullable(),
-    updatedAt: z.iso.datetime().nullable(),
-  })
-  .strict();
-export type ReflectionState = z.infer<typeof reflectionStateSchema>;
-export const reflectionResponseSchema = reflectionStateSchema;
-export type ReflectionResponse = ReflectionState;
-export const reflectionWriteSchema = z
-  .object({
-    actionId: z.uuid(),
-    expectedRevision: z.number().int().nonnegative(),
     feeling: feelingSchema.nullable(),
     text: z.string().max(10000).nullable(),
+    revision: z.number().int().positive(),
   })
-  .strict();
-export const reflectionSkipSchema = reflectionWriteSchema.pick({
-  actionId: true,
-  expectedRevision: true,
-});
-export type ReflectionWrite = z.infer<typeof reflectionWriteSchema>;
-export const reflectionMutationSchema = reflectionWriteSchema;
-export type ReflectionSkip = z.infer<typeof reflectionSkipSchema>;
+  .strict()
+  .refine(
+    (value) =>
+      value.feeling !== null || normalizeReflectionText(value.text) !== null,
+  );
+export type Reflection = z.infer<typeof reflectionSchema>;
