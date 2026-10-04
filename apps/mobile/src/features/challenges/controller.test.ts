@@ -2,9 +2,9 @@ import { QueryClient } from '@tanstack/react-query';
 import type { z } from 'zod';
 import {
   venues,
-  type Attempt,
-  type ChallengeQueue,
-  type ChallengeState,
+  type LegacyAttempt as Attempt,
+  type LegacyChallengeQueue as ChallengeQueue,
+  type LegacyChallengeState as ChallengeState,
 } from '@justgo/contracts';
 import { ChallengeController } from './controller';
 import { ApiError } from '../../lib/http';

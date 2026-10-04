@@ -1,8 +1,8 @@
 import { randomUUID } from 'expo-crypto';
 import {
-  reflectionResponseSchema,
+  legacyReflectionResponseSchema as reflectionResponseSchema,
   type FeelingCode,
-  type ReflectionResponse,
+  type LegacyReflectionResponse as ReflectionResponse,
 } from '@justgo/contracts';
 import { ApiError } from '../../lib/http';
 import type { AccountClient } from '../../lib/account-client';

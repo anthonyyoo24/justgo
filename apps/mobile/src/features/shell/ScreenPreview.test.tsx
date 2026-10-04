@@ -64,7 +64,11 @@ it('shows progress activity, read-only saved reflection, and an empty adjacent m
   expect(screen.queryByText('3 reps')).toBeNull();
   expect(screen.queryByText(/min.*total/)).toBeNull();
   expect(screen.getAllByText('View Reflection')).toHaveLength(2);
-  expect(screen.getByLabelText(/Rep 2\..*Feeling: Not recorded/)).toBeTruthy();
+  expect(
+    screen.getByLabelText(
+      'Rep 2. Ask for a recommendation. 12:40 PM. Feeling: Not recorded',
+    ),
+  ).toBeTruthy();
   fireEvent.press(
     screen.getByRole('button', { name: /Rep 1\. Say hello to someone/ }),
   );

@@ -6,7 +6,7 @@ The owner approved separating Phase 07 into five sequential subphases and using
 one coherent, verified pull request per checkpoint. All implementation drafts,
 including previously untracked files and the owner's plan edits, are preserved
 in local commit `6d4279f0036c5bcb5602f02eaf7c6802599ea7dc` on
-`codex/phase-07-draft-checkpoint`. A verified Git bundle is retained locally at
+`codex/archive/phase-07-drafts`. A verified Git bundle is retained locally at
 `.local/phase-07/draft-checkpoint.bundle`; ignored environment files, dependency
 folders and browser artifacts remain local and are not part of the commit.
 
@@ -32,9 +32,10 @@ the later drafts and are superseded by the table above.
 
 ### Branch and merge procedure
 
-1. Land the documentation-only plan/handoff/index PR from
-   `codex/phase-07-subphase-plan` after its hosted checks and review pass.
-2. Create `codex/phase-07-1-api-data` from updated `main`. Extract only coherent
+1. Completed: documentation-only [PR #11](https://github.com/anthonyyoo24/justgo/pull/11)
+   merged at `8118bf5` after both hosted checks passed and the independent
+   documentation review was addressed. Its merged branch is now retired.
+2. Current: local `codex/phase-07.1-api-data` starts from that updated `main`. Extract only coherent
    07.1 changes from the preserved checkpoint, including necessary temporary
    compatibility for existing callers. Keep later drafts in the checkpoint.
 3. Test the isolated branch, save its subphase handoff, commit/push/open the PR,
@@ -44,8 +45,33 @@ the later drafts and are superseded by the table above.
    pull unfinished later behavior into an earlier PR. Remove temporary
    compatibility and accept destructive migration only in 07.5.
 
+### Branch names after cleanup
+
+The active branch was renamed from `codex/phase-07-1-api-data` to
+`codex/phase-07.1-api-data`. The draft checkpoint was renamed from
+`codex/phase-07-draft-checkpoint` to `codex/archive/phase-07-drafts`; it still
+points to `6d4279f`. Branch descriptions identify active versus archive use.
+The original bundle remains valid and retains the old checkpoint ref name inside
+it; the commit and all preserved work are unchanged.
+
+The two already-merged planning refs (`codex/phase-07-planning` and
+`codex/phase-07-subphase-plan`) were removed locally and on origin after ancestry
+checks against `main`. PRs #9 and #11 retain their review/history records. The
+unused local `codex/phase-07-api-offline` ref pointed at already-merged `ac322ee`
+and was removed as well. There are now two local Phase 07 branches, with no
+active Phase 07 branch pushed yet. Push 07.1 when its implementation is ready for
+review; create 07.2–07.5 in order using the plan's numbered branch map.
+
 Keep billing in 07A and interactive testing in Codex side panels. No external
 app/API deployment or new native build/signing work is needed for this separation.
+
+## 07.1 implementation checkpoint
+
+The extracted API/data work and fresh verification are recorded in
+[phase-07-1-api-data.md](phase-07-1-api-data.md). The current app keeps its
+legacy domain routes while identity uses the new resources. Expansion/backfill
+and a disposable contraction/restoration rehearsal are in scope; final schema
+removal and the new offline app flow are not accepted in this checkpoint.
 
 ## Initial verified slice — historical snapshot
 

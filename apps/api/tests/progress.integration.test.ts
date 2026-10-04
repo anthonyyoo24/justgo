@@ -3,8 +3,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import {
   type AccessResponse,
-  type ProgressDayResponse,
-  type ProgressResponse,
+  type LegacyProgressDayResponse,
+  type LegacyProgressResponse,
 } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../src/db/client.js';
 import { readConfig } from '../src/config.js';
@@ -128,7 +128,7 @@ describe('owner-scoped Progress history', () => {
       `/v1/progress?month=${month}&timeZone=UTC`,
     );
     expect(res.statusCode, res.body).toBe(200);
-    const result = res.json() as ProgressResponse;
+    const result = res.json() as LegacyProgressResponse;
     expect(result).toMatchObject({
       month,
       today: dateOffset(0),
@@ -191,7 +191,7 @@ describe('owner-scoped Progress history', () => {
       `/v1/progress/days/${date}?limit=1`,
     );
     expect(first.statusCode, first.body).toBe(200);
-    const page1 = first.json() as ProgressDayResponse;
+    const page1 = first.json() as LegacyProgressDayResponse;
     expect(page1).toMatchObject({
       date,
       totalReps: 4,
@@ -207,13 +207,13 @@ describe('owner-scoped Progress history', () => {
       levelId: 'level-1',
     });
     expect(page1.entries[0]?.instruction.length).toBeGreaterThan(0);
-    expect(page1.entries[0]?.revisionId.length).toBeGreaterThan(0);
+    expect(page1.entries[0]?.revisionId?.length).toBeGreaterThan(0);
     expect(first.body).not.toContain('Unfinished secret');
     const second = await request(
       a.sessionToken,
       `/v1/progress/days/${date}?limit=1&cursor=${page1.nextCursor}`,
     );
-    const page2 = second.json() as ProgressDayResponse;
+    const page2 = second.json() as LegacyProgressDayResponse;
     expect(page2.entries[0]).toMatchObject({
       attemptId: ids[1],
       reflectionStatus: 'submitted',
@@ -224,7 +224,7 @@ describe('owner-scoped Progress history', () => {
       a.sessionToken,
       `/v1/progress/days/${date}?limit=1&cursor=${page2.nextCursor}`,
     );
-    const page3 = third.json() as ProgressDayResponse;
+    const page3 = third.json() as LegacyProgressDayResponse;
     expect(page3.entries[0]).toMatchObject({
       attemptId: ids[2],
       reflectionStatus: 'skipped',
@@ -236,13 +236,15 @@ describe('owner-scoped Progress history', () => {
       a.sessionToken,
       `/v1/progress/days/${date}?limit=1&cursor=${page3.nextCursor}`,
     );
-    expect((fourth.json() as ProgressDayResponse).entries[0]).toMatchObject({
+    expect(
+      (fourth.json() as LegacyProgressDayResponse).entries[0],
+    ).toMatchObject({
       attemptId: ids[3],
       reflectionStatus: 'none',
       feeling: null,
       reflectionText: null,
     });
-    expect((fourth.json() as ProgressDayResponse).nextCursor).toBeNull();
+    expect((fourth.json() as LegacyProgressDayResponse).nextCursor).toBeNull();
     const month = await request(
       a.sessionToken,
       '/v1/progress?month=2024-11&timeZone=Asia/Tokyo',

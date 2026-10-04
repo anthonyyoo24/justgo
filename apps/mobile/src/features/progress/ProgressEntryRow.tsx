@@ -12,7 +12,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import {
   feelingChoices,
   type FeelingCode,
-  type ProgressEntry,
+  type LegacyProgressEntry as ProgressEntry,
 } from '@justgo/contracts';
 import { colors, fontFamilies, typography } from '../../theme/tokens';
 import { FeelingFace } from '../reflections/FeelingFace';
@@ -162,13 +162,15 @@ export function ProgressEntryRow({
   const opened = !!reflection && expanded;
   const action = opened ? 'Hide Reflection' : 'View Reflection';
   const Row = reflection ? Pressable : View;
+  const activityAt = entry.activityAt ?? entry.completedAt;
+  const time = activityAt ? completionTime(activityAt, entry.timeZone) : null;
 
   return (
     <View style={styles.entry}>
       <Row
         accessible
         accessibilityRole={reflection ? 'button' : undefined}
-        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}. ${completionTime(entry.completedAt, entry.timeZone)}. Feeling: ${feelingLabel(feeling)}${reflection ? `. ${action}` : ''}`}
+        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}.${time ? ` ${time}.` : ''} Feeling: ${feelingLabel(feeling)}${reflection ? `. ${action}` : ''}`}
         accessibilityState={reflection ? { expanded: opened } : undefined}
         onPress={reflection ? onToggle : undefined}
         style={styles.entryRow}
@@ -182,15 +184,15 @@ export function ProgressEntryRow({
             {entry.instruction}
           </Text>
           <View testID="entry-metadata-row" style={styles.entryMeta}>
-            <View style={styles.entryMetaItem}>
-              <EntryClockIcon />
-              <Text style={styles.entryMetaText}>
-                {completionTime(entry.completedAt, entry.timeZone)}
-              </Text>
-            </View>
+            {time && (
+              <View style={styles.entryMetaItem}>
+                <EntryClockIcon />
+                <Text style={styles.entryMetaText}>{time}</Text>
+              </View>
+            )}
             {!!reflection && (
               <View testID="reflection-action" style={styles.reflectionAction}>
-                <View style={styles.reflectionDivider} aria-hidden />
+                {time && <View style={styles.reflectionDivider} aria-hidden />}
                 <ReflectionPencil />
                 <Text style={styles.reflectionActionText}>{action}</Text>
                 <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>

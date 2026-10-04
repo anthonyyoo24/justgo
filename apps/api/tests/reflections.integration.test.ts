@@ -2,7 +2,10 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { sql } from 'drizzle-orm';
-import { type AccessResponse, type ChallengeQueue } from '@justgo/contracts';
+import {
+  type AccessResponse,
+  type LegacyChallengeQueue,
+} from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../src/db/client.js';
 import { readConfig } from '../src/config.js';
 import { IdentityService } from '../src/identity/service.js';
@@ -73,7 +76,7 @@ async function attempt(
 ) {
   const queue = (
     await request(token, '/v1/challenges/queue/streets', 'GET')
-  ).json() as ChallengeQueue;
+  ).json() as LegacyChallengeQueue;
   const card = queue.cards[0]!;
   const id = randomUUID();
   const start = await request(token, '/v1/challenges/start', 'POST', {

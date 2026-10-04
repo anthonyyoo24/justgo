@@ -21,7 +21,7 @@ npm run dev:web
 
 The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 07A, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
 
-To exercise phase 04 with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Create a disposable account using the normal recovery screen and choose Back to app. The presentation-only screen preview still makes no challenge writes. Apply migrations 0004–0006 first. See the phase 04 handoff for fixtures and remaining device gates.
+To exercise phase 04 with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Create a disposable account using the normal recovery screen and choose Back to app. The presentation-only screen preview still makes no challenge writes. Apply all registered migrations first. See the phase 04 handoff for fixtures and remaining device gates.
 
 For environment-managed development, copy the workspace `.env.example` files to `.env` and configure the separate runtime and migration URLs. Never commit credentials. Identity traffic requires HTTPS, except loopback during development. A physical iPhone needs a reachable HTTPS API route; `localhost` on a phone refers to the phone. Do not embed a Vercel protection bypass secret in the app.
 
@@ -31,12 +31,13 @@ For environment-managed development, copy the workspace `.env.example` files to 
 npm run check          # strict TypeScript, lint, formatting and unit/component tests
 npm run test:db        # real PostgreSQL isolation/rollback/pool tests; db:local + migrate first
 npm run test:coverage  # all-source reports + regression floors; uses the test DB
+npm run test:journey   # saved real app/API account/catalog smoke; see TESTING.md
 npm run export:web -w @justgo/mobile
 npm run export:ios -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
-CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts and create/drop only their uniquely named fixture table. They run as `justgo_runtime`, not an administrator.
+CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools and the pinned Playwright Chromium for the saved account/catalog journey. See [testing guidance](docs/TESTING.md) for local prerequisites and artifact handling.
 
 Coverage scope, thresholds, focused commands and async/UI test conventions are in
 [testing guidance](docs/TESTING.md).

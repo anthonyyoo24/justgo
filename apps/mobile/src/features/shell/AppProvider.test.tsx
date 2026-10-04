@@ -107,10 +107,9 @@ beforeEach(async () => {
     .spyOn(globalThis, 'fetch')
     .mockImplementation(async (input) => {
       const path = String(input);
-      if (path.endsWith('/identity/me')) return response(session);
-      if (path.endsWith('/identity/devices')) return response({ devices: [] });
-      if (path.endsWith('/identity/credentials'))
-        return response({ credentials: [] });
+      if (path.endsWith('/sessions/current')) return response(session);
+      if (path.endsWith('/devices')) return response({ devices: [] });
+      if (path.endsWith('/credentials')) return response({ credentials: [] });
       if (path.endsWith('/access')) return response(access);
       throw new Error(`Unexpected fixture request: ${path}`);
     });
@@ -151,7 +150,9 @@ it('initializes one identity/runtime, provides its query cache and admits verifi
   );
   expect(runtime).toBe(originalRuntime);
   expect(
-    fetcher.mock.calls.filter(([url]) => String(url).endsWith('/identity/me')),
+    fetcher.mock.calls.filter(([url]) =>
+      String(url).endsWith('/sessions/current'),
+    ),
   ).toHaveLength(1);
 });
 
@@ -191,7 +192,7 @@ it('clears queries, mutations and challenge state synchronously on account loss 
 
   session = { ...session, userId: id(8) };
   fetcher.mockImplementation(async (input, init) => {
-    if (String(input).endsWith('/identity/recover')) {
+    if (String(input).endsWith('/sessions')) {
       const proposal = JSON.parse(String(init?.body)) as SessionResponse;
       session = {
         ...session,
@@ -227,13 +228,13 @@ it('coordinates simultaneous expired requests through the real identity session 
   const renew = jest.spyOn(identity, 'retry');
   fetcher.mockImplementation(async (input, init) => {
     const path = String(input);
-    if (path.endsWith('/identity/me')) {
+    if (path.endsWith('/sessions/current')) {
       return response({
         ...session,
         expiresAt: new Date(Date.now() + 1000).toISOString(),
       });
     }
-    if (path.endsWith('/identity/renew')) {
+    if (path.endsWith('/sessions')) {
       const proposal = JSON.parse(String(init?.body)) as { sessionId: string };
       return response({ ...session, sessionId: proposal.sessionId });
     }

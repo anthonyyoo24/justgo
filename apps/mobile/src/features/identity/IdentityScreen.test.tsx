@@ -18,7 +18,7 @@ it('asks for verification from the new device and submits the entered digits onl
   const fetcher = jest.fn(async (url: string, init: RequestInit) => {
     const body = init.body ? JSON.parse(init.body as string) : {};
     let result: object;
-    if (url.endsWith('/bootstrap'))
+    if (url.endsWith('/sessions'))
       result = {
         userId: '00000000-0000-4000-8000-000000000003',
         deviceId: body.deviceId,
@@ -27,13 +27,13 @@ it('asks for verification from the new device and submits the entered digits onl
       };
     else if (url.endsWith('/devices')) result = { devices: [] };
     else if (url.endsWith('/credentials')) result = { credentials: [] };
-    else if (url.endsWith('/transfers/inspect'))
+    else if (url.endsWith('/transfer-inspections'))
       result = {
         id: transferId,
         status: 'waiting',
         expiresAt: new Date(Date.now() + 600000).toISOString(),
       };
-    else if (url.endsWith('/transfers/approve')) {
+    else if (url.endsWith('/transfer-approvals')) {
       if (body.verification !== '012345')
         return {
           ok: false,
@@ -78,7 +78,7 @@ it('asks for verification from the new device and submits the entered digits onl
     ).toBeTruthy(),
   );
   expect(
-    fetcher.mock.calls.some(([url]) => url.endsWith('/transfers/approve')),
+    fetcher.mock.calls.some(([url]) => url.endsWith('/transfer-approvals')),
   ).toBe(false);
   fireEvent.changeText(screen.getByLabelText('Verification digits'), '999999');
   fireEvent.press(screen.getByRole('button', { name: 'Approve this device' }));
@@ -174,7 +174,7 @@ it('shares the app account and makes device tools reachable without a long recov
         return {
           ok: true,
           json: async () =>
-            _url.toString().endsWith('/bootstrap')
+            _url.toString().endsWith('/sessions')
               ? {
                   userId: '00000000-0000-4000-8000-000000000003',
                   deviceId: body.deviceId,

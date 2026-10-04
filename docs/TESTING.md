@@ -22,7 +22,8 @@ npm run export:ios -w @justgo/mobile
 
 `check` builds contracts, typechecks, lints, checks formatting and runs architecture,
 API unit, mobile component/controller and contract tests. `test:db` exercises real
-PostgreSQL transactions, ownership, isolation, idempotency, reflections and history.
+PostgreSQL transactions, ownership, isolation, idempotency, reflections and history,
+then runs the isolated migration/restoration rehearsal.
 It refuses non-loopback hosts and databases other than the disposable `justgo_test`.
 Never point fixtures at staging/production or real private data.
 
@@ -32,7 +33,7 @@ checks during each extraction and the full commands before handoff.
 
 `test:coverage` builds contracts, runs each workspace sequentially and enforces
 `scripts/coverage-thresholds.json` through `coverage:check`. The API coverage run
-includes all five database suites plus unit tests, so it requires the same migrated
+includes the database suites and migration rehearsal plus unit tests, so it requires the same migrated
 local database. Individual workspace `test:coverage` commands produce reports;
 run the root command for the combined gate. Reports are ignored generated output
 under `coverage/{mobile,api,contracts}/`: HTML, LCOV and count-based JSON summaries.
@@ -107,10 +108,63 @@ never creates user activity or grants production access. Record actual viewport,
 flow, fixtures, failures and recovery; keep automated/browser/native claims separate.
 The earlier physical-device and staging gates remain in their original handoffs.
 
-The full-journey CI suite is an open Phase 07 task. Phase 06A's one-off browser
+Phase 07.1 adds the saved identity/catalog smoke foundation below. The complete
+completion/reflection/offline/history journey remains a Phase 07.2–07.5 task. Phase 06A's one-off browser
 journey and passing unit/component/database suites do not substitute for it.
 When that harness is implemented, new or changed critical journeys must update
 its saved tests and pass the CI gate alongside the relevant lower-level tests.
+
+## Saved app/API journey foundation (07.1)
+
+Use Node 24 and the root lockfile, PostgreSQL 17 tools (including `pg_dump` and
+`psql`), and the dedicated database prepared by `npm run db:local`. Install the
+pinned Playwright Chromium once with `npx playwright install chromium`; Linux
+CI uses `npx playwright install --with-deps chromium`. Then run:
+
+```sh
+npm run test:journey
+```
+
+The wrapper validates the loopback `justgo_test` database, restricted runtime and
+migration roles, local SSL setting and nonproduction environment **before**
+migration or service startup. It builds contracts, applies migrations, starts the
+isolated fixture API on 127.0.0.1:3000 and Expo on 127.0.0.1:8081, runs the saved
+test and shuts its services down. Keep both ports free; it refuses to reuse an
+unknown running server. Local settings come from the ignored `apps/api/.env`;
+CI supplies the same explicit database mapping used by database/coverage tests.
+
+The saved case creates and renews a real disposable account in the app, opens its
+challenge deck and Progress, and checks the database. Fixture cleanup deletes
+only accounts identified by this test's bootstrap session UUIDs. The dedicated
+fixture server grants isolated test access and upload eligibility; deployed API
+startup has no such provider. Browser storage remains memory-only in 07.1.
+
+This automated browser runs headlessly. Interactive walkthroughs use the Codex
+side panel, under the same fixture API/Expo configuration. These are separate
+evidence types; neither proves native Keychain behavior. No external browser
+window is required. Later subphases extend this harness with local storage,
+controlled failures, completion/reflection and Progress assertions.
+
+Failure output is under `.local/journey-results` and `.local/journey-report`.
+Network traces, videos and automatic screenshots are disabled because they can
+retain credentials. The fixture captures a masked UI screenshot on failure;
+never add real account data or token logging. Both test failure and service
+startup failure make the command fail. CI uploads these artifacts and enforces
+the saved smoke step alongside the existing checks.
+
+## Migration preservation rehearsal (07.1)
+
+`npm run test:migrations` runs the standalone rehearsal; `test:db` includes it.
+It builds migrations 0000–0009 in a uniquely named disposable schema within
+`justgo_test`, compares the restored Drizzle metadata with PostgreSQL, seeds
+synthetic history and creates a temporary SQL snapshot with PostgreSQL 17
+`pg_dump`. It verifies expansion 0010 and compatibility index 0011, rehearses the unregistered contraction,
+restores the snapshot using `psql`, reapplies expansion and compares preserved
+history again. Its schema and snapshot are removed after the test. Production
+`justgo`/Drizzle migration state is not reset. The contraction SQL under
+`apps/api/scripts/rehearsals` is not a deployable migration; 07.5 owns its final
+review and acceptance. Set `JUSTGO_PG_BIN` when PostgreSQL 17 tools are not on
+PATH or in the standard Apple Silicon Homebrew directory.
 
 ## Enforced code boundaries
 

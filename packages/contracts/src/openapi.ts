@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import * as challenges from './challenges.ts';
 import * as identity from './identity.ts';
-import * as reflections from './reflections.ts';
+import * as attempts from './attempts.ts';
+import * as legacyChallenges from './legacy-challenges.ts';
+import * as legacyReflections from './legacy-reflections.ts';
+import * as legacyProgress from './legacy-progress.ts';
 import * as progress from './progress.ts';
 import { accessResponseSchema } from './access.ts';
 
@@ -18,6 +21,28 @@ function operation(
     ...(body ? { requestBody: { required: true, content: json(body) } } : {}),
     responses: {
       '200': { description: 'Validated response', content: json(response) },
+      ...(body
+        ? {
+            '413': {
+              description:
+                'REQUEST_TOO_LARGE: body exceeds 32 KiB; do not retry unchanged input',
+              content: json(
+                identity.identityErrorSchema.extend({
+                  code: z.literal('REQUEST_TOO_LARGE'),
+                }),
+              ),
+            },
+            '415': {
+              description:
+                'UNSUPPORTED_MEDIA_TYPE: unsupported request content type; do not retry unchanged input',
+              content: json(
+                identity.identityErrorSchema.extend({
+                  code: z.literal('UNSUPPORTED_MEDIA_TYPE'),
+                }),
+              ),
+            },
+          }
+        : {}),
       default: {
         description: 'Typed failure; never includes secrets or supplied values',
         content: json(identity.identityErrorSchema),
@@ -25,9 +50,13 @@ function operation(
     },
   };
 }
+const legacyOperation = (...args: Parameters<typeof operation>) => ({
+  ...operation(...args),
+  deprecated: true,
+});
 export const openApiDocument = {
   openapi: '3.1.0',
-  info: { title: 'JustGO API', version: '0.4.0' },
+  info: { title: 'JustGO API', version: '0.5.0' },
   components: {
     securitySchemes: {
       deviceSession: {
@@ -38,23 +67,31 @@ export const openApiDocument = {
     },
   },
   paths: {
-    '/v1/challenges/state': { get: operation(challenges.challengeStateSchema) },
+    '/v1/challenges/state': {
+      get: legacyOperation(legacyChallenges.legacyChallengeStateSchema),
+    },
     '/v1/challenges/venue': {
-      post: operation(identity.okSchema, challenges.selectVenueSchema),
+      post: legacyOperation(
+        identity.okSchema,
+        legacyChallenges.legacySelectVenueSchema,
+      ),
     },
     '/v1/challenges/skip': {
-      post: operation(challenges.queueSchema, challenges.skipChallengeSchema),
+      post: legacyOperation(
+        legacyChallenges.legacyQueueSchema,
+        legacyChallenges.legacySkipChallengeSchema,
+      ),
     },
     '/v1/challenges/start': {
-      post: operation(
-        challenges.attemptResultSchema,
-        challenges.startAttemptSchema,
+      post: legacyOperation(
+        legacyChallenges.legacyAttemptResultSchema,
+        legacyChallenges.legacyStartAttemptSchema,
       ),
     },
     '/v1/challenges/finish': {
-      post: operation(
-        challenges.attemptResultSchema,
-        challenges.finishAttemptSchema,
+      post: legacyOperation(
+        legacyChallenges.legacyAttemptResultSchema,
+        legacyChallenges.legacyFinishAttemptSchema,
       ),
     },
     '/v1/challenges/queue/{venue}': {
@@ -66,7 +103,7 @@ export const openApiDocument = {
           schema: z.toJSONSchema(challenges.venueSchema),
         },
       ],
-      get: operation(challenges.queueSchema),
+      get: legacyOperation(legacyChallenges.legacyQueueSchema),
     },
     '/v1/challenges/attempt/{id}': {
       parameters: [
@@ -77,7 +114,7 @@ export const openApiDocument = {
           schema: { type: 'string', format: 'uuid' },
         },
       ],
-      get: operation(challenges.attemptResultSchema),
+      get: legacyOperation(legacyChallenges.legacyAttemptResultSchema),
     },
     '/v1/reflections/{attemptId}': {
       parameters: [
@@ -88,7 +125,7 @@ export const openApiDocument = {
           schema: { type: 'string', format: 'uuid' },
         },
       ],
-      get: operation(reflections.reflectionStateSchema),
+      get: legacyOperation(legacyReflections.legacyReflectionStateSchema),
     },
     '/v1/progress': {
       parameters: [
@@ -105,7 +142,7 @@ export const openApiDocument = {
           schema: z.toJSONSchema(challenges.timeZoneSchema),
         },
       ],
-      get: operation(progress.progressResponseSchema),
+      get: legacyOperation(legacyProgress.legacyProgressResponseSchema),
     },
     '/v1/progress/days/{date}': {
       parameters: [
@@ -128,7 +165,7 @@ export const openApiDocument = {
           schema: { type: 'string' },
         },
       ],
-      get: operation(progress.progressDayResponseSchema),
+      get: legacyOperation(legacyProgress.legacyProgressDayResponseSchema),
     },
     ...Object.fromEntries(
       (['draft', 'final', 'skip'] as const).map((action) => [
@@ -142,42 +179,135 @@ export const openApiDocument = {
               schema: { type: 'string', format: 'uuid' },
             },
           ],
-          post: operation(
-            reflections.reflectionStateSchema,
+          post: legacyOperation(
+            legacyReflections.legacyReflectionStateSchema,
             action === 'skip'
-              ? reflections.reflectionSkipSchema
-              : reflections.reflectionWriteSchema,
+              ? legacyReflections.legacyReflectionSkipSchema
+              : legacyReflections.legacyReflectionWriteSchema,
           ),
         },
       ]),
     ),
+    '/v1/challenges': { get: operation(challenges.catalogSchema) },
+    '/v1/attempts': {
+      get: {
+        ...operation(progress.progressDayResponseSchema),
+        parameters: [
+          {
+            name: 'date',
+            in: 'query',
+            required: true,
+            schema: z.toJSONSchema(progress.calendarDateSchema),
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
+          },
+          {
+            name: 'cursor',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+          },
+        ],
+      },
+      post: {
+        ...operation(
+          attempts.attemptResultSchema,
+          attempts.createAttemptSchema,
+        ),
+        responses: {
+          ...operation(
+            attempts.attemptResultSchema,
+            attempts.createAttemptSchema,
+          ).responses,
+          '201': {
+            description: 'Created completed attempt',
+            content: json(attempts.attemptResultSchema),
+          },
+        },
+      },
+    },
+    '/v1/attempts/{id}': {
+      parameters: [
+        {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+        },
+      ],
+      patch: {
+        ...operation(
+          attempts.patchAttemptResponseSchema,
+          attempts.patchAttemptSchema,
+        ),
+        responses: {
+          ...operation(
+            attempts.patchAttemptResponseSchema,
+            attempts.patchAttemptSchema,
+          ).responses,
+          '409': {
+            description:
+              'Altered operation reuse or stale reflection revision; only genuine revision conflicts include owner-scoped currentAttempt',
+            content: json(
+              z.union([
+                identity.identityErrorSchema.extend({
+                  code: z.literal('CONFLICT'),
+                }),
+                attempts.reflectionConflictSchema,
+              ]),
+            ),
+          },
+        },
+      },
+    },
+    '/v1/progress/summary': {
+      parameters: [
+        {
+          name: 'timeZone',
+          in: 'query',
+          required: true,
+          schema: z.toJSONSchema(challenges.timeZoneSchema),
+        },
+      ],
+      get: operation(progress.progressSummarySchema),
+    },
+    '/v1/progress/calendar': {
+      parameters: [
+        {
+          name: 'month',
+          in: 'query',
+          required: true,
+          schema: z.toJSONSchema(progress.calendarMonthSchema),
+        },
+      ],
+      get: operation(progress.progressCalendarSchema),
+    },
     '/v1/access': { get: operation(accessResponseSchema) },
-    '/v1/identity/bootstrap': {
-      post: operation(
-        identity.sessionResponseSchema,
-        identity.bootstrapSchema,
-        false,
-      ),
+    '/v1/sessions': {
+      post: {
+        ...operation(
+          identity.sessionResponseSchema,
+          identity.sessionCreateSchema,
+          false,
+        ),
+        description:
+          'Create or recover a session with bootstrap/recovery credentials or transfer claimant proof. The renewal kind requires the current bearer session; all proof material stays in the body or Authorization header.',
+        security: [{}, { deviceSession: [] }],
+      },
     },
-    '/v1/identity/recover': {
-      post: operation(
-        identity.sessionResponseSchema,
-        identity.bootstrapSchema,
-        false,
-      ),
-    },
-    '/v1/identity/renew': {
-      post: operation(identity.sessionResponseSchema, identity.renewSchema),
-    },
-    '/v1/identity/me': { get: operation(identity.sessionResponseSchema) },
-    '/v1/identity/devices': { get: operation(identity.devicesResponseSchema) },
-    '/v1/identity/credentials': {
+    '/v1/sessions/current': { get: operation(identity.sessionResponseSchema) },
+    '/v1/devices': { get: operation(identity.devicesResponseSchema) },
+    '/v1/credentials': {
       get: operation(identity.credentialsResponseSchema),
       post: operation(identity.okSchema, identity.credentialCreateSchema),
     },
     ...Object.fromEntries(
       ['devices', 'credentials'].map((resource) => [
-        `/v1/identity/${resource}/{id}/revoke`,
+        `/v1/${resource}/{id}`,
         {
           parameters: [
             {
@@ -187,35 +317,36 @@ export const openApiDocument = {
               schema: { type: 'string', format: 'uuid' },
             },
           ],
-          post: operation(identity.okSchema, z.object({}).strict()),
+          delete: operation(identity.okSchema),
         },
       ]),
     ),
-    '/v1/identity/transfers/start': {
+    '/v1/transfers': {
       post: operation(
         identity.transferResponseSchema,
         identity.transferStartSchema,
         false,
       ),
     },
-    '/v1/identity/transfers/inspect': {
+    '/v1/transfers/{id}': {
+      parameters: [
+        {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+        },
+      ],
+      delete: operation(identity.okSchema, identity.transferInspectSchema),
+    },
+    '/v1/transfer-inspections': {
       post: operation(
         identity.transferInspectionResponseSchema,
         identity.transferInspectSchema,
       ),
     },
-    '/v1/identity/transfers/approve': {
+    '/v1/transfer-approvals': {
       post: operation(identity.okSchema, identity.transferApproveSchema),
-    },
-    '/v1/identity/transfers/cancel': {
-      post: operation(identity.okSchema, identity.transferInspectSchema),
-    },
-    '/v1/identity/transfers/redeem': {
-      post: operation(
-        identity.sessionResponseSchema,
-        identity.transferProofSchema,
-        false,
-      ),
     },
   },
 };
