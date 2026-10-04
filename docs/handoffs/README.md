@@ -4,6 +4,15 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
+October 4 B publication: the owner merged [07.1A / PR #13](https://github.com/anthonyyoo24/justgo/pull/13)
+at `806f57f` and authorized pushing 07.1B and creating its PR against updated
+`main`. B includes A's cancellation fix and only adds the journey harness, CI
+and related documentation. The [07.1B handoff](phase-07-1b-journey-ci.md) owns
+its fresh verification: 351 workspace tests, 60 database/migration cases, coverage
+and the saved journey pass, including failure/cleanup and report-path checks.
+Hosted B evidence and merge approval remain open.
+This supersedes the earlier local-only B restrictions recorded below.
+
 October 4 PR #13 review fix: transfer cancellation now uses the same sensitive
 rate limit as other transfer operations. The new regression failed before the
 fix and passed afterward; fresh workspace checks pass 350 tests and database
@@ -16,7 +25,8 @@ October 4 review split: the owner authorized **07.1A only**, by narrowing existi
 [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). A keeps the API/data,
 migration, compatibility and application/database tests; B keeps the saved
 Playwright app/API journey and its browser CI integration. B is preserved on
-local `codex/phase-07.1b-journey-ci`, with no push or PR. Fresh A evidence belongs
+local `codex/phase-07.1b-journey-ci`, with no push or PR. Its preservation and
+future verification checklist are in the [07.1B handoff](phase-07-1b-journey-ci.md). Fresh A evidence belongs
 in the [07.1A handoff](phase-07-1-api-data.md); the combined-run evidence below is
 historical. Both slices must be accepted before 07.2. Merge remains unauthorized.
 

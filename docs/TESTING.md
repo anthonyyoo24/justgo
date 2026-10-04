@@ -110,7 +110,8 @@ The earlier physical-device and staging gates remain in their original handoffs.
 
 Phase 07.1 is split for review. **07.1A** retains application/unit/component,
 database, migration-restoration and coverage gates. The **07.1B** saved app/API
-journey is preserved on local `codex/phase-07.1b-journey-ci`, without a push or PR.
+journey is on `codex/phase-07.1b-journey-ci`, now authorized for a separate PR
+against `main` after the owner merged A through PR #13.
 Its root `e2e/` files, environment-guard test, runner, Playwright dependency,
 journey typecheck/scripts and browser CI/artifact steps move together. They are
 not part of A; `npm run test:journey` is available only on B. No review filters or
@@ -118,11 +119,56 @@ coverage floors were weakened to meet the file limit.
 
 B must verify clean service startup/cleanup, disposable accounts/access fixtures,
 masked failure artifacts and the actual identity-renewal/catalog/Progress smoke,
-then publish its required CI step with owner permission. Full completion,
+then verify its published CI step on the pushed revision. Full completion,
 reflection and offline/history journeys remain 07.2–07.5. A one-off side-panel
 walkthrough and A's lower-level tests do not replace B's saved journey gate.
 Complete both A and B before proceeding to 07.2. The existing mobile Maestro
 launch flow is unchanged.
+
+## Saved app/API journey foundation (07.1B)
+
+The owner merged A through PR #13 at `806f57f` and authorized B's push and PR
+against updated `main`. The B diff contains only its harness, CI and documentation.
+B still requires owner review and separate merge approval. Historical combined
+verification does not establish B acceptance.
+
+Use Node 24 and the root lockfile, PostgreSQL 17 tools (including `pg_dump` and
+`psql`), and the dedicated database prepared by `npm run db:local`. Install the
+pinned Playwright Chromium once with `npx playwright install chromium`; Linux
+CI uses `npx playwright install --with-deps chromium`. Then run:
+
+```sh
+npm run test:journey
+```
+
+The wrapper validates the loopback `justgo_test` database, restricted runtime and
+migration roles, local SSL setting and nonproduction environment **before**
+migration or service startup. It builds contracts, applies migrations, starts the
+isolated fixture API on 127.0.0.1:3000 and Expo on 127.0.0.1:8081, runs the saved
+test and shuts its services down. Keep both ports free; it refuses to reuse an
+unknown running server. Local settings come from the ignored `apps/api/.env`;
+CI supplies the same explicit database mapping used by database/coverage tests.
+
+The saved case creates and renews a real disposable account in the app, opens its
+challenge deck and Progress, and checks the database. Fixture cleanup deletes
+only accounts identified by this test's bootstrap session UUIDs. The dedicated
+fixture server grants isolated test access and upload eligibility; deployed API
+startup has no such provider. Browser storage remains memory-only in 07.1.
+
+This automated browser runs headlessly. Interactive walkthroughs use the Codex
+side panel, under the same fixture API/Expo configuration. These are separate
+evidence types; neither proves native Keychain behavior. No external browser
+window is required. Later subphases extend this harness with local storage,
+controlled failures, completion/reflection and Progress assertions.
+
+Failure output is under `.local/journey-results` and `.local/journey-report`.
+Network traces, videos and automatic screenshots are disabled because they can
+retain credentials. The fixture captures a masked UI screenshot on failure;
+never add real account data or token logging. Both test failure and service
+startup failure make the command fail. CI uploads these artifacts and enforces
+the saved smoke step alongside the existing checks. CI also requires a nonempty
+`.local/journey-report/index.html`, preventing a report-directory mismatch from
+silently dropping the HTML report and its screenshot attachments.
 
 ## Migration preservation rehearsal (07.1)
 
