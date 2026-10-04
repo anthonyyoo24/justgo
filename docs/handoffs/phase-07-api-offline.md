@@ -66,7 +66,8 @@ unused local `codex/phase-07-api-offline` ref pointed at already-merged `ac322ee
 and was removed as well. The former 07.1 remote branch was removed. After
 reverting the unapproved merge (`7845ac4`) and adding permission rules
 (`c355ef0`), the implementation is restored on local `codex/phase-07.1-api-data`
-for owner review. Do not publish or merge without explicit permission. Preserve
+for owner review. The owner has now explicitly authorized pushing this branch
+and creating a new PR; merging is not authorized. Preserve
 the archive and use the numbered branch map when later work is authorized.
 
 Keep billing in 07A and interactive testing in Codex side panels. No external

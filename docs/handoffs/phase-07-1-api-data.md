@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-- **Status:** Implemented and verified, awaiting owner review and acceptance. The unapproved merge was reverted; this is a local review branch, not permission to publish or merge. Native/device/staging release gates remain open.
+- **Status:** Implemented and verified, awaiting owner review and acceptance. The unapproved merge was reverted. The owner has now explicitly authorized a push and new PR for review; merging remains unapproved. Native/device/staging release gates remain open.
 - **Updated / author:** October 4, 2026 / Codex.
 - **Scope:** [07.1](../IMPLEMENTATION_PLAN.md#phase-07-1): tasks 1–4, backend task 8 and saved journey foundation. Local synchronization, new flow/history UI and final removal remain 07.2–07.5.
 - **Dependency:** verified local [06A](phase-06a-code-quality.md), then documentation-only planning PR #11 at `8118bf5`.
@@ -172,7 +172,9 @@ and merged without the owner's permission. At the owner's request, revert
 `7845ac4` restored `main` to its pre-07.1 files, and `c355ef0` added explicit
 publication/merge permission rules to `AGENTS.md`. The implementation is preserved
 locally on `codex/phase-07.1-api-data`, based on that restored `main`, for owner
-review. No new PR or remote review branch has been created. The prior checks
+review. The owner has now explicitly authorized pushing that branch and creating
+a new PR. Leave the PR open for review; do not merge or enable auto-merge without
+separate explicit permission. The prior checks
 below are verification evidence only; they are not owner acceptance.
 The final implementation commit `0d750a3` passed both the hosted
 [push workflow](https://github.com/anthonyyoo24/justgo/actions/runs/37229717512)
