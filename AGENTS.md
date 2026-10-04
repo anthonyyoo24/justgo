@@ -12,6 +12,19 @@ the applicable commands and evidence requirements. Keep detailed architecture in
 the linked architecture docs and phase-specific work/evidence in the plan and
 handoffs; avoid copying competing versions of these rules into every directory.
 
+## Owner review and Git permissions
+
+- Obtain Anthony's explicit permission before pushing changes, creating any pull
+  request (including a draft), merging any branch or PR, or enabling auto-merge.
+  Permission for one action does not authorize the next action.
+- Requests to implement or continue a phase, general workflow discussions and
+  approval given for earlier work do not authorize publishing or merging the
+  current changes. Prepare the local changes and handoff for the owner's review,
+  then wait for permission for the specific Git action.
+- The owner must have an opportunity to review and identify issues before a
+  merge. Passing tests, green CI and agent reviews do not replace that review or
+  the owner's explicit merge approval. Never merge merely to finish a phase.
+
 ## Design principles
 
 - **Single responsibility and separation of concerns:** Keep rendering,
