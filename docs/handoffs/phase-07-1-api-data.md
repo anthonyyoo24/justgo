@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-- **Status:** Locally verified; pull request and hosted CI acceptance pending.
+- **Status:** Complete for the 07.1 implementation checkpoint. Native/device/staging release gates remain open in their assigned phases.
 - **Updated / author:** October 4, 2026 / Codex.
 - **Scope:** [07.1](../IMPLEMENTATION_PLAN.md#phase-07-1): tasks 1–4, backend task 8 and saved journey foundation. Local synchronization, new flow/history UI and final removal remain 07.2–07.5.
 - **Dependency:** verified local [06A](phase-06a-code-quality.md), then documentation-only planning PR #11 at `8118bf5`.
@@ -167,10 +167,16 @@ claim a full saved offline/completion journey. Expo's optional local `simctl`
 discovery reports unavailable while the web journey succeeds; native evidence
 remains open. No external browser window or simulator was used.
 
-[PR #12](https://github.com/anthonyyoo24/justgo/pull/12) is open. Hosted CI
-acceptance will be recorded after the final revision passes. CodeRabbit reported
-a skipped review (its status is not an approval); independent agent reviews
-covered API/ownership/replay, migration preservation, fixtures/CI and documents.
+[PR #12](https://github.com/anthonyyoo24/justgo/pull/12) contains this checkpoint.
+The final implementation commit `0d750a3` passed both the hosted
+[push workflow](https://github.com/anthonyyoo24/justgo/actions/runs/37229717512)
+and [PR workflow](https://github.com/anthonyyoo24/justgo/actions/runs/37229720097),
+including clean dependency install, PostgreSQL 17 tooling, migrations/restoration,
+coverage, saved journey, both bundle exports and Expo Doctor. The earlier
+`e571679` runs also passed. Final documentation closeout must retain green PR
+checks before merge. CodeRabbit reported a skipped review (its status is not an
+approval); independent agent reviews covered API/ownership/replay, migration
+preservation, fixtures/CI and documents, with no remaining 07.1 blocker.
 
 ## Issues and remaining work
 
@@ -194,8 +200,10 @@ covered API/ownership/replay, migration preservation, fixtures/CI and documents.
   signal tests cover both signals, repeated signals and redacted close failures.
 - Journey cleanup originally expected a nonexistent bootstrap credential ID;
   it now tracks only the actual bootstrap session UUID, avoiding credential logs.
-- Inspect the pushed commit’s hosted checks and review before marking this
-  checkpoint complete. The local gates and side-panel checks above passed.
+- 07.1 implementation and review findings are reconciled with passing local and
+  hosted evidence. Start 07.2 from updated `main` after PR #12 merges; selectively
+  recover useful journal/sender drafts from the archive. Do not merge that archive
+  wholesale or remove compatibility before 07.5.
 - Before using canonical writes, 07.2 must extend the mobile HTTP transport to
   preserve typed `REFLECTION_CONFLICT.currentAttempt` and the `Retry-After`
   header, with parsing/retry regression tests. The current strict identity-only
