@@ -4,6 +4,8 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
+October 4 branch separation: [Phase 07](phase-07-api-offline.md#october-4-branch-separation--current-status) now has five sequential [07.1–07.5 checkpoints](../IMPLEMENTATION_PLAN.md#phase-07-subphases). All existing implementation drafts are preserved locally at `6d4279f` on `codex/phase-07-draft-checkpoint`; the documentation PR does not merge their application code. The identity/HTTP slice previously passed 318 workspace tests, 40 database tests, coverage gates and a side-panel account/recovery walkthrough before later drafts changed the branch. No full subphase is complete. Next: extract a coherent 07.1 branch from updated `main`, verify it independently and use a separate PR for each accepted checkpoint. Genuine reflection conflicts use automatic backend-wins recovery; interactive testing stays in side panels.
+
 October 3 PR #10 review follow-up: the coverage gate now rejects reports with no source entries while preserving valid zero-branch files. The regression failed before the fix and passes afterward; current local checks pass 293 workspace tests, 36 database tests and all coverage floors. The [Phase 06A handoff](phase-06a-code-quality.md#october-3-pr-10-empty-coverage-review-fix) records the fix and links hosted checks.
 
 October 3 assessment reconciliation: the two remaining findings—`413`/`415` HTTP error handling and automated full-journey CI tests—are now explicit [Phase 07 tasks and completion gates](../IMPLEMENTATION_PLAN.md#phase-07). The [Phase 06A handoff](phase-06a-code-quality.md#october-3-assessment-follow-ups-assigned-to-phase-07) records that these remain unimplemented; its coverage gates and browser checks do not close them.
@@ -53,7 +55,7 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 05 — Feelings & typed reflections             | In progress   | 04           | [phase-05-reflections.md](phase-05-reflections.md)       |
 | 06 — Progress calendar & saved history        | In progress   | 05           | [phase-06-progress.md](phase-06-progress.md)             |
 | 06A — Code quality & test hardening           | Complete      | 06 (local)   | [phase-06a-code-quality.md](phase-06a-code-quality.md)   |
-| 07 — API & offline saving                     | Not started   | 06A          | `phase-07-api-offline.md`                                |
+| 07 — API & offline saving                     | In progress   | 06A          | [phase-07-api-offline.md](phase-07-api-offline.md)       |
 | 07A — Native subscriptions & reliable billing | Not started   | 07           | `phase-07a-billing.md`                                   |
 | 08 — Settings, privacy & measurement          | Not started   | 07A          | `phase-08-settings-privacy.md`                           |
 | 09 — Release validation & launch              | Not started   | 08           | `phase-09-release.md`                                    |
@@ -61,4 +63,14 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.
+The five Phase 07 handoffs below are reserved outputs; they are not yet completed records.
+
+| Subphase                                         | Depends on | Handoff filename                   |
+| ------------------------------------------------ | ---------- | ---------------------------------- |
+| 07.1 — API and data foundation                   | 06A        | `phase-07-1-api-data.md`           |
+| 07.2 — Durable local saving and synchronization  | 07.1       | `phase-07-2-local-sync.md`         |
+| 07.3 — Local challenge and reflection experience | 07.2       | `phase-07-3-local-flow.md`         |
+| 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`   |
+| 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md` |
+
+The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.
