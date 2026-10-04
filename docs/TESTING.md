@@ -40,6 +40,14 @@ CI runs the same gate after provisioning/migrations and uploads reports even on
 failure. The V8 provider is pinned to the existing Vitest version; Jest uses its
 existing Istanbul support. No production dependency was changed.
 
+Both database tests and API coverage require `DATABASE_URL` for the restricted
+runtime role, `MIGRATION_DATABASE_URL` for fixture setup/cleanup, and the local SSL
+setting. CI reuses one database environment mapping for migrations/database tests
+and coverage, so those steps cannot drift apart. Ignored local `.env` files are
+absent from a fresh runner: check each new CI command's full prerequisites and
+inspect the hosted result for the pushed commit before calling its gate verified.
+Keep the loopback/test-database safeguards enabled.
+
 ## Coverage policy
 
 All `src/**/*.ts` / mobile `src/**/*.tsx` production files are included, even when
@@ -79,8 +87,12 @@ Provider tests mount the actual provider, identity/controller and account client
 using controlled vault/fetch/native AppState doubles. Fake timers control polling
 and expiry; unmount/cancel/clear and flush queued callbacks before restoring them.
 Progress query tests retain one controllable promise for a request and await the
-visible result. TanStack notifications are wrapped with React `act` in those tests
-and restored afterward. Do not suppress console warnings or use arbitrary waits.
+visible result. Before changing an account's transport fixture, await its previous
+focus refresh; observe the new account's request before resolving it and assert
+the new account's distinct totals. Fake timers control scheduled TanStack
+notifications; drain them inside async React `act` after unmount/cancel/clear,
+before restoring the global notifier and real timers. Do not suppress console
+warnings or use arbitrary waits.
 Keychain adapter tests prove JavaScript payload validation and module/error wiring;
 they do not prove native entitlements, Apple synchronization or physical recovery.
 

@@ -57,6 +57,7 @@ const august: ProgressResponse = {
 };
 
 beforeEach(() => {
+  jest.useFakeTimers();
   // Query notifications are scheduled outside React; flush them inside act.
   notifyManager.setNotifyFunction((notify) => act(notify));
   mockAccount = { userId: 'user-one' };
@@ -76,7 +77,13 @@ afterEach(async () => {
   cleanup();
   await mockClient.queries.cancelQueries();
   mockClient.queries.clear();
+  // Drain scheduled query notifications inside async act before restoring the
+  // global notifier and real timers for the next test.
+  await act(async () => {
+    await jest.runOnlyPendingTimersAsync();
+  });
   notifyManager.setNotifyFunction((notify) => notify());
+  jest.useRealTimers();
 });
 
 it('keeps the displayed month and summary together until an uncached month loads', async () => {
@@ -121,6 +128,9 @@ it('does not show another account’s previous progress while its month loads', 
       <ProgressScreen />
     </QueryClientProvider>,
   );
+  // Finish the first account's focus refresh before replacing the transport
+  // fixture, so a queued old-account request cannot consume the new response.
+  await waitFor(() => expect(mockClient.queries.isFetching()).toBe(0));
   let finishOther!: (value: ProgressResponse) => void;
   const pendingOther = new Promise<ProgressResponse>((resolve) => {
     finishOther = resolve;
@@ -141,11 +151,31 @@ it('does not show another account’s previous progress while its month loads', 
   ).toHaveLength(35);
   expect(screen.queryByText('—')).toBeNull();
   expect(screen.queryByText('on 1 active day')).toBeNull();
-  await act(async () => finishOther({ ...september, monthlyReps: 0 }));
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  await waitFor(() =>
+    expect(
+      mockClient.queries.getQueryState(
+        accountKey('user-two', 'progress', 'month', '2026-09', timeZone),
+      )?.fetchStatus,
+    ).toBe('fetching'),
+  );
+  await act(async () =>
+    finishOther({
+      ...september,
+      currentStreak: 0,
+      bestStreak: 0,
+      totalReps: 0,
+      monthlyReps: 0,
+      activeDays: 0,
+      days: [],
+    }),
+  );
   await waitFor(() =>
     expect(screen.queryByLabelText('Loading progress')).toBeNull(),
   );
   await waitFor(() => expect(mockClient.queries.isFetching()).toBe(0));
+  expect(screen.getByText('on 0 active days')).toBeTruthy();
+  expect(screen.queryByText('on 1 active day')).toBeNull();
 });
 
 it('replaces the first-visit skeleton with the response as soon as it arrives', async () => {

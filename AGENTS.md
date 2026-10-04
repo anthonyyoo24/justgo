@@ -89,6 +89,11 @@ handoffs; avoid copying competing versions of these rules into every directory.
   closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
   Follow `docs/TESTING.md` for coverage commands and regression thresholds.
   Keep earlier physical-device/staging gates open until evidenced.
+- When changing CI, verify each command's prerequisites without relying on ignored
+  `.env` files or existing local artifacts. Reuse common test configuration across
+  related steps. Inspect hosted checks for the pushed commit before marking a new
+  CI gate verified; a local pass does not establish a hosted pass. Record failures
+  and their fixes in the handoff.
 - Work in small reviewable changes. Update the phase handoff, plan and handoff
   index with actual commands/results, UI evidence and remaining work. Do not
   put secrets, real private reflections or credentials in logs or handoffs.

@@ -94,6 +94,42 @@ temporary `/tmp/justgo-phase06a-*.log`; the recorded results here are the durabl
 evidence. Hosted CI results are tracked on the Phase 06A pull request; local
 checks do not establish a hosted CI pass.
 
+### October 3 PR #10 CI environment repair
+
+The first [PR run](https://github.com/anthonyyoo24/justgo/actions/runs/37160224543)
+and [push run](https://github.com/anthonyyoo24/justgo/actions/runs/37160217877)
+passed workspace checks and all 36 database tests, then failed API coverage before
+its five database suites could run. The added coverage step supplied
+`DATABASE_URL` but omitted `MIGRATION_DATABASE_URL`, which those suites also need
+for isolated fixture setup/cleanup. The local ignored `.env` supplied both and hid
+the omission from local verification. Mobile and contract coverage tests passed;
+the combined coverage gate and later exports/Doctor did not run on these failed
+hosted jobs.
+
+Explicitly clearing `MIGRATION_DATABASE_URL` locally reproduced the same five
+suite-initialization failures. The workflow now reuses the migration/database
+step's complete environment mapping for coverage through a YAML anchor/alias.
+Database safeguards, coverage floors and assertions are unchanged. Root agent and
+testing guidance now require checking CI prerequisites without local configuration
+and inspecting hosted results for the pushed commit. Hosted repair results are
+tracked in [PR #10 checks](https://github.com/anthonyyoo24/justgo/pull/10/checks);
+local verification alone does not establish a hosted pass.
+
+Repair verification also reproduced an intermittent Progress account-switch test
+failure locally. Its fixture now awaits the first account's focus refresh before
+replacing the transport, observes the new account's fetch before resolving it and
+asserts distinct new-account totals after loading ends. Fake timers control query
+notifications, which are drained inside async `act` after unmount/cancel/clear and
+before restoring the global notifier and real timers. All original isolation
+assertions remain; no timeout or coverage requirement was increased. This only
+changes test synchronization, not application UI or account behavior.
+
+The repaired local `npm run check` passes all 292 tests plus typechecks, lint and
+formatting; `npm run test:db` passes all 36 tests. `CI=1 npm run test:coverage`
+passes all workspace/critical-path floors with unchanged reported percentages.
+No unexpected asynchronous warning appeared. The parsed workflow's two database
+steps also resolve to the same complete environment mapping.
+
 ### Browser evidence
 
 All completed UI checks used Browser Use in the Codex in-app side panel, served by
