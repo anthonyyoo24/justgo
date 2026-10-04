@@ -2,6 +2,14 @@
 
 ## October 4 branch separation — current status
 
+**Latest review split:** Existing PR #13 now publishes only **07.1A** (APIs,
+data/migrations, compatibility and their tests). **07.1B** contains the saved
+Playwright app/API journey and browser CI integration, preserved locally on
+`codex/phase-07.1b-journey-ci` with no push or PR authorized. Keep only A in active
+review. Both slices must be verified and accepted before 07.2; no merge is
+approved. The [07.1A handoff](phase-07-1-api-data.md) records the split and fresh
+A evidence separately from historical combined checks.
+
 The owner approved separating Phase 07 into five sequential subphases and using
 one coherent, verified pull request per checkpoint. All implementation drafts,
 including previously untracked files and the owner's plan edits, are preserved
@@ -67,7 +75,7 @@ and was removed as well. The former 07.1 remote branch was removed. After
 reverting the unapproved merge (`7845ac4`) and adding permission rules
 (`c355ef0`), the implementation is restored on local `codex/phase-07.1-api-data`
 for owner review. The owner has now explicitly authorized pushing this branch
-and creating a new PR; merging is not authorized. Preserve
+and narrowing existing PR #13 to A only; B remains local and merging is not authorized. Preserve
 the archive and use the numbered branch map when later work is authorized.
 
 Keep billing in 07A and interactive testing in Codex side panels. No external
@@ -81,7 +89,7 @@ fixes and fresh local/hosted verification are recorded in
 legacy domain routes while identity uses the new resources. Expansion/backfill
 and a disposable contraction/restoration rehearsal are in scope; final schema
 removal and the new offline app flow are not accepted in this checkpoint. The
-next checkpoint, after owner acceptance and an approved merge, is 07.2: journal/storage/sender integration, typed backend-conflict
+next checkpoint is local-only 07.1B after A review/acceptance and explicit authorization. After both slices are accepted, 07.2 covers: journal/storage/sender integration, typed backend-conflict
 and Retry-After transport, recovery/account fencing, measured limits and saved
 failure-path journeys. Keep the backend-wins policy and side-panel-only constraint.
 

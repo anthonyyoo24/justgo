@@ -1,14 +1,46 @@
-# Phase 07.1 — API and data foundation
+# Phase 07.1A — API and data foundation
 
 ## Snapshot
 
-- **Status:** Implemented and verified, awaiting owner review and acceptance. The unapproved merge was reverted. The owner has now explicitly authorized a push and new PR for review; merging remains unapproved. Native/device/staging release gates remain open.
+- **Status:** 07.1A passes fresh local checks and awaits owner review through existing PR #13. Only A publication is authorized; B stays local with no PR. Neither slice is approved to merge. Native/device/staging release gates remain open.
 - **Updated / author:** October 4, 2026 / Codex.
-- **Scope:** [07.1](../IMPLEMENTATION_PLAN.md#phase-07-1): tasks 1–4, backend task 8 and saved journey foundation. Local synchronization, new flow/history UI and final removal remain 07.2–07.5.
+- **Scope:** [07.1A](../IMPLEMENTATION_PLAN.md#phase-07-1): tasks 1–4, backend task 8, compatibility and their unit/component/database/migration checks. The saved Playwright journey, its runner/dependency/typecheck and browser CI gate are 07.1B, preserved locally without publication. Local synchronization, new flow/history UI and final removal remain 07.2–07.5.
 - **Dependency:** verified local [06A](phase-06a-code-quality.md), then documentation-only planning PR #11 at `8118bf5`.
 - **Branch:** `codex/phase-07.1-api-data`. All mixed drafts remain recoverable at `6d4279f` on `codex/archive/phase-07-drafts` and in the local Git bundle recorded by the umbrella handoff.
 - **Environment:** Node 24.18.0 / npm 11.16.0, existing Expo 57.0.26 pins, PostgreSQL 17 loopback `justgo_test`. No deployment or new native build/signing work.
 - **Browser constraint:** all interactive verification uses Codex side panels. Automated saved browser tests run headlessly; native/device acceptance is separate.
+
+## A/B review split and current evidence
+
+The owner requested two sequential review slices because CodeRabbit selected
+107 files from the combined PR and could not review more than 100. It also
+reported unavailable review credits/capacity; reducing the file count does not
+establish that account capacity is available. Do not change review filters,
+purchase capacity or trigger extra reviews to work around that restriction.
+
+- **07.1A:** Existing PR #13 and `codex/phase-07.1-api-data`; API/data/migration,
+  identity/HTTP, compatibility, application tests and migration/coverage CI.
+- **07.1B:** Local `codex/phase-07.1b-journey-ci`; six root `e2e/` files, the
+  journey environment test and runner, Playwright/lockfile/typecheck wiring,
+  browser CI/artifact steps and their documentation. No B push or PR authorized.
+- **Preservation:** Combined checkpoint `065846c` and verified local Git bundle
+  `.local/phase-07/pre-a-b-split.bundle`. B will be based on the isolated A branch
+  so its eventual diff contains only its own slice. The older mixed archive is
+  unchanged. Both A and B need acceptance before 07.2.
+- **Fresh A verification:** `npm run check` passed 350 cases (55 safeguards,
+  45 API unit, 229 mobile, 21 contracts); `npm run test:db` passed 58 product
+  database cases plus the restoration rehearsal (59 total, through 0012).
+  `npm run test:coverage` passed unchanged global/critical floors: API 95.71%
+  lines / 90.70% branches; mobile 87.98% / 80.35%; contracts 100% / 100%.
+  Formatting and `git diff --check` passed. The A diff has 99 files against `main`.
+- **UI evidence:** No application, contract, schema, migration or application-test
+  content changed in this separation (compared with `065846c`). The earlier
+  side-panel evidence below applies to that unchanged UI; no new interactive
+  walkthrough or native verification is claimed for the split.
+- **Hosted A evidence:** The current A push/PR runs are linked from
+  [PR #13 checks](https://github.com/anthonyyoo24/justgo/pull/13/checks). Inspect
+  those results for the actual pushed revision before acceptance; earlier
+  combined CI success is not a substitute. No merge is authorized.
 
 ## Implemented boundary
 
@@ -120,17 +152,22 @@ use a new forward-repair migration on failure. Do not reset a deployed database
 or blindly revert to pre-07.1 app writers after accepting canonical records.
 Coordinated release rollout and old-client retirement remain Phase 09 work.
 
-## Saved journey foundation
+## Saved journey foundation — 07.1B, local only
+
+This section describes the preserved B implementation. The command, dependency
+and CI step are absent from A and must be verified when B is authorized for review.
 
 `npm run test:journey` validates fixture scope, builds contracts, migrates, starts
 its API and Expo services, creates/renews an actual app account, opens the deck
 and Progress, verifies database state, and removes only its fixture accounts.
 Playwright 1.63.0 is development-only and pinned in the root lockfile. The
-[testing guide](../TESTING.md#saved-appapi-journey-foundation-071) owns clean local
-and CI prerequisites and masked-artifact handling. Full completion/reflection,
+B's testing guide owns clean local and CI prerequisites and masked-artifact handling. Full completion/reflection,
 offline/lost-acknowledgement and reconciliation journeys are added in 07.2–07.5.
 
-## Verification evidence
+## Historical combined A+B verification evidence
+
+These checks and screenshots were recorded before the review split. A's fresh
+results are recorded above; B remains a local-only review slice.
 
 | Check                                                                                  | Result                                                                                                                                                 |
 | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -172,8 +209,8 @@ and merged without the owner's permission. At the owner's request, revert
 `7845ac4` restored `main` to its pre-07.1 files, and `c355ef0` added explicit
 publication/merge permission rules to `AGENTS.md`. The implementation is preserved
 locally on `codex/phase-07.1-api-data`, based on that restored `main`, for owner
-review. The owner has now explicitly authorized pushing that branch and creating
-a new PR. Leave the PR open for review; do not merge or enable auto-merge without
+review. The owner has now explicitly authorized pushing that branch and narrowing
+existing PR #13 to A. Keep B local with no PR. Leave A open for review; do not merge or enable auto-merge without
 separate explicit permission. The prior checks
 below are verification evidence only; they are not owner acceptance.
 The final implementation commit `0d750a3` passed both the hosted
@@ -209,9 +246,9 @@ preservation, fixtures/CI and documents, with no remaining 07.1 blocker.
 - Journey cleanup originally expected a nonexistent bootstrap credential ID;
   it now tracks only the actual bootstrap session UUID, avoiding credential logs.
 - Await the owner's review of 07.1 and address any findings before acceptance.
-  Obtain explicit permission before pushing, creating a PR or merging. After an
-  approved merge and instruction to continue, recover useful 07.2 journal/sender
-  drafts selectively. Do not merge the archive wholesale or remove compatibility
+  Obtain explicit permission before pushing, creating a PR or merging. After A is approved/merged and B is explicitly authorized, verify/review B.
+  Proceed to 07.2 only after both slices are accepted and the owner instructs
+  continuation; recover useful journal/sender drafts selectively. Do not merge the archive wholesale or remove compatibility
   before 07.5.
 - Before using canonical writes, 07.2 must extend the mobile HTTP transport to
   preserve typed `REFLECTION_CONFLICT.currentAttempt` and the `Retry-After`
