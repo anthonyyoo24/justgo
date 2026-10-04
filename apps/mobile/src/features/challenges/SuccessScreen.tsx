@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
-import { attemptResultSchema, type Attempt } from '@justgo/contracts';
+import {
+  legacyAttemptResultSchema as attemptResultSchema,
+  type LegacyAttempt as Attempt,
+} from '@justgo/contracts';
 import { Screen } from '../../components/Screen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors, typography } from '../../theme/tokens';

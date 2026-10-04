@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { HttpMethod } from '../../lib/http';
 import { IdentityController } from './controller';
 import { IdentityClientError, type IdentityApi } from './api';
 import {
@@ -21,24 +22,26 @@ type Handler = (
   path: string,
   body: unknown,
   token?: string,
+  method?: HttpMethod,
 ) => unknown | Promise<unknown>;
 function api(handler: Handler): IdentityApi & { calls: jest.Mock } {
   const calls = jest.fn(handler);
   return {
     calls,
     request: async <T>(
+      method: HttpMethod,
       path: string,
       schema: z.ZodType<T>,
       body?: unknown,
       token?: string,
-    ) => schema.parse(await calls(path, body, token)),
+    ) => schema.parse(await calls(path, body, token, method)),
   };
 }
 function connected(handler?: Handler) {
   const userId = id();
-  return api(async (path, body, token) => {
+  return api(async (path, body, token, method) => {
     if (handler) {
-      const result = await handler(path, body, token);
+      const result = await handler(path, body, token, method);
       if (result !== undefined) return result;
     }
     if (path === '/devices') return { devices: [] };
@@ -63,8 +66,8 @@ it('requires user-entered verification, preserves a rejected inspection and clea
   const inspection = { id: id(), expiresAt: expiry(), status: 'waiting' };
   const code = 'ABCDEF0123456789';
   const server = connected((path, body) => {
-    if (path === '/transfers/inspect') return inspection;
-    if (path === '/transfers/approve') {
+    if (path === '/transfer-inspections') return inspection;
+    if (path === '/transfer-approvals') {
       if ((body as { verification: string }).verification !== '012345')
         throw new IdentityClientError('CONFLICT');
       return { ok: true };
@@ -79,16 +82,17 @@ it('requires user-entered verification, preserves a rejected inspection and clea
   await controller.approveTransfer('');
   await controller.approveTransfer('abc123');
   expect(
-    server.calls.mock.calls.filter((c) => c[0] === '/transfers/approve'),
+    server.calls.mock.calls.filter((c) => c[0] === '/transfer-approvals'),
   ).toHaveLength(0);
   await controller.approveTransfer('999999');
   expect(controller.getSnapshot().inspection?.code).toBe(code);
   expect(controller.getSnapshot().account).not.toBeNull();
   await controller.approveTransfer('012345');
   expect(server.calls).toHaveBeenLastCalledWith(
-    '/transfers/approve',
+    '/transfer-approvals',
     { code, verification: '012345' },
     expect.any(String),
+    'POST',
   );
   expect(controller.getSnapshot().inspection).toBeNull();
   expect(controller.getSnapshot().message).toContain('Transfer approved');
@@ -98,7 +102,10 @@ it('persists intent and recovery secret before bootstrap, then retries a lost re
   const vault = nativeVault();
   let attempts = 0;
   const server = connected(async (path, body) => {
-    if (path === '/bootstrap') {
+    if (
+      path === '/sessions' &&
+      (body as { kind: string })?.kind === 'bootstrap'
+    ) {
       expect((await vault.read())!.pending?.kind).toBe('bootstrap');
       expect((await vault.credentials())[0]!.secret).toBe(
         (body as { credential: string }).credential,
@@ -113,7 +120,7 @@ it('persists intent and recovery secret before bootstrap, then retries a lost re
   const relaunched = new IdentityController(vault, server, random);
   await relaunched.initialize();
   const requests = server.calls.mock.calls.filter(
-    (call) => call[0] === '/bootstrap',
+    (call) => call[0] === '/sessions' && call[1]?.kind === 'bootstrap',
   );
   expect(requests).toHaveLength(2);
   expect(requests[0]![1]).toEqual(requests[1]![1]);
@@ -159,7 +166,9 @@ it('resumes a stored bootstrap intent if interrupted before adding the Keychain 
   expect(resumed.getSnapshot().account).not.toBeNull();
   expect(
     (
-      server.calls.mock.calls.find((c) => c[0] === '/bootstrap')![1] as {
+      server.calls.mock.calls.find(
+        (c) => c[0] === '/sessions' && c[1]?.kind === 'bootstrap',
+      )![1] as {
         sessionId: string;
       }
     ).sessionId,
@@ -177,7 +186,10 @@ it('requires deliberate selection for multiple synchronized credentials and pres
   expect(server.calls).not.toHaveBeenCalled();
   expect(controller.getSnapshot().credentials).toHaveLength(2);
   await controller.recoverCredential(first.id);
-  expect(server.calls.mock.calls[0]![0]).toBe('/recover');
+  expect(server.calls.mock.calls[0]!.slice(0, 2)).toEqual([
+    '/sessions',
+    expect.objectContaining({ kind: 'recovery' }),
+  ]);
   expect(await vault.credentials()).toHaveLength(2);
 });
 it('a rejected credential never falls back to bootstrap or a different account', async () => {
@@ -189,15 +201,17 @@ it('a rejected credential never falls back to bootstrap or a different account',
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
   await controller.retry();
-  expect(server.calls.mock.calls.map((c) => c[0])).toEqual([
-    '/recover',
-    '/recover',
+  expect(server.calls.mock.calls.map((c) => [c[0], c[1]?.kind])).toEqual([
+    ['/sessions', 'recovery'],
+    ['/sessions', 'recovery'],
   ]);
   expect(controller.getSnapshot().account).toBeNull();
 });
 it('late iCloud credentials cannot replace the active account on refresh', async () => {
   const vault = nativeVault();
-  const server = connected((path) => (path === '/me' ? info : undefined));
+  const server = connected((path) =>
+    path === '/sessions/current' ? info : undefined,
+  );
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
   const info = controller.getSnapshot().account;
@@ -206,7 +220,9 @@ it('late iCloud credentials cannot replace the active account on refresh', async
   expect(controller.getSnapshot().account).toEqual(info);
   expect(controller.getSnapshot().credentials).toHaveLength(2);
   expect(
-    server.calls.mock.calls.filter((c) => c[0] === '/recover'),
+    server.calls.mock.calls.filter(
+      (c) => c[0] === '/sessions' && c[1]?.kind === 'recovery',
+    ),
   ).toHaveLength(0);
 });
 it('coordinates concurrent renewal and preserves a pending rotation across a lost response', async () => {
@@ -214,7 +230,10 @@ it('coordinates concurrent renewal and preserves a pending rotation across a los
   let failures = 1;
   let deviceId = '';
   const server = connected(async (path, body) => {
-    if (path === '/renew') {
+    if (
+      path === '/sessions' &&
+      (body as { kind: string })?.kind === 'renewal'
+    ) {
       deviceId = (await vault.read())!.deviceId;
       if (failures-- > 0) throw new IdentityClientError('NETWORK');
       return {
@@ -230,7 +249,9 @@ it('coordinates concurrent renewal and preserves a pending rotation across a los
   const old = (await vault.read())!.session!.token;
   await Promise.all([controller.renew(), controller.renew()]);
   await controller.retry();
-  const renewals = server.calls.mock.calls.filter((c) => c[0] === '/renew');
+  const renewals = server.calls.mock.calls.filter(
+    (c) => c[0] === '/sessions' && c[1]?.kind === 'renewal',
+  );
   expect(renewals).toHaveLength(2);
   expect(renewals[0]![1]).toEqual(renewals[1]![1]);
   expect(renewals[0]![2]).toBe(old);
@@ -239,7 +260,8 @@ it('coordinates concurrent renewal and preserves a pending rotation across a los
 it('a revoked session stays unverified until explicit recovery with a new device identity', async () => {
   const vault = nativeVault();
   const server = connected((path) => {
-    if (path === '/me') throw new IdentityClientError('SESSION_REVOKED');
+    if (path === '/sessions/current')
+      throw new IdentityClientError('SESSION_REVOKED');
   });
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
@@ -247,7 +269,9 @@ it('a revoked session stays unverified until explicit recovery with a new device
   await controller.refresh();
   expect(controller.getSnapshot().account).toBeNull();
   expect(
-    server.calls.mock.calls.filter((c) => c[0] === '/recover'),
+    server.calls.mock.calls.filter(
+      (c) => c[0] === '/sessions' && c[1]?.kind === 'recovery',
+    ),
   ).toHaveLength(0);
   await controller.recoverCredential(old.selectedId!);
   expect((await vault.read())!.deviceId).not.toBe(old.deviceId);
@@ -269,7 +293,9 @@ it('keeps state unverified when a successful response cannot be saved; retry kee
   expect(controller.getSnapshot().account).toBeNull();
   fail = false;
   await controller.retry();
-  const calls = server.calls.mock.calls.filter((c) => c[0] === '/bootstrap');
+  const calls = server.calls.mock.calls.filter(
+    (c) => c[0] === '/sessions' && c[1]?.kind === 'bootstrap',
+  );
   expect(calls[0]![1]).toEqual(calls[1]![1]);
   expect(controller.getSnapshot().account).not.toBeNull();
 });
@@ -324,7 +350,7 @@ it('can replace a recovery key revoked from another device without reusing the r
 it('coordinates request-driven recovery for an expired session without clearing the same-account cache boundary', async () => {
   let expired = false;
   const server = connected((path) => {
-    if (path === '/me' && expired)
+    if (path === '/sessions/current' && expired)
       throw new IdentityClientError('SESSION_EXPIRED');
   });
   const controller = new IdentityController(nativeVault(), server, random);
@@ -345,7 +371,9 @@ it('coordinates request-driven recovery for an expired session without clearing 
   expect(a.token).not.toBe(current.token);
   expect(accounts).not.toContain(null);
   expect(
-    server.calls.mock.calls.filter((c) => c[0] === '/recover'),
+    server.calls.mock.calls.filter(
+      (c) => c[0] === '/sessions' && c[1]?.kind === 'recovery',
+    ),
   ).toHaveLength(1);
 });
 
@@ -357,10 +385,14 @@ it('retries a timed-out recovery with the saved proposal and ignores a late resp
     let expired = false;
     let finishOld!: (value: unknown) => void;
     let recoveries = 0;
-    const server = connected((path) => {
-      if (path === '/me' && expired)
+    const server = connected((path, body) => {
+      if (path === '/sessions/current' && expired)
         throw new IdentityClientError('SESSION_EXPIRED');
-      if (path === '/recover' && ++recoveries === 1)
+      if (
+        path === '/sessions' &&
+        (body as { kind: string })?.kind === 'recovery' &&
+        ++recoveries === 1
+      )
         return new Promise((resolve) => {
           finishOld = resolve;
         });
@@ -380,7 +412,8 @@ it('retries a timed-out recovery with the saved proposal and ignores a late resp
     expect(next.userId).toBe(original.userId);
     expect(next.token).not.toBe(original.token);
     const calls = server.calls.mock.calls.filter(
-      ([path]) => path === '/recover',
+      ([path, body]) =>
+        path === '/sessions' && (body as { kind: string })?.kind === 'recovery',
     );
     expect(calls).toHaveLength(2);
     expect(calls[0]![1]).toEqual(calls[1]![1]);
@@ -402,7 +435,7 @@ it('releases a refresh waiting on busy identity work without leaving a stale wai
     const vault = nativeVault();
     let hang = false;
     const server = connected(async (path) => {
-      if (path === '/me') {
+      if (path === '/sessions/current') {
         if (hang) return new Promise(() => {});
         throw new IdentityClientError('SESSION_EXPIRED');
       }
@@ -444,7 +477,10 @@ it('serializes a late native write and rereads its saved intent before retry', a
     });
     const vault = { ...memory, write: writes };
     const server = connected(async (path, body) => {
-      if (path === '/renew')
+      if (
+        path === '/sessions' &&
+        (body as { kind: string })?.kind === 'renewal'
+      )
         return {
           ...(await memory.read())!.session!.info,
           sessionId: (body as { sessionId: string }).sessionId,
@@ -465,10 +501,99 @@ it('serializes a late native write and rereads its saved intent before retry', a
     expect((await memory.read())!.pending).toBeNull();
     expect(controller.currentSession()).not.toBeNull();
     expect(
-      server.calls.mock.calls.filter(([path]) => path === '/renew'),
+      server.calls.mock.calls.filter(
+        ([path, body]) =>
+          path === '/sessions' &&
+          (body as { kind: string })?.kind === 'renewal',
+      ),
     ).toHaveLength(1);
     expect(controller.getSnapshot().busy).toBe(false);
   } finally {
     jest.useRealTimers();
   }
+});
+
+it('resumes a persisted transfer intent through resource requests without changing claimant proof', async () => {
+  const vault = nativeVault();
+  let failures = 1;
+  const userId = id();
+  const server = connected(async (path, body) => {
+    if (path === '/transfers') {
+      if (failures-- > 0) throw new IdentityClientError('NETWORK');
+      return {
+        id: (body as { id: string }).id,
+        expiresAt: expiry(),
+        status: 'waiting',
+        verification: '012345',
+      };
+    }
+    if (
+      path === '/sessions' &&
+      (body as { kind: string }).kind === 'transfer'
+    ) {
+      const pending = (await vault.read())!.pending;
+      if (pending?.kind !== 'transfer')
+        throw new Error('Missing stored intent');
+      return {
+        userId,
+        deviceId: pending.input.deviceId,
+        sessionId: pending.input.sessionId,
+        expiresAt: expiry(),
+      };
+    }
+  });
+  const first = new IdentityController(vault, server, random);
+  await first.initialize();
+  await first.startTransfer();
+  const saved = (await vault.read())!.pending;
+  expect(saved?.kind).toBe('transfer');
+  const resumed = new IdentityController(vault, server, random);
+  await resumed.initialize();
+  const starts = server.calls.mock.calls.filter(
+    ([path]) => path === '/transfers',
+  );
+  expect(starts).toHaveLength(2);
+  expect(starts[0]).toEqual(starts[1]);
+  expect(starts[0]![3]).toBe('POST');
+  await resumed.redeemTransfer();
+  expect(
+    server.calls.mock.calls.find(
+      ([path, body]) => path === '/sessions' && body?.kind === 'transfer',
+    ),
+  ).toEqual([
+    '/sessions',
+    {
+      kind: 'transfer',
+      code: saved?.kind === 'transfer' ? saved.input.code : undefined,
+      claimSecret:
+        saved?.kind === 'transfer' ? saved.input.claimSecret : undefined,
+    },
+    undefined,
+    'POST',
+  ]);
+  expect(resumed.getSnapshot().account?.userId).toBe(userId);
+  expect((await vault.read())!.pending).toBeNull();
+});
+
+it('revokes credentials and devices with explicit bodyless DELETE resource requests', async () => {
+  const server = connected((path, _body, _token, method) => {
+    if (
+      method === 'DELETE' &&
+      (path.startsWith('/devices/') || path.startsWith('/credentials/'))
+    )
+      return { ok: true };
+  });
+  const controller = new IdentityController(nativeVault(), server, random);
+  await controller.initialize();
+  const keyId = id();
+  await controller.revokeCredential(keyId);
+  const account = controller.getSnapshot().account!;
+  await controller.revokeDevice(account.deviceId);
+  expect(
+    server.calls.mock.calls.filter((call) => call[3] === 'DELETE'),
+  ).toEqual([
+    [`/credentials/${keyId}`, undefined, expect.any(String), 'DELETE'],
+    [`/devices/${account.deviceId}`, undefined, expect.any(String), 'DELETE'],
+  ]);
+  expect(controller.getSnapshot().account).toBeNull();
 });

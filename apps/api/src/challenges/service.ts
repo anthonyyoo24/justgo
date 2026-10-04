@@ -1,16 +1,17 @@
 import { sql, type SQL } from 'drizzle-orm';
 import {
   hasVerifiedAccess,
-  type Attempt,
   type ChallengeCard,
-  type ChallengeQueue,
+  type LegacyAttempt,
+  type LegacyChallengeCard,
+  type LegacyChallengeQueue,
   type Venue,
 } from '@justgo/contracts';
 import type { z } from 'zod';
 import type {
-  finishAttemptSchema,
-  skipChallengeSchema,
-  startAttemptSchema,
+  legacyFinishAttemptSchema,
+  legacySkipChallengeSchema,
+  legacyStartAttemptSchema,
 } from '@justgo/contracts';
 import { IdentityError, type IdentityService } from '../identity/service.js';
 import type { EntitlementReader } from '../access/service.js';
@@ -43,7 +44,7 @@ type AttemptRow = Row & {
   level_id: 'level-1';
   text: string;
   duration_seconds: number;
-  status: Attempt['status'];
+  status: LegacyAttempt['status'];
   started_at: Date;
   deadline_at: Date;
   ended_at: Date | null;
@@ -51,7 +52,7 @@ type AttemptRow = Row & {
   time_zone: string | null;
   queue_version: number;
 };
-const attempt = (r: AttemptRow): Attempt => ({
+const attempt = (r: AttemptRow): LegacyAttempt => ({
   id: r.id,
   card: {
     id: r.card_id,
@@ -91,13 +92,25 @@ export class ChallengeService {
       return work(tx, session.userId);
     });
   }
+  catalog(token: string) {
+    return this.run(token, async (tx) => ({
+      cards: [
+        ...(
+          await tx.execute<ChallengeCard & Row>(sql`
+      select v.id,c.id as "challengeId",v.venue_id as venue,v.position,c.level_id as "levelId",c.text,c.subtext,c.duration_seconds as "durationSeconds"
+      from justgo.venue_cards v join justgo.challenges c on c.id=v.challenge_id
+      where v.active and c.active and c.level_id='level-1' order by v.venue_id,v.position,v.id`)
+        ).rows,
+      ],
+    }));
+  }
   private async queue(
     tx: Tx,
     userId: string,
     venue: Venue,
-  ): Promise<ChallengeQueue> {
+  ): Promise<LegacyChallengeQueue> {
     const cards = (
-      await tx.execute<ChallengeCard & Row>(sql`
+      await tx.execute<LegacyChallengeCard & Row>(sql`
       select c.id, c.venue_id as venue, r.id as "revisionId", r.challenge_id as "challengeId", r.level_id as "levelId", r.text, r.duration_seconds as "durationSeconds"
       from justgo.venue_cards c join justgo.challenge_revisions r on r.id=c.revision_id where c.venue_id=${venue} order by c.position`)
     ).rows;
@@ -149,7 +162,7 @@ export class ChallengeService {
   private async readAttempt(tx: Tx, userId: string, id: string) {
     return one<AttemptRow>(
       tx,
-      sql`${attemptQuery} where a.user_id=${userId} and a.id=${id}`,
+      sql`${attemptQuery} where a.user_id=${userId} and a.id=${id} and a.start_time_zone is null`,
     );
   }
   state(token: string) {
@@ -192,7 +205,7 @@ export class ChallengeService {
       return { attempt: attempt(row), serverNow: await serverNow(tx) };
     });
   }
-  skip(token: string, input: z.infer<typeof skipChallengeSchema>) {
+  skip(token: string, input: z.infer<typeof legacySkipChallengeSchema>) {
     return this.run(token, async (tx, userId) => {
       const old = await one<{
         card_id: string;
@@ -220,7 +233,7 @@ export class ChallengeService {
       return this.advance(tx, userId, input.venue, input.cardId);
     });
   }
-  start(token: string, input: z.infer<typeof startAttemptSchema>) {
+  start(token: string, input: z.infer<typeof legacyStartAttemptSchema>) {
     return this.run(token, async (tx, userId) => {
       const old = await this.readAttempt(tx, userId, input.attemptId);
       if (old) {
@@ -244,7 +257,7 @@ export class ChallengeService {
       };
     });
   }
-  finish(token: string, input: z.infer<typeof finishAttemptSchema>) {
+  finish(token: string, input: z.infer<typeof legacyFinishAttemptSchema>) {
     return this.run(token, async (tx, userId) => {
       const old = await this.readAttempt(tx, userId, input.attemptId);
       if (!old) throw new IdentityError('NOT_FOUND', 404);
@@ -256,7 +269,9 @@ export class ChallengeService {
       // One DB timestamp freezes the completion time and local day.
       await tx.execute(sql`with ending as (select clock_timestamp() as at)
         update justgo.attempts set status=${input.outcome},ended_at=ending.at,time_zone=${input.timeZone},
-        completion_date=case when ${input.outcome}='completed' then to_char(ending.at at time zone ${input.timeZone},'YYYY-MM-DD') else null end
+        completion_date=case when ${input.outcome}='completed' then to_char(ending.at at time zone ${input.timeZone},'YYYY-MM-DD') else null end,
+        activity_date=case when ${input.outcome}='completed' then to_char(ending.at at time zone ${input.timeZone},'YYYY-MM-DD') else null end,
+        legacy_display_time_zone=case when ${input.outcome}='completed' then ${input.timeZone} else null end
         from ending where user_id=${userId} and id=${input.attemptId}`);
       await this.advance(tx, userId, old.venue_id, old.card_id);
       return {

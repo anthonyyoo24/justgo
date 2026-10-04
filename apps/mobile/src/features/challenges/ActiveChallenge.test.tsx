@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import type { Attempt } from '@justgo/contracts';
+import type { LegacyAttempt as Attempt } from '@justgo/contracts';
 import { StyleSheet, View } from 'react-native';
 import { ChallengeCard } from './ChallengeDeck';
 import { ActiveChallenge } from './ActiveChallenge';

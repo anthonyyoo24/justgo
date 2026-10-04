@@ -1,3 +1,10 @@
+import {
+  AttemptService,
+  type UploadEligibilityReader,
+} from './attempts/service.js';
+import { AttemptPatchService, ReflectionConflict } from './attempts/patch.js';
+import { attemptRoutes } from './attempts/routes.js';
+import { ProgressResources } from './progress/resources.js';
 import { ChallengeService } from './challenges/service.js';
 import { challengeRoutes } from './challenges/routes.js';
 import { ReflectionService } from './reflections/service.js';
@@ -26,6 +33,7 @@ export function buildApp(
     identity?: IdentityService;
     onVercel?: boolean;
     entitlementReader?: EntitlementReader;
+    uploadEligibilityReader?: UploadEligibilityReader;
   },
   createServer: typeof Fastify = Fastify,
 ) {
@@ -40,7 +48,8 @@ export function buildApp(
   app.register(helmet);
   app.register(cors, {
     origin: options.origins ?? [],
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    exposedHeaders: ['retry-after'],
     credentials: false,
   });
   app.addHook('onRequest', async (request, reply) => {
@@ -81,6 +90,7 @@ export function buildApp(
         progressRoutes(
           scope,
           new ProgressService(options.identity!, options.entitlementReader),
+          new ProgressResources(options.identity!, options.entitlementReader),
         ),
       { prefix: '/v1/progress' },
     );
@@ -89,8 +99,22 @@ export function buildApp(
       async (scope) =>
         identityRoutes(scope, options.identity!, options.onVercel),
       {
-        prefix: '/v1/identity',
+        prefix: '/v1',
       },
+    );
+  if (options.identity)
+    app.register(
+      async (scope) =>
+        attemptRoutes(
+          scope,
+          new AttemptService(
+            options.identity!,
+            options.uploadEligibilityReader,
+          ),
+          new ProgressResources(options.identity!, options.entitlementReader),
+          new AttemptPatchService(options.identity!),
+        ),
+      { prefix: '/v1/attempts' },
     );
   app.get('/ready', async (request, reply) => {
     try {
@@ -110,9 +134,13 @@ export function buildApp(
     if (request.url.startsWith('/v1/')) {
       if (error instanceof IdentityError) {
         if (error.code === 'RATE_LIMITED') reply.header('retry-after', '600');
-        void reply
-          .code(error.status)
-          .send({ code: error.code, requestId: request.id });
+        void reply.code(error.status).send({
+          code: error.code,
+          requestId: request.id,
+          ...(error instanceof ReflectionConflict
+            ? { currentAttempt: error.currentAttempt }
+            : {}),
+        });
         return;
       }
       const dbCode =
@@ -123,11 +151,23 @@ export function buildApp(
           ? 'CONFLICT'
           : error.statusCode === 400
             ? 'INVALID_REQUEST'
-            : 'UNAVAILABLE';
+            : error.statusCode === 413
+              ? 'REQUEST_TOO_LARGE'
+              : error.statusCode === 415
+                ? 'UNSUPPORTED_MEDIA_TYPE'
+                : 'UNAVAILABLE';
       request.log.error({ err: error }, 'API operation failed');
       void reply
         .code(
-          code === 'CONFLICT' ? 409 : code === 'INVALID_REQUEST' ? 400 : 503,
+          code === 'CONFLICT'
+            ? 409
+            : code === 'INVALID_REQUEST'
+              ? 400
+              : code === 'REQUEST_TOO_LARGE'
+                ? 413
+                : code === 'UNSUPPORTED_MEDIA_TYPE'
+                  ? 415
+                  : 503,
         )
         .send({ code, requestId: request.id });
       return;

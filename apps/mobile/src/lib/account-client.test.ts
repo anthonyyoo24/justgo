@@ -135,6 +135,35 @@ it.each(['RATE_LIMITED', 'CONFLICT', 'INVALID_REQUEST'])(
     expect(fetcher).toHaveBeenCalledTimes(1);
   },
 );
+it.each([
+  [413, 'REQUEST_TOO_LARGE'],
+  [415, 'UNSUPPORTED_MEDIA_TYPE'],
+] as const)(
+  'preserves HTTP %s as a permanent failure without transport or account retries',
+  async (status, code) => {
+    const fetcher = jest.fn().mockResolvedValue({
+      ...failure(code),
+      status,
+    });
+    const { client, renew, reject } = setup(fetcher);
+    await expect(client.request('/v1/test', okSchema)).rejects.toMatchObject({
+      code,
+      requestId: 'safe-id',
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await expect(
+      client.request('/v1/test', okSchema, { body: { text: 'fixture' } }),
+    ).rejects.toMatchObject({ code, requestId: 'safe-id' });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    const http = createHttpClient('http://localhost:3000', fetcher);
+    await expect(
+      http.request('/v1/test', okSchema, { retryRead: true }),
+    ).rejects.toMatchObject({ code, requestId: 'safe-id' });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(renew).not.toHaveBeenCalled();
+    expect(reject).not.toHaveBeenCalled();
+  },
+);
 it('retries a transient read only once and disables nested query/mutation retries', async () => {
   const fetcher = jest
     .fn()
