@@ -5,8 +5,8 @@ import { sql } from 'drizzle-orm';
 import {
   venues,
   type AccessResponse,
-  type Attempt,
-  type ChallengeQueue,
+  type LegacyAttempt,
+  type LegacyChallengeQueue,
 } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../src/db/client.js';
 import { readConfig } from '../src/config.js';
@@ -69,22 +69,22 @@ const request = (token: string, path: string, body?: object) =>
 async function queue(
   token: string,
   venue = 'streets',
-): Promise<ChallengeQueue> {
+): Promise<LegacyChallengeQueue> {
   const result = await request(token, `/queue/${venue}`);
   expect(result.statusCode, result.body).toBe(200);
   return result.json();
 }
-const selection = (q: ChallengeQueue) => ({
+const selection = (q: LegacyChallengeQueue) => ({
   venue: q.venue,
   cardId: q.cards[0]!.id,
   revisionId: q.cards[0]!.revisionId,
   queueVersion: q.version,
 });
-const start = async (token: string, q: ChallengeQueue) => {
+const start = async (token: string, q: LegacyChallengeQueue) => {
   const body = { attemptId: randomUUID(), ...selection(q) };
   const result = await request(token, '/start', body);
   expect(result.statusCode, result.body).toBe(200);
-  return { body, attempt: result.json().attempt as Attempt };
+  return { body, attempt: result.json().attempt as LegacyAttempt };
 };
 afterAll(async () => {
   for (const id of owners) {
@@ -305,7 +305,7 @@ describe('real challenge loop through restricted PostgreSQL role', () => {
       timeZone: 'Pacific/Kiritimati',
     });
     expect(done.statusCode, done.body).toBe(200);
-    const result = done.json().attempt as Attempt;
+    const result = done.json().attempt as LegacyAttempt;
     expect(result).not.toHaveProperty('elapsedSeconds');
     expect(result.completionDate).toBe(
       new Intl.DateTimeFormat('en-CA', {

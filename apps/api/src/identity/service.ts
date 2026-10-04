@@ -464,10 +464,10 @@ export class IdentityService {
     if (!approved) return fail('CONFLICT', 409);
     return { ok: true as const };
   }
-  cancelTransfer(token: string, code: string) {
+  cancelTransfer(token: string, id: string, code: string) {
     return this.withSession(token, async (tx, session) => {
       const row = await this.transfer(tx, code);
-      if (row.user_id !== session.userId || row.redeemed_at)
+      if (row.id !== id || row.user_id !== session.userId || row.redeemed_at)
         return fail('NOT_FOUND', 404);
       await tx.execute(
         sql`update justgo.device_transfers set cancelled_at=now() where id=${row.id}`,

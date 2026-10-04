@@ -60,6 +60,40 @@ describe('health and readiness', () => {
       await app.close();
     }
   });
+  it.each(['PATCH', 'DELETE'])(
+    'allows %s preflight from the configured app origin only',
+    async (method) => {
+      const app = buildApp({
+        logger: false,
+        origins: ['http://localhost:8081'],
+        checkDatabase: async () => {},
+      });
+      try {
+        const preflight = (origin: string) =>
+          app.inject({
+            method: 'OPTIONS',
+            url: '/v1/devices/00000000-0000-4000-8000-000000000000',
+            headers: {
+              origin,
+              'access-control-request-method': method,
+              'access-control-request-headers': 'authorization,content-type',
+            },
+          });
+        const allowed = await preflight('http://localhost:8081');
+        expect(allowed.statusCode).toBe(204);
+        expect(allowed.headers['access-control-allow-origin']).toBe(
+          'http://localhost:8081',
+        );
+        expect(allowed.headers['access-control-allow-methods']).toBe(
+          'GET, POST, PATCH, DELETE',
+        );
+        const denied = await preflight('https://unknown.example');
+        expect(denied.headers['access-control-allow-origin']).toBeUndefined();
+      } finally {
+        await app.close();
+      }
+    },
+  );
 });
 
 describe('safe operational configuration', () => {

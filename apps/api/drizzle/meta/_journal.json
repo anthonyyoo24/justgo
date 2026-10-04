@@ -71,6 +71,27 @@
       "when": 1790683200000,
       "tag": "0009_drop_attempt_elapsed_seconds",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791140970859,
+      "tag": "0010_attempt_resources_expand",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791141647689,
+      "tag": "0011_compatibility_history_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791142901969,
+      "tag": "0012_normalize_reflection_whitespace",
+      "breakpoints": true
     }
   ]
 }

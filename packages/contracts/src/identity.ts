@@ -35,6 +35,14 @@ export const transferStartSchema = bootstrapSchema
 export const transferProofSchema = z
   .object({ code: transferCodeSchema, claimSecret: secretSchema })
   .strict();
+// One session resource, with the proof required by each creation mechanism.
+// These wire kinds are independent of the device's persisted pending-intent kinds.
+export const sessionCreateSchema = z.discriminatedUnion('kind', [
+  bootstrapSchema.extend({ kind: z.literal('bootstrap') }).strict(),
+  bootstrapSchema.extend({ kind: z.literal('recovery') }).strict(),
+  renewSchema.extend({ kind: z.literal('renewal') }).strict(),
+  transferProofSchema.extend({ kind: z.literal('transfer') }).strict(),
+]);
 export const transferInspectSchema = z
   .object({ code: transferCodeSchema })
   .strict();
@@ -89,11 +97,15 @@ export const transferResponseSchema = transferInspectionResponseSchema
 export const okSchema = z.object({ ok: z.literal(true) }).strict();
 export const identityErrorCodeSchema = z.enum([
   'INVALID_REQUEST',
+  'REQUEST_TOO_LARGE',
+  'UNSUPPORTED_MEDIA_TYPE',
   'UNAUTHORIZED',
   'SESSION_EXPIRED',
   'SESSION_REVOKED',
   'CREDENTIAL_REJECTED',
   'CONFLICT',
+  'REFLECTION_CONFLICT',
+  'ATTEMPT_INELIGIBLE',
   'ACCESS_REQUIRED',
   'NOT_FOUND',
   'TRANSFER_EXPIRED',
@@ -107,6 +119,7 @@ export const identityErrorSchema = z
     requestId: z.string(),
   })
   .strict();
+export type SessionCreate = z.infer<typeof sessionCreateSchema>;
 export type SessionProposal = z.infer<typeof sessionProposalSchema>;
 export type BootstrapRequest = z.infer<typeof bootstrapSchema>;
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;

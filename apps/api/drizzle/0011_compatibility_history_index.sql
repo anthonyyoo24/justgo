@@ -1,0 +1,2 @@
+DROP INDEX "justgo"."attempt_canonical_history_idx";--> statement-breakpoint
+CREATE INDEX "attempt_canonical_history_idx" ON "justgo"."attempts" USING btree ("user_id",coalesce("activity_date", "completion_date"),"started_at","id") WHERE "justgo"."attempts"."status" = 'completed';

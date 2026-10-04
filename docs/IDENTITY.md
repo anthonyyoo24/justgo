@@ -14,34 +14,45 @@ Migration `0003_transfer_verification.sql` erases legacy plaintext verification 
 - A device session expires after **168 hours (7 days)**. The client renews on foreground/verification when fewer than 24 hours remain. An expired session can recover through its selected credential; a revoked or unknown session requires an explicit recovery action.
 - Renewal proposes and securely saves the next token and ID before sending it. The old token is immediately invalid for ordinary API requests after rotation. Retrying the same rotation can retrieve the same still-active result when the caller proves possession of both tokens. A different replacement is rejected. Other devices remain independent.
 - Recovery credentials are long-lived, independently revocable, and immutable. Revocation does not log out other active device sessions. Device revocation invalidates that device’s sessions; explicit recovery establishes a new device authorization. Account retirement revokes all credentials/sessions and cancels transfers. Tombstones prevent retired/revoked credentials from bootstrapping a new account.
-- Bootstrap serializes on the recovery digest and is idempotent. The client saves a pending intent and then the recovery item before contacting the API. Unknown credentials presented to `/recover` are never sent to `/bootstrap` as a fallback. Failed/lost responses reuse the persisted proposal.
+- Bootstrap serializes on the recovery digest and is idempotent. The client saves a pending intent and then the recovery item before contacting the API. Unknown credentials presented with session kind `recovery` are never retried as `bootstrap`. Failed/lost responses reuse the persisted proposal.
 
 These defaults can be tuned with bounded server environment variables. Changing them requires the relevant expiry/retry tests; it does not require a new product flow.
 
 ## API contracts
 
-All routes below are under `/v1/identity`. Requests and responses are strict Zod contracts in `packages/contracts/src/identity.ts`. Authenticated calls require `Authorization: Bearer <device session token>`. Secrets are only in TLS request bodies or that header, never URLs. Successful session responses contain IDs and an expiry, not bearer tokens. Responses use `Cache-Control: no-store`; diagnostics omit URLs, headers, bodies, database errors and credential values.
+The Phase 07 identity slice moves the public protocol to resources under `/v1`.
+API and mobile must be deployed together: retired `/v1/identity/*` action paths
+return `404`. Existing securely persisted pending intents keep their stored kinds
+and proposals; the controller maps them to the new wire protocol without replacing
+credentials or retry identities. No schema migration is needed for this route slice.
 
-| Route                          | Proof / behavior                                                                                            |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `POST /bootstrap`              | Recovery credential plus persisted device/session proposal; create once or recover the same account.        |
-| `POST /recover`                | Same proposal shape; only existing, active credentials can recover.                                         |
-| `POST /renew`                  | Current session plus persisted next session ID/token; same-result retry after rotation.                     |
-| `GET /me`                      | Active server-verified session; returns the authenticated account/device/session IDs and expiry.            |
-| `GET /devices`                 | Owner-scoped device metadata.                                                                               |
-| `POST /devices/:id/revoke`     | Authenticated owner; revokes all sessions on that device.                                                   |
-| `GET /credentials`             | Owner-scoped IDs, kinds and revocation timestamps; never secrets or digests.                                |
-| `POST /credentials`            | Authenticated owner adds an independent sync credential or recovery key; stable ID permits exact retry.     |
-| `POST /credentials/:id/revoke` | Authenticated owner revokes a recovery credential.                                                          |
-| `POST /transfers/start`        | New device persists a code, claimant secret, new recovery credential and session proposal.                  |
-| `POST /transfers/inspect`      | Existing authenticated device inspects transfer status; no verification digits are returned.                |
-| `POST /transfers/approve`      | Existing authenticated device submits the six digits read from the new device. No caller-supplied owner ID. |
-| `POST /transfers/redeem`       | Code and claimant secret redeem approval for exactly the saved new-device proposal.                         |
-| `POST /transfers/cancel`       | Approving account can cancel an approved, unredeemed transfer.                                              |
+Requests and responses are strict Zod contracts in `packages/contracts/src/identity.ts`.
+Authenticated calls require `Authorization: Bearer <device session token>`. Secrets
+and transfer codes stay in TLS request bodies or the bearer header, never URLs.
+Session responses contain IDs and expiry, not bearer tokens. Responses use
+`Cache-Control: no-store`; diagnostics omit URLs, headers, bodies, database errors
+and credential values.
+
+| Resource                            | Proof / behavior                                                                                                   |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `POST /sessions`, `kind: bootstrap` | Recovery credential plus persisted device/session proposal; create once or recover the same account.               |
+| `POST /sessions`, `kind: recovery`  | Same proposal shape; only existing active credentials can recover. No fallback to account creation.                |
+| `POST /sessions`, `kind: renewal`   | Bearer session plus persisted next session ID/token; exact retry after rotation.                                   |
+| `POST /sessions`, `kind: transfer`  | Code and claimant secret redeem approval for exactly the saved new-device proposal.                                |
+| `GET /sessions/current`             | Active verified session; authenticated account/device/session IDs and expiry.                                      |
+| `GET /devices`                      | Owner-scoped device metadata.                                                                                      |
+| `DELETE /devices/:id`               | Authenticated owner; soft revocation invalidates that device's sessions. No request body required.                 |
+| `GET /credentials`                  | Owner-scoped IDs, kinds and revocation timestamps; never secrets or digests.                                       |
+| `POST /credentials`                 | Authenticated owner adds a sync credential or recovery key; stable ID permits exact retry.                         |
+| `DELETE /credentials/:id`           | Authenticated owner soft-revokes a recovery credential. No request body required.                                  |
+| `POST /transfers`                   | New device persists code, claimant secret, recovery credential and session proposal.                               |
+| `POST /transfer-inspections`        | Existing authenticated device inspects transfer status; no verification digits returned.                           |
+| `POST /transfer-approvals`          | Existing authenticated device submits the six digits from the new device. No supplied owner ID.                    |
+| `DELETE /transfers/:id`             | Approving account cancels an approved, unredeemed transfer; code stays in the body and must match the resource ID. |
 
 Transfer codes have 64 random bits (16 hexadecimal characters, displayed in four groups). A separate 256-bit claimant secret is never displayed to the approving device. The new device alone receives six verification digits; the user enters them on the existing device to approve. Inspection never returns the digits. The server derives them with a transfer-specific HMAC domain under `IDENTITY_RATE_LIMIT_KEY` and stores only a second, independently domain-separated HMAC verifier bound to the transfer ID. Five incorrect submissions cancel the transfer; this counter persists across accounts, addresses and API instances. Transfers expire **10 minutes after creation** and do not reset their deadline on retry. The new device receives no session until approval and proof verification. Exact claimant retries return the same session; they cannot attach a different device or token. Expired/cancelled transfers require a new transfer. Once approved, another account cannot replace the owner, and previously redeemed approval is rejected. The protocol relies on keeping both the transfer code and verification digits private; possession of both permits an authenticated account to approve the pending transfer.
 
-Failures return a typed code and a server-generated request ID. Authentication, expiry, revocation, conflict, pending transfer, rate limiting and temporary failures have distinct client states. Invalid JSON/contract inputs never echo supplied values. Client requests have a 10-second deadline and no automatic write retry loop. The controller serializes identity operations and clears the visible account when explicitly switching identities. A persisted uncertain write remains available for retry after relaunch.
+Failures return a typed code and a server-generated request ID. Oversized bodies return `413 REQUEST_TOO_LARGE`; unsupported content types return `415 UNSUPPORTED_MEDIA_TYPE`. Neither is retried unchanged as a temporary outage. Authentication, expiry, revocation, conflict, pending transfer, rate limiting and temporary failures have distinct client states. Invalid JSON/contract inputs never echo supplied values. Client requests have a 10-second deadline and no automatic write retry loop. The controller serializes identity operations and clears the visible account when explicitly switching identities. A persisted uncertain write remains available for retry after relaunch.
 
 ## Database boundary
 
