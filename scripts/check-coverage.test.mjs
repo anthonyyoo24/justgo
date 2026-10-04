@@ -67,21 +67,46 @@ test('missing source/report counts cannot silently pass a threshold', () => {
       root,
     ),
     [
+      'all source: no coverage entries (check the include pattern)',
       'all source: missing/invalid branches counts',
       'src/moved.ts: no coverage entry (check the include pattern or a moved file)',
     ],
   );
 });
+test('reports without source entries fail even when all global coverage floors pass', () => {
+  const metrics = ['branches', 'lines', 'statements', 'functions'];
+  const rules = {
+    global: Object.fromEntries(metrics.map((metric) => [metric, 95])),
+    files: {},
+  };
+  for (const total of [0, 100]) {
+    const summary = {
+      total: Object.fromEntries(
+        metrics.map((metric) => [metric, { total, covered: total }]),
+      ),
+    };
+    assert.deepEqual(coverageFailures(summary, rules, root), [
+      'all source: no coverage entries (check the include pattern)',
+    ]);
+  }
+});
 test('empty branch sets pass, but malformed counts and rounded percentages cannot inflate coverage', () => {
   const rules = { global: { branches: 95 }, files: {} };
-  assert.deepEqual(coverageFailures({ total: stats(0, 0) }, rules, root), []);
+  const source = { [file('src/branchless.ts')]: stats(0, 0) };
+  assert.deepEqual(
+    coverageFailures({ total: stats(0, 0), ...source }, rules, root),
+    [],
+  );
   assert.match(
-    coverageFailures({ total: stats(100, 1) }, rules, root)[0],
+    coverageFailures({ total: stats(100, 1), ...source }, rules, root)[0],
     /invalid/,
   );
   assert.match(
     coverageFailures(
-      { total: { branches: { total: 10000, covered: 9499, pct: 95 } } },
+      {
+        total: { branches: { total: 10000, covered: 9499, pct: 95 } },
+        ...source,
+      },
       rules,
       root,
     )[0],

@@ -73,8 +73,10 @@ Database service branch floors are 85% for identity/challenges and 95% for
 reflections/history. The JSON file owns exact thresholds.
 
 The checker uses covered/total counts (not rounded percentages), weights grouped
-files by branch count and fails when a critical path is missing. Its own tests
-protect those failure modes. Keep these floors or ratchet them upward as behavior
+files by branch count and fails when a critical path or all source entries are
+missing. Zero-total metrics are valid only in a report containing source files;
+an empty report cannot satisfy the gate. Its own tests protect those failure
+modes. Keep these floors or ratchet them upward as behavior
 coverage improves. A moved file must update its selector. Explain any justified
 threshold/exclusion change in the handoff/PR with before/after reports; do not lower
 floors to make failing changes pass. Review uncovered _behaviors_, not just totals:

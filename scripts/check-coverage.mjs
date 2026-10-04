@@ -10,6 +10,11 @@ export function coverageFailures(summary, rules, directory) {
   const files = Object.entries(summary).filter(
     ([filename]) => filename !== 'total',
   );
+  if (!files.length) {
+    failures.push(
+      'all source: no coverage entries (check the include pattern)',
+    );
+  }
   function check(label, stats, thresholds) {
     for (const [metric, minimum] of Object.entries(thresholds)) {
       const counts = stats?.[metric];

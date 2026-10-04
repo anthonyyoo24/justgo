@@ -79,8 +79,9 @@ the report, rather than being excluded to inflate the score.
 `docs/TESTING.md` explains the all-source include patterns, scope/exclusions,
 commands, error ownership and threshold policy. `scripts/coverage-thresholds.json`
 owns the global and critical-path floors. The checker independently evaluates
-global and selected files/groups using weighted covered/total counts; five tests
-protect regression detection, missing paths and misleading rounded percentages.
+global and selected files/groups using weighted covered/total counts; six tests
+protect regression detection, missing source entries/paths and misleading rounded
+percentages.
 The mobile global branch floor is 79%; API is 82%; contracts are 95%. Critical
 provider/vault floors are 95% and Progress has a 90% branch floor. Controller and
 API service floors preserve the existing, behavior-oriented integration coverage.
@@ -129,6 +130,16 @@ formatting; `npm run test:db` passes all 36 tests. `CI=1 npm run test:coverage`
 passes all workspace/critical-path floors with unchanged reported percentages.
 No unexpected asynchronous warning appeared. The parsed workflow's two database
 steps also resolve to the same complete environment mapping.
+
+### October 3 PR #10 empty-coverage review fix
+
+- [x] Address [review comment 4175421375](https://github.com/anthonyyoo24/justgo/pull/10#discussion_r4175421375): reject summaries with no source entries, including workspaces without critical-file selectors. Empty totals and total-only reports with perfect counts cannot pass. Real source files with zero branches remain valid; thresholds and include patterns are unchanged.
+- [x] Add a regression that failed against the original checker and passes after the fix. All six checker tests pass, including missing paths, malformed counts, weighted groups and rounded percentages.
+- [x] Local `npm run check` passes 293 tests (55 architecture/safeguard, 8 API unit, 217 mobile, 13 contract), typechecks, lint and formatting. `npm run test:db` passes 36 tests; `CI=1 npm run test:coverage` passes all workspace/global/critical-path floors with unchanged percentages and no unexpected asynchronous warnings.
+
+This changes scripts and documentation only; no application UI or native behavior
+changed, so no additional browser/device verification was required. Hosted results
+for the fix are tracked in [PR #10 checks](https://github.com/anthonyyoo24/justgo/pull/10/checks).
 
 ### Browser evidence
 
