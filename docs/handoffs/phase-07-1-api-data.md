@@ -42,6 +42,49 @@ purchase capacity or trigger extra reviews to work around that restriction.
   those results for the actual pushed revision before acceptance; earlier
   combined CI success is not a substitute. No merge is authorized.
 
+## October 4 PR #13 cancellation rate-limit fix
+
+The owner authorized fixing and pushing the assessed
+[CodeRabbit cancellation finding](https://github.com/anthonyyoo24/justgo/pull/13#discussion_r4179754780).
+`DELETE /v1/transfers/:id` now uses the existing sensitive pre-handler, sharing
+the recovery/transfer budget (default 30 requests per address per 10 minutes)
+instead of relying only on the general identity limit of 120. Existing ownership
+and resource-ID checks remain in effect; missing codes, wrong IDs and another
+account's transfers still return the same `404 NOT_FOUND`.
+
+The new database regression exercises all three rejected cancellation cases,
+then proves that the exhausted budget blocks valid cancellation with typed
+`429 RATE_LIMITED` and `Retry-After: 600`. Transfer inspection shares that budget;
+ordinary authenticated session reads remain available. The blocked cancellation
+leaves the transfer intact, and cancellation from a fresh address still succeeds.
+The focused regression failed before the route fix (`200` instead of `429`) and
+passed afterward. Run it from `apps/api` with:
+
+```sh
+node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/identity.integration.test.ts -t 'shares the sensitive budget'
+```
+
+Fresh follow-up verification passed:
+
+- `npm run check`: contracts build, typechecks, lint, formatting and 350 tests
+  (55 safeguards, 45 API unit, 229 mobile and 21 contracts).
+- `npm run test:db`: 59 product database cases plus the migration/restoration
+  rehearsal, 60 total, against dedicated loopback `justgo_test` through 0012.
+- `npm run test:coverage`: all unchanged global/critical floors pass; API
+  95.71% lines / 91.15% branches, mobile 87.98% / 80.35%, contracts 100% / 100%.
+- The PR diff remains 99 files against `main`. Hosted checks for the follow-up
+  push must be read at the pushed revision through [PR #13 checks](https://github.com/anthonyyoo24/justgo/pull/13/checks);
+  these local passes do not claim a hosted result.
+
+This backend-only change needs no interactive UI walkthrough; earlier side-panel
+evidence and open native/device/staging gates are unchanged. Keep B local and
+incorporate the reviewed A fixes when preparing B; no merge is authorized.
+
+The separate [docstring warning](https://github.com/anthonyyoo24/justgo/pull/13#issuecomment-5985250582)
+was assessed as requiring no change: CodeRabbit's inconclusive 80% function-comment
+target is not the repository's test-coverage policy. No blanket comments were
+generated and no coverage thresholds or review settings were weakened.
+
 ## Implemented boundary
 
 Identity now uses noun resources for sessions, credentials, devices and transfers.

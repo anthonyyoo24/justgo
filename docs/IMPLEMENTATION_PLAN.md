@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 38 · Updated October 4, 2026
+**Version:** 39 · Updated October 4, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -699,6 +699,16 @@ in A. Both slices need independent verification before their own review/acceptan
 **Depends on:** 06A. **Outcome:** stable resource contracts and tested backend reads/writes with proven historical-data preservation. **Status:** Implemented and verified; awaiting owner review and acceptance. PR #12 was reverted because its creation and merge were not authorized. [The 07.1A handoff](handoffs/phase-07-1-api-data.md) records fresh A checks (350 workspace tests, 59 database/migration cases and coverage), contracts and compatibility. Its historical combined A+B evidence includes 351 workspace tests, saved smoke and side-panel checks; that history does not close B acceptance.
 
 **Scope:** original tasks 1–4 plus the backend part of task 8. Preserve the identity/HTTP fixes. Implement additive migration/backfill, catalog and completed-attempt writes, inline reflection PATCH and separate Progress reads. Prepare the contraction procedure without accepting final removal. Mobile feature conversion remains in 07.3–07.4 except for the minimum contract compatibility needed to keep this checkpoint coherent.
+
+**PR #13 review follow-up — October 4:** the owner authorized fixing and pushing
+the cancellation rate-limit finding within A. Cancellation now shares the
+sensitive transfer/recovery budget; the database regression failed before the
+fix and passed afterward. Fresh workspace checks pass 350 tests, and database
+checks pass 59 product cases plus one migration/restoration case. Unchanged
+coverage gates pass; details and the hosted-check reference are in the
+[follow-up handoff](handoffs/phase-07-1-api-data.md#october-4-pr-13-cancellation-rate-limit-fix).
+The inconclusive docstring warning requires no change to the repository's
+coverage policy. B stays local; owner review and merge approval remain open.
 
 1. **Freeze scope and establish the implementation baseline.** Apply the confirmed offline cache, timestamp trust and local-storage failure policies, remove superseded scope wording, read the 06A handoff and refresh relevant tests. Inventory the already-written changes against 07.1–07.5 and distinguish previous passing evidence from the current unverified branch; do not discard existing drafts or assume the earlier green checks still apply. Inventory old routes/callers, migration state, saved data and any deployed old client; create the migration/rollout checklist. Use exact versioned Expo documentation when choosing compatible AsyncStorage, Zustand and connectivity dependencies; verify the selected Sonner Native release and its documented web adapter against the existing dependency pins. RevenueCat dependencies belong to Phase 07A. Do not reopen settled product decisions.
    **Verify:** every confirmed change has an implementation/test owner in this task list; approved-versus-proposed behavior is unambiguous; baseline commands and existing changes are recorded.

@@ -146,7 +146,7 @@ export function identityRoutes(
       );
     },
   );
-  app.delete('/transfers/:id', async (request) =>
+  app.delete('/transfers/:id', { preHandler: sensitive }, async (request) =>
     okSchema.parse(
       await service.cancelTransfer(
         bearer(request),

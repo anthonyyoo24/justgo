@@ -77,11 +77,16 @@ const post = (
     remoteAddress: ip,
     ...(token ? { headers: { authorization: `Bearer ${token}` } } : {}),
   });
-const remove = (path: string, token: string, payload?: object) =>
+const remove = (
+  path: string,
+  token: string,
+  payload?: object,
+  ip = `127.1.0.${++address}`,
+) =>
   app.inject({
     method: 'DELETE',
     url: `/v1${path}`,
-    remoteAddress: `127.1.0.${++address}`,
+    remoteAddress: ip,
     headers: { authorization: `Bearer ${token}` },
     ...(payload ? { payload } : {}),
   });
@@ -711,6 +716,69 @@ describe('identity protocol through the restricted runtime', () => {
     });
     expect(again.statusCode).toBe(429);
     expect(again.body).not.toContain(input.credential);
+  });
+  it('shares the sensitive budget with transfer cancellation and leaves blocked transfers unchanged', async () => {
+    const owner = await account(),
+      other = await account(),
+      t = await start(),
+      ip = `test-${randomUUID()}`;
+    await service.approveTransfer(
+      owner.input.sessionToken,
+      t.input.code,
+      t.result.verification,
+    );
+    for (const attempt of [
+      { id: randomUUID(), code: t.input.code, token: owner.input.sessionToken },
+      {
+        id: t.input.id,
+        code: randomBytes(8).toString('hex').toUpperCase(),
+        token: owner.input.sessionToken,
+      },
+      { id: t.input.id, code: t.input.code, token: other.input.sessionToken },
+    ]) {
+      const rejected = await remove(
+        `/transfers/${attempt.id}`,
+        attempt.token,
+        { code: attempt.code },
+        ip,
+      );
+      expect(rejected.statusCode).toBe(404);
+      expect(rejected.json().code).toBe('NOT_FOUND');
+    }
+    const limited = await remove(
+      `/transfers/${t.input.id}`,
+      owner.input.sessionToken,
+      { code: t.input.code },
+      ip,
+    );
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json().code).toBe('RATE_LIMITED');
+    expect(limited.headers['retry-after']).toBe('600');
+    const inspection = await post(
+      '/transfer-inspections',
+      { code: t.input.code },
+      owner.input.sessionToken,
+      ip,
+    );
+    expect(inspection.statusCode).toBe(429);
+    const session = await app.inject({
+      url: '/v1/sessions/current',
+      remoteAddress: ip,
+      headers: { authorization: `Bearer ${owner.input.sessionToken}` },
+    });
+    expect(session.statusCode).toBe(200);
+    expect(
+      await service.inspectTransfer(owner.input.sessionToken, t.input.code),
+    ).toMatchObject({ id: t.input.id });
+    const cancelled = await remove(
+      `/transfers/${t.input.id}`,
+      owner.input.sessionToken,
+      { code: t.input.code },
+    );
+    expect(cancelled.statusCode).toBe(200);
+    await expect(
+      service.inspectTransfer(owner.input.sessionToken, t.input.code),
+    ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
   });
   it('supports browser CORS and returns no-store responses without returning bearer material', async () => {
     const input = request();

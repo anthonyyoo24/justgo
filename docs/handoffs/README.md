@@ -4,6 +4,14 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
+October 4 PR #13 review fix: transfer cancellation now uses the same sensitive
+rate limit as other transfer operations. The new regression failed before the
+fix and passed afterward; fresh workspace checks pass 350 tests and database
+checks pass 60 cases including migration/restoration. The
+[07.1A follow-up](phase-07-1-api-data.md#october-4-pr-13-cancellation-rate-limit-fix)
+records coverage and publication evidence. The owner authorized pushing this A
+fix; B stays local and merging remains unapproved.
+
 October 4 review split: the owner authorized **07.1A only**, by narrowing existing
 [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). A keeps the API/data,
 migration, compatibility and application/database tests; B keeps the saved
