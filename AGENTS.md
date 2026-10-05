@@ -67,6 +67,36 @@ handoffs; avoid copying competing versions of these rules into every directory.
   and web exports cannot establish native accessibility, gestures or Keychain
   behavior; record any deferred device checks in the release handoff.
 
+## File placement for new mobile code
+
+- **Choose the owner before creating files.** Identify the product capability or
+  supporting responsibility the code serves, then place it with that owner.
+- **Use `src/features/<name>/` for product capabilities.** Examples: Challenges,
+  Reflections and Progress. Keep each feature's screens, components, hooks, domain
+  logic, API functions and tests together.
+- **Use `src/app-support/` for app-wide coordination.** Providers, startup, access
+  checks, identity, sessions and account recovery belong here. These
+  responsibilities can include their own screens.
+- **Use `src/data/` for shared app data.** Shared persistence, cached activity and
+  synchronization belong here. Feature-specific API functions can stay with their
+  feature.
+- **Use shared directories for reusable building blocks.** `src/components/` owns
+  reusable UI, `src/lib/` owns general infrastructure/helpers, `src/theme/` owns
+  design tokens, and `src/platform/` owns reusable platform adapters. Keep
+  app-specific behavior with its owner.
+- **Keep `src/app/` focused on navigation.** Route files and layouts connect
+  navigation to screens. Put supporting logic, reusable components and tests in
+  their owning directories outside `src/app/`.
+- **Keep developer fixtures in `src/dev/`.** Sample screens, preview data and
+  diagnostics belong here, with development-only access.
+- **Create directories when their purpose exists.** Start with the files needed
+  for implemented behavior. Add subfolders when they contain a cohesive group of
+  related files. Avoid empty folders for future features or automatic
+  `components/hooks/services/utils` layers.
+- **Name folders after their responsibility.** Prefer recognizable product names
+  or concrete supporting jobs. Keep tests and styles beside the code they support,
+  and follow the existing import boundaries when choosing dependencies.
+
 ## Enforced code boundaries
 
 - Use strict TypeScript and shared Zod runtime validation at trust boundaries.
