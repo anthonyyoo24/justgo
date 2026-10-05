@@ -217,7 +217,10 @@ References: [Vitest coverage](https://vitest.dev/guide/coverage.html),
 
 07.1A/07.1B are merged; the prior review-stage restrictions above are historical.
 The 07.2 branch adds deterministic journal/storage/sender/transport tests to the
-normal mobile test and coverage commands. `npm run test:journey` also rebuilds
+normal mobile test and coverage commands. The production modules and colocated
+tests now live under `apps/mobile/src/data/activity/`. Boundary regressions enforce
+features → data → shared infrastructure/contracts, with no data-to-UI or
+shared-infrastructure-to-data dependency. `npm run test:journey` also rebuilds
 `.local/journey-repository.mjs` with pinned esbuild from the production repository
 and transport sources, then runs three repository/API/database cases alongside
 the existing four cases. `npm ci` supplies the build dependency; no ignored local

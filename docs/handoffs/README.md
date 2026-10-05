@@ -101,7 +101,7 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is implemented locally for review with native durability evidence open; later filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is implemented locally for review with native durability evidence open; its shared saving/synchronization code lives under `apps/mobile/src/data/activity/`. Later filenames remain reserved outputs.
 
 | Subphase                                         | Depends on | Handoff filename                                       |
 | ------------------------------------------------ | ---------- | ------------------------------------------------------ |

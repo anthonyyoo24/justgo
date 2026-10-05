@@ -17,7 +17,7 @@
 
 ## Implemented boundary
 
-`apps/mobile/src/features/journal/` owns the account repository and Zustand store.
+`apps/mobile/src/data/activity/` owns the account repository and Zustand store.
 `submissions.ts` owns completion/reflection domain updates, `persistence.ts` owns
 serialized journal commits, `delivery.ts` owns acknowledgement/rejection/conflict
 transitions, and `sender.ts` owns external delivery and retry scheduling.
@@ -25,6 +25,18 @@ transitions, and `sender.ts` owns external delivery and retry scheduling.
 storage, transport, clock and randomness. `accounts.ts` keeps one active repository
 and preserves parked memory-only submissions while the process survives.
 This adds no conventional login or account-switcher UI.
+
+At the owner's request, shared saving/synchronization code moved from the feature
+tree into `data/activity`; user-facing Challenges, Reflections and Progress remain
+in `features`. Features may consume this data module, while data cannot import
+routes/features/components/theme, and shared components/lib/theme/platform cannot
+import data or features. The ESLint boundary rule enforces static imports,
+re-exports and runtime loaders, including package paths and directory entrypoints.
+The on-phone journal keys, schema, retry identities and behavior are unchanged;
+“journal” remains the internal name of the persisted activity/upload envelope.
+The coding rules, app-shell guidance, tech-stack folder tree, frontend architecture
+learning map, testing guidance, phase plan and handoff index describe this placement.
+The broader Phase 07 product/storage reconciliation remains assigned to 07.5.
 
 Pinned consuming dependencies: AsyncStorage **2.2.0**, as recommended by the exact
 Expo SDK 57 docs, and Zustand **5.0.15**. NetInfo/toast dependencies remain in 07.3.
@@ -122,23 +134,28 @@ Selectors and actual Progress integration remain 07.4.
 
 ## Verification
 
-- `npm run check`: final run passed strict types, lint, formatting, boundaries and
-  **430 tests** (56 safeguards, 45 API unit, 308 mobile, 21 contracts).
+- `npm run check`: final run after the data-module move passed strict types, lint,
+  formatting, boundaries and **467 tests** (93 safeguards, 45 API unit, 308 mobile,
+  21 contracts).
+- `node --test scripts/import-boundaries.test.mjs`: **86 tests** passed, including
+  37 new regressions for the data/UI dependency direction, permitted consumers and
+  loader/package/directory-entrypoint paths. The full check includes these cases.
 - `npm run test:db`: **60 database cases plus one migration/restoration rehearsal**
   passed against loopback `justgo_test` through 0012. No migration was added.
-- `npm run test:coverage`: the full workspace run passed. The final mobile
-  coverage run and `npm run coverage:check` passed all existing global/critical
-  floors using refreshed mobile evidence and the unchanged API/contracts reports.
-  Final coverage: mobile **90.35% lines /
+- `npm run test:coverage`: the final full workspace run after the data-module move
+  passed all existing global/critical floors, including **106 API unit/database/
+  migration cases**, **308 mobile tests** and **21 contract tests**. All moved data
+  files remain in all-source coverage. Final coverage: mobile **90.35% lines /
   82.23% branches**, API **95.71% / 91.19%**, contracts **100% / 100%**.
   No exclusions or thresholds changed.
-- One mobile coverage run timed out at the existing 5-second limit in
+- Before the data-module move, one mobile coverage run timed out at the existing 5-second limit in
   `ProgressScreen.test.tsx` (the account-change/loading case). Its isolated
   sequential rerun passed all **308 tests** in **14.938 seconds**. No test,
   assertion or timeout was changed; the earlier timeout is recorded as intermittent
   test evidence rather than attributed to an unproven cause.
 - `npm run doctor -w @justgo/mobile`: **21/21 checks** passed.
-- `npm run test:journey`: **seven saved cases passed**, including the existing four
+- `npm run test:journey`: final run after rebuilding from `data/activity` passed
+  **seven saved cases**, including the existing four
   app/identity/cleanup/listener cases and three new repository → real account
   transport → API → disposable database cases: offline/lost-response/relaunch,
   device-write failure/cloud fallback/backend-wins conflict, and ten maximum-length

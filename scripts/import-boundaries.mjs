@@ -27,12 +27,23 @@ function boundaryMessage(filename, specifier) {
     return 'Mobile cannot import API implementation.';
   if ((under(file, 'apps/mobile') || under(file, 'apps/api')) && contracts)
     return 'Import shared contracts through @justgo/contracts.';
+  const mobileTarget = target.startsWith('@justgo/mobile/src/')
+    ? target.replace('@justgo/mobile/src/', 'apps/mobile/src/')
+    : target;
+  if (
+    under(file, 'apps/mobile/src/data') &&
+    ['app', 'features', 'components', 'theme'].some((folder) =>
+      under(mobileTarget, `apps/mobile/src/${folder}`),
+    )
+  )
+    return 'Mobile data code cannot import routes, features or UI code.';
   if (
     /^apps\/mobile\/src\/(components|lib|theme|platform)\//.test(file) &&
-    (under(target, 'apps/mobile/src/features') ||
-      under(target, '@justgo/mobile/src/features'))
+    ['features', 'data'].some((folder) =>
+      under(mobileTarget, `apps/mobile/src/${folder}`),
+    )
   )
-    return 'Shared mobile code cannot import feature code.';
+    return 'Shared mobile code cannot import feature or data code.';
   return null;
 }
 

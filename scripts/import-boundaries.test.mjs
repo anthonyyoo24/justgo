@@ -93,6 +93,66 @@ const cases = [
     source: "import '@justgo/contracts';",
     restricted: false,
   },
+  {
+    name: 'data cannot import a feature',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "import '../../features/challenges/controller';",
+    restricted: true,
+  },
+  {
+    name: 'data cannot re-export a route',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "export * from '../../app/reflection';",
+    restricted: true,
+  },
+  {
+    name: 'data cannot import a UI component',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "import '../../components/Screen';",
+    restricted: true,
+  },
+  {
+    name: 'data cannot import UI theme',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "import '../../theme/tokens';",
+    restricted: true,
+  },
+  {
+    name: 'shared library cannot re-export data',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "export * from '../data/activity/repository';",
+    restricted: true,
+  },
+  {
+    name: 'shared component cannot import data',
+    file: 'apps/mobile/src/components/BoundaryFixture.tsx',
+    source: "import '../data/activity/repository';",
+    restricted: true,
+  },
+  {
+    name: 'features may import activity data',
+    file: 'apps/mobile/src/features/progress/BoundaryFixture.ts',
+    source: "import '../../data/activity/repository';",
+    restricted: false,
+  },
+  {
+    name: 'data may import shared infrastructure',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "import '../../lib/account-client';",
+    restricted: false,
+  },
+  {
+    name: 'data may import native adapters',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "import '../../platform/storage';",
+    restricted: false,
+  },
+  {
+    name: 'data may import public contracts',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "import '@justgo/contracts';",
+    restricted: false,
+  },
 ];
 
 const loadingCases = cases.flatMap((fixture) => {
@@ -158,6 +218,49 @@ cases.push(
     name: 'TypeScript import assignment cannot bypass boundaries',
     file: 'apps/api/src/BoundaryFixture.ts',
     source: "import mobile = require('@justgo/mobile'); export { mobile };",
+    restricted: true,
+  },
+  {
+    name: 'workspace package paths cannot bypass the data-feature boundary',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "require('@justgo/mobile/src/features/identity/vault');",
+    restricted: true,
+  },
+  {
+    name: 'workspace package paths cannot bypass the shared-data boundary',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "import '@justgo/mobile/src/data/activity/repository';",
+    restricted: true,
+  },
+  {
+    name: 'normalized traversal cannot bypass the data-UI boundary',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "require('../../lib/../components/Screen');",
+    restricted: true,
+  },
+  {
+    name: 'named re-exports cannot bypass the data-feature boundary',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source:
+      "export { IdentityController } from '../../features/identity/controller';",
+    restricted: true,
+  },
+  {
+    name: 'feature directory entrypoints cannot bypass shared boundaries',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "import '../features';",
+    restricted: true,
+  },
+  {
+    name: 'data directory entrypoints cannot bypass shared boundaries',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "import '../data';",
+    restricted: true,
+  },
+  {
+    name: 'feature directory entrypoints cannot bypass data boundaries',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "import '../../features';",
     restricted: true,
   },
 );

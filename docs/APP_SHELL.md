@@ -72,10 +72,15 @@ evidence. Full product-document reconciliation is assigned to 07.5.
 
 ## Phase 07.2 local persistence boundary
 
-The account-scoped journal repository, AsyncStorage adapter, Zustand live state and
-ordered sender are implemented under `features/journal`. Existing app screens still
-use the temporary compatibility flow. 07.3 owns provider/lifecycle/screen wiring and
-warning/toast presentation; 07.4 owns Progress composition. The
+The shared activity repository, AsyncStorage adapter, Zustand live state and
+ordered sender are implemented under `data/activity`. This data module owns local
+saving, cached activity and upload coordination for the user-facing features.
+Features may import data; data uses shared infrastructure/contracts and cannot
+import routes, features, components or theme. Shared components/lib/theme/platform
+cannot import data or feature code. The stored journal envelope is unchanged.
+Existing app screens still use the temporary compatibility flow. 07.3 owns
+provider/lifecycle/screen wiring and warning/toast presentation; 07.4 owns Progress
+composition. The
 [07.2 handoff](handoffs/phase-07-2-local-sync.md) records version/durability rules,
 retry/recovery interfaces, test evidence and open native checks. HTTP now preserves
 validated reflection-conflict data and Retry-After; normal uploads have one retry

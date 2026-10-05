@@ -72,7 +72,10 @@ handoffs; avoid copying competing versions of these rules into every directory.
 - Use strict TypeScript and shared Zod runtime validation at trust boundaries.
   Import contracts through `@justgo/contracts`. API and mobile must not import
   each other's implementations. Shared mobile components/lib/theme/platform
-  must not import feature code. These rules include re-exports, `import()` and
+  must not import feature or data code. Mobile `src/data` owns shared app data
+  and synchronization; features may import it, while data must not import routes,
+  features, UI components or theme. Data may use shared lib/platform infrastructure
+  and public contracts. These rules include re-exports, `import()` and
   `require()`; assets, tests and development preview loading remain permitted.
 - Await promises or explicitly handle their failures. Use `void` only for a
   deliberate background operation whose failure is already handled; explain
