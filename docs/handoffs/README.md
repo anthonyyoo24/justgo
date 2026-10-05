@@ -1,5 +1,28 @@
 # Implementation handoffs
 
+**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. After authorizing commits and publication, the owner lifted the PR hold; [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) is open for review. Merge approval remains pending. Hosted checks passed at `af2431f` after the earlier GitHub runner acquisition failure; later review fixes require their own hosted result.
+
+**October 5 owner follow-up:** Remove the unused mobile Foundation connection screen
+and its dedicated tests; keep developer screen previews and API health/readiness
+endpoints. Current folder guidance reflects the removal; the [07.2 handoff](phase-07-2-local-sync.md)
+records checks and the side-panel demonstration of the unchanged Access screens.
+
+**October 5 app structure follow-up:** Access now lives in `app-support/access/`, the app
+provider in `app-support/providers/`, and retained developer previews in `dev/previews/`.
+Shared navigation links live in `components/`; unused Shell placeholders are removed.
+The [07.2 handoff](phase-07-2-local-sync.md) records the refactor, updated import rules,
+unchanged provider coverage floor and verification. Existing routes/access/foreground
+behavior and future 07.3/07A work are preserved. The later owner-approved naming
+follow-up replaces `runtime` with `app-support` and moves account/recovery/session/
+Keychain support into `app-support/identity/`. That separate commit, `748a2ee`, is
+published in PR #15.
+
+**October 5 PR #15 review fix:** A changed ordinary reflection submission can now
+recover a rejected upload chain while retaining earlier writing and protecting
+against stale correction actions. The [07.2 handoff](phase-07-2-local-sync.md#october-5-pr-15-review-follow-up)
+records the regression checks and disposition of all existing feedback. The 07.1B
+and umbrella handoff checkpoints now correctly record PR #15 awaiting owner review.
+
 This folder is the durable implementation record for [the staged plan](../IMPLEMENTATION_PLAN.md). The historical HTML checklist is absent from this checkout; current progress is recorded in Markdown. A browser-local checklist cannot modify or verify these files. Commit phase records with their implementation. Export/import the checklist to move its state between browsers or preview URLs.
 
 ## Current state
@@ -99,13 +122,13 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is published for owner review in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14); its merge approval remains open. Later filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is implemented and open for review in [PR #15](https://github.com/anthonyyoo24/justgo/pull/15), with native durability evidence open; its shared saving/synchronization code lives under `apps/mobile/src/data/activity/`. Later filenames remain reserved outputs.
 
 | Subphase                                         | Depends on | Handoff filename                                       |
 | ------------------------------------------------ | ---------- | ------------------------------------------------------ |
 | 07.1A — API and data foundation                  | 06A        | [phase-07-1-api-data.md](phase-07-1-api-data.md)       |
 | 07.1B — Saved app/API journey and CI             | 07.1A      | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md) |
-| 07.2 — Durable local saving and synchronization  | 07.1       | `phase-07-2-local-sync.md`                             |
+| 07.2 — Durable local saving and synchronization  | 07.1       | [phase-07-2-local-sync.md](phase-07-2-local-sync.md)   |
 | 07.3 — Local challenge and reflection experience | 07.2       | `phase-07-3-local-flow.md`                             |
 | 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`                       |
 | 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md`                     |

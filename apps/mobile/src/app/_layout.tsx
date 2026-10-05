@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { AppProvider, useAccess } from '../features/shell/AppProvider';
+import { AppProvider, useAccess } from '../app-support/providers/AppProvider';
 import { colors } from '../theme/tokens';
 
 export default function RootLayout() {

@@ -1,8 +1,10 @@
 # Frontend architecture checklist
 
-Technical topics from the PDF's system design section, compared with [TECH_STACK.md](TECH_STACK.md). Updated September 15, 2026.
+Technical topics from the PDF's system design section, compared with [TECH_STACK.md](TECH_STACK.md). Updated October 5, 2026.
 
 “Represented” means included in the plan, not implemented. Related concepts are grouped; partly covered areas appear again where clarification is needed.
+
+**Implemented structure checkpoint — 07.2:** User-facing Challenges, Reflections and Progress stay under `features/`. Their shared saving/cached-data/upload system lives under `apps/mobile/src/data/activity/`. App providers/foreground coordination and the startup access gate live in `app-support/providers/` and `app-support/access/`; account/recovery UI and session/Keychain support live in `app-support/identity/`; developer screen fixtures live in `dev/previews/`. Foundation and unused Shell placeholders are retired. Features may use data and app-support provider hooks; data may use shared infrastructure/contracts but cannot import routes, app-support, developer code, features, components or theme. Shared components/lib/theme/platform cannot import routes, app-support, developer code, data or features. Only the guarded preview route loads developer code from production source. These directions are enforced by ESLint and boundary tests; see [coding rules](../AGENTS.md#enforced-code-boundaries), [app folder responsibilities](APP_SHELL.md#implemented-folder-responsibilities) and the [07.2 handoff](handoffs/phase-07-2-local-sync.md). Screen integration and Progress composition remain 07.3/07.4, with native durability evidence open. Broader storage/network descriptions below await the approved 07.5 reconciliation.
 
 ## 1. Already represented
 
@@ -11,7 +13,7 @@ Technical topics from the PDF's system design section, compared with [TECH_STACK
 | Architecture, dependencies, data models, data flow   | Mobile app, API, database, and provider responsibilities.                                               |
 | Client/server boundaries and communication           | Authenticated HTTP API; server controls access and saved progress.                                      |
 | Local/shared state, source of truth, synchronization | React, Zustand, TanStack Query, and PostgreSQL have defined roles.                                      |
-| Routing and separation of concerns                   | Expo Router, feature modules, and native adapters.                                                      |
+| Routing and separation of concerns                   | Expo Router, user-facing feature modules, shared activity data and native adapters.                     |
 | Caching, revalidation, pagination                    | In-memory queries, foreground refresh, and paginated history; policies need detail.                     |
 | API failures, retries/backoff, reliability, recovery | Safe action retries, failed-save states, and billing recovery.                                          |
 | Offline support and degraded experiences             | Loaded timers continue; saves require connectivity; unsaved typed reflections remain visible for retry. |

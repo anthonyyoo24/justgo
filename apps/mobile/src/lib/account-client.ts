@@ -53,6 +53,11 @@ export class AccountClient {
     void this.queries.cancelQueries();
     this.queries.clear();
   }
+  ownsAccount(userId: string): boolean {
+    return (
+      this.accountId === userId && this.session.current()?.userId === userId
+    );
+  }
   async request<T>(
     path: string,
     schema: z.ZodType<T>,

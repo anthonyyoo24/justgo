@@ -14,7 +14,9 @@ jest.mock('expo-router', () => ({
   useIsFocused: () => true,
   Link: () => null,
 }));
-jest.mock('../shell/AppProvider', () => ({ useRuntime: () => mockRuntime }));
+jest.mock('../../app-support/providers/AppProvider', () => ({
+  useRuntime: () => mockRuntime,
+}));
 jest.mock('./ChallengeDeck', () => ({
   ChallengeDeck: () => null,
   ChallengeCard: () => null,

@@ -27,12 +27,39 @@ function boundaryMessage(filename, specifier) {
     return 'Mobile cannot import API implementation.';
   if ((under(file, 'apps/mobile') || under(file, 'apps/api')) && contracts)
     return 'Import shared contracts through @justgo/contracts.';
+  const mobileTarget = target.startsWith('@justgo/mobile/src/')
+    ? target.replace('@justgo/mobile/src/', 'apps/mobile/src/')
+    : target;
+  const mobileSource = under(file, 'apps/mobile/src');
+  const testSource = /\.test\.[jt]sx?$/.test(file);
+  if (
+    mobileSource &&
+    under(mobileTarget, 'apps/mobile/src/dev') &&
+    !under(file, 'apps/mobile/src/dev') &&
+    file !== 'apps/mobile/src/app/preview.tsx' &&
+    !testSource
+  )
+    return 'Only the guarded preview route may load mobile developer code.';
+  if (
+    under(file, 'apps/mobile/src/app-support') &&
+    under(mobileTarget, 'apps/mobile/src/app') &&
+    !testSource
+  )
+    return 'Mobile app-support code cannot import route implementations.';
+  if (
+    under(file, 'apps/mobile/src/data') &&
+    ['app', 'app-support', 'dev', 'features', 'components', 'theme'].some(
+      (folder) => under(mobileTarget, `apps/mobile/src/${folder}`),
+    )
+  )
+    return 'Mobile data code cannot import routes, app-support, developer or UI code.';
   if (
     /^apps\/mobile\/src\/(components|lib|theme|platform)\//.test(file) &&
-    (under(target, 'apps/mobile/src/features') ||
-      under(target, '@justgo/mobile/src/features'))
+    ['app', 'app-support', 'dev', 'features', 'data'].some((folder) =>
+      under(mobileTarget, `apps/mobile/src/${folder}`),
+    )
   )
-    return 'Shared mobile code cannot import feature code.';
+    return 'Shared mobile code cannot import routes, app-support, developer, feature or data code.';
   return null;
 }
 

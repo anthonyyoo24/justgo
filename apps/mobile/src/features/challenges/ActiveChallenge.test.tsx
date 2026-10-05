@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { ChallengeCard } from './ChallengeDeck';
 import { ActiveChallenge } from './ActiveChallenge';
 jest.mock('expo-router', () => ({ Link: () => null }));
-jest.mock('../shell/AppProvider', () => ({}));
+jest.mock('../../app-support/providers/AppProvider', () => ({}));
 jest.mock('./ChallengeDeck', () => ({ ChallengeCard: jest.fn(() => null) }));
 const attempt: Attempt = {
   id: 'visual-test',

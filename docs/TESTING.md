@@ -73,6 +73,14 @@ have separate floors so higher presentation coverage cannot hide regressions.
 Database service branch floors are 85% for identity/challenges and 95% for
 reflections/history. The JSON file owns exact thresholds.
 
+The provider's selector follows its current `src/app-support/providers/AppProvider.tsx`
+location at the unchanged 95% branch/line floor. Identity vault/storage/controller
+selectors likewise follow their moved `src/app-support/identity/` paths, with every
+existing floor preserved. App-support and `dev/previews/` files
+remain included in all-source coverage. The preview-route regression proves that
+production rendering redirects without loading developer fixtures; import-boundary
+tests cover production loaders, app-support/data/shared direction and allowed consumers.
+
 The checker uses covered/total counts (not rounded percentages), weights grouped
 files by branch count and fails when a critical path or all source entries are
 missing. Zero-total metrics are valid only in a report containing source files;
@@ -212,3 +220,28 @@ References: [Vitest coverage](https://vitest.dev/guide/coverage.html),
 [typescript-eslint promise handling](https://typescript-eslint.io/rules/no-floating-promises/),
 [misused promises](https://typescript-eslint.io/rules/no-misused-promises/), and
 [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/).
+
+## Phase 07.2 repository and transport evidence
+
+07.1A/07.1B are merged; the prior review-stage restrictions above are historical.
+The 07.2 branch adds deterministic journal/storage/sender/transport tests to the
+normal mobile test and coverage commands. The production modules and colocated
+tests now live under `apps/mobile/src/data/activity/`. Boundary regressions enforce
+features → data → shared infrastructure/contracts, with no data-to-UI or
+shared-infrastructure-to-data dependency. `npm run test:journey` also rebuilds
+`.local/journey-repository.mjs` with pinned esbuild from the production repository
+and transport sources, then runs three repository/API/database cases alongside
+the existing four cases. `npm ci` supplies the build dependency; no ignored local
+artifact is a prerequisite. The Node bundle resolves Expo/CommonJS versus contract
+ESM loader boundaries and contains no native/UI adapter.
+
+Storage failures, offline/reconnect, dropped responses and controlled clocks/randomness
+are injected at the repository/transport boundary, never exposed as production flags.
+The database fixture owns cleanup for browser and repository-only tests. Safe size/
+serialization measurements are attached to the HTML report. These saved cases do
+not establish the new completion/reflection UI journey or native AsyncStorage
+durability. 07.3 adds app integration and side-panel checks; native evidence remains
+open because the existing simulator build lacks the new RNCAsyncStorage module.
+The default tools path does not expose `simctl`; a command-only Xcode override can
+list simulators, but a compatible native build is still required. See the
+[07.2 handoff](handoffs/phase-07-2-local-sync.md).

@@ -30,7 +30,7 @@ jest.mock('./calendar', () => ({
 
 let mockAccount = { userId: 'user-one' };
 let mockClient: { queries: QueryClient; request: jest.Mock };
-jest.mock('../shell/AppProvider', () => ({
+jest.mock('../../app-support/providers/AppProvider', () => ({
   useRuntime: () => ({ client: mockClient }),
   useIdentity: () => ({ account: mockAccount }),
 }));

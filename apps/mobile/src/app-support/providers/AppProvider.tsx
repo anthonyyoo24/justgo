@@ -1,4 +1,4 @@
-import { ChallengeController } from '../challenges/controller';
+import { ChallengeController } from '../../features/challenges/controller';
 import {
   createContext,
   useContext,

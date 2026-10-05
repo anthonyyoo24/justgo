@@ -2,6 +2,25 @@
 
 Phase 03 implements navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026. There is no onboarding state, answer collection, persistence or Zustand dependency. Challenge content/actions, reflections, history and billing arrive in their consuming phases.
 
+## Implemented folder responsibilities
+
+The October 5 owner-approved cleanup places the startup gate in
+`app-support/access/AccessScreen.tsx` and app/account/foreground composition in
+`app-support/providers/AppProvider.tsx`. Feature screens consume the provider hooks;
+shared components/lib/theme/platform and the data layer cannot import app support.
+App support composes features but cannot import route implementations.
+Account/recovery screens, session coordination and the typed Keychain adapter
+live in `app-support/identity/`; the Swift module remains under `modules/`.
+
+Development screen fixtures and their tests live in `dev/previews/`. Only the
+guarded `app/preview.tsx` route loads them from production source; both route and
+fixture still check `__DEV__`. Shared `components/NavigationLink.tsx` owns text-link
+styling and the Settings variant. Access and Settings keep their own screen styles.
+The unused Foundation screen and Shell Home/Focused placeholders are removed;
+their historical implementation evidence remains in earlier handoffs. Route paths,
+access policy and foreground behavior are unchanged. The
+[07.2 handoff](handoffs/phase-07-2-local-sync.md) records checks and browser evidence.
+
 ## Routes and access
 
 - `/`: restore the real account, then check `/v1/access`. Loading, unavailable and unpaid have distinct UI. Only a fresh, unexpired server verification admits the paid routes.
@@ -47,7 +66,7 @@ Follow [root coding instructions](../AGENTS.md) and [testing guidance](TESTING.m
 `ChallengeScreen` owns deck orchestration; `ActiveChallenge` owns the countdown and
 outcome controls; `SuccessScreen` owns the confirmed-result route. The shared
 feeling choices come from the versioned contracts. No route or persistence policy
-changed in this refactor. Runtime/provider and vault adapter tests cover their real
+changed in this refactor. App-provider and vault adapter tests cover their real
 JavaScript wiring; native Keychain behavior still needs its separate device gates.
 
 ## Phase 07.1 API compatibility boundary
@@ -69,3 +88,20 @@ The offline journal, local completion flow, banners/toasts and Progress cache
 remain subsequent checkpoints. The [07.1 handoff](handoffs/phase-07-1-api-data.md)
 owns the temporary compatibility inventory, database rehearsal and current test
 evidence. Full product-document reconciliation is assigned to 07.5.
+
+## Phase 07.2 local persistence boundary
+
+The shared activity repository, AsyncStorage adapter, Zustand live state and
+ordered sender are implemented under `data/activity`. This data module owns local
+saving, cached activity and upload coordination for the user-facing features.
+Features may import data; data uses shared infrastructure/contracts and cannot
+import routes, runtime, developer code, features, components or theme. Shared
+components/lib/theme/platform cannot import routes, runtime, developer code, data
+or features. The stored journal envelope is unchanged.
+Existing app screens still use the temporary compatibility flow. 07.3 owns
+provider/lifecycle/screen wiring and warning/toast presentation; 07.4 owns Progress
+composition. The
+[07.2 handoff](handoffs/phase-07-2-local-sync.md) records version/durability rules,
+retry/recovery interfaces, test evidence and open native checks. HTTP now preserves
+validated reflection-conflict data and Retry-After; normal uploads have one retry
+owner and use the existing coordinated authentication boundary.

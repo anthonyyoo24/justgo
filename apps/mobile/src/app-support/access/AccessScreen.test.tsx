@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { AccessScreen } from './AccessScreen';
-import { useAccess, useIdentity } from '../shell/AppProvider';
-jest.mock('../shell/AppProvider', () => ({
+import { useAccess, useIdentity } from '../providers/AppProvider';
+jest.mock('../providers/AppProvider', () => ({
   useAccess: jest.fn(),
   useIdentity: jest.fn(),
 }));
@@ -56,4 +56,34 @@ it('enters tabs only with verified access and returns to recovery when identity 
   identity.mockReturnValue({ initialized: true, busy: false, account: null });
   screen.rerender(<AccessScreen />);
   expect(screen.getByText('Redirect: /recovery')).toBeTruthy();
+});
+
+it.each([
+  { initialized: false, busy: false, account: null },
+  { initialized: true, busy: true, account: null },
+])(
+  'waits for account initialization or connection before showing access',
+  (state) => {
+    identity.mockReturnValue(state);
+    access.mockReturnValue({ verified: false });
+    const screen = render(<AccessScreen />);
+    expect(screen.getByLabelText('Connecting your account')).toBeTruthy();
+    expect(screen.queryByText('Redirect: /recovery')).toBeNull();
+  },
+);
+
+it('shows pending access and prevents duplicate retries while the check is running', () => {
+  const refetch = jest.fn();
+  access.mockReturnValue({
+    verified: false,
+    isPending: true,
+    isFetching: true,
+    refetch,
+  });
+  const screen = render(<AccessScreen />);
+  expect(screen.getByText('Checking your access…')).toBeTruthy();
+  const retry = screen.getByRole('button', { name: 'Check access again' });
+  expect(retry).toBeDisabled();
+  fireEvent.press(retry);
+  expect(refetch).not.toHaveBeenCalled();
 });
