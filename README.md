@@ -31,12 +31,13 @@ For environment-managed development, copy the workspace `.env.example` files to 
 npm run check          # strict TypeScript, lint, formatting and unit/component tests
 npm run test:db        # real PostgreSQL isolation/rollback/pool tests; db:local + migrate first
 npm run test:coverage  # all-source reports + regression floors; uses the test DB
+npm run test:journey   # 07.1B saved app/API account and catalog smoke
 npm run export:web -w @justgo/mobile
 npm run export:ios -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
-CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The saved Playwright account/catalog journey and browser CI steps are reserved for the local-only 07.1B review slice. See [testing guidance](docs/TESTING.md) for local prerequisites and artifact handling.
+CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. Phase 07.1B adds the saved Playwright account/catalog journey and its browser CI steps in a separate review against `main` after 07.1A merged. See [testing guidance](docs/TESTING.md) for local prerequisites and artifact handling.
 
 Coverage scope, thresholds, focused commands and async/UI test conventions are in
 [testing guidance](docs/TESTING.md).

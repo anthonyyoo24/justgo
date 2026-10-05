@@ -15,7 +15,7 @@
     "dev:mobile": "npm run start -w @justgo/mobile",
     "dev:web": "npm run web -w @justgo/mobile",
     "dev:api": "npm run dev -w @justgo/api",
-    "typecheck": "npm run typecheck --workspaces",
+    "typecheck": "npm run typecheck --workspaces && npm run typecheck:journey",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -31,10 +31,13 @@
     "prepare": "npm run build:contracts",
     "test:coverage": "npm run build:contracts && npm run test:coverage --workspaces && npm run coverage:check",
     "coverage:check": "node scripts/check-coverage.mjs",
+    "typecheck:journey": "tsc --project e2e/tsconfig.json --noEmit",
+    "test:journey": "node --env-file-if-exists=apps/api/.env scripts/run-journey.mjs",
     "test:migrations": "npm run test:migrations -w @justgo/api"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
     "@types/node": "22.20.3",
     "@vitest/coverage-v8": "5.0.1",
     "eslint": "10.10.0",

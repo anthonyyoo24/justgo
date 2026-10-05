@@ -53,6 +53,22 @@ jobs:
           name: coverage
           path: coverage/
           if-no-files-found: error
+      - name: Install journey browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify saved app/API account and catalog journey
+        run: |
+          npm run test:journey
+          test -s .local/journey-report/index.html
+        env: *database-test-env
+      - name: Upload journey results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-results
+          path: |
+            .local/journey-results/
+            .local/journey-report/
+          if-no-files-found: ignore
       - run: npm run export:web -w @justgo/mobile
       - run: npm run export:ios -w @justgo/mobile
       - run: npx expo-doctor

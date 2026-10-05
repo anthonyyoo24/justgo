@@ -77,6 +77,8 @@ export type IdentityOptions = {
   transferMinutes?: number;
   rateLimit?: number;
   rateKey: string;
+  // Trusted server-side allocation seam; never supplied by an HTTP caller.
+  newUserId?: () => string;
 };
 export class IdentityService {
   private readonly sessionHours: number;
@@ -207,7 +209,7 @@ export class IdentityService {
       );
       if (!credential) {
         if (!create) return fail('CREDENTIAL_REJECTED');
-        const userId = randomUUID();
+        const userId = this.options.newUserId?.() ?? randomUUID();
         await context(tx, 'app.user_id', userId);
         await tx.execute(sql`insert into justgo.users (id) values (${userId})`);
         credential = (await one<CredentialRow>(
