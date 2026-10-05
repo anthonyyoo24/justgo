@@ -1,11 +1,11 @@
 # JustGO — Implementation Plan
 
-**Version:** 47 · Updated October 5, 2026
+**Version:** 48 · Updated October 5, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
 Phase 06 Progress/history passes local automated and simulator checks, including a live day with 21 entries, automatic paging and both retry states. Physical-device acceptance is scheduled for release validation after the app is built; staging deployment is an integration/release task. See the [phase 06 handoff](handoffs/phase-06-progress.md).
-[06A — Code quality & test hardening](#phase-06a) is complete; its [handoff](handoffs/phase-06a-code-quality.md) records tests, coverage and side-panel browser evidence. [07 — API & offline saving](#phase-07) is in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13 and 07.1B / PR #14. [07.2 local saving/synchronization](handoffs/phase-07-2-local-sync.md) is implemented locally for review, with native durability evidence open. Screen/Progress/cutover work remains in 07.3–07.5; native billing remains in 07A. The earlier unapproved PR #12 merge was reverted and its history is preserved below. The owner authorized committing and pushing 07.2 on October 5; the branch is published. PR creation is explicitly on hold. Owner review and merge approval remain pending.
+[06A — Code quality & test hardening](#phase-06a) is complete; its [handoff](handoffs/phase-06a-code-quality.md) records tests, coverage and side-panel browser evidence. [07 — API & offline saving](#phase-07) is in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13 and 07.1B / PR #14. [07.2 local saving/synchronization](handoffs/phase-07-2-local-sync.md) is implemented and open for review in [PR #15](https://github.com/anthonyyoo24/justgo/pull/15), with native durability evidence open. Screen/Progress/cutover work remains in 07.3–07.5; native billing remains in 07A. The earlier unapproved PR #12 merge was reverted and its history is preserved below. The owner authorized publication and lifted the PR hold on October 5. Owner review and merge approval remain pending. Hosted checks are pending after an earlier runner acquisition failure; no hosted pass is claimed.
 
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](PRD.md) · [Tech stack](TECH_STACK.md)  
@@ -64,7 +64,7 @@ all retained tests and the provider coverage floor unchanged. The [07.2 handoff]
 records this local refactor and its verification; 07.3 wiring and 07A billing remain
 separate unfinished work.
 
-**October 5 app-support naming follow-up:** The owner chose `app-support` for app-wide setup and coordination, replacing the `runtime` folder name, and approved moving account/recovery/session/Keychain support from `features/identity` into `app-support/identity`. Current imports, architecture rules, coverage selectors and folder guidance follow the new locations; behavior and coverage floors are preserved. This change is committed locally; PR creation remains on hold.
+**October 5 app-support naming follow-up:** The owner chose `app-support` for app-wide setup and coordination, replacing the `runtime` folder name, and approved moving account/recovery/session/Keychain support from `features/identity` into `app-support/identity`. Current imports, architecture rules, coverage selectors and folder guidance follow the new locations; behavior and coverage floors are preserved. This separate commit, `748a2ee`, is now published in [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) following the owner's request to create the PR.
 
 **October 4 implementation checkpoint split:** Anthony accepted splitting Phase 07 into 07.1 API/data foundation, 07.2 durable local saving/synchronization, 07.3 challenge/reflection experience, 07.4 Progress/history integration and 07.5 final cutover/acceptance. Update this plan before resuming application work. Preserve the verified identity/HTTP slice and all existing drafts; the split does not restart implementation or reduce agreed scope. Each subphase has a dependency, checklist and evidence handoff. The former ten task numbers remain below for traceability, with backend Progress work assigned to 07.1 and client Progress work to 07.4. These are implementation checkpoints, not five independently deployable releases or new permission gates. Build journey tests incrementally, keep destructive cleanup in 07.5, and keep native billing in 07A. This edit changes the plan only.
 
@@ -661,7 +661,7 @@ The five subphases below replace the former single ten-step execution block. All
 | Subphase                                                        | Owns                                                                                 | Depends on | Current status                                                                            |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------- | ----------------------------------------------------------------------------------------- |
 | [07.1 — API and data foundation](#phase-07-1)                   | Tasks 1–4, backend reads from task 8, journey-harness foundation                     | 06A        | A and B verified and merged by owner in PR #13 / PR #14                                   |
-| [07.2 — Durable local saving and synchronization](#phase-07-2)  | Tasks 5–6 core persistence, sender, recovery state and transport tests               | 07.1       | Core implemented/tested locally; native durability evidence open                          |
+| [07.2 — Durable local saving and synchronization](#phase-07-2)  | Tasks 5–6 core persistence, sender, recovery state and transport tests               | 07.1       | PR #15 open for review; native durability evidence open                                   |
 | [07.3 — Local challenge and reflection experience](#phase-07-3) | Task 7, presentation from tasks 5–6, app lifecycle wiring and saved journey cases    | 07.2       | Screens/controllers partially converted; runtime wiring, feedback and verification remain |
 | [07.4 — Progress and history integration](#phase-07-4)          | Client portion of task 8, reconciliation/cache selectors and journey expansion       | 07.3       | Progress partly converted; reconciliation and integrated verification remain              |
 | [07.5 — Final cutover and acceptance](#phase-07-5)              | Tasks 9–10, destructive cleanup, full CI acceptance and documentation reconciliation | 07.4       | Contraction SQL drafted; cutover, full verification and closeout not completed            |
@@ -670,15 +670,15 @@ The five subphases below replace the former single ten-step execution block. All
 
 **Branch naming and cleanup — October 4:** use `codex/phase-07.<subphase>-<scope>` for active subphase work. 07.1A uses the existing first numbered branch below and PR #13. 07.1B is preserved on a separate branch and is now authorized for publication as a PR against `main` after the owner merged A. The original combined 07.1 remote branch was removed during the undo and later republished for PR #13; B publication was authorized after the A cancellation review fix. Preserve the archive and create later branches only when their preceding checkpoint is merged. The archive is preserved for extraction and must never be merged wholesale. The already-merged planning branches (`codex/phase-07-planning`, PR #9; `codex/phase-07-subphase-plan`, PR #11) were removed locally and remotely after verifying their commits are retained in `main`. The unused original `codex/phase-07-api-offline` branch was also removed locally; historical mentions below describe where work began.
 
-| Purpose                                          | Branch                                | Current state                                  |
-| ------------------------------------------------ | ------------------------------------- | ---------------------------------------------- |
-| 07.1 — API and data foundation                   | `codex/phase-07.1-api-data`           | 07.1A merged by owner via PR #13 at `806f57f`  |
-| 07.1B — Saved app/API journey and CI             | `codex/phase-07.1b-journey-ci`        | Merged in PR #14 at `1df6406`                  |
-| 07.2 — Durable local saving and synchronization  | `codex/phase-07.2-local-sync`         | Branch published; PR held/native evidence open |
-| 07.3 — Local challenge and reflection experience | `codex/phase-07.3-local-flow`         | Planned; not created                           |
-| 07.4 — Progress and history integration          | `codex/phase-07.4-progress-history`   | Planned; not created                           |
-| 07.5 — Final cutover and acceptance              | `codex/phase-07.5-cutover-acceptance` | Planned; not created                           |
-| Preserved mixed drafts                           | `codex/archive/phase-07-drafts`       | Local archive at `6d4279f`; not for merging    |
+| Purpose                                          | Branch                                | Current state                                 |
+| ------------------------------------------------ | ------------------------------------- | --------------------------------------------- |
+| 07.1 — API and data foundation                   | `codex/phase-07.1-api-data`           | 07.1A merged by owner via PR #13 at `806f57f` |
+| 07.1B — Saved app/API journey and CI             | `codex/phase-07.1b-journey-ci`        | Merged in PR #14 at `1df6406`                 |
+| 07.2 — Durable local saving and synchronization  | `codex/phase-07.2-local-sync`         | PR #15 open for review; native evidence open  |
+| 07.3 — Local challenge and reflection experience | `codex/phase-07.3-local-flow`         | Planned; not created                          |
+| 07.4 — Progress and history integration          | `codex/phase-07.4-progress-history`   | Planned; not created                          |
+| 07.5 — Final cutover and acceptance              | `codex/phase-07.5-cutover-acceptance` | Planned; not created                          |
+| Preserved mixed drafts                           | `codex/archive/phase-07-drafts`       | Local archive at `6d4279f`; not for merging   |
 
 **Existing evidence and drafts:** Phase 07 began on `codex/phase-07-api-offline` from `ac322ee`. The initial identity/HTTP checkpoint passed 318 workspace tests, 40 database tests, coverage gates and a side-panel account/revocation/recovery walkthrough. Since that checkpoint, domain contracts/API/schema, migrations, repository/sender and mobile flow/Progress files have changed, and the selected storage/connectivity/Zustand/Sonner dependencies were installed. That mixed archive has not passed integrated verification. The extracted 07.1 implementation now has fresh local and hosted evidence in its handoff; later drafts remain unaccepted. The umbrella handoff preserves the earlier slice and archive history separately from current checkpoint acceptance.
 
@@ -773,7 +773,7 @@ coverage policy. The owner subsequently merged A. B publication is authorized se
 
 ##### 07.2 — Durable local saving and synchronization
 
-**Depends on:** verified 07.1. **Outcome:** accepted local submissions survive the specified storage/network interruptions and synchronize in order without duplication. **Status:** implemented locally for owner review; [handoff](handoffs/phase-07-2-local-sync.md) records verification. Native durability acceptance remains open.
+**Depends on:** verified 07.1. **Outcome:** accepted local submissions survive the specified storage/network interruptions and synchronize in order without duplication. **Status:** implemented and open for owner review in [PR #15](https://github.com/anthonyyoo24/justgo/pull/15); [handoff](handoffs/phase-07-2-local-sync.md) records verification. Native durability acceptance remains open.
 
 **Scope:** original tasks 5–6 at the domain/storage/transport boundary. Implement the account repository and sender as one coordinated slice. The owner approved placing this shared saving/synchronization module under `apps/mobile/src/data/activity/`, with features consuming data and data remaining independent of routes/features/UI. Own durability, retries, recovery episodes and failure-state interfaces here; the banner/toast and other recovery presentation are wired and interactively tested in 07.3. Progress display selectors and aggregate reconciliation are accepted in 07.4.
 

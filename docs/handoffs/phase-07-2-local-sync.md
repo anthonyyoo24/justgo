@@ -2,9 +2,9 @@
 
 ## Snapshot
 
-- **Status:** Branch published for owner review; PR creation is on hold at the
-  owner’s request. Native durability evidence remains open;
-  this is not acceptance of the completed app journey or permission to publish.
+- **Status:** [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) is open for
+  owner review. Native durability evidence remains open; the completed app journey
+  is not yet accepted. Merge and auto-merge remain unauthorized.
 - **Date:** October 5, 2026.
 - **Branch/base:** `codex/phase-07.2-local-sync`, created from updated `main` at
   `1df6406` (owner's PR #14 merge), after PR #13 / `806f57f`.
@@ -378,7 +378,7 @@ not completion of the previously unfinished native verification or the 07.3 jour
 The owner explicitly authorized committing the remaining changes, updating this
 handoff and pushing `codex/phase-07.2-local-sync`. PR creation was initially
 authorized, then explicitly placed on hold while discussing the Identity folder.
-No Identity relocation is approved or included. Merge and auto-merge remain
+At this checkpoint no Identity relocation was approved or included. Merge and auto-merge remained
 unauthorized. The earlier local-only restrictions above describe
 the state at those verification checkpoints. Keep the activity-module relocation
 commit separate from the implementation, and group the subsequent runtime/developer
@@ -397,8 +397,8 @@ The authorized branch push succeeded. Reviewable implementation commits are:
 The working tree was clean after the implementation push. The initial hosted
 [push workflow](https://github.com/anthonyyoo24/justgo/actions/runs/37372411330)
 for `1b78052` was queued when inspected; no hosted pass is claimed here.
-PR creation remains explicitly on hold. Identity remains in `features/identity`
-pending the owner's folder decision; no relocation is included. This publication
+At this checkpoint PR creation was explicitly on hold. Identity remained in `features/identity`
+pending the owner's folder decision; no relocation was included. This publication
 record is a separate documentation closeout commit. The current local verification
 results above still apply; no product code changed after those checks.
 
@@ -443,6 +443,28 @@ Verification:
   Evidence: `.local/simulator-07-2/app-support-recovery.png`. The temporary tab was
   closed; the owner's manual simulator/API/Metro setup was left running.
 
-This follow-up is committed locally; it is not published by the preceding branch
-push. PR creation remains on hold. Native AsyncStorage durability, 07.3 screen
+This follow-up was committed separately as `748a2ee` and published when the owner
+subsequently requested creating the PR. Native AsyncStorage durability, 07.3 screen
 integration, 07.4 Progress composition and physical-device/staging gates remain open.
+
+## October 5 PR publication
+
+The owner lifted the PR hold by requesting creation. Pushed `748a2ee` and opened
+[PR #15](https://github.com/anthonyyoo24/justgo/pull/15) against `main`, retaining
+the separate implementation and folder-change commits. The PR is attached to the
+Codex chat and awaits owner review; no merge or auto-merge was authorized.
+
+Hosted evidence is separate from the passing local checks above:
+
+- The earlier [workflow for `9c3b727`](https://github.com/anthonyyoo24/justgo/actions/runs/37372509468)
+  failed before tests ran. Its `checks` job had no steps or assigned runner, and
+  GitHub reported: “The job was not acquired by Runner of type hosted even after
+  multiple attempts.” This is a runner acquisition failure, not a test failure.
+- The [push workflow for `748a2ee`](https://github.com/anthonyyoo24/justgo/actions/runs/37375261675)
+  and [PR workflow](https://github.com/anthonyyoo24/justgo/actions/runs/37375343704)
+  were queued when inspected. No hosted pass is claimed. Check the latest PR head
+  before accepting the hosted gate.
+
+The publication follow-up changes only documentation. Targeted Prettier checking
+and `git diff --check` passed; the latest application verification remains the
+516-test check, coverage and side-panel evidence recorded above.
