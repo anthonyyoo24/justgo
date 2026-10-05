@@ -1,11 +1,11 @@
 # JustGO — Implementation Plan
 
-**Version:** 43 · Updated October 5, 2026
+**Version:** 46 · Updated October 5, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
 Phase 06 Progress/history passes local automated and simulator checks, including a live day with 21 entries, automatic paging and both retry states. Physical-device acceptance is scheduled for release validation after the app is built; staging deployment is an integration/release task. See the [phase 06 handoff](handoffs/phase-06-progress.md).
-[06A — Code quality & test hardening](#phase-06a) is complete; its [handoff](handoffs/phase-06a-code-quality.md) records tests, coverage and side-panel browser evidence. [07 — API & offline saving](#phase-07) is in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13 and 07.1B / PR #14. [07.2 local saving/synchronization](handoffs/phase-07-2-local-sync.md) is implemented locally for review, with native durability evidence open. Screen/Progress/cutover work remains in 07.3–07.5; native billing remains in 07A. The earlier unapproved PR #12 merge was reverted and its history is preserved below. No 07.2 publication or merge is authorized.
+[06A — Code quality & test hardening](#phase-06a) is complete; its [handoff](handoffs/phase-06a-code-quality.md) records tests, coverage and side-panel browser evidence. [07 — API & offline saving](#phase-07) is in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13 and 07.1B / PR #14. [07.2 local saving/synchronization](handoffs/phase-07-2-local-sync.md) is implemented locally for review, with native durability evidence open. Screen/Progress/cutover work remains in 07.3–07.5; native billing remains in 07A. The earlier unapproved PR #12 merge was reverted and its history is preserved below. The owner authorized committing and pushing 07.2 on October 5, then placed PR creation on hold. Owner review and merge approval remain pending.
 
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](PRD.md) · [Tech stack](TECH_STACK.md)  
@@ -48,6 +48,21 @@ This authoritative Markdown plan contains eleven iOS release stages, including t
 **October 4 implementation start:** Anthony authorized starting Phase 07 after reading the 06A handoff, with additional agents at implementation discretion and interactive testing restricted to Codex side panels. This supersedes earlier plan-only authorization notes for Phase 07. Existing uncommitted planning edits are retained. He also selected automatic adoption of the newest backend reflection for genuine version conflicts, with no “Entry needs attention” link or manual conflict review; the detailed Phase 07 clarification below governs that case. Ordinary pending writes and older-acknowledgement protections remain in force.
 
 **October 5 local-saving checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` after 07.1A / PR #13 and explicitly requested implementing 07.2 from updated `main`. `codex/phase-07.2-local-sync` now contains the locally verified repository/sender/transport boundary; the [07.2 handoff](handoffs/phase-07-2-local-sync.md) records its tests, real-transport journeys and remaining native durability evidence. Screen/lifecycle presentation remains 07.3 and Progress composition remains 07.4. Earlier B review restrictions below are historical. This request authorizes local implementation only; push, PR and merge still need separate permission.
+
+**October 5 screen cleanup:** The owner requested removing the unused Phase 01
+Foundation connection screen and its dedicated tests. The current app has no route
+or consumer for it. Keep the existing developer screen previews and API health/readiness
+endpoints. Access and foreground behavior remain unchanged; the [07.2 handoff](handoffs/phase-07-2-local-sync.md)
+records this follow-up and its verification. Historical Phase 01 evidence remains valid.
+
+**October 5 app structure follow-up:** The owner approved moving the startup gate
+to `runtime/access/`, the app provider/foreground coordination to `runtime/providers/`,
+and developer screen previews to `dev/previews/`. Shared navigation links live in
+`components/`; unused Shell placeholder screens are removed. The former Access
+and Shell feature folders are retired. Keep route/access/foreground/preview behavior,
+all retained tests and the provider coverage floor unchanged. The [07.2 handoff](handoffs/phase-07-2-local-sync.md)
+records this local refactor and its verification; 07.3 wiring and 07A billing remain
+separate unfinished work.
 
 **October 4 implementation checkpoint split:** Anthony accepted splitting Phase 07 into 07.1 API/data foundation, 07.2 durable local saving/synchronization, 07.3 challenge/reflection experience, 07.4 Progress/history integration and 07.5 final cutover/acceptance. Update this plan before resuming application work. Preserve the verified identity/HTTP slice and all existing drafts; the split does not restart implementation or reduce agreed scope. Each subphase has a dependency, checklist and evidence handoff. The former ten task numbers remain below for traceability, with backend Progress work assigned to 07.1 and client Progress work to 07.4. These are implementation checkpoints, not five independently deployable releases or new permission gates. Build journey tests incrementally, keep destructive cleanup in 07.5, and keep native billing in 07A. This edit changes the plan only.
 
@@ -774,7 +789,7 @@ coverage policy. The owner subsequently merged A. B publication is authorized se
 - [x] The complete device-failure fallback, all retained rounds, partial/full/versioned recovery, dismissal state, safe pruning and eventual offline storage recovery pass controllable tests. Presentation checks remain explicitly assigned to 07.3; Progress composition checks remain assigned to 07.4.
 - [x] Short/sparse retries recover from a sustained unchanged-connectivity outage, honor Retry-After/cooldowns, exclude permanent/auth-blocked work and clean up timers; failure controls and real-transport integration pass the shared verification rules.
 - [x] Save `handoffs/phase-07-2-local-sync.md` with journal/version rules, operation ordering, measured bounds, recovery states, test evidence and the UI/Progress integration contract; update the umbrella handoff/index.
-- [ ] Verify native AsyncStorage durability with the appropriate simulator build; the existing simulator build lacks RNCAsyncStorage, and the default developer-tools path does not expose `simctl`. Keep the appropriate-build/storage check open and retain Phase 09 device/staging checks.
+- [ ] Verify native AsyncStorage durability with the appropriate simulator build; the retained binary lacks RNCAsyncStorage. The QA simulator now launches the current screen flow through a command-local developer-tools override, but the native durability walkthrough is unfinished. Keep the appropriate-build/storage check open and retain Phase 09 device/staging checks.
 
 <a id="phase-07-3"></a>
 

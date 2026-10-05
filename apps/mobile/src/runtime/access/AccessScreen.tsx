@@ -1,9 +1,10 @@
-import { Link, Redirect } from 'expo-router';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../../components/Screen';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { useAccess, useIdentity } from '../shell/AppProvider';
-import { SettingsLink, styles } from '../shell/ShellScreens';
+import { useAccess, useIdentity } from '../providers/AppProvider';
+import { NavigationLink, SettingsLink } from '../../components/NavigationLink';
+import { colors, spacing, typography } from '../../theme/tokens';
 export function AccessScreen() {
   const identity = useIdentity();
   const access = useAccess();
@@ -39,15 +40,22 @@ export function AccessScreen() {
           }}
           busy={access.isFetching}
         />
-        <Link href="/recovery" style={styles.link}>
-          Account & recovery
-        </Link>
+        <NavigationLink href="/recovery">Account & recovery</NavigationLink>
         {__DEV__ && (
-          <Link href="/preview" style={styles.link}>
-            Preview app screens
-          </Link>
+          <NavigationLink href="/preview">Preview app screens</NavigationLink>
         )}
       </View>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  hero: {
+    flex: 1,
+    gap: spacing.xl,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  title: { ...typography.display, color: colors.ink, textAlign: 'center' },
+  body: { ...typography.body, color: colors.ink },
+});

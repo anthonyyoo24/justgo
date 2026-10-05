@@ -1,8 +1,8 @@
-import { Link } from 'expo-router';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
-import { useIdentity } from '../features/shell/AppProvider';
-import { styles } from '../features/shell/ShellScreens';
+import { NavigationLink } from '../components/NavigationLink';
+import { useIdentity } from '../runtime/providers/AppProvider';
+import { colors, radii, spacing, typography } from '../theme/tokens';
 export default function SettingsRoute() {
   const { account } = useIdentity();
   return (
@@ -16,21 +16,28 @@ export default function SettingsRoute() {
             ? 'Connected securely. No email or password needed.'
             : 'Connect or recover your account to continue.'}
         </Text>
-        <Link href="/recovery" style={styles.link}>
-          Account & recovery
-        </Link>
+        <NavigationLink href="/recovery">Account & recovery</NavigationLink>
       </View>
       <Text style={styles.body}>
         Optional analytics are off. No activity is sent to an analytics service.
       </Text>
-      <Link href="/" replace style={styles.link}>
+      <NavigationLink href="/" replace>
         Back to app
-      </Link>
+      </NavigationLink>
       {__DEV__ && (
-        <Link href="/preview" style={styles.link}>
-          Preview app screens
-        </Link>
+        <NavigationLink href="/preview">Preview app screens</NavigationLink>
       )}
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  panel: {
+    borderRadius: radii.card,
+    padding: spacing.xl,
+    gap: spacing.lg,
+    backgroundColor: colors.cream,
+  },
+  cardTitle: { ...typography.heading, color: colors.ink },
+  body: { ...typography.body, color: colors.ink },
+});

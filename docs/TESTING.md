@@ -73,6 +73,12 @@ have separate floors so higher presentation coverage cannot hide regressions.
 Database service branch floors are 85% for identity/challenges and 95% for
 reflections/history. The JSON file owns exact thresholds.
 
+The provider's selector follows its current `src/runtime/providers/AppProvider.tsx`
+location at the unchanged 95% branch/line floor. Runtime and `dev/previews/` files
+remain included in all-source coverage. The preview-route regression proves that
+production rendering redirects without loading developer fixtures; import-boundary
+tests cover production loaders, runtime/data/shared direction and allowed consumers.
+
 The checker uses covered/total counts (not rounded percentages), weights grouped
 files by branch count and fails when a critical path or all source entries are
 missing. Zero-total metrics are valid only in a report containing source files;

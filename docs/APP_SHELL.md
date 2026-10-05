@@ -2,6 +2,23 @@
 
 Phase 03 implements navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026. There is no onboarding state, answer collection, persistence or Zustand dependency. Challenge content/actions, reflections, history and billing arrive in their consuming phases.
 
+## Implemented folder responsibilities
+
+The October 5 owner-approved cleanup places the startup gate in
+`runtime/access/AccessScreen.tsx` and app/account/foreground composition in
+`runtime/providers/AppProvider.tsx`. Feature screens consume the provider hooks;
+shared components/lib/theme/platform and the data layer cannot import runtime.
+Runtime composes features but cannot import route implementations.
+
+Development screen fixtures and their tests live in `dev/previews/`. Only the
+guarded `app/preview.tsx` route loads them from production source; both route and
+fixture still check `__DEV__`. Shared `components/NavigationLink.tsx` owns text-link
+styling and the Settings variant. Access and Settings keep their own screen styles.
+The unused Foundation screen and Shell Home/Focused placeholders are removed;
+their historical implementation evidence remains in earlier handoffs. Route paths,
+access policy and foreground behavior are unchanged. The
+[07.2 handoff](handoffs/phase-07-2-local-sync.md) records checks and browser evidence.
+
 ## Routes and access
 
 - `/`: restore the real account, then check `/v1/access`. Loading, unavailable and unpaid have distinct UI. Only a fresh, unexpired server verification admits the paid routes.
@@ -76,8 +93,9 @@ The shared activity repository, AsyncStorage adapter, Zustand live state and
 ordered sender are implemented under `data/activity`. This data module owns local
 saving, cached activity and upload coordination for the user-facing features.
 Features may import data; data uses shared infrastructure/contracts and cannot
-import routes, features, components or theme. Shared components/lib/theme/platform
-cannot import data or feature code. The stored journal envelope is unchanged.
+import routes, runtime, developer code, features, components or theme. Shared
+components/lib/theme/platform cannot import routes, runtime, developer code, data
+or features. The stored journal envelope is unchanged.
 Existing app screens still use the temporary compatibility flow. 07.3 owns
 provider/lifecycle/screen wiring and warning/toast presentation; 07.4 owns Progress
 composition. The

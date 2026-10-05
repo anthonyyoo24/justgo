@@ -8,7 +8,7 @@
       "functions": 80
     },
     "files": {
-      "src/features/shell/AppProvider.tsx": { "branches": 95, "lines": 95 },
+      "src/runtime/providers/AppProvider.tsx": { "branches": 95, "lines": 95 },
       "src/features/identity/vault.ts": { "branches": 95, "lines": 95 },
       "src/features/identity/storage.ts": { "branches": 90, "lines": 95 },
       "src/lib/account-client.ts": { "branches": 85, "lines": 95 },

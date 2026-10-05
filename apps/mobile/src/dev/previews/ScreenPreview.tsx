@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Redirect } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ProgressView } from '../progress/ProgressView';
-import { moveMonth } from '../progress/calendar';
-import { DeckPreview } from '../challenges/DeckPreview';
-import { SuccessView } from '../challenges/SuccessView';
-import { ReflectionView } from '../reflections/ReflectionView';
+import { ProgressView } from '../../features/progress/ProgressView';
+import { moveMonth } from '../../features/progress/calendar';
+import { DeckPreview } from '../../features/challenges/DeckPreview';
+import { SuccessView } from '../../features/challenges/SuccessView';
+import { ReflectionView } from '../../features/reflections/ReflectionView';
 import type {
   FeelingCode,
   LegacyProgressEntry as ProgressEntry,

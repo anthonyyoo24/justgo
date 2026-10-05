@@ -1,4 +1,4 @@
-import { ChallengeController } from '../challenges/controller';
+import { ChallengeController } from '../../features/challenges/controller';
 import {
   createContext,
   useContext,
@@ -14,9 +14,9 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 import { accessResponseSchema, hasVerifiedAccess } from '@justgo/contracts';
-import { IdentityController } from '../identity/controller';
-import { createIdentityApi } from '../identity/api';
-import { createVault } from '../identity/vault';
+import { IdentityController } from '../../features/identity/controller';
+import { createIdentityApi } from '../../features/identity/api';
+import { createVault } from '../../features/identity/vault';
 import { AccountClient, accountKey } from '../../lib/account-client';
 import { createHttpClient } from '../../lib/http';
 import { createTelemetry } from '../../lib/telemetry';

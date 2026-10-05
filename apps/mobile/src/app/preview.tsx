@@ -8,7 +8,7 @@ export default function PreviewRoute() {
     }>();
   if (!__DEV__) return <Redirect href="/" />;
   const { ScreenPreview } =
-    require('../features/shell/ScreenPreview') as typeof import('../features/shell/ScreenPreview');
+    require('../dev/previews/ScreenPreview') as typeof import('../dev/previews/ScreenPreview');
   return (
     <ScreenPreview
       simulateSkipFailure={simulateSkipFailure === '1'}

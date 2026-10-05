@@ -4,6 +4,14 @@
 
 **October 5 structure checkpoint:** Phase 07.2 implements the shared activity saving/synchronization module under `apps/mobile/src/data/activity/`; the frontend folder guidance below reflects that owner-approved placement and its enforced import direction. The [07.2 handoff](handoffs/phase-07-2-local-sync.md) records local verification and open native durability evidence. Existing screens still use the compatibility flow; 07.3/07.4 own screen/Progress integration. Older storage and network descriptions elsewhere in this document await the full 07.5 reconciliation; the [Phase 07 plan](IMPLEMENTATION_PLAN.md#phase-07) owns the approved replacement behavior.
 
+The owner also retired the unused mobile `features/foundation/` connection screen
+and its dedicated tests. Developer screen previews remain available; API health
+and readiness endpoints and historical Phase 01 evidence are unchanged.
+App providers/foreground coordination and the startup access gate now live in
+`runtime/providers/` and `runtime/access/`; developer screen previews live in
+`dev/previews/`. The former Shell placeholders are removed, and shared navigation
+links live in `components/`. These placements preserve existing behavior.
+
 **Date:** September 16, 2026  
 **Status:** Architecture spec; phase 01 foundation is implemented and verified, including native simulator launch and staging readiness. Exact versions, environment and operations: [FOUNDATION.md](FOUNDATION.md); evidence: [phase 01 handoff](handoffs/phase-01-foundation.md).  
 **Implementation plan:** [Stages and handoffs](IMPLEMENTATION_PLAN.md).
@@ -538,16 +546,18 @@ Organize user-facing functionality under `features/`, keeping each feature's UI,
 ```text
 apps/mobile/src/
 ├── app/                 # Expo Router routes and layouts
+├── runtime/
+│   ├── access/             # Startup and subscription-access gate
+│   └── providers/          # App/account composition and foreground coordination
+├── dev/
+│   └── previews/           # Development-only screen fixtures
 ├── data/
 │   └── activity/           # Shared activity repository, storage and upload coordination
 ├── features/
-│   ├── access/              # Access and paywall states
 │   ├── challenges/
-│   ├── foundation/          # Connection and readiness UI
 │   ├── reflections/
 │   ├── progress/
-│   ├── identity/            # CredentialVault interface and Keychain adapter
-│   └── shell/               # App-wide runtime, providers, and screen composition
+│   └── identity/            # Recovery UI, CredentialVault interface and Keychain adapter
 ├── components/          # UI reused across features
 ├── lib/                 # HTTP, account-scoped client/query defaults, telemetry
 └── theme/               # Design tokens
@@ -555,12 +565,13 @@ apps/mobile/src/
 
 The Swift implementation lives in `apps/mobile/modules/justgo-keychain`; `features/identity/vault.ts` is its typed mobile adapter and browser fallback. `lib/account-client.ts` currently owns the TanStack Query defaults alongside account-scoped request behavior. These are placement choices, not required filenames for future features. For example, `features/challenges/` can contain a screen, card, hook, API function, and colocated tests as needed. Add files and subfolders as a feature grows rather than creating empty layers upfront.
 
-- Keep `app/` files focused on routes/layouts and connecting navigation to feature screens. Keep helpers and reusable components outside the routing directory. [Expo Router structure](https://docs.expo.dev/router/basics/notation/).
+- Keep `app/` files focused on routes/layouts and connecting navigation to runtime or feature screens. Keep helpers, developer fixtures and reusable components outside the routing directory. [Expo Router structure](https://docs.expo.dev/router/basics/notation/).
 - Feature components handle presentation; feature hooks coordinate behavior and queries; feature API functions call the shared client. Keep feature-specific state with its feature using the existing React/Zustand/TanStack Query responsibilities. Shared saved activity and pending uploads belong to `data/activity/`, which features consume through the repository interface.
-- Move UI into shared `components/` when it is reused across features. Shared UI and infrastructure remain independent of features and app data; features may depend on data and shared code. Use explicit interfaces when features need to collaborate.
-- Data modules own shared app-data rules, persistence and synchronization. They may import shared `lib/`, platform adapters and public contracts, but cannot import routes, features, UI components or theme. Keep the stored journal envelope's technical name separate from the user-facing feature names.
+- Move UI into shared `components/` when it is reused across features or runtime screens. `NavigationLink` owns the common accessible text-link styling and Settings variant. Keep each screen's other styles beside that screen; do not retain a general Shell styles collection. Shared UI and infrastructure remain independent of routes, runtime, developer code, features and app data.
+- Runtime composes the app's providers and startup/access flow. Features may consume its provider hooks. Runtime cannot import route implementations; routes compose runtime instead. Developer screen fixtures live in `dev/previews/`, with their guarded loader in `app/preview.tsx`. Other production files cannot load developer code; tests cover the development gate.
+- Data modules own shared app-data rules, persistence and synchronization. They may import shared `lib/`, platform adapters and public contracts, but cannot import routes, runtime, developer code, features, UI components or theme. Keep the stored journal envelope's technical name separate from the user-facing feature names.
 - Keep native platform access behind typed adapters; the current Keychain adapter is in `features/identity/`. Put shared public request/response schemas and types in `packages/contracts`; server implementation and secrets stay in `apps/api`.
-- Import contracts from either app through `@justgo/contracts`, whose root export is `packages/contracts/src/index.ts`. Mobile must not import API implementation, and API must not import mobile code. Shared mobile `components/`, `lib/`, `theme/`, and any future `platform/` must not import from `features/` or `data/`. The `shell/` feature may compose other features; other cross-feature collaboration should use explicit interfaces. ESLint checks these import directions, including re-exports, `import()` and `require()`, and `npm run check` runs the boundary tests in CI. [AGENTS.md](../AGENTS.md#enforced-code-boundaries) owns the coding rule; [APP_SHELL.md](APP_SHELL.md#phase-072-local-persistence-boundary) records the implemented 07.2 boundary.
+- Import contracts from either app through `@justgo/contracts`, whose root export is `packages/contracts/src/index.ts`. Mobile must not import API implementation, and API must not import mobile code. ESLint checks the shared/data/runtime/developer import directions, including re-exports, `import()` and `require()`, and `npm run check` runs the boundary tests in CI. [AGENTS.md](../AGENTS.md#enforced-code-boundaries) owns the coding rule; [APP_SHELL.md](APP_SHELL.md#implemented-folder-responsibilities) records the current app folders.
 
 This structure supports growth in features and contributors. Runtime capacity remains governed by the performance and capacity requirements below; new features do not require a separate app or service by default.
 

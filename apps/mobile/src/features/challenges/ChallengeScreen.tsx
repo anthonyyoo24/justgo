@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { venues } from '@justgo/contracts';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors, typography } from '../../theme/tokens';
-import { useIdentity, useRuntime } from '../shell/AppProvider';
+import { useIdentity, useRuntime } from '../../runtime/providers/AppProvider';
 import { ChallengeLayout } from './ChallengeLayout';
 import { VenueTabs } from './VenueTabs';
 import { ChallengeDeck } from './ChallengeDeck';

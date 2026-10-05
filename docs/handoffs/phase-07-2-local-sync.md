@@ -2,7 +2,8 @@
 
 ## Snapshot
 
-- **Status:** Implemented locally for owner review. Native durability evidence remains open;
+- **Status:** Implemented for owner review; committing and pushing are authorized,
+  while PR creation is on hold at the owner’s request. Native durability evidence remains open;
   this is not acceptance of the completed app journey or permission to publish.
 - **Date:** October 5, 2026.
 - **Branch/base:** `codex/phase-07.2-local-sync`, created from updated `main` at
@@ -217,3 +218,169 @@ because this branch remains local; no push, PR or merge has been authorized.
 Existing dependency audit/install-script notices remain outside this phase. No
 production access bypass, billing integration, deployment or schema contraction was
 introduced.
+
+## October 5 owner follow-up: retire the unused Foundation screen
+
+The owner requested deleting `src/features/foundation/`: the former connection
+screen, its health/readiness probe and their two test files (five tests). A caller
+search found no route or consumer outside the folder's own tests. API `/health`
+and `/ready` endpoints remain; the historical Phase 01 handoff is preserved.
+Current folder guidance, the plan and handoff index record the retirement.
+The existing Challenges/Success/Reflections/Progress developer previews are kept.
+Access and foreground behavior were not changed, and no other feature folder was moved.
+
+Verification after removal:
+
+- `npm run check`: passed contracts build, workspace/journey typechecks, lint,
+  formatting and **462 tests** (93 safeguards, 45 API unit, 303 mobile, 21 contracts).
+- `npm run test:coverage`: passed **106 API unit/database/migration cases**,
+  **303 mobile tests** and **21 contract tests**, plus every unchanged global/critical
+  floor. Mobile coverage is **90.27% lines / 82.55% branches**; API remains
+  **95.71% / 91.19%** and contracts **100% / 100%**. The five removed tests covered
+  only the explicitly retired code; no live behavior assertion or threshold was weakened.
+- One-off side-panel demonstration at **1190 × 1036** used the actual Access
+  screen with controlled pending, unpaid and unavailable entitlement responses
+  from an ignored, isolated loopback `justgo_test` fixture. Screenshots are
+  `.local/access-screens/checking.jpg`, `subscription-required.jpg` and
+  `unavailable.jpg`. The first request showed “Checking your access…”; releasing
+  it as unpaid showed the subscription message; “Check access again” with an
+  unavailable response showed verification/retry copy. The existing preview link
+  opened the challenge deck and its Progress tab. These are browser screenshots
+  of existing screens, not native billing evidence, a new Access preview route,
+  or the unfinished 07.3 completion/reflection journey. Fixture accounts and
+  services are cleaned after the demonstration.
+
+Current foreground handling rechecks the stored identity session, renews it when
+needed or resumes pending authentication, invalidates active account queries
+(including access/visible Progress), and asks
+the legacy challenge controller to refresh canonical challenge state. Leaving
+the foreground hides displayed recovery keys. The 07.2 sender still awaits 07.3
+lifecycle wiring; the existing access freshness/polling policy awaits 07A billing.
+
+## October 5 owner follow-up: separate Access, runtime and developer previews
+
+The owner approved the remaining folder recommendations after reviewing their
+responsibilities. This refactor follows the Foundation retirement above and keeps
+the existing product behavior. No billing feature, new access policy or 07.3
+repository/lifecycle integration is introduced.
+
+- `features/access/AccessScreen.tsx` and its tests move to `runtime/access/`.
+- `features/shell/AppProvider.tsx` and its actual-runtime tests move to
+  `runtime/providers/`. The provider's production implementation changes only in
+  import paths; session/access/account fencing and foreground coordination are retained.
+- `features/shell/ScreenPreview.tsx` and its tests move to `dev/previews/`, with
+  import paths updated and every fixture/interaction retained. The guarded loader
+  in `app/preview.tsx` points to the new module. Route and fixture still require
+  `__DEV__`; tests additionally prove production rendering does not load the module.
+- The tab-layout tests move to `runtime/TabLayout.test.tsx`, outside Expo's route tree.
+- The used Settings variant and text-link styling move to
+  `components/NavigationLink.tsx`. Access and Settings keep their own screen styles;
+  recovery keeps its centered return link. Destinations, accessible names,
+  replacement navigation and touch height are preserved.
+- Delete `ShellScreens.tsx`: caller searches confirm its Home and Focused screens
+  were unused; the used links/styles above are retained. Empty Access, Shell and
+  Foundation feature folders are removed. No compatibility re-export shim remains.
+
+Imports, colocated tests, current architecture/folder guidance, testing guidance,
+the plan and handoff index follow the new paths. Historical handoffs retain their
+original filenames/evidence. The root coding rules and ESLint now prevent shared
+UI/infrastructure or data from importing runtime/developer code, prevent runtime
+from importing routes, and restrict production developer-module loading to the
+guarded preview route. Runtime may compose features; feature screens may consume
+its provider hooks. These rules cover static imports, re-exports, `import()` and
+`require()`, normalized/package paths and directory entrypoints.
+
+Verification after the refactor:
+
+- Focused runtime/access/preview/navigation-link/tab-layout tests: **29 passed**.
+  All existing behavior cases remain. Six new mobile cases cover the shared links,
+  guarded fixture loading, account initialization/connection and pending-access retry.
+- `node --test scripts/import-boundaries.test.mjs`: **128 passed**, including
+  **42 new runtime/developer direction and loader regressions**.
+- `npm run check`: contracts build, strict workspace/journey types, lint,
+  formatting and **510 tests** passed (135 safeguards, 45 API unit, 309 mobile,
+  21 contracts).
+- `npm run test:db`: **60 database cases plus one migration/restoration rehearsal**
+  passed against dedicated loopback `justgo_test`; no migration was added.
+- `npm run test:coverage`: **106 API unit/database/migration**, **309 mobile** and
+  **21 contract** cases passed, with every unchanged global/critical floor.
+  Mobile: **90.58% lines / 83.52% branches**; API: **95.71% / 91.19%**;
+  contracts: **100% / 100%**. Only the provider selector changed to its new path:
+  its floor remains **95% lines/branches**, with actual **100% / 100%** coverage.
+  Runtime and developer previews remain in all-source coverage.
+- `npm run test:journey`: all **seven saved cases** passed, including the real
+  account renewal/catalog/Progress smoke and existing repository/real API/database
+  failure cases. The harness shut down its services and cleaned its owned fixtures.
+- `npm run export:web -w @justgo/mobile`: production web bundle exported successfully.
+  Metro emitted color-environment notices; no warning suppression or configuration
+  change was made. The saved/browser fixture startup still reports unavailable
+  `simctl`; that existing native limitation remains open.
+- Side-panel verification at **1280 × 720**, using the actual app with an isolated
+  loopback `justgo_test` account/access fixture: account creation → recovery return
+  → unavailable Access → Settings → recovery return → developer preview → accept
+  → Completed → Success → Continue → Reflection → Skip → deck → Progress all worked.
+  No browser error/warning entries were captured. The fixture account had **zero
+  attempts** after the preview flow; its rows were cleaned and both services stopped.
+  Screenshots: `.local/structure-follow-up/{access,settings,preview,success,reflection,progress}.jpg`.
+  This one-off walkthrough is separate from the saved suite and establishes browser
+  wiring only; it does not establish native behavior or the unfinished 07.3 app journey.
+
+The Foundation deletion and this refactor are local, uncommitted owner-review changes
+on `codex/phase-07.2-local-sync`, after the two earlier local implementation/data-folder
+commits. No push, PR or merge was performed. Native durability/device/staging evidence,
+07.3 integration, 07.4 Progress composition and 07A billing remain open as before.
+
+## October 5 owner-requested simulator verification attempt
+
+The owner requested simulator testing of the current app and Phase 07.1/07.2.
+Before native interaction, ten focused mobile suites passed **95 tests**, and
+`npm run test:db` passed **60 database cases plus one migration/restoration case**.
+These are automated results, not native durability evidence.
+
+XcodeBuildMCP discovery and accessibility inspection failed because the global
+developer directory still points to Command Line Tools. Command-local
+`DEVELOPER_DIR` overrides booted a fresh disposable iPhone 17 / iOS 26.5 simulator
+named `JustGO Phase 7.2 QA`, installed the retained Phase 02 app, and launched it
+against the current Metro bundle and loopback fixture API. The simulator took
+about 2 minutes 30 seconds to complete first-boot migration. The native
+development-client prompt and bundle-loading screen were observed; the
+completion/reflection/Progress walkthrough was **not completed**. The browser
+mirror displayed native frames but its input/discovery was unreliable under load.
+
+The owner reported that the computer had become slow. Simulator first boot,
+native bundling and the live mirror were running together on the 8 GB Mac. The
+verification attempt ended, the created simulator was shut down, and Metro,
+the fixture API and mirror were stopped. A final check found no booted simulator
+and no listener on ports 3000, 8081 or 3200. The fixture registry contained zero
+allocated accounts. No native rebuild, signing change or global Xcode setting
+change was made. The disposable simulator remains available for reuse.
+
+Keep native AsyncStorage durability and termination/relaunch acceptance open:
+the retained binary lacks RNCAsyncStorage, and the new repository is not yet
+wired into the screen flow (07.3). For the next native attempt, reuse the already
+initialized test simulator and avoid running a live mirror alongside first-time
+bundling. This attempt establishes no native pass for those open requirements.
+
+### Manual simulator handoff
+
+At the owner's explicit request, deleted only the old `iPhone 17` virtual device
+(`AD9B10C7-1336-428E-AB80-C00A83AA391D`) and reused `JustGO Phase 7.2 QA`
+(`F0926FE3-5692-4241-B6C8-C5C4F9C6422E`). Only the QA simulator is booted.
+Started the loopback fixture API and Metro with one worker, without the live mirror.
+The existing native binary loaded the current JavaScript, the developer introduction
+was dismissed, and the actual challenge deck was visibly ready. Screenshot:
+`.local/simulator-07-2/manual-ready.png`. Simulator/API/Metro are intentionally
+left running for the owner's manual testing. This is a launch/handoff observation,
+not completion of the previously unfinished native verification or the 07.3 journey.
+
+## October 5 publication preparation
+
+The owner explicitly authorized committing the remaining changes, updating this
+handoff and pushing `codex/phase-07.2-local-sync`. PR creation was initially
+authorized, then explicitly placed on hold while discussing the Identity folder.
+No Identity relocation is approved or included. Merge and auto-merge remain
+unauthorized. The earlier local-only restrictions above describe
+the state at those verification checkpoints. Keep the activity-module relocation
+commit separate from the implementation, and group the subsequent runtime/developer
+folder cleanup as its own reviewable change. Existing local evidence is recorded
+above; hosted evidence must be checked on the published revision.

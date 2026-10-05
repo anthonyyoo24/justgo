@@ -1,6 +1,18 @@
 # Implementation handoffs
 
-**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. No 07.2 push, PR or merge is authorized.
+**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. The owner authorized committing and pushing on October 5, then placed PR creation on hold. Owner review and merge approval remain pending.
+
+**October 5 owner follow-up:** Remove the unused mobile Foundation connection screen
+and its dedicated tests; keep developer screen previews and API health/readiness
+endpoints. Current folder guidance reflects the removal; the [07.2 handoff](phase-07-2-local-sync.md)
+records checks and the side-panel demonstration of the unchanged Access screens.
+
+**October 5 app structure follow-up:** Access now lives in `runtime/access/`, the app
+provider in `runtime/providers/`, and retained developer previews in `dev/previews/`.
+Shared navigation links live in `components/`; unused Shell placeholders are removed.
+The [07.2 handoff](phase-07-2-local-sync.md) records the refactor, updated import rules,
+unchanged provider coverage floor and verification. Existing routes/access/foreground
+behavior and future 07.3/07A work are preserved.
 
 This folder is the durable implementation record for [the staged plan](../IMPLEMENTATION_PLAN.md). The historical HTML checklist is absent from this checkout; current progress is recorded in Markdown. A browser-local checklist cannot modify or verify these files. Commit phase records with their implementation. Export/import the checklist to move its state between browsers or preview URLs.
 

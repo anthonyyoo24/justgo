@@ -2,7 +2,7 @@ import { render } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { Tabs } from 'expo-router/js-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import TabLayout from '../../app/(tabs)/_layout';
+import TabLayout from '../app/(tabs)/_layout';
 
 jest.mock('expo-router/js-tabs', () => {
   const Tabs = Object.assign(
