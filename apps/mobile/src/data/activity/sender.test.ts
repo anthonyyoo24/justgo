@@ -584,6 +584,10 @@ it('sends an explicit changed correction with a new identity, preserving rejecte
   await expect(
     repo.correctReflection(uuid(101), uuid(102), { text: 'Rejected fixture' }),
   ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+  await expect(
+    repo.submitReflection(uuid(1), uuid(102), { text: 'Rejected fixture' }),
+  ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+  expect(journal(repo).submissions[uuid(102)]).toBeUndefined();
   transport.patch = patch;
   await Promise.all([
     repo.correctReflection(uuid(101), uuid(102), { text: 'Corrected fixture' }),
@@ -624,20 +628,120 @@ it('chunks a Retry-After beyond the native timer limit without retrying early', 
   expect(journal(repo).operations).toHaveLength(0);
 });
 
-it('does not consume newer submitted writing through a stale rejected-entry correction', async () => {
+it.each([0, 1])(
+  'delivers an ordinary changed submission after rejection from server revision %s across restart',
+  async (serverRevision) => {
+    const { repo, storage, transport } = await setup();
+    await repo.complete(input(), card);
+    await send(repo);
+    if (serverRevision) {
+      await repo.submitReflection(uuid(1), uuid(100), {
+        feeling: 'a_little_better',
+        text: 'Accepted fixture',
+      });
+      await repo.synchronize();
+    }
+    repo.setEnvironment({ active: true, online: false });
+    await repo.submitReflection(uuid(1), uuid(101), {
+      ...(serverRevision ? {} : { feeling: 'a_little_better' as const }),
+      text: 'Rejected fixture',
+    });
+    const patch = transport.patch;
+    const requests: Parameters<typeof patch>[1][] = [];
+    transport.patch = async (id, body, signal) => {
+      requests.push(structuredClone(body));
+      if (body.submissionId === uuid(101))
+        throw new ApiError('INVALID_REQUEST');
+      return patch(id, body, signal);
+    };
+    await send(repo);
+    repo.setEnvironment({ active: true, online: false });
+    await Promise.all([
+      repo.submitReflection(uuid(1), uuid(102), { text: 'Corrected fixture' }),
+      repo.submitReflection(uuid(1), uuid(102), { text: 'Corrected fixture' }),
+    ]);
+    repo.dispose();
+    const restored = new AccountRepository({
+      accountId: owner,
+      storage,
+      transport,
+      today,
+      timeZone: zone,
+    });
+    repos.push(restored);
+    restored.setEnvironment({ active: true, online: false });
+    await restored.hydrate();
+    await send(restored);
+    expect(requests).toEqual([
+      {
+        submissionId: uuid(101),
+        expectedReflectionRevision: serverRevision,
+        reflection: {
+          ...(serverRevision ? {} : { feeling: 'a_little_better' }),
+          text: 'Rejected fixture',
+        },
+      },
+      {
+        submissionId: uuid(102),
+        expectedReflectionRevision: serverRevision,
+        reflection: {
+          ...(serverRevision ? {} : { feeling: 'a_little_better' }),
+          text: 'Corrected fixture',
+        },
+      },
+    ]);
+    expect(transport.records.get(uuid(1))?.reflection).toEqual({
+      feeling: 'a_little_better',
+      text: 'Corrected fixture',
+      revision: serverRevision + 1,
+    });
+    expect(journal(restored).submissions[uuid(101)]?.reflection.text).toBe(
+      'Rejected fixture',
+    );
+    expect(journal(restored).submissions[uuid(102)]?.reflection).toEqual({
+      text: 'Corrected fixture',
+    });
+    expect(journal(restored).operations).toHaveLength(0);
+    expect(journal(restored).records[uuid(1)]?.rejected).toBeNull();
+    expect(journal(restored).summaryAdditions).toContain(uuid(1));
+  },
+);
+
+it('refuses to replace a reflection rejected for a different permanent cause', async () => {
+  const { repo, transport } = await setup();
+  await repo.complete(input(), card);
+  await send(repo);
+  repo.setEnvironment({ active: true, online: false });
+  await repo.submitReflection(uuid(1), uuid(101), { text: 'Retained fixture' });
+  transport.patch = async () => {
+    throw new ApiError('NOT_FOUND', 'redacted-request-id');
+  };
+  await send(repo);
+  const before = journal(repo);
+  await expect(
+    repo.submitReflection(uuid(1), uuid(102), { text: 'Changed fixture' }),
+  ).rejects.toMatchObject({
+    code: 'CONFLICT',
+    requestId: 'redacted-request-id',
+  });
+  expect(journal(repo)).toEqual(before);
+});
+
+it('protects newer queued writing from a stale correction and recovers through a new ordinary submission', async () => {
   const { repo, transport } = await setup();
   await repo.complete(input(), card);
   await send(repo);
   repo.setEnvironment({ active: true, online: false });
   await repo.submitReflection(uuid(1), uuid(101), { text: 'Rejected fixture' });
+  const patch = transport.patch;
   transport.patch = async () => {
     throw new ApiError('INVALID_REQUEST');
   };
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
   await repo.submitReflection(uuid(1), uuid(102), {
     text: 'Newer ordinary submission',
   });
+  await send(repo);
+  repo.setEnvironment({ active: true, online: false });
   await expect(
     repo.correctReflection(uuid(101), uuid(103), { text: 'Stale correction' }),
   ).rejects.toMatchObject({ code: 'CONFLICT' });
@@ -648,4 +752,19 @@ it('does not consume newer submitted writing through a stale rejected-entry corr
     uuid(101),
     uuid(102),
   ]);
+  transport.patch = patch;
+  await repo.submitReflection(uuid(1), uuid(103), { text: 'Latest fixture' });
+  await send(repo);
+  expect(journal(repo).operations).toHaveLength(0);
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe('Latest fixture');
+  expect(transport.records.get(uuid(1))?.reflection).toMatchObject({
+    text: 'Latest fixture',
+    revision: 1,
+  });
+  expect(journal(repo).submissions[uuid(101)]?.reflection.text).toBe(
+    'Rejected fixture',
+  );
+  expect(journal(repo).submissions[uuid(102)]?.reflection.text).toBe(
+    'Newer ordinary submission',
+  );
 });

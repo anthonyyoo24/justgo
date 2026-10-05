@@ -8,7 +8,7 @@ import {
   type PatchAttempt,
 } from '@justgo/contracts';
 import { ApiError } from '../../lib/http';
-import type { Journal } from './model';
+import type { Journal, Operation } from './model';
 
 function activityDate(startedAt: string, timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -68,6 +68,20 @@ export function addReflection(
   submissionId: string,
   requested: PatchAttempt['reflection'],
 ): void {
+  const rejected = journal.operations.find(
+    (operation) =>
+      operation.attemptId === attemptId &&
+      operation.kind === 'patch' &&
+      operation.state === 'rejected',
+  );
+  if (rejected?.kind === 'patch') {
+    if (rejected.code !== 'INVALID_REQUEST')
+      throw new ApiError('CONFLICT', rejected.requestId ?? undefined);
+    // New writing explicitly replaces the blocked chain. An older recovery
+    // action still uses correctReflection's version guard below.
+    replaceRejectedReflection(journal, rejected, submissionId, requested);
+    return;
+  }
   const record = journal.records[attemptId]!;
   const previous = record.attempt.reflection;
   if (previous && requested.feeling !== undefined)
@@ -137,6 +151,17 @@ export function correctReflection(
   // A stale correction must not consume unrelated writing submitted since the
   // rejected version. The caller must surface the current entry for recovery.
   if (record.version !== failed.version) throw new ApiError('CONFLICT');
+  replaceRejectedReflection(journal, failed, newId, requested);
+  return failed.attemptId;
+}
+
+function replaceRejectedReflection(
+  journal: Journal,
+  failed: Extract<Operation, { kind: 'patch' }>,
+  newId: string,
+  requested: PatchAttempt['reflection'],
+): void {
+  const record = journal.records[failed.attemptId]!;
   const previous = record.attempt.reflection;
   const text =
     requested.text === undefined
@@ -171,5 +196,4 @@ export function correctReflection(
   }
   addReflection(journal, failed.attemptId, newId, correction);
   journal.submissions[newId]!.reflection = requested;
-  return failed.attemptId;
 }

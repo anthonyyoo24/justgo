@@ -96,8 +96,14 @@ stop unchanged retries. Completion eligibility rejection removes only provisiona
 count additions; reflection rejection retains accepted completion credit.
 `correctReflection` creates a new identity for an explicit changed correction,
 preserves superseded submitted values in receipts, and prevents unchanged rejected
-payload replay. A correction of an older rejected version cannot consume newer
-submitted writing; it returns a conflict and preserves both operations for the
+payload replay. Ordinary changed submissions after an invalid-request rejection
+use that same correction rule and rebase from the confirmed server revision;
+initial reflections retain feeling when the server revision is zero. Earlier
+submitted writing stays in receipts, including edits queued before the rejection.
+A correction action targeting an older rejected version cannot consume newer
+submitted writing; it returns a conflict. A new ordinary submission can recover
+the blocked chain using the latest explicit input. Other permanent causes refuse
+new submissions with a typed conflict while retaining their diagnostics for the
 cause-specific recovery surface in 07.3. Session renewal uses the existing shared
 AccountClient seam;
 unresolved authentication pauses work, and `resumeAuthentication` resumes it only
@@ -468,3 +474,53 @@ Hosted evidence is separate from the passing local checks above:
 The publication follow-up changes only documentation. Targeted Prettier checking
 and `git diff --check` passed; the latest application verification remains the
 516-test check, coverage and side-panel evidence recorded above.
+
+## October 5 PR #15 review follow-up
+
+Assessed all existing inline/review/conversation feedback against `af2431f`.
+The owner explicitly requested fixing worthwhile issues and pushing the changes.
+
+- [Rejected reflection chain](https://github.com/anthonyyoo24/justgo/pull/15#discussion_r4189107666):
+  confirmed that an ordinary submission after `INVALID_REQUEST` was retained
+  locally but permanently blocked in delivery. New changed input now uses the
+  existing correction rule with a new identity and the confirmed server revision.
+  Superseded writing remains in receipts, stale correction actions cannot replace
+  newer writing, unchanged invalid input remains refused, and unrelated permanent
+  failures do not silently become corrections. No schema or API contract changed.
+- [Stale publication status](https://github.com/anthonyyoo24/justgo/pull/15#discussion_r4189107701):
+  corrected the current-checkpoint lines in the 07.1B and Phase 07 umbrella handoffs
+  to PR #15 awaiting review, with merge approval still pending.
+- CodeRabbit's docstring-percentage warning is optional under the project's
+  guidance. Kept focused comments explaining the correction/version boundary;
+  no broad docstring generation or threshold/configuration change is needed.
+
+Before the implementation fix, four focused regression cases failed: unchanged
+ordinary input was incorrectly accepted, corrected writing never uploaded at
+server revisions zero/one after restart, and a queued chain remained blocked.
+The cases cover actual repository/sender delivery and retained receipts, not UI.
+This module remains unwired to screens until 07.3, so no affected UI walkthrough
+or new native evidence is claimed. The owner's manual simulator setup is retained.
+
+Fresh verification after the fix:
+
+- `npm run check`: **519 tests** passed (141 safeguards, 45 API unit, 312 mobile,
+  21 contracts), along with strict types, lint and formatting. The first run caught
+  an attempt to construct a typed error from a persisted string; use the existing
+  typed `CONFLICT` for blocked non-correction causes and retain the original
+  diagnostics in the journal. The complete rerun passed without weakening checks.
+- `npm run test:db`: **60 database cases + 1 migration/restoration case** passed
+  against the dedicated loopback `justgo_test` database.
+- `npm run test:coverage`: **106 API unit/database/migration, 312 mobile and 21
+  contract cases** passed; all global and critical-file floors passed unchanged.
+  Mobile **90.62% lines / 83.77% branches**. The correction module covers the new
+  invalid-request and other-cause paths, zero/nonzero confirmed revisions, unchanged
+  refusal, duplicate submission, restart and stale-action protection.
+- Final targeted Prettier checking and `git diff --check` passed after updating
+  the review evidence and handoff status. No dependency or CI configuration changed.
+
+The prior [push check](https://github.com/anthonyyoo24/justgo/actions/runs/37375713683)
+and [PR check](https://github.com/anthonyyoo24/justgo/actions/runs/37375719678)
+both passed at `af2431f`; this supersedes the earlier queued status for that head.
+Those passes do not verify the later review fix. Inspect its latest hosted checks
+after publication. Native durability, 07.3/07.4 integration and device/staging gates
+remain open.

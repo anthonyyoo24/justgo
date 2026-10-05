@@ -1,6 +1,6 @@
 # Implementation handoffs
 
-**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. After authorizing commits and publication, the owner lifted the PR hold; [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) is open for review. Merge approval remains pending. The handoff records the earlier GitHub runner acquisition failure and newly queued hosted checks; no hosted pass is claimed.
+**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. After authorizing commits and publication, the owner lifted the PR hold; [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) is open for review. Merge approval remains pending. Hosted checks passed at `af2431f` after the earlier GitHub runner acquisition failure; later review fixes require their own hosted result.
 
 **October 5 owner follow-up:** Remove the unused mobile Foundation connection screen
 and its dedicated tests; keep developer screen previews and API health/readiness
@@ -16,6 +16,12 @@ behavior and future 07.3/07A work are preserved. The later owner-approved naming
 follow-up replaces `runtime` with `app-support` and moves account/recovery/session/
 Keychain support into `app-support/identity/`. That separate commit, `748a2ee`, is
 published in PR #15.
+
+**October 5 PR #15 review fix:** A changed ordinary reflection submission can now
+recover a rejected upload chain while retaining earlier writing and protecting
+against stale correction actions. The [07.2 handoff](phase-07-2-local-sync.md#october-5-pr-15-review-follow-up)
+records the regression checks and disposition of all existing feedback. The 07.1B
+and umbrella handoff checkpoints now correctly record PR #15 awaiting owner review.
 
 This folder is the durable implementation record for [the staged plan](../IMPLEMENTATION_PLAN.md). The historical HTML checklist is absent from this checkout; current progress is recorded in Markdown. A browser-local checklist cannot modify or verify these files. Commit phase records with their implementation. Export/import the checklist to move its state between browsers or preview URLs.
 

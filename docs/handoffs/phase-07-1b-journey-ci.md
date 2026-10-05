@@ -1,6 +1,6 @@
 # Phase 07.1B — Saved app/API journey and CI
 
-**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. No 07.2 push, PR or merge is authorized.
+**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. The owner authorized publication; [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) is published and awaiting owner review. Merge approval remains pending.
 
 ## Snapshot
 
