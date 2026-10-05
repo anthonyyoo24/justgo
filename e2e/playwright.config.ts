@@ -46,7 +46,7 @@ export default defineConfig({
     },
     {
       name: 'Expo web',
-      command: 'npm run web -w @justgo/mobile -- --max-workers 1',
+      command: 'npm run web -w @justgo/mobile -- --localhost --max-workers 1',
       cwd: '..',
       url: `${journeyAppUrl}/recovery`,
       reuseExistingServer: false,

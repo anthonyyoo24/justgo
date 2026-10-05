@@ -145,13 +145,20 @@ The wrapper validates the loopback `justgo_test` database, restricted runtime an
 migration roles, local SSL setting and nonproduction environment **before**
 migration or service startup. It builds contracts, applies migrations, starts the
 isolated fixture API on 127.0.0.1:3000 and Expo on 127.0.0.1:8081, runs the saved
-test and shuts its services down. Keep both ports free; it refuses to reuse an
+test and shuts its services down. Expo starts with `--localhost`; a saved test
+checks that neither service accepts connections on local non-loopback IPv4
+interfaces. Keep both ports free; it refuses to reuse an
 unknown running server. Local settings come from the ignored `apps/api/.env`;
 CI supplies the same explicit database mapping used by database/coverage tests.
 
 The saved case creates and renews a real disposable account in the app, opens its
 challenge deck and Progress, and checks the database. Fixture cleanup deletes
-only accounts identified by this test's bootstrap session UUIDs. The dedicated
+only account UUIDs allocated by this run's isolated fixture API. The trusted
+registry is independent of browser requests and response delivery, so rejected
+requests and successful recovery of pre-existing accounts cannot nominate cleanup
+targets. Its read-only endpoint is absent from the deployable API. Failed creation
+transactions can leave registry UUIDs without rows; deleting those is a harmless
+no-op. Registry failures fail teardown instead of falling back to browser IDs. The dedicated
 fixture server grants isolated test access and upload eligibility; deployed API
 startup has no such provider. Browser storage remains memory-only in 07.1.
 

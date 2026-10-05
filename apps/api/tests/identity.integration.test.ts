@@ -114,6 +114,27 @@ afterAll(async () => {
 });
 
 describe('identity protocol through the restricted runtime', () => {
+  it('allocates fixture ownership only for newly created accounts, not recovery or rejected proofs', async () => {
+    const existing = await account();
+    const allocated: string[] = [];
+    const tracked = new IdentityService(db.db, {
+      rateKey: 'isolated-allocation-regression',
+      newUserId: () => {
+        const id = randomUUID();
+        allocated.push(id);
+        return id;
+      },
+    });
+    const owned = await tracked.bootstrap(request());
+    users.add(owned.userId);
+    expect(allocated).toEqual([owned.userId]);
+    const recovered = await tracked.bootstrap(existing.input);
+    expect(recovered.userId).toBe(existing.session.userId);
+    await expect(
+      tracked.bootstrap({ ...existing.input, sessionToken: secret() }),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(allocated).toEqual([owned.userId]);
+  });
   it('creates, recovers and renews through the discriminated session resource with stable replay', async () => {
     const input = request();
     const created = await post('/sessions', { kind: 'bootstrap', ...input });

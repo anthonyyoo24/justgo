@@ -4,6 +4,14 @@ This folder is the durable implementation record for [the staged plan](../IMPLEM
 
 ## Current state
 
+October 4 PR #14 review follow-up: corrected the stale checkpoint index and
+hardened journey cleanup to use only user IDs allocated by the isolated fixture
+server. Rejected browser requests and successful recovery of an existing account
+cannot authorize deletion. Expo now binds explicitly to localhost. The
+[07.1B handoff](phase-07-1b-journey-ci.md#october-4-pr-14-review-follow-up)
+records the regression, checks and hosted evidence. The owner authorized these
+fixes and their push; B remains open for review without merge approval.
+
 October 4 B publication: the owner merged [07.1A / PR #13](https://github.com/anthonyyoo24/justgo/pull/13)
 at `806f57f` and authorized pushing 07.1B and creating its PR against updated
 `main`. B includes A's cancellation fix and only adds the journey harness, CI
@@ -91,14 +99,15 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. 07.1A and local-only 07.1B both await owner review/acceptance; later filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is published for owner review in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14); its merge approval remains open. Later filenames remain reserved outputs.
 
-| Subphase                                         | Depends on | Handoff filename                                 |
-| ------------------------------------------------ | ---------- | ------------------------------------------------ |
-| 07.1 — API and data foundation                   | 06A        | [phase-07-1-api-data.md](phase-07-1-api-data.md) |
-| 07.2 — Durable local saving and synchronization  | 07.1       | `phase-07-2-local-sync.md`                       |
-| 07.3 — Local challenge and reflection experience | 07.2       | `phase-07-3-local-flow.md`                       |
-| 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`                 |
-| 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md`               |
+| Subphase                                         | Depends on | Handoff filename                                       |
+| ------------------------------------------------ | ---------- | ------------------------------------------------------ |
+| 07.1A — API and data foundation                  | 06A        | [phase-07-1-api-data.md](phase-07-1-api-data.md)       |
+| 07.1B — Saved app/API journey and CI             | 07.1A      | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md) |
+| 07.2 — Durable local saving and synchronization  | 07.1       | `phase-07-2-local-sync.md`                             |
+| 07.3 — Local challenge and reflection experience | 07.2       | `phase-07-3-local-flow.md`                             |
+| 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`                       |
+| 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md`                     |
 
 The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.

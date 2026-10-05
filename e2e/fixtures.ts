@@ -7,10 +7,7 @@ import {
   journeyEnvironment,
 } from './environment';
 
-const bootstrapIdentity = z.object({
-  kind: z.literal('bootstrap'),
-  sessionId: z.uuid(),
-});
+const allocatedAccounts = z.object({ userIds: z.array(z.uuid()) }).strict();
 
 export const test = base.extend<{ fixtureDatabase: Pool }>({
   fixtureDatabase: async ({ baseURL }, use) => {
@@ -32,17 +29,6 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
     }
   },
   page: async ({ page, fixtureDatabase }, use, testInfo) => {
-    const sessions = new Set<string>();
-    // Retain only fixture UUIDs for scoped cleanup, never credential/session secrets.
-    page.on('request', (request) => {
-      if (
-        request.url() !== `${journeyApiUrl}/v1/sessions` ||
-        request.method() !== 'POST'
-      )
-        return;
-      const parsed = bootstrapIdentity.safeParse(request.postDataJSON());
-      if (parsed.success) sessions.add(parsed.data.sessionId);
-    });
     try {
       await use(page);
     } finally {
@@ -63,19 +49,22 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
         try {
           await page.close();
         } finally {
-          await removeFixtureAccounts(fixtureDatabase, sessions);
+          await removeFixtureAccounts(fixtureDatabase);
         }
       }
     }
   },
 });
 
-async function removeFixtureAccounts(database: Pool, sessions: Set<string>) {
-  const owners = await database.query<{ user_id: string }>(
-    'select distinct user_id from justgo.device_sessions where id = any($1::uuid[])',
-    [[...sessions]],
-  );
-  for (const { user_id: owner } of owners.rows) {
+async function removeFixtureAccounts(database: Pool) {
+  // The per-run fixture server owns this registry, independently of browser requests
+  // or response delivery. Existing-account recovery cannot add cleanup authority.
+  const registry = await fetch(`${journeyApiUrl}/__fixtures/accounts`, {
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!registry.ok) throw new Error('Fixture account registry unavailable');
+  const { userIds } = allocatedAccounts.parse(await registry.json());
+  for (const owner of userIds) {
     await database.query('begin');
     try {
       for (const table of [

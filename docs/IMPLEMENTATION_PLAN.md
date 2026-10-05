@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 40 · Updated October 4, 2026
+**Version:** 41 · Updated October 4, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -702,6 +702,17 @@ the migration restoration rehearsal, coverage floors and application tests stay
 in A. Both slices need independent verification before their own review/acceptance.
 
 **Depends on:** 06A. **Outcome:** stable resource contracts and tested backend reads/writes with proven historical-data preservation. **Status:** A was merged by the owner; B is authorized for separate publication and review. PR #12 was reverted because its creation and merge were not authorized. [The 07.1A handoff](handoffs/phase-07-1-api-data.md) records fresh A checks (350 workspace tests, 59 database/migration cases and coverage), contracts and compatibility. Its historical combined A+B evidence includes 351 workspace tests, saved smoke and side-panel checks; that history does not close B acceptance.
+
+**PR #14 review follow-up — October 4:** B is published separately against
+`main`. Its initial hosted checks passed at `8b34110`; follow-up code must verify
+independently. The owner authorized correcting the stale checkpoint index,
+restricting cleanup to fixture-server-allocated account IDs and binding Expo to
+localhost. Saved regressions cover both rejected request nominations and accepted
+recovery of accounts outside the run, plus non-loopback listener access. The
+[07.1B handoff](handoffs/phase-07-1b-journey-ci.md#october-4-pr-14-review-follow-up)
+records passing follow-up checks: 351 workspace tests, 61 database/migration
+cases, coverage and four saved journey tests. The function-comment warning does
+not change the repository's test-coverage policy. B merge approval remains open.
 
 **Scope:** original tasks 1–4 plus the backend part of task 8. Preserve the identity/HTTP fixes. Implement additive migration/backfill, catalog and completed-attempt writes, inline reflection PATCH and separate Progress reads. Prepare the contraction procedure without accepting final removal. Mobile feature conversion remains in 07.3–07.4 except for the minimum contract compatibility needed to keep this checkpoint coherent.
 

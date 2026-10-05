@@ -56,6 +56,8 @@ describe('health and readiness', () => {
       const missing = await app.inject('/secret-path?token=secret');
       expect(missing.statusCode).toBe(404);
       expect(missing.body).not.toContain('secret');
+      // Fixture cleanup provenance is never exposed by the deployable app.
+      expect((await app.inject('/__fixtures/accounts')).statusCode).toBe(404);
     } finally {
       await app.close();
     }
