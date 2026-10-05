@@ -2,8 +2,8 @@
 
 ## Snapshot
 
-- **Status:** Implemented for owner review; committing and pushing are authorized,
-  while PR creation is on hold at the owner’s request. Native durability evidence remains open;
+- **Status:** Branch published for owner review; PR creation is on hold at the
+  owner’s request. Native durability evidence remains open;
   this is not acceptance of the completed app journey or permission to publish.
 - **Date:** October 5, 2026.
 - **Branch/base:** `codex/phase-07.2-local-sync`, created from updated `main` at
@@ -384,3 +384,20 @@ the state at those verification checkpoints. Keep the activity-module relocation
 commit separate from the implementation, and group the subsequent runtime/developer
 folder cleanup as its own reviewable change. Existing local evidence is recorded
 above; hosted evidence must be checked on the published revision.
+
+### Published commits and review state
+
+The authorized branch push succeeded. Reviewable implementation commits are:
+
+- `4019c51` — Phase 07.2 local saving and synchronization.
+- `aad0923` — Move the shared activity data out of features.
+- `1b78052` — Separate runtime/developer support, remove unused Foundation/Shell
+  code, and update boundaries, tests and documentation.
+
+The working tree was clean after the implementation push. The initial hosted
+[push workflow](https://github.com/anthonyyoo24/justgo/actions/runs/37372411330)
+for `1b78052` was queued when inspected; no hosted pass is claimed here.
+PR creation remains explicitly on hold. Identity remains in `features/identity`
+pending the owner's folder decision; no relocation is included. This publication
+record is a separate documentation closeout commit. The current local verification
+results above still apply; no product code changed after those checks.

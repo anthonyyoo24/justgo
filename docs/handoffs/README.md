@@ -1,6 +1,6 @@
 # Implementation handoffs
 
-**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. The owner authorized committing and pushing on October 5, then placed PR creation on hold. Owner review and merge approval remain pending.
+**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. The owner authorized committing and pushing on October 5; the branch is published. PR creation is explicitly on hold, and owner review/merge approval remain pending. The handoff records commits and initial queued hosted checks.
 
 **October 5 owner follow-up:** Remove the unused mobile Foundation connection screen
 and its dedicated tests; keep developer screen previews and API health/readiness
