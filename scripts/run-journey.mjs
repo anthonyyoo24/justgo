@@ -22,6 +22,7 @@ async function run(command, args) {
 
 await run('npm', ['run', 'build:contracts']);
 await run('npm', ['run', 'db:migrate']);
+await run('node', ['scripts/build-journey-repository.mjs']);
 await run('npx', [
   'playwright',
   'test',

@@ -25,10 +25,16 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
       expect(role.rows[0]?.current_user).toBe('justgo_migrator');
       await use(database);
     } finally {
-      await database.end();
+      try {
+        await removeFixtureAccounts(database);
+      } finally {
+        await database.end();
+      }
     }
   },
   page: async ({ page, fixtureDatabase }, use, testInfo) => {
+    // Keep the database fixture alive until screenshot/page teardown completes.
+    void fixtureDatabase;
     try {
       await use(page);
     } finally {
@@ -46,11 +52,7 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
           });
         }
       } finally {
-        try {
-          await page.close();
-        } finally {
-          await removeFixtureAccounts(fixtureDatabase);
-        }
+        await page.close();
       }
     }
   },

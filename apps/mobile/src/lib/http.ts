@@ -1,5 +1,10 @@
 import type { z } from 'zod';
-import { identityErrorSchema, type IdentityErrorCode } from '@justgo/contracts';
+import {
+  identityErrorSchema,
+  reflectionConflictSchema,
+  type Attempt,
+  type IdentityErrorCode,
+} from '@justgo/contracts';
 
 export type ClientErrorCode =
   | IdentityErrorCode
@@ -12,6 +17,8 @@ export class ApiError extends Error {
   constructor(
     readonly code: ClientErrorCode,
     readonly requestId?: string,
+    readonly currentAttempt?: Attempt,
+    readonly retryAfterMs?: number,
   ) {
     super(code);
   }
@@ -112,10 +119,27 @@ export function createHttpClient(
           const value: unknown = await response.json();
           check();
           if (!response.ok) {
+            const conflict = reflectionConflictSchema.safeParse(value);
             const error = identityErrorSchema.safeParse(value);
+            const header = response.headers?.get('Retry-After');
+            const delay = header
+              ? /^\d+$/.test(header.trim())
+                ? Number(header) * 1000
+                : Date.parse(header) - Date.now()
+              : NaN;
             throw new ApiError(
-              error.success ? error.data.code : 'UNAVAILABLE',
-              error.success ? error.data.requestId : undefined,
+              conflict.success
+                ? conflict.data.code
+                : error.success
+                  ? error.data.code
+                  : 'UNAVAILABLE',
+              conflict.success
+                ? conflict.data.requestId
+                : error.success
+                  ? error.data.requestId
+                  : undefined,
+              conflict.success ? conflict.data.currentAttempt : undefined,
+              Number.isFinite(delay) && delay >= 0 ? delay : undefined,
             );
           }
           const parsed = schema.safeParse(value);

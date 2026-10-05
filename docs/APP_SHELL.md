@@ -69,3 +69,14 @@ The offline journal, local completion flow, banners/toasts and Progress cache
 remain subsequent checkpoints. The [07.1 handoff](handoffs/phase-07-1-api-data.md)
 owns the temporary compatibility inventory, database rehearsal and current test
 evidence. Full product-document reconciliation is assigned to 07.5.
+
+## Phase 07.2 local persistence boundary
+
+The account-scoped journal repository, AsyncStorage adapter, Zustand live state and
+ordered sender are implemented under `features/journal`. Existing app screens still
+use the temporary compatibility flow. 07.3 owns provider/lifecycle/screen wiring and
+warning/toast presentation; 07.4 owns Progress composition. The
+[07.2 handoff](handoffs/phase-07-2-local-sync.md) records version/durability rules,
+retry/recovery interfaces, test evidence and open native checks. HTTP now preserves
+validated reflection-conflict data and Retry-After; normal uploads have one retry
+owner and use the existing coordinated authentication boundary.
