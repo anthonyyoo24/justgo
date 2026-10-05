@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { NavigationLink } from '../components/NavigationLink';
-import { useIdentity } from '../runtime/providers/AppProvider';
+import { useIdentity } from '../app-support/providers/AppProvider';
 import { colors, radii, spacing, typography } from '../theme/tokens';
 export default function SettingsRoute() {
   const { account } = useIdentity();

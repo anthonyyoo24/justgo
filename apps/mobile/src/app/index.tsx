@@ -1,1 +1,1 @@
-export { AccessScreen as default } from '../runtime/access/AccessScreen';
+export { AccessScreen as default } from '../app-support/access/AccessScreen';

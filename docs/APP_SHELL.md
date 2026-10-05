@@ -5,10 +5,12 @@ Phase 03 implements navigation and account/network infrastructure. Anthony defer
 ## Implemented folder responsibilities
 
 The October 5 owner-approved cleanup places the startup gate in
-`runtime/access/AccessScreen.tsx` and app/account/foreground composition in
-`runtime/providers/AppProvider.tsx`. Feature screens consume the provider hooks;
-shared components/lib/theme/platform and the data layer cannot import runtime.
-Runtime composes features but cannot import route implementations.
+`app-support/access/AccessScreen.tsx` and app/account/foreground composition in
+`app-support/providers/AppProvider.tsx`. Feature screens consume the provider hooks;
+shared components/lib/theme/platform and the data layer cannot import app support.
+App support composes features but cannot import route implementations.
+Account/recovery screens, session coordination and the typed Keychain adapter
+live in `app-support/identity/`; the Swift module remains under `modules/`.
 
 Development screen fixtures and their tests live in `dev/previews/`. Only the
 guarded `app/preview.tsx` route loads them from production source; both route and
@@ -64,7 +66,7 @@ Follow [root coding instructions](../AGENTS.md) and [testing guidance](TESTING.m
 `ChallengeScreen` owns deck orchestration; `ActiveChallenge` owns the countdown and
 outcome controls; `SuccessScreen` owns the confirmed-result route. The shared
 feeling choices come from the versioned contracts. No route or persistence policy
-changed in this refactor. Runtime/provider and vault adapter tests cover their real
+changed in this refactor. App-provider and vault adapter tests cover their real
 JavaScript wiring; native Keychain behavior still needs its separate device gates.
 
 ## Phase 07.1 API compatibility boundary

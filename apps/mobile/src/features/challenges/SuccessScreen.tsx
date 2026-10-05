@@ -8,7 +8,7 @@ import {
 import { Screen } from '../../components/Screen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors, typography } from '../../theme/tokens';
-import { useRuntime } from '../../runtime/providers/AppProvider';
+import { useRuntime } from '../../app-support/providers/AppProvider';
 import { SuccessView } from './SuccessView';
 export function SuccessScreen() {
   const { attemptId } = useLocalSearchParams<{ attemptId?: string }>();

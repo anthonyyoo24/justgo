@@ -401,3 +401,48 @@ PR creation remains explicitly on hold. Identity remains in `features/identity`
 pending the owner's folder decision; no relocation is included. This publication
 record is a separate documentation closeout commit. The current local verification
 results above still apply; no product code changed after those checks.
+
+## October 5 app-support naming and Identity placement
+
+The owner selected `app-support` as the folder name for app setup and coordination
+and requested implementing and committing the change. Renamed `src/runtime/` to
+`src/app-support/` and moved all nine `features/identity/` source/test files into
+`app-support/identity/`. The old directories are removed. A byte comparison against
+the preceding commit confirmed all nine Identity files are unchanged. The Swift
+Keychain module, secure item names, account/session behavior, provider APIs and
+route paths are unchanged. Features now contain Challenges, Reflections and Progress.
+
+Imports and Jest module mocks follow the new paths. Architecture enforcement
+protects `app-support` using the previous dependency direction: support composes
+features/shared infrastructure, feature screens may consume provider hooks,
+support production code cannot import routes/developer fixtures, and shared/data
+code cannot import support. Two additional fixtures protect provider-to-Identity
+composition and data-to-Identity rejection; all loader variants remain checked.
+Coverage selectors for the provider and Identity vault/storage/controller follow
+their new paths without changing any floor or exclusion. Current coding/folder
+guidance, testing documentation, plan and handoff index are updated. Earlier dated
+handoffs and original runtime paths above preserve the historical sequence.
+
+Verification:
+
+- `node --test scripts/import-boundaries.test.mjs`: **134 passed**, including the
+  renamed-path cases and six loader assertions from the two new fixtures.
+- `npm run check`: contracts build, strict types, lint, formatting and **516 tests**
+  passed: 141 safeguards, 45 API unit, 309 mobile and 21 contracts. The first check
+  stopped at formatting because the longer provider coverage path needed JSON
+  wrapping; formatted that file and reran the complete command successfully.
+- `npm run test:coverage`: **106 API unit/database/migration**, **309 mobile** and
+  **21 contract** cases passed, along with all global/critical coverage floors.
+  Mobile **90.58% lines / 83.52% branches**, API **95.71% / 91.19%**, contracts
+  **100% / 100%**. Critical support files remain included at unchanged thresholds.
+- Side-panel browser verification at the default **1280 × 720** viewport: recovery
+  rendered; Back to app returned the disconnected browser to recovery as expected;
+  Settings rendered and its Account & recovery link opened the moved screen;
+  developer previews loaded the challenge deck. No browser warnings/errors were
+  captured. No account was created or activity submitted in this walkthrough.
+  Evidence: `.local/simulator-07-2/app-support-recovery.png`. The temporary tab was
+  closed; the owner's manual simulator/API/Metro setup was left running.
+
+This follow-up is committed locally; it is not published by the preceding branch
+push. PR creation remains on hold. Native AsyncStorage durability, 07.3 screen
+integration, 07.4 Progress composition and physical-device/staging gates remain open.

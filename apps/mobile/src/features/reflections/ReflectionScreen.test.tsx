@@ -11,7 +11,7 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ attemptId: 'first' }),
   useRouter: () => mockRouter,
 }));
-jest.mock('../../runtime/providers/AppProvider', () => ({
+jest.mock('../../app-support/providers/AppProvider', () => ({
   useRuntime: () => mockRuntime,
 }));
 

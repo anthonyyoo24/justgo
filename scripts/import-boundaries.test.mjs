@@ -30,7 +30,7 @@ const cases = [
   {
     name: 'shared library cannot re-export a feature',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
-    source: "export * from '../features/identity/vault';",
+    source: "export * from '../features/challenges/controller';",
     restricted: true,
   },
   {
@@ -59,7 +59,7 @@ const cases = [
   },
   {
     name: 'apps cannot import contracts by relative path',
-    file: 'apps/mobile/src/features/identity/BoundaryFixture.ts',
+    file: 'apps/mobile/src/app-support/identity/BoundaryFixture.ts',
     source: "import '../../../../../packages/contracts/src/identity';",
     restricted: true,
   },
@@ -82,27 +82,39 @@ const cases = [
     restricted: false,
   },
   {
-    name: 'runtime may compose features',
-    file: 'apps/mobile/src/runtime/providers/BoundaryFixture.ts',
+    name: 'app-support may compose features',
+    file: 'apps/mobile/src/app-support/providers/BoundaryFixture.ts',
     source: "import '../../features/challenges/controller';",
     restricted: false,
   },
   {
-    name: 'features may consume runtime providers',
+    name: 'features may consume app-support providers',
     file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
-    source: "import '../../runtime/providers/AppProvider';",
+    source: "import '../../app-support/providers/AppProvider';",
     restricted: false,
   },
   {
-    name: 'shared component cannot import runtime',
-    file: 'apps/mobile/src/components/BoundaryFixture.tsx',
-    source: "import '../runtime/providers/AppProvider';",
+    name: 'app-support providers may compose account support',
+    file: 'apps/mobile/src/app-support/providers/BoundaryFixture.ts',
+    source: "import '../identity/vault';",
+    restricted: false,
+  },
+  {
+    name: 'data cannot import account support',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source: "import '../../app-support/identity/controller';",
     restricted: true,
   },
   {
-    name: 'shared library cannot re-export runtime',
+    name: 'shared component cannot import app-support',
+    file: 'apps/mobile/src/components/BoundaryFixture.tsx',
+    source: "import '../app-support/providers/AppProvider';",
+    restricted: true,
+  },
+  {
+    name: 'shared library cannot re-export app-support',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
-    source: "export * from '../runtime/access/AccessScreen';",
+    source: "export * from '../app-support/access/AccessScreen';",
     restricted: true,
   },
   {
@@ -112,9 +124,9 @@ const cases = [
     restricted: true,
   },
   {
-    name: 'data cannot import runtime',
+    name: 'data cannot import app-support',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
-    source: "import '../../runtime/providers/AppProvider';",
+    source: "import '../../app-support/providers/AppProvider';",
     restricted: true,
   },
   {
@@ -124,8 +136,8 @@ const cases = [
     restricted: true,
   },
   {
-    name: 'runtime cannot import route implementations',
-    file: 'apps/mobile/src/runtime/providers/BoundaryFixture.ts',
+    name: 'app-support cannot import route implementations',
+    file: 'apps/mobile/src/app-support/providers/BoundaryFixture.ts',
     source: "import '../../app/settings';",
     restricted: true,
   },
@@ -136,8 +148,8 @@ const cases = [
     restricted: true,
   },
   {
-    name: 'runtime cannot import developer previews',
-    file: 'apps/mobile/src/runtime/providers/BoundaryFixture.ts',
+    name: 'app-support cannot import developer previews',
+    file: 'apps/mobile/src/app-support/providers/BoundaryFixture.ts',
     source: "import '../../dev/previews/ScreenPreview';",
     restricted: true,
   },
@@ -251,21 +263,21 @@ cases.push(
     restricted: false,
   },
   {
-    name: 'package paths cannot bypass the shared-runtime boundary',
+    name: 'package paths cannot bypass the shared-app-support boundary',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
-    source: "require('@justgo/mobile/src/runtime/providers/AppProvider');",
+    source: "require('@justgo/mobile/src/app-support/providers/AppProvider');",
     restricted: true,
   },
   {
-    name: 'normalized paths cannot bypass the data-runtime boundary',
+    name: 'normalized paths cannot bypass the data-app-support boundary',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
-    source: "require('../../lib/../runtime/providers/AppProvider');",
+    source: "require('../../lib/../app-support/providers/AppProvider');",
     restricted: true,
   },
   {
-    name: 'runtime directory entrypoints cannot bypass shared boundaries',
+    name: 'app-support directory entrypoints cannot bypass shared boundaries',
     file: 'apps/mobile/src/components/BoundaryFixture.tsx',
-    source: "export * from '../runtime';",
+    source: "export * from '../app-support';",
     restricted: true,
   },
   {
@@ -275,14 +287,14 @@ cases.push(
     restricted: true,
   },
   {
-    name: 'runtime tests may exercise route implementations',
-    file: 'apps/mobile/src/runtime/BoundaryFixture.test.tsx',
+    name: 'app-support tests may exercise route implementations',
+    file: 'apps/mobile/src/app-support/BoundaryFixture.test.tsx',
     source: "import '../app/preview';",
     restricted: false,
   },
   {
     name: 'test fixtures may load developer previews',
-    file: 'apps/mobile/src/runtime/BoundaryFixture.test.tsx',
+    file: 'apps/mobile/src/app-support/BoundaryFixture.test.tsx',
     source: "require('../dev/previews/ScreenPreview');",
     restricted: false,
   },
@@ -301,25 +313,25 @@ cases.push(
   {
     name: 'literal template import cannot bypass boundaries',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
-    source: 'void import(`../features/identity/vault`);',
+    source: 'void import(`../app-support/identity/vault`);',
     restricted: true,
   },
   {
-    name: 'workspace package paths cannot bypass the shared-feature boundary',
+    name: 'workspace package paths cannot bypass the shared-account-support boundary',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
-    source: "require('@justgo/mobile/src/features/identity/vault');",
+    source: "require('@justgo/mobile/src/app-support/identity/vault');",
     restricted: true,
   },
   {
     name: 'normalized traversal cannot bypass boundaries',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
-    source: "require('../components/../features/identity/vault');",
+    source: "require('../components/../app-support/identity/vault');",
     restricted: true,
   },
   {
     name: 'computed loader paths must be made reviewable',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
-    source: "const name = '../features/identity/vault'; require(name);",
+    source: "const name = '../app-support/identity/vault'; require(name);",
     restricted: true,
   },
   {
@@ -329,9 +341,9 @@ cases.push(
     restricted: true,
   },
   {
-    name: 'workspace package paths cannot bypass the data-feature boundary',
+    name: 'workspace package paths cannot bypass the data-account-support boundary',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
-    source: "require('@justgo/mobile/src/features/identity/vault');",
+    source: "require('@justgo/mobile/src/app-support/identity/vault');",
     restricted: true,
   },
   {
@@ -347,10 +359,10 @@ cases.push(
     restricted: true,
   },
   {
-    name: 'named re-exports cannot bypass the data-feature boundary',
+    name: 'named re-exports cannot bypass the data-account-support boundary',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
     source:
-      "export { IdentityController } from '../../features/identity/controller';",
+      "export { IdentityController } from '../../app-support/identity/controller';",
     restricted: true,
   },
   {

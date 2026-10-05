@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { Screen } from '../../components/Screen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors, typography } from '../../theme/tokens';
-import { useRuntime } from '../../runtime/providers/AppProvider';
+import { useRuntime } from '../../app-support/providers/AppProvider';
 import { ReflectionController } from './controller';
 import { ReflectionView } from './ReflectionView';
 

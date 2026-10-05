@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View } from 'react-native';
-import { IdentityScreen } from '../features/identity/IdentityScreen';
-import { useRuntime } from '../runtime/providers/AppProvider';
+import { IdentityScreen } from '../app-support/identity/IdentityScreen';
+import { useRuntime } from '../app-support/providers/AppProvider';
 import { NavigationLink } from '../components/NavigationLink';
 import { colors } from '../theme/tokens';
 export default function RecoveryRoute() {

@@ -53,7 +53,7 @@ jest.mock('expo-router', () => ({
     return <Text>{children}</Text>;
   },
 }));
-jest.mock('../../runtime/providers/AppProvider', () => ({
+jest.mock('../../app-support/providers/AppProvider', () => ({
   useRuntime: () => ({ challenges: mockController }),
   useIdentity: () => ({ account: mockAccount }),
 }));

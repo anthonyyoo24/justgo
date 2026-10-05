@@ -11,13 +11,10 @@ import { focusManager, notifyManager } from '@tanstack/react-query';
 import { z } from 'zod';
 import { type AccessResponse, type SessionResponse } from '@justgo/contracts';
 import { accountKey } from '../../lib/account-client';
-import { createIdentityApi } from '../../features/identity/api';
-import { IdentityController } from '../../features/identity/controller';
-import {
-  createMemoryVault,
-  type CredentialVault,
-} from '../../features/identity/storage';
-import { createVault } from '../../features/identity/vault';
+import { createIdentityApi } from '../identity/api';
+import { IdentityController } from '../identity/controller';
+import { createMemoryVault, type CredentialVault } from '../identity/storage';
+import { createVault } from '../identity/vault';
 import {
   AppProvider,
   createAppRuntime,
@@ -37,7 +34,7 @@ jest.mock('expo-crypto', () => {
     },
   };
 });
-jest.mock('../../features/identity/vault', () => ({ createVault: jest.fn() }));
+jest.mock('../identity/vault', () => ({ createVault: jest.fn() }));
 const id = (value: number) =>
   `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`;
 const token = 'a'.repeat(64);

@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 46 · Updated October 5, 2026
+**Version:** 47 · Updated October 5, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -63,6 +63,8 @@ and Shell feature folders are retired. Keep route/access/foreground/preview beha
 all retained tests and the provider coverage floor unchanged. The [07.2 handoff](handoffs/phase-07-2-local-sync.md)
 records this local refactor and its verification; 07.3 wiring and 07A billing remain
 separate unfinished work.
+
+**October 5 app-support naming follow-up:** The owner chose `app-support` for app-wide setup and coordination, replacing the `runtime` folder name, and approved moving account/recovery/session/Keychain support from `features/identity` into `app-support/identity`. Current imports, architecture rules, coverage selectors and folder guidance follow the new locations; behavior and coverage floors are preserved. This change is committed locally; PR creation remains on hold.
 
 **October 4 implementation checkpoint split:** Anthony accepted splitting Phase 07 into 07.1 API/data foundation, 07.2 durable local saving/synchronization, 07.3 challenge/reflection experience, 07.4 Progress/history integration and 07.5 final cutover/acceptance. Update this plan before resuming application work. Preserve the verified identity/HTTP slice and all existing drafts; the split does not restart implementation or reduce agreed scope. Each subphase has a dependency, checklist and evidence handoff. The former ten task numbers remain below for traceability, with backend Progress work assigned to 07.1 and client Progress work to 07.4. These are implementation checkpoints, not five independently deployable releases or new permission gates. Build journey tests incrementally, keep destructive cleanup in 07.5, and keep native billing in 07A. This edit changes the plan only.
 

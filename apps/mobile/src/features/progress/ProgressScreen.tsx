@@ -7,7 +7,10 @@ import {
   type LegacyProgressResponse as ProgressResponse,
 } from '@justgo/contracts';
 import { accountKey } from '../../lib/account-client';
-import { useIdentity, useRuntime } from '../../runtime/providers/AppProvider';
+import {
+  useIdentity,
+  useRuntime,
+} from '../../app-support/providers/AppProvider';
 import { currentMonth, moveMonth } from './calendar';
 import { ProgressView } from './ProgressView';
 

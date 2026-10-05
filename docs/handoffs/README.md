@@ -7,12 +7,15 @@ and its dedicated tests; keep developer screen previews and API health/readiness
 endpoints. Current folder guidance reflects the removal; the [07.2 handoff](phase-07-2-local-sync.md)
 records checks and the side-panel demonstration of the unchanged Access screens.
 
-**October 5 app structure follow-up:** Access now lives in `runtime/access/`, the app
-provider in `runtime/providers/`, and retained developer previews in `dev/previews/`.
+**October 5 app structure follow-up:** Access now lives in `app-support/access/`, the app
+provider in `app-support/providers/`, and retained developer previews in `dev/previews/`.
 Shared navigation links live in `components/`; unused Shell placeholders are removed.
 The [07.2 handoff](phase-07-2-local-sync.md) records the refactor, updated import rules,
 unchanged provider coverage floor and verification. Existing routes/access/foreground
-behavior and future 07.3/07A work are preserved.
+behavior and future 07.3/07A work are preserved. The later owner-approved naming
+follow-up replaces `runtime` with `app-support` and moves account/recovery/session/
+Keychain support into `app-support/identity/`. Its commit remains local and PR
+creation remains on hold.
 
 This folder is the durable implementation record for [the staged plan](../IMPLEMENTATION_PLAN.md). The historical HTML checklist is absent from this checkout; current progress is recorded in Markdown. A browser-local checklist cannot modify or verify these files. Commit phase records with their implementation. Export/import the checklist to move its state between browsers or preview URLs.
 
