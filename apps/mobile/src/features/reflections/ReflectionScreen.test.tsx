@@ -107,15 +107,22 @@ it('shows slow local-save feedback, coalesces taps and retains newer typing', as
   fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
   fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
   expect(screen.queryByText('Saving…')).toBeNull();
-  await act(async () => jest.advanceTimersByTimeAsync(201));
+  expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
+  await act(async () => jest.advanceTimersByTimeAsync(199));
+  expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
+  await act(async () => jest.advanceTimersByTimeAsync(2));
   expect(
     screen.getByRole('button', { name: 'Saving reflection' }),
   ).toBeDisabled();
+  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+  expect(screen.queryByText('Save Reflection')).toBeNull();
+  expect(screen.queryByText('Saving…')).toBeNull();
   fireEvent.changeText(screen.getByLabelText('Your reflection'), 'Newer');
   await act(async () => block.resolve());
   expect(mockRouter.dismissTo).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Your reflection').props.value).toBe('Newer');
   expect(screen.queryByText('Saving…')).toBeNull();
+  expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
 });
 it('cleans delayed feedback on unmount and fences late navigation', async () => {
   jest.useFakeTimers();

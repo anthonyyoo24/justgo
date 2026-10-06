@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -157,19 +158,30 @@ export function ActiveChallenge({
           ]}
         >
           <View style={[styles.secondary, { backgroundColor: colors.ink }]}>
-            <Svg width={16} height={14} viewBox="0 0 16 14" aria-hidden>
-              <Path
-                d="M1.75 7L6 11.25L14.25 2.75"
-                stroke={colors.white}
-                strokeWidth={1.3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
+            {savingVisible ? (
+              <ActivityIndicator
+                color={colors.white}
+                size="small"
+                accessible={false}
+                testID="completion-submit-spinner"
               />
-            </Svg>
-            <Text style={[styles.outcomeText, { color: colors.white }]}>
-              {savingVisible ? 'Saving…' : 'Completed'}
-            </Text>
+            ) : (
+              <>
+                <Svg width={16} height={14} viewBox="0 0 16 14" aria-hidden>
+                  <Path
+                    d="M1.75 7L6 11.25L14.25 2.75"
+                    stroke={colors.white}
+                    strokeWidth={1.3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </Svg>
+                <Text style={[styles.outcomeText, { color: colors.white }]}>
+                  Completed
+                </Text>
+              </>
+            )}
           </View>
         </Pressable>
       </View>

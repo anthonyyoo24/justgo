@@ -76,6 +76,38 @@ it('blocks both outcomes during a save without dimming either button', () => {
   expect(finish).not.toHaveBeenCalled();
   expect(screen.queryByText('Give up this challenge?')).toBeNull();
 });
+it('replaces completion contents with a spinner only when delayed feedback is visible', () => {
+  const finish = jest.fn(async () => {});
+  const screen = render(
+    <ActiveChallenge attempt={attempt} disabled finish={finish} />,
+  );
+  expect(screen.getByText('Completed')).toBeTruthy();
+  expect(screen.queryByTestId('completion-submit-spinner')).toBeNull();
+  screen.rerender(
+    <ActiveChallenge
+      attempt={attempt}
+      disabled
+      savingVisible
+      finish={finish}
+    />,
+  );
+  const button = screen.getByRole('button', { name: 'Saving completion' });
+  expect(button.props.accessibilityState).toMatchObject({
+    disabled: true,
+    busy: true,
+  });
+  expect(screen.getByTestId('completion-submit-spinner')).toBeTruthy();
+  expect(screen.queryByText('Completed')).toBeNull();
+  expect(screen.queryByText('Saving…')).toBeNull();
+  fireEvent.press(button);
+  expect(finish).not.toHaveBeenCalled();
+  screen.rerender(
+    <ActiveChallenge attempt={attempt} disabled={false} finish={finish} />,
+  );
+  expect(screen.getByRole('button', { name: 'Completed' })).toBeEnabled();
+  expect(screen.getByText('Completed')).toBeTruthy();
+  expect(screen.queryByTestId('completion-submit-spinner')).toBeNull();
+});
 it('leaves extra space between the active card and outcome buttons', () => {
   const screen = render(
     <ActiveChallenge

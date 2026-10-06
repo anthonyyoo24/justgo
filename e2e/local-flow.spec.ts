@@ -132,6 +132,9 @@ test('slow phone writes prevent duplicate activation, expose delayed feedback an
   await expect(
     page.getByRole('button', { name: 'Saving completion', exact: true }),
   ).toBeDisabled();
+  await expect(page.getByTestId('completion-submit-spinner')).toBeVisible();
+  await expect(page.getByText('Completed', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
   await page.evaluate(() => globalThis.justgoJournalFaults.release());
   await expect(page.getByText('That’s a win!', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -151,8 +154,16 @@ test('slow phone writes prevent duplicate activation, expose delayed feedback an
     .last()
     .dispatchEvent('click');
   await expect(
-    page.getByRole('button', { name: 'Saving reflection', exact: true }),
+    page.getByRole('button', { name: 'Saving reflection', exact: true }).last(),
   ).toBeDisabled();
+  await expect(
+    page.getByTestId('reflection-dismiss-save-spinner'),
+  ).toBeVisible();
+  await expect(page.getByTestId('reflection-submit-spinner')).toBeVisible();
+  await expect(page.getByText('Save Reflection', { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
   await page
     .getByLabel('Your reflection', { exact: true })

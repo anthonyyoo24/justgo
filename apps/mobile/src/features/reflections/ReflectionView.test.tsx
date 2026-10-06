@@ -95,14 +95,23 @@ it('disables duplicate saves immediately, shows delayed saving feedback and keep
     screen.getByRole('button', { name: 'Save Reflection' }),
   ).toBeDisabled();
   expect(screen.queryByText('Saving…')).toBeNull();
+  expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
   expect(screen.getByLabelText('Your reflection').props.editable).toBe(true);
   screen.rerender(<ReflectionView {...base} text="First" busy savingVisible />);
   expect(
     screen.getByRole('button', { name: 'Saving reflection' }).props
       .accessibilityState,
   ).toMatchObject({ disabled: true, busy: true });
+  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+  expect(screen.queryByText('Save Reflection')).toBeNull();
+  expect(screen.queryByText('Saving…')).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Saving reflection' }));
+  expect(base.onSubmit).not.toHaveBeenCalled();
   fireEvent.changeText(screen.getByLabelText('Your reflection'), 'Newer');
   expect(base.onTextChange).toHaveBeenCalledWith('Newer');
+  screen.rerender(<ReflectionView {...base} text="Newer" />);
+  expect(screen.getByRole('button', { name: 'Save Reflection' })).toBeEnabled();
+  expect(screen.getByText('Save Reflection')).toBeTruthy();
   expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
 });
 it('preserves feeling while editing and keeps validation inline', () => {
@@ -140,4 +149,26 @@ it('prevents duplicate dirty-close saves or discard while a write is pending', (
   expect(
     screen.getByRole('button', { name: 'Discard and skip' }),
   ).toBeDisabled();
+  expect(screen.queryByTestId('reflection-dismiss-save-spinner')).toBeNull();
+  screen.rerender(
+    <ReflectionView {...base} text="Saved" dismissOpen busy savingVisible />,
+  );
+  expect(
+    screen.getAllByRole('button', { name: 'Saving reflection' }),
+  ).toHaveLength(1);
+  for (const button of screen.getAllByRole('button', {
+    name: 'Saving reflection',
+  })) {
+    expect(button).toBeDisabled();
+    expect(button.props.accessibilityState.busy).toBe(true);
+    fireEvent.press(button);
+  }
+  expect(base.onSubmit).not.toHaveBeenCalled();
+  expect(screen.getByTestId('reflection-dismiss-save-spinner')).toBeTruthy();
+  expect(screen.queryByText('Save Reflection')).toBeNull();
+  expect(screen.queryByText('Saving…')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Keep editing' })).toBeTruthy();
+  screen.rerender(<ReflectionView {...base} text="Saved" dismissOpen />);
+  expect(screen.getByText('Save Reflection')).toBeTruthy();
+  expect(screen.queryByTestId('reflection-dismiss-save-spinner')).toBeNull();
 });

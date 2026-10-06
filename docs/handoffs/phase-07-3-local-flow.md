@@ -143,6 +143,64 @@ After automated checks, the Codex side panel at 390 × 844 verified active Setti
 
 Final restore: `simctl boot`/`bootstatus` succeeded. Development-client `openurl` reported a timeout, although `launchctl` confirms the app process started and Metro completed its current iOS bundle. The Mac locked before the final Computer Use Home check; final visual confirmation is unverified until the owner unlocks it. Earlier native before/after recordings and browser verification were completed while unlocked. API/Metro and the retained device remain available for the owner; no unlock or security bypass was attempted.
 
+## October 6 centered saving-spinner follow-up
+
+Anthony requested a local checkpoint before changing saving feedback. Commit
+`1048372` saves the previously unstaged active-flow, modal, simulator and handoff
+work. The spinner follow-up remains uncommitted for review.
+
+Completed and Save Reflection now replace their contents with the existing React
+Native `ActivityIndicator`, horizontally centered inside the button. Completed's
+checkmark is also replaced. The leave-reflection dialog uses the same treatment
+for its Save Reflection action. White indicators appear on dark buttons; the
+dialog's outlined button uses the ink color. Normal labels return when saving
+ends. Saving labels and disabled/busy component state remain available to
+accessibility; native VoiceOver verification remains open.
+
+The existing 200 ms delay, immediate duplicate-action blocking, editable
+reflection text, local-write navigation and background uploads are preserved.
+Fast phone writes still show no indicator. Generic account/refresh buttons and
+other existing loaders are outside this change.
+
+Verification:
+
+- Focused completion/reflection component and screen tests: **20/20 pass**.
+  The slow-write screen test checks no spinner at 199 ms, a spinner after 200 ms,
+  removed visible labels, and restored input/labels after saving. The initial
+  dialog assertion incorrectly counted the background button as accessible;
+  React Native modal scoping exposes only the dialog action, and the assertion
+  now checks that visible action plus its spinner and duplicate-action guard.
+- `npm run test:coverage -w @justgo/mobile`: **346/346 pass**, 88.31% branches /
+  93.97% lines. `npm run coverage:check` passes unchanged gates with the fresh
+  mobile report and existing API/contracts reports. This is not a fresh combined
+  workspace coverage run.
+- `npm run check`: pass, including TypeScript, lint, formatting and all workspace
+  tests. Log: `.local/phase-07-3-spinner-check.log`.
+- The saved slow-phone-write app/API/database journey passes with new assertions
+  for spinner-only completion and both reflection save actions. An ignored copy
+  of the existing harness used isolated loopback ports **3001/8082**, identical
+  production screens and guarded storage fault controls, and the dedicated
+  `justgo_test` roles. Fixture cleanup passes. Only this affected case was rerun;
+  this is not a fresh full 16-case journey result. Log:
+  `.local/phase-07-3-spinner-journey.log`. The first local runner forwarded both
+  color environment flags; the rerun follows the existing harness's single-flag
+  handling and passes without that runner warning.
+- Interactive in-app side-panel presentation checks pass at **390 × 844** for
+  Completed, Save Reflection and dialog Save Reflection. Each spinner's center
+  equals its button's horizontal center (0 px offset); visible button text is
+  empty, actions remain disabled, and button heights are 44/46/44 px. No browser
+  warnings/errors were observed. Static saving states used temporary guarded
+  preview fixtures, removed afterward; they establish layout rather than native
+  saving behavior. Proof: [completion](../checks/phase-07-3/completion-centered-spinner.png),
+  [reflection](../checks/phase-07-3/reflection-centered-spinner.png) and
+  [dialog](../checks/phase-07-3/dialog-centered-spinner.png).
+
+The temporary tab closed, viewport override reset, preview sources restored and
+owned 3001/8082 services stopped. The owner's API/Metro on 3000/8081 (PIDs
+28814/28838) were preserved throughout. No native build or simulator interaction
+was performed for this follow-up. Existing native, hosted and owner-review gates
+remain open; no push, PR or merge was performed.
+
 ## Setup, data and operations
 
 Run `npm ci` with Node 24, provision/migrate the dedicated database using `npm run db:local` / `npm run db:migrate`, then use the root verification commands above. Journey prerequisites remain the pinned Playwright Chromium and PostgreSQL 17 snapshot tools described in [TESTING.md](../TESTING.md).

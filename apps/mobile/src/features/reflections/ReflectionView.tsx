@@ -1,5 +1,6 @@
 import { feelingChoices, type FeelingCode } from '@justgo/contracts';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -217,9 +218,16 @@ export function ReflectionView({
             testID="reflection-submit"
             style={styles.primaryButton}
           >
-            <Text style={styles.primaryLabel}>
-              {savingVisible ? 'Saving…' : buttonLabel}
-            </Text>
+            {savingVisible ? (
+              <ActivityIndicator
+                color={colors.white}
+                size="small"
+                accessible={false}
+                testID="reflection-submit-spinner"
+              />
+            ) : (
+              <Text style={styles.primaryLabel}>{buttonLabel}</Text>
+            )}
           </Pressable>
         </View>
         {dismissOpen && (
@@ -233,12 +241,24 @@ export function ReflectionView({
               </Text>
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={
+                  savingVisible ? 'Saving reflection' : 'Save Reflection'
+                }
                 onPress={onSubmit}
                 disabled={busy}
                 accessibilityState={{ disabled: busy, busy: savingVisible }}
                 style={styles.dialogAction}
               >
-                <Text style={styles.dialogActionText}>Save Reflection</Text>
+                {savingVisible ? (
+                  <ActivityIndicator
+                    color={colors.ink}
+                    size="small"
+                    accessible={false}
+                    testID="reflection-dismiss-save-spinner"
+                  />
+                ) : (
+                  <Text style={styles.dialogActionText}>Save Reflection</Text>
+                )}
               </Pressable>
               <Pressable
                 accessibilityRole="button"
