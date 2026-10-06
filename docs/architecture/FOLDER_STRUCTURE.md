@@ -139,3 +139,237 @@ Keep the phase plan and handoff index as stable entrypoints. Root/package tool
 configuration, ordered migrations, small cohesive features and existing reference
 collections remain flat. Add another folder when an implemented responsibility
 needs it; avoid empty future folders or a mandatory screen/component/hook taxonomy.
+
+## Complete created and moved file diagram
+
+This snapshot covers phase 7.3 (`3e41330` → `af5e7ed`) and the dedicated cleanup
+(`af5e7ed` → `217241d`). It lists **all 149 distinct new or moved files**, including
+tests, artwork and verification images, at their current cleanup-branch locations.
+There are **40 phase additions**, **5 cleanup additions** and **130 moves**;
+26 phase additions also appear among the moves, so they are listed once.
+
+- **`new in 7.3`**: created during the phase implementation.
+- **`new in cleanup`**: created for the organization, guidance or verification work.
+- **`moved`**: relocated during cleanup, including any necessary import updates.
+- **`7.3 folder` / `cleanup folder`**: a directory first present in that slice.
+  Other directories provide the existing parent structure.
+
+[PR #16](https://github.com/anthonyyoo24/justgo/pull/16) contains the phase changes
+at their original locations. The cleanup commit remains separate and local.
+The earlier overview explains each responsibility group; this tree expands every
+new or relocated file instead of omitting tests and images.
+
+```text
+justgo/
+├── apps/
+│   ├── api/
+│   │   └── tests/
+│   │       ├── activity/ [cleanup folder]
+│   │       │   ├── attempts.integration.test.ts [moved]
+│   │       │   ├── challenges.integration.test.ts [moved]
+│   │       │   ├── progress.integration.test.ts [moved]
+│   │       │   └── reflections.integration.test.ts [moved]
+│   │       ├── database/ [cleanup folder]
+│   │       │   ├── fixtures/ [cleanup folder]
+│   │       │   │   └── applied-migration-hashes.json [moved]
+│   │       │   ├── database.integration.test.ts [moved]
+│   │       │   ├── migration-metadata.test.ts [moved]
+│   │       │   ├── migrations.integration.test.ts [moved]
+│   │       │   └── rehearsal-target.test.ts [moved]
+│   │       ├── harness/ [cleanup folder]
+│   │       │   ├── challenge-fixture.test.ts [moved]
+│   │       │   └── fixture-shutdown.test.ts [moved]
+│   │       └── identity/ [cleanup folder]
+│   │           ├── identity.integration.test.ts [moved]
+│   │           └── identity.test.ts [moved]
+│   └── mobile/
+│       ├── assets/
+│       │   └── challenges/
+│       │       ├── decoration/ [cleanup folder]
+│       │       │   ├── lower-flourish.png [moved]
+│       │       │   └── paper-texture.png [moved]
+│       │       └── venues/ [cleanup folder]
+│       │           ├── bars-cream.png [moved]
+│       │           ├── bars.png [moved]
+│       │           ├── bookstore-cream.png [moved]
+│       │           ├── bookstore.png [moved]
+│       │           ├── cafe-cream.png [moved]
+│       │           ├── cafe.png [moved]
+│       │           ├── gym-cream.png [moved]
+│       │           ├── gym.png [moved]
+│       │           ├── park-cream.png [moved]
+│       │           ├── park.png [moved]
+│       │           ├── streets-cream.png [moved]
+│       │           └── streets.png [moved]
+│       ├── src/
+│       │   ├── app-support/
+│       │   │   ├── providers/
+│       │   │   │   ├── activity-runtime.test.ts [new in 7.3]
+│       │   │   │   └── activity-runtime.ts [new in 7.3]
+│       │   │   └── saving/ [7.3 folder]
+│       │   │       ├── presentation.ts [new in 7.3]
+│       │   │       ├── SavingFeedback.test.tsx [new in 7.3]
+│       │   │       ├── SavingFeedback.tsx [new in 7.3]
+│       │   │       └── SavingNotice.tsx [new in 7.3]
+│       │   ├── data/
+│       │   │   └── activity/
+│       │   │       ├── persistence/ [cleanup folder]
+│       │   │       │   ├── persistence.ts [moved]
+│       │   │       │   ├── storage.test.ts [moved]
+│       │   │       │   └── storage.ts [moved]
+│       │   │       └── sync/ [cleanup folder]
+│       │   │           ├── delivery.ts [moved]
+│       │   │           ├── retry.ts [moved]
+│       │   │           ├── sender.test.ts [moved]
+│       │   │           ├── sender.ts [moved]
+│       │   │           ├── transport.test.ts [moved]
+│       │   │           └── transport.ts [moved]
+│       │   ├── dev/
+│       │   │   └── previews/
+│       │   │       └── challenges/ [cleanup folder]
+│       │   │           ├── DeckPreview.test.ts [moved]
+│       │   │           ├── DeckPreview.test.tsx [moved]
+│       │   │           ├── DeckPreview.tsx [moved]
+│       │   │           └── preview-copy.ts [moved]
+│       │   ├── features/
+│       │   │   ├── challenges/
+│       │   │   │   ├── active/ [cleanup folder]
+│       │   │   │   │   ├── ActiveChallenge.test.tsx [moved]
+│       │   │   │   │   ├── ActiveChallenge.tsx [moved]
+│       │   │   │   │   ├── ActiveChallengeModal.tsx [new in 7.3, moved]
+│       │   │   │   │   ├── countdown.test.ts [moved]
+│       │   │   │   │   ├── countdown.ts [moved]
+│       │   │   │   │   ├── useActiveChallenge.test.tsx [new in 7.3, moved]
+│       │   │   │   │   └── useActiveChallenge.ts [new in 7.3, moved]
+│       │   │   │   ├── deck/ [cleanup folder]
+│       │   │   │   │   ├── ChallengeDeck.test.tsx [moved]
+│       │   │   │   │   ├── ChallengeDeck.tsx [moved]
+│       │   │   │   │   ├── deck-model.test.ts [moved]
+│       │   │   │   │   ├── deck-model.ts [moved]
+│       │   │   │   │   ├── VenueArt.test.tsx [moved]
+│       │   │   │   │   ├── VenueArt.tsx [moved]
+│       │   │   │   │   ├── VenueTabs.test.tsx [moved]
+│       │   │   │   │   └── VenueTabs.tsx [moved]
+│       │   │   │   └── success/ [cleanup folder]
+│       │   │   │       ├── SuccessScreen.test.tsx [moved]
+│       │   │   │       ├── SuccessScreen.tsx [moved]
+│       │   │   │       ├── SuccessView.test.tsx [moved]
+│       │   │   │       └── SuccessView.tsx [moved]
+│       │   │   └── progress/
+│       │   │       ├── calendar/ [cleanup folder]
+│       │   │       │   ├── ProgressCalendar.tsx [moved]
+│       │   │       │   ├── ProgressSkeleton.test.tsx [moved]
+│       │   │       │   └── ProgressSkeleton.tsx [moved]
+│       │   │       └── day-details/ [cleanup folder]
+│       │   │           ├── DaySheet.test.tsx [moved]
+│       │   │           ├── DaySheet.tsx [moved]
+│       │   │           ├── ProgressEntryRow.test.tsx [moved]
+│       │   │           └── ProgressEntryRow.tsx [moved]
+│       │   ├── lib/
+│       │   │   ├── network/ [cleanup folder]
+│       │   │   │   ├── account-client.test.ts [moved]
+│       │   │   │   ├── account-client.ts [moved]
+│       │   │   │   ├── http-journal.test.ts [moved]
+│       │   │   │   ├── http-methods.test.ts [moved]
+│       │   │   │   └── http.ts [moved]
+│       │   │   ├── useDelayedBusy.test.tsx [new in 7.3]
+│       │   │   └── useDelayedBusy.ts [new in 7.3]
+│       │   └── platform/ [7.3 folder]
+│       │       ├── connectivity/ [cleanup folder]
+│       │       │   ├── connectivity.test.ts [new in 7.3, moved]
+│       │       │   ├── connectivity.ts [new in 7.3, moved]
+│       │       │   ├── connectivity.web.test.ts [new in 7.3, moved]
+│       │       │   └── connectivity.web.ts [new in 7.3, moved]
+│       │       ├── modals/ [cleanup folder]
+│       │       │   ├── useModalIsolation.ts [new in 7.3, moved]
+│       │       │   ├── useModalIsolation.web.test.tsx [new in 7.3, moved]
+│       │       │   └── useModalIsolation.web.ts [new in 7.3, moved]
+│       │       └── toast/ [cleanup folder]
+│       │           ├── Toast.test.tsx [new in 7.3, moved]
+│       │           ├── Toast.tsx [new in 7.3, moved]
+│       │           ├── Toast.web.test.tsx [new in 7.3, moved]
+│       │           └── Toast.web.tsx [new in 7.3, moved]
+│       ├── test-support/
+│       │   ├── challenge-catalog.ts [new in 7.3]
+│       │   └── journey-storage.ts [new in 7.3]
+│       └── metro.config.mjs [new in 7.3]
+├── docs/
+│   ├── architecture/ [cleanup folder]
+│   │   ├── APP_SHELL.md [moved]
+│   │   ├── FOLDER_STRUCTURE.md [new in cleanup]
+│   │   ├── FRONTEND_ARCHITECTURE_LEARNING_MAP.md [moved]
+│   │   ├── IDENTITY.md [moved]
+│   │   └── TECH_STACK.md [moved]
+│   ├── checks/
+│   │   ├── phase-07-3/ [7.3 folder]
+│   │   │   ├── browser/ [cleanup folder]
+│   │   │   │   ├── active-exclusive.jpg [new in 7.3, moved]
+│   │   │   │   ├── active-retained-notice.jpg [new in 7.3, moved]
+│   │   │   │   ├── correction-active.jpg [new in 7.3, moved]
+│   │   │   │   ├── home.jpg [new in 7.3, moved]
+│   │   │   │   ├── recovery-home.jpg [new in 7.3, moved]
+│   │   │   │   ├── transition-browser-home.png [new in 7.3, moved]
+│   │   │   │   ├── warning-reflection.jpg [new in 7.3, moved]
+│   │   │   │   └── warning-sheet.jpg [new in 7.3, moved]
+│   │   │   └── simulator/ [cleanup folder]
+│   │   │       ├── native-active.png [new in 7.3, moved]
+│   │   │       ├── native-home.png [new in 7.3, moved]
+│   │   │       └── native-transition-comparison.png [new in 7.3, moved]
+│   │   ├── project-folder-cleanup/ [cleanup folder]
+│   │   │   ├── browser/ [cleanup folder]
+│   │   │   │   └── day-details.jpg [new in cleanup]
+│   │   │   └── simulator/ [cleanup folder]
+│   │   │       └── home.png [new in cleanup]
+│   │   └── phase-07-3a-browser-testing-assessment.md [new in 7.3]
+│   ├── design/ [cleanup folder]
+│   │   ├── CHALLENGE_FIDELITY.md [moved]
+│   │   └── DESIGN.md [moved]
+│   ├── handoffs/
+│   │   ├── phase-07-3-local-flow.md [new in 7.3]
+│   │   └── project-folder-cleanup.md [new in cleanup]
+│   ├── operations/ [cleanup folder]
+│   │   ├── APPLE_SETUP.md [moved]
+│   │   ├── FOUNDATION.md [moved]
+│   │   ├── SHIPATON_PLAYBOOK.md [moved]
+│   │   └── TESTING.md [moved]
+│   └── product/ [cleanup folder]
+│       ├── CHALLENGES.md [moved]
+│       ├── CURRICULUM.md [moved]
+│       ├── PHASE_04_SCOPE.md [moved]
+│       └── PRD.md [moved]
+├── e2e/
+│   ├── support/ [cleanup folder]
+│   │   ├── activity-entry.ts [moved]
+│   │   ├── environment.ts [moved]
+│   │   └── fixtures.ts [moved]
+│   └── local-flow.spec.ts [new in 7.3]
+├── packages/
+│   └── contracts/
+│       └── src/
+│           ├── activity/ [cleanup folder]
+│           │   ├── attempts.test.ts [moved]
+│           │   ├── attempts.ts [moved]
+│           │   ├── challenges.test.ts [moved]
+│           │   ├── challenges.ts [moved]
+│           │   ├── progress.test.ts [moved]
+│           │   ├── progress.ts [moved]
+│           │   ├── reflections.test.ts [moved]
+│           │   └── reflections.ts [moved]
+│           └── legacy/ [cleanup folder]
+│               ├── legacy-challenges.ts [moved]
+│               ├── legacy-progress.ts [moved]
+│               └── legacy-reflections.ts [moved]
+└── scripts/
+    ├── journeys/ [cleanup folder]
+    │   ├── build-journey-repository.mjs [moved]
+    │   ├── journey-environment.test.mjs [moved]
+    │   ├── journey-metro.test.mjs [new in 7.3, moved]
+    │   └── run-journey.mjs [moved]
+    └── quality/ [cleanup folder]
+        ├── check-coverage.mjs [moved]
+        ├── check-coverage.test.mjs [moved]
+        ├── contract-upload.test.mjs [new in cleanup]
+        ├── coverage-thresholds.json [moved]
+        ├── import-boundaries.mjs [moved]
+        └── import-boundaries.test.mjs [moved]
+```
