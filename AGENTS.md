@@ -67,6 +67,36 @@ handoffs; avoid copying competing versions of these rules into every directory.
   and web exports cannot establish native accessibility, gestures or Keychain
   behavior; record any deferred device checks in the release handoff.
 
+## File placement for new mobile code
+
+- **Choose the owner before creating files.** Identify the product capability or
+  supporting responsibility the code serves, then place it with that owner.
+- **Use `src/features/<name>/` for product capabilities.** Examples: Challenges,
+  Reflections and Progress. Keep each feature's screens, components, hooks, domain
+  logic, API functions and tests together.
+- **Use `src/app-support/` for app-wide coordination.** Providers, startup, access
+  checks, identity, sessions and account recovery belong here. These
+  responsibilities can include their own screens.
+- **Use `src/data/` for shared app data.** Shared persistence, cached activity and
+  synchronization belong here. Feature-specific API functions can stay with their
+  feature.
+- **Use shared directories for reusable building blocks.** `src/components/` owns
+  reusable UI, `src/lib/` owns general infrastructure/helpers, `src/theme/` owns
+  design tokens, and `src/platform/` owns reusable platform adapters. Keep
+  app-specific behavior with its owner.
+- **Keep `src/app/` focused on navigation.** Route files and layouts connect
+  navigation to screens. Put supporting logic, reusable components and tests in
+  their owning directories outside `src/app/`.
+- **Keep developer fixtures in `src/dev/`.** Sample screens, preview data and
+  diagnostics belong here, with development-only access.
+- **Create directories when their purpose exists.** Start with the files needed
+  for implemented behavior. Add subfolders when they contain a cohesive group of
+  related files. Avoid empty folders for future features or automatic
+  `components/hooks/services/utils` layers.
+- **Name folders after their responsibility.** Prefer recognizable product names
+  or concrete supporting jobs. Keep tests and styles beside the code they support,
+  and follow the existing import boundaries when choosing dependencies.
+
 ## Enforced code boundaries
 
 - Use strict TypeScript and shared Zod runtime validation at trust boundaries.
@@ -87,6 +117,11 @@ handoffs; avoid copying competing versions of these rules into every directory.
   deliberate background operation whose failure is already handled; explain
   non-obvious ownership of errors. Do not suppress async warnings or broad lint
   rules to make checks pass.
+- Controllers that can mount before asynchronous hydration must reconcile the
+  current store when connecting as well as subscribe to later changes. Test slow
+  hydration and the construction-to-subscription gap, preserving newer input.
+  Runtime date/time-zone coordination must refresh on account activation,
+  foreground and day boundaries, and cancel/fence callbacks on lifecycle changes.
 
 ## Verification and handoff
 
@@ -111,6 +146,11 @@ handoffs; avoid copying competing versions of these rules into every directory.
   closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
   Follow `docs/TESTING.md` for coverage commands and regression thresholds.
   Keep earlier physical-device/staging gates open until evidenced.
+- Before publication, run fresh online Expo validation through `npm run check`
+  and rerun `npm run doctor -w @justgo/mobile` immediately before pushing.
+  Installed versions are pinned by the lockfile; Expo's recommended SDK patch
+  metadata can change independently. Keep dependency validation enabled and
+  preserve native-build/device acceptance when dependency versions change.
 - When changing CI, verify each command's prerequisites without relying on ignored
   `.env` files or existing local artifacts. Reuse common test configuration across
   related steps. Inspect hosted checks for the pushed commit before marking a new

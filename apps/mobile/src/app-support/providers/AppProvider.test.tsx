@@ -1,3 +1,4 @@
+import { listenToConnectivity } from '../../platform/connectivity';
 import { useEffect } from 'react';
 import {
   act,
@@ -19,6 +20,7 @@ import {
   AppProvider,
   createAppRuntime,
   useAccess,
+  useActivityState,
   useIdentity,
   useRuntime,
 } from './AppProvider';
@@ -34,6 +36,16 @@ jest.mock('expo-crypto', () => {
     },
   };
 });
+jest.mock('../../platform/connectivity', () => ({
+  listenToConnectivity: jest.fn(() => () => {}),
+}));
+jest.mock('../../data/activity/storage', () => ({
+  asyncStorageJournalStorage: {
+    getItem: async () => null,
+    setItem: async () => {},
+    removeItem: async () => {},
+  },
+}));
 jest.mock('../identity/vault', () => ({ createVault: jest.fn() }));
 const id = (value: number) =>
   `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`;
@@ -57,12 +69,21 @@ function Probe() {
   }, [currentRuntime]);
   const identity = useIdentity();
   const access = useAccess();
+  const activity = useActivityState();
   return (
     <>
       <Text>{identity.initialized ? 'initialized' : 'starting'}</Text>
       <Text>{identity.account?.userId ?? 'disconnected'}</Text>
       <Text>{access.verified ? 'access verified' : 'access closed'}</Text>
       <Text>{identity.message}</Text>
+      <Text>
+        {activity.repository
+          ? `Activity owner: ${activity.repository.accountId}`
+          : 'activity disconnected'}
+      </Text>
+      <Text>
+        {activity.state?.online ? 'activity online' : 'activity offline'}
+      </Text>
     </>
   );
 }
@@ -161,6 +182,7 @@ it('keeps unavailable storage disconnected without bootstrapping or checking acc
   const screen = await mount();
   expect(screen.getByText('disconnected')).toBeTruthy();
   expect(screen.getByText('access closed')).toBeTruthy();
+  expect(screen.getByText('activity disconnected')).toBeTruthy();
   expect(screen.getByText(/Secure storage is unavailable/)).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();
 });
@@ -183,10 +205,9 @@ it('clears queries, mutations and challenge state synchronously on account loss 
   ).toBeUndefined();
   expect(runtime.client.queries.getMutationCache().getAll()).toHaveLength(0);
   expect(runtime.challenges.getSnapshot()).toMatchObject({
-    state: null,
     queues: {},
     success: null,
-    pending: null,
+    saving: false,
   });
   expect(consent).toHaveBeenCalledWith('unknown');
 
@@ -334,6 +355,48 @@ it.each(['unpaid', 'unavailable'] as const)(
     await waitFor(() => expect(screen.getByText('access closed')).toBeTruthy());
   },
 );
+
+it('forwards connectivity to the active repository and refreshes only after reconnection', async () => {
+  const screen = await mount();
+  const repo = runtime.activity.getRepository()!;
+  expect(repo.accountId).toBe(userId);
+  const listener = jest.mocked(listenToConnectivity).mock.calls.at(-1)![0];
+  const refresh = jest.spyOn(runtime.challenges, 'refresh').mockResolvedValue();
+  act(() => listener(false));
+  expect(repo.store.getState().online).toBe(false);
+  expect(screen.getByText('activity offline')).toBeTruthy();
+  expect(refresh).not.toHaveBeenCalled();
+  act(() => listener(true));
+  expect(repo.store.getState().online).toBe(true);
+  expect(screen.getByText('activity online')).toBeTruthy();
+  expect(refresh).toHaveBeenCalledTimes(1);
+  act(() => onAppState('background'));
+  expect(repo.store.getState().active).toBe(false);
+  screen.unmount();
+  expect(runtime.activity.getRepository()).toBeNull();
+});
+
+it('restores a session while backgrounded without activating uploads until foreground return', async () => {
+  const previous = AppState.currentState;
+  AppState.currentState = 'background';
+  try {
+    const screen = await mount();
+    await waitFor(() =>
+      expect(screen.getByText('access verified')).toBeTruthy(),
+    );
+    expect(runtime.activity.getRepository()?.store.getState().active).toBe(
+      false,
+    );
+    await act(async () => onAppState('active'));
+    await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
+    expect(runtime.activity.getRepository()?.store.getState().active).toBe(
+      true,
+    );
+    expect(screen.getByText('access verified')).toBeTruthy();
+  } finally {
+    AppState.currentState = previous;
+  }
+});
 
 it('requires a provider for runtime consumers', () => {
   expect(() => renderHook(() => useRuntime())).toThrow(

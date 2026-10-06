@@ -1,3 +1,6 @@
+jest.mock('../../app-support/saving/SavingFeedback', () => ({
+  SavingSheetSurface: () => null,
+}));
 import {
   act,
   cleanup,

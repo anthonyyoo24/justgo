@@ -116,11 +116,9 @@ const emptyMonth: ProgressResponse = {
 };
 // Presentation fixtures only. No API, account impersonation, or entitlement override.
 export function ScreenPreview({
-  simulateSkipFailure = false,
   progressState = 'default',
   progressDayState = 'default',
 }: {
-  simulateSkipFailure?: boolean;
   progressState?: 'default' | 'empty' | 'error' | 'loading';
   progressDayState?:
     'default' | 'initial-error' | 'load-more-error' | 'loading-more';
@@ -140,8 +138,6 @@ export function ScreenPreview({
   const [reflection, setReflection] = useState('');
   const [dismissOpen, setDismissOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'skip' | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -159,8 +155,6 @@ export function ScreenPreview({
       setReflection('');
       setDismissOpen(false);
       setSubmitting(false);
-      setPendingAction(null);
-      setError(null);
     };
     return (
       <ReflectionView
@@ -169,6 +163,10 @@ export function ScreenPreview({
         onFeelingChange={setFeeling}
         onTextChange={setReflection}
         onSubmit={() => {
+          if (!feeling && !reflection.trim()) {
+            done();
+            return;
+          }
           setSubmitting(true);
           submitTimer.current = setTimeout(() => {
             submitTimer.current = null;
@@ -180,17 +178,9 @@ export function ScreenPreview({
         }
         dismissOpen={dismissOpen}
         busy={submitting}
-        locked={pendingAction !== null}
-        pendingAction={pendingAction}
-        error={error}
+        savingVisible={submitting}
         onKeepEditing={() => setDismissOpen(false)}
-        onDiscard={() => {
-          if (simulateSkipFailure) {
-            setDismissOpen(false);
-            setPendingAction('skip');
-            setError('Couldn’t skip. Retry to leave safely.');
-          } else done();
-        }}
+        onDiscard={done}
       />
     );
   }

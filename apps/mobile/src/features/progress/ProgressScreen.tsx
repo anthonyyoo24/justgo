@@ -11,6 +11,7 @@ import {
   useIdentity,
   useRuntime,
 } from '../../app-support/providers/AppProvider';
+import { SavingSheetSurface } from '../../app-support/saving/SavingFeedback';
 import { currentMonth, moveMonth } from './calendar';
 import { ProgressView } from './ProgressView';
 
@@ -71,6 +72,11 @@ export function ProgressScreen() {
     : undefined;
   return (
     <ProgressView
+      sheetAccessory={
+        selectedDate ? (
+          <SavingSheetSurface onLeave={() => setSelectedDate(null)} />
+        ) : undefined
+      }
       month={summary.data?.month ?? month}
       data={summary.data}
       loading={summary.isPending}

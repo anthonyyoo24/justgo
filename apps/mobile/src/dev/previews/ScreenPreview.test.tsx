@@ -124,47 +124,32 @@ it.each([
   }
 });
 
-it('previews Success then optional Reflection without saving activity', () => {
+it('previews Success then empty Skip immediately without saving activity', () => {
+  const screen = render(<ScreenPreview />);
+  fireEvent.press(screen.getByRole('button', { name: 'Complete preview' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
+  expect(screen.getByText('Find a challenge')).toBeTruthy();
+});
+it('previews a slow local submission and local discard', () => {
   jest.useFakeTimers();
   const screen = render(<ScreenPreview />);
   fireEvent.press(screen.getByRole('button', { name: 'Complete preview' }));
-  expect(screen.getByText('That’s a win!')).toBeTruthy();
-  expect(
-    screen.queryByText('SCREEN PREVIEW · No activity is saved'),
-  ).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  expect(screen.getByText('How do you feel?')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
-  expect(screen.queryByText('Skip')).toBeNull();
-  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+  fireEvent.changeText(screen.getByLabelText('Your reflection'), 'Writing');
+  fireEvent.press(screen.getByRole('button', { name: 'Close reflection' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
   expect(
-    screen.getByRole('button', { name: 'Skipping reflection' }),
+    screen.getByRole('button', { name: 'Saving reflection' }),
   ).toBeDisabled();
   act(() => jest.advanceTimersByTime(1200));
   expect(screen.getByText('Find a challenge')).toBeTruthy();
-  expect(
-    screen.getByText('SCREEN PREVIEW · No activity is saved'),
-  ).toBeTruthy();
-  jest.useRealTimers();
-});
-
-it('previews a failed discard and labels its retry as a skip', () => {
-  jest.useFakeTimers();
-  const screen = render(<ScreenPreview simulateSkipFailure />);
   fireEvent.press(screen.getByRole('button', { name: 'Complete preview' }));
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  fireEvent.changeText(screen.getByLabelText('Your reflection'), 'My draft');
+  fireEvent.changeText(screen.getByLabelText('Your reflection'), 'Unsent');
   fireEvent.press(screen.getByRole('button', { name: 'Close reflection' }));
   fireEvent.press(screen.getByRole('button', { name: 'Discard and skip' }));
-
-  expect(screen.getByRole('button', { name: 'Retry Skip' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Save Reflection' })).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Retry Skip' }));
-  expect(
-    screen.getByRole('button', { name: 'Skipping reflection' }),
-  ).toBeDisabled();
-  act(() => jest.advanceTimersByTime(1200));
   expect(screen.getByText('Find a challenge')).toBeTruthy();
   jest.useRealTimers();
 });

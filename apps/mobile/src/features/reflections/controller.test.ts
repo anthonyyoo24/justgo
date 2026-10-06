@@ -1,261 +1,295 @@
-import type { AccountClient } from '../../lib/account-client';
-import { ApiError } from '../../lib/http';
 import { ReflectionController } from './controller';
-
-const attemptId = '00000000-0000-4000-8000-000000000001';
-const record = (overrides: Record<string, unknown> = {}) => ({
-  attemptId,
-  revision: 0,
-  status: 'none',
-  feelingVersion: 1,
-  feeling: null,
-  text: null,
-  inputMethod: null,
-  updatedAt: null,
-  ...overrides,
-});
-const make = (request: jest.Mock, fresh = false) => {
-  const finished = jest.fn();
-  let next = 1;
-  const controller = new ReflectionController(
-    { request } as unknown as Pick<AccountClient, 'request'>,
-    attemptId,
-    finished,
-    {
-      id: () => `00000000-0000-4000-8000-${String(next++).padStart(12, '0')}`,
-      fresh,
-    },
-  );
-  return { controller, finished };
-};
-
-it('starts a newly completed reflection ready without a GET', async () => {
-  const request = jest
-    .fn()
-    .mockResolvedValueOnce(
-      record({ revision: 1, status: 'submitted', feeling: 'a_little_better' }),
-    );
-  const { controller, finished } = make(request, true);
-  expect(controller.getSnapshot().phase).toBe('ready');
-  expect(request).not.toHaveBeenCalled();
-
-  controller.setFeeling('a_little_better');
-  await controller.submit();
-
-  expect(request).toHaveBeenCalledTimes(1);
-  expect(request).toHaveBeenCalledWith(
-    `/v1/reflections/${attemptId}/final`,
-    expect.anything(),
-    {
-      body: expect.objectContaining({
-        expectedRevision: 0,
-        feeling: 'a_little_better',
-      }),
-      signal: expect.anything(),
-    },
-  );
-  expect(finished).toHaveBeenCalledTimes(1);
-  controller.dispose();
-});
-
-it('detects a conflicting draft even when a fresh form skipped the initial GET', async () => {
-  const request = jest
-    .fn()
-    .mockRejectedValueOnce(new ApiError('CONFLICT'))
-    .mockResolvedValueOnce(
-      record({ revision: 2, status: 'draft', text: 'Saved elsewhere' }),
-    );
-  const { controller } = make(request, true);
-  controller.setText('My new note');
-
-  await controller.submit();
-  expect(controller.getSnapshot()).toMatchObject({
-    conflict: true,
-    text: 'My new note',
+import { AccountRepository } from '../../data/activity/repository';
+import { ApiError } from '../../lib/http';
+import {
+  MemoryStorage,
+  backend,
+  card,
+  input,
+  deferred,
+  owner,
+  today,
+  uuid,
+  zone,
+} from '../../../test-support/journal';
+let repository: AccountRepository;
+let controller: ReflectionController;
+let storage: MemoryStorage;
+let finished: jest.Mock;
+let current: boolean;
+let transport: ReturnType<typeof backend>;
+beforeEach(async () => {
+  storage = new MemoryStorage();
+  transport = backend();
+  repository = new AccountRepository({
+    accountId: owner,
+    storage,
+    transport,
+    today,
+    timeZone: zone,
   });
-  await controller.useLatest();
+  repository.setEnvironment({ active: true, online: false });
+  await repository.complete(input(), card);
+  finished = jest.fn();
+  current = true;
+  controller = new ReflectionController(repository, uuid(1), finished, {
+    id: () => uuid(2),
+    isCurrent: () => current,
+  });
+  controller.connect();
+});
+afterEach(() => {
+  controller.dispose();
+  repository.dispose();
+});
+it.each([false, true])(
+  'opens an editable reflection when delayed hydration supplies the attempt (saved reflection: %s)',
+  async (editing) => {
+    if (editing)
+      await repository.submitReflection(uuid(1), uuid(8), {
+        feeling: 'a_lot_better',
+        text: 'Retained writing',
+      });
+    const raw = storage.values.get(`justgo:v1:${owner}:journal`)!;
+    controller.dispose();
+    repository.dispose();
+    const read = deferred<string | null>();
+    jest.spyOn(storage, 'getItem').mockImplementationOnce(() => read.promise);
+    repository = new AccountRepository({
+      accountId: owner,
+      storage,
+      transport,
+      today,
+      timeZone: zone,
+    });
+    repository.setEnvironment({ active: true, online: false });
+    const hydration = repository.hydrate();
+    controller = new ReflectionController(repository, uuid(1), finished, {
+      id: () => uuid(9),
+    });
+    controller.connect();
+    expect(controller.getSnapshot().phase).toBe('missing');
+    read.resolve(raw);
+    await hydration;
+    expect(controller.getSnapshot()).toMatchObject({
+      phase: 'ready',
+      editing,
+      text: editing ? 'Retained writing' : '',
+      feeling: editing ? 'a_lot_better' : null,
+    });
+    controller.setText('New explicit submission');
+    await controller.submit();
+    expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+      'New explicit submission',
+    );
+    expect(finished).toHaveBeenCalledTimes(1);
+  },
+);
+
+it('reconciles hydration completed between construction and subscription, including rejected writing', async () => {
+  await repository.submitReflection(uuid(1), uuid(8), {
+    text: 'Rejected writing',
+  });
+  const journal = structuredClone(repository.store.getState().journal);
+  const patch = journal.operations.find(
+    (operation) => operation.kind === 'patch',
+  )!;
+  patch.state = 'rejected';
+  patch.code = 'INVALID_REQUEST';
+  storage.values.set(`justgo:v1:${owner}:journal`, JSON.stringify(journal));
+  controller.dispose();
+  repository.dispose();
+  repository = new AccountRepository({
+    accountId: owner,
+    storage,
+    transport,
+    today,
+    timeZone: zone,
+  });
+  repository.setEnvironment({ active: true, online: false });
+  controller = new ReflectionController(repository, uuid(1), finished);
+  expect(controller.getSnapshot().phase).toBe('missing');
+  await repository.hydrate();
+  controller.connect();
   expect(controller.getSnapshot()).toMatchObject({
     phase: 'ready',
-    conflict: false,
-    revision: 2,
-    text: 'Saved elsewhere',
+    text: 'Rejected writing',
+    editing: true,
   });
-  controller.dispose();
-});
-
-it('skips an empty reflection without inventing a neutral feeling', async () => {
-  const request = jest
-    .fn()
-    .mockResolvedValueOnce(record())
-    .mockResolvedValueOnce(record({ revision: 1, status: 'skipped' }));
-  const { controller, finished } = make(request);
-  await controller.load();
-  expect(controller.getSnapshot().feeling).toBeNull();
+  expect(controller.getSnapshot().error).toMatch(/wasn’t accepted/);
   await controller.submit();
-  expect(request).toHaveBeenLastCalledWith(
-    `/v1/reflections/${attemptId}/skip`,
-    expect.anything(),
-    {
-      body: { actionId: expect.any(String), expectedRevision: 0 },
-      signal: expect.anything(),
-    },
-  );
-  expect(finished).toHaveBeenCalledTimes(1);
-  controller.dispose();
-});
-
-it('saves text alone and retries an uncertain final write with the same action', async () => {
-  const request = jest
-    .fn()
-    .mockResolvedValueOnce(record())
-    .mockRejectedValueOnce(new ApiError('NETWORK'))
-    .mockResolvedValueOnce(
-      record({ revision: 1, status: 'submitted', text: 'I tried.' }),
-    );
-  const { controller, finished } = make(request);
-  await controller.load();
-  controller.setText('I tried.');
-  await controller.submit();
-  expect(controller.getSnapshot().text).toBe('I tried.');
-  expect(controller.getSnapshot().pendingAction).toBe('final');
+  expect(controller.getSnapshot().error).toMatch(/unchanged submission/);
   expect(finished).not.toHaveBeenCalled();
-  await controller.submit();
-  const first = request.mock.calls[1][2].body;
-  const second = request.mock.calls[2][2].body;
-  expect(first).toEqual(second);
-  expect(first.feeling).toBeNull();
-  expect(first.text).toBe('I tried.');
-  expect(finished).toHaveBeenCalledTimes(1);
-  controller.dispose();
 });
-
-it('keeps a failed discard-and-skip retry identified as a skip', async () => {
-  const request = jest
-    .fn()
-    .mockResolvedValueOnce(record())
-    .mockRejectedValueOnce(new ApiError('NETWORK'))
-    .mockResolvedValueOnce(record({ revision: 1, status: 'skipped' }));
-  const { controller, finished } = make(request);
-  await controller.load();
-  controller.setText('An unfinished note');
-
-  await controller.discard();
-  expect(controller.getSnapshot()).toMatchObject({
-    text: 'An unfinished note',
-    pendingAction: 'skip',
-    error: 'Couldn’t skip. Retry to leave safely.',
-  });
-  expect(finished).not.toHaveBeenCalled();
-
+it('keeps typing private and skips an empty reflection exactly once', async () => {
+  controller.setText('  ');
   await controller.submit();
-  expect(request.mock.calls[1][0]).toBe(`/v1/reflections/${attemptId}/skip`);
-  expect(request.mock.calls[2][0]).toBe(`/v1/reflections/${attemptId}/skip`);
-  expect(request.mock.calls[2][2].body).toEqual(request.mock.calls[1][2].body);
-  expect(controller.getSnapshot()).toMatchObject({
-    pendingAction: 'skip',
-    saving: true,
-  });
+  await controller.submit();
   expect(finished).toHaveBeenCalledTimes(1);
-  controller.dispose();
+  expect(repository.store.getState().journal.operations).toHaveLength(1);
 });
-
-it('uses the confirmed draft revision when submitting a feeling', async () => {
-  const request = jest
-    .fn()
-    .mockResolvedValueOnce(record())
-    .mockResolvedValueOnce(
-      record({ revision: 1, status: 'draft', feeling: 'a_little_better' }),
-    )
-    .mockResolvedValueOnce(
-      record({ revision: 2, status: 'submitted', feeling: 'a_little_better' }),
-    );
-  const { controller, finished } = make(request);
-  await controller.load();
+it('saves text with its whitespace and feeling only on explicit submission', async () => {
   controller.setFeeling('a_little_better');
-  await controller.retryDraft();
+  controller.setText(' I tried. ');
+  expect(repository.getAttempt(uuid(1))?.reflection).toBeNull();
   await controller.submit();
-  expect(request.mock.calls[2][2].body).toMatchObject({
-    expectedRevision: 1,
+  expect(repository.getAttempt(uuid(1))?.reflection).toMatchObject({
     feeling: 'a_little_better',
-    text: null,
+    text: ' I tried. ',
   });
   expect(finished).toHaveBeenCalledTimes(1);
-  controller.dispose();
 });
-
-it('clears an autosaved feeling and can skip when the form is empty again', async () => {
-  const request = jest
-    .fn()
-    .mockResolvedValueOnce(record())
-    .mockResolvedValueOnce(
-      record({ revision: 1, status: 'draft', feeling: 'a_little_better' }),
-    )
-    .mockResolvedValueOnce(record({ revision: 2, status: 'draft' }))
-    .mockResolvedValueOnce(record({ revision: 3, status: 'skipped' }));
-  const { controller, finished } = make(request);
-  await controller.load();
-  controller.setFeeling('a_little_better');
-  await controller.retryDraft();
-  controller.setFeeling(null);
-  await controller.retryDraft();
-  expect(request.mock.calls[2][2].body).toMatchObject({
-    expectedRevision: 1,
-    feeling: null,
-    text: null,
-  });
-  expect(controller.getSnapshot().feeling).toBeNull();
+it('offers keep editing, discard or save on dirty close without submitting a draft', async () => {
+  controller.setText('Writing');
+  controller.close();
+  expect(controller.getSnapshot().dismissOpen).toBe(true);
+  controller.keepEditing();
+  expect(controller.getSnapshot().dismissOpen).toBe(false);
+  controller.close();
+  controller.discard();
+  expect(finished).toHaveBeenCalledTimes(1);
+  expect(repository.getAttempt(uuid(1))?.reflection).toBeNull();
+});
+it('clean close does not write and a disposed or missing editor cannot submit', async () => {
+  controller.close();
+  expect(finished).toHaveBeenCalledTimes(1);
+  controller.dispose();
   await controller.submit();
-  expect(request.mock.calls[3][0]).toBe(`/v1/reflections/${attemptId}/skip`);
-  expect(request.mock.calls[3][2].body.expectedRevision).toBe(2);
+  controller = new ReflectionController(repository, uuid(99), finished);
+  controller.setFeeling('a_lot_better');
+  controller.setText('missing');
+  await controller.submit();
+  expect(controller.getSnapshot().phase).toBe('missing');
   expect(finished).toHaveBeenCalledTimes(1);
-  controller.dispose();
 });
-
-it('keeps a draft failure visible through retry until the draft is saved', async () => {
-  let finishRetry: ((response: ReturnType<typeof record>) => void) | undefined;
-  const request = jest
-    .fn()
-    .mockResolvedValueOnce(record())
-    .mockRejectedValueOnce(new ApiError('NETWORK'))
-    .mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          finishRetry = resolve;
-        }),
-    );
-  const { controller } = make(request);
-  await controller.load();
-  controller.setText('I showed up.');
-  await controller.retryDraft();
-  expect(controller.getSnapshot().draftError).toBe(true);
-  const retry = controller.retryDraft();
-  expect(controller.getSnapshot().draftError).toBe(true);
-  finishRetry?.(record({ revision: 1, status: 'draft', text: 'I showed up.' }));
-  await retry;
-  expect(controller.getSnapshot().draftError).toBe(false);
-  controller.dispose();
+it('coalesces dirty-close saves and preserves text typed during a slow write', async () => {
+  controller.setText('First');
+  controller.close();
+  const block = deferred<void>();
+  storage.blocked = block;
+  const first = controller.submit();
+  expect(controller.submit()).toBe(first);
+  controller.close();
+  controller.discard();
+  controller.setFeeling('a_lot_better');
+  controller.setText('Newer');
+  block.resolve();
+  await first;
+  expect(finished).not.toHaveBeenCalled();
+  expect(controller.getSnapshot()).toMatchObject({
+    text: 'Newer',
+    editing: true,
+    submitting: false,
+    dismissOpen: false,
+  });
+  expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe('First');
 });
-
-it('keeps local edits after a conflicting draft and requires an explicit resolution', async () => {
-  jest.useFakeTimers();
-  const request = jest
-    .fn()
-    .mockResolvedValueOnce(record())
-    .mockRejectedValueOnce(new ApiError('CONFLICT'))
-    .mockResolvedValueOnce(
-      record({ revision: 2, status: 'draft', text: 'Other device' }),
-    );
-  const { controller } = make(request);
-  await controller.load();
-  controller.setText('My local words');
-  jest.advanceTimersByTime(700);
-  await Promise.resolve();
-  await Promise.resolve();
-  expect(controller.getSnapshot().text).toBe('My local words');
-  expect(controller.getSnapshot().conflict).toBe(true);
-  await controller.useLatest();
-  expect(controller.getSnapshot().text).toBe('Other device');
-  expect(controller.getSnapshot().revision).toBe(2);
+it.each(['account change', 'unmount'])(
+  'fences late reflection navigation after %s',
+  async (boundary) => {
+    controller.setText('First');
+    const block = deferred<void>();
+    storage.blocked = block;
+    const work = controller.submit();
+    if (boundary === 'account change') current = false;
+    else controller.dispose();
+    block.resolve();
+    await work;
+    expect(finished).not.toHaveBeenCalled();
+  },
+);
+it('validates length and empty edits without losing the input', async () => {
+  controller.setText('x'.repeat(10001));
+  await controller.submit();
+  expect(controller.getSnapshot().error).toMatch(/10,000/);
+  expect(controller.getSnapshot().text).toHaveLength(10001);
+  await repository.submitReflection(uuid(1), uuid(8), { text: 'Saved' });
   controller.dispose();
-  jest.useRealTimers();
+  controller = new ReflectionController(repository, uuid(1), finished, {
+    id: () => uuid(9),
+  });
+  controller.setFeeling('a_lot_better');
+  expect(controller.getSnapshot().feeling).toBeNull();
+  controller.setText('');
+  await controller.submit();
+  expect(controller.getSnapshot().error).toMatch(/Add some text/);
+});
+it('edits text while preserving saved feelings, and adopts remote recovery only in an untouched editor', async () => {
+  await repository.submitReflection(uuid(1), uuid(8), {
+    feeling: 'a_lot_better',
+    text: 'Saved',
+  });
+  expect(controller.getSnapshot()).toMatchObject({
+    feeling: 'a_lot_better',
+    text: 'Saved',
+    editing: true,
+  });
+  controller.setText('Unsent');
+  await repository.submitReflection(uuid(1), uuid(9), { text: 'Remote' });
+  expect(controller.getSnapshot().text).toBe('Unsent');
+  await controller.submit();
+  expect(repository.getAttempt(uuid(1))?.reflection).toMatchObject({
+    text: 'Unsent',
+    feeling: 'a_lot_better',
+  });
+});
+it('retains input after a refused submission and allows a corrected retry', async () => {
+  const submit = jest
+    .spyOn(repository, 'submitReflection')
+    .mockRejectedValueOnce(new Error('refused'));
+  controller.setText('Retained');
+  await controller.submit();
+  expect(controller.getSnapshot()).toMatchObject({
+    text: 'Retained',
+    submitting: false,
+  });
+  expect(controller.getSnapshot().error).toBeTruthy();
+  await controller.submit();
+  expect(submit).toHaveBeenCalledTimes(2);
+  expect(finished).toHaveBeenCalledTimes(1);
+});
+it('retains rejected writing, refuses unchanged Save, and submits a changed correction through the repository', async () => {
+  const patch = jest
+    .spyOn(transport, 'patch')
+    .mockRejectedValueOnce(
+      new ApiError('INVALID_REQUEST', 'fixture-reference'),
+    );
+  controller.setFeeling('a_lot_better');
+  controller.setText('Rejected writing');
+  await controller.submit();
+  repository.setEnvironment({ active: true, online: true });
+  await repository.synchronize();
+  expect(
+    repository.store
+      .getState()
+      .journal.operations.some(
+        (op) => op.kind === 'patch' && op.state === 'rejected',
+      ),
+  ).toBe(true);
+  controller.dispose();
+  finished.mockClear();
+  controller = new ReflectionController(repository, uuid(1), finished, {
+    id: () => uuid(3),
+  });
+  controller.connect();
+  expect(controller.getSnapshot()).toMatchObject({
+    text: 'Rejected writing',
+    feeling: 'a_lot_better',
+  });
+  expect(controller.getSnapshot().error).toMatch(/wasn’t accepted/);
+  const submit = jest.spyOn(repository, 'submitReflection');
+  await controller.submit();
+  expect(submit).not.toHaveBeenCalled();
+  expect(finished).not.toHaveBeenCalled();
+  expect(controller.getSnapshot().error).toMatch(/unchanged submission/);
+  controller.setText('Corrected writing');
+  await controller.submit();
+  await repository.synchronize();
+  expect(finished).toHaveBeenCalledTimes(1);
+  expect(patch).toHaveBeenCalledTimes(2);
+  expect(transport.records.get(uuid(1))?.reflection).toMatchObject({
+    text: 'Corrected writing',
+    feeling: 'a_lot_better',
+    revision: 1,
+  });
 });

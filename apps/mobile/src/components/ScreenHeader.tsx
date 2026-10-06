@@ -6,9 +6,11 @@ import { colors, fontFamilies } from '../theme/tokens';
 export function ScreenHeader({
   title,
   scale,
+  showSettings = true,
 }: {
   title: string;
   scale: number;
+  showSettings?: boolean;
 }) {
   return (
     <View style={styles.header}>
@@ -19,43 +21,47 @@ export function ScreenHeader({
       >
         {title}
       </Text>
-      <Link href="/settings" asChild>
-        <Pressable
-          style={styles.profile}
-          accessibilityRole="link"
-          accessibilityLabel="Open Settings"
-        >
-          <Svg
-            width={22 * scale}
-            height={22 * scale}
-            viewBox="0 0 24 24"
-            aria-hidden
+      {showSettings ? (
+        <Link href="/settings" asChild>
+          <Pressable
+            style={styles.profile}
+            accessibilityRole="link"
+            accessibilityLabel="Open Settings"
           >
-            <Circle
-              cx="12"
-              cy="12"
-              r="10"
-              fill="none"
-              stroke={colors.ink}
-              strokeWidth={0.9}
-            />
-            <Circle
-              cx="12"
-              cy="9"
-              r="3.5"
-              fill="none"
-              stroke={colors.ink}
-              strokeWidth={0.9}
-            />
-            <Path
-              d="M5.4 19.4C5.7 11.2 18.3 11.2 18.6 19.4"
-              fill="none"
-              stroke={colors.ink}
-              strokeWidth={0.9}
-            />
-          </Svg>
-        </Pressable>
-      </Link>
+            <Svg
+              width={22 * scale}
+              height={22 * scale}
+              viewBox="0 0 24 24"
+              aria-hidden
+            >
+              <Circle
+                cx="12"
+                cy="12"
+                r="10"
+                fill="none"
+                stroke={colors.ink}
+                strokeWidth={0.9}
+              />
+              <Circle
+                cx="12"
+                cy="9"
+                r="3.5"
+                fill="none"
+                stroke={colors.ink}
+                strokeWidth={0.9}
+              />
+              <Path
+                d="M5.4 19.4C5.7 11.2 18.3 11.2 18.6 19.4"
+                fill="none"
+                stroke={colors.ink}
+                strokeWidth={0.9}
+              />
+            </Svg>
+          </Pressable>
+        </Link>
+      ) : (
+        <View style={styles.slot} />
+      )}
     </View>
   );
 }

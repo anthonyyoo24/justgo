@@ -1,5 +1,32 @@
 # Implementation handoffs
 
+**October 6 PR #16 review fixes:** Anthony authorized assessment, necessary fixes
+and their push. The [07.3 review follow-up](phase-07-3-local-flow.md#october-6-pr-16-review-follow-up)
+accounts for all seven feedback items: period/lifecycle refresh, reflection hydration,
+unfinished-challenge documentation, native CI wording, journey README and fake-timer
+teardown, with the inconclusive docstring advisory assessed separately. Ten
+regression cases were added; seven reproduced the two bugs before the fixes.
+Fresh checks pass: 568 workspace cases, 61 database/migration cases, coverage,
+16 saved journeys, both exports and the 390 × 844 side-panel reflection walkthrough. The earlier Expo
+fix at `fd3ac78` passed both hosted runs. Native/owner acceptance remains open;
+current review-fix hosted results must be checked after its authorized push.
+
+**October 6 PR #16 CI follow-up:** The two checks failed on the same live Expo
+patch-version validation after tests/coverage/journeys/exports passed. The
+[07.3 follow-up](phase-07-3-local-flow.md#october-6-pr-16-expo-dependency-validation-fix)
+records the four exact pin updates, fresh early validation and command regressions.
+Fresh local verification passes: 558 workspace tests, 61 database/migration cases,
+coverage, both exports, 21 Doctor checks and 16 saved journeys. The authorized push
+at `fd3ac78` passed both hosted runs; native acceptance remains open.
+
+**October 6 native testing migration plan:** Anthony requested scheduling [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) after reviewed/finished 07.3 and before 07.4. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) inventories browser-only files (including modal isolation), responsibilities to migrate and native/shared code to retain. Keep existing browser coverage until native replacements and hosted CI pass. The phase has not started; its handoff filename is reserved below. Existing work was committed first at `25e2f8c`; the three PNG screenshots remain local and uncommitted.
+
+**October 6 saving-spinner follow-up:** Existing unstaged work was checkpointed locally at `1048372` before Anthony's requested UI change. Completed, Save Reflection and dialog Save Reflection now replace their contents with a centered circular loader after the existing 200 ms delay. [Follow-up evidence](phase-07-3-local-flow.md#october-6-centered-saving-spinner-follow-up) records 346 mobile tests, the coverage gate, repository checks, the affected saved slow-write journey and side-panel layout proof. This follow-up is committed locally at `25e2f8c`, excluding PNG screenshots; native acceptance and Git publication permissions remain open.
+
+**October 6 native flicker investigation:** [Recorded native evidence](phase-07-3-local-flow.md#october-6-native-completion-flicker-investigation) reproduces Home flashing before Success on first and repeated completions. The active modal now retains the underlying navigation hierarchy while staying opaque/exclusive. Three updated recordings show no separate Home frame; brief mixed samples and native safe-area acceptance remain open. Changes remain local.
+
+**October 6 current checkpoint:** The original local 07.3 implementation is committed as `7a74a90`. Anthony approved React-owned unfinished challenge state, a derived one-second countdown, and an exclusive active view without Settings or tabs. The [07.3 handoff](phase-07-3-local-flow.md#october-6-owner-approved-active-flow-refinement) records the follow-up and fresh evidence. The later owner simulator request reused the QA device, removed 19 others and installed an updated EAS binary; [native launch/active-view smoke evidence](phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup) is recorded and Home/API/Metro remain open for owner testing. Full native acceptance and publication permissions remain open.
+
 **October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. After authorizing commits and publication, the owner lifted the PR hold; [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) is open for review. Merge approval remains pending. Hosted checks passed at `af2431f` after the earlier GitHub runner acquisition failure; later review fixes require their own hosted result.
 
 **October 5 owner follow-up:** Remove the unused mobile Foundation connection screen
@@ -122,15 +149,16 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is implemented and open for review in [PR #15](https://github.com/anthonyyoo24/justgo/pull/15), with native durability evidence open; its shared saving/synchronization code lives under `apps/mobile/src/data/activity/`. Later filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with native durability evidence open. 07.3 is implemented/verified locally on `codex/phase-07.3-local-flow`, with native acceptance and Git publication open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A/07.4/07.5 filenames remain reserved outputs.
 
 | Subphase                                         | Depends on | Handoff filename                                       |
 | ------------------------------------------------ | ---------- | ------------------------------------------------------ |
 | 07.1A — API and data foundation                  | 06A        | [phase-07-1-api-data.md](phase-07-1-api-data.md)       |
 | 07.1B — Saved app/API journey and CI             | 07.1A      | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md) |
 | 07.2 — Durable local saving and synchronization  | 07.1       | [phase-07-2-local-sync.md](phase-07-2-local-sync.md)   |
-| 07.3 — Local challenge and reflection experience | 07.2       | `phase-07-3-local-flow.md`                             |
-| 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`                       |
+| 07.3 — Local challenge and reflection experience | 07.2       | [phase-07-3-local-flow.md](phase-07-3-local-flow.md)   |
+| 07.3A — iOS simulator testing migration          | 07.3       | `phase-07-3a-native-testing.md`                        |
+| 07.4 — Progress and history integration          | 07.3A      | `phase-07-4-progress-history.md`                       |
 | 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md`                     |
 
-The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.
+The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.3A → 07.4 → 07.5) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.

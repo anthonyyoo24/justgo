@@ -1,355 +1,229 @@
 import { randomUUID } from 'expo-crypto';
+import { createStore } from 'zustand/vanilla';
 import {
-  legacyAttemptResultSchema as attemptResultSchema,
-  legacyChallengeStateSchema as challengeStateSchema,
-  okSchema,
-  legacyQueueSchema as queueSchema,
+  catalogSchema,
   venues,
-  type LegacyAttempt as Attempt,
-  type LegacyChallengeQueue as ChallengeQueue,
-  type LegacyChallengeState as ChallengeState,
+  type Attempt,
+  type Catalog,
+  type ChallengeCard,
+  type CreateAttempt,
   type Venue,
 } from '@justgo/contracts';
-import { AccountClient, accountKey } from '../../lib/account-client';
-import { ApiError } from '../../lib/http';
-type Pending =
-  | {
-      kind: 'start';
-      body: {
-        attemptId: string;
-        venue: Venue;
-        cardId: string;
-        revisionId: string;
-        queueVersion: number;
-      };
-    }
-  | {
-      kind: 'skip';
-      body: {
-        actionId: string;
-        venue: Venue;
-        cardId: string;
-        revisionId: string;
-        queueVersion: number;
-      };
-    }
-  | {
-      kind: 'finish';
-      body: {
-        attemptId: string;
-        outcome: 'completed' | 'given_up';
-        timeZone: string;
-      };
-    };
-type Snapshot = {
-  state: ChallengeState | null;
-  queues: Partial<Record<Venue, ChallengeQueue>>;
-  selected: Venue;
-  busy: boolean;
-  pending: Pending | null;
-  error: string;
-  success: Attempt | null;
-  clockOffset: number;
+import type { AccountClient } from '../../lib/account-client';
+import type { AccountRepository } from '../../data/activity/repository';
+
+export type ChallengeStart = {
+  card: ChallengeCard;
+  startedAt: string;
+  startTimeZone: string;
+  turn: number;
 };
-const initial = (): Snapshot => ({
-  state: null,
-  queues: {},
+type Queue = { cards: ChallengeCard[]; turn: number };
+export type ChallengeSnapshot = {
+  selected: Venue;
+  queues: Partial<Record<Venue, Queue>>;
+  success: Attempt | null;
+  loading: boolean;
+  saving: boolean;
+  completionStarted: boolean;
+  error: string;
+};
+const initial = (): ChallengeSnapshot => ({
   selected: 'streets',
-  busy: false,
-  pending: null,
-  error: '',
+  queues: {},
   success: null,
-  clockOffset: 0,
+  loading: false,
+  saving: false,
+  completionStarted: false,
+  error: '',
 });
+
+/** Shared browsing and completion context; unfinished challenges belong to React. */
 export class ChallengeController {
-  private snapshot = initial();
-  private listeners = new Set<() => void>();
+  readonly store = createStore<ChallengeSnapshot>(() => initial());
+  subscribe = (listener: () => void) => this.store.subscribe(listener);
+  getSnapshot = this.store.getState;
   private userId: string | null = null;
-  private epoch = 0;
-  private cacheBatches = 0;
+  private generation = 0;
+  private unsubscribe: (() => void) | undefined;
+  private catalogRead: Promise<void> | undefined;
+  private catalogAbort: AbortController | undefined;
+  private completion: Promise<void> | undefined;
+  private completionInput: CreateAttempt | undefined;
+  private currentCatalog: Catalog | null = null;
+  private readonly id: () => string;
   constructor(
-    private readonly client: Pick<AccountClient, 'request' | 'queries'>,
-    private readonly id = randomUUID,
+    private readonly client: Pick<AccountClient, 'request'>,
+    private readonly options: {
+      repository: () => AccountRepository | null;
+      id?: () => string;
+    },
   ) {
-    // TanStack owns server data; this controller projects it with transient action state.
-    client.queries.getQueryCache().subscribe((event) => {
-      // useQuery can create/update observers while another route renders. Those
-      // events (and unrelated access queries) must not notify ChallengeScreen.
-      if (
-        this.cacheBatches ||
-        !this.key().every((part, i) => event.query.queryKey[i] === part)
-      )
-        return;
-      if (
-        event.type === 'removed' ||
-        (event.type === 'updated' &&
-          (event.action.type === 'success' || event.action.type === 'setState'))
-      )
-        this.update({});
-    });
+    this.id = options.id ?? randomUUID;
   }
-  getSnapshot = () => this.snapshot;
-  subscribe = (fn: () => void) => {
-    this.listeners.add(fn);
-    return () => {
-      this.listeners.delete(fn);
-    };
-  };
-  private key(...parts: string[]) {
-    return accountKey(this.userId ?? 'disconnected', 'challenges', ...parts);
-  }
-  private update(value: Partial<Omit<Snapshot, 'state' | 'queues'>>) {
-    const queues: Snapshot['queues'] = {};
-    for (const { id } of venues) {
-      const queue = this.client.queries.getQueryData<ChallengeQueue>(
-        this.key('queue', id),
-      );
-      if (queue) queues[id] = queue;
-    }
-    this.snapshot = {
-      ...this.snapshot,
-      ...value,
-      queues,
-      state:
-        this.client.queries.getQueryData<ChallengeState>(this.key('state')) ??
-        null,
-    };
-    this.listeners.forEach((fn) => fn());
-  }
+  private update = (value: Partial<ChallengeSnapshot>) =>
+    this.store.setState(value);
   changeAccount(userId: string | null) {
     if (this.userId === userId) return;
-    this.client.queries.removeQueries({ queryKey: this.key() });
     this.userId = userId;
-    this.epoch++;
-    this.snapshot = initial();
-    this.update({});
-  }
-  private assert(epoch: number) {
-    if (epoch !== this.epoch) throw new ApiError('ACCOUNT_CHANGED');
-  }
-  // Publish a screen transition only after its state and queue agree. Cache
-  // notifications between these writes would expose a stale deck or theme.
-  private async batchCache(work: () => Promise<void>) {
-    this.cacheBatches++;
-    try {
-      await work();
-    } finally {
-      this.cacheBatches--;
+    this.generation++;
+    this.catalogAbort?.abort();
+    this.unsubscribe?.();
+    this.catalogRead = undefined;
+    this.completion = undefined;
+    this.completionInput = undefined;
+    this.currentCatalog = null;
+    this.store.setState(initial(), true);
+    const repository = this.options.repository();
+    if (userId && repository) {
+      const read = () => {
+        const catalog = repository.store.getState().catalog;
+        if (catalog && catalog !== this.currentCatalog)
+          this.adoptCatalog(catalog);
+      };
+      this.unsubscribe = repository.store.subscribe(read);
+      read();
     }
   }
-  private queue(value: ChallengeQueue) {
-    this.client.queries.setQueryData<ChallengeQueue>(
-      this.key('queue', value.venue),
-      (old) => (!old || value.version >= old.version ? value : old),
-    );
+  private adoptCatalog(catalog: Catalog) {
+    // A malformed cache/download is a fetch failure, never a normal empty venue.
+    if (
+      venues.some(({ id }) => !catalog.cards.some((card) => card.venue === id))
+    )
+      return false;
+    const queues: Partial<Record<Venue, Queue>> = {};
+    for (const { id } of venues) {
+      const prior = this.getSnapshot().queues[id];
+      const cards = catalog.cards
+        .filter((card) => card.venue === id)
+        .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
+      const front = cards.findIndex((card) => card.id === prior?.cards[0]?.id);
+      queues[id] = {
+        cards:
+          front > 0 ? [...cards.slice(front), ...cards.slice(0, front)] : cards,
+        turn: prior?.turn ?? 0,
+      };
+    }
+    this.currentCatalog = catalog;
+    this.update({ queues, error: '' });
+    return true;
   }
-  private readQueue(venue: Venue, epoch: number) {
-    const key = this.key('queue', venue);
-    return this.client.queries.fetchQuery({
-      queryKey: key,
-      // Kept for this account session; an unattended active timer must not be GC'd.
-      gcTime: Infinity,
-      queryFn: async ({ signal }) => {
-        const value = await this.client.request(
-          `/v1/challenges/queue/${venue}`,
-          queueSchema,
-          { signal },
+  refresh = (): Promise<void> => {
+    if (this.catalogRead) return this.catalogRead;
+    const repository = this.options.repository();
+    if (!this.userId || !repository) return Promise.resolve();
+    const generation = this.generation;
+    const abort = new AbortController();
+    this.catalogAbort = abort;
+    const work = async () => {
+      this.update({ loading: true });
+      try {
+        await repository.hydrate();
+        if (generation !== this.generation) return;
+        const cached = repository.store.getState().catalog;
+        if (cached) this.adoptCatalog(cached);
+        if (repository.store.getState().online === false) {
+          if (!this.currentCatalog)
+            this.update({
+              error: 'You’re offline. Connect to download your challenges.',
+            });
+          return;
+        }
+        const catalog = await this.client.request(
+          '/v1/challenges',
+          catalogSchema,
+          { signal: abort.signal },
         );
-        this.assert(epoch);
-        const old = this.client.queries.getQueryData<ChallengeQueue>(key);
-        return old && old.version > value.version ? old : value;
-      },
-    });
-  }
-  private async canonical(epoch: number) {
-    const state = await this.client.request(
-      '/v1/challenges/state',
-      challengeStateSchema,
-    );
-    this.assert(epoch);
-    await this.batchCache(async () => {
-      await this.readQueue(
-        state.active?.card.venue ?? state.selectedVenue,
-        epoch,
-      );
-      this.assert(epoch);
-      this.client.queries.setQueryDefaults(this.key('state'), {
-        gcTime: Infinity,
-      });
-      this.client.queries.setQueryData(this.key('state'), state);
-    });
-    this.assert(epoch);
-    this.update({
-      selected: state.selectedVenue,
-      clockOffset: Date.parse(state.serverNow) - Date.now(),
-    });
-  }
-  refresh = async () => {
-    if (!this.userId || this.snapshot.busy || this.snapshot.pending) return;
-    const epoch = this.epoch;
-    this.update({ busy: true, error: '' });
-    try {
-      await this.canonical(epoch);
-    } catch (error) {
-      if (epoch === this.epoch) this.update({ error: this.message(error) });
-    } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
-    }
-    // Prefetch complete small queues, while rendering only four cards.
-    if (epoch === this.epoch && this.snapshot.state)
-      for (const { id } of venues) {
-        if (!this.snapshot.queues[id])
-          void this.readQueue(id, epoch).catch(() => {});
+        if (generation !== this.generation) return;
+        if (!this.adoptCatalog(catalog)) throw new Error('INVALID_CATALOG');
+        await repository.cacheCatalog(catalog);
+      } catch {
+        // Optional refresh/cache failure never disables previously downloaded cards.
+        if (generation === this.generation && !this.currentCatalog)
+          this.update({
+            error:
+              'Your challenges couldn’t load. Check your connection and try again.',
+          });
+      } finally {
+        if (generation === this.generation) {
+          this.catalogRead = undefined;
+          this.update({ loading: false });
+        }
       }
-  };
-  select = async (venue: Venue) => {
-    if (this.snapshot.busy || this.snapshot.pending) return;
-    const epoch = this.epoch;
-    this.update({ busy: true, error: '' });
-    try {
-      await this.client.request('/v1/challenges/venue', okSchema, {
-        body: { venue },
-      });
-      this.assert(epoch);
-      await this.readQueue(venue, epoch);
-      this.assert(epoch);
-      this.update({ selected: venue });
-    } catch (error) {
-      if (epoch === this.epoch) this.update({ error: this.message(error) });
-    } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
-    }
-  };
-  act = async (direction: -1 | 1) => {
-    if (
-      this.snapshot.busy ||
-      this.snapshot.pending ||
-      this.snapshot.state?.active
-    )
-      return;
-    const queue = this.snapshot.queues[this.snapshot.selected],
-      card = queue?.cards[0];
-    if (!queue || !card) return;
-    const selection = {
-      venue: queue.venue,
-      queueVersion: queue.version,
-      cardId: card.id,
-      revisionId: card.revisionId,
     };
-    this.update({
-      pending:
-        direction === 1
-          ? { kind: 'start', body: { attemptId: this.id(), ...selection } }
-          : { kind: 'skip', body: { actionId: this.id(), ...selection } },
-    });
-    await this.retry();
+    this.catalogRead = work();
+    return this.catalogRead;
   };
-  finish = async (outcome: 'completed' | 'given_up') => {
-    if (
-      this.snapshot.busy ||
-      this.snapshot.pending ||
-      !this.snapshot.state?.active
-    )
-      return;
+  select = (venue: Venue) => {
+    if (!this.getSnapshot().saving && !this.getSnapshot().success)
+      this.update({ selected: venue });
+  };
+  private rotate(venue: Venue) {
+    const state = this.getSnapshot();
+    const queue = state.queues[venue];
+    if (!queue?.cards.length) return;
     this.update({
-      pending: {
-        kind: 'finish',
-        body: {
-          attemptId: this.snapshot.state.active.id,
-          outcome,
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      queues: {
+        ...state.queues,
+        [venue]: {
+          cards: [...queue.cards.slice(1), queue.cards[0]!],
+          turn: queue.turn + 1,
         },
       },
     });
-    await this.retry();
+  }
+  skip = (venue = this.getSnapshot().selected) => {
+    if (this.getSnapshot().completionStarted || this.getSnapshot().success)
+      return;
+    this.rotate(venue);
+    this.update({ error: '' });
   };
-  retry = async () => {
-    const pending = this.snapshot.pending;
-    if (!pending || this.snapshot.busy) return;
-    const epoch = this.epoch;
-    this.update({ busy: true, error: '' });
-    try {
-      if (pending.kind === 'skip') {
-        const queue = await this.client.request(
-          '/v1/challenges/skip',
-          queueSchema,
-          { body: pending.body },
-        );
-        this.assert(epoch);
-        this.queue(queue);
-      } else {
-        const result = await this.client.request(
-          `/v1/challenges/${pending.kind}`,
-          attemptResultSchema,
-          { body: pending.body },
-        );
-        this.assert(epoch);
-        await this.batchCache(async () => {
-          // Finishing rotates the queue on the server. Keep the active screen
-          // until that confirmed queue is available, including on save retries.
-          if (result.attempt.status !== 'active')
-            await this.readQueue(result.attempt.card.venue, epoch);
-          this.assert(epoch);
-          this.client.queries.setQueryData<ChallengeState>(
-            this.key('state'),
-            (state) =>
-              state
-                ? {
-                    ...state,
-                    active:
-                      result.attempt.status === 'active'
-                        ? result.attempt
-                        : null,
-                    latestOutcome:
-                      result.attempt.status === 'active'
-                        ? state.latestOutcome
-                        : result.attempt,
-                  }
-                : undefined,
-          );
-        });
-        this.assert(epoch);
-        this.update({
-          clockOffset: Date.parse(result.serverNow) - Date.now(),
-          success:
-            result.attempt.status === 'completed' ? result.attempt : null,
-          pending: null,
-          busy: false,
-        });
-        if (result.attempt.status === 'completed' && this.userId)
-          void this.client.queries.invalidateQueries({
-            queryKey: accountKey(this.userId, 'progress'),
+  complete = (active: ChallengeStart): Promise<void> => {
+    if (this.completion) return this.completion;
+    if (this.getSnapshot().success) return Promise.resolve();
+    const repository = this.options.repository();
+    if (!repository) return Promise.resolve();
+    const generation = this.generation;
+    const input: CreateAttempt = this.completionInput ?? {
+      id: this.id(),
+      challengeId: active.card.challengeId,
+      venue: active.card.venue,
+      startedAt: active.startedAt,
+      startTimeZone: active.startTimeZone,
+    };
+    this.completionInput = input;
+    // The synchronous guard covers duplicate activation before the storage promise resolves.
+    this.update({ saving: true, completionStarted: true, error: '' });
+    this.completion = (async () => {
+      try {
+        await repository.setFlowAttempt(input.id);
+        const attempt = await repository.complete(input, active.card);
+        if (generation !== this.generation) return;
+        this.rotate(active.card.venue);
+        this.update({ success: attempt });
+      } catch {
+        // The repository owns storage/network fallback; retain this interrupted identity for retry.
+        if (generation === this.generation)
+          this.update({
+            error: 'This challenge could not be recorded. Try Completed again.',
           });
-        return;
-      }
-      this.update({ pending: null });
-      await this.canonical(epoch);
-    } catch (error) {
-      if (epoch !== this.epoch) return;
-      if (
-        error instanceof ApiError &&
-        ['CONFLICT', 'NOT_FOUND', 'INVALID_REQUEST'].includes(error.code)
-      ) {
-        this.update({ pending: null });
-        try {
-          await this.canonical(epoch);
-        } catch {
-          /* Keep the last confirmed state and report the error. */
+      } finally {
+        if (generation === this.generation) {
+          this.completion = undefined;
+          this.update({ saving: false });
         }
       }
-      if (epoch === this.epoch) this.update({ error: this.message(error) });
-    } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
-    }
+    })();
+    return this.completion;
   };
-  dismissSuccess = () => this.update({ success: null });
-  private message(error: unknown) {
-    if (error instanceof ApiError && error.code === 'CONFLICT')
-      return 'This challenge changed on another device. Your saved activity has been refreshed.';
-    if (error instanceof ApiError && error.code === 'ACCESS_REQUIRED')
-      return 'Your subscription is no longer active. Check access from Settings.';
-    return this.snapshot.pending
-      ? 'We couldn’t confirm the save. Retry the same action to safely check its result.'
-      : 'We couldn’t refresh your challenges. Check your connection and retry.';
+  dismissSuccess = async () => {
+    this.completionInput = undefined;
+    this.update({ success: null, completionStarted: false });
+    await this.options.repository()?.setFlowAttempt(null);
+  };
+  dispose() {
+    this.changeAccount(null);
+    this.unsubscribe?.();
+    this.catalogAbort?.abort();
   }
 }

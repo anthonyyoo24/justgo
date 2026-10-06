@@ -5,6 +5,28 @@ The [Phase 06A handoff](handoffs/phase-06a-code-quality.md) records the measured
 baseline, changes and browser evidence. Tests protect current behavior; Phase 07
 owns API/offline changes and Phase 07A owns billing.
 
+## Scheduled iOS testing migration — 07.3A
+
+Anthony approved [07.3A — iOS simulator testing migration](IMPLEMENTATION_PLAN.md#phase-07-3a)
+after reviewed/finished 07.3 and before 07.4. The
+[file-by-file removal assessment](checks/phase-07-3a-browser-testing-assessment.md)
+identifies browser-only modules, tests that must move to independent runners and
+native/shared code to retain, including the `useModalIsolation` hook and caller.
+
+Extend the existing `apps/mobile/e2e/launch.yaml` Maestro setup and `test:native`
+command into saved journeys against the actual iOS app/API/disposable database.
+Preserve unit/component/repository/API/database tests, coverage floors and fixture
+safeguards. Native storage/relaunch, lifecycle, keyboard/modal and transition
+evidence must be distinguished from mocks and eventual screen assertions.
+
+Current browser commands and UI requirements below remain active until equivalent
+coverage exists and the required native CI gate passes for the authorized pushed
+revision, confirmed in hosted check results. Then retire Playwright/Chromium and
+unused browser-only adapters/dependencies, update `AGENTS.md` and this guide, and
+use native simulator journeys/interactive checks for future UI changes. Historical
+browser evidence stays intact; physical-device/staging release checks remain open.
+This is a scheduled migration, not a claim that native CI or full journeys exist.
+
 ## Commands
 
 Use the pinned Node/npm versions in README. Run heavy commands sequentially on
@@ -20,7 +42,8 @@ npm run export:web -w @justgo/mobile
 npm run export:ios -w @justgo/mobile
 ```
 
-`check` builds contracts, typechecks, lints, checks formatting and runs architecture,
+`check` first runs the pinned mobile Expo Doctor with fresh online version metadata,
+then builds contracts, typechecks, lints, checks formatting and runs architecture,
 API unit, mobile component/controller and contract tests. `test:db` exercises real
 PostgreSQL transactions, ownership, isolation, idempotency, reflections and history,
 then runs the isolated migration/restoration rehearsal.
@@ -48,6 +71,23 @@ and coverage, so those steps cannot drift apart. Ignored local `.env` files are
 absent from a fresh runner: check each new CI command's full prerequisites and
 inspect the hosted result for the pushed commit before calling its gate verified.
 Keep the loopback/test-database safeguards enabled.
+
+## Before publication
+
+Run `npm ci` in a clean checkout and `npm run check`; CI runs the same root
+command immediately after installation. Its first step is
+`npm run doctor -w @justgo/mobile`, which bypasses Expo's dependency metadata
+cache with `EXPO_NO_CACHE=1`. The doctor remains pinned in the root lockfile.
+A failed dependency check stops the command before build/test work begins.
+The command tests protect this early stop, fresh metadata and nonzero exits.
+
+Rerun the standalone doctor immediately before an authorized push after longer
+verification sessions. Review any recommended SDK patch changes, update the exact
+package pins and root lockfile together, then repeat the relevant checks/exports.
+The lockfile fixes installed versions, not Expo's live compatibility guidance;
+a recommendation released between local verification and CI can still cause a
+new failure. Do not use offline mode, dependency exclusions or validation bypasses
+to hide it. Required native build/device evidence remains separate from exports.
 
 ## Coverage policy
 
@@ -240,8 +280,41 @@ are injected at the repository/transport boundary, never exposed as production f
 The database fixture owns cleanup for browser and repository-only tests. Safe size/
 serialization measurements are attached to the HTML report. These saved cases do
 not establish the new completion/reflection UI journey or native AsyncStorage
-durability. 07.3 adds app integration and side-panel checks; native evidence remains
-open because the existing simulator build lacks the new RNCAsyncStorage module.
-The default tools path does not expose `simctl`; a command-only Xcode override can
-list simulators, but a compatible native build is still required. See the
-[07.2 handoff](handoffs/phase-07-2-local-sync.md).
+durability. 07.3 adds app integration and side-panel checks. The October 6 owner
+session installed an updated EAS simulator app with AsyncStorage and NetInfo;
+native saving/relaunch evidence remains open. The default tools path does not
+expose `simctl`; command-scoped `DEVELOPER_DIR` selects the existing full Xcode
+without changing system configuration. See the [07.2 handoff](handoffs/phase-07-2-local-sync.md)
+and [07.3 simulator setup](handoffs/phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup).
+
+## Phase 07.3 local app journeys and presentation
+
+`npm run test:journey` runs nine actual-app cases in `e2e/local-flow.spec.ts`
+alongside the seven existing cases. They verify local-only start/give-up, completion
+and explicit reflection before HTTP acknowledgement, delayed local writes and
+duplicate activation, newer typing during dirty-close Save, offline reload with
+same-account recovery and empty Skip, memory-only warning/dismissal/full recovery,
+expired-session replay, confirmed cloud fallback for both completion/reflection
+when phone writes fail, first-download/refresh recovery, and retained rejected-reflection correction deferred until Give up, and exclusive active navigation/unfinished reload reset. Assertions use the
+real disposable database. Browser identity remains memory-only; reload recovery
+uses the synthetic bootstrap proof in test memory and masks credential fields in
+failure artifacts. It does not establish native Keychain/AsyncStorage durability.
+
+The journey web server sets `JUSTGO_JOURNEY_FIXTURES=1`. The separate Metro build
+seam validates the existing loopback/database/role/nonproduction safeguards before
+substituting the controllable journal-write adapter, only for web AppProvider.
+Normal/native/production resolution remains the default. Architecture tests cover
+the seam and refusal cases. There are no product UI fault controls or production
+access bypasses. The existing hosted journey step already runs the full suite;
+07.3’s hosted result cannot be claimed until publication is authorized and that
+commit’s checks pass.
+
+Interactive side-panel evidence lives in [the 07.3 handoff](handoffs/phase-07-3-local-flow.md).
+Only disposable registry-owned accounts were used and cleaned up. NetInfo 12.0.1,
+Sonner Native 0.27.0 and Sonner 2.0.8 match the pinned stack and pass Expo doctor.
+The owner-requested October 6 EAS simulator build includes AsyncStorage/NetInfo;
+native launch and active countdown/Give up were checked on the reused QA device.
+Keep native saving/relaunch, background/lock countdown, keyboard/toast/modal,
+VoiceOver/scalable-text/reduced-motion checks open until evidenced; earlier
+physical-device/staging gates remain open. The brief native smoke check and owner
+manual session are separate from saved end-to-end tests and hosted CI.

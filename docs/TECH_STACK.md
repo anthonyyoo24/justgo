@@ -1,8 +1,17 @@
 # JustGO — Cloud Tech Stack Specification
 
+The October 6 active-flow refinement keeps the unfinished challenge in screen-owned
+React state, derives its countdown from start plus original duration, and refreshes
+once per second. Zustand retains venue/deck continuity, completion context and the
+shared activity/upload model. The full-screen active surface omits Settings and tabs;
+while mounted, only Completed or Give up exits the active view. A fresh mount,
+account change or process restart discards the unfinished challenge. Locking or
+backgrounding retains it while the process and screen survive. See the
+[07.3 handoff](handoffs/phase-07-3-local-flow.md).
+
 **September 24 scope update:** [Phase 04 decisions](PHASE_04_SCOPE.md) define six manual venues, independent cycling stacks, the 39O fanned deck and five-minute attempts. Omit subtext and the future level-progress indicator. Shared content keeps separate venue placements; completed cards can recur as new attempts. Confirmed expired access locks paid functionality without a finish/reflection exception. See the [implementation handoff](handoffs/phase-04-challenge-loop.md) for evidence and remaining device gates.
 
-**October 5 structure checkpoint:** Phase 07.2 implements the shared activity saving/synchronization module under `apps/mobile/src/data/activity/`; the frontend folder guidance below reflects that owner-approved placement and its enforced import direction. The [07.2 handoff](handoffs/phase-07-2-local-sync.md) records local verification and open native durability evidence. Existing screens still use the compatibility flow; 07.3/07.4 own screen/Progress integration. Older storage and network descriptions elsewhere in this document await the full 07.5 reconciliation; the [Phase 07 plan](IMPLEMENTATION_PLAN.md#phase-07) owns the approved replacement behavior.
+**October 5 structure checkpoint:** Phase 07.2 implements the shared activity saving/synchronization module under `apps/mobile/src/data/activity/`; the frontend folder guidance below reflects that owner-approved placement and its enforced import direction. The [07.2 handoff](handoffs/phase-07-2-local-sync.md) records local verification and open native durability evidence. 07.3 now wires this repository into local challenge/completion/reflection screens and the account/connectivity/foreground lifecycle, with Sonner Native/web saving feedback. Progress keeps its compatibility reads until 07.4. See the [07.3 handoff](handoffs/phase-07-3-local-flow.md) for local evidence and open native acceptance. Older storage and network descriptions elsewhere in this document await the full 07.5 reconciliation; the [Phase 07 plan](IMPLEMENTATION_PLAN.md#phase-07) owns the approved replacement behavior.
 
 The owner also retired the unused mobile `features/foundation/` connection screen
 and its dedicated tests. Developer screen previews remain available; API health
@@ -36,7 +45,7 @@ The first iOS release includes a hard paywall, one collection of general easy Le
 | AI text coach                                                         | Planned later in the same API and database; no voice coach in scope                                              |
 | Background processing                                                 | QStash for managed subscription-update delivery and retries from launch; job handlers run on Vercel              |
 | Billing recovery                                                      | Scheduled handoff repair and provider reconciliation from launch; QStash does not replace these checks           |
-| Challenge timer                                                       | Original deadline survives lock/background/relaunch; in-app display at launch, lock-screen display deferred      |
+| Challenge timer                                                       | Start + duration in memory; lock/background retains it; fresh launch resets it; lock-screen deferred             |
 | Content / future progression                                          | Stable Level 1 context at launch; no level thresholds, unlocking, or skipping yet. No completed-challenge replay |
 | No signup/login screen or OAuth requirement                           | Required                                                                                                         |
 | Automatic recognition using securely stored credentials               | Required                                                                                                         |
@@ -362,6 +371,12 @@ State ownership and foreground refresh remain as defined in section 3 and below.
 
 ### Safe retries using existing records
 
+**Historical compatibility flow:** The start/relaunch recovery rules below are
+superseded for the approved 07.3 flow. Start/Give up remain local; Completed creates
+the UUID and submits the captured start values through the account repository.
+The repository owns idempotent completion/reflection replay. Legacy endpoints
+remain until the 07.5 cutover; their presence does not require active-attempt recovery.
+
 For a new start action, the phone generates a random UUID before sending the request and keeps that same ID and creation inputs through network retries. A deliberate new attempt gets a new ID. After relaunch, use active-attempt recovery before starting another attempt; this does not introduce a durable local mutation queue.
 
 The backend authenticates the user and validates the input. If the ID already exists, verify ownership and compare the normalized creation inputs with the digest saved on the attempt. Return the existing attempt, including its original start/deadline and current status, without creating or restarting it. A matching retry does not require another client fetch. Reject conflicting reuse of an ID; never disclose another user's attempt. The client-generated ID is an identifier, not proof of ownership.
@@ -373,6 +388,14 @@ On completion, lock/check the attempt and atomically transition it to completed 
 Use optimistic concurrency for text and preference edits. A stale revision must return a conflict rather than silently overwrite a newer edit from another device. Refresh on app foreground and invalidate relevant TanStack queries after mutations. WebSockets/Realtime are not needed initially.
 
 ### Attempt lifecycle and time
+
+**Superseded server-backed lifecycle:** The following rules describe the earlier
+compatibility implementation, not the current 07.3 requirements. Unfinished
+challenges live in screen-owned React memory; background/lock preserves the
+countdown while that screen/process survives, and fresh mounts, account changes
+or process restarts discard it. Reopening after a process restart requires no
+server active-attempt recovery. Submitted completions/reflections retain the
+07.2 durable-saving/replay contract. See the [07.3 plan](IMPLEMENTATION_PLAN.md#phase-07-3).
 
 - Browsing cards or swiping left does not create an attempt. Swiping right, or using its accessible accept button, starts the creation request. Show a starting state until the server confirms the attempt and its deadline; a failed request must not appear as a successfully started challenge.
 - Locking the phone, switching apps, or closing the app does not give up. Preserve the same attempt and deadline; on reopening, recover the active attempt before allowing another start. Do not depend on receiving an app-termination callback.

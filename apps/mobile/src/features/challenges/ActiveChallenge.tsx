@@ -1,27 +1,32 @@
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   View,
+  AppState,
   useWindowDimensions,
 } from 'react-native';
-import { venues, type LegacyAttempt as Attempt } from '@justgo/contracts';
+import { venues } from '@justgo/contracts';
 import Svg, { Path } from 'react-native-svg';
 import { colors, typography, fontFamilies } from '../../theme/tokens';
 import { challengeScale, timerOutline } from './challenge-design';
 import { ChallengeCard } from './ChallengeDeck';
+import type { ChallengeStart } from './controller';
 import { remainingSeconds } from './countdown';
 export function ActiveChallenge({
   attempt,
   turn = 0,
-  offset,
+  savingVisible = false,
   disabled,
+  giveUpDisabled = disabled,
   finish,
 }: {
-  attempt: Attempt;
+  attempt: Pick<ChallengeStart, 'card' | 'startedAt'>;
   turn?: number;
-  offset: number;
+  savingVisible?: boolean;
+  giveUpDisabled?: boolean;
   disabled: boolean;
   finish: (outcome: 'completed' | 'given_up') => Promise<void>;
 }) {
@@ -32,12 +37,18 @@ export function ActiveChallenge({
   const [cardTurn] = useState(turn);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNow(Date.now());
+    });
+    return () => {
+      clearInterval(timer);
+      listener.remove();
+    };
   }, []);
   const seconds = remainingSeconds(
-    attempt.deadlineAt,
-    now + offset,
+    attempt.startedAt,
+    now,
     attempt.card.durationSeconds,
   );
   const timer = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
@@ -109,8 +120,8 @@ export function ActiveChallenge({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Give up"
-          accessibilityState={{ disabled }}
-          disabled={disabled}
+          accessibilityState={{ disabled: giveUpDisabled }}
+          disabled={giveUpDisabled}
           onPress={() => void finish('given_up')}
           style={[
             styles.outcomeTarget,
@@ -134,8 +145,8 @@ export function ActiveChallenge({
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Completed"
-          accessibilityState={{ disabled }}
+          accessibilityLabel={savingVisible ? 'Saving completion' : 'Completed'}
+          accessibilityState={{ disabled, busy: savingVisible }}
           disabled={disabled}
           onPress={() => void finish('completed')}
           style={[
@@ -147,19 +158,30 @@ export function ActiveChallenge({
           ]}
         >
           <View style={[styles.secondary, { backgroundColor: colors.ink }]}>
-            <Svg width={16} height={14} viewBox="0 0 16 14" aria-hidden>
-              <Path
-                d="M1.75 7L6 11.25L14.25 2.75"
-                stroke={colors.white}
-                strokeWidth={1.3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
+            {savingVisible ? (
+              <ActivityIndicator
+                color={colors.white}
+                size="small"
+                accessible={false}
+                testID="completion-submit-spinner"
               />
-            </Svg>
-            <Text style={[styles.outcomeText, { color: colors.white }]}>
-              Completed
-            </Text>
+            ) : (
+              <>
+                <Svg width={16} height={14} viewBox="0 0 16 14" aria-hidden>
+                  <Path
+                    d="M1.75 7L6 11.25L14.25 2.75"
+                    stroke={colors.white}
+                    strokeWidth={1.3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </Svg>
+                <Text style={[styles.outcomeText, { color: colors.white }]}>
+                  Completed
+                </Text>
+              </>
+            )}
           </View>
         </Pressable>
       </View>

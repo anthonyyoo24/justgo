@@ -15,10 +15,12 @@ export function ChallengeLayout({
   children,
   insetTop = true,
   fillContent = false,
+  showSettings = true,
 }: PropsWithChildren<{
   title: string;
   insetTop?: boolean;
   fillContent?: boolean;
+  showSettings?: boolean;
 }>) {
   const { width } = useWindowDimensions();
   const scale = challengeScale(width);
@@ -39,7 +41,11 @@ export function ChallengeLayout({
             { paddingHorizontal: 14 * scale },
           ]}
         >
-          <ScreenHeader title={title} scale={scale} />
+          <ScreenHeader
+            title={title}
+            scale={scale}
+            showSettings={showSettings}
+          />
           {children}
         </View>
       </ScrollView>

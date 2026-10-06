@@ -1,28 +1,25 @@
-import { fireEvent, render } from '@testing-library/react-native';
-import type { LegacyAttempt as Attempt } from '@justgo/contracts';
-import { StyleSheet, View } from 'react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
+import type { ChallengeStart } from './controller';
+import { AppState, StyleSheet, View, type AppStateStatus } from 'react-native';
 import { ChallengeCard } from './ChallengeDeck';
 import { ActiveChallenge } from './ActiveChallenge';
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../app-support/providers/AppProvider', () => ({}));
 jest.mock('./ChallengeDeck', () => ({ ChallengeCard: jest.fn(() => null) }));
-const attempt: Attempt = {
-  id: 'visual-test',
-  status: 'active',
+const attempt: ChallengeStart = {
   card: {
     id: 'GY-01',
     challengeId: 'gym-01',
-    revisionId: 'gym-01-v1',
+    position: 0,
+    subtext: null,
     levelId: 'level-1',
     venue: 'gym',
     text: 'Say hello to someone between sets.',
     durationSeconds: 300,
   },
   startedAt: '2026-09-24T20:00:00Z',
-  deadlineAt: '2026-09-24T20:05:00Z',
-  endedAt: null,
-  completionDate: null,
-  timeZone: null,
+  startTimeZone: 'America/Toronto',
+  turn: 0,
 };
 beforeEach(() => {
   jest.useFakeTimers();
@@ -34,7 +31,6 @@ it('shows time remaining before the deadline', () => {
   const screen = render(
     <ActiveChallenge
       attempt={attempt}
-      offset={0}
       disabled={false}
       finish={async () => {}}
     />,
@@ -48,12 +44,7 @@ it.each(['Give up', 'Completed'] as const)(
   (name) => {
     const finish = jest.fn(async () => {});
     const screen = render(
-      <ActiveChallenge
-        attempt={attempt}
-        offset={0}
-        disabled={false}
-        finish={finish}
-      />,
+      <ActiveChallenge attempt={attempt} disabled={false} finish={finish} />,
     );
     expect(screen.getByText('00:00')).toBeTruthy();
     expect(screen.getByText("Time's up. Give it a go.")).toBeTruthy();
@@ -72,7 +63,7 @@ it.each(['Give up', 'Completed'] as const)(
 it('blocks both outcomes during a save without dimming either button', () => {
   const finish = jest.fn(async () => {});
   const screen = render(
-    <ActiveChallenge attempt={attempt} offset={0} disabled finish={finish} />,
+    <ActiveChallenge attempt={attempt} disabled finish={finish} />,
   );
   for (const name of ['Give up', 'Completed']) {
     const button = screen.getByRole('button', { name });
@@ -85,11 +76,42 @@ it('blocks both outcomes during a save without dimming either button', () => {
   expect(finish).not.toHaveBeenCalled();
   expect(screen.queryByText('Give up this challenge?')).toBeNull();
 });
+it('replaces completion contents with a spinner only when delayed feedback is visible', () => {
+  const finish = jest.fn(async () => {});
+  const screen = render(
+    <ActiveChallenge attempt={attempt} disabled finish={finish} />,
+  );
+  expect(screen.getByText('Completed')).toBeTruthy();
+  expect(screen.queryByTestId('completion-submit-spinner')).toBeNull();
+  screen.rerender(
+    <ActiveChallenge
+      attempt={attempt}
+      disabled
+      savingVisible
+      finish={finish}
+    />,
+  );
+  const button = screen.getByRole('button', { name: 'Saving completion' });
+  expect(button.props.accessibilityState).toMatchObject({
+    disabled: true,
+    busy: true,
+  });
+  expect(screen.getByTestId('completion-submit-spinner')).toBeTruthy();
+  expect(screen.queryByText('Completed')).toBeNull();
+  expect(screen.queryByText('Saving…')).toBeNull();
+  fireEvent.press(button);
+  expect(finish).not.toHaveBeenCalled();
+  screen.rerender(
+    <ActiveChallenge attempt={attempt} disabled={false} finish={finish} />,
+  );
+  expect(screen.getByRole('button', { name: 'Completed' })).toBeEnabled();
+  expect(screen.getByText('Completed')).toBeTruthy();
+  expect(screen.queryByTestId('completion-submit-spinner')).toBeNull();
+});
 it('leaves extra space between the active card and outcome buttons', () => {
   const screen = render(
     <ActiveChallenge
       attempt={attempt}
-      offset={0}
       disabled={false}
       finish={async () => {}}
     />,
@@ -104,7 +126,6 @@ it('passes the accepted queue turn to the active card', () => {
     <ActiveChallenge
       attempt={attempt}
       turn={5}
-      offset={0}
       disabled={false}
       finish={async () => {}}
     />,
@@ -117,7 +138,6 @@ it('passes the accepted queue turn to the active card', () => {
     <ActiveChallenge
       attempt={attempt}
       turn={6}
-      offset={0}
       disabled
       finish={async () => {}}
     />,
@@ -126,4 +146,36 @@ it('passes the accepted queue turn to the active card', () => {
     card: attempt.card,
     turn: 5,
   });
+});
+
+it('updates once per second, recomputes on foreground and cleans up clock/listener ownership', () => {
+  jest.setSystemTime(new Date(attempt.startedAt));
+  const remove = jest.fn();
+  let foreground!: (state: AppStateStatus) => void;
+  const listener = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_, callback) => {
+      foreground = callback;
+      return { remove };
+    });
+  const screen = render(
+    <ActiveChallenge
+      attempt={attempt}
+      disabled={false}
+      finish={async () => {}}
+    />,
+  );
+  expect(screen.getByText('05:00')).toBeTruthy();
+  act(() => jest.advanceTimersByTime(500));
+  expect(screen.getByText('05:00')).toBeTruthy();
+  act(() => jest.advanceTimersByTime(500));
+  expect(screen.getByText('04:59')).toBeTruthy();
+  act(() => foreground('background'));
+  jest.setSystemTime(new Date('2026-09-24T20:03:12Z'));
+  act(() => foreground('active'));
+  expect(screen.getByText('01:48')).toBeTruthy();
+  screen.unmount();
+  expect(remove).toHaveBeenCalledTimes(1);
+  expect(jest.getTimerCount()).toBe(0);
+  listener.mockRestore();
 });
