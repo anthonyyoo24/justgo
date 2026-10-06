@@ -142,11 +142,11 @@ needs it; avoid empty future folders or a mandatory screen/component/hook taxono
 
 ## Complete created and moved file diagram
 
-This snapshot covers phase 7.3 (`3e41330` → `af5e7ed`) and the dedicated cleanup
-(`af5e7ed` → `217241d`). It lists **all 149 distinct new or moved files**, including
+This snapshot covers merged phase 7.3 (`3e41330` → `6bccfde`) and the dedicated
+cleanup rebased onto that merge. It lists **all 152 distinct new or moved files**, including
 tests, artwork and verification images, at their current cleanup-branch locations.
-There are **40 phase additions**, **5 cleanup additions** and **130 moves**;
-26 phase additions also appear among the moves, so they are listed once.
+There are **43 phase additions**, **5 cleanup additions** and **133 moves**;
+29 phase additions also appear among the moves, so they are listed once.
 
 - **`new in 7.3`**: created during the phase implementation.
 - **`new in cleanup`**: created for the organization, guidance or verification work.
@@ -155,7 +155,7 @@ There are **40 phase additions**, **5 cleanup additions** and **130 moves**;
   Other directories provide the existing parent structure.
 
 [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) contains the phase changes
-at their original locations. The cleanup commit remains separate and local.
+at their original locations. The cleanup remains a separate branch and PR based on merged `main`.
 The earlier overview explains each responsibility group; this tree expands every
 new or relocated file instead of omitting tests and images.
 
@@ -307,6 +307,8 @@ justgo/
 │   │   │   │   ├── active-retained-notice.jpg [new in 7.3, moved]
 │   │   │   │   ├── correction-active.jpg [new in 7.3, moved]
 │   │   │   │   ├── home.jpg [new in 7.3, moved]
+│   │   │   │   ├── pr16-dependency-progress.jpg [new in 7.3, moved]
+│   │   │   │   ├── pr16-review-reflection.jpg [new in 7.3, moved]
 │   │   │   │   ├── recovery-home.jpg [new in 7.3, moved]
 │   │   │   │   ├── transition-browser-home.png [new in 7.3, moved]
 │   │   │   │   ├── warning-reflection.jpg [new in 7.3, moved]
@@ -371,5 +373,6 @@ justgo/
         ├── contract-upload.test.mjs [new in cleanup]
         ├── coverage-thresholds.json [moved]
         ├── import-boundaries.mjs [moved]
-        └── import-boundaries.test.mjs [moved]
+        ├── import-boundaries.test.mjs [moved]
+        └── mobile-verification.test.mjs [new in 7.3, moved]
 ```

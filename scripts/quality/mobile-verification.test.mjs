@@ -6,10 +6,10 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 const rootPackage = JSON.parse(
-  readFileSync(new URL('../package.json', import.meta.url)),
+  readFileSync(new URL('../../package.json', import.meta.url)),
 );
 const mobilePackage = JSON.parse(
-  readFileSync(new URL('../apps/mobile/package.json', import.meta.url)),
+  readFileSync(new URL('../../apps/mobile/package.json', import.meta.url)),
 );
 
 function commandFixture(t, executable, source) {

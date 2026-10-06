@@ -1,12 +1,17 @@
 # Implementation handoffs
 
-October 6 dedicated cleanup: Anthony authorized one project-wide folder cleanup
-now on `codex/project-folder-cleanup`, based on the committed 07.3 checkpoint
-`af5e7ed`. The [cleanup handoff](project-folder-cleanup.md) owns current
-557 workspace checks, 61 database/migration cases, unchanged coverage, both bundle
-exports, 16 saved journeys and side-panel/native Home evidence; [folder structure](../architecture/FOLDER_STRUCTURE.md) describes
-all new groupings. Browser/legacy code is retained, and no 07.2/07.3 native,
-owner-review or hosted acceptance gate is closed by this organization work.
+**October 6 cleanup rebase after PR #16 merge:** Anthony merged 07.3 at
+`6bccfde`, then authorized saving the directory diagram, rebasing
+`codex/project-folder-cleanup` onto merged `main`, resolving conflicts, verifying,
+pushing and creating a separate cleanup PR. He also requested opening the PR in
+outside Chrome and using its CodeRabbit review checkbox. The
+[cleanup handoff](project-folder-cleanup.md) records current verification and
+[folder structure](../architecture/FOLDER_STRUCTURE.md) describes the groupings.
+All final 07.3 fixes and regression coverage are retained. Fresh local checks pass:
+569 workspace and 61 database/migration cases, unchanged coverage, 16 saved
+journeys, both exports and the 390 × 844 side-panel walkthrough. Cleanup merge and the
+remaining native/physical-device acceptance gates remain separate. Earlier
+cleanup/phase publication restrictions below are historical.
 
 **October 6 PR #16 review fixes:** Anthony authorized assessment, necessary fixes
 and their push. The [07.3 review follow-up](phase-07-3-local-flow.md#october-6-pr-16-review-follow-up)
@@ -17,7 +22,7 @@ regression cases were added; seven reproduced the two bugs before the fixes.
 Fresh checks pass: 568 workspace cases, 61 database/migration cases, coverage,
 16 saved journeys, both exports and the 390 × 844 side-panel reflection walkthrough. The earlier Expo
 fix at `fd3ac78` passed both hosted runs. Native/owner acceptance remains open;
-current review-fix hosted results must be checked after its authorized push.
+both final review-fix hosted runs passed at `cc3f0f2`, and the owner merged PR #16 at `6bccfde`.
 
 **October 6 PR #16 CI follow-up:** The two checks failed on the same live Expo
 patch-version validation after tests/coverage/journeys/exports passed. The

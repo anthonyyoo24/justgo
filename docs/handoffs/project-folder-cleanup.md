@@ -2,9 +2,10 @@
 
 ## Snapshot
 
-- **Status:** Implemented and verified locally; ready for owner review. Earlier phase acceptance and hosted checks remain open.
+- **Status:** Rebased onto owner-merged 07.3 and verified locally for the authorized push/separate PR. Earlier native acceptance remains open; cleanup merge requires owner review.
 - **Branch / base:** `codex/project-folder-cleanup`, based on the committed 07.3
-  checkpoint `af5e7ed` from `codex/phase-07.3-local-flow`.
+  checkpoint `af5e7ed` from `codex/phase-07.3-local-flow`; now rebased onto
+  owner-merged `main` `6bccfde`, retaining Expo fix `fd3ac78` and review fix `cc3f0f2`.
 - **Scope:** One cleanup across the approved folder candidates, including retained
   browser and legacy code. No product behavior change or planned removal.
 - **Dependencies read:** [07.3](phase-07-3-local-flow.md),
@@ -12,13 +13,15 @@
   [app shell](../architecture/APP_SHELL.md),
   [tech stack](../architecture/TECH_STACK.md),
   [testing](../operations/TESTING.md) and applicable `AGENTS.md` instructions.
-- **Publication:** No push, PR, merge, deployment or native rebuild is authorized
-  or performed by this task.
+- **Publication:** Anthony authorized saving the diagram, rebasing, verification,
+  push and a separate cleanup PR after merging 07.3. He then requested opening
+  that PR in outside Chrome and using its CodeRabbit review checkbox. Cleanup
+  merge, deployment and native rebuild remain outside this authorization.
 
 ## What changed
 
 [Folder structure](../architecture/FOLDER_STRUCTURE.md) documents the complete
-groupings and responsibilities. The cleanup relocates 130 existing files:
+groupings and responsibilities. The cleanup relocates 133 existing files:
 
 | Owner               | Grouping                                                                                                   |
 | ------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -49,8 +52,8 @@ module reachable from the public entrypoint and its parent directory allowlist.
   files update their selectors rather than weakening the gate.
 - Tool configuration stays at expected roots. Ordered Drizzle migrations/meta,
   phase handoffs, small cohesive features and reference collections remain flat.
-- 07.3 is still locally implemented with open native/owner acceptance. This
-  cleanup does not satisfy or supersede those phase exit gates.
+- The owner merged 07.3 through PR #16; its recorded native acceptance remains
+  open. This cleanup does not satisfy or supersede those phase exit gates.
 
 ## Problems encountered and fixes
 
@@ -82,7 +85,7 @@ module reachable from the public entrypoint and its parent directory allowlist.
   is fabricated. Carry these artifact gaps into the existing documentation/owner
   review work; fresh cleanup evidence is recorded separately below.
 
-## Verification evidence
+## Original cleanup verification before rebasing
 
 All heavy commands ran sequentially using the existing tools/caches. Contracts
 were rebuilt from an empty `dist/` (the previous generated output is preserved
@@ -118,23 +121,80 @@ This does not close 07.2/07.3 native durability, lifecycle, keyboard/toast/modal
 VoiceOver or physical-device gates. The existing installed binary and sole virtual
 device are retained, and the owner API/Metro setup is restored after verification.
 
+## October 6 rebase onto merged 07.3
+
+- Saved the outstanding directory diagram at `28ca041` before rebasing. The
+  original cleanup and diagram commits were replayed onto `6bccfde`; their Git
+  history remains recoverable and the cleanup stays in a separate branch/PR.
+- Resolved six conflicted files by retaining the final 07.3 period-clock behavior,
+  its tests and updated documentation while adapting imports/links to the new
+  directories. Reflection hydration and fake-timer fixes remain unchanged.
+- Moved the incoming mobile dependency-verification test into `scripts/quality/`
+  and its two browser screenshots into `docs/checks/phase-07-3/browser/`. Updated
+  relative paths, handoff links and the complete directory diagram. Both CI
+  command regressions and the contract-upload regression pass after relocation.
+- The merged dependency pins/lockfile and early Doctor preflight are retained;
+  the cleanup does not modify the workflow or reduce any coverage floors.
+- The Markdown audit found one newly added plan link in the relocated tech stack
+  still pointing to its old directory; corrected it. The final audit finds no
+  newly broken local Markdown targets and retains the four documented historical
+  gaps. All 27 moved image files match their original bytes. The source audit of
+  115 changed TypeScript files finds only relative paths/comments/formatting;
+  merged timer/reflection behavior is preserved.
+
+Current local verification after rebasing, with heavy commands sequential:
+
+| Check                    | Actual result                                                                                                             | Evidence                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `npm ci`                 | Pass; installs the merged Expo pins/lockfile                                                                              | `.local/cleanup-main-install.log`                                                      |
+| `npm run check`          | Pass: Doctor 21/21, typecheck/lint/format and 569 workspace cases (147 architecture + 45 API + 356 mobile + 21 contracts) | `.local/cleanup-main-check.log`                                                        |
+| `npm run test:db`        | Pass: 60 database + 1 migration/restoration cases                                                                         | `.local/cleanup-main-db.log`; dedicated loopback `justgo_test`                         |
+| `npm run test:coverage`  | Pass: unchanged global/critical floors; mobile 88.56% branches / 94.07% lines, API 91.19% / 95.71%, contracts 100%        | `.local/cleanup-main-coverage.log`; contracts rebuilt from empty `dist/`               |
+| `npm run test:journey`   | Pass: all 16 cases in 26.7 seconds, with registry cleanup and service shutdown                                            | `.local/cleanup-main-journey.log`; command-scoped existing Xcode tools/IPv4 resolution |
+| iOS export               | Pass with normal adapters and relocated assets/modules; JavaScript/Hermes evidence only                                   | `.local/cleanup-main-ios-export.log`                                                   |
+| Web export               | Pass with normal adapters and relocated assets/modules                                                                    | `.local/cleanup-main-web-export.log`                                                   |
+| Source/path/image audits | Pass; 115 TypeScript files, 27 byte-identical images, no new missing Markdown targets; 152 file diagram entries           | `.local/cleanup-main-{source,path}-audit.log`                                          |
+
+The current side-panel walkthrough at **390 × 844** passes Cafe selection →
+Accept → exclusive active/countdown/no Settings or tabs → Give up → Accept →
+Completed → Success → Continue → synthetic feeling/text → dirty-close Keep editing
+→ Save Reflection → Progress (one rep/one active day) → today's day sheet → saved
+reflection. Browser warning/error logs were empty. Current local proof is
+`.local/cleanup-main-day-details.png`; the earlier committed browser screenshot
+above remains historical evidence. This interactive walkthrough is separate from
+the 16 saved cases and does not establish native durability/accessibility. The tab
+closed and viewport reset; exactly one registry-owned disposable walkthrough
+account was removed under the dedicated test-database guard, preserving existing
+owner accounts. See `.local/cleanup-main-ui-cleanup.log`.
+
+The owner API/Metro setup was restored using the rebased checkout and merged
+lockfile/pins, and the same installed app/sole QA simulator was relaunched without
+a native rebuild or data reset. XcodeBuildMCP still cannot discover `simctl` under
+the system developer selection, so command-scoped existing Xcode tools handled
+pause/relaunch. Current native Home loads the relocated artwork with no old-module/asset error;
+local proof is `.local/cleanup-main-native-home.png` and Metro records the current
+iOS bundle in `.local/cleanup-main-ui-metro.log`. Only reload/Home presentation
+was checked natively, not the still-open durability/lifecycle/accessibility gates.
+Hosted results require the authorized pushed cleanup revision and will be linked
+in its PR; local passes do not establish hosted execution.
+
 ## Setup, data and operations
 
 Use the existing Node 24/npm 11 workspace, migrated loopback `justgo_test`
 database, installed browser and existing development app. Heavy checks run
 sequentially. No signing, database schema, deployed configuration, credentials or
 owner activity is reset. Existing CI commands continue to call the root scripts;
-their updated paths are verified locally, with hosted evidence requiring separate
-publication authorization.
+their updated paths are verified locally; hosted evidence must come from the
+authorized pushed cleanup revision.
 
 ## Remaining work and risks
 
-- Owner review of the dedicated cleanup and separate Git publication permissions remain open.
+- Owner review and explicit merge approval of the dedicated cleanup remain open; push/PR/review-checkbox actions are authorized.
 - Carry 07.2/07.3 native saving/relaunch, background/lock, keyboard/toast/modal,
   VoiceOver/scalable-text/reduced-motion and owner review gates forward.
 - Preserve the scheduled 07.3A replacement of browser UI testing, 07.4 Progress
   integration and 07.5 legacy cutover/document reconciliation.
-- Hosted checks remain unverified until the owner authorizes publication.
+- Hosted checks remain unverified until the authorized cleanup revision passes.
 
 ## Next phase: read this first
 

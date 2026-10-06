@@ -4,11 +4,11 @@
 
 ## Snapshot
 
-- **Status:** Implemented and verified locally for owner review. Native acceptance remains open; this is not a fully accepted native phase or a published release.
+- **Status:** Merged by the owner through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde` on October 6. Native acceptance remains open; this is not a fully accepted native phase or a published release.
 - **Updated / author:** October 6, 2026 / Codex.
 - **Scope:** Task 7 and presentation/lifecycle integration from 07.2 tasks 5–6. Progress data composition remains 07.4; obsolete backend contraction remains 07.5; billing/access policy remains 07A.
 - **Dependencies read:** [07.2](phase-07-2-local-sync.md), [07.1A](phase-07-1-api-data.md), [07.1B](phase-07-1b-journey-ci.md), [umbrella handoff](phase-07-api-offline.md), [plan](../IMPLEMENTATION_PLAN.md#phase-07-3), [app shell](../architecture/APP_SHELL.md), [tech stack](../architecture/TECH_STACK.md) and [testing guidance](../operations/TESTING.md).
-- **Branch / base:** `codex/phase-07.3-local-flow`, created from local `main` `3e41330` after the owner’s PR #15 merge `8ff5d6c`. Local main contains one additional architecture documentation commit beyond origin/main. Owner-requested local checkpoints are `7a74a90`, `1048372` and `25e2f8c`; the latter excludes PNG screenshots. The owner authorized PR #16, the Expo fix push at `fd3ac78`, and assessment/necessary review fixes/their push. Merge and auto-merge remain unapproved.
+- **Branch / base:** `codex/phase-07.3-local-flow`, created from local `main` `3e41330` after the owner’s PR #15 merge `8ff5d6c`. Local main contains one additional architecture documentation commit beyond origin/main. Owner-requested local checkpoints are `7a74a90`, `1048372` and `25e2f8c`; the latter excludes PNG screenshots. The owner authorized PR #16, the Expo fix push at `fd3ac78`, and assessment/necessary review fixes/their push. The owner subsequently merged PR #16 at `6bccfde`; earlier publication restrictions below are historical.
 - **Environment:** macOS 26.4.1 (25E253), Node 24.18.0, npm 11.16.0; pinned Expo 57.0.27 / React Native 0.86.3. Dedicated loopback PostgreSQL `justgo_test` on port 54329. October 6 owner test setup built and installed an updated EAS simulator binary; signing configuration and deployment are unchanged.
 - **Outcome:** Downloaded challenges can be browsed, started, given up, completed and explicitly reflected on locally. Normal navigation awaits the phone write and proceeds independently of HTTP. Actual failed phone saving uses the existing repository fallback and truthful memory-loss feedback.
 
@@ -250,7 +250,7 @@ Fresh verification on the phase branch, with heavy commands sequential:
 The side panel at 390 × 844 verified Home → Cafe → exclusive active screen →
 Give up → Accept → Completed → Success → Continue → explicit feeling-only reflection
 Save → Progress with one rep. Browser warning/error logs were empty.
-[Progress proof](../checks/phase-07-3/pr16-dependency-progress.jpg) contains only
+[Progress proof](../checks/phase-07-3/browser/pr16-dependency-progress.jpg) contains only
 synthetic fixture activity. This is a walkthrough, distinct from saved journeys
 and native/device evidence. The tab closed, viewport reset and exactly one
 registry-owned disposable account was removed; existing owner data was retained.
@@ -307,7 +307,7 @@ Fresh verification, with heavy commands sequential:
 | Side-panel walkthrough  | 390 × 844: Home → exclusive active challenge → Completed → Success → Continue → feeling/text → dirty-close Keep editing → explicit Save → Progress → day sheet → saved reflection. Development browser warning/error logs were empty.                                                                                         |
 
 Command logs are ignored `.local/pr16-review-{check,db,coverage,journey,web-export,ios-export}.log`.
-[Saved-reflection proof](../checks/phase-07-3/pr16-review-reflection.jpg) contains only
+[Saved-reflection proof](../checks/phase-07-3/browser/pr16-review-reflection.jpg) contains only
 synthetic fixture input. A static production-export walkthrough first correctly
 refused loopback HTTP; the final interactive walkthrough used the documented
 development server with normal web storage, without weakening the transport guard.
@@ -315,8 +315,13 @@ The tab closed, viewport reset, and exactly one registry-owned disposable accoun
 was removed. Temporary servers were stopped and the original owner API/Metro and
 same QA simulator app/device restored. Existing owner data was retained.
 
-Current review-fix hosted acceptance remains pending its authorized push/checks.
-The earlier `fd3ac78` hosted passes above do not establish this new revision's result.
+The final review fix `cc3f0f2` passed both hosted Foundation checks:
+[push run](https://github.com/anthonyyoo24/justgo/actions/runs/37533290552) and
+[PR run](https://github.com/anthonyyoo24/justgo/actions/runs/37533297427). The owner
+merged PR #16 at `6bccfde`. The separate folder cleanup was then rebased onto that
+merged `main`, preserving these fixes and relocating their screenshots/command
+regressions; its own current verification belongs in the
+[cleanup handoff](project-folder-cleanup.md).
 Native saving/relaunch, background/lock, keyboard/modal/toast, accessibility and
 physical-device/staging gates remain open; this review does not mark 07.3 accepted.
 

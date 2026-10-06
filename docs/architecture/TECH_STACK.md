@@ -395,7 +395,7 @@ challenges live in screen-owned React memory; background/lock preserves the
 countdown while that screen/process survives, and fresh mounts, account changes
 or process restarts discard it. Reopening after a process restart requires no
 server active-attempt recovery. Submitted completions/reflections retain the
-07.2 durable-saving/replay contract. See the [07.3 plan](IMPLEMENTATION_PLAN.md#phase-07-3).
+07.2 durable-saving/replay contract. See the [07.3 plan](../IMPLEMENTATION_PLAN.md#phase-07-3).
 
 - Browsing cards or swiping left does not create an attempt. Swiping right, or using its accessible accept button, starts the creation request. Show a starting state until the server confirms the attempt and its deadline; a failed request must not appear as a successfully started challenge.
 - Locking the phone, switching apps, or closing the app does not give up. Preserve the same attempt and deadline; on reopening, recover the active attempt before allowing another start. Do not depend on receiving an app-termination callback.

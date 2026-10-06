@@ -1,11 +1,11 @@
 # JustGO — Implementation Plan
 
-**Version:** 56 · Updated October 6, 2026
+**Version:** 57 · Updated October 6, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
 Phase 06 Progress/history passes local automated and simulator checks, including a live day with 21 entries, automatic paging and both retry states. Physical-device acceptance is scheduled for release validation after the app is built; staging deployment is an integration/release task. See the [phase 06 handoff](handoffs/phase-06-progress.md).
-[06A — Code quality & test hardening](#phase-06a) is complete. [07 — API & offline saving](#phase-07) remains in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). [07.3 local challenge/reflection integration](handoffs/phase-07-3-local-flow.md) is implemented and verified locally on `codex/phase-07.3-local-flow`, in [PR #16](https://github.com/anthonyyoo24/justgo/pull/16), with native durability/accessibility acceptance open and review fixes authorized. The planned testing migration 07.3A follows reviewed/finished 07.3, before Progress composition in 07.4 and final cutover in 07.5; native billing remains 07A. The earlier unapproved PR #12 merge was reverted; its history is preserved below. The owner authorized PR #16 and pushing its assessed review fixes; merge remains unapproved.
+[06A — Code quality & test hardening](#phase-06a) is complete. [07 — API & offline saving](#phase-07) remains in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). [07.3 local challenge/reflection integration](handoffs/phase-07-3-local-flow.md) was merged by the owner through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, including the final Expo and review fixes. Native durability/accessibility acceptance remains open. The planned testing migration 07.3A follows reviewed/finished 07.3, before Progress composition in 07.4 and final cutover in 07.5; native billing remains 07A. The earlier unapproved PR #12 merge was reverted; its history is preserved below. The owner merged PR #16 and authorized rebasing, verifying and publishing the separate cleanup PR; cleanup merge approval remains separate.
 
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](product/PRD.md) · [Tech stack](architecture/TECH_STACK.md)\
@@ -811,7 +811,7 @@ coverage policy. The owner subsequently merged A. B publication is authorized se
 
 ##### 07.3 — Local challenge and reflection experience
 
-**Depends on:** verified 07.2. **Outcome:** the user can complete and reflect from downloaded challenges, continuing after local saving with honest exceptional-risk feedback. **Status:** [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) is open for owner review; [handoff](handoffs/phase-07-3-local-flow.md) records local evidence and the Expo patch-validation CI follow-up. The Expo fix at `fd3ac78` passed both hosted runs. The owner authorized assessment, necessary review fixes and their push; the review-fix handoff records fresh verification and outstanding native acceptance.
+**Depends on:** verified 07.2. **Outcome:** the user can complete and reflect from downloaded challenges, continuing after local saving with honest exceptional-risk feedback. **Status:** merged by the owner through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`. Both hosted runs passed for the final review fix `cc3f0f2`; the [handoff](handoffs/phase-07-3-local-flow.md) records the Expo/review fixes and outstanding native acceptance.
 
 **Scope:** original task 7 and presentation from tasks 5–6. Wire account repositories into the app provider, connectivity/foreground lifecycle, navigation and local completion/reflection screens. Implement the top saving-risk banner and one recovery toast per resolved episode through the selected native host/web adapter. Keep genuine reflection conflict recovery automatic. Finalize the remaining cause-specific intervention presentation before its dependent UI; the rejected generic Progress attention proposal is not approval for a new status feature. Support destination setup remains in 08, with no placeholder action.
 
@@ -835,7 +835,8 @@ coverage policy. The owner subsequently merged A. B publication is authorized se
 
 **Owner-authorized scope:** Anthony requested one organization-only cleanup now,
 including all approved folder candidates. Work on `codex/project-folder-cleanup`
-from the committed 07.3 checkpoint `af5e7ed`; preserve the existing phase IDs and
+originally from 07.3 checkpoint `af5e7ed`, now rebased onto the owner-merged
+`main` at `6bccfde`; preserve the existing phase IDs and
 all unfinished 07.2/07.3 native/owner acceptance gates. This supporting cleanup
 may proceed without claiming 07.3 complete or beginning 07.3A product/test changes.
 
@@ -847,13 +848,19 @@ coverage selectors, Metro fault-fixture resolution, deployment allowlists, asset
 extraction and documentation links together. Keep tests colocated and expected
 configuration/migration/reference entrypoints stable.
 
-**Status:** Implemented and verified locally; ready for owner review. The
+**Status:** Rebased onto merged `main` (`6bccfde`) with the final 7.3 fixes retained.
+Fresh local checks pass: 569 workspace and 61 database/migration cases, unchanged
+coverage, 16 saved journeys, both exports and a 390 × 844 side-panel walkthrough.
+Ready for the authorized separate PR and owner review. The
 [handoff](handoffs/project-folder-cleanup.md) records
 verification and carried acceptance gaps. The
 [folder guide](architecture/FOLDER_STRUCTURE.md) owns current directory groupings.
 Required checks are workspace/database/coverage, platform bundle exports, retained
-saved journeys and the affected side-panel smoke check. Hosted CI is open until
-separate publication authorization; native phase acceptance remains unchanged.
+saved journeys and the affected side-panel smoke check. Anthony authorized the
+rebase, verification, push and separate PR after merging 07.3, then requested
+opening that PR in outside Chrome and using its CodeRabbit review checkbox.
+Hosted checks require results for the pushed cleanup revision; cleanup merge and
+native phase acceptance remain separate.
 
 <a id="phase-07-3a"></a>
 
