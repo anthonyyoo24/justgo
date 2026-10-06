@@ -231,9 +231,10 @@ operations belong in one validated envelope as specified by the plan.
 
 ## Implemented paths and behavior
 
-The networking inventory below uses the foundation PR #18 paths. Mobile PR #19
-moves `apps/mobile/src/lib/http.ts` and `apps/mobile/src/lib/account-client.ts`
-into `apps/mobile/src/lib/network/`, preserving their behavior. The
+The networking inventory below uses the final mobile PR #19 paths. Foundation
+PR #18 retains `apps/mobile/src/lib/http.ts` and
+`apps/mobile/src/lib/account-client.ts`; mobile moves both into
+`apps/mobile/src/lib/network/`, preserving their behavior. The
 [folder guide](../architecture/FOLDER_STRUCTURE.md) shows the final layout after
 both cleanup stages.
 
@@ -243,7 +244,7 @@ both cleanup stages.
 | `apps/api/src/identity/routes.ts`, `service.ts`             | Session kinds route to the existing proof-based service. Resource DELETE retains soft revocation. Transfer cancellation now checks the resource ID against its code and owner. Old identity paths return 404.                   |
 | `apps/api/src/build-app.ts`                                 | Identity plugin uses `/v1`; CORS includes PATCH/DELETE. Parser errors retain 413/415 rather than becoming 503.                                                                                                                  |
 | `apps/mobile/src/features/identity/api.ts`, `controller.ts` | Explicit methods/new paths and session kinds. Existing secure pending intents are mapped at send time, preserving recovery/renewal/transfer proposals across relaunch.                                                          |
-| `apps/mobile/src/lib/http.ts`, `account-client.ts`          | Explicit GET/POST/PATCH/DELETE support; only resolved GET requests receive transient read retries. Bodyless requests omit JSON content type.                                                                                    |
+| `apps/mobile/src/lib/network/http.ts`, `account-client.ts`  | Explicit GET/POST/PATCH/DELETE support; only resolved GET requests receive transient read retries. Bodyless requests omit JSON content type.                                                                                    |
 | API, mobile and contract tests                              | Parser/typed errors/no domain writes, permanent-failure retry classification, CORS, all session proof variants, old-route rejection, revocation/transfer isolation, pending-intent compatibility and actual provider/UI wiring. |
 | `docs/architecture/IDENTITY.md`, `APP_SHELL.md`, plan/index | Current identity protocol and transport rules reconciled. Broader offline specification reconciliation remains task 10.                                                                                                         |
 

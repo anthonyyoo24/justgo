@@ -147,6 +147,25 @@ This follow-up changes lint enforcement/tests and documentation, with no product
 UI changes requiring a new browser/native walkthrough. Earlier UI, native and
 release evidence remains separate and does not close the carried acceptance gaps.
 
+**Mobile follow-up verification:** the mobile stage was replayed on foundation
+fix `2966fe9`. Its runtime source, artwork, dependencies and CI configuration
+match original mobile head `1308eec`; the follow-up changes only the boundary
+checker/tests and documentation. A section audit caught temporary truncation
+during documentation conflict resolution; all foundation sections and the mobile
+split evidence were restored before publication. The final inventory uses
+`lib/network/` while retaining explicit foundation-stage path context.
+
+Fresh `npm run check` passes Doctor 21/21 and the same 597 workspace cases;
+`npm run test:db` passes 60 database cases plus migration rehearsal, and
+`npm run test:coverage` passes all unchanged global/critical floors. Markdown
+comparison finds no new missing targets. The updated diffs still contain 102/107
+changed files and 87/93 non-image review files under the existing filters.
+Logs: `.local/cleanup-review-mobile-{check,db,coverage}.log`. Fresh online Doctor
+is rerun immediately before pushing both branches; latest current-head hosted
+results are maintained in the PR descriptions. Prior saved journeys, exports and
+interactive/native evidence above belong to the original split heads; the fresh
+hosted pipeline runs journeys and exports for the pushed revisions.
+
 ## What changed
 
 [Folder structure](../architecture/FOLDER_STRUCTURE.md) documents the complete
