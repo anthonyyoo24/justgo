@@ -7,7 +7,10 @@ pushing and creating a separate cleanup PR. He also requested opening the PR in
 outside Chrome and using its CodeRabbit review checkbox. The
 [cleanup handoff](project-folder-cleanup.md) records current verification and
 [folder structure](../architecture/FOLDER_STRUCTURE.md) describes the groupings.
-All final 07.3 fixes and regression coverage are retained. Fresh local checks pass:
+[PR #17](https://github.com/anthonyyoo24/justgo/pull/17) publishes the cleanup
+against merged `main`. The outside Chrome review checkbox was clicked; CodeRabbit
+skipped review because 171 selected files exceed its 100-file cap and usage
+capacity is insufficient. All final 07.3 fixes and regression coverage are retained. Fresh local checks pass:
 569 workspace and 61 database/migration cases, unchanged coverage, 16 saved
 journeys, both exports and the 390 × 844 side-panel walkthrough. Cleanup merge and the
 remaining native/physical-device acceptance gates remain separate. Earlier

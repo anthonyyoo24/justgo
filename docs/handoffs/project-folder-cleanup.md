@@ -2,7 +2,10 @@
 
 ## Snapshot
 
-- **Status:** Rebased onto owner-merged 07.3 and verified locally for the authorized push/separate PR. Earlier native acceptance remains open; cleanup merge requires owner review.
+- **Status:** Rebased onto owner-merged 07.3, verified locally and published in
+  [PR #17](https://github.com/anthonyyoo24/justgo/pull/17). Hosted checks are pending;
+  CodeRabbit skipped the requested review due to file/usage limits. Earlier native
+  acceptance remains open; cleanup merge requires owner review.
 - **Branch / base:** `codex/project-folder-cleanup`, based on the committed 07.3
   checkpoint `af5e7ed` from `codex/phase-07.3-local-flow`; now rebased onto
   owner-merged `main` `6bccfde`, retaining Expo fix `fd3ac78` and review fix `cc3f0f2`.
@@ -175,8 +178,21 @@ pause/relaunch. Current native Home loads the relocated artwork with no old-modu
 local proof is `.local/cleanup-main-native-home.png` and Metro records the current
 iOS bundle in `.local/cleanup-main-ui-metro.log`. Only reload/Home presentation
 was checked natively, not the still-open durability/lifecycle/accessibility gates.
-Hosted results require the authorized pushed cleanup revision and will be linked
-in its PR; local passes do not establish hosted execution.
+The initial rebased revision was pushed at `701eaa0`, and
+[PR #17](https://github.com/anthonyyoo24/justgo/pull/17) was created against `main`.
+The PR's Foundation checks must pass for its current head; current hosted results
+are linked in the PR description. Local passes do not establish hosted execution.
+
+Anthony's requested outside Chrome tab is open on PR #17. The browser connector
+was unavailable for Chrome, so native Computer Use opened a new Chrome tab and
+clicked the CodeRabbit **Trigger review** checkbox. CodeRabbit responded in
+[its comment](https://github.com/anthonyyoo24/justgo/pull/17#issuecomment-6027041068)
+with **Review skipped**: 171 selected files exceed its 100-file limit, and usage
+credits/metered capacity are insufficient. No CodeRabbit review/approval was
+produced. The single dedicated cleanup remains reviewable; the owner must choose
+whether a later review task should split the PR or change the service's capacity.
+No filters, dependency/coverage gates, billing or Autopilot settings were changed.
+Local screenshot: `.local/cleanup-main-coderabbit-result.png`.
 
 ## Setup, data and operations
 
@@ -194,7 +210,8 @@ authorized pushed cleanup revision.
   VoiceOver/scalable-text/reduced-motion and owner review gates forward.
 - Preserve the scheduled 07.3A replacement of browser UI testing, 07.4 Progress
   integration and 07.5 legacy cutover/document reconciliation.
-- Hosted checks remain unverified until the authorized cleanup revision passes.
+- Inspect current-head hosted Foundation checks through PR #17 before calling that gate verified.
+- CodeRabbit review is blocked by its file/usage limits; owner review remains required. Any PR split or service capacity change is a separate owner decision.
 
 ## Next phase: read this first
 

@@ -851,7 +851,10 @@ configuration/migration/reference entrypoints stable.
 **Status:** Rebased onto merged `main` (`6bccfde`) with the final 7.3 fixes retained.
 Fresh local checks pass: 569 workspace and 61 database/migration cases, unchanged
 coverage, 16 saved journeys, both exports and a 390 × 844 side-panel walkthrough.
-Ready for the authorized separate PR and owner review. The
+Published separately in [PR #17](https://github.com/anthonyyoo24/justgo/pull/17)
+for owner review. The requested CodeRabbit review was triggered in outside Chrome
+but skipped due to 171 selected files exceeding its 100-file limit and insufficient
+usage credits/metered capacity. Its skip is not review approval. The
 [handoff](handoffs/project-folder-cleanup.md) records
 verification and carried acceptance gaps. The
 [folder guide](architecture/FOLDER_STRUCTURE.md) owns current directory groupings.
