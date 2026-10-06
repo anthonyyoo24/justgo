@@ -1,6 +1,6 @@
 import { ReflectionController } from './controller';
 import { AccountRepository } from '../../data/activity/repository';
-import { ApiError } from '../../lib/http';
+import { ApiError } from '../../lib/network/http';
 import {
   MemoryStorage,
   backend,

@@ -3,7 +3,8 @@
 The owner-authorized cleanup is split into foundation and mobile PRs for review.
 This guide shows the final structure after **both** land. In the foundation stage,
 mobile source and artwork still use their merged-07.3 locations; tooling, API tests,
-contracts and documentation already use the groups below. See the
+contracts and documentation already use the groups below. The stacked mobile
+stage completes every group shown here. See the
 [cleanup handoff](../handoffs/project-folder-cleanup.md) for sequencing and checks.
 
 The October 6 dedicated cleanup groups existing files by responsibility. Tests

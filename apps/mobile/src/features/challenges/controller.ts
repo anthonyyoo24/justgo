@@ -9,7 +9,7 @@ import {
   type CreateAttempt,
   type Venue,
 } from '@justgo/contracts';
-import type { AccountClient } from '../../lib/account-client';
+import type { AccountClient } from '../../lib/network/account-client';
 import type { AccountRepository } from '../../data/activity/repository';
 
 export type ChallengeStart = {

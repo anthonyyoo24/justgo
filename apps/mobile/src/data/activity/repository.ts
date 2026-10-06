@@ -18,7 +18,7 @@ import {
   challengeCardSchema,
   normalizeReflectionText,
 } from '@justgo/contracts';
-import { ApiError } from '../../lib/http';
+import { ApiError } from '../../lib/network/http';
 import {
   cloneJournal,
   emptyJournal,
@@ -32,10 +32,10 @@ import {
   catalogEnvelopeSchema,
   periodSchema,
 } from './model';
-import { JournalSender } from './sender';
-import { JournalPersistence } from './persistence';
+import { JournalSender } from './sync/sender';
+import { JournalPersistence } from './persistence/persistence';
 import { addCompletion, addReflection, correctReflection } from './submissions';
-import type { JournalTransport } from './transport';
+import type { JournalTransport } from './sync/transport';
 
 export type AccountRepositoryOptions = {
   accountId: string;
