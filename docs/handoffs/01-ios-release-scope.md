@@ -5,8 +5,8 @@
 
 ## What changed
 
-- [PRD](../PRD.md): iOS first, onboarding, one general easy Level 1 deck, in-app timer, Success, typed reflection, the full Progress summary/calendar/day sheet and scoped Settings. No levels page, filters, custom dictation or lock-screen display at launch.
-- [Tech stack](../TECH_STACK.md): preserved architecture and billing reliability; retained stable challenge/revision/Level 1 history. Level progress/credit records, thresholds and selection endpoints are deferred. General content explicitly has no venue restriction; unknown classification is distinct.
+- [PRD](../product/PRD.md): iOS first, onboarding, one general easy Level 1 deck, in-app timer, Success, typed reflection, the full Progress summary/calendar/day sheet and scoped Settings. No levels page, filters, custom dictation or lock-screen display at launch.
+- [Tech stack](../architecture/TECH_STACK.md): preserved architecture and billing reliability; retained stable challenge/revision/Level 1 history. Level progress/credit records, thresholds and selection endpoints are deferred. General content explicitly has no venue restriction; unknown classification is distinct.
 - [Markdown plan](../IMPLEMENTATION_PLAN.md) and the historical HTML checklist (absent from this checkout): nine launch stages, with lock-screen work deferred until after release. The current Markdown plan renumbered phases on September 26; older HTML tracker IDs require migration. Apple/RevenueCat setup starts alongside phase 01. EAS build/upload, TestFlight and App Review are separate steps.
 - [Handoff index](README.md): current order, dependencies and reserved names. Phase 06’s reserved filename is now `phase-06-progress.md`; no implementation handoff was renamed because none existed.
 - Frontend learning checklist: removed its assumption that custom dictation ships initially.

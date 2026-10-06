@@ -180,7 +180,7 @@ canonical columns transactionally during the compatibility interval.
    again. Remove only the unique rehearsal schema and its temporary snapshot.
 
 Exact saved comparison queries are in `legacyRows` and `canonicalRows` in
-[`migrations.integration.test.ts`](../../apps/api/tests/migrations.integration.test.ts);
+[`migrations.integration.test.ts`](../../apps/api/tests/database/migrations.integration.test.ts);
 they compare owner/ID/reference/date/start-zone/content/revision projections.
 The test also checks counts, schema metadata, ambiguity rollback and RLS, plus
 blank normalization and atomic rejection of invalid blank-only/no-feeling

@@ -1,8 +1,8 @@
 import type {} from '../apps/mobile/test-support/journey-storage';
 import { sessionResponseSchema, sessionCreateSchema } from '@justgo/contracts';
 import type { Page } from '@playwright/test';
-import { test, expect } from './fixtures';
-import { journeyApiUrl } from './environment';
+import { test, expect } from './support/fixtures';
+import { journeyApiUrl } from './support/environment';
 
 async function openAccount(page: Page, catalogReady = true) {
   await page.goto('/recovery');

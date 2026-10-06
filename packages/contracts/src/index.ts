@@ -1,13 +1,13 @@
 import { z } from 'zod';
 export * from './identity.ts';
 export * from './access.ts';
-export * from './challenges.ts';
-export * from './attempts.ts';
-export * from './legacy-challenges.ts';
-export * from './legacy-reflections.ts';
-export * from './legacy-progress.ts';
-export * from './reflections.ts';
-export * from './progress.ts';
+export * from './activity/challenges.ts';
+export * from './activity/attempts.ts';
+export * from './legacy/legacy-challenges.ts';
+export * from './legacy/legacy-reflections.ts';
+export * from './legacy/legacy-progress.ts';
+export * from './activity/reflections.ts';
+export * from './activity/progress.ts';
 export * from './openapi.ts';
 
 // Operational response contracts; identity contracts are exported above.

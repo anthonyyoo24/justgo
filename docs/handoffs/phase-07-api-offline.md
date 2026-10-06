@@ -183,7 +183,7 @@ No external deployment was made in this task.
 - [ ] **Resolve metadata drift:** the Drizzle journal reaches 0009, but generated
       snapshots stop at 0006. Do not blindly generate against that snapshot:
       it can recreate manual reflection/history changes. Follow the reviewed
-      custom-migration workflow in [FOUNDATION.md](../FOUNDATION.md), or reconcile
+      custom-migration workflow in [FOUNDATION.md](../operations/FOUNDATION.md), or reconcile
       the snapshot before generation. Do not rewrite applied migration SQL.
 - [ ] Preserve a restorable disposable pre-migration snapshot and test restoration.
       Record only counts/comparison results, never private reflections or credentials.
@@ -237,9 +237,9 @@ operations belong in one validated envelope as specified by the plan.
 | `apps/api/src/identity/routes.ts`, `service.ts`             | Session kinds route to the existing proof-based service. Resource DELETE retains soft revocation. Transfer cancellation now checks the resource ID against its code and owner. Old identity paths return 404.                   |
 | `apps/api/src/build-app.ts`                                 | Identity plugin uses `/v1`; CORS includes PATCH/DELETE. Parser errors retain 413/415 rather than becoming 503.                                                                                                                  |
 | `apps/mobile/src/features/identity/api.ts`, `controller.ts` | Explicit methods/new paths and session kinds. Existing secure pending intents are mapped at send time, preserving recovery/renewal/transfer proposals across relaunch.                                                          |
-| `apps/mobile/src/lib/http.ts`, `account-client.ts`          | Explicit GET/POST/PATCH/DELETE support; only resolved GET requests receive transient read retries. Bodyless requests omit JSON content type.                                                                                    |
+| `apps/mobile/src/lib/network/http.ts`, `account-client.ts`  | Explicit GET/POST/PATCH/DELETE support; only resolved GET requests receive transient read retries. Bodyless requests omit JSON content type.                                                                                    |
 | API, mobile and contract tests                              | Parser/typed errors/no domain writes, permanent-failure retry classification, CORS, all session proof variants, old-route rejection, revocation/transfer isolation, pending-intent compatibility and actual provider/UI wiring. |
-| `docs/IDENTITY.md`, `APP_SHELL.md`, plan/index              | Current identity protocol and transport rules reconciled. Broader offline specification reconciliation remains task 10.                                                                                                         |
+| `docs/architecture/IDENTITY.md`, `APP_SHELL.md`, plan/index | Current identity protocol and transport rules reconciled. Broader offline specification reconciliation remains task 10.                                                                                                         |
 
 `POST /v1/sessions` uses `kind: bootstrap | recovery | renewal | transfer`;
 renewal requires the bearer header while other kinds retain their existing body

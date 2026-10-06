@@ -7,8 +7,8 @@
 ## Read first
 
 - [Implementation plan](../IMPLEMENTATION_PLAN.html)
-- [Current PRD](../PRD.md), revised September 16, especially sections 11 and 13
-- [Tech stack](../TECH_STACK.md), dated September 16
+- [Current PRD](../product/PRD.md), revised September 16, especially sections 11 and 13
+- [Tech stack](../architecture/TECH_STACK.md), dated September 16
 - [Handoff workflow/index](README.md) and [phase template](TEMPLATE.md)
 
 PRD defines product behavior; the tech stack defines architecture. The selected final Paper screen IDs are listed in the PRD. Local screen-refs are inspiration and do not override those screens. CURRICULUM.md is a draft; neither its four courses/300 reps nor illustrated sample counts are approved launch configuration.

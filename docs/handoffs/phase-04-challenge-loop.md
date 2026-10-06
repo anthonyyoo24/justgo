@@ -4,7 +4,7 @@
 
 - **Status:** In progress — implementation and local verification complete; physical-device acceptance and staging deployment remain open. Phases 02/03 device gates remain open under the approved sequencing exception.
 - **Updated / author:** September 27, 2026 / Codex, audited against the current Phase 04 branch after the September 25–27 follow-ups.
-- **Scope:** [Plan phase 04](../IMPLEMENTATION_PLAN.md#phase-04), [current scope decisions](../PHASE_04_SCOPE.md), [61 reviewed placements](../CHALLENGES.md).
+- **Scope:** [Plan phase 04](../IMPLEMENTATION_PLAN.md#phase-04), [current scope decisions](../product/PHASE_04_SCOPE.md), [61 reviewed placements](../product/CHALLENGES.md).
 - **Dependencies:** [Phase 02](phase-02-identity.md), [phase 03](phase-03-app-shell.md).
 - **Checkout:** `phase-04-challenge-loop`. Phase 04 was first handed off in `27c0064`; later commits include the card/content, success-navigation, deck-link and action-opacity corrections below.
 - **Environment:** Node 24/npm 11, Expo 57.0.25 / React Native 0.86.3, PostgreSQL 17 local `justgo_test`. Existing EAS development binary `dev.justgo.foundation` on iPhone 17 Simulator / iOS 26.4. The Expo, build-properties, linking and router patch pins were updated after PR review; no new binary was built.
@@ -43,7 +43,7 @@ Completed and returns to the preview on Continue, without saving activity.
 The challenge cache subscription projects only its own account-scoped data
 updates/removals, avoiding unrelated access-cache render notifications.
 
-[CHALLENGE_FIDELITY.md](../CHALLENGE_FIDELITY.md) retains measured specifications,
+[CHALLENGE_FIDELITY.md](../design/CHALLENGE_FIDELITY.md) retains measured specifications,
 source JSX and dated visual checks, including earlier 220 × 310 measurements that
 describe the superseded layout. Browser drag and native buttons were exercised.
 Native touch drags, Dynamic Type and VoiceOver remain unverified; Computer Use
@@ -53,7 +53,7 @@ drags did not advance the deck.
 
 | Path                                                                  | Behavior                                                                                                                                                                                                                      |
 | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/contracts/src/challenges.ts`, `openapi.ts`                  | Strict six-venue, queue, start/skip/finish, attempt and recovery contracts; `ACCESS_REQUIRED` error.                                                                                                                          |
+| `packages/contracts/src/activity/challenges.ts`, `openapi.ts`         | Strict six-venue, queue, start/skip/finish, attempt and recovery contracts; `ACCESS_REQUIRED` error.                                                                                                                          |
 | `apps/api/drizzle/0004_challenge_loop.sql`                            | Stable Level 1, six venues, 58 immutable content revisions and 61 placements; per-account preference/queue/skip receipts and attempts; RLS, ownership, references, one-active constraint and indexes.                         |
 | `apps/api/drizzle/0005_complete_attempt_fields.sql`                   | Requires non-null ending/elapsed fields for terminal outcomes; prevents SQL CHECK’s null semantics from permitting incomplete outcomes.                                                                                       |
 | `apps/api/drizzle/0006_bc10_copy.sql`                                 | Adds `bc-10-v2` and points BC-10 at the shorter reviewed text; preserves `bc-10-v1` for historical attempts.                                                                                                                  |
@@ -62,7 +62,7 @@ drags did not advance the deck.
 | `apps/mobile/src/features/challenges/`                                | Native card window with original art and SVG panels, shared gesture/button animation, queue/action controller, deadline timer, direct outcome actions and the Paper-aligned `SuccessView`.                                    |
 | `apps/mobile/src/features/shell/AppProvider.tsx`, Home/Success routes | Account clearing, foreground recovery, focused-route refresh and confirmed-result navigation. TanStack Query owns account-scoped server data; the controller keeps transient pending actions and a React snapshot projection. |
 | `ScreenPreview.tsx`, `DeckPreview.tsx`, `preview-copy.ts`             | Isolated three-card-per-venue sample deck for presentation/motion, including long/short copy and the full Success view; no authenticated domain writes.                                                                       |
-| `theme/tokens.ts`, `docs/DESIGN.md`                                   | Central card palette/shadow and the user’s seven Paper references; native reconstruction uses real text/vector components.                                                                                                    |
+| `theme/tokens.ts`, `docs/design/DESIGN.md`                            | Central card palette/shadow and the user’s seven Paper references; native reconstruction uses real text/vector components.                                                                                                    |
 | Tests and documentation                                               | Database concurrency/isolation tests, client failure/recovery and deck tests, synchronized scope/tracker/handoff and local fixture instructions. Generated `output/` design artifacts are excluded from source formatting.    |
 
 ### API

@@ -1,5 +1,16 @@
 # Implementation handoffs
 
+**October 6 cleanup review split:** Anthony authorized archiving the unused clean
+Phase 07.3 worktree and splitting the oversized combined PR #17 into two stacked
+replacements. The foundation branch organizes tooling, API tests, contracts and
+docs from merged `main` `6bccfde`; the mobile branch will complete feature/data/
+platform/artwork moves on top. The [cleanup handoff](project-folder-cleanup.md)
+records intermediate path compatibility, fresh verification and carried native
+acceptance. The [folder guide](../architecture/FOLDER_STRUCTURE.md) describes the
+final layout after both PRs. Each review must stay below 100 selected files;
+CodeRabbit's capacity issue may still block review. Publication/superseding PR #17
+is authorized; owner review and separate merge approval remain required.
+
 **October 6 PR #16 review fixes:** Anthony authorized assessment, necessary fixes
 and their push. The [07.3 review follow-up](phase-07-3-local-flow.md#october-6-pr-16-review-follow-up)
 accounts for all seven feedback items: period/lifecycle refresh, reflection hydration,
@@ -9,7 +20,7 @@ regression cases were added; seven reproduced the two bugs before the fixes.
 Fresh checks pass: 568 workspace cases, 61 database/migration cases, coverage,
 16 saved journeys, both exports and the 390 × 844 side-panel reflection walkthrough. The earlier Expo
 fix at `fd3ac78` passed both hosted runs. Native/owner acceptance remains open;
-current review-fix hosted results must be checked after its authorized push.
+both final review-fix hosted runs passed at `cc3f0f2`, and the owner merged PR #16 at `6bccfde`.
 
 **October 6 PR #16 CI follow-up:** The two checks failed on the same live Expo
 patch-version validation after tests/coverage/journeys/exports passed. The
@@ -106,7 +117,7 @@ September 29: [Phase 06 implementation](phase-06-progress.md) remains in progres
 
 September 27: [Phase 05 implementation](phase-05-reflections.md) now connects confirmed Success to the optional Paper-based feelings and typed reflection screen. The revisioned API/database flow, retry/conflict behavior, automated tests and in-app browser preview pass locally. Real-iPhone accessibility/keyboard checks and staging deployment remain open, so Phase 05 is In progress.
 
-September 26: [Phase 04 implementation](phase-04-challenge-loop.md) has six venue decks, 61 placements, reliable attempts, timer, direct give-up and the full confirmed Success view. The handoff includes the later card/content, queue-handoff and preview corrections. Current automated checks and earlier browser/native button/relaunch checks pass; physical-device acceptance and deployment remain open. [Current scope decisions](../PHASE_04_SCOPE.md) supersede earlier general-only and no-replay proposals. Apple signing/device gates remain open.
+September 26: [Phase 04 implementation](phase-04-challenge-loop.md) has six venue decks, 61 placements, reliable attempts, timer, direct give-up and the full confirmed Success view. The handoff includes the later card/content, queue-handoff and preview corrections. Current automated checks and earlier browser/native button/relaunch checks pass; physical-device acceptance and deployment remain open. [Current scope decisions](../product/PHASE_04_SCOPE.md) supersede earlier general-only and no-replay proposals. Apple signing/device gates remain open.
 
 Phase 03 app-shell implementation is recorded in [phase-03-app-shell.md](phase-03-app-shell.md). Welcome/questionnaire onboarding is deferred by the owner; native acceptance status remains explicit. Staging now includes the transfer-verification upgrade and access boundary.
 
