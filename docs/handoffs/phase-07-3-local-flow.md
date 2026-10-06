@@ -8,8 +8,8 @@
 - **Updated / author:** October 6, 2026 / Codex.
 - **Scope:** Task 7 and presentation/lifecycle integration from 07.2 tasks 5–6. Progress data composition remains 07.4; obsolete backend contraction remains 07.5; billing/access policy remains 07A.
 - **Dependencies read:** [07.2](phase-07-2-local-sync.md), [07.1A](phase-07-1-api-data.md), [07.1B](phase-07-1b-journey-ci.md), [umbrella handoff](phase-07-api-offline.md), [plan](../IMPLEMENTATION_PLAN.md#phase-07-3), [app shell](../APP_SHELL.md), [tech stack](../TECH_STACK.md) and [testing guidance](../TESTING.md).
-- **Branch / base:** `codex/phase-07.3-local-flow`, created from local `main` `3e41330` after the owner’s PR #15 merge `8ff5d6c`. Local main contains one additional architecture documentation commit beyond origin/main. Owner-requested local checkpoints are `7a74a90`, `1048372` and `25e2f8c`; the latter excludes PNG screenshots. No push, PR, merge or auto-merge is authorized.
-- **Environment:** macOS 26.4.1 (25E253), Node 24.18.0, npm 11.16.0; pinned Expo 57.0.26 / React Native 0.86.3. Dedicated loopback PostgreSQL `justgo_test` on port 54329. October 6 owner test setup built and installed an updated EAS simulator binary; signing configuration and deployment are unchanged.
+- **Branch / base:** `codex/phase-07.3-local-flow`, created from local `main` `3e41330` after the owner’s PR #15 merge `8ff5d6c`. Local main contains one additional architecture documentation commit beyond origin/main. Owner-requested local checkpoints are `7a74a90`, `1048372` and `25e2f8c`; the latter excludes PNG screenshots. The owner subsequently authorized the push and PR #16; merge/auto-merge and publication of this new follow-up remain unapproved.
+- **Environment:** macOS 26.4.1 (25E253), Node 24.18.0, npm 11.16.0; pinned Expo 57.0.27 / React Native 0.86.3. Dedicated loopback PostgreSQL `justgo_test` on port 54329. October 6 owner test setup built and installed an updated EAS simulator binary; signing configuration and deployment are unchanged.
 - **Outcome:** Downloaded challenges can be browsed, started, given up, completed and explicitly reflected on locally. Normal navigation awaits the phone write and proceeds independently of HTTP. Actual failed phone saving uses the existing repository fallback and truthful memory-loss feedback.
 
 ## What changed
@@ -205,6 +205,63 @@ owned 3001/8082 services stopped. The owner's API/Metro on 3000/8081 (PIDs
 28814/28838) were preserved throughout. No native build or simulator interaction
 was performed for this follow-up. Existing native, hosted and owner-review gates
 remain open; no push, PR or merge was performed.
+
+## October 6 PR #16 Expo dependency validation fix
+
+The owner authorized publishing phase 7.3 in [PR #16](https://github.com/anthonyyoo24/justgo/pull/16)
+at `af5e7ed`, then requested investigation/fixes for its two failed checks.
+The push and pull-request runs are separate executions of the same workflow:
+[push run](https://github.com/anthonyyoo24/justgo/actions/runs/37525667608) and
+[PR run](https://github.com/anthonyyoo24/justgo/actions/runs/37525770472).
+Both passed workspace/database tests, coverage, all saved journeys and web/iOS
+exports, then failed the last Expo Doctor step: 20/21 checks passed.
+Fresh installation and online validation in an isolated phase-branch worktree
+reproduced the same four mismatches. Previous local doctor evidence was historical;
+Expo's remotely recommended SDK patch versions changed independently of our pins.
+
+| Package          | Before  | Updated exact pin |
+| ---------------- | ------- | ----------------- |
+| `expo`           | 57.0.26 | 57.0.27           |
+| `expo-constants` | 57.0.20 | 57.0.21           |
+| `expo-linking`   | 57.0.11 | 57.0.12           |
+| `expo-router`    | 57.0.24 | 57.0.25           |
+
+The root lockfile includes the required SDK transitive updates while preserving
+18 already-compatible incidental dependency versions. `npm run check` now starts
+with the pinned mobile doctor; `EXPO_NO_CACHE=1` refreshes compatibility metadata.
+CI uses that same command after `npm ci`, rather than discovering mismatches at
+the end. Two command regressions failed before the prevention change and pass
+afterward: dependency failures stop verification before building, and the doctor
+refreshes metadata while propagating its failure status. No validator exclusions,
+offline bypass, coverage floor reductions or application-flow changes are added.
+
+Fresh verification on the phase branch, with heavy commands sequential:
+
+| Check                             | Result                                                                                                                    | Local evidence                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Clean `npm ci` and `npm ls --all` | Pass; lockfile installs and dependency graph is valid                                                                     | `.local/pr16-ci-final-install.log`, `.local/pr16-ci-dependency-tree.log`                                  |
+| `EXPO_NO_DOTENV=1 npm run check`  | Pass; 21/21 Doctor checks, TypeScript/lint/format, 146 architecture + 45 API + 346 mobile + 21 contract tests (558 total) | `.local/pr16-ci-check.log`; no ignored environment file was needed by the new preflight                   |
+| `npm run test:db`                 | Pass; 60 database + 1 migration/restoration cases                                                                         | `.local/pr16-ci-db.log`; dedicated loopback `justgo_test`                                                 |
+| `npm run test:coverage`           | Pass; unchanged critical/global floors                                                                                    | `.local/pr16-ci-coverage.log`; mobile 88.31% branches / 93.97% lines; API 91.19% / 95.71%; contracts 100% |
+| Web and iOS exports               | Both pass                                                                                                                 | `.local/pr16-ci-{web,ios}-export.log`; not native binary acceptance                                       |
+| `npm run test:journey`            | 16/16 pass in 27.2 seconds, owned cleanup/shutdown pass                                                                   | `.local/pr16-ci-journey.log`; command-scoped existing Xcode tools and IPv4 resolution                     |
+| New command regressions           | 2/2 fail before the guard changes and 2/2 pass after                                                                      | `.local/pr16-ci-regression-before.log`; included in the 146 architecture tests                            |
+
+The side panel at 390 × 844 verified Home → Cafe → exclusive active screen →
+Give up → Accept → Completed → Success → Continue → explicit feeling-only reflection
+Save → Progress with one rep. Browser warning/error logs were empty.
+[Progress proof](../checks/phase-07-3/pr16-dependency-progress.jpg) contains only
+synthetic fixture activity. This is a walkthrough, distinct from saved journeys
+and native/device evidence. The tab closed, viewport reset and exactly one
+registry-owned disposable account was removed; existing owner data was retained.
+The original owner fixture services were restored afterward.
+
+Hosted acceptance for this fix remains unverified until publication is separately
+authorized and checks on the pushed commit pass. Earlier failed runs are not relabeled.
+The dedicated cleanup and directory diagram remain in the original checkout and
+are excluded from this phase fix. No native signing/build upgrade is performed;
+the installed simulator binary predates these pins, so updated-binary/device
+acceptance remains open under the existing native gates.
 
 ## Setup, data and operations
 

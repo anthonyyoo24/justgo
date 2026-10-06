@@ -141,6 +141,11 @@ handoffs; avoid copying competing versions of these rules into every directory.
   closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
   Follow `docs/TESTING.md` for coverage commands and regression thresholds.
   Keep earlier physical-device/staging gates open until evidenced.
+- Before publication, run fresh online Expo validation through `npm run check`
+  and rerun `npm run doctor -w @justgo/mobile` immediately before pushing.
+  Installed versions are pinned by the lockfile; Expo's recommended SDK patch
+  metadata can change independently. Keep dependency validation enabled and
+  preserve native-build/device acceptance when dependency versions change.
 - When changing CI, verify each command's prerequisites without relying on ignored
   `.env` files or existing local artifacts. Reuse common test configuration across
   related steps. Inspect hosted checks for the pushed commit before marking a new

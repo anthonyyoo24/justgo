@@ -28,7 +28,7 @@ For environment-managed development, copy the workspace `.env.example` files to 
 ## Verify
 
 ```sh
-npm run check          # strict TypeScript, lint, formatting and unit/component tests
+npm run check          # fresh Expo Doctor, TypeScript, lint, formatting and tests
 npm run test:db        # real PostgreSQL isolation/rollback/pool tests; db:local + migrate first
 npm run test:coverage  # all-source reports + regression floors; uses the test DB
 npm run test:journey   # 07.1B saved app/API account and catalog smoke

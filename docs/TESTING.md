@@ -41,7 +41,8 @@ npm run export:web -w @justgo/mobile
 npm run export:ios -w @justgo/mobile
 ```
 
-`check` builds contracts, typechecks, lints, checks formatting and runs architecture,
+`check` first runs the pinned mobile Expo Doctor with fresh online version metadata,
+then builds contracts, typechecks, lints, checks formatting and runs architecture,
 API unit, mobile component/controller and contract tests. `test:db` exercises real
 PostgreSQL transactions, ownership, isolation, idempotency, reflections and history,
 then runs the isolated migration/restoration rehearsal.
@@ -69,6 +70,23 @@ and coverage, so those steps cannot drift apart. Ignored local `.env` files are
 absent from a fresh runner: check each new CI command's full prerequisites and
 inspect the hosted result for the pushed commit before calling its gate verified.
 Keep the loopback/test-database safeguards enabled.
+
+## Before publication
+
+Run `npm ci` in a clean checkout and `npm run check`; CI runs the same root
+command immediately after installation. Its first step is
+`npm run doctor -w @justgo/mobile`, which bypasses Expo's dependency metadata
+cache with `EXPO_NO_CACHE=1`. The doctor remains pinned in the root lockfile.
+A failed dependency check stops the command before build/test work begins.
+The command tests protect this early stop, fresh metadata and nonzero exits.
+
+Rerun the standalone doctor immediately before an authorized push after longer
+verification sessions. Review any recommended SDK patch changes, update the exact
+package pins and root lockfile together, then repeat the relevant checks/exports.
+The lockfile fixes installed versions, not Expo's live compatibility guidance;
+a recommendation released between local verification and CI can still cause a
+new failure. Do not use offline mode, dependency exclusions or validation bypasses
+to hide it. Required native build/device evidence remains separate from exports.
 
 ## Coverage policy
 

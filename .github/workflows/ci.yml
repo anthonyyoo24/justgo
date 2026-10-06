@@ -71,5 +71,3 @@ jobs:
           if-no-files-found: ignore
       - run: npm run export:web -w @justgo/mobile
       - run: npm run export:ios -w @justgo/mobile
-      - run: npx expo-doctor
-        working-directory: apps/mobile

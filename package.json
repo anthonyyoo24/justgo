@@ -24,7 +24,7 @@
     "test:db": "npm run test:db -w @justgo/api",
     "db:migrate": "npm run db:migrate -w @justgo/api",
     "db:generate": "npm run db:generate -w @justgo/api",
-    "check": "npm run build:contracts && npm run typecheck && npm run lint && npm run format:check && npm test",
+    "check": "npm run doctor -w @justgo/mobile && npm run build:contracts && npm run typecheck && npm run lint && npm run format:check && npm test",
     "db:local": "node scripts/local-database.mjs",
     "db:stop": "node scripts/local-database.mjs --stop",
     "build:contracts": "npm run build -w @justgo/contracts",

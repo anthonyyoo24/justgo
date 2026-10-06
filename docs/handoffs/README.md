@@ -1,5 +1,13 @@
 # Implementation handoffs
 
+**October 6 PR #16 CI follow-up:** The two checks failed on the same live Expo
+patch-version validation after tests/coverage/journeys/exports passed. The
+[07.3 follow-up](phase-07-3-local-flow.md#october-6-pr-16-expo-dependency-validation-fix)
+records the four exact pin updates, fresh early validation and command regressions.
+Fresh local verification passes: 558 workspace tests, 61 database/migration cases,
+coverage, both exports, 21 Doctor checks and 16 saved journeys. Follow-up publication
+and updated hosted/native acceptance remain open.
+
 **October 6 native testing migration plan:** Anthony requested scheduling [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) after reviewed/finished 07.3 and before 07.4. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) inventories browser-only files (including modal isolation), responsibilities to migrate and native/shared code to retain. Keep existing browser coverage until native replacements and hosted CI pass. The phase has not started; its handoff filename is reserved below. Existing work was committed first at `25e2f8c`; the three PNG screenshots remain local and uncommitted.
 
 **October 6 saving-spinner follow-up:** Existing unstaged work was checkpointed locally at `1048372` before Anthony's requested UI change. Completed, Save Reflection and dialog Save Reflection now replace their contents with a centered circular loader after the existing 200 ms delay. [Follow-up evidence](phase-07-3-local-flow.md#october-6-centered-saving-spinner-follow-up) records 346 mobile tests, the coverage gate, repository checks, the affected saved slow-write journey and side-panel layout proof. This follow-up is committed locally at `25e2f8c`, excluding PNG screenshots; native acceptance and Git publication permissions remain open.
