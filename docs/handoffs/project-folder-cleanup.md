@@ -2,12 +2,14 @@
 
 ## Snapshot
 
-- **Status:** The owner authorized splitting the oversized PR #17 into two
-  stacked replacements. This foundation stage keeps mobile source/artwork at
-  their merged-07.3 locations; the mobile stage completes the same cleanup.
+- **Status:** Both stacked replacements are published as
+  [PR #18](https://github.com/anthonyyoo24/justgo/pull/18) and
+  [PR #19](https://github.com/anthonyyoo24/justgo/pull/19); PR #17 is closed as
+  superseded. This foundation snapshot keeps mobile source/artwork at their
+  merged-07.3 locations; the mobile stage completes the same cleanup.
   Both still require owner review and explicit merge approval.
 - **Branches / base:** `codex/project-folder-cleanup-foundation` starts at
-  owner-merged `main` `6bccfde`; `codex/project-folder-cleanup-mobile` will build
+  owner-merged `main` `6bccfde`; `codex/project-folder-cleanup-mobile` builds
   on it. Original `codex/project-folder-cleanup` at `a02b28d` remains recoverable.
   Expo fix `fd3ac78` and review fix `cc3f0f2` are retained throughout.
 - **Scope:** One cleanup across the approved folder candidates, including retained
@@ -69,6 +71,48 @@ published revision.
 The foundation diff has **102 changed files**, of which **87** are eligible under
 CodeRabbit's existing image filters. No filters were changed. The mobile stage
 will be counted and verified independently before publication.
+
+## October 6 PR #18 review follow-up
+
+Anthony authorized the assessed fixes and pushes to both cleanup PRs. Foundation
+review at `6e12520` raised four inline findings and one docstring advisory; mobile
+review at `1308eec` was skipped under the hourly quota, so it is not a completed
+clean review. Both original heads passed their hosted Foundation checks.
+
+- **Import boundaries:** the existing resolver normalized `../` and absolute
+  paths but left `./../` unresolved. The fix normalizes both relative prefixes
+  before applying the same architecture rules. Twenty new restricted-path cases
+  failed before the fix; all 162 import-boundary cases pass afterward. The 28
+  added cases also protect allowed sibling/shared imports and existing absolute
+  path behavior, across static imports, named/star re-exports, `import()`,
+  `require()`, template literals and TypeScript import assignments. Existing
+  package and computed-loader restrictions are unchanged.
+- **Stage-aware documentation:** app shell now distinguishes foundation paths
+  from the mobile stage's final groups. The umbrella handoff lists foundation
+  network paths with their explicit mobile-stage destinations; the mobile branch
+  updates that inventory to its final implemented paths.
+- **07.3 status:** current handoff/index summaries now record the owner merge of
+  PR #16 at `6bccfde` and passed final hosted checks at `cc3f0f2`. Historical
+  checkpoint restrictions are retained. Native durability/lifecycle/accessibility
+  and physical-device/staging acceptance remain open.
+- **Docstring advisory:** no function-level evidence was supplied for the bot's
+  80% threshold, and the repository defines no such requirement. No blanket
+  comments or new gate are introduced; existing responsibility/behavior comments
+  are retained. This optional advisory does not require a deferred phase task.
+
+**Foundation follow-up verification:** fresh `npm run check` passes Doctor 21/21
+and 597 workspace cases (175 architecture, 45 API, 356 mobile, 21 contracts).
+`npm run test:db` passes 60 database cases plus the migration rehearsal.
+`npm run test:coverage` passes every unchanged global/critical floor. Markdown
+link comparison finds no new missing targets; `git diff --check` passes. Logs:
+`.local/cleanup-review-foundation-{check,db,coverage}.log` and
+`.local/cleanup-review-boundaries-{before,after}.log`. Current-head hosted checks
+will be inspected after the authorized pushes; the original hosted passes above
+do not establish the follow-up result.
+
+This follow-up changes lint enforcement/tests and documentation, with no product
+UI changes requiring a new browser/native walkthrough. Earlier UI, native and
+release evidence remains separate and does not close the carried acceptance gaps.
 
 ## What changed
 

@@ -13,7 +13,9 @@ const under = (value, directory) =>
 function boundaryMessage(filename, specifier) {
   const file = relative(filename);
   const target =
-    specifier.startsWith('..') || path.isAbsolute(specifier)
+    specifier.startsWith('./') ||
+    specifier.startsWith('../') ||
+    path.isAbsolute(specifier)
       ? relative(path.resolve(path.dirname(filename), specifier))
       : specifier;
   const api = under(target, '@justgo/api') || under(target, 'apps/api');

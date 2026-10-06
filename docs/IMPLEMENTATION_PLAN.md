@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 58 · Updated October 6, 2026
+**Version:** 60 · Updated October 6, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -852,9 +852,11 @@ configuration/migration/reference entrypoints stable.
 splitting the oversized combined [PR #17](https://github.com/anthonyyoo24/justgo/pull/17)
 into two stacked replacements. `codex/project-folder-cleanup-foundation` starts
 at merged `main` (`6bccfde`) and organizes tooling, API tests, contracts and docs;
-`codex/project-folder-cleanup-mobile` will build on it and complete the mobile
-source/artwork moves. Existing mobile paths remain valid in the first stage.
-Both must stay below CodeRabbit's 100 selected-file limit, preserve the complete
+`codex/project-folder-cleanup-mobile` completes the mobile source/artwork moves
+on top. Both replacements are published as [PR #18](https://github.com/anthonyyoo24/justgo/pull/18)
+and [PR #19](https://github.com/anthonyyoo24/justgo/pull/19); PR #17 is closed as
+superseded. Existing mobile paths remain valid in the foundation stage. Both must
+stay below CodeRabbit's 100 selected-file limit, preserve the complete
 cleanup and final 7.3 fixes, and pass their own checks. CodeRabbit also reported
 insufficient credits/capacity; resolving file count does not establish a review.
 
@@ -862,9 +864,17 @@ The [handoff](handoffs/project-folder-cleanup.md) records the split, archived
 worktree, original verification and carried acceptance gaps. The
 [folder guide](architecture/FOLDER_STRUCTURE.md) shows the final structure after
 both PRs. Required checks remain workspace/database/coverage, platform exports,
-saved journeys and affected side-panel verification. Retire PR #17 once both
-replacements exist. Merge foundation first only with explicit owner approval;
+saved journeys and affected side-panel verification. Merge foundation first only with explicit owner approval;
 then retarget mobile to `main` and verify its diff/CI. No merge is authorized.
+
+**October 6 review follow-up:** Anthony authorized fixing the assessed issues and
+pushing both branch updates. Normalize `./` and `../` import traversal before
+checking architecture boundaries, with regression coverage for static imports,
+re-exports and runtime loaders. Clarify foundation/final mobile paths and reconcile
+07.3's current publication summaries with its recorded merge/hosted passes, keeping
+native/device acceptance open. The [cleanup handoff](handoffs/project-folder-cleanup.md)
+records verification and the optional docstring advisory assessment. No product UI
+behavior, coverage floor or review filter changes are part of this follow-up.
 
 <a id="phase-07-3a"></a>
 

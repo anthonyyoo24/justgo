@@ -4,13 +4,16 @@ Phase 03 established navigation and account/network infrastructure. Anthony defe
 
 ## Implemented folder responsibilities
 
-The October 6 dedicated cleanup groups existing modules without changing behavior.
-Read [FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md) for current feature/data/platform,
-contract, test and tooling paths, and the
-[cleanup handoff](../handoffs/project-folder-cleanup.md) for verification. Challenge
-previews now belong to `dev/previews/challenges/`; Challenges uses `deck/`,
-`active/`, `success/`, activity uses `persistence/` and `sync/`, and Progress uses
-`calendar/` and `day-details/`. Native/web adapter families remain colocated.
+The October 6 dedicated cleanup groups existing modules without changing product
+behavior in two stacked PRs. [Foundation PR #18](https://github.com/anthonyyoo24/justgo/pull/18)
+organizes tooling, API tests, contracts and documentation while retaining the
+merged-07.3 mobile source/artwork paths. [Mobile PR #19](https://github.com/anthonyyoo24/justgo/pull/19)
+then moves challenge previews to `dev/previews/challenges/`, groups Challenges into
+`deck/`, `active/` and `success/`, activity into `persistence/` and `sync/`, and
+Progress into `calendar/` and `day-details/`. Native/web adapter families remain
+colocated. [FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md) describes the final structure
+after both PRs; the [cleanup handoff](../handoffs/project-folder-cleanup.md) records
+stage-specific verification.
 
 The October 5 owner-approved cleanup places the startup gate in
 `app-support/access/AccessScreen.tsx` and app/account/foreground composition in

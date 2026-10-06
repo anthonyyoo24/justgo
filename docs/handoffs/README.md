@@ -1,15 +1,23 @@
 # Implementation handoffs
 
+**October 6 cleanup review follow-up:** Anthony authorized fixing the assessed
+issues and pushing updates to PRs #18 and #19. The
+[cleanup handoff](project-folder-cleanup.md#october-6-pr-18-review-follow-up)
+records the import-boundary regression, stage-aware path documentation and 07.3
+publication-status corrections. Native/device acceptance stays open; the
+docstring advisory is optional and does not introduce a new coverage requirement.
+
 **October 6 cleanup review split:** Anthony authorized archiving the unused clean
 Phase 07.3 worktree and splitting the oversized combined PR #17 into two stacked
 replacements. The foundation branch organizes tooling, API tests, contracts and
-docs from merged `main` `6bccfde`; the mobile branch will complete feature/data/
+docs from merged `main` `6bccfde` in PR #18; PR #19 completes feature/data/
 platform/artwork moves on top. The [cleanup handoff](project-folder-cleanup.md)
 records intermediate path compatibility, fresh verification and carried native
 acceptance. The [folder guide](../architecture/FOLDER_STRUCTURE.md) describes the
 final layout after both PRs. Each review must stay below 100 selected files;
-CodeRabbit's capacity issue may still block review. Publication/superseding PR #17
-is authorized; owner review and separate merge approval remain required.
+PR #17 is closed as superseded. CodeRabbit completed its foundation review, while
+the mobile review was skipped under the hourly quota at `1308eec`. Owner review
+and separate merge approval remain required.
 
 **October 6 PR #16 review fixes:** Anthony authorized assessment, necessary fixes
 and their push. The [07.3 review follow-up](phase-07-3-local-flow.md#october-6-pr-16-review-follow-up)
@@ -19,7 +27,7 @@ teardown, with the inconclusive docstring advisory assessed separately. Ten
 regression cases were added; seven reproduced the two bugs before the fixes.
 Fresh checks pass: 568 workspace cases, 61 database/migration cases, coverage,
 16 saved journeys, both exports and the 390 × 844 side-panel reflection walkthrough. The earlier Expo
-fix at `fd3ac78` passed both hosted runs. Native/owner acceptance remains open;
+fix at `fd3ac78` passed both hosted runs. Native/device acceptance remains open;
 both final review-fix hosted runs passed at `cc3f0f2`, and the owner merged PR #16 at `6bccfde`.
 
 **October 6 PR #16 CI follow-up:** The two checks failed on the same live Expo
@@ -160,7 +168,7 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with native durability evidence open. 07.3 is implemented/verified locally on `codex/phase-07.3-local-flow`, with native acceptance and Git publication open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A/07.4/07.5 filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with native durability evidence open. The owner merged 07.3 through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, after both final review-fix hosted runs passed at `cc3f0f2`. Native/device acceptance remains open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A/07.4/07.5 filenames remain reserved outputs.
 
 | Subphase                                         | Depends on | Handoff filename                                       |
 | ------------------------------------------------ | ---------- | ------------------------------------------------------ |

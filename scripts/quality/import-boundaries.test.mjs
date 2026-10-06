@@ -240,6 +240,55 @@ const cases = [
     source: "import '@justgo/contracts';",
     restricted: false,
   },
+  {
+    name: 'dot-slash traversal cannot bypass the mobile-API boundary',
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
+    source: "import './../../../../api/src/db/client';",
+    restricted: true,
+  },
+  {
+    name: 'dot-slash traversal cannot bypass the API-mobile boundary',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source: "import './../../../mobile/src/lib/http';",
+    restricted: true,
+  },
+  {
+    name: 'dot-slash traversal cannot bypass the contracts-app boundary',
+    file: 'packages/contracts/src/BoundaryFixture.ts',
+    source: "import './../../../apps/api/src/identity/service';",
+    restricted: true,
+  },
+  {
+    name: 'dot-slash traversal cannot bypass the public-contract entrypoint',
+    file: 'apps/mobile/src/app-support/identity/BoundaryFixture.ts',
+    source: "import './../../../../../packages/contracts/src/identity';",
+    restricted: true,
+  },
+  {
+    name: 'dot-slash star re-exports cannot bypass shared boundaries',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "export * from './../app-support/identity/vault';",
+    restricted: true,
+  },
+  {
+    name: 'dot-slash named re-exports cannot bypass data boundaries',
+    file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
+    source:
+      "export { controller } from './../../features/challenges/controller';",
+    restricted: true,
+  },
+  {
+    name: 'shared code may import a sibling with dot-slash',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "import './account-client';",
+    restricted: false,
+  },
+  {
+    name: 'features may import shared code with dot-slash traversal',
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
+    source: "import './../../lib/account-client';",
+    restricted: false,
+  },
 ];
 
 const loadingCases = cases.flatMap((fixture) => {
@@ -259,6 +308,31 @@ const loadingCases = cases.flatMap((fixture) => {
 });
 cases.push(
   ...loadingCases,
+  {
+    name: 'absolute paths cannot bypass the mobile-API boundary',
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
+    source: `import '${path.join(root, 'apps/api/src/db/client')}';`,
+    restricted: true,
+  },
+  {
+    name: 'features may import shared code with an absolute path',
+    file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
+    source: `import '${path.join(root, 'apps/mobile/src/lib/account-client')}';`,
+    restricted: false,
+  },
+  {
+    name: 'dot-slash template imports cannot bypass shared boundaries',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: 'void import(`./../app-support/identity/vault`);',
+    restricted: true,
+  },
+  {
+    name: 'dot-slash TypeScript import assignments cannot bypass boundaries',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import mobile = require('./../../../mobile/src/lib/http'); export { mobile };",
+    restricted: true,
+  },
   {
     name: 'preview route may require developer previews',
     file: 'apps/mobile/src/app/preview.tsx',
