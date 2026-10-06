@@ -1,11 +1,11 @@
 # JustGO — Implementation Plan
 
-**Version:** 55 · Updated October 6, 2026
+**Version:** 56 · Updated October 6, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
 Phase 06 Progress/history passes local automated and simulator checks, including a live day with 21 entries, automatic paging and both retry states. Physical-device acceptance is scheduled for release validation after the app is built; staging deployment is an integration/release task. See the [phase 06 handoff](handoffs/phase-06-progress.md).
-[06A — Code quality & test hardening](#phase-06a) is complete. [07 — API & offline saving](#phase-07) remains in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). [07.3 local challenge/reflection integration](handoffs/phase-07-3-local-flow.md) is implemented and verified locally on `codex/phase-07.3-local-flow`, with native durability/accessibility and hosted evidence open. The planned testing migration 07.3A follows reviewed/finished 07.3, before Progress composition in 07.4 and final cutover in 07.5; native billing remains 07A. The earlier unapproved PR #12 merge was reverted; its history is preserved below. No push, PR or merge of 07.3 is authorized.
+[06A — Code quality & test hardening](#phase-06a) is complete. [07 — API & offline saving](#phase-07) remains in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). [07.3 local challenge/reflection integration](handoffs/phase-07-3-local-flow.md) is implemented and verified locally on `codex/phase-07.3-local-flow`, in [PR #16](https://github.com/anthonyyoo24/justgo/pull/16), with native durability/accessibility acceptance open and review fixes authorized. The planned testing migration 07.3A follows reviewed/finished 07.3, before Progress composition in 07.4 and final cutover in 07.5; native billing remains 07A. The earlier unapproved PR #12 merge was reverted; its history is preserved below. The owner authorized PR #16 and pushing its assessed review fixes; merge remains unapproved.
 
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](PRD.md) · [Tech stack](TECH_STACK.md)  
@@ -433,7 +433,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 07 — API & offline saving
 
-**Status:** In progress; 07.1A, 07.1B and 07.2 are merged by the owner. 07.3 is implemented and verified locally, with native evidence open. Progress composition/cutover remain 07.4/07.5. Publishing or merging 07.3 needs separate explicit permission.
+**Status:** In progress; 07.1A, 07.1B and 07.2 are merged by the owner. 07.3 is open in PR #16 for owner review, with native evidence open. The owner authorized pushing the assessed review fixes; merge remains unapproved. Progress composition/cutover remain 07.4/07.5.
 
 **Depends on:** 06A; complete 07.1–07.5 in order before 07A.
 
@@ -674,7 +674,7 @@ The six subphases below replace the former single ten-step execution block, with
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------ |
 | [07.1 — API and data foundation](#phase-07-1)                   | Tasks 1–4, backend reads from task 8, journey-harness foundation                      | 06A        | A and B verified and merged by owner in PR #13 / PR #14                        |
 | [07.2 — Durable local saving and synchronization](#phase-07-2)  | Tasks 5–6 core persistence, sender, recovery state and transport tests                | 07.1       | Merged by owner in PR #15; native durability evidence open                     |
-| [07.3 — Local challenge and reflection experience](#phase-07-3) | Task 7, presentation from tasks 5–6, app lifecycle wiring and saved journey cases     | 07.2       | Implemented/verified locally; native and hosted evidence open                  |
+| [07.3 — Local challenge and reflection experience](#phase-07-3) | Task 7, presentation from tasks 5–6, app lifecycle wiring and saved journey cases     | 07.2       | PR #16 open for owner review; native evidence open                             |
 | [07.3A — iOS simulator testing migration](#phase-07-3a)         | Native journey coverage/CI and removal of browser-only testing support                | 07.3       | Not started; scheduled after owner review of 07.3                              |
 | [07.4 — Progress and history integration](#phase-07-4)          | Client portion of task 8, reconciliation/cache selectors and native journey expansion | 07.3A      | Progress partly converted; reconciliation and integrated verification remain   |
 | [07.5 — Final cutover and acceptance](#phase-07-5)              | Tasks 9–10, destructive cleanup, full CI acceptance and documentation reconciliation  | 07.4       | Contraction SQL drafted; cutover, full verification and closeout not completed |
@@ -811,7 +811,7 @@ coverage policy. The owner subsequently merged A. B publication is authorized se
 
 ##### 07.3 — Local challenge and reflection experience
 
-**Depends on:** verified 07.2. **Outcome:** the user can complete and reflect from downloaded challenges, continuing after local saving with honest exceptional-risk feedback. **Status:** [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) is open for owner review; [handoff](handoffs/phase-07-3-local-flow.md) records local evidence and the Expo patch-validation CI follow-up. Follow-up publication/hosted verification and native acceptance remain open.
+**Depends on:** verified 07.2. **Outcome:** the user can complete and reflect from downloaded challenges, continuing after local saving with honest exceptional-risk feedback. **Status:** [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) is open for owner review; [handoff](handoffs/phase-07-3-local-flow.md) records local evidence and the Expo patch-validation CI follow-up. The Expo fix at `fd3ac78` passed both hosted runs. The owner authorized assessment, necessary review fixes and their push; the review-fix handoff records fresh verification and outstanding native acceptance.
 
 **Scope:** original task 7 and presentation from tasks 5–6. Wire account repositories into the app provider, connectivity/foreground lifecycle, navigation and local completion/reflection screens. Implement the top saving-risk banner and one recovery toast per resolved episode through the selected native host/web adapter. Keep genuine reflection conflict recovery automatic. Finalize the remaining cause-specific intervention presentation before its dependent UI; the rejected generic Progress attention proposal is not approval for a new status feature. Support destination setup remains in 08, with no placeholder action.
 
@@ -847,7 +847,7 @@ coverage policy. The owner subsequently merged A. B publication is authorized se
 
 - [ ] The coverage inventory accounts for every existing critical journey and failure case; retained repository/API/database tests run independently of browser tooling, with isolation and cleanup intact.
 - [ ] Saved native journeys pass against the actual app/API/disposable database, including native storage/relaunch and offline recovery; targeted transition/lifecycle/presentation evidence is recorded with remaining device checks explicit.
-- [ ] The documented suite runs from a clean setup, fails on a controlled regression and passes its required hosted native CI gate before the browser gate is retired.
+- [ ] The documented suite runs from a clean setup, fails on a controlled regression and passes its required native CI gate for the authorized pushed revision, confirmed in hosted check results, before the browser gate is retired.
 - [ ] Browser-only testing support is removed without changing product behavior or reducing coverage floors, and verification instructions consistently require native UI evidence.
 - [ ] Save `handoffs/phase-07-3a-native-testing.md` with the coverage mapping, removed/retained paths, commands, simulator/build prerequisites, CI evidence, issues and open physical-device/staging gates; update this plan and the handoff index. Owner review and separate Git publication/merge permissions remain required.
 

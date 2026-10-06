@@ -65,7 +65,7 @@ export class ReflectionController {
   }
   connect() {
     if (this.unsubscribe || !this.alive) return;
-    this.unsubscribe = this.repository.store.subscribe(() => {
+    const refresh = () => {
       const latest = this.repository.getAttempt(this.attemptId);
       if (!latest || this.snapshot.submitting) return;
       const form = {
@@ -74,10 +74,23 @@ export class ReflectionController {
       };
       const untouched = same(this.snapshot, this.saved);
       this.saved = form;
-      if (untouched) this.update({ ...form, editing: !!latest.reflection });
+      if (this.snapshot.phase === 'missing')
+        this.update({
+          ...form,
+          phase: 'ready',
+          editing: !!latest.reflection,
+          error: this.rejectedReflection()
+            ? 'This reflection request wasn’t accepted. Your submitted writing is retained.'
+            : null,
+        });
+      else if (untouched)
+        this.update({ ...form, editing: !!latest.reflection });
       else if (latest.reflection)
         this.update({ editing: true, feeling: latest.reflection.feeling });
-    });
+    };
+    this.unsubscribe = this.repository.store.subscribe(refresh);
+    // Hydration may also finish between constructing the controller and connecting.
+    refresh();
   }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);

@@ -117,6 +117,11 @@ handoffs; avoid copying competing versions of these rules into every directory.
   deliberate background operation whose failure is already handled; explain
   non-obvious ownership of errors. Do not suppress async warnings or broad lint
   rules to make checks pass.
+- Controllers that can mount before asynchronous hydration must reconcile the
+  current store when connecting as well as subscribe to later changes. Test slow
+  hydration and the construction-to-subscription gap, preserving newer input.
+  Runtime date/time-zone coordination must refresh on account activation,
+  foreground and day boundaries, and cancel/fence callbacks on lifecycle changes.
 
 ## Verification and handoff
 

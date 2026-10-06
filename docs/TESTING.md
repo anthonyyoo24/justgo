@@ -20,7 +20,8 @@ safeguards. Native storage/relaunch, lifecycle, keyboard/modal and transition
 evidence must be distinguished from mocks and eventual screen assertions.
 
 Current browser commands and UI requirements below remain active until equivalent
-coverage and required hosted native CI pass. Then retire Playwright/Chromium and
+coverage exists and the required native CI gate passes for the authorized pushed
+revision, confirmed in hosted check results. Then retire Playwright/Chromium and
 unused browser-only adapters/dependencies, update `AGENTS.md` and this guide, and
 use native simulator journeys/interactive checks for future UI changes. Historical
 browser evidence stays intact; physical-device/staging release checks remain open.

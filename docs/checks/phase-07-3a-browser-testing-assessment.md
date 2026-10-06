@@ -132,7 +132,8 @@ reserved `docs/handoffs/phase-07-3a-native-testing.md` when work starts.
   retained/removed disposition; no useful repository or fixture regression is lost.
 - The documented native suite runs against a clean app/API/disposable database,
   preserves safe cleanup and artifacts, fails on a controlled assertion regression
-  and passes the authorized revision's required hosted native CI gate.
+  and passes the required native CI gate for the authorized pushed revision,
+  confirmed in hosted check results.
 - After removal, dependency installation, typecheck/lint/format, workspace/database
   checks, unchanged coverage gates, iOS export and affected native journeys pass.
 - The normal native bundle contains no browser DOM adapters or fault controls;

@@ -61,6 +61,42 @@ afterEach(() => {
   mockRepository?.dispose();
   jest.useRealTimers();
 });
+it('replaces the missing-activity message with a working editor after a slow journal read', async () => {
+  const raw = storage.values.get(`justgo:v1:${owner}:journal`)!;
+  mockRepository!.dispose();
+  const read = deferred<string | null>();
+  jest.spyOn(storage, 'getItem').mockImplementationOnce(() => read.promise);
+  mockRepository = new AccountRepository({
+    accountId: owner,
+    storage,
+    transport: backend(),
+    today,
+    timeZone: zone,
+  });
+  mockRepository.setEnvironment({ active: true, online: false });
+  const hydration = mockRepository.hydrate();
+  const screen = render(<ReflectionScreen />);
+  expect(
+    screen.getByText(
+      'Open a completed challenge to add or edit its reflection.',
+    ),
+  ).toBeTruthy();
+  await act(async () => {
+    read.resolve(raw);
+    await hydration;
+  });
+  expect(
+    screen.queryByText(
+      'Open a completed challenge to add or edit its reflection.',
+    ),
+  ).toBeNull();
+  fireEvent.press(screen.getByRole('radio', { name: 'A lot better' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
+  await waitFor(() => expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1));
+  expect(mockRepository.getAttempt(uuid(1))?.reflection?.feeling).toBe(
+    'a_lot_better',
+  );
+});
 it('opens a local reflection immediately and saves without HTTP gating', async () => {
   const screen = render(<ReflectionScreen />);
   expect(screen.getByRole('button', { name: 'Skip' })).toBeEnabled();

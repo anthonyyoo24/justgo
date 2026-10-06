@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useDelayedBusy } from './useDelayedBusy';
+afterEach(() => jest.useRealTimers());
 it('does not flash for fast writes and cleans timers on completion or unmount', async () => {
   jest.useFakeTimers();
   const hook = renderHook(
@@ -22,5 +23,4 @@ it('does not flash for fast writes and cleans timers on completion or unmount', 
   hook.rerender({ busy: true });
   hook.unmount();
   expect(jest.getTimerCount()).toBe(0);
-  jest.useRealTimers();
 });

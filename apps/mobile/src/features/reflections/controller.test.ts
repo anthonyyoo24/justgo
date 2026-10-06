@@ -42,6 +42,85 @@ afterEach(() => {
   controller.dispose();
   repository.dispose();
 });
+it.each([false, true])(
+  'opens an editable reflection when delayed hydration supplies the attempt (saved reflection: %s)',
+  async (editing) => {
+    if (editing)
+      await repository.submitReflection(uuid(1), uuid(8), {
+        feeling: 'a_lot_better',
+        text: 'Retained writing',
+      });
+    const raw = storage.values.get(`justgo:v1:${owner}:journal`)!;
+    controller.dispose();
+    repository.dispose();
+    const read = deferred<string | null>();
+    jest.spyOn(storage, 'getItem').mockImplementationOnce(() => read.promise);
+    repository = new AccountRepository({
+      accountId: owner,
+      storage,
+      transport,
+      today,
+      timeZone: zone,
+    });
+    repository.setEnvironment({ active: true, online: false });
+    const hydration = repository.hydrate();
+    controller = new ReflectionController(repository, uuid(1), finished, {
+      id: () => uuid(9),
+    });
+    controller.connect();
+    expect(controller.getSnapshot().phase).toBe('missing');
+    read.resolve(raw);
+    await hydration;
+    expect(controller.getSnapshot()).toMatchObject({
+      phase: 'ready',
+      editing,
+      text: editing ? 'Retained writing' : '',
+      feeling: editing ? 'a_lot_better' : null,
+    });
+    controller.setText('New explicit submission');
+    await controller.submit();
+    expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+      'New explicit submission',
+    );
+    expect(finished).toHaveBeenCalledTimes(1);
+  },
+);
+
+it('reconciles hydration completed between construction and subscription, including rejected writing', async () => {
+  await repository.submitReflection(uuid(1), uuid(8), {
+    text: 'Rejected writing',
+  });
+  const journal = structuredClone(repository.store.getState().journal);
+  const patch = journal.operations.find(
+    (operation) => operation.kind === 'patch',
+  )!;
+  patch.state = 'rejected';
+  patch.code = 'INVALID_REQUEST';
+  storage.values.set(`justgo:v1:${owner}:journal`, JSON.stringify(journal));
+  controller.dispose();
+  repository.dispose();
+  repository = new AccountRepository({
+    accountId: owner,
+    storage,
+    transport,
+    today,
+    timeZone: zone,
+  });
+  repository.setEnvironment({ active: true, online: false });
+  controller = new ReflectionController(repository, uuid(1), finished);
+  expect(controller.getSnapshot().phase).toBe('missing');
+  await repository.hydrate();
+  controller.connect();
+  expect(controller.getSnapshot()).toMatchObject({
+    phase: 'ready',
+    text: 'Rejected writing',
+    editing: true,
+  });
+  expect(controller.getSnapshot().error).toMatch(/wasn’t accepted/);
+  await controller.submit();
+  expect(controller.getSnapshot().error).toMatch(/unchanged submission/);
+  expect(finished).not.toHaveBeenCalled();
+});
 it('keeps typing private and skips an empty reflection exactly once', async () => {
   controller.setText('  ');
   await controller.submit();

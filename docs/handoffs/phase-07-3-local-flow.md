@@ -8,7 +8,7 @@
 - **Updated / author:** October 6, 2026 / Codex.
 - **Scope:** Task 7 and presentation/lifecycle integration from 07.2 tasks 5–6. Progress data composition remains 07.4; obsolete backend contraction remains 07.5; billing/access policy remains 07A.
 - **Dependencies read:** [07.2](phase-07-2-local-sync.md), [07.1A](phase-07-1-api-data.md), [07.1B](phase-07-1b-journey-ci.md), [umbrella handoff](phase-07-api-offline.md), [plan](../IMPLEMENTATION_PLAN.md#phase-07-3), [app shell](../APP_SHELL.md), [tech stack](../TECH_STACK.md) and [testing guidance](../TESTING.md).
-- **Branch / base:** `codex/phase-07.3-local-flow`, created from local `main` `3e41330` after the owner’s PR #15 merge `8ff5d6c`. Local main contains one additional architecture documentation commit beyond origin/main. Owner-requested local checkpoints are `7a74a90`, `1048372` and `25e2f8c`; the latter excludes PNG screenshots. The owner subsequently authorized the push and PR #16; merge/auto-merge and publication of this new follow-up remain unapproved.
+- **Branch / base:** `codex/phase-07.3-local-flow`, created from local `main` `3e41330` after the owner’s PR #15 merge `8ff5d6c`. Local main contains one additional architecture documentation commit beyond origin/main. Owner-requested local checkpoints are `7a74a90`, `1048372` and `25e2f8c`; the latter excludes PNG screenshots. The owner authorized PR #16, the Expo fix push at `fd3ac78`, and assessment/necessary review fixes/their push. Merge and auto-merge remain unapproved.
 - **Environment:** macOS 26.4.1 (25E253), Node 24.18.0, npm 11.16.0; pinned Expo 57.0.27 / React Native 0.86.3. Dedicated loopback PostgreSQL `justgo_test` on port 54329. October 6 owner test setup built and installed an updated EAS simulator binary; signing configuration and deployment are unchanged.
 - **Outcome:** Downloaded challenges can be browsed, started, given up, completed and explicitly reflected on locally. Normal navigation awaits the phone write and proceeds independently of HTTP. Actual failed phone saving uses the existing repository fallback and truthful memory-loss feedback.
 
@@ -256,12 +256,69 @@ and native/device evidence. The tab closed, viewport reset and exactly one
 registry-owned disposable account was removed; existing owner data was retained.
 The original owner fixture services were restored afterward.
 
-Hosted acceptance for this fix remains unverified until publication is separately
-authorized and checks on the pushed commit pass. Earlier failed runs are not relabeled.
+The owner subsequently authorized publication at `fd3ac78`; both new hosted runs
+passed: [push](https://github.com/anthonyyoo24/justgo/actions/runs/37529645993) and
+[pull request](https://github.com/anthonyyoo24/justgo/actions/runs/37529654158).
+Earlier failed runs are not relabeled.
 The dedicated cleanup and directory diagram remain in the original checkout and
 are excluded from this phase fix. No native signing/build upgrade is performed;
 the installed simulator binary predates these pins, so updated-binary/device
 acceptance remains open under the existing native gates.
+
+## October 6 PR #16 review follow-up
+
+Anthony explicitly requested using `assess-pr-review`, implementing the findings
+judged necessary and pushing the fixes to the existing PR. Assessment captured
+head `fd3ac78298af411adb2f9847b1965b1ff9b13f38`, all paginated inline comments/replies,
+review bodies, conversation comments and thread state through `gh`. The worktree
+matched that head and was clean; the separate cleanup checkout/diagram was retained.
+Assessment made no project changes; implementation followed under the owner's request.
+No new bot review, comment/reply, thread resolution or merge is requested.
+
+Seven distinct feedback items are accounted for; six specific findings are corrected:
+
+| Finding / source                                                                                         | Assessment and disposition                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Period refresh](https://github.com/anthonyyoo24/justgo/pull/16#discussion_r4200155750)                  | Fixed. Refresh current day/zone on repository activation and environment changes; while active, a minute-aligned timer detects midnight/zone/clock changes. Existing repository rollover invalidates stale disposable downloads while preserving submissions. Background/disconnection/disposal cancel timers, and stale callbacks/old-account failures are fenced. This adds no 07.4 Progress queries/selectors. |
+| [Reflection hydration](https://github.com/anthonyyoo24/justgo/pull/16#discussion_r4200155756)            | Fixed. An arriving attempt moves `missing` to `ready`, adopts saved/rejected writing, and permits explicit editing/submission. Connecting also reconciles the current store, covering hydration completed between construction and subscription. Existing newer-input/submission/account fences remain.                                                                                                           |
+| [Unfinished challenge lifecycle](https://github.com/anthonyyoo24/justgo/pull/16#discussion_r4200155783)  | Fixed. Tech-stack introduction/timer row state process-memory limits; earlier server-backed start/relaunch/lifecycle rules are marked superseded. Lock/background preserves the challenge only while the screen/process survives.                                                                                                                                                                                 |
+| [Native CI wording](https://github.com/anthonyyoo24/justgo/pull/16#discussion_r4200155798)               | Optional clarification applied in testing/plan/removal assessment. Require passing hosted check results for the authorized pushed revision; preserve approved macOS runner/simulator-service choices instead of adding a specific runner-provider requirement.                                                                                                                                                    |
+| [Journey command README](https://github.com/anthonyyoo24/justgo/pull/16#pullrequestreview-5434247505)    | Fixed. Describe the current 16-case account/challenge/reflection/recovery suite instead of the earlier 07.1B smoke.                                                                                                                                                                                                                                                                                               |
+| [Delayed-busy test cleanup](https://github.com/anthonyyoo24/justgo/pull/16#pullrequestreview-5434247505) | Fixed. Real timers restore in `afterEach`, including when an assertion fails.                                                                                                                                                                                                                                                                                                                                     |
+| [Docstring coverage advisory](https://github.com/anthonyyoo24/justgo/pull/16#issuecomment-6024726618)    | No broad comment-only change recommended. The bot's inconclusive 15.56% result skips 19 files and identifies no concrete unclear function. Timing, error ownership and subscription-gap decisions are documented where useful; no project lint/test/coverage requirement is changed.                                                                                                                              |
+
+Ten regression cases were added across runtime/controller/screen tests. Seven
+reproduced the two reported behavior bugs before implementation (7 failing / 20
+passing in the three affected suites). Additional cases cover slow hydration across
+midnight, stale callbacks/rollover errors and the supplied clock with a late failure
+after account change. Relevant focused tests pass. See
+`.local/pr16-review-regression-{before,after}.log` and
+`.local/pr16-review-extra-regression.log`.
+
+Fresh verification, with heavy commands sequential:
+
+| Command / evidence      | Actual result                                                                                                                                                                                                                                                                                                                 |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check`         | Pass: fresh Doctor 21/21, TypeScript/lint/format and 568 workspace tests (146 architecture + 45 API + 356 mobile + 21 contracts); `.local/pr16-review-final-check.log`.                                                                                                                                                       |
+| `npm run test:db`       | 60 database + 1 migration/restoration cases pass against dedicated loopback `justgo_test`; no database schema change.                                                                                                                                                                                                         |
+| `npm run test:coverage` | All unchanged global/critical gates pass: final mobile 88.56% branches / 94.07% lines, API 91.19% / 95.71%, contracts 100%. After adding the late-account test, mobile coverage (356 cases) and the combined gate passed again; `.local/pr16-review-final-mobile-coverage.log`, `.local/pr16-review-final-coverage-gate.log`. |
+| `npm run test:journey`  | All 16 cases pass in 28.6 seconds; registry-owned cleanup/service shutdown pass. The first startup attempt correctly refused the existing owner server; after checking both server identities/cwds, only those services were paused and the command rerun.                                                                    |
+| Web and iOS exports     | Both pass with normal adapters; exports are JavaScript/Hermes evidence, not native durability.                                                                                                                                                                                                                                |
+| Side-panel walkthrough  | 390 × 844: Home → exclusive active challenge → Completed → Success → Continue → feeling/text → dirty-close Keep editing → explicit Save → Progress → day sheet → saved reflection. Development browser warning/error logs were empty.                                                                                         |
+
+Command logs are ignored `.local/pr16-review-{check,db,coverage,journey,web-export,ios-export}.log`.
+[Saved-reflection proof](../checks/phase-07-3/pr16-review-reflection.jpg) contains only
+synthetic fixture input. A static production-export walkthrough first correctly
+refused loopback HTTP; the final interactive walkthrough used the documented
+development server with normal web storage, without weakening the transport guard.
+The tab closed, viewport reset, and exactly one registry-owned disposable account
+was removed. Temporary servers were stopped and the original owner API/Metro and
+same QA simulator app/device restored. Existing owner data was retained.
+
+Current review-fix hosted acceptance remains pending its authorized push/checks.
+The earlier `fd3ac78` hosted passes above do not establish this new revision's result.
+Native saving/relaunch, background/lock, keyboard/modal/toast, accessibility and
+physical-device/staging gates remain open; this review does not mark 07.3 accepted.
 
 ## Setup, data and operations
 
@@ -275,17 +332,17 @@ Rollback consists of reverting this local slice before publication; the 07.2 on-
 
 ## Remaining work and risks
 
-| Item                                                                                                                                                                    | Owner / required checkpoint                                                                       |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Native AsyncStorage completion/reflection saving, termination/relaunch, storage-failure recovery and native connectivity; compatible simulator binary is now installed. | Anthony / native verification, evidence required before 07.2/07.3 native acceptance.              |
-| Native background/lock/resume countdown, keyboard + covering modal toast, VoiceOver announcements/dismissal/focus, safe areas, scalable text and reduced motion.        | Anthony / native verification after compatible build; retain 07.3 exit gates.                     |
-| Memory-only accepted content is lost if the process terminates before phone/cloud saving.                                                                               | Approved product limitation from 07.2; honest warning implemented. Never treat memory as durable. |
-| Saved native journey/CI migration and retirement of browser-only testing support, with existing useful coverage preserved.                                              | Phase 07.3A, after reviewed/finished 07.3 and before 07.4; not started.                           |
-| Local/backend Progress overlay/reconciliation, canonical reads, limited current-month/today offline cache, history edits and rollover.                                  | Phase 07.4. Progress in this slice still shows backend compatibility data.                        |
-| Destructive legacy API/schema removal, full product-doc reconciliation and full hosted journey acceptance.                                                              | Phase 07.5, after approved 07.4.                                                                  |
-| Verified native billing/subscription coverage and unchanged access policy’s provider integration.                                                                       | Phase 07A.                                                                                        |
-| Hosted CI for this revision and owner code review.                                                                                                                      | After separate push/PR authorization. Passing local checks do not authorize publication or merge. |
-| Earlier physical-device/staging/release gates.                                                                                                                          | Original phase handoffs / Phase 09.                                                               |
+| Item                                                                                                                                                                    | Owner / required checkpoint                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Native AsyncStorage completion/reflection saving, termination/relaunch, storage-failure recovery and native connectivity; compatible simulator binary is now installed. | Anthony / native verification, evidence required before 07.2/07.3 native acceptance.                                  |
+| Native background/lock/resume countdown, keyboard + covering modal toast, VoiceOver announcements/dismissal/focus, safe areas, scalable text and reduced motion.        | Anthony / native verification after compatible build; retain 07.3 exit gates.                                         |
+| Memory-only accepted content is lost if the process terminates before phone/cloud saving.                                                                               | Approved product limitation from 07.2; honest warning implemented. Never treat memory as durable.                     |
+| Saved native journey/CI migration and retirement of browser-only testing support, with existing useful coverage preserved.                                              | Phase 07.3A, after reviewed/finished 07.3 and before 07.4; not started.                                               |
+| Local/backend Progress overlay/reconciliation, canonical reads, limited current-month/today offline cache, history edits and rollover.                                  | Phase 07.4. Progress in this slice still shows backend compatibility data.                                            |
+| Destructive legacy API/schema removal, full product-doc reconciliation and full hosted journey acceptance.                                                              | Phase 07.5, after approved 07.4.                                                                                      |
+| Verified native billing/subscription coverage and unchanged access policy’s provider integration.                                                                       | Phase 07A.                                                                                                            |
+| Hosted CI for the current review-fix revision and owner code review.                                                                                                    | The owner authorized this review-fix push. Verify its exact hosted head; owner acceptance/merge approval remain open. |
+| Earlier physical-device/staging/release gates.                                                                                                                          | Original phase handoffs / Phase 09.                                                                                   |
 
 ## Next phase: read this first
 

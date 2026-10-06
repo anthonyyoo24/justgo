@@ -1,12 +1,23 @@
 # Implementation handoffs
 
+**October 6 PR #16 review fixes:** Anthony authorized assessment, necessary fixes
+and their push. The [07.3 review follow-up](phase-07-3-local-flow.md#october-6-pr-16-review-follow-up)
+accounts for all seven feedback items: period/lifecycle refresh, reflection hydration,
+unfinished-challenge documentation, native CI wording, journey README and fake-timer
+teardown, with the inconclusive docstring advisory assessed separately. Ten
+regression cases were added; seven reproduced the two bugs before the fixes.
+Fresh checks pass: 568 workspace cases, 61 database/migration cases, coverage,
+16 saved journeys, both exports and the 390 × 844 side-panel reflection walkthrough. The earlier Expo
+fix at `fd3ac78` passed both hosted runs. Native/owner acceptance remains open;
+current review-fix hosted results must be checked after its authorized push.
+
 **October 6 PR #16 CI follow-up:** The two checks failed on the same live Expo
 patch-version validation after tests/coverage/journeys/exports passed. The
 [07.3 follow-up](phase-07-3-local-flow.md#october-6-pr-16-expo-dependency-validation-fix)
 records the four exact pin updates, fresh early validation and command regressions.
 Fresh local verification passes: 558 workspace tests, 61 database/migration cases,
-coverage, both exports, 21 Doctor checks and 16 saved journeys. Follow-up publication
-and updated hosted/native acceptance remain open.
+coverage, both exports, 21 Doctor checks and 16 saved journeys. The authorized push
+at `fd3ac78` passed both hosted runs; native acceptance remains open.
 
 **October 6 native testing migration plan:** Anthony requested scheduling [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) after reviewed/finished 07.3 and before 07.4. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) inventories browser-only files (including modal isolation), responsibilities to migrate and native/shared code to retain. Keep existing browser coverage until native replacements and hosted CI pass. The phase has not started; its handoff filename is reserved below. Existing work was committed first at `25e2f8c`; the three PNG screenshots remain local and uncommitted.
 
