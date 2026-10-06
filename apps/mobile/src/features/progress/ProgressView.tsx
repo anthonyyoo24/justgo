@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/tokens';
-import { DaySheet, type ProgressDay } from './DaySheet';
+import { DaySheet, type ProgressDay } from './day-details/DaySheet';
 import {
   ProgressCalendar,
   type ProgressCalendarProps,
-} from './ProgressCalendar';
+} from './calendar/ProgressCalendar';
 export type ProgressViewProps = ProgressCalendarProps & {
   sheetAccessory?: ReactNode;
   day?: ProgressDay | undefined;

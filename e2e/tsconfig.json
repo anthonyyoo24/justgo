@@ -6,5 +6,5 @@
     "types": ["node", "react-native"],
     "noEmit": true
   },
-  "include": ["*.ts"]
+  "include": ["**/*.ts"]
 }

@@ -20,7 +20,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run test:architecture && npm run test --workspaces",
-    "test:architecture": "node --test scripts/*.test.mjs",
+    "test:architecture": "node --test scripts/quality/*.test.mjs scripts/journeys/*.test.mjs",
     "test:db": "npm run test:db -w @justgo/api",
     "db:migrate": "npm run db:migrate -w @justgo/api",
     "db:generate": "npm run db:generate -w @justgo/api",
@@ -30,9 +30,9 @@
     "build:contracts": "npm run build -w @justgo/contracts",
     "prepare": "npm run build:contracts",
     "test:coverage": "npm run build:contracts && npm run test:coverage --workspaces && npm run coverage:check",
-    "coverage:check": "node scripts/check-coverage.mjs",
+    "coverage:check": "node scripts/quality/check-coverage.mjs",
     "typecheck:journey": "tsc --project e2e/tsconfig.json --noEmit",
-    "test:journey": "node --env-file-if-exists=apps/api/.env scripts/run-journey.mjs",
+    "test:journey": "node --env-file-if-exists=apps/api/.env scripts/journeys/run-journey.mjs",
     "test:migrations": "npm run test:migrations -w @justgo/api"
   },
   "devDependencies": {

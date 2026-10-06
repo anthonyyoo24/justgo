@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { test, expect } from './fixtures';
-import { journeyApiUrl, journeyEnvironment } from './environment';
+import { test, expect } from './support/fixtures';
+import { journeyApiUrl, journeyEnvironment } from './support/environment';
 
 const secret = () => randomBytes(32).toString('hex');
 const digest = (value: string) =>

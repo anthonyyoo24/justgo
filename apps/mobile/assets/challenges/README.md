@@ -30,6 +30,6 @@ workspace dependency runtime); no mobile dependency or native rebuild is needed.
 The two color-variant exports are retained in
 `docs/design-source/challenge-color-variants.json`.
 
-See `docs/CHALLENGE_FIDELITY.md` for measured values, reconstruction decisions and
+See `docs/design/CHALLENGE_FIDELITY.md` for measured values, reconstruction decisions and
 verification evidence. The raster header lettering and peach-panel contour have
 no editable font/path metadata and are documented as native reconstructions.

@@ -10,10 +10,10 @@ import {
   useRuntime,
 } from '../../app-support/providers/AppProvider';
 import { ChallengeLayout } from './ChallengeLayout';
-import { VenueTabs } from './VenueTabs';
-import { ChallengeDeck } from './ChallengeDeck';
-import { ActiveChallengeModal } from './ActiveChallengeModal';
-import { useActiveChallenge } from './useActiveChallenge';
+import { VenueTabs } from './deck/VenueTabs';
+import { ChallengeDeck } from './deck/ChallengeDeck';
+import { ActiveChallengeModal } from './active/ActiveChallengeModal';
+import { useActiveChallenge } from './active/useActiveChallenge';
 export function ChallengeScreen() {
   const { account } = useIdentity();
   return <ChallengeFlow key={account?.userId ?? 'disconnected'} />;

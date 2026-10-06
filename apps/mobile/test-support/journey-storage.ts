@@ -1,4 +1,4 @@
-import { asyncStorageJournalStorage } from '../src/data/activity/storage';
+import { asyncStorageJournalStorage } from '../src/data/activity/persistence/storage';
 import type { JournalStorage } from '../src/data/activity/model';
 
 // Browser-only control exposed by the separately guarded journey Metro build.

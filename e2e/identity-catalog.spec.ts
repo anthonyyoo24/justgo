@@ -1,6 +1,6 @@
 import { sessionResponseSchema } from '@justgo/contracts';
-import { test, expect } from './fixtures';
-import { journeyApiUrl } from './environment';
+import { test, expect } from './support/fixtures';
+import { journeyApiUrl } from './support/environment';
 
 test('a real account renews and opens its challenge catalog', async ({
   page,

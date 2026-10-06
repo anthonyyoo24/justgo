@@ -145,7 +145,7 @@ Selectors and actual Progress integration remain 07.4.
 - `npm run check`: final run after the data-module move passed strict types, lint,
   formatting, boundaries and **467 tests** (93 safeguards, 45 API unit, 308 mobile,
   21 contracts).
-- `node --test scripts/import-boundaries.test.mjs`: **86 tests** passed, including
+- `node --test scripts/quality/import-boundaries.test.mjs`: **86 tests** passed, including
   37 new regressions for the data/UI dependency direction, permitted consumers and
   loader/package/directory-entrypoint paths. The full check includes these cases.
 - `npm run test:db`: **60 database cases plus one migration/restoration rehearsal**
@@ -302,7 +302,7 @@ Verification after the refactor:
 - Focused runtime/access/preview/navigation-link/tab-layout tests: **29 passed**.
   All existing behavior cases remain. Six new mobile cases cover the shared links,
   guarded fixture loading, account initialization/connection and pending-access retry.
-- `node --test scripts/import-boundaries.test.mjs`: **128 passed**, including
+- `node --test scripts/quality/import-boundaries.test.mjs`: **128 passed**, including
   **42 new runtime/developer direction and loader regressions**.
 - `npm run check`: contracts build, strict workspace/journey types, lint,
   formatting and **510 tests** passed (135 safeguards, 45 API unit, 309 mobile,
@@ -432,7 +432,7 @@ handoffs and original runtime paths above preserve the historical sequence.
 
 Verification:
 
-- `node --test scripts/import-boundaries.test.mjs`: **134 passed**, including the
+- `node --test scripts/quality/import-boundaries.test.mjs`: **134 passed**, including the
   renamed-path cases and six loader assertions from the two new fixtures.
 - `npm run check`: contracts build, strict types, lint, formatting and **516 tests**
   passed: 141 safeguards, 45 API unit, 309 mobile and 21 contracts. The first check

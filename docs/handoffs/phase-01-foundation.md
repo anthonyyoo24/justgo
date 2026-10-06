@@ -7,25 +7,25 @@
 - **Scope:** [Phase 01](../IMPLEMENTATION_PLAN.md#phase-01); PRD §§2, 10, 13 and Tech §§2, 3, 12.
 - **Dependencies:** None. Historical context: [planning baseline](00-planning-baseline.md) and [iOS release scope](01-ios-release-scope.md).
 - **Baseline commit:** Phase 01 was committed as `fe0fa015f99f652388344ab9c2dee5bd6e8bfaf8`. The original pre-commit handoff described Git initialization on `master` and uncommitted implementation/docs; those statements describe the workspace before that commit. The original workspace contained documentation only.
-- **Environment:** macOS arm64, Node 24.18.0, npm 11.16.0, PostgreSQL 17; exact mobile/backend versions in [FOUNDATION.md](../FOUNDATION.md).
+- **Environment:** macOS arm64, Node 24.18.0, npm 11.16.0, PostgreSQL 17; exact mobile/backend versions in [FOUNDATION.md](../operations/FOUNDATION.md).
 - **Summary:** Workspace, mobile foundation preview, API, real database isolation tests, a verified deployed staging API, Supabase staging and EAS linkage now exist. The EAS-built iOS app passed native launch and connectivity. No domain feature or user data was added.
 
 ## What changed
 
-| Path / migration                                                                                | Change and behavior                                                                                                                         |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Root package/lock, TypeScript/ESLint/Prettier configs, `.github/workflows/ci.yml`               | npm workspaces, strict shared settings, single lock, exact direct versions, CI PostgreSQL 17 and starter verification                       |
-| `apps/mobile/app.config.ts`, `eas.json`, `.env.example`                                         | Expo 57 development app, iOS 16.4 minimum, EAS profiles, linked existing Expo project, permanent identifier guard                           |
-| `apps/mobile/src/app`, `components`, `features/foundation`                                      | Router launch screen; accessible connection probe, busy guard, timeout/cancellation, offline feedback and retry                             |
-| `apps/mobile/src/theme/tokens.ts`, `assets/`                                                    | Typed Paper-derived tokens, exported medal art and SVG sources, licensed Inter weights                                                      |
-| `apps/mobile/e2e/launch.yaml`                                                                   | Native development-client launch/readiness smoke harness; requires installed Maestro and a running native binary                            |
-| `packages/contracts/src`                                                                        | Strict Zod liveness/readiness response contracts shared across app/API                                                                      |
-| `apps/api/src/server.ts`, `build-app.ts`, `config.ts`, `diagnostics.ts`                         | Fastify entrypoint, injectable app factory, `/health`, `/ready`, CORS/security headers, validated env and redacted diagnostics              |
-| `apps/api/src/db`, `scripts/provision.sql`, `scripts/migrate.ts`, `drizzle/0000_foundation.sql` | Separate roles/connections, verified TLS, reused bounded pool, transaction-local owner helper, reviewed Drizzle migration; no domain tables |
-| `apps/api/tests`                                                                                | API/config/logging tests and actual-role RLS isolation/rollback/concurrency tests using disposable local fixtures                           |
-| `scripts/local-database.mjs`                                                                    | Reproducible dedicated PostgreSQL cluster; missing-only environment generation, random ignored credentials                                  |
-| `.gitignore`, `.vercelignore`, `.easignore`                                                     | Ignore credentials/native/build outputs; explicit deployment upload allowlist                                                               |
-| `docs/DESIGN.md`, `design-source/`, `DECISIONS.md`, `APPLE_SETUP.md`, `FOUNDATION.md`, README   | Design provenance, platform/version matrix, account checklist, decision ownership and setup/operations                                      |
+| Path / migration                                                                                     | Change and behavior                                                                                                                         |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Root package/lock, TypeScript/ESLint/Prettier configs, `.github/workflows/ci.yml`                    | npm workspaces, strict shared settings, single lock, exact direct versions, CI PostgreSQL 17 and starter verification                       |
+| `apps/mobile/app.config.ts`, `eas.json`, `.env.example`                                              | Expo 57 development app, iOS 16.4 minimum, EAS profiles, linked existing Expo project, permanent identifier guard                           |
+| `apps/mobile/src/app`, `components`, `features/foundation`                                           | Router launch screen; accessible connection probe, busy guard, timeout/cancellation, offline feedback and retry                             |
+| `apps/mobile/src/theme/tokens.ts`, `assets/`                                                         | Typed Paper-derived tokens, exported medal art and SVG sources, licensed Inter weights                                                      |
+| `apps/mobile/e2e/launch.yaml`                                                                        | Native development-client launch/readiness smoke harness; requires installed Maestro and a running native binary                            |
+| `packages/contracts/src`                                                                             | Strict Zod liveness/readiness response contracts shared across app/API                                                                      |
+| `apps/api/src/server.ts`, `build-app.ts`, `config.ts`, `diagnostics.ts`                              | Fastify entrypoint, injectable app factory, `/health`, `/ready`, CORS/security headers, validated env and redacted diagnostics              |
+| `apps/api/src/db`, `scripts/provision.sql`, `scripts/migrate.ts`, `drizzle/0000_foundation.sql`      | Separate roles/connections, verified TLS, reused bounded pool, transaction-local owner helper, reviewed Drizzle migration; no domain tables |
+| `apps/api/tests`                                                                                     | API/config/logging tests and actual-role RLS isolation/rollback/concurrency tests using disposable local fixtures                           |
+| `scripts/local-database.mjs`                                                                         | Reproducible dedicated PostgreSQL cluster; missing-only environment generation, random ignored credentials                                  |
+| `.gitignore`, `.vercelignore`, `.easignore`                                                          | Ignore credentials/native/build outputs; explicit deployment upload allowlist                                                               |
+| `docs/design/DESIGN.md`, `design-source/`, `DECISIONS.md`, `APPLE_SETUP.md`, `FOUNDATION.md`, README | Design provenance, platform/version matrix, account checklist, decision ownership and setup/operations                                      |
 
 ## Decisions and invariants
 
@@ -77,7 +77,7 @@ Deployed staging API: `https://justgo-303esikf7-anthony-youngshin-yoos-projects.
 
 ## Setup, data and operations
 
-Read [README](../../README.md) and [FOUNDATION.md](../FOUNDATION.md) for exact commands, environment names, connection modes, migration order, deployment entrypoints and safe diagnostic boundaries. Administrative provisioning runs once, then Drizzle controls application migration history. There is no domain seed or shared fixture. Test tables are uniquely named and removed; tests refuse remote DB URLs.
+Read [README](../../README.md) and [FOUNDATION.md](../operations/FOUNDATION.md) for exact commands, environment names, connection modes, migration order, deployment entrypoints and safe diagnostic boundaries. Administrative provisioning runs once, then Drizzle controls application migration history. There is no domain seed or shared fixture. Test tables are uniquely named and removed; tests refuse remote DB URLs.
 
 Never deploy `MIGRATION_DATABASE_URL`, local credential files or mobile environment values containing secrets. Retain certificate verification. Database/runtime credential rotation should update the provider secret store and roll a new preview deployment. Use reviewed forward migrations and compatible API changes; do not reset a shared database for local tests. Roll back the Vercel deployment independently of a database forward repair. Monitoring alerts, capacity load tests, recovery/restore drills and production budget policy remain later work; no throughput/SLA claim is made.
 

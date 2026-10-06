@@ -2,12 +2,12 @@
 
 Read the requested phase in `docs/IMPLEMENTATION_PLAN.md` and its dependency
 handoffs before editing. The plan owns sequencing and approved future changes;
-`docs/APP_SHELL.md` and `docs/TECH_STACK.md` describe the implemented boundaries.
+`docs/architecture/APP_SHELL.md` and `docs/architecture/TECH_STACK.md` describe the implemented boundaries.
 Keep phase scope bounded and preserve existing behavior unless the task changes it.
 Directory instructions (especially `apps/mobile/AGENTS.md`) also apply.
 
 This file is the shared coding standard for future features and fixes, not only
-cleanup phases. Read [testing guidance](docs/TESTING.md) before code changes for
+cleanup phases. Read [testing guidance](docs/operations/TESTING.md) before code changes for
 the applicable commands and evidence requirements. Keep detailed architecture in
 the linked architecture docs and phase-specific work/evidence in the plan and
 handoffs; avoid copying competing versions of these rules into every directory.
@@ -68,6 +68,16 @@ handoffs; avoid copying competing versions of these rules into every directory.
   behavior; record any deferred device checks in the release handoff.
 
 ## File placement for new mobile code
+
+The [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) records existing
+responsibility groups after the dedicated cleanup. Keep native/web adapter pairs
+and tests beside their owner. File moves must update imports, command/coverage
+paths, upload allowlists, fixture resolution, asset extraction and documentation
+links together; organizing retained code does not authorize its removal.
+
+Use import-aware rewrites rather than replacing arbitrary quoted fragments in
+SQL or data. Verify large moves with cold bundles, then reload the existing
+installed development app to clear stale Metro module/asset paths.
 
 - **Choose the owner before creating files.** Identify the product capability or
   supporting responsibility the code serves, then place it with that owner.
@@ -144,7 +154,7 @@ handoffs; avoid copying competing versions of these rules into every directory.
   not a saved end-to-end regression test or a CI gate; report each separately.
 - Before handoff run `npm run check` and, for backend/shared boundaries or a phase
   closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
-  Follow `docs/TESTING.md` for coverage commands and regression thresholds.
+  Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.
   Keep earlier physical-device/staging gates open until evidenced.
 - Before publication, run fresh online Expo validation through `npm run check`
   and rerun `npm run doctor -w @justgo/mobile` immediately before pushing.

@@ -34,8 +34,8 @@ jest.mock('../../app-support/providers/AppProvider', () => ({
 jest.mock('../../app-support/saving/SavingFeedback', () => ({
   SavingSheetSurface: () => null,
 }));
-jest.mock('./VenueTabs', () => ({ VenueTabs: () => null }));
-jest.mock('./ChallengeDeck', () => ({
+jest.mock('./deck/VenueTabs', () => ({ VenueTabs: () => null }));
+jest.mock('./deck/ChallengeDeck', () => ({
   ChallengeCard: () => null,
   ChallengeDeck: ({
     onAction,

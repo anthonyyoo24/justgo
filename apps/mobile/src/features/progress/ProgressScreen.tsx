@@ -6,7 +6,7 @@ import {
   legacyProgressResponseSchema as progressResponseSchema,
   type LegacyProgressResponse as ProgressResponse,
 } from '@justgo/contracts';
-import { accountKey } from '../../lib/account-client';
+import { accountKey } from '../../lib/network/account-client';
 import {
   useIdentity,
   useRuntime,

@@ -1,5 +1,13 @@
 # Implementation handoffs
 
+October 6 dedicated cleanup: Anthony authorized one project-wide folder cleanup
+now on `codex/project-folder-cleanup`, based on the committed 07.3 checkpoint
+`af5e7ed`. The [cleanup handoff](project-folder-cleanup.md) owns current
+557 workspace checks, 61 database/migration cases, unchanged coverage, both bundle
+exports, 16 saved journeys and side-panel/native Home evidence; [folder structure](../architecture/FOLDER_STRUCTURE.md) describes
+all new groupings. Browser/legacy code is retained, and no 07.2/07.3 native,
+owner-review or hosted acceptance gate is closed by this organization work.
+
 **October 6 PR #16 review fixes:** Anthony authorized assessment, necessary fixes
 and their push. The [07.3 review follow-up](phase-07-3-local-flow.md#october-6-pr-16-review-follow-up)
 accounts for all seven feedback items: period/lifecycle refresh, reflection hydration,
@@ -106,7 +114,7 @@ September 29: [Phase 06 implementation](phase-06-progress.md) remains in progres
 
 September 27: [Phase 05 implementation](phase-05-reflections.md) now connects confirmed Success to the optional Paper-based feelings and typed reflection screen. The revisioned API/database flow, retry/conflict behavior, automated tests and in-app browser preview pass locally. Real-iPhone accessibility/keyboard checks and staging deployment remain open, so Phase 05 is In progress.
 
-September 26: [Phase 04 implementation](phase-04-challenge-loop.md) has six venue decks, 61 placements, reliable attempts, timer, direct give-up and the full confirmed Success view. The handoff includes the later card/content, queue-handoff and preview corrections. Current automated checks and earlier browser/native button/relaunch checks pass; physical-device acceptance and deployment remain open. [Current scope decisions](../PHASE_04_SCOPE.md) supersede earlier general-only and no-replay proposals. Apple signing/device gates remain open.
+September 26: [Phase 04 implementation](phase-04-challenge-loop.md) has six venue decks, 61 placements, reliable attempts, timer, direct give-up and the full confirmed Success view. The handoff includes the later card/content, queue-handoff and preview corrections. Current automated checks and earlier browser/native button/relaunch checks pass; physical-device acceptance and deployment remain open. [Current scope decisions](../product/PHASE_04_SCOPE.md) supersede earlier general-only and no-replay proposals. Apple signing/device gates remain open.
 
 Phase 03 app-shell implementation is recorded in [phase-03-app-shell.md](phase-03-app-shell.md). Welcome/questionnaire onboarding is deferred by the owner; native acceptance status remains explicit. Staging now includes the transfer-verification upgrade and access boundary.
 

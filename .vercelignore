@@ -23,10 +23,12 @@
 !packages/contracts/src/access.ts
 !packages/contracts/src/openapi.ts
 
-!packages/contracts/src/challenges.ts
-!packages/contracts/src/attempts.ts
-!packages/contracts/src/reflections.ts
-!packages/contracts/src/progress.ts
-!packages/contracts/src/legacy-challenges.ts
-!packages/contracts/src/legacy-reflections.ts
-!packages/contracts/src/legacy-progress.ts
+!packages/contracts/src/activity
+!packages/contracts/src/activity/challenges.ts
+!packages/contracts/src/activity/attempts.ts
+!packages/contracts/src/activity/reflections.ts
+!packages/contracts/src/activity/progress.ts
+!packages/contracts/src/legacy
+!packages/contracts/src/legacy/legacy-challenges.ts
+!packages/contracts/src/legacy/legacy-reflections.ts
+!packages/contracts/src/legacy/legacy-progress.ts

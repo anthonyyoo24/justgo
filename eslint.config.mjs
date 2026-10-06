@@ -1,7 +1,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
-import importBoundaries from './scripts/import-boundaries.mjs';
+import importBoundaries from './scripts/quality/import-boundaries.mjs';
 
 export default tseslint.config(
   {

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { journeyEnvironment } from '../../e2e/environment.ts';
+import { journeyEnvironment } from '../../e2e/support/environment.ts';
 import metroConfig from 'expo/metro-config.js';
 const { getDefaultConfig } = metroConfig;
 const configRoot = import.meta.dirname;
@@ -14,7 +14,7 @@ if (process.env.JUSTGO_JOURNEY_FIXTURES === '1') {
       platform === 'web' &&
       context.originModulePath ===
         path.join(configRoot, 'src/app-support/providers/AppProvider.tsx') &&
-      moduleName === '../../data/activity/storage'
+      moduleName === '../../data/activity/persistence/storage'
     ) {
       return {
         type: 'sourceFile',
