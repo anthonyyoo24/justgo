@@ -12,18 +12,16 @@ import {
 import type { AccountClient } from '../../lib/account-client';
 import type { AccountRepository } from '../../data/activity/repository';
 
-export type ActiveChallengeState = {
+export type ChallengeStart = {
   card: ChallengeCard;
   startedAt: string;
   startTimeZone: string;
-  deadlineAt: string;
   turn: number;
 };
 type Queue = { cards: ChallengeCard[]; turn: number };
 export type ChallengeSnapshot = {
   selected: Venue;
   queues: Partial<Record<Venue, Queue>>;
-  active: ActiveChallengeState | null;
   success: Attempt | null;
   loading: boolean;
   saving: boolean;
@@ -33,7 +31,6 @@ export type ChallengeSnapshot = {
 const initial = (): ChallengeSnapshot => ({
   selected: 'streets',
   queues: {},
-  active: null,
   success: null,
   loading: false,
   saving: false,
@@ -41,7 +38,7 @@ const initial = (): ChallengeSnapshot => ({
   error: '',
 });
 
-/** Browsing and unfinished activity are intentionally memory-only. */
+/** Shared browsing and completion context; unfinished challenges belong to React. */
 export class ChallengeController {
   readonly store = createStore<ChallengeSnapshot>(() => initial());
   subscribe = (listener: () => void) => this.store.subscribe(listener);
@@ -54,23 +51,15 @@ export class ChallengeController {
   private completion: Promise<void> | undefined;
   private completionInput: CreateAttempt | undefined;
   private currentCatalog: Catalog | null = null;
-  private readonly now: () => number;
   private readonly id: () => string;
-  private readonly zone: () => string;
   constructor(
     private readonly client: Pick<AccountClient, 'request'>,
     private readonly options: {
       repository: () => AccountRepository | null;
-      now?: () => number;
       id?: () => string;
-      timeZone?: () => string;
     },
   ) {
-    this.now = options.now ?? Date.now;
     this.id = options.id ?? randomUUID;
-    this.zone =
-      options.timeZone ??
-      (() => Intl.DateTimeFormat().resolvedOptions().timeZone);
   }
   private update = (value: Partial<ChallengeSnapshot>) =>
     this.store.setState(value);
@@ -166,7 +155,7 @@ export class ChallengeController {
     return this.catalogRead;
   };
   select = (venue: Venue) => {
-    if (!this.getSnapshot().active && !this.getSnapshot().saving)
+    if (!this.getSnapshot().saving && !this.getSnapshot().success)
       this.update({ selected: venue });
   };
   private rotate(venue: Venue) {
@@ -183,38 +172,15 @@ export class ChallengeController {
       },
     });
   }
-  act = async (direction: -1 | 1): Promise<void> => {
-    const state = this.getSnapshot();
-    if (state.active || state.saving) return;
-    const queue = state.queues[state.selected];
-    const card = queue?.cards[0];
-    if (!queue || !card) return;
-    if (direction === -1) this.rotate(state.selected);
-    else {
-      const now = this.now();
-      this.update({
-        active: {
-          card,
-          startedAt: new Date(now).toISOString(),
-          startTimeZone: this.zone(),
-          deadlineAt: new Date(now + card.durationSeconds * 1000).toISOString(),
-          turn: queue.turn,
-        },
-        error: '',
-      });
-    }
+  skip = (venue = this.getSnapshot().selected) => {
+    if (this.getSnapshot().completionStarted || this.getSnapshot().success)
+      return;
+    this.rotate(venue);
+    this.update({ error: '' });
   };
-  finish = (outcome: 'completed' | 'given_up'): Promise<void> => {
+  complete = (active: ChallengeStart): Promise<void> => {
     if (this.completion) return this.completion;
-    const state = this.getSnapshot();
-    const active = state.active;
-    if (!active || state.success) return Promise.resolve();
-    if (outcome === 'given_up') {
-      if (state.completionStarted) return Promise.resolve();
-      this.rotate(active.card.venue);
-      this.update({ active: null, error: '' });
-      return Promise.resolve();
-    }
+    if (this.getSnapshot().success) return Promise.resolve();
     const repository = this.options.repository();
     if (!repository) return Promise.resolve();
     const generation = this.generation;
@@ -252,7 +218,7 @@ export class ChallengeController {
   };
   dismissSuccess = async () => {
     this.completionInput = undefined;
-    this.update({ success: null, active: null, completionStarted: false });
+    this.update({ success: null, completionStarted: false });
     await this.options.repository()?.setFlowAttempt(null);
   };
   dispose() {

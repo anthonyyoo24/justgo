@@ -1,12 +1,12 @@
-import { fireEvent, render } from '@testing-library/react-native';
-import type { ActiveChallengeState } from './controller';
-import { StyleSheet, View } from 'react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
+import type { ChallengeStart } from './controller';
+import { AppState, StyleSheet, View, type AppStateStatus } from 'react-native';
 import { ChallengeCard } from './ChallengeDeck';
 import { ActiveChallenge } from './ActiveChallenge';
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../app-support/providers/AppProvider', () => ({}));
 jest.mock('./ChallengeDeck', () => ({ ChallengeCard: jest.fn(() => null) }));
-const attempt: ActiveChallengeState = {
+const attempt: ChallengeStart = {
   card: {
     id: 'GY-01',
     challengeId: 'gym-01',
@@ -18,7 +18,6 @@ const attempt: ActiveChallengeState = {
     durationSeconds: 300,
   },
   startedAt: '2026-09-24T20:00:00Z',
-  deadlineAt: '2026-09-24T20:05:00Z',
   startTimeZone: 'America/Toronto',
   turn: 0,
 };
@@ -32,7 +31,6 @@ it('shows time remaining before the deadline', () => {
   const screen = render(
     <ActiveChallenge
       attempt={attempt}
-      offset={0}
       disabled={false}
       finish={async () => {}}
     />,
@@ -46,12 +44,7 @@ it.each(['Give up', 'Completed'] as const)(
   (name) => {
     const finish = jest.fn(async () => {});
     const screen = render(
-      <ActiveChallenge
-        attempt={attempt}
-        offset={0}
-        disabled={false}
-        finish={finish}
-      />,
+      <ActiveChallenge attempt={attempt} disabled={false} finish={finish} />,
     );
     expect(screen.getByText('00:00')).toBeTruthy();
     expect(screen.getByText("Time's up. Give it a go.")).toBeTruthy();
@@ -70,7 +63,7 @@ it.each(['Give up', 'Completed'] as const)(
 it('blocks both outcomes during a save without dimming either button', () => {
   const finish = jest.fn(async () => {});
   const screen = render(
-    <ActiveChallenge attempt={attempt} offset={0} disabled finish={finish} />,
+    <ActiveChallenge attempt={attempt} disabled finish={finish} />,
   );
   for (const name of ['Give up', 'Completed']) {
     const button = screen.getByRole('button', { name });
@@ -87,7 +80,6 @@ it('leaves extra space between the active card and outcome buttons', () => {
   const screen = render(
     <ActiveChallenge
       attempt={attempt}
-      offset={0}
       disabled={false}
       finish={async () => {}}
     />,
@@ -102,7 +94,6 @@ it('passes the accepted queue turn to the active card', () => {
     <ActiveChallenge
       attempt={attempt}
       turn={5}
-      offset={0}
       disabled={false}
       finish={async () => {}}
     />,
@@ -115,7 +106,6 @@ it('passes the accepted queue turn to the active card', () => {
     <ActiveChallenge
       attempt={attempt}
       turn={6}
-      offset={0}
       disabled
       finish={async () => {}}
     />,
@@ -124,4 +114,36 @@ it('passes the accepted queue turn to the active card', () => {
     card: attempt.card,
     turn: 5,
   });
+});
+
+it('updates once per second, recomputes on foreground and cleans up clock/listener ownership', () => {
+  jest.setSystemTime(new Date(attempt.startedAt));
+  const remove = jest.fn();
+  let foreground!: (state: AppStateStatus) => void;
+  const listener = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_, callback) => {
+      foreground = callback;
+      return { remove };
+    });
+  const screen = render(
+    <ActiveChallenge
+      attempt={attempt}
+      disabled={false}
+      finish={async () => {}}
+    />,
+  );
+  expect(screen.getByText('05:00')).toBeTruthy();
+  act(() => jest.advanceTimersByTime(500));
+  expect(screen.getByText('05:00')).toBeTruthy();
+  act(() => jest.advanceTimersByTime(500));
+  expect(screen.getByText('04:59')).toBeTruthy();
+  act(() => foreground('background'));
+  jest.setSystemTime(new Date('2026-09-24T20:03:12Z'));
+  act(() => foreground('active'));
+  expect(screen.getByText('01:48')).toBeTruthy();
+  screen.unmount();
+  expect(remove).toHaveBeenCalledTimes(1);
+  expect(jest.getTimerCount()).toBe(0);
+  listener.mockRestore();
 });

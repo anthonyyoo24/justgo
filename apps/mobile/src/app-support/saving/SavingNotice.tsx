@@ -11,7 +11,11 @@ import {
 } from './presentation';
 export function SavingNotice({
   onNavigate,
-}: { onNavigate?: (() => void) | undefined } = {}) {
+  navigationEnabled = true,
+}: {
+  onNavigate?: (() => void) | undefined;
+  navigationEnabled?: boolean;
+} = {}) {
   const { repository, state } = useActivityState();
   const [expandedFor, setExpandedFor] = useState<typeof repository>(null);
   const expanded = expandedFor === repository;
@@ -89,7 +93,8 @@ export function SavingNotice({
                         Reference: {operation.requestId}
                       </Text>
                     )}
-                    {operation.kind === 'patch' &&
+                    {navigationEnabled &&
+                      operation.kind === 'patch' &&
                       operation.code === 'INVALID_REQUEST' && (
                         <Pressable
                           accessibilityRole="button"
@@ -108,7 +113,7 @@ export function SavingNotice({
                           <Text style={styles.link}>Review reflection</Text>
                         </Pressable>
                       )}
-                    {operation.state === 'auth' && (
+                    {navigationEnabled && operation.state === 'auth' && (
                       <Pressable
                         accessibilityRole="button"
                         style={styles.action}

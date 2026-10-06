@@ -394,7 +394,7 @@ test('completion and reflection use confirmed cloud fallback when phone writes f
   ]);
 });
 
-test('retained rejected reflection correction returns to the existing active challenge without clearing it', async ({
+test('retained reflection correction is deferred during an active challenge and remains available after Give up', async ({
   page,
   fixtureDatabase,
 }) => {
@@ -439,6 +439,22 @@ test('retained rejected reflection correction returns to the existing active cha
       exact: true,
     })
     .click();
+  await expect(
+    page.getByRole('button', { name: 'Review reflection', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'Open Settings', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('tab', { name: 'Progress', exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Give up', exact: true }).click();
+  await page
+    .getByRole('button', {
+      name: 'Review activity that couldn’t upload',
+      exact: true,
+    })
+    .click();
   await page
     .getByRole('button', { name: 'Review reflection', exact: true })
     .click();
@@ -459,10 +475,7 @@ test('retained rejected reflection correction returns to the existing active cha
     .getByRole('button', { name: 'Save Reflection', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Active challenge', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Completed', exact: true }),
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeEnabled();
   await expect
     .poll(
@@ -520,6 +533,73 @@ test('first-download failure has a recovery action and later refresh failure lea
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeEnabled();
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select id from justgo.attempts where user_id=$1',
+        [account.userId],
+      )
+    ).rows,
+  ).toHaveLength(0);
+});
+
+test('active challenges hide all page navigation, preserve browsing continuity, and reset after reload', async ({
+  page,
+  fixtureDatabase,
+}) => {
+  const bootstrap = page.waitForRequest(
+    (r) => r.url() === `${journeyApiUrl}/v1/sessions` && r.method() === 'POST',
+  );
+  const account = await openAccount(page);
+  const proof = sessionCreateSchema.parse((await bootstrap).postDataJSON());
+  if (proof.kind !== 'bootstrap')
+    throw new Error('Expected disposable bootstrap');
+  await page.getByRole('tab', { name: 'Gym', exact: true }).click();
+  await page.getByRole('tab', { name: 'Progress', exact: true }).click();
+  await page.getByRole('tab', { name: 'Home', exact: true }).click();
+  await expect(
+    page.getByRole('tab', { name: 'Gym', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await page
+    .getByRole('button', { name: 'Accept challenge', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Active challenge', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Open Settings', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(
+    page.getByRole('button', { name: 'Completed', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Give up', exact: true }).click();
+  await expect(
+    page.getByRole('link', { name: 'Open Settings', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('tab', { name: 'Gym', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await page
+    .getByRole('button', { name: 'Accept challenge', exact: true })
+    .click();
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Recover an existing account', exact: true })
+    .click();
+  await page.getByLabel('Recovery key', { exact: true }).fill(proof.credential);
+  await page
+    .getByRole('button', { name: 'Recover with key', exact: true })
+    .click();
+  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Completed', exact: true }),
+  ).toHaveCount(0);
   expect(
     (
       await fixtureDatabase.query(

@@ -117,8 +117,17 @@ memory-only submissions for same-account recovery while the process survives.
 `useJournal` and `useActivityState` expose the current repository/live state.
 
 `features/challenges/controller.ts` owns a focused Zustand store for downloaded
-venue decks, cycling, unfinished activity and completion context. Start captures
-the timestamp/time zone/deadline; give-up and unfinished activity are memory-only.
+venue decks, cycling and accepted completion context. `useActiveChallenge` owns
+unfinished activity in React state inside the account-keyed Home feature. Start
+captures a frozen card, timestamp and time zone; the deadline is derived from start
+plus original duration. `ActiveChallenge` samples the clock once per second and
+immediately on foreground; it never depends on a background interval. A fresh
+mount/account change resets unfinished activity. `ActiveChallengeModal` covers
+navigation full screen, omits Settings and accepts only Completed/Give up. Native
+modal input isolation and the web inert/ARIA adapter keep underlying navigation
+unavailable. Its saving surface retains warnings/details/dismissal, with page links
+deferred until the challenge ends. The modal closes when Success takes focus;
+Give up returns to the existing venue/deck without a saved attempt.
 Completed creates one UUID and awaits repository saving. Ordinary local success
 never waits for HTTP. `features/reflections/controller.ts` owns React-form state,
 validation, dirty-close choices and newer-input protection; explicit submissions

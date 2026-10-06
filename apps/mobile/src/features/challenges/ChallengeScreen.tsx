@@ -12,10 +12,16 @@ import {
 import { ChallengeLayout } from './ChallengeLayout';
 import { VenueTabs } from './VenueTabs';
 import { ChallengeDeck } from './ChallengeDeck';
-import { ActiveChallenge } from './ActiveChallenge';
+import { ActiveChallengeModal } from './ActiveChallengeModal';
+import { useActiveChallenge } from './useActiveChallenge';
 export function ChallengeScreen() {
+  const { account } = useIdentity();
+  return <ChallengeFlow key={account?.userId ?? 'disconnected'} />;
+}
+function ChallengeFlow() {
   const { challenges } = useRuntime();
   const { account } = useIdentity();
+  const { active, onAction, finish, clear } = useActiveChallenge(challenges);
   const state = useSyncExternalStore(
     challenges.subscribe,
     challenges.getSnapshot,
@@ -33,6 +39,7 @@ export function ChallengeScreen() {
   useEffect(() => {
     if (!focused) {
       wasFocused.current = false;
+      if (state.success) clear();
       return;
     }
     const returnedToScreen = !wasFocused.current;
@@ -49,75 +56,60 @@ export function ChallengeScreen() {
       pathname: '/success',
       params: { attemptId: state.success.id },
     });
-  }, [state.success, focused, router, challenges]);
+  }, [state.success, focused, router, challenges, clear]);
   const queue = state.queues[state.selected];
   const venue = venues.find((v) => v.id === state.selected)!;
-  // Keep the completed card in place while the success route opens. The
-  // controller retains active until the focused flow exits, so the deck cannot
-  // appear for a frame between the two screens.
-  const visibleAttempt = state.active;
   return (
-    <ChallengeLayout
-      title={visibleAttempt ? 'Active challenge' : 'Find a challenge'}
-      fillContent={!visibleAttempt}
-    >
-      {!!state.error && (
-        <View style={styles.notice}>
-          <Text accessibilityRole="alert" style={styles.body}>
-            {state.error}
-          </Text>
-          {!visibleAttempt && (
+    <>
+      <ChallengeLayout title="Find a challenge" fillContent>
+        {!active && !!state.error && (
+          <View style={styles.notice}>
+            <Text accessibilityRole="alert" style={styles.body}>
+              {state.error}
+            </Text>
             <PrimaryButton
               label="Refresh challenges"
               busy={state.loading}
               onPress={() => void challenges.refresh()}
             />
-          )}
-        </View>
-      )}
-      {visibleAttempt ? (
-        <ActiveChallenge
-          key={visibleAttempt.startedAt}
-          attempt={visibleAttempt}
-          turn={visibleAttempt.turn}
-          savingVisible={savingVisible}
-          giveUpDisabled={state.saving || state.completionStarted || !focused}
-          disabled={state.saving || !!state.success || !focused}
-          finish={challenges.finish}
+          </View>
+        )}
+        <VenueTabs
+          selected={state.selected}
+          disabled={!!active || moving || state.saving}
+          onSelect={(v) => void challenges.select(v)}
         />
-      ) : (
-        <>
-          <VenueTabs
-            selected={state.selected}
-            disabled={moving || state.saving}
-            onSelect={(v) => void challenges.select(v)}
+        {!queue ? (
+          <Text style={styles.body}>
+            {state.loading
+              ? 'Finding your challenges…'
+              : 'Your challenges couldn’t load.'}
+          </Text>
+        ) : (
+          <ChallengeDeck
+            key={`${account?.userId}:${venue.id}:${focused}`}
+            cards={queue.cards}
+            venue={venue.id}
+            label={venue.label}
+            turn={queue.turn}
+            disabled={!!active || state.saving || !focused}
+            onBusyChange={setMoving}
+            onAction={onAction}
           />
-          {!queue ? (
-            <Text style={styles.body}>
-              {state.loading
-                ? 'Finding your challenges…'
-                : 'Your challenges couldn’t load.'}
-            </Text>
-          ) : (
-            <ChallengeDeck
-              key={`${account?.userId}:${venue.id}:${focused}`}
-              cards={queue.cards}
-              venue={venue.id}
-              label={venue.label}
-              turn={queue.turn}
-              disabled={state.saving || !focused}
-              onBusyChange={setMoving}
-              onAction={async (direction) => {
-                await challenges.act(direction);
-                return (
-                  challenges.getSnapshot().queues[venue.id]?.turn ?? queue.turn
-                );
-              }}
-            />
-          )}
-        </>
+        )}
+      </ChallengeLayout>
+      {active && focused && (
+        <ActiveChallengeModal
+          start={active}
+          error={state.error}
+          saving={state.saving}
+          completed={!!state.success}
+          completionStarted={state.completionStarted}
+          savingVisible={savingVisible}
+          finish={finish}
+        />
       )}
-    </ChallengeLayout>
+    </>
   );
 }
 const styles = StyleSheet.create({

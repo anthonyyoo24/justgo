@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Text,
   View,
+  AppState,
   useWindowDimensions,
 } from 'react-native';
 import { venues } from '@justgo/contracts';
@@ -11,20 +12,18 @@ import Svg, { Path } from 'react-native-svg';
 import { colors, typography, fontFamilies } from '../../theme/tokens';
 import { challengeScale, timerOutline } from './challenge-design';
 import { ChallengeCard } from './ChallengeDeck';
-import type { ActiveChallengeState } from './controller';
+import type { ChallengeStart } from './controller';
 import { remainingSeconds } from './countdown';
 export function ActiveChallenge({
   attempt,
   turn = 0,
-  offset = 0,
   savingVisible = false,
   disabled,
   giveUpDisabled = disabled,
   finish,
 }: {
-  attempt: Pick<ActiveChallengeState, 'card' | 'deadlineAt'>;
+  attempt: Pick<ChallengeStart, 'card' | 'startedAt'>;
   turn?: number;
-  offset?: number;
   savingVisible?: boolean;
   giveUpDisabled?: boolean;
   disabled: boolean;
@@ -37,12 +36,18 @@ export function ActiveChallenge({
   const [cardTurn] = useState(turn);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNow(Date.now());
+    });
+    return () => {
+      clearInterval(timer);
+      listener.remove();
+    };
   }, []);
   const seconds = remainingSeconds(
-    attempt.deadlineAt,
-    now + offset,
+    attempt.startedAt,
+    now,
     attempt.card.durationSeconds,
   );
   const timer = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;

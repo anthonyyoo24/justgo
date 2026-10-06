@@ -240,21 +240,22 @@ are injected at the repository/transport boundary, never exposed as production f
 The database fixture owns cleanup for browser and repository-only tests. Safe size/
 serialization measurements are attached to the HTML report. These saved cases do
 not establish the new completion/reflection UI journey or native AsyncStorage
-durability. 07.3 adds app integration and side-panel checks; native evidence remains
-open because the existing simulator build lacks the new RNCAsyncStorage module.
-The default tools path does not expose `simctl`; a command-only Xcode override can
-list simulators, but a compatible native build is still required. See the
-[07.2 handoff](handoffs/phase-07-2-local-sync.md).
+durability. 07.3 adds app integration and side-panel checks. The October 6 owner
+session installed an updated EAS simulator app with AsyncStorage and NetInfo;
+native saving/relaunch evidence remains open. The default tools path does not
+expose `simctl`; command-scoped `DEVELOPER_DIR` selects the existing full Xcode
+without changing system configuration. See the [07.2 handoff](handoffs/phase-07-2-local-sync.md)
+and [07.3 simulator setup](handoffs/phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup).
 
 ## Phase 07.3 local app journeys and presentation
 
-`npm run test:journey` runs eight actual-app cases in `e2e/local-flow.spec.ts`
+`npm run test:journey` runs nine actual-app cases in `e2e/local-flow.spec.ts`
 alongside the seven existing cases. They verify local-only start/give-up, completion
 and explicit reflection before HTTP acknowledgement, delayed local writes and
 duplicate activation, newer typing during dirty-close Save, offline reload with
 same-account recovery and empty Skip, memory-only warning/dismissal/full recovery,
 expired-session replay, confirmed cloud fallback for both completion/reflection
-when phone writes fail, first-download/refresh recovery, and retained rejected-reflection correction that returns to the existing active challenge. Assertions use the
+when phone writes fail, first-download/refresh recovery, and retained rejected-reflection correction deferred until Give up, and exclusive active navigation/unfinished reload reset. Assertions use the
 real disposable database. Browser identity remains memory-only; reload recovery
 uses the synthetic bootstrap proof in test memory and masks credential fields in
 failure artifacts. It does not establish native Keychain/AsyncStorage durability.
@@ -270,8 +271,10 @@ commit’s checks pass.
 
 Interactive side-panel evidence lives in [the 07.3 handoff](handoffs/phase-07-3-local-flow.md).
 Only disposable registry-owned accounts were used and cleaned up. NetInfo 12.0.1,
-Sonner Native 0.27.0 and Sonner 2.0.8 match the pinned stack and pass Expo doctor,
-but the existing simulator binary lacks AsyncStorage/NetInfo. Native build/signing
-work is separate. Keep native saving/relaunch, lifecycle/countdown, keyboard/modal,
-VoiceOver/scalable-text/reduced-motion checks open until evidenced on a compatible
-binary; earlier physical-device/staging gates remain open.
+Sonner Native 0.27.0 and Sonner 2.0.8 match the pinned stack and pass Expo doctor.
+The owner-requested October 6 EAS simulator build includes AsyncStorage/NetInfo;
+native launch and active countdown/Give up were checked on the reused QA device.
+Keep native saving/relaunch, background/lock countdown, keyboard/toast/modal,
+VoiceOver/scalable-text/reduced-motion checks open until evidenced; earlier
+physical-device/staging gates remain open. The brief native smoke check and owner
+manual session are separate from saved end-to-end tests and hosted CI.

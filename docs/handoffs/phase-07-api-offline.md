@@ -1,5 +1,9 @@
 # Phase 07 — API & offline saving
 
+**October 6 native flicker investigation:** The [07.3 handoff](phase-07-3-local-flow.md#october-6-native-completion-flicker-investigation) records first/repeat reproduction, an opaque modal presentation fix and updated native frame evidence. Separate Home flashes are absent in three updated runs; brief mixed samples and full native acceptance remain open. No persistence/API/billing change or Git publication was made.
+
+**October 6 active-flow follow-up:** The original 07.3 checkpoint was committed locally as `7a74a90` before the owner-approved changes. Unfinished activity now belongs to React, the countdown derives from frozen start/duration and refreshes once per second, and the active view omits Settings/tabs with only Completed/Give up as exits. Zustand retains browsing/completion/shared activity. The [07.3 handoff](phase-07-3-local-flow.md#october-6-owner-approved-active-flow-refinement) owns current verification. The later [owner simulator session](phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup) reused the QA device, removed 19 others and built/installed an updated EAS binary, with native launch/active-view smoke checks passing. Full native acceptance and Git publication remain open.
+
 **October 5 current checkpoint:** The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). At the owner’s request, `codex/phase-07.3-local-flow` starts from local `main` `3e41330` and implements provider/account/lifecycle integration, local challenge/completion/reflection screens, saving-risk/recovery presentation and saved app/API/database journeys. The [07.3 handoff](phase-07-3-local-flow.md) records local checks, side-panel evidence and open native acceptance. Progress composition and final cutover remain 07.4/07.5. No push, PR or merge of 07.3 is authorized; older dated review restrictions below are historical.
 
 ## October 4 branch separation — current status

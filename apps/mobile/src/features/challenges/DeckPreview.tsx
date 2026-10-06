@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { venues, type Venue } from '@justgo/contracts';
-import type { ActiveChallengeState } from './controller';
+import type { ChallengeStart } from './controller';
 import { ChallengeLayout } from './ChallengeLayout';
 import { ChallengeDeck } from './ChallengeDeck';
 import { ActiveChallenge } from './ActiveChallenge';
@@ -15,7 +15,7 @@ export function DeckPreview({
 }) {
   const [selected, setSelected] = useState<Venue>('cafe');
   const [turn, setTurn] = useState(0);
-  const [active, setActive] = useState<ActiveChallengeState | null>(null);
+  const [active, setActive] = useState<ChallengeStart | null>(null);
   const cards = previewCardsForVenue(selected);
   const offset = turn % cards.length;
   const ordered = [...cards.slice(offset), ...cards.slice(0, offset)];
@@ -24,12 +24,12 @@ export function DeckPreview({
       title={active ? 'Active challenge' : 'Find a challenge'}
       insetTop={insetTop}
       fillContent={!active}
+      showSettings={!active}
     >
       {active ? (
         <ActiveChallenge
           attempt={active}
           turn={turn}
-          offset={0}
           disabled={false}
           finish={async (outcome) => {
             setActive(null);
@@ -69,7 +69,6 @@ export function DeckPreview({
                   durationSeconds: 300,
                 },
                 startedAt: new Date(started).toISOString(),
-                deadlineAt: new Date(started + 300_000).toISOString(),
                 startTimeZone: 'America/Toronto',
                 turn,
               });

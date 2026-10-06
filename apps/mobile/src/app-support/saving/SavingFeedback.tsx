@@ -10,7 +10,13 @@ import { SavingNotice } from './SavingNotice';
 
 // Modal surfaces render their own notice/host above native presentation. Only
 // the app shell observes recovery sequences, so a sheet cannot duplicate toasts.
-export function SavingSheetSurface({ onLeave }: { onLeave?: () => void }) {
+export function SavingSheetSurface({
+  onLeave,
+  navigationEnabled = true,
+}: {
+  onLeave?: () => void;
+  navigationEnabled?: boolean;
+}) {
   const { activity } = useRuntime();
   useEffect(() => {
     activity.setToastChannel('activity-sheet');
@@ -20,7 +26,10 @@ export function SavingSheetSurface({ onLeave }: { onLeave?: () => void }) {
   }, [activity]);
   return (
     <>
-      <SavingNotice onNavigate={onLeave} />
+      <SavingNotice
+        onNavigate={onLeave}
+        navigationEnabled={navigationEnabled}
+      />
       <ToastHost channel="activity-sheet" />
     </>
   );

@@ -1,10 +1,9 @@
 import { venues, type Catalog } from '@justgo/contracts';
-import { ChallengeController } from './controller';
+import { ChallengeController, type ChallengeStart } from './controller';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
   backend,
-  card,
   deferred,
   owner,
   otherOwner,
@@ -13,23 +12,14 @@ import {
   zone,
 } from '../../../test-support/journal';
 
-export const catalog: Catalog = {
-  cards: venues.flatMap(({ id }) =>
-    [0, 1].map((position) => ({
-      ...card,
-      venue: id,
-      id: `${id}-${position}`,
-      challengeId: `${id}-${position}`,
-      position,
-    })),
-  ),
-};
+import { catalog } from '../../../test-support/challenge-catalog';
 let storage: MemoryStorage;
 let repository: AccountRepository;
 let current: AccountRepository | null;
 let controller: ChallengeController;
 let request: jest.Mock;
 let ids: jest.Mock;
+let start: ChallengeStart;
 beforeEach(async () => {
   storage = new MemoryStorage();
   repository = new AccountRepository({
@@ -50,11 +40,15 @@ beforeEach(async () => {
     {
       repository: () => current,
       id: ids,
-      now: () => Date.parse(`${today}T23:59:00Z`),
-      timeZone: () => zone,
     },
   );
   controller.changeAccount(owner);
+  start = {
+    card: catalog.cards[0]!,
+    startedAt: `${today}T23:59:00.000Z`,
+    startTimeZone: zone,
+    turn: 0,
+  };
 });
 afterEach(() => {
   controller.dispose();
@@ -65,51 +59,40 @@ async function downloaded() {
   await repository.cacheCatalog(catalog);
 }
 
-it('hydrates all venue decks, cycles locally and captures start without creating an ID or sending', async () => {
+it('hydrates all venue decks and cycles without IDs, writes or unfinished state', async () => {
   await downloaded();
   await controller.refresh();
   for (const { id } of venues)
     expect(controller.getSnapshot().queues[id]?.cards).toHaveLength(2);
   controller.select('gym');
-  await controller.act(-1);
+  controller.skip();
   expect(controller.getSnapshot().queues.gym?.cards[0]?.id).toBe('gym-1');
-  await controller.act(1);
-  expect(controller.getSnapshot().active).toMatchObject({
-    startedAt: `${today}T23:59:00.000Z`,
-    startTimeZone: zone,
-    deadlineAt: '2026-10-06T00:04:00.000Z',
-    turn: 1,
-  });
-  controller.select('cafe');
-  await controller.act(-1);
-  expect(controller.getSnapshot().selected).toBe('gym');
-  await controller.finish('given_up');
-  expect(controller.getSnapshot().active).toBeNull();
+  expect(controller.getSnapshot()).not.toHaveProperty('active');
   expect(ids).not.toHaveBeenCalled();
   expect(request).not.toHaveBeenCalled();
   expect(repository.store.getState().journal.operations).toEqual([]);
 });
 it('only Completed creates an ID, saves offline, and ignores duplicate completion after success', async () => {
   await downloaded();
-  await controller.act(1);
-  await controller.finish('completed');
+
+  await controller.complete(start);
   expect(ids).toHaveBeenCalledTimes(1);
   expect(controller.getSnapshot().success?.id).toBe(uuid(1));
   expect(
     repository.store.getState().journal.records[uuid(1)]?.phoneVersion,
   ).toBe(1);
-  await controller.finish('completed');
+  await controller.complete(start);
   await controller.dismissSuccess();
   expect(ids).toHaveBeenCalledTimes(1);
-  expect(controller.getSnapshot().active).toBeNull();
+  expect(controller.getSnapshot()).not.toHaveProperty('active');
 });
 it('coalesces duplicate completion during a slow phone write', async () => {
   await downloaded();
-  await controller.act(1);
+
   const block = deferred<void>();
   storage.blocked = block;
-  const first = controller.finish('completed');
-  const duplicate = controller.finish('completed');
+  const first = controller.complete(start);
+  const duplicate = controller.complete(start);
   expect(first).toBe(duplicate);
   expect(controller.getSnapshot().saving).toBe(true);
   block.resolve();
@@ -121,20 +104,20 @@ it('coalesces duplicate completion during a slow phone write', async () => {
 });
 it('retains the completion identity through an interrupted save and refuses give-up after submission', async () => {
   await downloaded();
-  await controller.act(1);
+
   jest
     .spyOn(repository, 'complete')
     .mockRejectedValueOnce(new Error('interrupted'));
-  await controller.finish('completed');
+  await controller.complete(start);
   expect(controller.getSnapshot()).toMatchObject({
     saving: false,
     completionStarted: true,
     success: null,
   });
   expect(controller.getSnapshot().error).toContain('Try Completed again');
-  await controller.finish('given_up');
-  expect(controller.getSnapshot().active).not.toBeNull();
-  await controller.finish('completed');
+  controller.skip(start.card.venue);
+  expect(controller.getSnapshot().queues.streets?.turn).toBe(0);
+  await controller.complete(start);
   expect(controller.getSnapshot().success?.id).toBe(uuid(1));
   expect(ids).toHaveBeenCalledTimes(1);
   expect(repository.store.getState().journal.operations).toHaveLength(1);
@@ -153,8 +136,8 @@ it('finishes after phone saving while the upload remains pending', async () => {
   await current.hydrate();
   await current.cacheCatalog(catalog);
   controller.changeAccount(otherOwner);
-  await controller.act(1);
-  await controller.finish('completed');
+
+  await controller.complete(start);
   expect(controller.getSnapshot().success).toBeTruthy();
   expect(controller.getSnapshot().saving).toBe(false);
   current.dispose();
@@ -162,9 +145,9 @@ it('finishes after phone saving while the upload remains pending', async () => {
 });
 it('allows memory-only continuation with risk when both save paths fail', async () => {
   await downloaded();
-  await controller.act(1);
+
   storage.fail = true;
-  await controller.finish('completed');
+  await controller.complete(start);
   expect(controller.getSnapshot().success).toBeTruthy();
   expect(repository.store.getState().warning).toMatchObject({
     visible: true,
@@ -190,7 +173,7 @@ it('coalesces downloads and leaves a cached deck usable during failed or incompl
   request.mockReturnValueOnce(read.promise);
   const first = controller.refresh();
   expect(controller.refresh()).toBe(first);
-  await controller.act(-1);
+  controller.skip();
   expect(controller.getSnapshot().queues.streets?.turn).toBe(1);
   read.reject(new Error('outage'));
   await first;
@@ -217,31 +200,33 @@ it('rejects an incomplete first catalog and ignores late results after account c
   expect(controller.getSnapshot().queues).toEqual({});
   expect(controller.getSnapshot().loading).toBe(false);
 });
-it('fences a slow save when the account changes and resets unfinished activity on a fresh controller', async () => {
+it('fences a slow save when the account changes and clears account completion context', async () => {
   await downloaded();
-  await controller.act(1);
+
   const block = deferred<void>();
   storage.blocked = block;
-  const saving = controller.finish('completed');
+  const saving = controller.complete(start);
   controller.changeAccount(null);
   block.resolve();
   await saving;
   expect(controller.getSnapshot().success).toBeNull();
   controller.changeAccount(owner);
-  expect(controller.getSnapshot().active).toBeNull();
+  expect(controller.getSnapshot()).not.toHaveProperty('active');
   current = null;
-  await controller.finish('completed');
+  await controller.complete(start);
   await controller.refresh();
 });
-it('preserves the selected front card and active wording through catalog refresh', async () => {
+it('preserves the selected front card while refreshing its shared wording', async () => {
   await downloaded();
-  await controller.act(-1);
-  await controller.act(1);
+  controller.skip();
+
   await repository.cacheCatalog({
     cards: catalog.cards.map((c) => ({ ...c, text: 'New wording' })),
   });
   expect(controller.getSnapshot().queues.streets?.cards[0]?.id).toBe(
     'streets-1',
   );
-  expect(controller.getSnapshot().active?.card.text).toBe('Say hello.');
+  expect(controller.getSnapshot().queues.streets?.cards[0]?.text).toBe(
+    'New wording',
+  );
 });

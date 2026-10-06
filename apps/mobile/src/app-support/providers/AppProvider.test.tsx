@@ -205,7 +205,6 @@ it('clears queries, mutations and challenge state synchronously on account loss 
   ).toBeUndefined();
   expect(runtime.client.queries.getMutationCache().getAll()).toHaveLength(0);
   expect(runtime.challenges.getSnapshot()).toMatchObject({
-    active: null,
     queues: {},
     success: null,
     saving: false,

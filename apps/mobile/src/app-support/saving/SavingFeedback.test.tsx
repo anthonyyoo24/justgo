@@ -274,3 +274,35 @@ it('opens a retained rejected reflection for an explicit correction', async () =
   fireEvent.press(screen.getByRole('button', { name: 'Hide saving details' }));
   expect(screen.queryByText('Retained writing')).toBeNull();
 });
+
+it('keeps retained problems readable in the active modal without offering page navigation', async () => {
+  await mockRepository.submitReflection(
+    input().id,
+    '20000000-0000-4000-8000-000000000002',
+    { text: 'Retained active-modal writing' },
+  );
+  const journal = structuredClone(mockRepository.store.getState().journal);
+  const operation = journal.operations[1]!;
+  operation.state = 'rejected';
+  operation.code = 'INVALID_REQUEST';
+  mockRepository.store.setState({ journal });
+  const screen = render(<SavingSheetSurface navigationEnabled={false} />);
+  fireEvent.press(
+    screen.getByRole('button', {
+      name: 'Review activity that couldn’t upload',
+    }),
+  );
+  expect(screen.getByText('Retained active-modal writing')).toBeTruthy();
+  expect(
+    screen.queryByRole('button', { name: 'Review reflection' }),
+  ).toBeNull();
+  operation.state = 'auth';
+  act(() =>
+    mockRepository.store.setState({ journal: structuredClone(journal) }),
+  );
+  expect(screen.queryByRole('button', { name: 'Recover account' })).toBeNull();
+  expect(mockRouter.push).not.toHaveBeenCalled();
+  screen.rerender(<SavingSheetSurface />);
+  fireEvent.press(screen.getByRole('button', { name: 'Recover account' }));
+  expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
+});

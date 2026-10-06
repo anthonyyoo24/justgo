@@ -1,84 +1,91 @@
-import { act, render } from '@testing-library/react-native';
+import { act, fireEvent, render, within } from '@testing-library/react-native';
+import { Modal, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../../theme/tokens';
 import type { ChallengeSnapshot } from './controller';
-import { attempt, card, zone } from '../../../test-support/journal';
+import { attempt, card } from '../../../test-support/journal';
 import { ChallengeScreen } from './ChallengeScreen';
 
 const mockMounted = jest.fn();
-const mockRouter = { push: jest.fn(), replace: jest.fn() };
+const mockRouter = { push: jest.fn() };
 let mockFocused = true;
-const mockAccount = { userId: 'deck-owner' };
+let mockAccount = { userId: 'deck-owner' };
+const mockCard = { ...card, venue: 'cafe' as const };
+const finishedAttempt = { ...attempt(), venue: 'cafe' as const };
+let mockSnapshot: ChallengeSnapshot;
 const mockController = {
   subscribe: () => () => {},
   getSnapshot: () => mockSnapshot,
   refresh: jest.fn(),
-  act: jest.fn(),
-  finish: jest.fn(),
+  skip: jest.fn(),
+  select: jest.fn(),
+  complete: jest.fn(),
   dismissSuccess: jest.fn(),
-};
-const mockCard = { ...card, venue: 'cafe' as const };
-const finishedAttempt = { ...attempt(), venue: 'cafe' as const };
-const active = {
-  card: mockCard,
-  startedAt: finishedAttempt.startedAt,
-  startTimeZone: zone,
-  deadlineAt: '2026-10-05T14:05:00.000Z',
-  turn: 0,
-};
-let mockSnapshot: ChallengeSnapshot = {
-  selected: 'cafe',
-  active: null,
-  error: '',
-  loading: false,
-  saving: false,
-  completionStarted: false,
-  success: null,
-  queues: { cafe: { turn: 0, cards: [mockCard] } },
 };
 jest.mock('expo-router', () => ({
   useIsFocused: () => mockFocused,
   useRouter: () => mockRouter,
-  Link: ({ children }: { children: React.ReactNode }) => {
-    const { Text } = require('react-native');
-    return <Text>{children}</Text>;
-  },
+  Link: ({ children }: { children: React.ReactNode }) => children,
 }));
 jest.mock('../../app-support/providers/AppProvider', () => ({
   useRuntime: () => ({ challenges: mockController }),
   useIdentity: () => ({ account: mockAccount }),
 }));
-jest.mock('./ChallengeLayout', () => ({
-  ChallengeLayout: ({ children }: { children: React.ReactNode }) => children,
+jest.mock('../../app-support/saving/SavingFeedback', () => ({
+  SavingSheetSurface: () => null,
 }));
 jest.mock('./VenueTabs', () => ({ VenueTabs: () => null }));
 jest.mock('./ChallengeDeck', () => ({
   ChallengeCard: () => null,
-  ChallengeDeck: () => {
+  ChallengeDeck: ({
+    onAction,
+    disabled,
+  }: {
+    onAction: (direction: -1 | 1) => Promise<void>;
+    disabled: boolean;
+  }) => {
     const { useEffect } = require('react');
-    const { View } = require('react-native');
+    const { View, Pressable, Text } = require('react-native');
     useEffect(() => {
       mockMounted();
     }, []);
-    return <View testID="mock-deck" />;
+    return (
+      <View testID="mock-deck">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Accept challenge"
+          disabled={disabled}
+          onPress={() => void onAction(1)}
+        >
+          <Text>Accept</Text>
+        </Pressable>
+      </View>
+    );
   },
 }));
-
 beforeEach(() => {
-  mockRouter.push.mockClear();
-  mockMounted.mockClear();
-  mockController.dismissSuccess.mockClear();
+  jest.clearAllMocks();
   mockFocused = true;
+  mockAccount = { userId: 'deck-owner' };
   mockSnapshot = {
-    ...mockSnapshot,
-    active: null,
-    success: null,
+    selected: 'cafe',
     error: '',
+    loading: false,
+    saving: false,
     completionStarted: false,
+    success: null,
+    queues: { cafe: { turn: 0, cards: [mockCard] } },
   };
+  mockController.complete.mockResolvedValue(undefined);
 });
+function accept(screen: ReturnType<typeof render>) {
+  fireEvent.press(screen.getByRole('button', { name: 'Accept challenge' }));
+}
 
-it('keeps the deck mounted through queue updates from a local skip', () => {
+it('keeps the deck mounted through queue updates, with Settings available while browsing', () => {
   const screen = render(<ChallengeScreen />);
   expect(mockMounted).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('link', { name: 'Open Settings' })).toBeTruthy();
   mockSnapshot = {
     ...mockSnapshot,
     queues: {
@@ -90,31 +97,44 @@ it('keeps the deck mounted through queue updates from a local skip', () => {
   };
   screen.rerender(<ChallengeScreen />);
   expect(mockMounted).toHaveBeenCalledTimes(1);
-});
-
-it('does not show a completed-challenge link on the deck after continuing', () => {
-  mockSnapshot = {
-    ...mockSnapshot,
-    active: null,
-  };
-  const screen = render(<ChallengeScreen />);
-  expect(screen.getByTestId('mock-deck')).toBeTruthy();
   expect(screen.queryByText('View your last completed challenge')).toBeNull();
 });
-
-it('keeps the active card visible until the success route takes over', () => {
-  mockSnapshot = {
-    ...mockSnapshot,
-    active,
-  };
+it('keeps navigation mounted behind an opaque full-screen active view and refuses implicit dismissal', () => {
   const screen = render(<ChallengeScreen />);
-  expect(screen.getByTestId('active-outcomes')).toBeTruthy();
-  expect(mockRouter.push).not.toHaveBeenCalled();
+  accept(screen);
+  const modal = screen.UNSAFE_getByType(Modal);
+  expect(modal.props.presentationStyle).toBe('overFullScreen');
+  expect(modal.props.transparent).toBe(false);
+  expect(modal.props.allowSwipeDismissal).toBe(false);
+  const activeSurface = within(modal).UNSAFE_getAllByType(SafeAreaView)[0]!;
+  expect(activeSurface.props.edges).toEqual(['bottom']);
+  expect(activeSurface.props.accessibilityViewIsModal).toBe(true);
+  expect(StyleSheet.flatten(activeSurface.props.style)).toMatchObject({
+    flex: 1,
+    backgroundColor: colors.cream,
+  });
+  expect(
+    within(modal).queryByRole('link', { name: 'Open Settings' }),
+  ).toBeNull();
+  expect(within(modal).queryByRole('tab')).toBeNull();
+  fireEvent(modal, 'requestClose');
+  expect(screen.getByRole('button', { name: 'Completed' })).toBeEnabled();
+  expect(mockController.complete).not.toHaveBeenCalled();
+  expect(mockController.skip).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('button', { name: 'Give up' }));
+  expect(screen.queryByTestId('active-challenge-modal')).toBeNull();
+  expect(mockController.skip).toHaveBeenCalledWith('cafe');
+  expect(screen.getByRole('link', { name: 'Open Settings' })).toBeTruthy();
+});
+it('keeps the active modal through local completion until Success takes focus, then returns to browsing', () => {
+  const screen = render(<ChallengeScreen />);
+  accept(screen);
+  fireEvent.press(screen.getByRole('button', { name: 'Completed' }));
   act(() => {
     mockSnapshot = {
       ...mockSnapshot,
-      active,
       success: finishedAttempt,
+      completionStarted: true,
     };
     screen.rerender(<ChallengeScreen />);
   });
@@ -122,51 +142,52 @@ it('keeps the active card visible until the success route takes over', () => {
     pathname: '/success',
     params: { attemptId: finishedAttempt.id },
   });
-  expect(screen.queryByTestId('mock-deck')).toBeNull();
-  expect(screen.getByTestId('active-outcomes')).toBeTruthy();
+  expect(screen.getByTestId('active-challenge-modal')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Completed' })).toBeDisabled();
-  expect(screen.queryByText('That’s a win!')).toBeNull();
-});
-
-it('dismisses an already-opened result when native back returns to the challenge', () => {
-  const screen = render(<ChallengeScreen />);
-  mockSnapshot = {
-    ...mockSnapshot,
-    active,
-    success: finishedAttempt,
-  };
-  screen.rerender(<ChallengeScreen />);
-  expect(mockRouter.push).toHaveBeenCalledTimes(1);
-
-  // Renders during the navigation handoff must not clear the result before
-  // the Success screen can use it.
-  screen.rerender(<ChallengeScreen />);
-  expect(mockController.dismissSuccess).not.toHaveBeenCalled();
-
+  expect(mockController.complete).toHaveBeenCalledWith(
+    expect.objectContaining({
+      card: mockCard,
+      startedAt: expect.any(String),
+      startTimeZone: expect.any(String),
+    }),
+  );
   mockFocused = false;
   screen.rerender(<ChallengeScreen />);
+  expect(screen.queryByTestId('active-challenge-modal')).toBeNull();
   mockFocused = true;
   screen.rerender(<ChallengeScreen />);
   expect(mockController.dismissSuccess).toHaveBeenCalledTimes(1);
   expect(mockRouter.push).toHaveBeenCalledTimes(1);
 });
-
-it('reserves catalog refresh for download failures and keeps the completion retry on the active card', () => {
-  mockSnapshot = { ...mockSnapshot, queues: {}, error: 'Download failed' };
+it('uses local completion retry and keeps navigation inaccessible during an interrupted save', () => {
   const screen = render(<ChallengeScreen />);
-  expect(
-    screen.getByRole('button', { name: 'Refresh challenges' }),
-  ).toBeTruthy();
+  accept(screen);
   mockSnapshot = {
     ...mockSnapshot,
-    active,
     completionStarted: true,
     error: 'Try Completed again',
   };
   screen.rerender(<ChallengeScreen />);
+  const modal = screen.UNSAFE_getByType(Modal);
   expect(
-    screen.queryByRole('button', { name: 'Refresh challenges' }),
+    within(modal).queryByRole('button', { name: 'Refresh challenges' }),
   ).toBeNull();
-  expect(screen.getByRole('button', { name: 'Completed' })).toBeEnabled();
-  expect(screen.getByRole('button', { name: 'Give up' })).toBeDisabled();
+  expect(
+    within(modal).getByRole('button', { name: 'Completed' }),
+  ).toBeEnabled();
+  expect(within(modal).getByRole('button', { name: 'Give up' })).toBeDisabled();
+});
+it('clears unfinished React state when the account changes', () => {
+  const screen = render(<ChallengeScreen />);
+  accept(screen);
+  mockAccount = { userId: 'another-owner' };
+  screen.rerender(<ChallengeScreen />);
+  expect(screen.queryByTestId('active-challenge-modal')).toBeNull();
+  expect(mockController.complete).not.toHaveBeenCalled();
+});
+it('exposes catalog recovery only when no active challenge exists', () => {
+  mockSnapshot = { ...mockSnapshot, queues: {}, error: 'Download failed' };
+  const screen = render(<ChallengeScreen />);
+  fireEvent.press(screen.getByRole('button', { name: 'Refresh challenges' }));
+  expect(mockController.refresh).toHaveBeenCalled();
 });
