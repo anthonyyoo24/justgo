@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -117,6 +117,7 @@ function DayHeading({ date }: { date: string }) {
 }
 
 export function DaySheet({
+  topAccessory,
   date,
   day,
   loading,
@@ -129,6 +130,7 @@ export function DaySheet({
   onRetry,
   onLoadMore,
 }: {
+  topAccessory?: ReactNode;
   date: string | null;
   day?: ProgressDay | undefined;
   loading: boolean;
@@ -217,122 +219,127 @@ export function DaySheet({
       onRequestClose={close}
       statusBarTranslucent
     >
-      <View style={styles.modalRoot}>
-        <Pressable
-          testID="day-sheet-backdrop"
-          accessibilityRole="button"
-          accessibilityLabel="Close day details"
-          onPress={close}
-          style={[styles.backdrop, !backdropVisible && styles.backdropHidden]}
-        />
-        <AnimatedSafeAreaView
-          testID="day-sheet-panel"
-          onLayout={open}
-          edges={['bottom']}
-          style={[
-            styles.sheet,
-            error && !day && { minHeight: Math.min(470, height * 0.78) },
-            { transform: [{ translateY: sheetOffset }] },
-          ]}
-          accessibilityViewIsModal
-        >
-          <View {...responder.panHandlers} style={styles.handleArea}>
-            <View style={styles.handle} />
-          </View>
+      <View style={{ flex: 1 }} accessibilityViewIsModal>
+        {topAccessory}
+        <View style={styles.modalRoot}>
           <Pressable
+            testID="day-sheet-backdrop"
             accessibilityRole="button"
             accessibilityLabel="Close day details"
             onPress={close}
-            style={styles.close}
+            style={[styles.backdrop, !backdropVisible && styles.backdropHidden]}
+          />
+          <AnimatedSafeAreaView
+            testID="day-sheet-panel"
+            onLayout={open}
+            edges={['bottom']}
+            style={[
+              styles.sheet,
+              error && !day && { minHeight: Math.min(470, height * 0.78) },
+              { transform: [{ translateY: sheetOffset }] },
+            ]}
           >
-            <Text style={styles.closeText}>×</Text>
-          </Pressable>
-          {date && <DayHeading date={date} />}
-          {loading && !day ? (
-            <View style={styles.state}>
-              <ActivityIndicator
-                accessibilityLabel="Loading day details"
-                color={colors.ink}
-              />
-              <Text style={styles.stateText}>Loading this day…</Text>
+            <View {...responder.panHandlers} style={styles.handleArea}>
+              <View style={styles.handle} />
             </View>
-          ) : error && !day ? (
-            <View testID="day-initial-error" style={styles.initialError}>
-              <DisconnectedPlugs />
-              <Text accessibilityRole="alert" style={styles.initialErrorTitle}>
-                Couldn’t load attempts
-              </Text>
-              <Text style={styles.initialErrorBody}>
-                We couldn’t get your challenge attempts. Please try again.
-              </Text>
-              {onRetry && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Try loading attempts again"
-                  onPress={onRetry}
-                  style={styles.initialRetry}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close day details"
+              onPress={close}
+              style={styles.close}
+            >
+              <Text style={styles.closeText}>×</Text>
+            </Pressable>
+            {date && <DayHeading date={date} />}
+            {loading && !day ? (
+              <View style={styles.state}>
+                <ActivityIndicator
+                  accessibilityLabel="Loading day details"
+                  color={colors.ink}
+                />
+                <Text style={styles.stateText}>Loading this day…</Text>
+              </View>
+            ) : error && !day ? (
+              <View testID="day-initial-error" style={styles.initialError}>
+                <DisconnectedPlugs />
+                <Text
+                  accessibilityRole="alert"
+                  style={styles.initialErrorTitle}
                 >
-                  <RetryArrow />
-                  <Text style={styles.initialRetryText}>Try again</Text>
-                </Pressable>
-              )}
-            </View>
-          ) : day ? (
-            <>
-              <ScrollView
-                testID="day-sheet-entry-list"
-                style={styles.entriesScroll}
-                contentContainerStyle={styles.entries}
-                onScroll={loadNearEnd}
-                scrollEventThrottle={16}
-              >
-                {day.entries.map((entry, index) => (
-                  <ProgressEntryRow
-                    key={entry.attemptId}
-                    entry={entry}
-                    index={index}
-                    expanded={expanded === entry.attemptId}
-                    reduceMotion={reduceMotion}
-                    onToggle={() =>
-                      setExpanded(
-                        expanded === entry.attemptId ? null : entry.attemptId,
-                      )
-                    }
-                  />
-                ))}
-                {loadMoreError ? (
-                  <View
-                    testID="day-load-more-error"
-                    style={styles.moreErrorState}
+                  Couldn’t load attempts
+                </Text>
+                <Text style={styles.initialErrorBody}>
+                  We couldn’t get your challenge attempts. Please try again.
+                </Text>
+                {onRetry && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Try loading attempts again"
+                    onPress={onRetry}
+                    style={styles.initialRetry}
                   >
-                    <Text accessibilityRole="alert" style={styles.moreError}>
-                      Couldn’t load more attempts
-                    </Text>
-                    {onRetry && (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Try loading more attempts again"
-                        onPress={onRetry}
-                        style={styles.moreRetry}
-                      >
-                        <RetryArrow color={colors.ink} />
-                        <Text style={styles.moreRetryText}>Try again</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                ) : loadingMore ? (
-                  <View testID="day-loading-more" style={styles.moreLoading}>
-                    <ActivityIndicator
-                      accessibilityLabel="Loading more attempts"
-                      color={colors.ink}
-                      size="small"
+                    <RetryArrow />
+                    <Text style={styles.initialRetryText}>Try again</Text>
+                  </Pressable>
+                )}
+              </View>
+            ) : day ? (
+              <>
+                <ScrollView
+                  testID="day-sheet-entry-list"
+                  style={styles.entriesScroll}
+                  contentContainerStyle={styles.entries}
+                  onScroll={loadNearEnd}
+                  scrollEventThrottle={16}
+                >
+                  {day.entries.map((entry, index) => (
+                    <ProgressEntryRow
+                      key={entry.attemptId}
+                      entry={entry}
+                      index={index}
+                      expanded={expanded === entry.attemptId}
+                      reduceMotion={reduceMotion}
+                      onToggle={() =>
+                        setExpanded(
+                          expanded === entry.attemptId ? null : entry.attemptId,
+                        )
+                      }
                     />
-                  </View>
-                ) : null}
-              </ScrollView>
-            </>
-          ) : null}
-        </AnimatedSafeAreaView>
+                  ))}
+                  {loadMoreError ? (
+                    <View
+                      testID="day-load-more-error"
+                      style={styles.moreErrorState}
+                    >
+                      <Text accessibilityRole="alert" style={styles.moreError}>
+                        Couldn’t load more attempts
+                      </Text>
+                      {onRetry && (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Try loading more attempts again"
+                          onPress={onRetry}
+                          style={styles.moreRetry}
+                        >
+                          <RetryArrow color={colors.ink} />
+                          <Text style={styles.moreRetryText}>Try again</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  ) : loadingMore ? (
+                    <View testID="day-loading-more" style={styles.moreLoading}>
+                      <ActivityIndicator
+                        accessibilityLabel="Loading more attempts"
+                        color={colors.ink}
+                        size="small"
+                      />
+                    </View>
+                  ) : null}
+                </ScrollView>
+              </>
+            ) : null}
+          </AnimatedSafeAreaView>
+        </View>
       </View>
     </Modal>
   );

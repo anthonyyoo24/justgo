@@ -1,18 +1,17 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import type { LegacyAttempt as Attempt } from '@justgo/contracts';
+import type { ActiveChallengeState } from './controller';
 import { StyleSheet, View } from 'react-native';
 import { ChallengeCard } from './ChallengeDeck';
 import { ActiveChallenge } from './ActiveChallenge';
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../app-support/providers/AppProvider', () => ({}));
 jest.mock('./ChallengeDeck', () => ({ ChallengeCard: jest.fn(() => null) }));
-const attempt: Attempt = {
-  id: 'visual-test',
-  status: 'active',
+const attempt: ActiveChallengeState = {
   card: {
     id: 'GY-01',
     challengeId: 'gym-01',
-    revisionId: 'gym-01-v1',
+    position: 0,
+    subtext: null,
     levelId: 'level-1',
     venue: 'gym',
     text: 'Say hello to someone between sets.',
@@ -20,9 +19,8 @@ const attempt: Attempt = {
   },
   startedAt: '2026-09-24T20:00:00Z',
   deadlineAt: '2026-09-24T20:05:00Z',
-  endedAt: null,
-  completionDate: null,
-  timeZone: null,
+  startTimeZone: 'America/Toronto',
+  turn: 0,
 };
 beforeEach(() => {
   jest.useFakeTimers();

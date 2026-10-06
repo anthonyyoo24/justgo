@@ -8,6 +8,10 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { AppState } from 'react-native';
+import { listenToConnectivity } from '../../platform/connectivity';
+import { asyncStorageJournalStorage } from '../../data/activity/storage';
+import type { JournalStorage } from '../../data/activity/model';
+import { ActivityRuntime } from './activity-runtime';
 import {
   QueryClientProvider,
   focusManager,
@@ -24,6 +28,7 @@ import { createTelemetry } from '../../lib/telemetry';
 export function createAppRuntime(
   identity: IdentityController,
   url = process.env.EXPO_PUBLIC_API_URL,
+  storage: JournalStorage = asyncStorageJournalStorage,
 ) {
   const client = new AccountClient(createHttpClient(url), {
     current: identity.currentSession,
@@ -31,7 +36,11 @@ export function createAppRuntime(
     reject: identity.rejectSession,
   });
   const telemetry = createTelemetry();
-  const challenges = new ChallengeController(client);
+  const activity = new ActivityRuntime(client, storage);
+  const challenges = new ChallengeController(client, {
+    repository: activity.getRepository,
+  });
+  let sessionId: string | null = null;
   let accountId: string | null = null;
   const sync = () => {
     const next = identity.getSnapshot().account?.userId ?? null;
@@ -40,7 +49,12 @@ export function createAppRuntime(
       accountId = next;
     }
     client.changeAccount(next);
+    activity.changeAccount(next);
     challenges.changeAccount(next);
+    const nextSession = identity.getSnapshot().account?.sessionId ?? null;
+    if (nextSession && sessionId !== nextSession)
+      activity.resumeAuthentication();
+    sessionId = nextSession;
   };
   sync();
   return {
@@ -48,7 +62,11 @@ export function createAppRuntime(
     client,
     telemetry,
     challenges,
-    subscribe: () => identity.subscribe(sync),
+    activity,
+    subscribe: () => {
+      sync();
+      return identity.subscribe(sync);
+    },
   };
 }
 type Runtime = ReturnType<typeof createAppRuntime>;
@@ -63,10 +81,25 @@ export function AppProvider({ children }: PropsWithChildren) {
     ),
   );
   useEffect(() => {
+    let active =
+      AppState.currentState !== 'background' &&
+      AppState.currentState !== 'inactive';
+    let online = true;
+    const updateEnvironment = () =>
+      runtime.activity.setEnvironment({ active, online });
+    updateEnvironment();
     const unsubscribe = runtime.subscribe();
+    const unsubscribeNetwork = listenToConnectivity((nextOnline) => {
+      const wasOnline = online;
+      online = nextOnline;
+      updateEnvironment();
+      if (!wasOnline && online && active) void runtime.challenges.refresh();
+    });
     void runtime.identity.initialize();
     const subscription = AppState.addEventListener('change', (next) => {
-      focusManager.setFocused(next === 'active');
+      active = next === 'active';
+      updateEnvironment();
+      focusManager.setFocused(active);
       if (next !== 'active') runtime.identity.hideKey();
       else {
         void runtime.identity.retry();
@@ -78,6 +111,9 @@ export function AppProvider({ children }: PropsWithChildren) {
     return () => {
       unsubscribe();
       subscription.remove();
+      unsubscribeNetwork();
+      runtime.challenges.dispose();
+      runtime.activity.dispose();
       runtime.client.changeAccount(null);
     };
   }, [runtime]);
@@ -133,4 +169,22 @@ export function useAccess() {
       !query.isError &&
       hasVerifiedAccess(query.data, Math.max(now, query.dataUpdatedAt)),
   };
+}
+
+export function useJournal() {
+  const { activity } = useRuntime();
+  return useSyncExternalStore(
+    activity.store.subscribe,
+    activity.getRepository,
+    activity.getRepository,
+  );
+}
+export function useActivityState() {
+  const repository = useJournal();
+  const state = useSyncExternalStore(
+    repository?.store.subscribe ?? (() => () => {}),
+    repository?.store.getState ?? (() => null),
+    repository?.store.getState ?? (() => null),
+  );
+  return { repository, state };
 }

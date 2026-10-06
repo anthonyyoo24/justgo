@@ -1,368 +1,200 @@
 import { randomUUID } from 'expo-crypto';
-import {
-  legacyReflectionResponseSchema as reflectionResponseSchema,
-  type FeelingCode,
-  type LegacyReflectionResponse as ReflectionResponse,
-} from '@justgo/contracts';
-import { ApiError } from '../../lib/http';
-import type { AccountClient } from '../../lib/account-client';
+import { normalizeReflectionText, type FeelingCode } from '@justgo/contracts';
+import type { AccountRepository } from '../../data/activity/repository';
 
 type Form = { feeling: FeelingCode | null; text: string };
-type Mutation = Readonly<{
-  actionId: string;
-  expectedRevision: number;
-  feeling: FeelingCode | null;
-  text: string | null;
-}>;
-type SkipMutation = Readonly<{ actionId: string; expectedRevision: number }>;
-
 export type ReflectionSnapshot = Form & {
-  phase: 'loading' | 'ready' | 'load-error' | 'already';
-  revision: number;
-  status: ReflectionResponse['status'];
-  saving: boolean;
-  draftError: boolean;
-  conflict: boolean;
-  terminalConflict: boolean;
+  phase: 'ready' | 'missing';
+  editing: boolean;
+  submitting: boolean;
   dismissOpen: boolean;
   error: string | null;
-  pendingAction: 'final' | 'skip' | null;
 };
+const normalizedText = normalizeReflectionText;
+const same = (a: Form, b: Form) =>
+  a.feeling === b.feeling && normalizedText(a.text) === normalizedText(b.text);
 
-const empty: Form = { feeling: null, text: '' };
-const sameForm = (a: Form, b: Form) =>
-  a.feeling === b.feeling && payloadText(a.text) === payloadText(b.text);
-const hasInput = (form: Form) =>
-  form.feeling !== null || form.text.trim().length > 0;
-const payloadText = (text: string) => (text.trim() ? text : null);
-const pathFor = (attemptId: string) =>
-  `/v1/reflections/${encodeURIComponent(attemptId)}`;
-const isConflict = (error: unknown) =>
-  error instanceof ApiError && error.code === 'CONFLICT';
-
+/** React-form state only: explicit submissions enter the account repository. */
 export class ReflectionController {
-  private readonly id: () => string;
-  private readonly listeners = new Set<() => void>();
-  private readonly abort = new AbortController();
+  private listeners = new Set<() => void>();
   private alive = true;
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  private draftInFlight: Promise<boolean> | null = null;
-  private draftRetry: Mutation | null = null;
-  private finalRetry: {
-    kind: 'final' | 'skip';
-    body: Mutation | SkipMutation;
-  } | null = null;
-  private saved: Form = empty;
-  private snapshot: ReflectionSnapshot = {
-    ...empty,
-    phase: 'loading',
-    revision: 0,
-    status: 'none',
-    saving: false,
-    draftError: false,
-    conflict: false,
-    terminalConflict: false,
-    dismissOpen: false,
-    error: null,
-    pendingAction: null,
-  };
-
+  private finished = false;
+  private snapshot: ReflectionSnapshot;
+  private saved: Form;
+  private pending: Promise<void> | undefined;
+  private submittedIdentity: { id: string; form: Form } | undefined;
+  private unsubscribe: (() => void) | undefined;
   constructor(
-    private readonly client: Pick<AccountClient, 'request'>,
+    private readonly repository: Pick<
+      AccountRepository,
+      'getAttempt' | 'submitReflection' | 'store'
+    >,
     private readonly attemptId: string,
     private readonly onFinished: () => void,
-    options: { id?: () => string; fresh?: boolean } = {},
+    private readonly options: {
+      id?: () => string;
+      isCurrent?: () => boolean;
+    } = {},
   ) {
-    this.id = options.id ?? randomUUID;
-    if (options.fresh) this.snapshot = { ...this.snapshot, phase: 'ready' };
+    const attempt = repository.getAttempt(attemptId);
+    this.saved = {
+      feeling: attempt?.reflection?.feeling ?? null,
+      text: attempt?.reflection?.text ?? '',
+    };
+    this.snapshot = {
+      ...this.saved,
+      phase: attempt ? 'ready' : 'missing',
+      editing: !!attempt?.reflection,
+      submitting: false,
+      dismissOpen: false,
+      error: this.rejectedReflection()
+        ? 'This reflection request wasn’t accepted. Your submitted writing is retained.'
+        : null,
+    };
   }
-
+  private rejectedReflection() {
+    return this.repository.store
+      .getState()
+      .journal.operations.find(
+        (operation) =>
+          operation.attemptId === this.attemptId &&
+          operation.kind === 'patch' &&
+          operation.state === 'rejected' &&
+          operation.code === 'INVALID_REQUEST',
+      );
+  }
+  connect() {
+    if (this.unsubscribe || !this.alive) return;
+    this.unsubscribe = this.repository.store.subscribe(() => {
+      const latest = this.repository.getAttempt(this.attemptId);
+      if (!latest || this.snapshot.submitting) return;
+      const form = {
+        feeling: latest.reflection?.feeling ?? null,
+        text: latest.reflection?.text ?? '',
+      };
+      const untouched = same(this.snapshot, this.saved);
+      this.saved = form;
+      if (untouched) this.update({ ...form, editing: !!latest.reflection });
+      else if (latest.reflection)
+        this.update({ editing: true, feeling: latest.reflection.feeling });
+    });
+  }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
   getSnapshot = () => this.snapshot;
-  private publish(update: Partial<ReflectionSnapshot>) {
+  private update(value: Partial<ReflectionSnapshot>) {
     if (!this.alive) return;
-    this.snapshot = { ...this.snapshot, ...update };
+    this.snapshot = { ...this.snapshot, ...value };
     this.listeners.forEach((listener) => listener());
   }
-  private clearTimer() {
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = null;
-  }
-  dispose() {
-    this.alive = false;
-    this.clearTimer();
-    this.abort.abort();
-    this.listeners.clear();
-  }
-
-  async load() {
-    this.publish({ phase: 'loading', error: null });
-    try {
-      const response = await this.client.request(
-        pathFor(this.attemptId),
-        reflectionResponseSchema,
-        { signal: this.abort.signal },
-      );
-      this.acceptLoaded(response);
-    } catch {
-      this.publish({
-        phase: 'load-error',
-        error: 'Couldn’t load this reflection. Try again.',
-      });
-    }
-  }
-  private acceptLoaded(response: ReflectionResponse) {
-    const form = { feeling: response.feeling, text: response.text ?? '' };
-    this.saved = form;
-    this.draftRetry = null;
-    this.finalRetry = null;
-    this.publish({
-      ...form,
-      phase:
-        response.status === 'submitted' || response.status === 'skipped'
-          ? 'already'
-          : 'ready',
-      revision: response.revision,
-      status: response.status,
-      draftError: false,
-      conflict: false,
-      terminalConflict: false,
-      dismissOpen: false,
-      pendingAction: null,
-      error: null,
-    });
-  }
-  private scheduleDraft() {
-    this.clearTimer();
-    if (this.snapshot.saving || this.snapshot.conflict || this.finalRetry)
-      return;
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      void this.saveDraft();
-    }, 700);
-  }
-  setFeeling(feeling: FeelingCode | null) {
+  setFeeling = (feeling: FeelingCode | null) => {
     if (
-      this.snapshot.phase !== 'ready' ||
-      this.snapshot.saving ||
-      this.finalRetry ||
-      this.snapshot.conflict
+      this.snapshot.editing ||
+      this.snapshot.submitting ||
+      this.snapshot.phase !== 'ready'
     )
       return;
-    this.publish({ feeling, error: null });
-    this.scheduleDraft();
-  }
-  setText(text: string) {
-    if (
-      this.snapshot.phase !== 'ready' ||
-      this.snapshot.saving ||
-      this.finalRetry ||
-      this.snapshot.conflict
-    )
+    this.update({ feeling, error: null });
+  };
+  setText = (text: string) => {
+    if (this.snapshot.phase === 'ready') this.update({ text, error: null });
+  };
+  private finish() {
+    if (!this.alive || this.finished || this.options.isCurrent?.() === false)
       return;
-    this.publish({ text, error: null });
-    this.scheduleDraft();
+    this.finished = true;
+    this.onFinished();
   }
-  private async saveDraft(): Promise<boolean> {
-    if (this.draftInFlight) return this.draftInFlight;
+  close = () => {
+    if (this.snapshot.submitting) return;
+    if (same(this.snapshot, this.saved)) this.finish();
+    else this.update({ dismissOpen: true });
+  };
+  keepEditing = () => this.update({ dismissOpen: false });
+  discard = () => {
+    if (!this.snapshot.submitting) this.finish();
+  };
+  submit = (): Promise<void> => {
+    if (this.pending) return this.pending;
     if (
       this.snapshot.phase !== 'ready' ||
-      this.snapshot.conflict ||
-      this.finalRetry
+      !this.alive ||
+      this.finished ||
+      this.options.isCurrent?.() === false
     )
-      return false;
-    if (!this.draftRetry && sameForm(this.snapshot, this.saved)) return true;
-    const action =
-      this.draftRetry ??
-      Object.freeze({
-        actionId: this.id(),
-        expectedRevision: this.snapshot.revision,
-        feeling: this.snapshot.feeling,
-        text: payloadText(this.snapshot.text),
-      });
-    this.draftRetry = action;
-    const work = (async () => {
-      try {
-        const response = await this.client.request(
-          `${pathFor(this.attemptId)}/draft`,
-          reflectionResponseSchema,
-          { body: action, signal: this.abort.signal },
-        );
-        this.draftRetry = null;
-        this.saved = { feeling: action.feeling, text: action.text ?? '' };
-        this.publish({
-          revision: response.revision,
-          status: response.status,
-          draftError: false,
-          error: null,
+      return Promise.resolve();
+    const submitted: Form = {
+      feeling: this.snapshot.feeling,
+      text: this.snapshot.text,
+    };
+    if (same(submitted, this.saved)) {
+      if (this.rejectedReflection()) {
+        this.update({
+          error:
+            'This reflection request was rejected. Your writing is retained; an unchanged submission cannot be retried.',
         });
-        if (!sameForm(this.snapshot, this.saved)) this.scheduleDraft();
-        return true;
-      } catch (error) {
-        if (isConflict(error)) {
-          this.clearTimer();
-          this.publish({
-            conflict: true,
-            error:
-              'This reflection changed on another device. Choose which version to keep.',
+        return Promise.resolve();
+      }
+      this.finish();
+      return Promise.resolve();
+    }
+    if (submitted.text.length > 10000) {
+      this.update({
+        error: 'Keep your reflection to 10,000 characters or fewer.',
+      });
+      return Promise.resolve();
+    }
+    if (!submitted.feeling && !normalizedText(submitted.text)) {
+      if (!this.snapshot.editing) this.finish();
+      else this.update({ error: 'Add some text to keep this reflection.' });
+      return Promise.resolve();
+    }
+    const submissionId =
+      this.submittedIdentity && same(submitted, this.submittedIdentity.form)
+        ? this.submittedIdentity.id
+        : (this.options.id ?? randomUUID)();
+    this.submittedIdentity = { id: submissionId, form: submitted };
+    const patch = this.snapshot.editing
+      ? { text: normalizedText(submitted.text) }
+      : { feeling: submitted.feeling, text: normalizedText(submitted.text) };
+    this.update({ submitting: true, error: null });
+    this.pending = (async () => {
+      try {
+        await this.repository.submitReflection(
+          this.attemptId,
+          submissionId,
+          patch,
+        );
+        if (!this.alive || this.options.isCurrent?.() === false) return;
+        this.submittedIdentity = undefined;
+        const latest = this.repository.getAttempt(this.attemptId)?.reflection;
+        this.saved = {
+          feeling: latest?.feeling ?? null,
+          text: latest?.text ?? '',
+        };
+        // Typing can continue during a slow phone write. Never navigate away from newer input.
+        if (same(this.snapshot, submitted)) this.finish();
+        else
+          this.update({
+            editing: !!latest,
+            feeling: this.saved.feeling,
+            dismissOpen: false,
           });
-        } else {
-          this.publish({ draftError: true });
-        }
-        return false;
+      } catch {
+        if (this.alive)
+          this.update({ error: 'Check your reflection and try saving again.' });
       } finally {
-        this.draftInFlight = null;
+        this.pending = undefined;
+        this.update({ submitting: false });
       }
     })();
-    this.draftInFlight = work;
-    return work;
+    return this.pending;
+  };
+  dispose() {
+    this.alive = false;
+    this.unsubscribe?.();
+    this.listeners.clear();
   }
-  retryDraft = () => this.saveDraft();
-  close = () => {
-    if (
-      this.snapshot.phase !== 'ready' ||
-      this.snapshot.saving ||
-      this.finalRetry ||
-      this.snapshot.conflict
-    )
-      return;
-    if (hasInput(this.snapshot)) this.publish({ dismissOpen: true });
-    else return this.finish('skip');
-  };
-  keepEditing = () => this.publish({ dismissOpen: false });
-  discard = () => {
-    this.publish({ dismissOpen: false });
-    return this.finish('skip');
-  };
-  submit = () => {
-    this.publish({ dismissOpen: false });
-    return this.finish(
-      this.finalRetry?.kind ?? (hasInput(this.snapshot) ? 'final' : 'skip'),
-    );
-  };
-  private async finish(kind: 'final' | 'skip'): Promise<boolean> {
-    if (
-      this.snapshot.phase !== 'ready' ||
-      this.snapshot.saving ||
-      this.snapshot.conflict
-    )
-      return false;
-    this.clearTimer();
-    this.publish({
-      saving: true,
-      pendingAction: this.finalRetry?.kind ?? kind,
-      error: null,
-    });
-    if (this.draftInFlight) await this.draftInFlight;
-    if (this.draftRetry) {
-      const resolved = await this.saveDraft();
-      if (!resolved) {
-        this.publish({
-          saving: false,
-          pendingAction: null,
-          error:
-            'Your draft has not saved yet. Retry the draft, then try again.',
-        });
-        return false;
-      }
-    }
-    if (this.snapshot.conflict) {
-      this.publish({ saving: false, pendingAction: null });
-      return false;
-    }
-    if (!this.finalRetry) {
-      const body =
-        kind === 'final'
-          ? Object.freeze({
-              actionId: this.id(),
-              expectedRevision: this.snapshot.revision,
-              feeling: this.snapshot.feeling,
-              text: payloadText(this.snapshot.text),
-            })
-          : Object.freeze({
-              actionId: this.id(),
-              expectedRevision: this.snapshot.revision,
-            });
-      this.finalRetry = { kind, body };
-    }
-    const action = this.finalRetry;
-    try {
-      await this.client.request(
-        `${pathFor(this.attemptId)}/${action.kind}`,
-        reflectionResponseSchema,
-        { body: action.body, signal: this.abort.signal },
-      );
-      this.finalRetry = null;
-      // Keep the saving view mounted until navigation finishes.
-      // Publishing "already" here briefly renders the fallback page first.
-      if (this.alive) this.onFinished();
-      return true;
-    } catch (error) {
-      if (isConflict(error)) {
-        this.finalRetry = null;
-        this.publish({
-          conflict: true,
-          pendingAction: null,
-          error:
-            'This reflection changed on another device. Choose which version to keep.',
-        });
-      } else {
-        this.publish({
-          error:
-            action.kind === 'skip'
-              ? 'Couldn’t skip. Retry to leave safely.'
-              : 'Couldn’t save. Your reflection is still here. Retry save.',
-        });
-      }
-      this.publish({ saving: false });
-      return false;
-    }
-  }
-  private async latest() {
-    return this.client.request(
-      pathFor(this.attemptId),
-      reflectionResponseSchema,
-      { signal: this.abort.signal },
-    );
-  }
-  useLatest = async () => {
-    try {
-      const response = await this.latest();
-      this.acceptLoaded(response);
-      if (this.snapshot.phase === 'already') this.onFinished();
-    } catch {
-      this.publish({ error: 'Couldn’t load the saved version. Try again.' });
-    }
-  };
-  keepMine = async () => {
-    const local = { feeling: this.snapshot.feeling, text: this.snapshot.text };
-    try {
-      const response = await this.latest();
-      if (response.status === 'submitted' || response.status === 'skipped') {
-        this.publish({
-          terminalConflict: true,
-          error:
-            'This reflection was finished on another device. Your unsaved edits are still visible here.',
-        });
-        return;
-      }
-      this.draftRetry = null;
-      this.saved = { feeling: response.feeling, text: response.text ?? '' };
-      this.publish({
-        ...local,
-        revision: response.revision,
-        status: response.status,
-        conflict: false,
-        terminalConflict: false,
-        draftError: false,
-        error: null,
-      });
-      this.scheduleDraft();
-    } catch {
-      this.publish({ error: 'Couldn’t check the latest version. Try again.' });
-    }
-  };
 }

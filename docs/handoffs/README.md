@@ -122,14 +122,14 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is implemented and open for review in [PR #15](https://github.com/anthonyyoo24/justgo/pull/15), with native durability evidence open; its shared saving/synchronization code lives under `apps/mobile/src/data/activity/`. Later filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with native durability evidence open. 07.3 is implemented/verified locally on `codex/phase-07.3-local-flow`, with native acceptance and Git publication open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.4/07.5 filenames remain reserved outputs.
 
 | Subphase                                         | Depends on | Handoff filename                                       |
 | ------------------------------------------------ | ---------- | ------------------------------------------------------ |
 | 07.1A — API and data foundation                  | 06A        | [phase-07-1-api-data.md](phase-07-1-api-data.md)       |
 | 07.1B — Saved app/API journey and CI             | 07.1A      | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md) |
 | 07.2 — Durable local saving and synchronization  | 07.1       | [phase-07-2-local-sync.md](phase-07-2-local-sync.md)   |
-| 07.3 — Local challenge and reflection experience | 07.2       | `phase-07-3-local-flow.md`                             |
+| 07.3 — Local challenge and reflection experience | 07.2       | [phase-07-3-local-flow.md](phase-07-3-local-flow.md)   |
 | 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`                       |
 | 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md`                     |
 

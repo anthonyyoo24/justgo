@@ -1,6 +1,6 @@
 # Phase 07 — API & offline saving
 
-**October 5 current checkpoint:** The owner merged 07.1B / PR #14 at `1df6406` and requested local 07.2 implementation from updated `main`. The [07.2 handoff](phase-07-2-local-sync.md) records the repository/storage/sender boundary, failure/replay/recovery checks and real API/database cases. Native durability evidence remains open; screen/lifecycle presentation and Progress composition remain 07.3/07.4. Earlier dated B-review restrictions are historical. The owner authorized publication; [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) is published and awaiting owner review. Merge approval remains pending.
+**October 5 current checkpoint:** The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). At the owner’s request, `codex/phase-07.3-local-flow` starts from local `main` `3e41330` and implements provider/account/lifecycle integration, local challenge/completion/reflection screens, saving-risk/recovery presentation and saved app/API/database journeys. The [07.3 handoff](phase-07-3-local-flow.md) records local checks, side-panel evidence and open native acceptance. Progress composition and final cutover remain 07.4/07.5. No push, PR or merge of 07.3 is authorized; older dated review restrictions below are historical.
 
 ## October 4 branch separation — current status
 

@@ -1,6 +1,6 @@
 # App shell and shared API
 
-Phase 03 implements navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026. There is no onboarding state, answer collection, persistence or Zustand dependency. Challenge content/actions, reflections, history and billing arrive in their consuming phases.
+Phase 03 established navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026; no onboarding state or answer collection is implemented. Phase 07.3 now integrates the account activity repository, local challenge/completion/reflection flow and saving feedback. Progress data composition remains 07.4 and billing remains 07A.
 
 ## Implemented folder responsibilities
 
@@ -24,8 +24,8 @@ access policy and foreground behavior are unchanged. The
 ## Routes and access
 
 - `/`: restore the real account, then check `/v1/access`. Loading, unavailable and unpaid have distinct UI. Only a fresh, unexpired server verification admits the paid routes.
-- `/(tabs)` and `/progress`: Home/Progress shells. No invented challenges, activity counts, history or mutation buttons.
-- `/success` and `/reflection`: guarded focused route shells. They require future completed-attempt context; visiting a URL cannot fabricate a completion or save a reflection.
+- `/(tabs)` and `/progress`: Home uses the downloaded catalog and local venue/start/countdown/completion state. Progress still uses the retained account-scoped compatibility reads until 07.4; no pending activity overlay is claimed yet.
+- `/success` and `/reflection`: guarded focused routes read a completed attempt from the current account’s repository. There is no server success lookup or reflection draft recovery/autosave. Visiting a URL cannot fabricate a completion. Only explicit reflection submissions enter the journal; empty Skip sends nothing.
 - `/settings` and `/recovery`: reachable regardless of paid access. The recovery route exposes Account / Recovery keys / Device transfer / Manage devices directly, with Return-key submission and automatic keyboard insets. It shares the one app-level identity controller; it does not create another vault or account.
 - `/preview`: development-only presentation fixture. It has no domain queries or writes and never changes an account's entitlement. The route guard and module load both require `__DEV__`. There is no runtime flag, API parameter or production environment switch that unlocks it.
 
@@ -72,9 +72,9 @@ JavaScript wiring; native Keychain behavior still needs its separate device gate
 ## Phase 07.1 API compatibility boundary
 
 The API now exposes canonical catalog, completed-attempt and inline-reflection
-resources plus independent Progress summary/calendar/day reads. Existing mobile
-challenge/reflection/history features still use explicitly named `Legacy*`
-contracts and retained routes until 07.3–07.5. Legacy completion/final-reflection
+resources plus independent Progress summary/calendar/day reads. Mobile Progress still uses explicitly named `Legacy*` contracts and retained
+read routes until 07.4/07.5. Challenge/completion/reflection callers now use the
+canonical catalog and local repository flow. Legacy completion/final-reflection
 writes mirror canonical columns in the same transaction; new records appear in
 legacy Progress with their actual start timestamp and nullable obsolete fields.
 No fake completion timestamp or revision/card identity is added. The Progress
@@ -84,8 +84,8 @@ value for older responses.
 The mobile identity transport is already on noun resources. Generic HTTP calls
 support GET/POST/PATCH/DELETE, omit JSON content type for bodyless requests, and
 retry only eligible GET failures; 413/415 remain permanent request failures.
-The offline journal, local completion flow, banners/toasts and Progress cache
-remain subsequent checkpoints. The [07.1 handoff](handoffs/phase-07-1-api-data.md)
+The offline journal and local challenge/completion/reflection flow are wired in
+07.2/07.3. Progress cache/reconciliation remains 07.4. The [07.1 handoff](handoffs/phase-07-1-api-data.md)
 owns the temporary compatibility inventory, database rehearsal and current test
 evidence. Full product-document reconciliation is assigned to 07.5.
 
@@ -95,13 +95,43 @@ The shared activity repository, AsyncStorage adapter, Zustand live state and
 ordered sender are implemented under `data/activity`. This data module owns local
 saving, cached activity and upload coordination for the user-facing features.
 Features may import data; data uses shared infrastructure/contracts and cannot
-import routes, runtime, developer code, features, components or theme. Shared
-components/lib/theme/platform cannot import routes, runtime, developer code, data
+import routes, app-support, developer code, features, components or theme. Shared
+components/lib/theme/platform cannot import routes, app-support, developer code, data
 or features. The stored journal envelope is unchanged.
-Existing app screens still use the temporary compatibility flow. 07.3 owns
-provider/lifecycle/screen wiring and warning/toast presentation; 07.4 owns Progress
-composition. The
+07.3 wires challenge/completion/reflection screens and provider/lifecycle
+coordination into this boundary. Progress retains compatibility reads until 07.4
+accepts local/backend composition. The
 [07.2 handoff](handoffs/phase-07-2-local-sync.md) records version/durability rules,
 retry/recovery interfaces, test evidence and open native checks. HTTP now preserves
 validated reflection-conflict data and Retry-After; normal uploads have one retry
 owner and use the existing coordinated authentication boundary.
+
+## Phase 07.3 runtime and saving presentation
+
+`app-support/providers/activity-runtime.ts` composes account repositories, storage
+and the account-bound transport. `AppProvider` synchronizes identity before feature
+controllers, forwards foreground/connectivity changes and disposes listeners,
+controllers and senders on unmount. Native connectivity uses NetInfo; the web
+adapter listens to browser online/offline events. Parked repositories preserve
+memory-only submissions for same-account recovery while the process survives.
+`useJournal` and `useActivityState` expose the current repository/live state.
+
+`features/challenges/controller.ts` owns a focused Zustand store for downloaded
+venue decks, cycling, unfinished activity and completion context. Start captures
+the timestamp/time zone/deadline; give-up and unfinished activity are memory-only.
+Completed creates one UUID and awaits repository saving. Ordinary local success
+never waits for HTTP. `features/reflections/controller.ts` owns React-form state,
+validation, dirty-close choices and newer-input protection; explicit submissions
+use the repository’s serialized write/fallback and ordered sender.
+
+`app-support/saving/SavingFeedback.tsx` owns the shell and covering-sheet feedback
+hosts; `SavingNotice.tsx` owns truthful loss-risk/intervention presentation. Warnings
+reserve layout space and permit dismissal without stopping recovery. Full recovery
+shows one account-scoped confirmation, including after dismissal. Authentication,
+unreadable storage and rejected records remain discoverable outside the editor;
+invalid reflection requests open retained input for an explicit correction.
+Genuine revision conflicts adopt backend data automatically, without a chooser.
+No generic Progress sync-status feature or placeholder support action is added.
+`platform/Toast` uses Sonner Native on iOS and the documented Sonner web adapter.
+Native keyboard/modal/VoiceOver/durability evidence remains open; bundle exports
+and web screenshots are separate evidence. See the [07.3 handoff](handoffs/phase-07-3-local-flow.md).

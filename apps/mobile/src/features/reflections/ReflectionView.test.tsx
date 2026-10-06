@@ -72,33 +72,6 @@ it('has native multiline entry and an accessible dismissal choice without a Dict
   expect(screen.getByRole('button', { name: 'Keep editing' })).toBeTruthy();
 });
 
-it('shows a retry only for a failed background draft', () => {
-  const base = props();
-  const onRetryDraft = jest.fn();
-  const screen = render(
-    <ReflectionView
-      {...base}
-      text="I showed up."
-      onRetryDraft={onRetryDraft}
-    />,
-  );
-  expect(screen.queryByText(/draft/i)).toBeNull();
-  expect(screen.getByRole('button', { name: 'Save Reflection' })).toBeTruthy();
-  screen.rerender(
-    <ReflectionView
-      {...base}
-      text="I showed up."
-      draftError
-      onRetryDraft={onRetryDraft}
-    />,
-  );
-  expect(screen.getByRole('alert').props.children).toBe(
-    'Draft not saved. Your edits are still here.',
-  );
-  fireEvent.press(screen.getByRole('button', { name: 'Retry draft' }));
-  expect(onRetryDraft).toHaveBeenCalledTimes(1);
-});
-
 it('matches the challenge screens’ top header typography', () => {
   const reflection = render(<ReflectionView {...props()} />);
   const challenge = render(<ChallengeLayout title="Find a challenge" />);
@@ -115,73 +88,56 @@ it('matches the challenge screens’ top header typography', () => {
   expect(reflectionHeader.letterSpacing).toBe(challengeHeader.letterSpacing);
 });
 
-it('replaces the submit label with a centered loading ring during submission', () => {
+it('disables duplicate saves immediately, shows delayed saving feedback and keeps text editable', () => {
   const base = props();
-  const screen = render(<ReflectionView {...base} />);
-  expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
-  screen.rerender(<ReflectionView {...base} busy />);
-  expect(screen.queryByText('Skip')).toBeNull();
-  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
+  const screen = render(<ReflectionView {...base} text="First" busy />);
   expect(
-    StyleSheet.flatten(screen.getByTestId('reflection-submit').props.style),
-  ).toMatchObject({ alignItems: 'center', justifyContent: 'center' });
+    screen.getByRole('button', { name: 'Save Reflection' }),
+  ).toBeDisabled();
+  expect(screen.queryByText('Saving…')).toBeNull();
+  expect(screen.getByLabelText('Your reflection').props.editable).toBe(true);
+  screen.rerender(<ReflectionView {...base} text="First" busy savingVisible />);
   expect(
-    screen.getByRole('button', { name: 'Skipping reflection' }).props
+    screen.getByRole('button', { name: 'Saving reflection' }).props
       .accessibilityState,
-  ).toMatchObject({
-    disabled: true,
-    busy: true,
-  });
-  screen.rerender(<ReflectionView {...base} text="A small win" busy />);
-  expect(screen.queryByText('Save Reflection')).toBeNull();
-  expect(
-    screen.getByRole('button', { name: 'Saving reflection' }),
-  ).toBeTruthy();
-  expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
-  screen.rerender(<ReflectionView {...base} text="A small win" />);
-  expect(screen.getByText('Save Reflection')).toBeTruthy();
+  ).toMatchObject({ disabled: true, busy: true });
+  fireEvent.changeText(screen.getByLabelText('Your reflection'), 'Newer');
+  expect(base.onTextChange).toHaveBeenCalledWith('Newer');
   expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
 });
-
-it('labels a failed skip retry correctly even while unsaved text remains visible', () => {
+it('preserves feeling while editing and keeps validation inline', () => {
+  const screen = render(
+    <ReflectionView
+      {...props()}
+      text="Saved"
+      feeling="a_lot_better"
+      editing
+      error="Check this field"
+    />,
+  );
+  expect(
+    screen
+      .getAllByRole('radio')
+      .every((r) => r.props.accessibilityState.disabled),
+  ).toBe(true);
+  expect(screen.getByText('Check this field')).toBeTruthy();
+});
+it('prevents duplicate dirty-close saves or discard while a write is pending', () => {
   const base = props();
   const screen = render(
     <ReflectionView
       {...base}
-      text="An unfinished note"
-      pendingAction="skip"
-      locked
-      error="Couldn’t skip. Retry to leave safely."
-    />,
-  );
-  expect(screen.getByRole('button', { name: 'Retry Skip' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Save Reflection' })).toBeNull();
-  expect(
-    screen.getByRole('button', { name: 'Close reflection' }),
-  ).toBeDisabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Retry Skip' }));
-  expect(base.onSubmit).toHaveBeenCalledTimes(1);
-
-  screen.rerender(
-    <ReflectionView
-      {...base}
-      text="An unfinished note"
-      pendingAction="skip"
-      locked
+      text="Saved"
+      dismissOpen
       busy
+      onDiscard={jest.fn()}
     />,
   );
+  for (const button of screen.getAllByRole('button', {
+    name: 'Save Reflection',
+  }))
+    expect(button).toBeDisabled();
   expect(
-    screen.getByRole('button', { name: 'Skipping reflection' }),
+    screen.getByRole('button', { name: 'Discard and skip' }),
   ).toBeDisabled();
-
-  screen.rerender(
-    <ReflectionView
-      {...base}
-      text="An unfinished note"
-      pendingAction="final"
-      locked
-    />,
-  );
-  expect(screen.getByRole('button', { name: 'Retry Save' })).toBeTruthy();
 });

@@ -17,7 +17,6 @@ jest.mock('expo-router', () => {
   return {
     Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
     useLocalSearchParams: () => ({
-      simulateSkipFailure: '1',
       progressState: 'loading',
       progressDayState: 'initial-error',
     }),
@@ -45,7 +44,6 @@ it('does not load developer fixtures in production and preserves the development
   expect(screen.getByText('Development preview')).toBeTruthy();
   expect(mockPreviewModuleLoaded).toHaveBeenCalledTimes(1);
   expect(mockPreviewRendered).toHaveBeenLastCalledWith({
-    simulateSkipFailure: true,
     progressState: 'loading',
     progressDayState: 'initial-error',
   });

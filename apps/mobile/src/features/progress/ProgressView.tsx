@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/tokens';
@@ -7,6 +8,7 @@ import {
   type ProgressCalendarProps,
 } from './ProgressCalendar';
 export type ProgressViewProps = ProgressCalendarProps & {
+  sheetAccessory?: ReactNode;
   day?: ProgressDay | undefined;
   dayLoading?: boolean;
   dayError?: boolean;
@@ -21,6 +23,7 @@ export type ProgressViewProps = ProgressCalendarProps & {
 };
 
 export function ProgressView({
+  sheetAccessory,
   month,
   data,
   loading = false,
@@ -60,6 +63,7 @@ export function ProgressView({
       />
       <DaySheet
         key={selectedDate ?? 'closed'}
+        topAccessory={sheetAccessory}
         date={selectedDate}
         day={day}
         loading={dayLoading}

@@ -1,102 +1,81 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { Screen } from '../../components/Screen';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { colors, typography } from '../../theme/tokens';
-import { useRuntime } from '../../app-support/providers/AppProvider';
+import {
+  useJournal,
+  useRuntime,
+} from '../../app-support/providers/AppProvider';
+import { useDelayedBusy } from '../../lib/useDelayedBusy';
 import { ReflectionController } from './controller';
 import { ReflectionView } from './ReflectionView';
 
 export function ReflectionScreen() {
-  const { attemptId } = useLocalSearchParams<{ attemptId?: string }>();
-  const { client, challenges } = useRuntime();
+  const { attemptId, source } = useLocalSearchParams<{
+    attemptId?: string;
+    source?: string;
+  }>();
+  const { challenges, activity } = useRuntime();
+  const repository = useJournal();
   const router = useRouter();
   const controller = useMemo(
     () =>
-      attemptId
+      repository && attemptId
         ? new ReflectionController(
-            client,
+            repository,
             attemptId,
             () => {
-              challenges.dismissSuccess();
-              router.dismissTo('/(tabs)');
+              if (challenges.getSnapshot().success?.id === attemptId)
+                void challenges.dismissSuccess();
+              else if (repository.store.getState().flowAttemptId === attemptId)
+                void repository.setFlowAttempt(null);
+              if (source === 'recovery') router.back();
+              else if (source === 'progress')
+                router.dismissTo('/(tabs)/progress');
+              else router.dismissTo('/(tabs)');
             },
-            { fresh: challenges.getSnapshot().success?.id === attemptId },
+            { isCurrent: () => activity.getRepository() === repository },
           )
         : null,
-    [attemptId, client, challenges, router],
+    [repository, attemptId, source, router, challenges, activity],
   );
   useEffect(() => {
-    if (!controller) return;
-    if (controller.getSnapshot().phase === 'loading') void controller.load();
-    return () => controller.dispose();
+    controller?.connect();
+    return () => controller?.dispose();
   }, [controller]);
   const state = useSyncExternalStore(
     controller?.subscribe ?? (() => () => {}),
     controller?.getSnapshot ?? (() => null),
     controller?.getSnapshot ?? (() => null),
   );
-  if (
-    !controller ||
-    !state ||
-    state.phase === 'load-error' ||
-    state.phase === 'already'
-  ) {
+  const savingVisible = useDelayedBusy(state?.submitting ?? false);
+  if (!controller || !state || state.phase === 'missing')
     return (
       <Screen title="Reflection">
-        <View style={{ gap: 20, paddingVertical: 20 }}>
-          <Text style={{ ...typography.body, color: colors.ink }}>
-            {!attemptId
-              ? 'Complete a challenge before adding a reflection.'
-              : state?.phase === 'load-error'
-                ? state.error
-                : 'This reflection has already been finished.'}
-          </Text>
-          {state?.phase === 'load-error' && (
-            <PrimaryButton
-              label="Retry"
-              onPress={() => void controller?.load()}
-            />
-          )}
-          <PrimaryButton
-            label="Back to Home"
-            onPress={() => {
-              challenges.dismissSuccess();
-              router.dismissTo('/(tabs)');
-            }}
-          />
-        </View>
+        <Text>Open a completed challenge to add or edit its reflection.</Text>
+        <PrimaryButton
+          label="Back to Home"
+          onPress={() => router.dismissTo('/(tabs)')}
+        />
       </Screen>
     );
-  }
-  // Controller actions publish their own busy/error/retry states; UI callbacks
-  // intentionally start them without returning a promise to the view.
+  // The controller owns validation/errors; background uploads belong to the repository.
   return (
     <ReflectionView
       feeling={state.feeling}
       text={state.text}
-      loading={state.phase === 'loading'}
-      onFeelingChange={controller.setFeeling.bind(controller)}
-      onTextChange={controller.setText.bind(controller)}
+      editing={state.editing}
+      onFeelingChange={controller.setFeeling}
+      onTextChange={controller.setText}
       onSubmit={() => void controller.submit()}
-      onClose={() => void controller.close()}
-      busy={state.saving}
-      locked={state.pendingAction !== null || state.conflict}
-      pendingAction={state.pendingAction}
+      onClose={controller.close}
+      busy={state.submitting}
+      savingVisible={savingVisible}
       error={state.error}
-      draftError={state.draftError}
-      onRetryDraft={
-        state.draftError ? () => void controller.retryDraft() : undefined
-      }
-      conflict={state.conflict}
-      onLoadLatest={() => void controller.useLatest()}
-      onKeepMine={
-        state.terminalConflict ? undefined : () => void controller.keepMine()
-      }
       dismissOpen={state.dismissOpen}
       onKeepEditing={controller.keepEditing}
-      onDiscard={() => void controller.discard()}
+      onDiscard={controller.discard}
     />
   );
 }

@@ -6,22 +6,27 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { venues, type LegacyAttempt as Attempt } from '@justgo/contracts';
+import { venues } from '@justgo/contracts';
 import Svg, { Path } from 'react-native-svg';
 import { colors, typography, fontFamilies } from '../../theme/tokens';
 import { challengeScale, timerOutline } from './challenge-design';
 import { ChallengeCard } from './ChallengeDeck';
+import type { ActiveChallengeState } from './controller';
 import { remainingSeconds } from './countdown';
 export function ActiveChallenge({
   attempt,
   turn = 0,
-  offset,
+  offset = 0,
+  savingVisible = false,
   disabled,
+  giveUpDisabled = disabled,
   finish,
 }: {
-  attempt: Attempt;
+  attempt: Pick<ActiveChallengeState, 'card' | 'deadlineAt'>;
   turn?: number;
-  offset: number;
+  offset?: number;
+  savingVisible?: boolean;
+  giveUpDisabled?: boolean;
   disabled: boolean;
   finish: (outcome: 'completed' | 'given_up') => Promise<void>;
 }) {
@@ -109,8 +114,8 @@ export function ActiveChallenge({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Give up"
-          accessibilityState={{ disabled }}
-          disabled={disabled}
+          accessibilityState={{ disabled: giveUpDisabled }}
+          disabled={giveUpDisabled}
           onPress={() => void finish('given_up')}
           style={[
             styles.outcomeTarget,
@@ -134,8 +139,8 @@ export function ActiveChallenge({
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Completed"
-          accessibilityState={{ disabled }}
+          accessibilityLabel={savingVisible ? 'Saving completion' : 'Completed'}
+          accessibilityState={{ disabled, busy: savingVisible }}
           disabled={disabled}
           onPress={() => void finish('completed')}
           style={[
@@ -158,7 +163,7 @@ export function ActiveChallenge({
               />
             </Svg>
             <Text style={[styles.outcomeText, { color: colors.white }]}>
-              Completed
+              {savingVisible ? 'Saving…' : 'Completed'}
             </Text>
           </View>
         </Pressable>

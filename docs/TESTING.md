@@ -245,3 +245,33 @@ open because the existing simulator build lacks the new RNCAsyncStorage module.
 The default tools path does not expose `simctl`; a command-only Xcode override can
 list simulators, but a compatible native build is still required. See the
 [07.2 handoff](handoffs/phase-07-2-local-sync.md).
+
+## Phase 07.3 local app journeys and presentation
+
+`npm run test:journey` runs eight actual-app cases in `e2e/local-flow.spec.ts`
+alongside the seven existing cases. They verify local-only start/give-up, completion
+and explicit reflection before HTTP acknowledgement, delayed local writes and
+duplicate activation, newer typing during dirty-close Save, offline reload with
+same-account recovery and empty Skip, memory-only warning/dismissal/full recovery,
+expired-session replay, confirmed cloud fallback for both completion/reflection
+when phone writes fail, first-download/refresh recovery, and retained rejected-reflection correction that returns to the existing active challenge. Assertions use the
+real disposable database. Browser identity remains memory-only; reload recovery
+uses the synthetic bootstrap proof in test memory and masks credential fields in
+failure artifacts. It does not establish native Keychain/AsyncStorage durability.
+
+The journey web server sets `JUSTGO_JOURNEY_FIXTURES=1`. The separate Metro build
+seam validates the existing loopback/database/role/nonproduction safeguards before
+substituting the controllable journal-write adapter, only for web AppProvider.
+Normal/native/production resolution remains the default. Architecture tests cover
+the seam and refusal cases. There are no product UI fault controls or production
+access bypasses. The existing hosted journey step already runs the full suite;
+07.3’s hosted result cannot be claimed until publication is authorized and that
+commit’s checks pass.
+
+Interactive side-panel evidence lives in [the 07.3 handoff](handoffs/phase-07-3-local-flow.md).
+Only disposable registry-owned accounts were used and cleaned up. NetInfo 12.0.1,
+Sonner Native 0.27.0 and Sonner 2.0.8 match the pinned stack and pass Expo doctor,
+but the existing simulator binary lacks AsyncStorage/NetInfo. Native build/signing
+work is separate. Keep native saving/relaunch, lifecycle/countdown, keyboard/modal,
+VoiceOver/scalable-text/reduced-motion checks open until evidenced on a compatible
+binary; earlier physical-device/staging gates remain open.

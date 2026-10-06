@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
 import { feelingChoices, type FeelingCode } from '@justgo/contracts';
 import {
-  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,7 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { colors, fontFamilies } from '../../theme/tokens';
 import {
   challengeDisplayFont,
@@ -24,60 +22,6 @@ import { FeelingFace } from './FeelingFace';
 // Keep input choices and history labels on the same versioned feeling scale.
 export const feelingOptions = feelingChoices;
 
-function ReflectionSpinner() {
-  const [rotation] = useState(() => new Animated.Value(0));
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.timing(rotation, {
-        toValue: 1,
-        duration: 900,
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [rotation]);
-
-  return (
-    <Animated.View
-      accessible={false}
-      testID="reflection-submit-spinner"
-      style={{
-        width: 22,
-        height: 22,
-        transform: [
-          {
-            rotate: rotation.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0deg', '360deg'],
-            }),
-          },
-        ],
-      }}
-    >
-      <Svg width={22} height={22} viewBox="0 0 24 24" aria-hidden>
-        <Circle
-          cx={12}
-          cy={12}
-          r={9}
-          fill="none"
-          stroke={colors.white}
-          strokeOpacity={0.25}
-          strokeWidth={2.5}
-        />
-        <Path
-          d="M12 3 A9 9 0 0 1 21 12"
-          fill="none"
-          stroke={colors.white}
-          strokeWidth={2.5}
-          strokeLinecap="round"
-        />
-      </Svg>
-    </Animated.View>
-  );
-}
-
 export function ReflectionView({
   feeling,
   text,
@@ -85,16 +29,10 @@ export function ReflectionView({
   onTextChange,
   onSubmit,
   onClose,
-  loading = false,
   busy = false,
-  locked = false,
-  pendingAction = null,
+  savingVisible = false,
+  editing = false,
   error,
-  draftError = false,
-  onRetryDraft,
-  conflict = false,
-  onLoadLatest,
-  onKeepMine,
   dismissOpen = false,
   onKeepEditing,
   onDiscard,
@@ -105,16 +43,10 @@ export function ReflectionView({
   onTextChange: (value: string) => void;
   onSubmit: () => void;
   onClose: () => void;
-  loading?: boolean;
   busy?: boolean;
-  locked?: boolean;
-  pendingAction?: 'final' | 'skip' | null;
+  savingVisible?: boolean;
+  editing?: boolean;
   error?: string | null;
-  draftError?: boolean;
-  onRetryDraft?: (() => void) | undefined;
-  conflict?: boolean;
-  onLoadLatest?: () => void;
-  onKeepMine?: (() => void) | undefined;
   dismissOpen?: boolean;
   onKeepEditing?: () => void;
   onDiscard?: () => void;
@@ -123,19 +55,8 @@ export function ReflectionView({
   const scale = Math.min(width, 390) / 390;
   const headerScale = challengeScale(width);
   const hasInput = feeling !== null || text.trim().length > 0;
-  const inactive = loading || busy || locked;
-  const buttonLabel =
-    pendingAction === 'skip'
-      ? 'Retry Skip'
-      : pendingAction === 'final'
-        ? 'Retry Save'
-        : hasInput
-          ? 'Save Reflection'
-          : 'Skip';
-  const busyLabel =
-    pendingAction === 'skip' || (!pendingAction && !hasInput)
-      ? 'Skipping reflection'
-      : 'Saving reflection';
+  const inactive = busy;
+  const buttonLabel = hasInput ? 'Save Reflection' : 'Skip';
   const size = 60 * scale;
   return (
     <SafeAreaView
@@ -221,10 +142,10 @@ export function ReflectionView({
                   }
                   accessibilityState={{
                     checked: selected,
-                    disabled: inactive,
+                    disabled: inactive || editing,
                   }}
                   aria-checked={selected}
-                  disabled={inactive}
+                  disabled={inactive || editing}
                   onPress={() => onFeelingChange(selected ? null : option.code)}
                   style={styles.feelingChoice}
                   testID={`feeling-${option.code}`}
@@ -270,73 +191,35 @@ export function ReflectionView({
               placeholderTextColor="#526B80"
               value={text}
               onChangeText={onTextChange}
-              editable={!inactive}
+              editable
               maxLength={10000}
               style={[styles.input, { minHeight: 228 * scale }]}
             />
           </View>
-          {draftError && (
-            <View style={styles.inlineNotice}>
-              <Text accessibilityRole="alert" style={styles.notice}>
-                Draft not saved. Your edits are still here.
-              </Text>
-              {!!onRetryDraft && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onRetryDraft}
-                  style={styles.inlineAction}
-                >
-                  <Text style={styles.inlineActionText}>Retry draft</Text>
-                </Pressable>
-              )}
-            </View>
-          )}
           {!!error && (
             <Text accessibilityRole="alert" style={styles.error}>
               {error}
             </Text>
-          )}
-          {conflict && (
-            <View style={styles.conflictActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={onLoadLatest}
-                style={styles.inlineAction}
-              >
-                <Text style={styles.inlineActionText}>Use saved version</Text>
-              </Pressable>
-              {!!onKeepMine && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onKeepMine}
-                  style={styles.inlineAction}
-                >
-                  <Text style={styles.inlineActionText}>Keep my edits</Text>
-                </Pressable>
-              )}
-            </View>
           )}
         </ScrollView>
         <View style={[styles.footer, { paddingHorizontal: 15 * scale }]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              loading ? 'Loading reflection' : busy ? busyLabel : buttonLabel
+              savingVisible ? 'Saving reflection' : buttonLabel
             }
             accessibilityState={{
-              disabled: loading || busy || conflict,
-              busy: loading || busy,
+              disabled: busy,
+              busy: savingVisible,
             }}
-            disabled={loading || busy || conflict}
+            disabled={busy}
             onPress={onSubmit}
             testID="reflection-submit"
             style={styles.primaryButton}
           >
-            {loading || busy ? (
-              <ReflectionSpinner />
-            ) : (
-              <Text style={styles.primaryLabel}>{buttonLabel}</Text>
-            )}
+            <Text style={styles.primaryLabel}>
+              {savingVisible ? 'Saving…' : buttonLabel}
+            </Text>
           </Pressable>
         </View>
         {dismissOpen && (
@@ -351,6 +234,8 @@ export function ReflectionView({
               <Pressable
                 accessibilityRole="button"
                 onPress={onSubmit}
+                disabled={busy}
+                accessibilityState={{ disabled: busy, busy: savingVisible }}
                 style={styles.dialogAction}
               >
                 <Text style={styles.dialogActionText}>Save Reflection</Text>
@@ -365,6 +250,8 @@ export function ReflectionView({
               <Pressable
                 accessibilityRole="button"
                 onPress={onDiscard}
+                disabled={busy}
+                accessibilityState={{ disabled: busy }}
                 style={styles.dialogAction}
               >
                 <Text style={styles.dialogActionText}>Discard and skip</Text>
@@ -484,27 +371,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: colors.ink,
   },
-  notice: {
-    marginTop: 12,
-    fontFamily: fontFamilies.regular,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.ink,
-  },
-  inlineNotice: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  inlineAction: { minHeight: 44, justifyContent: 'center' },
-  inlineActionText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    color: colors.ink,
-    textDecorationLine: 'underline',
-  },
-  conflictActions: { flexDirection: 'row', gap: 20 },
   error: {
     marginTop: 12,
     fontFamily: fontFamilies.medium,

@@ -2,9 +2,10 @@
 
 ## Snapshot
 
-- **Status:** [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) is open for
-  owner review. Native durability evidence remains open; the completed app journey
-  is not yet accepted. Merge and auto-merge remain unauthorized.
+- **Status:** The owner merged [PR #15](https://github.com/anthonyyoo24/justgo/pull/15)
+  at `8ff5d6c` on October 5. Native durability evidence remains open. The subsequent
+  [07.3 handoff](phase-07-3-local-flow.md) records local screen/lifecycle/presentation
+  integration and app journeys. Older review restrictions below are historical.
 - **Date:** October 5, 2026.
 - **Branch/base:** `codex/phase-07.2-local-sync`, created from updated `main` at
   `1df6406` (owner's PR #14 merge), after PR #13 / `806f57f`.

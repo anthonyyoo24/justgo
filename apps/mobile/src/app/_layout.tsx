@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { AppProvider, useAccess } from '../app-support/providers/AppProvider';
+import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
 
 export default function RootLayout() {
@@ -42,7 +43,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <AppProvider>
-        <Navigation />
+        <SavingFeedbackShell>
+          <Navigation />
+        </SavingFeedbackShell>
       </AppProvider>
     </GestureHandlerRootView>
   );

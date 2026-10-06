@@ -1,5 +1,6 @@
 import { act, render } from '@testing-library/react-native';
-import type { LegacyAttempt as Attempt } from '@justgo/contracts';
+import type { ChallengeSnapshot } from './controller';
+import { attempt, card, zone } from '../../../test-support/journal';
 import { ChallengeScreen } from './ChallengeScreen';
 
 const mockMounted = jest.fn();
@@ -14,36 +15,24 @@ const mockController = {
   finish: jest.fn(),
   dismissSuccess: jest.fn(),
 };
-const finishedAttempt: Attempt = {
-  id: 'finished-attempt',
-  status: 'completed',
-  card: {
-    id: 'CA-01',
-    challengeId: 'cafe-01',
-    revisionId: 'cafe-01-v1',
-    levelId: 'level-1',
-    venue: 'cafe',
-    text: 'Ask someone for a recommendation.',
-    durationSeconds: 300,
-  },
-  startedAt: '2026-09-24T20:00:00Z',
-  deadlineAt: '2026-09-24T20:05:00Z',
-  endedAt: '2026-09-24T20:04:00Z',
-  completionDate: '2026-09-24',
-  timeZone: 'America/Toronto',
+const mockCard = { ...card, venue: 'cafe' as const };
+const finishedAttempt = { ...attempt(), venue: 'cafe' as const };
+const active = {
+  card: mockCard,
+  startedAt: finishedAttempt.startedAt,
+  startTimeZone: zone,
+  deadlineAt: '2026-10-05T14:05:00.000Z',
+  turn: 0,
 };
-let mockSnapshot = {
+let mockSnapshot: ChallengeSnapshot = {
   selected: 'cafe',
-  state: {
-    active: null as Attempt | null,
-    latestOutcome: null as Attempt | null,
-  },
+  active: null,
   error: '',
-  busy: false,
-  pending: null,
-  success: null as Attempt | null,
-  clockOffset: 0,
-  queues: { cafe: { version: 0, cards: [{ id: 'a', text: 'Say hello.' }] } },
+  loading: false,
+  saving: false,
+  completionStarted: false,
+  success: null,
+  queues: { cafe: { turn: 0, cards: [mockCard] } },
 };
 jest.mock('expo-router', () => ({
   useIsFocused: () => mockFocused,
@@ -80,18 +69,23 @@ beforeEach(() => {
   mockFocused = true;
   mockSnapshot = {
     ...mockSnapshot,
-    state: { active: null, latestOutcome: null },
+    active: null,
     success: null,
+    error: '',
+    completionStarted: false,
   };
 });
 
-it('keeps the deck mounted through queue updates from a confirmed skip', () => {
+it('keeps the deck mounted through queue updates from a local skip', () => {
   const screen = render(<ChallengeScreen />);
   expect(mockMounted).toHaveBeenCalledTimes(1);
   mockSnapshot = {
     ...mockSnapshot,
     queues: {
-      cafe: { version: 1, cards: [{ id: 'b', text: 'Ask a question.' }] },
+      cafe: {
+        turn: 1,
+        cards: [{ ...mockCard, id: 'b', text: 'Ask a question.' }],
+      },
     },
   };
   screen.rerender(<ChallengeScreen />);
@@ -101,7 +95,7 @@ it('keeps the deck mounted through queue updates from a confirmed skip', () => {
 it('does not show a completed-challenge link on the deck after continuing', () => {
   mockSnapshot = {
     ...mockSnapshot,
-    state: { active: null, latestOutcome: finishedAttempt },
+    active: null,
   };
   const screen = render(<ChallengeScreen />);
   expect(screen.getByTestId('mock-deck')).toBeTruthy();
@@ -111,10 +105,7 @@ it('does not show a completed-challenge link on the deck after continuing', () =
 it('keeps the active card visible until the success route takes over', () => {
   mockSnapshot = {
     ...mockSnapshot,
-    state: {
-      active: { ...finishedAttempt, status: 'active' },
-      latestOutcome: null,
-    },
+    active,
   };
   const screen = render(<ChallengeScreen />);
   expect(screen.getByTestId('active-outcomes')).toBeTruthy();
@@ -122,14 +113,14 @@ it('keeps the active card visible until the success route takes over', () => {
   act(() => {
     mockSnapshot = {
       ...mockSnapshot,
-      state: { active: null, latestOutcome: null },
+      active,
       success: finishedAttempt,
     };
     screen.rerender(<ChallengeScreen />);
   });
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: '/success',
-    params: { attemptId: 'finished-attempt' },
+    params: { attemptId: finishedAttempt.id },
   });
   expect(screen.queryByTestId('mock-deck')).toBeNull();
   expect(screen.getByTestId('active-outcomes')).toBeTruthy();
@@ -139,7 +130,11 @@ it('keeps the active card visible until the success route takes over', () => {
 
 it('dismisses an already-opened result when native back returns to the challenge', () => {
   const screen = render(<ChallengeScreen />);
-  mockSnapshot = { ...mockSnapshot, success: finishedAttempt };
+  mockSnapshot = {
+    ...mockSnapshot,
+    active,
+    success: finishedAttempt,
+  };
   screen.rerender(<ChallengeScreen />);
   expect(mockRouter.push).toHaveBeenCalledTimes(1);
 
@@ -154,4 +149,24 @@ it('dismisses an already-opened result when native back returns to the challenge
   screen.rerender(<ChallengeScreen />);
   expect(mockController.dismissSuccess).toHaveBeenCalledTimes(1);
   expect(mockRouter.push).toHaveBeenCalledTimes(1);
+});
+
+it('reserves catalog refresh for download failures and keeps the completion retry on the active card', () => {
+  mockSnapshot = { ...mockSnapshot, queues: {}, error: 'Download failed' };
+  const screen = render(<ChallengeScreen />);
+  expect(
+    screen.getByRole('button', { name: 'Refresh challenges' }),
+  ).toBeTruthy();
+  mockSnapshot = {
+    ...mockSnapshot,
+    active,
+    completionStarted: true,
+    error: 'Try Completed again',
+  };
+  screen.rerender(<ChallengeScreen />);
+  expect(
+    screen.queryByRole('button', { name: 'Refresh challenges' }),
+  ).toBeNull();
+  expect(screen.getByRole('button', { name: 'Completed' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Give up' })).toBeDisabled();
 });

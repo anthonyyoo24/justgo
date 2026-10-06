@@ -54,6 +54,7 @@ export default defineConfig({
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
       env: {
         CI: '1',
+        JUSTGO_JOURNEY_FIXTURES: '1',
         EXPO_NO_DOTENV: '1',
         EXPO_PUBLIC_API_URL: journeyApiUrl,
         NODE_OPTIONS: '--dns-result-order=ipv4first',
