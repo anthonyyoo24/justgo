@@ -61,6 +61,14 @@ The local Expo module is auto-linked from `apps/mobile/modules/justgo-keychain`;
 
 A native smoke flow lives in `apps/mobile/e2e/launch.yaml`. With Maestro installed, a running development build, Metro and healthy API, run `APP_ID=dev.justgo.foundation npm run test:native -w @justgo/mobile`. The command requires a nonempty `APP_ID` and passes it explicitly to Maestro with `-e`; use the identifier of your installed development app. This is a launch harness, not proof of physical-device recovery or purchases. The [phase handoff](docs/handoffs/phase-01-foundation.md) owns actual results.
 
+[Phase 07.3A — iOS simulator testing migration](docs/IMPLEMENTATION_PLAN.md#phase-07-3a)
+is scheduled after reviewed/finished 07.3 and before 07.4. It will extend Maestro,
+verify replacement native journeys/CI, then retire browser-only testing support.
+The [removal assessment](docs/checks/phase-07-3a-browser-testing-assessment.md)
+lists files to remove, migrate or retain. Existing browser commands remain active
+until that migration is accepted; unit/component/API/database tests and release
+device checks remain required.
+
 ## Workspace
 
 - `apps/mobile`: Expo Router, typed design tokens, native Keychain storage, shared network/query handling, guarded app shells and recovery.

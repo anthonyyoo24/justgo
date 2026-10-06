@@ -1,6 +1,8 @@
 # Implementation handoffs
 
-**October 6 saving-spinner follow-up:** Existing unstaged work was checkpointed locally at `1048372` before Anthony's requested UI change. Completed, Save Reflection and dialog Save Reflection now replace their contents with a centered circular loader after the existing 200 ms delay. [Follow-up evidence](phase-07-3-local-flow.md#october-6-centered-saving-spinner-follow-up) records 346 mobile tests, the coverage gate, repository checks, the affected saved slow-write journey and side-panel layout proof. This follow-up remains uncommitted; native acceptance and Git publication permissions remain open.
+**October 6 native testing migration plan:** Anthony requested scheduling [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) after reviewed/finished 07.3 and before 07.4. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) inventories browser-only files (including modal isolation), responsibilities to migrate and native/shared code to retain. Keep existing browser coverage until native replacements and hosted CI pass. The phase has not started; its handoff filename is reserved below. Existing work was committed first at `25e2f8c`; the three PNG screenshots remain local and uncommitted.
+
+**October 6 saving-spinner follow-up:** Existing unstaged work was checkpointed locally at `1048372` before Anthony's requested UI change. Completed, Save Reflection and dialog Save Reflection now replace their contents with a centered circular loader after the existing 200 ms delay. [Follow-up evidence](phase-07-3-local-flow.md#october-6-centered-saving-spinner-follow-up) records 346 mobile tests, the coverage gate, repository checks, the affected saved slow-write journey and side-panel layout proof. This follow-up is committed locally at `25e2f8c`, excluding PNG screenshots; native acceptance and Git publication permissions remain open.
 
 **October 6 native flicker investigation:** [Recorded native evidence](phase-07-3-local-flow.md#october-6-native-completion-flicker-investigation) reproduces Home flashing before Success on first and repeated completions. The active modal now retains the underlying navigation hierarchy while staying opaque/exclusive. Three updated recordings show no separate Home frame; brief mixed samples and native safe-area acceptance remain open. Changes remain local.
 
@@ -128,7 +130,7 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with native durability evidence open. 07.3 is implemented/verified locally on `codex/phase-07.3-local-flow`, with native acceptance and Git publication open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.4/07.5 filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with native durability evidence open. 07.3 is implemented/verified locally on `codex/phase-07.3-local-flow`, with native acceptance and Git publication open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A/07.4/07.5 filenames remain reserved outputs.
 
 | Subphase                                         | Depends on | Handoff filename                                       |
 | ------------------------------------------------ | ---------- | ------------------------------------------------------ |
@@ -136,7 +138,8 @@ The Phase 07 checkpoint handoffs below track separate acceptance. The owner merg
 | 07.1B — Saved app/API journey and CI             | 07.1A      | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md) |
 | 07.2 — Durable local saving and synchronization  | 07.1       | [phase-07-2-local-sync.md](phase-07-2-local-sync.md)   |
 | 07.3 — Local challenge and reflection experience | 07.2       | [phase-07-3-local-flow.md](phase-07-3-local-flow.md)   |
-| 07.4 — Progress and history integration          | 07.3       | `phase-07-4-progress-history.md`                       |
+| 07.3A — iOS simulator testing migration          | 07.3       | `phase-07-3a-native-testing.md`                        |
+| 07.4 — Progress and history integration          | 07.3A      | `phase-07-4-progress-history.md`                       |
 | 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md`                     |
 
-The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.
+The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.3A → 07.4 → 07.5) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.

@@ -1,12 +1,14 @@
 # Phase 07.3 — Local challenge and reflection experience
 
+**October 6 checkpoint and next phase:** The original implementation is saved at `7a74a90`, the active-flow/native investigation at `1048372`, and the saving-spinner follow-up at `25e2f8c`. PNG screenshots remain local and uncommitted. Anthony requested a separate [07.3A native testing migration](../IMPLEMENTATION_PLAN.md#phase-07-3a) after 07.3 is reviewed and finished, before 07.4. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) records browser-only code and retained coverage. No testing migration has been implemented; existing native/hosted/owner acceptance remains open.
+
 ## Snapshot
 
 - **Status:** Implemented and verified locally for owner review. Native acceptance remains open; this is not a fully accepted native phase or a published release.
 - **Updated / author:** October 6, 2026 / Codex.
 - **Scope:** Task 7 and presentation/lifecycle integration from 07.2 tasks 5–6. Progress data composition remains 07.4; obsolete backend contraction remains 07.5; billing/access policy remains 07A.
 - **Dependencies read:** [07.2](phase-07-2-local-sync.md), [07.1A](phase-07-1-api-data.md), [07.1B](phase-07-1b-journey-ci.md), [umbrella handoff](phase-07-api-offline.md), [plan](../IMPLEMENTATION_PLAN.md#phase-07-3), [app shell](../APP_SHELL.md), [tech stack](../TECH_STACK.md) and [testing guidance](../TESTING.md).
-- **Branch / base:** `codex/phase-07.3-local-flow`, created from local `main` `3e41330` after the owner’s PR #15 merge `8ff5d6c`. Local main contains one additional architecture documentation commit beyond origin/main. The owner requested committing the original implementation before the October 6 refinements: local checkpoint `7a74a90`. The subsequent refinement remains uncommitted for review; no push, PR, merge or auto-merge is authorized.
+- **Branch / base:** `codex/phase-07.3-local-flow`, created from local `main` `3e41330` after the owner’s PR #15 merge `8ff5d6c`. Local main contains one additional architecture documentation commit beyond origin/main. Owner-requested local checkpoints are `7a74a90`, `1048372` and `25e2f8c`; the latter excludes PNG screenshots. No push, PR, merge or auto-merge is authorized.
 - **Environment:** macOS 26.4.1 (25E253), Node 24.18.0, npm 11.16.0; pinned Expo 57.0.26 / React Native 0.86.3. Dedicated loopback PostgreSQL `justgo_test` on port 54329. October 6 owner test setup built and installed an updated EAS simulator binary; signing configuration and deployment are unchanged.
 - **Outcome:** Downloaded challenges can be browsed, started, given up, completed and explicitly reflected on locally. Normal navigation awaits the phone write and proceeds independently of HTTP. Actual failed phone saving uses the existing repository fallback and truthful memory-loss feedback.
 
@@ -147,7 +149,10 @@ Final restore: `simctl boot`/`bootstatus` succeeded. Development-client `openurl
 
 Anthony requested a local checkpoint before changing saving feedback. Commit
 `1048372` saves the previously unstaged active-flow, modal, simulator and handoff
-work. The spinner follow-up remains uncommitted for review.
+work. The spinner follow-up was subsequently committed locally as `25e2f8c`
+before the owner-requested testing migration planning edits. The three PNG proof
+files remain local and uncommitted at the owner's request; their links below
+refer to local evidence, not committed artifacts.
 
 Completed and Save Reflection now replace their contents with the existing React
 Native `ActivityIndicator`, horizontally centered inside the button. Completed's
@@ -218,6 +223,7 @@ Rollback consists of reverting this local slice before publication; the 07.2 on-
 | Native AsyncStorage completion/reflection saving, termination/relaunch, storage-failure recovery and native connectivity; compatible simulator binary is now installed. | Anthony / native verification, evidence required before 07.2/07.3 native acceptance.              |
 | Native background/lock/resume countdown, keyboard + covering modal toast, VoiceOver announcements/dismissal/focus, safe areas, scalable text and reduced motion.        | Anthony / native verification after compatible build; retain 07.3 exit gates.                     |
 | Memory-only accepted content is lost if the process terminates before phone/cloud saving.                                                                               | Approved product limitation from 07.2; honest warning implemented. Never treat memory as durable. |
+| Saved native journey/CI migration and retirement of browser-only testing support, with existing useful coverage preserved.                                              | Phase 07.3A, after reviewed/finished 07.3 and before 07.4; not started.                           |
 | Local/backend Progress overlay/reconciliation, canonical reads, limited current-month/today offline cache, history edits and rollover.                                  | Phase 07.4. Progress in this slice still shows backend compatibility data.                        |
 | Destructive legacy API/schema removal, full product-doc reconciliation and full hosted journey acceptance.                                                              | Phase 07.5, after approved 07.4.                                                                  |
 | Verified native billing/subscription coverage and unchanged access policy’s provider integration.                                                                       | Phase 07A.                                                                                        |
@@ -228,4 +234,6 @@ Rollback consists of reverting this local slice before publication; the 07.2 on-
 
 Review this local diff and the remaining native evidence before accepting 07.3. Do not silently relabel the native gates complete. Publication/PR and merge need separate explicit permission under [AGENTS.md](../../AGENTS.md).
 
-For 07.4, read the 07.1 canonical Progress contracts, 07.2 aggregate fence/version/recovery rules and this runtime boundary. Consume `useJournal` / `useActivityState` rather than constructing another repository/sender. Implement reconciliation and limited offline selectors before replacing Progress compatibility queries; preserve the covering-sheet notice/host and editor newer-input/account fencing. Extend the existing saved harness with actual Progress/day/edit/rollover cases. Do not remove retained backend compatibility or introduce billing/support settings ahead of their assigned phases.
+Next is 07.3A, before further Progress feature work. Read its [plan](../IMPLEMENTATION_PLAN.md#phase-07-3a), [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) and testing guidance. Extend the existing Maestro setup, preserve all useful lower-level/fixture regressions, verify native replacements and hosted CI, then retire browser-only support. Keep 07.3 owner review and outstanding native/device acceptance explicit.
+
+After accepted 07.3A, start 07.4 by reading the 07.1 canonical Progress contracts, 07.2 aggregate fence/version/recovery rules and this runtime boundary. Consume `useJournal` / `useActivityState` rather than constructing another repository/sender. Implement reconciliation and limited offline selectors before replacing Progress compatibility queries; preserve the covering-sheet notice/host and editor newer-input/account fencing. Extend the saved native harness with actual Progress/day/edit/rollover cases and real database assertions. Do not remove retained backend compatibility or introduce billing/support settings ahead of their assigned phases.

@@ -5,6 +5,27 @@ The [Phase 06A handoff](handoffs/phase-06a-code-quality.md) records the measured
 baseline, changes and browser evidence. Tests protect current behavior; Phase 07
 owns API/offline changes and Phase 07A owns billing.
 
+## Scheduled iOS testing migration — 07.3A
+
+Anthony approved [07.3A — iOS simulator testing migration](IMPLEMENTATION_PLAN.md#phase-07-3a)
+after reviewed/finished 07.3 and before 07.4. The
+[file-by-file removal assessment](checks/phase-07-3a-browser-testing-assessment.md)
+identifies browser-only modules, tests that must move to independent runners and
+native/shared code to retain, including the `useModalIsolation` hook and caller.
+
+Extend the existing `apps/mobile/e2e/launch.yaml` Maestro setup and `test:native`
+command into saved journeys against the actual iOS app/API/disposable database.
+Preserve unit/component/repository/API/database tests, coverage floors and fixture
+safeguards. Native storage/relaunch, lifecycle, keyboard/modal and transition
+evidence must be distinguished from mocks and eventual screen assertions.
+
+Current browser commands and UI requirements below remain active until equivalent
+coverage and required hosted native CI pass. Then retire Playwright/Chromium and
+unused browser-only adapters/dependencies, update `AGENTS.md` and this guide, and
+use native simulator journeys/interactive checks for future UI changes. Historical
+browser evidence stays intact; physical-device/staging release checks remain open.
+This is a scheduled migration, not a claim that native CI or full journeys exist.
+
 ## Commands
 
 Use the pinned Node/npm versions in README. Run heavy commands sequentially on
