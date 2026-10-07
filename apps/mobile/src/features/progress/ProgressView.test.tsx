@@ -825,7 +825,7 @@ it('animates the saved reflection both into and out of the row', () => {
         {...callbacks()}
       />,
     );
-    const content = screen.getByTestId('reflection-content', {
+    const content = screen.getByTestId('entry-details-content', {
       includeHiddenElements: true,
     });
     expect(

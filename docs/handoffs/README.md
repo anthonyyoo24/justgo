@@ -13,6 +13,10 @@ The owner's missing-Edit-pencil finding is fixed and verified in the running
 simulator, with fresh 622-case checks and unchanged mobile coverage gates passing.
 The subsequent Add action now uses Paper's original plus, verified in the same
 simulator with 49 focused cases, fresh 623-case checks and unchanged coverage gates.
+The whole Add row now includes its padded tap area, and Add/Edit share the saved
+reflection's measured slide motion. The handoff records 58 focused cases, fresh
+628-case checks, passing coverage gates and native Add/Edit endpoint proof, with
+existing acceptance gates retained.
 
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`

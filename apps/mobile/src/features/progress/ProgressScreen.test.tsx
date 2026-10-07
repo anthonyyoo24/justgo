@@ -271,6 +271,31 @@ it('adds and edits a reflection inline while preserving its feeling and local sa
     'Edited day text.',
   );
 });
+it('opens Add from the row title and guards dirty input when the row is tapped again', async () => {
+  await online();
+  const screen = mount();
+  await loaded();
+  openToday(screen);
+  fireEvent.press(screen.getByText('Say hello.'));
+  await waitFor(() =>
+    expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
+  );
+  fireEvent.changeText(
+    screen.getByLabelText('Your day reflection'),
+    'Keep this unsent writing.',
+  );
+  fireEvent.press(screen.getByText('Feeling'));
+  expect(screen.getByText('Leave your reflection?')).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  expect(screen.getByLabelText('Your day reflection').props.value).toBe(
+    'Keep this unsent writing.',
+  );
+  fireEvent.press(screen.getByText('01'));
+  fireEvent.press(screen.getByRole('button', { name: 'Discard changes' }));
+  expect(screen.queryByLabelText('Your day reflection')).toBeNull();
+  expect(mockRepository!.getAttempt(uuid(1))?.reflection).toBeNull();
+  expect(screen.getByLabelText(/Rep 1.*Add reflection/)).toBeTruthy();
+});
 it('protects dirty input on sheet close and keeps editing without applying the canceled close later', async () => {
   await online();
   const screen = mount();

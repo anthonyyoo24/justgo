@@ -32,7 +32,7 @@ export function DayReflectionEditor({
     !controller.hasChanges() ||
     (!state.text.trim() && !state.feeling);
   return (
-    <View style={styles.editor}>
+    <View>
       <TextInput
         ref={inputRef}
         autoFocus
@@ -156,7 +156,6 @@ export function DayReflectionEditor({
   );
 }
 const styles = StyleSheet.create({
-  editor: { marginTop: 12 },
   input: {
     minHeight: 76,
     width: '100%',

@@ -189,6 +189,7 @@ Anthony requested the original plus beside Add reflection. Paper action group
 `OXF-0` contains the 13×13 SVG with path `M8 2v12M2 8h12`, 1.5-point ink stroke
 and rounded caps. The Add action now uses that shape; View/Hide/Edit retain their
 pencils. The decorative icon remains inside the existing single accessible action.
+This follow-up is committed locally as `d8ee855`.
 
 The new regression caught the pencil mismatch before the change. Focused Progress
 view/screen checks pass **49/49**; fresh `npm run check` passes **623 cases**,
@@ -204,6 +205,47 @@ returns to the row. No reflection was submitted during this check.
 [Native Add action](../checks/phase-07-4/native/add-plus.jpg).
 The existing simulator and API/Metro/mirror remain running for Anthony's testing.
 The software-keyboard/device and other release gates below remain open.
+
+## October 7 owner review — Whole row and editor motion
+
+Anthony requested whole-row Add taps and a textbox that slides out like saved
+reflection text. The existing title/ordinal/feeling/metadata handler remains one
+accessible row action, with its hit area extended through the 12-point vertical
+padding. Tapping an open editor's row still uses the existing dirty-close guard.
+
+`SlidingEntryDetails.tsx` now owns the shared measured-height expansion for saved
+text and Add/Edit editors. It preserves the existing 240 ms opening / 230 ms
+closing curves, opacity and 12-point vertical slide. Editor replacement resizes
+from the visible saved section's height while revealing the textbox. Reduced
+motion applies the final state directly; cleanup stops both animations, and
+collapsed content cannot receive taps or accessibility focus. The editor unmounts
+on close while its empty space collapses, preserving controller disposal.
+
+The new padding/motion regressions failed before the change; **58 focused
+Progress row/view/screen cases pass**. They cover header descendants, measured
+opening/closing, unchanged/empty measurements, animation cancellation, reduced
+motion, saved-text-to-Edit resizing and dirty row-close protection.
+
+Fresh `npm run check` passes **628 cases** (175 architecture/tooling, 45 API,
+387 mobile and 21 contracts), including Doctor **21/21**. Fresh mobile coverage
+is **89.88% branches / 94.42% lines**; `npm run coverage:check` passes every
+unchanged global/critical floor using that report and the existing unchanged
+API/contracts reports. One full run exceeded the existing 5-second timeout in the
+feeling-preserving creation/clearing test. Its unchanged targeted run passed,
+followed by the passing full check and coverage runs; no timeout or assertion was
+weakened. Database and saved journeys remain the earlier phase evidence and were
+not rerun for this presentation-only follow-up.
+
+Side-panel checks of the installed native app confirmed title/padding taps open
+the empty Add textbox, clean Cancel restores the row, and Edit loads only the
+known synthetic QA reflection. No writing was submitted or changed. The mirror
+briefly showed delayed frames/device metadata during the full checks; after it
+recovered, the final endpoints were verified again.
+[Add endpoint](../checks/phase-07-4/native/row-add-editor.jpg),
+[Edit endpoint](../checks/phase-07-4/native/row-edit-editor.jpg).
+These screenshots verify the native endpoints; automated assertions verify the
+animation settings. They do not establish frame-rate or software-keyboard/device
+acceptance. Existing API/Metro/mirror services remain running for Anthony.
 
 ## Open review and release checks
 
