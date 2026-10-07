@@ -510,7 +510,7 @@ for (const [name, source, expected] of [
 ]) {
   test(`promise lint: ${name}`, async () => {
     const [result] = await typedEslint.lintText(source, {
-      filePath: path.join(root, 'apps/mobile/src/lib/http.ts'),
+      filePath: path.join(root, 'apps/mobile/src/lib/network/http.ts'),
     });
     assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
     const promiseErrors = result.messages.filter((item) =>

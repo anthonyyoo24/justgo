@@ -1,4 +1,4 @@
-import { ApiError } from './http';
+import { ApiError } from './network/http';
 
 /** Owns a shared operation's lifetime, independently of any individual waiter. */
 export class Deadline {

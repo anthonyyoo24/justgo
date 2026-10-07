@@ -1,4 +1,4 @@
-import { listenToConnectivity } from '../../platform/connectivity';
+import { listenToConnectivity } from '../../platform/connectivity/connectivity';
 import { useEffect } from 'react';
 import {
   act,
@@ -11,7 +11,7 @@ import { AppState, Text, type AppStateStatus } from 'react-native';
 import { focusManager, notifyManager } from '@tanstack/react-query';
 import { z } from 'zod';
 import { type AccessResponse, type SessionResponse } from '@justgo/contracts';
-import { accountKey } from '../../lib/account-client';
+import { accountKey } from '../../lib/network/account-client';
 import { createIdentityApi } from '../identity/api';
 import { IdentityController } from '../identity/controller';
 import { createMemoryVault, type CredentialVault } from '../identity/storage';
@@ -36,10 +36,10 @@ jest.mock('expo-crypto', () => {
     },
   };
 });
-jest.mock('../../platform/connectivity', () => ({
+jest.mock('../../platform/connectivity/connectivity', () => ({
   listenToConnectivity: jest.fn(() => () => {}),
 }));
-jest.mock('../../data/activity/storage', () => ({
+jest.mock('../../data/activity/persistence/storage', () => ({
   asyncStorageJournalStorage: {
     getItem: async () => null,
     setItem: async () => {},

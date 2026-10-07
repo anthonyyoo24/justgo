@@ -1,7 +1,7 @@
 import { AccountRepository } from './repository';
 import { AccountRepositories } from './accounts';
 import { journalSchema } from './model';
-import { ApiError } from '../../lib/http';
+import { ApiError } from '../../lib/network/http';
 import {
   MemoryStorage,
   backend,

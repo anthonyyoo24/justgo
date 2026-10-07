@@ -5,7 +5,7 @@ import {
   ToastHost,
   dismissActivityToasts,
   showRecoveryToast,
-} from '../../platform/Toast';
+} from '../../platform/toast/Toast';
 import { SavingNotice } from './SavingNotice';
 
 // Modal surfaces render their own notice/host above native presentation. Only

@@ -1,0 +1,348 @@
+import { useEffect, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
+import {
+  feelingChoices,
+  type FeelingCode,
+  type LegacyProgressEntry as ProgressEntry,
+} from '@justgo/contracts';
+import { colors, fontFamilies, typography } from '../../../theme/tokens';
+import { FeelingFace } from '../../reflections/FeelingFace';
+import { completionTime } from '../calendar';
+const entryMetaInk = '#5F7391';
+const feelingLabel = (feeling: FeelingCode | null) =>
+  feelingChoices.find((option) => option.code === feeling)?.label ??
+  'Not recorded';
+function EntryClockIcon() {
+  return (
+    <Svg
+      testID="entry-clock-icon"
+      width={16}
+      height={16}
+      viewBox="0 0 16 16"
+      aria-hidden
+    >
+      <Circle
+        cx={8}
+        cy={8}
+        r={6.25}
+        fill="none"
+        stroke={entryMetaInk}
+        strokeWidth={1.3}
+      />
+      <Path
+        d="M8 4.2v4.2l2.7 1.8"
+        fill="none"
+        stroke={entryMetaInk}
+        strokeWidth={1.3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function ReflectionPencil() {
+  return (
+    <Image
+      source={require('../../../../assets/icons/reflection-pencil.png')}
+      style={styles.reflectionPencil}
+      resizeMode="contain"
+      aria-hidden
+    />
+  );
+}
+
+function SlidingReflection({
+  open,
+  text,
+  reduceMotion,
+}: {
+  open: boolean;
+  text: string;
+  reduceMotion: boolean;
+}) {
+  const [contentHeight, setContentHeight] = useState(0);
+  const [progress] = useState(() => new Animated.Value(open ? 1 : 0));
+
+  useEffect(() => {
+    if (contentHeight === 0) return;
+    if (reduceMotion) {
+      progress.setValue(open ? 1 : 0);
+      return;
+    }
+    const animation = Animated.timing(progress, {
+      toValue: open ? 1 : 0,
+      duration: open ? 240 : 230,
+      easing: open ? Easing.out(Easing.cubic) : Easing.inOut(Easing.cubic),
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [contentHeight, open, progress, reduceMotion]);
+
+  return (
+    <Animated.View
+      testID="sliding-reflection"
+      aria-hidden={!open}
+      accessibilityElementsHidden={!open}
+      importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
+      style={[
+        styles.reflectionClip,
+        {
+          height: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, contentHeight],
+          }),
+          opacity: progress,
+        },
+      ]}
+    >
+      <Animated.View
+        style={[
+          styles.reflectionContentLayer,
+          {
+            transform: [
+              {
+                translateY: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-12, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <View
+          testID="reflection-content"
+          style={styles.reflection}
+          onLayout={({ nativeEvent }) => {
+            const height = nativeEvent.layout.height + 12;
+            if (height <= 12) return;
+            setContentHeight((current) =>
+              Math.abs(current - height) > 0.5 ? height : current,
+            );
+          }}
+        >
+          <View style={styles.reflectionHeading}>
+            <ReflectionPencil />
+            <Text style={styles.reflectionLabel}>Saved reflection</Text>
+          </View>
+          <Text style={styles.reflectionText}>{text}</Text>
+        </View>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+export function ProgressEntryRow({
+  entry,
+  index,
+  expanded,
+  onToggle,
+  reduceMotion,
+}: {
+  entry: ProgressEntry;
+  index: number;
+  expanded: boolean;
+  onToggle: () => void;
+  reduceMotion: boolean;
+}) {
+  const submitted = entry.reflectionStatus === 'submitted';
+  const feeling = submitted ? entry.feeling : null;
+  const reflection = submitted ? entry.reflectionText?.trim() : null;
+  const opened = !!reflection && expanded;
+  const action = opened ? 'Hide Reflection' : 'View Reflection';
+  const Row = reflection ? Pressable : View;
+  const activityAt = entry.activityAt ?? entry.completedAt;
+  const time = activityAt ? completionTime(activityAt, entry.timeZone) : null;
+
+  return (
+    <View style={styles.entry}>
+      <Row
+        accessible
+        accessibilityRole={reflection ? 'button' : undefined}
+        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}.${time ? ` ${time}.` : ''} Feeling: ${feelingLabel(feeling)}${reflection ? `. ${action}` : ''}`}
+        accessibilityState={reflection ? { expanded: opened } : undefined}
+        onPress={reflection ? onToggle : undefined}
+        style={styles.entryRow}
+      >
+        <Text style={styles.ordinal}>{String(index + 1).padStart(2, '0')}</Text>
+        <View style={styles.entryMain}>
+          <Text
+            numberOfLines={opened ? undefined : 2}
+            style={styles.entryTitle}
+          >
+            {entry.instruction}
+          </Text>
+          <View testID="entry-metadata-row" style={styles.entryMeta}>
+            {time && (
+              <View style={styles.entryMetaItem}>
+                <EntryClockIcon />
+                <Text style={styles.entryMetaText}>{time}</Text>
+              </View>
+            )}
+            {!!reflection && (
+              <View testID="reflection-action" style={styles.reflectionAction}>
+                {time && <View style={styles.reflectionDivider} aria-hidden />}
+                <ReflectionPencil />
+                <Text style={styles.reflectionActionText}>{action}</Text>
+                <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>
+                  <Path
+                    d={opened ? 'm1.5 7 4-4 4 4' : 'm1.5 4 4 4 4-4'}
+                    fill="none"
+                    stroke="#647D99"
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Svg>
+              </View>
+            )}
+          </View>
+        </View>
+        <View testID="entry-feeling" style={styles.feeling}>
+          <Text style={styles.after}>Feeling</Text>
+          {feeling ? (
+            <FeelingFace feeling={feeling} size={36} selected={false} />
+          ) : (
+            <Svg
+              testID="empty-feeling-circle"
+              width={36}
+              height={36}
+              viewBox="0 0 36 36"
+              aria-hidden
+            >
+              <Circle
+                cx="18"
+                cy="18"
+                r="16.5"
+                fill="none"
+                stroke="#9AAAC0"
+                strokeWidth="1.6"
+                strokeDasharray="0.1 4.2"
+                strokeLinecap="round"
+              />
+            </Svg>
+          )}
+        </View>
+      </Row>
+      {!!reflection && (
+        <SlidingReflection
+          open={opened}
+          text={reflection}
+          reduceMotion={reduceMotion}
+        />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  entry: {
+    borderTopWidth: 1,
+    borderTopColor: '#E8E3DE',
+    minHeight: 73,
+    paddingVertical: 12,
+  },
+  entryRow: { flexDirection: 'row', gap: 9 },
+  ordinal: {
+    fontFamily: fontFamilies.display,
+    fontSize: 17,
+    color: '#5F7391',
+    width: 30,
+    transform: [{ translateY: 6 }],
+  },
+  entryMain: {
+    flex: 1,
+    borderLeftWidth: 1,
+    borderLeftColor: '#DDDAD5',
+    paddingLeft: 12,
+  },
+  entryTitle: {
+    fontFamily: fontFamilies.editorial,
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.15,
+    lineHeight: 22,
+  },
+  entryMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    columnGap: 8,
+    rowGap: 4,
+    minHeight: 17,
+    marginTop: 7,
+  },
+  entryMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  entryMetaText: {
+    fontFamily: fontFamilies.regular,
+    color: entryMetaInk,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  reflectionAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+    minHeight: 17,
+  },
+  reflectionDivider: {
+    width: 1,
+    height: 15,
+    backgroundColor: '#C7CDD2',
+    marginRight: 2,
+  },
+  reflectionPencil: { width: 15.305, height: 16.464, flexShrink: 0 },
+  reflectionActionText: {
+    fontFamily: fontFamilies.regular,
+    color: '#6B809B',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  feeling: {
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  after: { fontFamily: fontFamilies.regular, color: '#7287A3', fontSize: 11 },
+  reflection: {
+    backgroundColor: '#FAEFEB',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+  },
+  reflectionClip: { overflow: 'hidden' },
+  reflectionContentLayer: { position: 'absolute', top: 0, left: 0, right: 0 },
+  reflectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reflectionLabel: { ...typography.caption, color: '#6B809B' },
+  reflectionText: {
+    fontFamily: fontFamilies.display,
+    fontStyle: 'italic',
+    fontSize: 18,
+    lineHeight: 24,
+    color: colors.ink,
+    marginTop: 6,
+  },
+});

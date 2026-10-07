@@ -49,9 +49,9 @@ test('isolated web provider resolves the fault adapter; native and other callers
     `
  const origin=new URL(${JSON.stringify(new URL('../../apps/mobile/src/app-support/providers/AppProvider.tsx', import.meta.url).href)}).pathname;
  const context={originModulePath:origin,resolveRequest:()=>({type:'sourceFile',filePath:'normal'})};
- console.log(config.resolver.resolveRequest(context,'../../data/activity/storage','web').filePath.endsWith('test-support/journey-storage.ts'));
- console.log(config.resolver.resolveRequest(context,'../../data/activity/storage','ios').filePath);
- console.log(config.resolver.resolveRequest({...context,originModulePath:'another'},'../../data/activity/storage','web').filePath);
+ console.log(config.resolver.resolveRequest(context,'../../data/activity/persistence/storage','web').filePath.endsWith('test-support/journey-storage.ts'));
+ console.log(config.resolver.resolveRequest(context,'../../data/activity/persistence/storage','ios').filePath);
+ console.log(config.resolver.resolveRequest({...context,originModulePath:'another'},'../../data/activity/persistence/storage','web').filePath);
  `,
   );
   assert.equal(output.trim(), 'true\nnormal\nnormal');

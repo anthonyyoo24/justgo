@@ -3,7 +3,10 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { SavingFeedbackShell, SavingSheetSurface } from './SavingFeedback';
 import { savingRiskCopy } from './presentation';
-import { dismissActivityToasts, showRecoveryToast } from '../../platform/Toast';
+import {
+  dismissActivityToasts,
+  showRecoveryToast,
+} from '../../platform/toast/Toast';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
@@ -25,7 +28,7 @@ const mockActivity = {
 };
 const mockRouter = { push: jest.fn() };
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
-jest.mock('../../platform/Toast', () => ({
+jest.mock('../../platform/toast/Toast', () => ({
   ToastHost: () => null,
   showRecoveryToast: jest.fn(),
   dismissActivityToasts: jest.fn(),

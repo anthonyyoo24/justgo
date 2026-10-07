@@ -8,7 +8,8 @@ import { creamArtwork, peachArtwork } from './cream-artwork.mjs';
 const loadDependency = createRequire(import.meta.url);
 const sharp = loadDependency('sharp');
 const source = path.resolve('output/challenge-fidelity/source');
-const destination = path.resolve('apps/mobile/assets/challenges');
+const destination = path.resolve('apps/mobile/assets/challenges/venues');
+const decoration = path.resolve('apps/mobile/assets/challenges/decoration');
 const scale = 4;
 const sources = {
   gym: '0ZPS0RHMYATMEBFBKS035T53AM.png',
@@ -76,6 +77,7 @@ async function removePaper(input, inkOnly = false) {
 async function main() {
   await fs.mkdir(source, { recursive: true });
   await fs.mkdir(destination, { recursive: true });
+  await fs.mkdir(decoration, { recursive: true });
   for (const name of ['gym', 'park', 'bookstore', 'bars', 'cafe']) {
     const image = await sheet(name, 320, name === 'cafe' ? 569 : 611);
     const art = await crop(image, 123, name === 'cafe' ? 198 : 240, 78, 63);
@@ -132,11 +134,11 @@ async function main() {
   }
   const gym = await sheet('gym');
   await fs.writeFile(
-    path.join(destination, 'lower-flourish.png'),
+    path.join(decoration, 'lower-flourish.png'),
     await removePaper(await crop(gym, 68, 433, 88, 27), true),
   );
   await fs.writeFile(
-    path.join(destination, 'paper-texture.png'),
+    path.join(decoration, 'paper-texture.png'),
     await crop(gym, 94, 195, 100, 20),
   );
   // The retained original fills live in the ignored output folder, not the app bundle.

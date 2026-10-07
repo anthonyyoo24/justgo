@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { fontFamilies } from '../../theme/tokens';
-// Measured component rules and explicit raster reconstructions: docs/CHALLENGE_FIDELITY.md.
+// Measured component rules and explicit raster reconstructions: docs/design/CHALLENGE_FIDELITY.md.
 // Raster lettering has no editable face metadata. Use the high-contrast serif
 // available in the Paper file; the editable timer keeps its verified Baskerville.
 export const challengeDisplayFont = Platform.select({

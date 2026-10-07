@@ -5,8 +5,8 @@
 - **Status:** Both stacked replacements are published as
   [PR #18](https://github.com/anthonyyoo24/justgo/pull/18) and
   [PR #19](https://github.com/anthonyyoo24/justgo/pull/19); PR #17 is closed as
-  superseded. This foundation snapshot keeps mobile source/artwork at their
-  merged-07.3 locations; the mobile stage completes the same cleanup.
+  superseded. This mobile snapshot implements the final source/artwork groups
+  on the foundation stage, including its import-boundary and documentation fixes.
   Both still require owner review and explicit merge approval.
 - **Branches / base:** `codex/project-folder-cleanup-foundation` starts at
   owner-merged `main` `6bccfde`; `codex/project-folder-cleanup-mobile` builds
@@ -51,7 +51,7 @@ or lower coverage floors are introduced. Both stages must pass their own checks;
 prior combined results below are historical evidence only.
 
 The diagrams and full inventory describe the result **after both PRs**. Mobile
-moves are pending in this foundation snapshot. Merge foundation first only after
+moves are implemented in this mobile snapshot. Merge foundation first only after
 owner approval; then retarget the mobile PR to `main` and check its diff/CI again.
 Do not merge the mobile stage first. CodeRabbit's separately reported credits/
 capacity problem may still prevent review after the file limit is resolved.
@@ -69,8 +69,41 @@ UI walkthrough. Hosted checks and CodeRabbit review must be inspected for each
 published revision.
 
 The foundation diff has **102 changed files**, of which **87** are eligible under
-CodeRabbit's existing image filters. No filters were changed. The mobile stage
-will be counted and verified independently before publication.
+CodeRabbit's existing image filters. No filters were changed. [Foundation PR #18](https://github.com/anthonyyoo24/justgo/pull/18) is published
+against `main` at `6e12520`. This mobile branch is stacked on it. The combined
+source, tests, configuration and artwork match original cleanup `a02b28d`
+exactly; only split/status documentation differs. Mobile verification passes independently: Doctor 21/21 and all 569 workspace
+cases, 60 database cases plus migration rehearsal, every unchanged coverage floor,
+all 16 saved journeys in 53.5 seconds with fixture/service cleanup, and web/iOS
+JavaScript/Hermes exports. Logs use `.local/cleanup-split-mobile-{check,db,coverage,
+journey,web,ios}.log`. Its diff has **107 changed files**, with **93** eligible
+under the existing image filters. `.local/cleanup-split-audit.json` records the
+counts and exact combined non-documentation match.
+
+The default **1280 × 720** side panel verified Cafe selection → Accept → exclusive
+countdown/no Settings or tabs → Give up → Accept → Completed → Success → Continue
+→ synthetic feeling/text → Save Reflection → Progress (one rep/one active day)
+→ October 6 day details → saved reflection. Warning/error logs were empty; proof
+is `.local/cleanup-split-day-details.png`. The tab closed and exactly one expected,
+registry-owned disposable account was removed under the guarded database workflow
+(`.local/cleanup-split-ui-cleanup.log`). This is an interactive check, separate from
+the saved suite, with earlier small-screen/native acceptance unchanged.
+
+The owner API/Metro setup is restored on the primary mobile checkout. The same
+installed app/sole QA simulator resumes Home with artwork; proof is
+`.local/cleanup-split-native-home.png`. No new device, native binary or owner-data
+reset was made. This reload/Home check does not close native durability,
+lifecycle, accessibility or physical-device/staging gates.
+
+Both foundation hosted runs pass for `6e12520`:
+[push](https://github.com/anthonyyoo24/justgo/actions/runs/37546236717) and
+[PR](https://github.com/anthonyyoo24/justgo/actions/runs/37546240952). CodeRabbit's
+manual review was triggered in a separate outside Chrome window; it confirms
+processing **87 files**. Actual completion/feedback remain pending at this
+publication snapshot. The mobile PR must receive its own current-head hosted
+checks and manual review request. Published PR URLs and latest hosted/review
+results are maintained in the replacement PR descriptions; retire PR #17 once
+both exist. Neither merge is authorized.
 
 ## October 6 PR #18 review follow-up
 
@@ -113,6 +146,25 @@ do not establish the follow-up result.
 This follow-up changes lint enforcement/tests and documentation, with no product
 UI changes requiring a new browser/native walkthrough. Earlier UI, native and
 release evidence remains separate and does not close the carried acceptance gaps.
+
+**Mobile follow-up verification:** the mobile stage was replayed on foundation
+fix `2966fe9`. Its runtime source, artwork, dependencies and CI configuration
+match original mobile head `1308eec`; the follow-up changes only the boundary
+checker/tests and documentation. A section audit caught temporary truncation
+during documentation conflict resolution; all foundation sections and the mobile
+split evidence were restored before publication. The final inventory uses
+`lib/network/` while retaining explicit foundation-stage path context.
+
+Fresh `npm run check` passes Doctor 21/21 and the same 597 workspace cases;
+`npm run test:db` passes 60 database cases plus migration rehearsal, and
+`npm run test:coverage` passes all unchanged global/critical floors. Markdown
+comparison finds no new missing targets. The updated diffs still contain 102/107
+changed files and 87/93 non-image review files under the existing filters.
+Logs: `.local/cleanup-review-mobile-{check,db,coverage}.log`. Fresh online Doctor
+is rerun immediately before pushing both branches; latest current-head hosted
+results are maintained in the PR descriptions. Prior saved journeys, exports and
+interactive/native evidence above belong to the original split heads; the fresh
+hosted pipeline runs journeys and exports for the pushed revisions.
 
 ## What changed
 

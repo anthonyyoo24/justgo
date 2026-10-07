@@ -1,6 +1,6 @@
 import { Platform, type TextStyle } from 'react-native';
 
-/** Source: approved Paper Version 3 row. See docs/DESIGN.md for measurements and gaps. */
+/** Source: approved Paper Version 3 row. See docs/design/DESIGN.md for measurements and gaps. */
 export const colors = {
   ink: '#102C49',
   navy: '#142F46',

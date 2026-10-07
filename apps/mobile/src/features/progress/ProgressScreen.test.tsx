@@ -18,7 +18,7 @@ import type {
   LegacyProgressEntry as ProgressEntry,
   LegacyProgressResponse as ProgressResponse,
 } from '@justgo/contracts';
-import { accountKey } from '../../lib/account-client';
+import { accountKey } from '../../lib/network/account-client';
 import { ProgressScreen } from './ProgressScreen';
 
 jest.mock('expo-router', () => ({

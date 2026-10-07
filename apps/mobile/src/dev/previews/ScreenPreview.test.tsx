@@ -1,7 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { ScreenPreview } from './ScreenPreview';
 jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
-jest.mock('../../features/challenges/DeckPreview', () => ({
+jest.mock('./challenges/DeckPreview', () => ({
   DeckPreview: ({ onCompleted }: { onCompleted: () => void }) => {
     const { Pressable, Text } = require('react-native');
     return (

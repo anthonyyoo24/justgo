@@ -17,7 +17,7 @@ import {
 import type { z } from 'zod';
 import { IdentityClientError, type IdentityApi } from './api';
 import type { CredentialVault, DeviceState, StoredCredential } from './storage';
-import type { HttpMethod } from '../../lib/http';
+import type { HttpMethod } from '../../lib/network/http';
 import { Deadline } from '../../lib/deadline';
 
 type Snapshot = {

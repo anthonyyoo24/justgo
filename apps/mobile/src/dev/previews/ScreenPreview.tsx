@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProgressView } from '../../features/progress/ProgressView';
 import { moveMonth } from '../../features/progress/calendar';
-import { DeckPreview } from '../../features/challenges/DeckPreview';
-import { SuccessView } from '../../features/challenges/SuccessView';
+import { DeckPreview } from './challenges/DeckPreview';
+import { SuccessView } from '../../features/challenges/success/SuccessView';
 import { ReflectionView } from '../../features/reflections/ReflectionView';
 import type {
   FeelingCode,
