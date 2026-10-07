@@ -20,6 +20,12 @@ export type ProgressViewProps = ProgressCalendarProps & {
   onCloseDay: () => void;
   onRetryDay?: (() => void) | undefined;
   onLoadMore?: (() => void) | undefined;
+  dayConnectionRequired?: boolean;
+  editingId?: string | null | undefined;
+  editor?: ReactNode;
+  onEditReflection?: ((id: string) => void) | undefined;
+  beforeClose?: ((work: () => void) => void) | undefined;
+  paginationKey?: string | null | undefined;
 };
 
 export function ProgressView({
@@ -44,6 +50,15 @@ export function ProgressView({
   onRetryMonth,
   onRetryDay,
   onLoadMore,
+  connectionRequired,
+  summaryLoading,
+  summaryError,
+  dayConnectionRequired,
+  editingId,
+  editor,
+  onEditReflection,
+  beforeClose,
+  paginationKey,
 }: ProgressViewProps) {
   return (
     <SafeAreaView
@@ -60,6 +75,9 @@ export function ProgressView({
         onMonth={onMonth}
         onOpenDay={onOpenDay}
         onRetryMonth={onRetryMonth}
+        connectionRequired={connectionRequired ?? false}
+        summaryLoading={summaryLoading ?? (!data && loading && !error)}
+        summaryError={summaryError ?? false}
       />
       <DaySheet
         key={selectedDate ?? 'closed'}
@@ -75,6 +93,12 @@ export function ProgressView({
         onClose={onCloseDay}
         onRetry={onRetryDay}
         onLoadMore={onLoadMore}
+        connectionRequired={dayConnectionRequired ?? false}
+        editingId={editingId}
+        editor={editor}
+        onEditReflection={onEditReflection}
+        beforeClose={beforeClose}
+        paginationKey={paginationKey}
       />
     </SafeAreaView>
   );

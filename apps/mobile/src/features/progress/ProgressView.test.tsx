@@ -536,7 +536,7 @@ it('keeps the marker behind the date and resizes it when the heading reflows', (
   expect(underline().props.width).toBeCloseTo(208.8);
   expect(underline().props.height).toBe(18);
   expect(underline()).toHaveStyle({ transform: [{ translateY: -6 }] });
-  expect(screen.queryByText('2 reps')).toBeNull();
+  expect(screen.getByText('2 reps')).toBeTruthy();
   const entryList = screen.getByTestId('day-sheet-entry-list');
   expect(entryList).toHaveStyle({ marginTop: 12 });
   expect(
@@ -619,7 +619,7 @@ it('keeps a past active day white while its details sheet is open', () => {
   expect(today).toHaveStyle({ backgroundColor: colors.ink });
 });
 
-it('shows completion times without a day total or duration in the day sheet', () => {
+it('shows completion times and the Paper day total without duration', () => {
   const screen = render(
     <ProgressView
       month="2026-09"
@@ -643,7 +643,7 @@ it('shows completion times without a day total or duration in the day sheet', ()
   const clocks = screen.getAllByTestId('entry-clock-icon', {
     includeHiddenElements: true,
   });
-  expect(screen.queryByText('2 reps')).toBeNull();
+  expect(screen.getByText('2 reps')).toBeTruthy();
   expect(screen.queryByText(/4 min 4 sec total/)).toBeNull();
   expect(screen.queryByText('2 min 2 sec')).toBeNull();
   expect(

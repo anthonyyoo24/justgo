@@ -1,6 +1,19 @@
 # Phase 07 — API & offline saving
 
-**October 6 native testing migration plan:** Anthony approved scheduling [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) after reviewed/finished 07.3 and before 07.4, preserving later IDs. Extend Maestro to replace browser UI journeys and CI only after native equivalents pass; retain lower-level tests, isolated fixtures and outstanding native/device gates. The [file-by-file assessment](../checks/phase-07-3a-browser-testing-assessment.md) owns the removal/migration inventory. This supersedes the historical five-checkpoint sequence below with six checkpoints; 07.3A is not started. Existing saving-spinner changes were checkpointed at `25e2f8c` before these planning edits, excluding PNG screenshots. Its implementation handoff will be `phase-07-3a-native-testing.md`; no migration code or Git publication is authorized by this documentation update.
+**October 7 current checkpoint:** Anthony deferred unfinished 07.3A, preserved at
+`c7c67b2` with its [resume handoff](phase-07-3a-testing-checkpoint.md), and requested
+07.4 from the approved baseline. Local `codex/phase-07.4-progress-history` now
+implements independent canonical Progress reads, local/backend reconciliation,
+current-month/today durability, online-only older history and Paper inline Add/Edit.
+The [07.4 handoff](phase-07-4-progress-history.md) records 621 workspace cases,
+61 database/migration cases, unchanged coverage gates, both exports and 21 saved
+journeys, with browser and native simulator evidence distinguished. Changes are
+local and unpublished, awaiting owner review. Software-keyboard layout,
+earlier device/release gates and hosted checks remain open; 07.5 owns final
+cutover/acceptance and 07A owns billing. Historical checkpoint restrictions and
+draft inventories below do not describe the current branch.
+
+**October 6 native testing migration plan — historical, superseded by October 7:** Anthony approved scheduling [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) after reviewed/finished 07.3 and before 07.4, preserving later IDs. Extend Maestro to replace browser UI journeys and CI only after native equivalents pass; retain lower-level tests, isolated fixtures and outstanding native/device gates. The [file-by-file assessment](../checks/phase-07-3a-browser-testing-assessment.md) owns the removal/migration inventory. This supersedes the historical five-checkpoint sequence below with six checkpoints; 07.3A is not started. Existing saving-spinner changes were checkpointed at `25e2f8c` before these planning edits, excluding PNG screenshots. Its implementation handoff will be `phase-07-3a-native-testing.md`; no migration code or Git publication is authorized by this documentation update.
 
 **October 6 native flicker investigation:** The [07.3 handoff](phase-07-3-local-flow.md#october-6-native-completion-flicker-investigation) records first/repeat reproduction, an opaque modal presentation fix and updated native frame evidence. Separate Home flashes are absent in three updated runs; brief mixed samples and full native acceptance remain open. No persistence/API/billing change or Git publication was made.
 
@@ -8,7 +21,7 @@
 
 **October 5 current checkpoint:** The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). At the owner’s request, `codex/phase-07.3-local-flow` starts from local `main` `3e41330` and implements provider/account/lifecycle integration, local challenge/completion/reflection screens, saving-risk/recovery presentation and saved app/API/database journeys. The [07.3 handoff](phase-07-3-local-flow.md) records local checks, side-panel evidence and open native acceptance. Progress composition and final cutover remain 07.4/07.5. No push, PR or merge of 07.3 is authorized; older dated review restrictions below are historical.
 
-## October 4 branch separation — current status
+## October 4 branch separation — historical checkpoint
 
 **Latest review split:** Existing PR #13 now publishes only **07.1A** (APIs,
 data/migrations, compatibility and their tests). **07.1B** contains the saved

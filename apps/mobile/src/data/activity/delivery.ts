@@ -43,7 +43,9 @@ export function acknowledge(
     response.acknowledgement?.appliedRevision ?? 0,
   );
   const reflection =
-    record.version > sent.version
+    record.version > sent.version ||
+    (record.attempt.reflection?.revision ?? 0) >
+      (response.attempt.reflection?.revision ?? 0)
       ? record.attempt.reflection
       : response.attempt.reflection;
   record.attempt = { ...response.attempt, reflection };
@@ -97,7 +99,12 @@ export function recordFailure(
     current.dueAt = now + Math.max(delay, failure.retryAfterMs ?? 0);
   } else {
     current.state = 'rejected';
-    if (current.kind === 'create' && failure.code === 'ATTEMPT_INELIGIBLE') {
+    if (
+      current.kind === 'create' &&
+      ['ATTEMPT_INELIGIBLE', 'INVALID_REQUEST', 'NOT_FOUND'].includes(
+        failure.code,
+      )
+    ) {
       journal.records[current.attemptId]!.rejected = failure.code;
       journal.generation++;
       // Only remove its provisional additions; never blindly decrement a baseline.

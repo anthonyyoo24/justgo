@@ -1,5 +1,15 @@
 # Implementation handoffs
 
+**October 7 local 07.4 implementation:** `codex/phase-07.4-progress-history`
+implements canonical Progress reads, limited offline history, local/backend
+reconciliation and the owner's Paper inline Add/Edit reflection design. The
+[07.4 handoff](phase-07-4-progress-history.md) records 621 workspace cases,
+61 database/migration cases, unchanged coverage gates, both exports and 21 saved
+journeys, plus side-panel browser and native simulator Add/Edit/save/relaunch.
+Changes remain local and unpublished, awaiting Anthony's review. Software-keyboard
+layout, earlier device/release gates and hosted checks remain open. 07.3A stays
+deferred; 07.5 owns final cutover and integrated acceptance.
+
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`
 at `c7c67b2`. The [resume handoff](phase-07-3a-testing-checkpoint.md) records the
@@ -178,16 +188,16 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with native durability evidence open. The owner merged 07.3 through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, after both final review-fix hosted runs passed at `cc3f0f2`. Native/device acceptance remains open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A is deferred with its checkpoint resume handoff; 07.4/07.5 filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with physical-device durability evidence open. The owner merged 07.3 through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, after both final review-fix hosted runs passed at `cc3f0f2`. Native/device acceptance remains open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A is deferred with its checkpoint resume handoff. 07.4 is implemented locally with the handoff below, awaiting review and open acceptance checks; 07.5's filename remains reserved.
 
-| Subphase                                         | Depends on                | Handoff filename                                       |
-| ------------------------------------------------ | ------------------------- | ------------------------------------------------------ |
-| 07.1A — API and data foundation                  | 06A                       | [phase-07-1-api-data.md](phase-07-1-api-data.md)       |
-| 07.1B — Saved app/API journey and CI             | 07.1A                     | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md) |
-| 07.2 — Durable local saving and synchronization  | 07.1                      | [phase-07-2-local-sync.md](phase-07-2-local-sync.md)   |
-| 07.3 — Local challenge and reflection experience | 07.2                      | [phase-07-3-local-flow.md](phase-07-3-local-flow.md)   |
-| 07.3A — Hybrid testing (deferred)                | 07.3; does not block 07.4 | [checkpoint resume](phase-07-3a-testing-checkpoint.md) |
-| 07.4 — Progress and history integration          | 07.3                      | `phase-07-4-progress-history.md`                       |
-| 07.5 — Final cutover and acceptance              | 07.4                      | `phase-07-5-cutover-acceptance.md`                     |
+| Subphase                                         | Depends on                | Handoff filename                                                 |
+| ------------------------------------------------ | ------------------------- | ---------------------------------------------------------------- |
+| 07.1A — API and data foundation                  | 06A                       | [phase-07-1-api-data.md](phase-07-1-api-data.md)                 |
+| 07.1B — Saved app/API journey and CI             | 07.1A                     | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md)           |
+| 07.2 — Durable local saving and synchronization  | 07.1                      | [phase-07-2-local-sync.md](phase-07-2-local-sync.md)             |
+| 07.3 — Local challenge and reflection experience | 07.2                      | [phase-07-3-local-flow.md](phase-07-3-local-flow.md)             |
+| 07.3A — Hybrid testing (deferred)                | 07.3; does not block 07.4 | [checkpoint resume](phase-07-3a-testing-checkpoint.md)           |
+| 07.4 — Progress and history integration          | 07.3                      | [phase-07-4-progress-history.md](phase-07-4-progress-history.md) |
+| 07.5 — Final cutover and acceptance              | 07.4                      | `phase-07-5-cutover-acceptance.md`                               |
 
 The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.

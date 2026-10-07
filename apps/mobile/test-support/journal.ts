@@ -98,7 +98,10 @@ export function backend(): JournalTransport & {
         );
       const reflection = {
         feeling: body.reflection.feeling ?? old.reflection?.feeling ?? null,
-        text: body.reflection.text ?? old.reflection?.text ?? null,
+        text:
+          body.reflection.text === undefined
+            ? (old.reflection?.text ?? null)
+            : body.reflection.text,
         revision: body.expectedReflectionRevision + 1,
       };
       const canonical = { ...old, reflection };

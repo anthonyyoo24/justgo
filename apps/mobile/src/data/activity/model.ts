@@ -78,6 +78,12 @@ export const journalSchema = z
       .object({ timeZone: timeZoneSchema, data: progressCalendarSchema })
       .strict()
       .nullable(),
+    // Compact aggregate reconciliation survives disposal of downloaded caches.
+    calendarBaseline: z
+      .object({ timeZone: timeZoneSchema, data: progressCalendarSchema })
+      .strict()
+      .nullable()
+      .default(null),
     today: z
       .object({ timeZone: timeZoneSchema, data: progressDayResponseSchema })
       .strict()
@@ -230,6 +236,7 @@ export function emptyJournal(accountId: string): Journal {
     calendarAdditions: [],
     summary: null,
     calendar: null,
+    calendarBaseline: null,
     today: null,
   };
 }

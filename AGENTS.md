@@ -132,6 +132,10 @@ installed development app to clear stale Metro module/asset paths.
   hydration and the construction-to-subscription gap, preserving newer input.
   Runtime date/time-zone coordination must refresh on account activation,
   foreground and day boundaries, and cancel/fence callbacks on lifecycle changes.
+- Provider-owned refresh observers must receive runtime dependencies without
+  importing their composing provider back. Share context-free subscriptions to
+  avoid module cycles. When a preview disables file watching, restart it before
+  treating its served bundle as evidence for edited source.
 
 ## Verification and handoff
 

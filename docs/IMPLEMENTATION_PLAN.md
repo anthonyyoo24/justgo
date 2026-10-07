@@ -447,7 +447,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 07 — API & offline saving
 
-**Status:** In progress; 07.1A, 07.1B and 07.2 are merged by the owner. 07.3 is open in PR #16 for owner review, with native evidence open. The owner authorized pushing the assessed review fixes; merge remains unapproved. Progress composition/cutover remain 07.4/07.5.
+**Status:** In progress; 07.1A, 07.1B, 07.2 and 07.3 are merged by the owner. 07.3A remains deferred. 07.4 is implemented and verified locally on `codex/phase-07.4-progress-history`, awaiting review with software-keyboard/device acceptance and hosted checks open. Final cutover/integrated acceptance remains 07.5; no 07.4 publication or merge is authorized.
 
 **Depends on:** 06A; complete active 07.1–07.5 in order before 07A. 07.3A is deferred under the October 7 owner decision; native/device/release evidence remains open.
 
@@ -929,9 +929,11 @@ staging/release gates. Deferral closes none of these.
 
 ##### 07.4 — Progress and history integration
 
-**Depends on:** reviewed 07.3 and backend read contracts from 07.1. Anthony approved bypassing deferred 07.3A on October 7 using existing browser/lower-level checks plus relevant manual native verification. **Outcome:** summary, calendar and day details show local/backend activity once, with the agreed limited offline history. **Status:** Progress drafts exist; reconciliation and integration acceptance remain open.
+**Depends on:** reviewed 07.3 and backend read contracts from 07.1. Anthony approved bypassing deferred 07.3A on October 7 using existing browser/lower-level checks plus relevant manual native verification. **Outcome:** summary, calendar and day details show local/backend activity once, with the agreed limited offline history. **Status:** implemented and verified locally on `codex/phase-07.4-progress-history`, awaiting Anthony's review. The [07.4 handoff](handoffs/phase-07-4-progress-history.md) records canonical reads, reconciliation, Paper Add/Edit, 21 saved journeys and browser/native simulator evidence. Software-keyboard layout, earlier device/release gates and hosted checks remain open; changes remain local and unpublished.
 
 **Scope:** client task 8. Implement independent query lifecycles, same-ID merging, baseline-plus-additions and generation fencing, current-period cache selectors, rollover, rejected-completion correction and day-entry Add/Edit reflection. Reuse the verified repository, sender and feedback host; do not create another upload queue or persist older downloaded history.
+
+**October 7 design direction:** use the owner's [Paper screens](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0), selected Textbox 02 / SOFT FILL Add/Edit nodes `OYK-0` and `OYQ-0`, for inline day-entry text editing. Preserve the saved feeling and use the existing explicit local-save and dirty-close behavior.
 
 8. **Implement split Progress reads, local reconciliation and calendar editing.** Consume the independent summary/calendar/attempt contracts and API reads verified in 07.1. Replace the mobile combined/day callers; server aggregate snapshots and start-time pagination are owned by 07.1, with obsolete route retirement completed in 07.5. Add Add/Edit reflection to day entries. Implement same-ID row merging, baseline-plus-additions totals, generation-fenced refreshes, streak context and the reviewed summary/current-month/today cache, including rollover and unavailable-read presentation.
    **Verify:** switching months does not query/recalculate the summary; 10 + 1 stays 11 through acknowledgement/refresh/restart; stale responses and older reflection acknowledgements cannot regress display; current-month counts/today pages survive offline; older history obeys the chosen connection rule; midnight/month/time-zone rollover and earlier pending dates are correct; frozen activity dates later than summary.today cannot zero the current streak (truncate only current-streak calculation to today, preserving counts and best streak); available entries have no partial-history notices. A definitively rejected completion corrects reps/day/month/streak contributions once, survives relaunch without regaining credit, retains its writing and does not block independent uploads. Temporary/uncertain failures retain provisional local progress, and reflection-only rejection preserves the accepted rep. Ten memory-only completions appear once each in the applicable day sheet and add ten reps but one active day when all share a date; recovery and later pruning do not duplicate or hide them. Missing context for a corrected streak does not produce an invented or known-inflated figure.
@@ -940,10 +942,10 @@ staging/release gates. Deferral closes none of these.
 
 **Ready to hand off when**
 
-- [ ] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.
-- [ ] Counts, rows and reflection text remain correct through stale reads/acknowledgements, restart, rollover, ten memory-only rounds, partial recovery and pruning. Definitive completion rejection removes only its credit once while preserving writing; reflection-only rejection preserves the accepted rep.
-- [ ] Full completion → reflection → Progress and calendar-edit journeys pass saved browser automation, relevant lower-level checks, side-panel verification and manual native verification under the shared rules, including failure/recovery cases and accurate unavailable streak context.
-- [ ] Save `handoffs/phase-07-4-progress-history.md` with cache/reconciliation rules, measurements, journey evidence and open release checks; update the umbrella handoff/index.
+- [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.
+- [x] Counts, rows and reflection text remain correct through stale reads/acknowledgements, restart, rollover, ten memory-only rounds, partial recovery and pruning. Definitive completion rejection removes only its credit once while preserving writing; reflection-only rejection preserves the accepted rep.
+- [ ] Full completion → reflection → Progress and calendar-edit journeys pass saved browser automation, relevant lower-level checks, side-panel verification and manual native verification under the shared rules, including failure/recovery cases and accurate unavailable streak context. Saved/lower-level and side-panel browser checks pass; native simulator Add/Edit/save/relaunch passed with hardware-keyboard HID input. Software-keyboard layout and earlier device/release acceptance remain open as recorded in the handoff.
+- [x] Save `handoffs/phase-07-4-progress-history.md` with cache/reconciliation rules, measurements, journey evidence and open release checks; update the umbrella handoff/index.
 
 <a id="phase-07-5"></a>
 

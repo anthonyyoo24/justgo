@@ -1,0 +1,174 @@
+# Phase 07.4 — Progress and history integration
+
+**Status:** Local implementation on `codex/phase-07.4-progress-history`, awaiting
+Anthony's review. Started October 7 from clean `main` `09754e9`, whose approved
+code baseline is `6780406`. Changes remain local; no push, PR or merge was
+requested or performed. Publication and merge still require separate permission.
+
+**Dependencies:** Read the [07.1 contracts/API](phase-07-1-api-data.md),
+[07.2 repository/sender](phase-07-2-local-sync.md),
+[07.3 runtime/feedback](phase-07-3-local-flow.md) and
+[07.3A stopped checkpoint](phase-07-3a-testing-checkpoint.md).
+07.3A remains deferred; its experimental code, native harness and CI migration
+were not resumed. Existing browser/lower-level coverage and CI remain intact.
+
+## Implemented behavior and owners
+
+- `data/activity/progress.ts` owns local/backend summary, calendar and day
+  composition. `useProgressReads.ts` owns the three independent canonical reads;
+  `progress-read-cache.ts` preserves confirmed day edits in online query pages.
+- `app-support/providers/ProgressRefresh.tsx` preloads summary/current month/today
+  and refreshes after upload settlement and reconnection. It receives runtime
+  dependencies directly. `activity-hooks.ts` shares context-free subscriptions.
+- `features/progress/ProgressScreen.tsx` owns selected month/day and editing.
+  `DayReflectionEditor.tsx` renders the textbox/actions; `useDayReflection.tsx`
+  uses the existing `ReflectionController`, repository, sender and saving host.
+  No second upload queue or automatic draft submission was added.
+- Add/Edit saves text explicitly, preserves the original feeling, guards dirty
+  closes and newer typing, prevents duplicate submissions, and exposes delayed
+  saving feedback. Empty text-only edits cannot be submitted from either Save
+  surface; text can be cleared when the retained feeling keeps the reflection valid.
+- Independent unavailable states keep usable summary/calendar/day data visible.
+  Available entries have no partial-history notices. An account change disposes
+  the previous editor and fences its reads and callbacks.
+
+## Paper design evidence
+
+Used the actual local Paper MCP endpoint to read its required guide, selected
+nodes, JSX, computed styles and screenshots from the
+[owner's file](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0).
+Selected `OYK-0` / `OYQ-0`: **Textbox 02 / SOFT FILL — Add / Edit**.
+The existing Progress layout is retained with the selected inline design:
+`#F8EEEA` fill, radius 10, padding 14, 76-point minimum textbox,
+Inter 15/21, “What stood out to you?”, Cancel and the 130 × 36 dark Save pill.
+Saved text expands with a separate Edit action. Feelings remain display-only.
+
+Browser proofs at 390 × 844:
+[Add](../checks/phase-07-4/browser/add-reflection.jpg),
+[Edit](../checks/phase-07-4/browser/edit-reflection.jpg),
+[saved text](../checks/phase-07-4/browser/saved-reflection.jpg).
+Paper reads/screenshots remain in ignored `.local/phase-07-4/`; no Paper nodes
+were modified or third-party bitmap screens shipped as UI.
+
+## Cache and reconciliation contract
+
+1. Summary totals add only eligible IDs not covered by the accepted summary.
+   Current-month counts independently add their uncovered IDs. Acknowledgement
+   alone does not remove additions; accepted aggregate snapshots rebase them.
+   Unknown create outcomes block aggregate acceptance, and generation, account,
+   date and time-zone fences reject obsolete responses.
+2. Summary, current-month counts and today's downloaded pages are durable.
+   A nullable `calendarBaseline` keeps compact reconciliation through disposable
+   cache cleanup and defaults safely for older journal envelopes. Rollover clears
+   obsolete month/day caches while retaining submitted pending activity.
+3. Other months and days are online-only, even after being viewed. Their query
+   pages stay in memory. Older-month snapshots from before a new local generation
+   become unavailable until a current snapshot arrives. Frozen activity dates
+   determine attribution, including an earlier month or a date ahead of today.
+4. Day rows merge by attempt ID and preserve higher reflection revisions and
+   later downloaded pages. Pagination tracks the cursor, avoiding a stall when a
+   page overlaps cached rows. An explicit older-day edit temporarily pins its
+   repository row; confirmed edits move to the in-memory day cache before pruning.
+   Backend-wins conflict corrections can replace optimistic cached text.
+5. Definitive ineligible/invalid/missing creates lose only their provisional
+   credit once, keep submitted writing and do not block independent uploads.
+   Temporary/uncertain failures keep provisional progress; reflection-only
+   rejection keeps the accepted rep. Missing corrected streak context displays
+   an unavailable value. Current streak ends today/yesterday; future frozen dates
+   still retain total/month/best-streak credit.
+6. Ten retained memory-only completions remain ten distinct rows/reps, with one
+   active day when their dates match. Recovery, acknowledgement, rebasing and
+   pruning do not double-count them. An active historical editor can keep its own
+   accepted input offline; closing it restores the normal online-only lookup.
+
+## Verification
+
+Final October 7 closeout ran sequentially on the owner's 8 GB Mac. Logs are
+ignored under `.local/phase-07-4/`; no coverage threshold or CI policy changed.
+
+| Command                                | Final result                                                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check`                        | Passed: Doctor 21/21, formatting/lint/types, 175 architecture/tooling + 45 API + 380 mobile + 21 contract cases = 621.                            |
+| `npm run test:db`                      | Passed against dedicated loopback `justgo_test`: 60 database + 1 migration/restoration cases.                                                     |
+| `npm run test:coverage`                | Passed all existing global/critical floors. Mobile branches/lines 89.50% / 94.31%; Progress 90.93% / 93.65%; API 91.19% / 95.71%; contracts 100%. |
+| `npm run export:web -w @justgo/mobile` | Passed cold web bundle/export.                                                                                                                    |
+| `npm run export:ios -w @justgo/mobile` | Passed cold iOS Hermes bundle/export; this is not a new native binary.                                                                            |
+| `npm run test:journey`                 | Passed 21/21 actual app/repository/API/disposable-database cases, including five Progress cases. Hosted CI remains unverified for this branch.    |
+
+The five saved Progress cases cover 10 + 1 through acknowledgement/restart and
+inline Add/Edit; today's 21-row paging/offline cache and older-history restrictions;
+ten memory-only completions/recovery; definitive rejection with retained writing
+through restart; and older-day Add/Edit after accepted-record pruning. Existing
+lost-response/session/account/recovery/cleanup cases remain in the full suite.
+Lower-level tests cover rollover, stale generations/revisions, independent query
+failures, corrected unavailable streaks, backend-wins cache repair and editor races.
+
+The final long-offline fixture measured **314,654 encoded bytes**, **0.274 ms**
+JSON serialization and **53.952 ms** for all local saves: ten 10,000-character
+reflections / 20 queued operations. Existing regression budgets remain under
+400,000 bytes and under 100 ms for serialization. The suite also verifies recovery
+and ten database reps. Measurements are attached to the ignored journey HTML
+report; they describe this fixture, not a general device-performance guarantee.
+Expo's web fixture startup logged the host's missing default `simctl` path;
+the 21 browser cases passed, and native evidence below used command-scoped Xcode.
+
+Interactive browser verification passed Add → dirty Cancel → Keep editing →
+Save → Edit → Save. The refreshed final bundle passed Add/Edit again with no
+browser warnings/errors. The initial live check found an Edit hit-target overlap
+and a provider import cycle; both were repaired. CI-mode Metro held the old bundle
+until a restart with `--clear`; final proof images use the refreshed bundle.
+Two registry-owned disposable browser accounts and their two reps were removed
+transactionally. All 18 pre-existing database accounts were preserved.
+
+Manual native verification used the existing signed JustGO app, iPhone 17 / iOS
+26.5 QA simulator `F0926FE3-5692-4241-B6C8-C5C4F9C6422E`, production native
+adapters and the Codex side-panel mirror. No new build, signing change, simulator
+erase, Keychain reset, outside simulator window or deferred testing pilot was used.
+Existing QA history increased **11 → 12 reps**, **2 → 3 active days/streak days**
+after one synthetic completion. Feeling-only save → inline Add → dirty-close /
+Keep editing → Save → Edit → Save passed; database text/revision **3** and the
+original feeling were confirmed. Reading only this fixture's native AsyncStorage
+journal confirmed its saved text, phone version and summary total 12. Termination /
+relaunch preserved the account, total and edited text; the refreshed final bundle
+also verified saved text, prefilled Edit and clean Cancel.
+
+Native proofs:
+[Add](../checks/phase-07-4/native/add-reflection.jpg),
+[Edit](../checks/phase-07-4/native/edit-reflection.jpg),
+[relaunch](../checks/phase-07-4/native/relaunch-reflection.jpg).
+The retained QA account/container and its one added synthetic rep remain intact.
+Task API/Metro/mirror services and temporary browser tabs were stopped; the
+previously booted simulator was retained. AX snapshotting returned no native
+children, and MCP's host Xcode path was Command Line Tools. Command-scoped full
+Xcode plus the installed debugger's HID helper enabled typing, with all visual
+inspection in the side panel. No global Xcode selection changed.
+
+## Failures caught and repaired
+
+- Saved text intercepted Edit taps: the action now renders above the text; the
+  saved app journey caught the failure and subsequently passed.
+- A test backend treated explicit `null` text as unchanged. It now distinguishes
+  null from an omitted field; feeling-preserving text clearing is covered.
+- An older-day confirmed edit disappeared after pruning and a stale read. A
+  regression failed before the fix and passes with canonical query reconciliation;
+  the saved suite now includes historical Add/Edit and online-only presentation.
+- Repeated fixture runs shared a durable identity rate namespace. A repeat run
+  returned an unexpected bootstrap error without a captured code; the namespace
+  was made unique per run while preserving actual rate limits, and safe HTTP/code
+  diagnostics were added. Subsequent full runs passed. No production rate policy
+  or assertion/coverage threshold was weakened.
+
+## Open review and release checks
+
+- Anthony's code/design review and permission for any commit publication/PR/merge.
+  Hosted CI is unverified for this unpushed branch.
+- Software-keyboard sheet layout, physical-device storage/Keychain/iCloud/backup,
+  actual radio connectivity, VoiceOver/focus, large text/reduced motion and the
+  earlier native transition/safe-area checks remain owned by Anthony / native
+  acceptance before release. This simulator used hardware-keyboard HID input;
+  its absence of an on-screen keyboard does not verify that layout.
+- The pre-existing metric suffix still renders “1 days”; singular copy remains
+  an open Progress polish finding for owner review / 07.5 acceptance.
+- 07.3A native automation/hosted CI remains deferred. 07.5 owns final obsolete
+  schema/routes/fixtures removal, full documentation reconciliation and the
+  integrated CI closeout. Billing remains 07A and staging/release remains 09.

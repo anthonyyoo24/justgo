@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
-import type { LegacyProgressResponse as ProgressResponse } from '@justgo/contracts';
+import type { ProgressDisplay as ProgressResponse } from './types';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { challengeScale } from '../challenges/challenge-design';
 import { colors, fontFamilies, layout, typography } from '../../theme/tokens';
@@ -22,6 +22,9 @@ export type ProgressCalendarProps = {
   loading?: boolean;
   updatingMonth?: boolean;
   error?: boolean;
+  connectionRequired?: boolean;
+  summaryLoading?: boolean;
+  summaryError?: boolean;
   selectedDate: string | null;
   onMonth: (offset: number) => void;
   onOpenDay: (date: string) => void;
@@ -34,6 +37,9 @@ export function ProgressCalendar({
   loading = false,
   updatingMonth = false,
   error = false,
+  connectionRequired = false,
+  summaryLoading = !data && loading && !error,
+  summaryError = false,
   selectedDate,
   onMonth,
   onOpenDay,
@@ -42,10 +48,12 @@ export function ProgressCalendar({
   const { width } = useWindowDimensions();
   const headerScale = challengeScale(width);
   const cells = useMemo(() => calendarCells(month), [month]);
-  const skeletonLoading = !data && loading && !error;
-  const shimmer = useProgressShimmer(skeletonLoading);
+  const calendarAvailable = data?.days !== undefined;
+  const skeletonLoading =
+    !calendarAvailable && loading && !error && !connectionRequired;
+  const shimmer = useProgressShimmer(skeletonLoading || summaryLoading);
   const counts = useMemo(
-    () => new Map(data?.days.map((item) => [item.date, item.reps]) ?? []),
+    () => new Map(data?.days?.map((item) => [item.date, item.reps]) ?? []),
     [data],
   );
 
@@ -63,8 +71,10 @@ export function ProgressCalendar({
         <View
           testID="progress-calendar-card"
           style={styles.card}
-          accessibilityLabel={skeletonLoading ? 'Loading progress' : undefined}
-          accessibilityState={{ busy: skeletonLoading }}
+          accessibilityLabel={
+            skeletonLoading || summaryLoading ? 'Loading progress' : undefined
+          }
+          accessibilityState={{ busy: skeletonLoading || summaryLoading }}
         >
           <View style={styles.stats}>
             <Metric
@@ -72,7 +82,7 @@ export function ProgressCalendar({
               label="Current streak"
               value={data?.currentStreak ?? null}
               suffix="days"
-              loading={skeletonLoading}
+              loading={summaryLoading}
               shimmer={shimmer}
             />
             <Metric
@@ -80,14 +90,14 @@ export function ProgressCalendar({
               label="Best streak"
               value={data?.bestStreak ?? null}
               suffix="days"
-              loading={skeletonLoading}
+              loading={summaryLoading}
               shimmer={shimmer}
             />
             <Metric
               icon="reps"
               label="Total reps"
               value={data?.totalReps ?? null}
-              loading={skeletonLoading}
+              loading={summaryLoading}
               shimmer={shimmer}
             />
           </View>
@@ -121,15 +131,24 @@ export function ProgressCalendar({
               </Pressable>
             </View>
           </View>
-          {!data && !skeletonLoading && (
+          {summaryError && (
+            <Text accessibilityRole="alert" style={styles.warning}>
+              Couldn’t refresh your summary.
+            </Text>
+          )}
+          {!calendarAvailable && !skeletonLoading && (
             <View style={styles.state}>
               <Text accessibilityRole="alert" style={styles.stateText}>
-                We couldn’t load your progress.
+                {connectionRequired
+                  ? 'Connect to view this month.'
+                  : 'We couldn’t load your progress.'}
               </Text>
-              <Retry label="Retry progress" onPress={onRetryMonth} />
+              {!connectionRequired && (
+                <Retry label="Retry progress" onPress={onRetryMonth} />
+              )}
             </View>
           )}
-          {data && error && (
+          {calendarAvailable && error && (
             <Text accessibilityRole="alert" style={styles.warning}>
               Your activity may be out of date.{' '}
               <Retry label="Retry progress" onPress={onRetryMonth} />
@@ -146,7 +165,9 @@ export function ProgressCalendar({
             testID="progress-calendar-grid"
             style={[
               styles.grid,
-              !data && !skeletonLoading && styles.unavailableCalendar,
+              !calendarAvailable &&
+                !skeletonLoading &&
+                styles.unavailableCalendar,
             ]}
           >
             {cells.map((date, index) => {
@@ -167,7 +188,7 @@ export function ProgressCalendar({
                   </View>
                 );
               const count = counts.get(date) ?? 0;
-              const active = !!data && count > 0;
+              const active = calendarAvailable && count > 0;
               const today = date === data?.today;
               const selected = date === selectedDate;
               const future = !data || date > data.today;
@@ -196,7 +217,7 @@ export function ProgressCalendar({
                   <Pressable
                     accessibilityRole={active ? 'button' : undefined}
                     accessibilityLabel={
-                      data
+                      calendarAvailable
                         ? `${dayLabel(date)}${today ? ', today' : ''}, ${count} ${count === 1 ? 'rep' : 'reps'}`
                         : `${dayLabel(date)}, activity unavailable`
                     }
@@ -438,7 +459,7 @@ function Metric({
           />
         </View>
       ) : (
-        <Text style={styles.metricValue}>
+        <Text testID={`progress-value-${icon}`} style={styles.metricValue}>
           {value ?? '—'}
           {value !== null && suffix && (
             <>

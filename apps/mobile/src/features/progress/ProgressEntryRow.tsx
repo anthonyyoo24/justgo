@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Animated,
   Easing,
@@ -9,11 +9,8 @@ import {
   View,
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import {
-  feelingChoices,
-  type FeelingCode,
-  type LegacyProgressEntry as ProgressEntry,
-} from '@justgo/contracts';
+import { feelingChoices, type FeelingCode } from '@justgo/contracts';
+import type { ProgressEntry } from './types';
 import { colors, fontFamilies, typography } from '../../theme/tokens';
 import { FeelingFace } from '../reflections/FeelingFace';
 import { completionTime } from './calendar';
@@ -65,10 +62,12 @@ function SlidingReflection({
   open,
   text,
   reduceMotion,
+  onEdit,
 }: {
   open: boolean;
   text: string;
   reduceMotion: boolean;
+  onEdit?: (() => void) | undefined;
 }) {
   const [contentHeight, setContentHeight] = useState(0);
   const [progress] = useState(() => new Animated.Value(open ? 1 : 0));
@@ -132,11 +131,30 @@ function SlidingReflection({
             );
           }}
         >
-          <View style={styles.reflectionHeading}>
-            <ReflectionPencil />
-            <Text style={styles.reflectionLabel}>Saved reflection</Text>
-          </View>
-          <Text style={styles.reflectionText}>{text}</Text>
+          {!onEdit && (
+            <View style={styles.reflectionHeading}>
+              <ReflectionPencil />
+              <Text style={styles.reflectionLabel}>Saved reflection</Text>
+            </View>
+          )}
+          <Text
+            style={[
+              styles.reflectionText,
+              onEdit && styles.editableReflectionText,
+            ]}
+          >
+            {text}
+          </Text>
+          {onEdit && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Edit reflection"
+              onPress={onEdit}
+              style={styles.editAction}
+            >
+              <Text style={styles.reflectionActionText}>Edit</Text>
+            </Pressable>
+          )}
         </View>
       </Animated.View>
     </Animated.View>
@@ -149,19 +167,28 @@ export function ProgressEntryRow({
   expanded,
   onToggle,
   reduceMotion,
+  onEdit,
+  editor,
 }: {
   entry: ProgressEntry;
   index: number;
   expanded: boolean;
   onToggle: () => void;
   reduceMotion: boolean;
+  onEdit?: (() => void) | undefined;
+  editor?: ReactNode;
 }) {
   const submitted = entry.reflectionStatus === 'submitted';
   const feeling = submitted ? entry.feeling : null;
   const reflection = submitted ? entry.reflectionText?.trim() : null;
-  const opened = !!reflection && expanded;
-  const action = opened ? 'Hide Reflection' : 'View Reflection';
-  const Row = reflection ? Pressable : View;
+  const opened = (!!reflection && expanded) || !!editor;
+  const action = opened
+    ? 'Hide Reflection'
+    : reflection
+      ? 'View Reflection'
+      : 'Add reflection';
+  const actionable = !!reflection || !!onEdit;
+  const Row = actionable ? Pressable : View;
   const activityAt = entry.activityAt ?? entry.completedAt;
   const time = activityAt ? completionTime(activityAt, entry.timeZone) : null;
 
@@ -169,10 +196,10 @@ export function ProgressEntryRow({
     <View style={styles.entry}>
       <Row
         accessible
-        accessibilityRole={reflection ? 'button' : undefined}
-        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}.${time ? ` ${time}.` : ''} Feeling: ${feelingLabel(feeling)}${reflection ? `. ${action}` : ''}`}
-        accessibilityState={reflection ? { expanded: opened } : undefined}
-        onPress={reflection ? onToggle : undefined}
+        accessibilityRole={actionable ? 'button' : undefined}
+        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}.${time ? ` ${time}.` : ''} Feeling: ${feelingLabel(feeling)}${actionable ? `. ${action}` : ''}`}
+        accessibilityState={actionable ? { expanded: opened } : undefined}
+        onPress={reflection || editor ? onToggle : onEdit}
         style={styles.entryRow}
       >
         <Text style={styles.ordinal}>{String(index + 1).padStart(2, '0')}</Text>
@@ -190,21 +217,23 @@ export function ProgressEntryRow({
                 <Text style={styles.entryMetaText}>{time}</Text>
               </View>
             )}
-            {!!reflection && (
+            {actionable && (
               <View testID="reflection-action" style={styles.reflectionAction}>
                 {time && <View style={styles.reflectionDivider} aria-hidden />}
                 <ReflectionPencil />
                 <Text style={styles.reflectionActionText}>{action}</Text>
-                <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>
-                  <Path
-                    d={opened ? 'm1.5 7 4-4 4 4' : 'm1.5 4 4 4 4-4'}
-                    fill="none"
-                    stroke="#647D99"
-                    strokeWidth={1.6}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </Svg>
+                {(reflection || editor) && (
+                  <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>
+                    <Path
+                      d={opened ? 'm1.5 7 4-4 4 4' : 'm1.5 4 4 4 4-4'}
+                      fill="none"
+                      stroke="#647D99"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                )}
               </View>
             )}
           </View>
@@ -235,13 +264,15 @@ export function ProgressEntryRow({
           )}
         </View>
       </Row>
-      {!!reflection && (
-        <SlidingReflection
-          open={opened}
-          text={reflection}
-          reduceMotion={reduceMotion}
-        />
-      )}
+      {editor ??
+        (!!reflection && (
+          <SlidingReflection
+            open={opened}
+            text={reflection}
+            reduceMotion={reduceMotion}
+            onEdit={onEdit}
+          />
+        ))}
     </View>
   );
 }
@@ -337,6 +368,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   reflectionLabel: { ...typography.caption, color: '#6B809B' },
+  editAction: {
+    position: 'absolute',
+    right: 4,
+    top: 0,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editableReflectionText: { paddingRight: 46, marginTop: 0 },
   reflectionText: {
     fontFamily: fontFamilies.display,
     fontStyle: 'italic',

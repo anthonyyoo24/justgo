@@ -61,7 +61,7 @@ it('shows progress activity, read-only saved reflection, and an empty adjacent m
     screen.getByRole('button', { name: 'Friday, September 18, today, 3 reps' }),
   );
   expect(screen.getByText('Friday, September 18')).toBeTruthy();
-  expect(screen.queryByText('3 reps')).toBeNull();
+  expect(screen.getByText('3 reps')).toBeTruthy();
   expect(screen.queryByText(/min.*total/)).toBeNull();
   expect(screen.getAllByText('View Reflection')).toHaveLength(2);
   expect(

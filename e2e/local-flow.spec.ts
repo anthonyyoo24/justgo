@@ -14,7 +14,18 @@ async function openAccount(page: Page, catalogReady = true) {
   await page
     .getByRole('button', { name: 'Create a private account', exact: true })
     .click();
-  const account = sessionResponseSchema.parse(await (await created).json());
+  const response = await created;
+  const body: unknown = await response.json();
+  if (!response.ok()) {
+    const code =
+      body && typeof body === 'object' && 'code' in body
+        ? String(body.code)
+        : 'unknown';
+    throw new Error(
+      `Fixture bootstrap failed: HTTP ${response.status()} ${code}`,
+    );
+  }
+  const account = sessionResponseSchema.parse(body);
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Back to app', exact: true }).click();
   if (catalogReady)
