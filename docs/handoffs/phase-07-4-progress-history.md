@@ -166,7 +166,7 @@ spacing and enough reserved text space to prevent overlap. The whole icon/label
 pair retains the single accessible Edit action and its 44-point minimum height.
 
 Anthony requested separate local commits. The original Phase 7.4 implementation
-is `ed03103`; the pencil correction, regression and proof are kept in this follow-up.
+is `ed03103`; the pencil correction, regression and proof are in `1e65db3`.
 
 A regression failed on the missing image before the fix. The updated Progress
 view/screen checks pass **48/48**; fresh `npm run check` passes **622 cases**,
@@ -182,6 +182,28 @@ QA reflection, and clean Cancel returns without changing it.
 The existing simulator/account is retained, and API/Metro/mirror services are now
 left running for Anthony's testing. The earlier shutdown note describes the
 initial verification session. No publication or deferred 07.3A work occurred.
+
+## October 7 owner review — Add plus
+
+Anthony requested the original plus beside Add reflection. Paper action group
+`OXF-0` contains the 13×13 SVG with path `M8 2v12M2 8h12`, 1.5-point ink stroke
+and rounded caps. The Add action now uses that shape; View/Hide/Edit retain their
+pencils. The decorative icon remains inside the existing single accessible action.
+
+The new regression caught the pencil mismatch before the change. Focused Progress
+view/screen checks pass **49/49**; fresh `npm run check` passes **623 cases**,
+including **382 mobile cases** and Doctor **21/21**. Fresh mobile coverage is
+**89.52% branches / 94.31% lines**. `npm run coverage:check` passes all unchanged
+global/critical floors, using the fresh mobile report and the existing unchanged
+API/contracts reports. Database and saved journey checks were not rerun for this
+icon-only correction; their earlier phase evidence remains the baseline.
+
+Side-panel verification of the running native app confirmed the plus appears
+beside Add reflection, tapping it opens the empty textbox, and clean Cancel
+returns to the row. No reflection was submitted during this check.
+[Native Add action](../checks/phase-07-4/native/add-plus.jpg).
+The existing simulator and API/Metro/mirror remain running for Anthony's testing.
+The software-keyboard/device and other release gates below remain open.
 
 ## Open review and release checks
 

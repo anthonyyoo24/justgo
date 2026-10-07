@@ -221,7 +221,26 @@ export function ProgressEntryRow({
             {actionable && (
               <View testID="reflection-action" style={styles.reflectionAction}>
                 {time && <View style={styles.reflectionDivider} aria-hidden />}
-                <ReflectionPencil />
+                {reflection || editor ? (
+                  <ReflectionPencil />
+                ) : (
+                  <Svg
+                    testID="add-reflection-icon"
+                    width={13}
+                    height={13}
+                    viewBox="0 0 16 16"
+                    style={{ flexShrink: 0 }}
+                    aria-hidden
+                  >
+                    <Path
+                      d="M8 2v12M2 8h12"
+                      fill="none"
+                      stroke={colors.ink}
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                    />
+                  </Svg>
+                )}
                 <Text style={styles.reflectionActionText}>{action}</Text>
                 {(reflection || editor) && (
                   <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>

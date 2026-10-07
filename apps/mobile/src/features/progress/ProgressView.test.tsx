@@ -727,6 +727,49 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
   expect(screen.getAllByText('View Reflection')).toHaveLength(2);
 });
 
+it('uses the Paper plus for Add reflection and keeps the pencil for saved text', () => {
+  const edit = jest.fn();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: 2,
+        entries: [
+          {
+            ...entry('addable', 'submitted'),
+            feeling: 'a_little_better',
+          },
+          {
+            ...entry('saved', 'submitted'),
+            reflectionText: 'A saved reflection.',
+          },
+        ],
+      }}
+      onEditReflection={edit}
+      {...callbacks()}
+    />,
+  );
+  const add = screen.getByRole('button', { name: /Rep 1.*Add reflection/ });
+  const plus = screen.getByTestId('add-reflection-icon', {
+    includeHiddenElements: true,
+  });
+  expect(plus.props.width).toBe(13);
+  expect(plus.props.height).toBe(13);
+  expect(plus.props['aria-hidden']).toBe(true);
+  expect(plus.findByType(Path).props.d).toBe('M8 2v12M2 8h12');
+  expect(add.findAllByType(Image)).toHaveLength(0);
+  expect(
+    screen
+      .getByRole('button', { name: /Rep 2.*View Reflection/ })
+      .findByType(Image).props.source,
+  ).toEqual(require('../../../assets/icons/reflection-pencil.png'));
+  fireEvent.press(add);
+  expect(edit).toHaveBeenCalledWith('addable');
+});
+
 it('shows the pencil inside the Edit action and opens the selected saved reflection', () => {
   const edit = jest.fn();
   const screen = render(
