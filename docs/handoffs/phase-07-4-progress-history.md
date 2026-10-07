@@ -158,6 +158,31 @@ inspection in the side panel. No global Xcode selection changed.
   diagnostics were added. Subsequent full runs passed. No production rate policy
   or assertion/coverage threshold was weakened.
 
+## October 7 owner review — Edit pencil
+
+Anthony found that the saved reflection's Edit action lacked its pencil icon.
+The action now reuses the existing decorative pencil beside Edit, with horizontal
+spacing and enough reserved text space to prevent overlap. The whole icon/label
+pair retains the single accessible Edit action and its 44-point minimum height.
+
+Anthony requested separate local commits. The original Phase 7.4 implementation
+is `ed03103`; the pencil correction, regression and proof are kept in this follow-up.
+
+A regression failed on the missing image before the fix. The updated Progress
+view/screen checks pass **48/48**; fresh `npm run check` passes **622 cases**,
+including **381 mobile cases** and Doctor **21/21**. Fresh mobile coverage and
+`npm run coverage:check` pass unchanged floors, with the same mobile coverage
+measurements as the original closeout above. Database contracts were unchanged;
+the earlier database and 21-journey evidence remains the phase baseline.
+
+The running native app refreshed through Metro. Side-panel verification confirmed
+the pencil appears left of Edit; tapping the pencil opens the existing synthetic
+QA reflection, and clean Cancel returns without changing it.
+[Updated native action](../checks/phase-07-4/native/edit-pencil.jpg).
+The existing simulator/account is retained, and API/Metro/mirror services are now
+left running for Anthony's testing. The earlier shutdown note describes the
+initial verification session. No publication or deferred 07.3A work occurred.
+
 ## Open review and release checks
 
 - Anthony's code/design review and permission for any commit publication/PR/merge.

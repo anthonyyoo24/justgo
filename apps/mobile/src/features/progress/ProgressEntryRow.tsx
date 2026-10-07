@@ -152,6 +152,7 @@ function SlidingReflection({
               onPress={onEdit}
               style={styles.editAction}
             >
+              <ReflectionPencil />
               <Text style={styles.reflectionActionText}>Edit</Text>
             </Pressable>
           )}
@@ -372,12 +373,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 4,
     top: 0,
-    minWidth: 44,
+    minWidth: 54,
     minHeight: 44,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
   },
-  editableReflectionText: { paddingRight: 46, marginTop: 0 },
+  editableReflectionText: { paddingRight: 56, marginTop: 0 },
   reflectionText: {
     fontFamily: fontFamilies.display,
     fontStyle: 'italic',

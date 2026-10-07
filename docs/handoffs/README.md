@@ -9,6 +9,8 @@ journeys, plus side-panel browser and native simulator Add/Edit/save/relaunch.
 Changes remain local and unpublished, awaiting Anthony's review. Software-keyboard
 layout, earlier device/release gates and hosted checks remain open. 07.3A stays
 deferred; 07.5 owns final cutover and integrated acceptance.
+The owner's missing-Edit-pencil finding is fixed and verified in the running
+simulator, with fresh 622-case checks and unchanged mobile coverage gates passing.
 
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`

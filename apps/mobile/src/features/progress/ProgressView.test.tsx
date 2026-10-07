@@ -2,6 +2,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Modal,
   StyleSheet,
   Text,
@@ -724,6 +725,37 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
   expect(screen.queryByText('Saved reflection')).toBeNull();
   expect(screen.queryByText(entries[2]!.reflectionText!)).toBeNull();
   expect(screen.getAllByText('View Reflection')).toHaveLength(2);
+});
+
+it('shows the pencil inside the Edit action and opens the selected saved reflection', () => {
+  const edit = jest.fn();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: 1,
+        entries: [
+          {
+            ...entry('editable', 'submitted'),
+            reflectionText: 'A saved reflection.',
+          },
+        ],
+      }}
+      onEditReflection={edit}
+      {...callbacks()}
+    />,
+  );
+  fireEvent.press(screen.getByRole('button', { name: /View Reflection/ }));
+  const action = screen.getByRole('button', { name: 'Edit reflection' });
+  expect(action.findByType(Image).props.source).toEqual(
+    require('../../../assets/icons/reflection-pencil.png'),
+  );
+  expect(action.findByType(Image).props['aria-hidden']).toBe(true);
+  fireEvent.press(action);
+  expect(edit).toHaveBeenCalledWith('editable');
 });
 
 it('animates the saved reflection both into and out of the row', () => {
