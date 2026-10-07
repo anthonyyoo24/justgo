@@ -5,8 +5,8 @@ import {
   sessionResponseSchema,
   patchAttemptResponseSchema,
 } from '@justgo/contracts';
-import { test, expect } from './fixtures';
-import { journeyApiUrl } from './environment';
+import { test, expect } from './support/fixtures';
+import { journeyApiUrl } from './support/environment';
 import type { JournalClock } from '../apps/mobile/src/data/activity/model';
 
 // Node repository tests use the same loopback-only development transport guard.
@@ -23,7 +23,7 @@ const {
   MemoryStorage,
 } = (await import(
   new URL('../.local/journey-repository.mjs', import.meta.url).href
-)) as typeof import('./activity-entry');
+)) as typeof import('./support/activity-entry');
 type MemoryStorage = InstanceType<typeof MemoryStorage>;
 
 // Failure controls stay in the runner, never in the deployable app/API. The

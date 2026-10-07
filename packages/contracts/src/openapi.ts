@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import * as challenges from './challenges.ts';
+import * as challenges from './activity/challenges.ts';
 import * as identity from './identity.ts';
-import * as attempts from './attempts.ts';
-import * as legacyChallenges from './legacy-challenges.ts';
-import * as legacyReflections from './legacy-reflections.ts';
-import * as legacyProgress from './legacy-progress.ts';
-import * as progress from './progress.ts';
+import * as attempts from './activity/attempts.ts';
+import * as legacyChallenges from './legacy/legacy-challenges.ts';
+import * as legacyReflections from './legacy/legacy-reflections.ts';
+import * as legacyProgress from './legacy/legacy-progress.ts';
+import * as progress from './activity/progress.ts';
 import { accessResponseSchema } from './access.ts';
 
 const json = (schema: z.ZodType) => ({

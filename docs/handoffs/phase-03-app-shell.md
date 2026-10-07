@@ -6,7 +6,7 @@
 - **Updated / author:** September 18, 2026 / Codex.
 - **Branch:** `phase-03-app-shell`, based on merged main `96bfe2c`.
 - **Scope decision:** Anthony explicitly deferred welcome screens and questionnaire onboarding. Build the approved core screens first. This removes onboarding as a phase 03 prerequisite; it does not approve questions, permanently delete onboarding from the product, or move billing out of phase 07.
-- **Dependencies:** [Phase 02 handoff](phase-02-identity.md), [plan](../IMPLEMENTATION_PLAN.md), [app-shell implementation guide](../APP_SHELL.md).
+- **Dependencies:** [Phase 02 handoff](phase-02-identity.md), [plan](../IMPLEMENTATION_PLAN.md), [app-shell implementation guide](../architecture/APP_SHELL.md).
 
 ## What changed
 

@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated September 30, 2026. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](PRD.md#13-remaining-decisions-and-design-gaps).
+Updated September 30, 2026. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -30,7 +30,7 @@ Never treat Paper's sample counts, preselected feelings, dates or content as app
 
 Anthony approved deferring Apple enrollment/signing and real-iPhone acceptance while identity implementation and later phases proceed. Phase 02 stays open until device gates pass. No release or unconditional iCloud-recovery claim follows from that deferral.
 
-The implementation owner selected 7-day independent sessions, renewal within 24 hours of expiry, 10-minute approved transfers, 256-bit bearer credentials, persisted idempotent proposals and PostgreSQL-backed rate limits. These are documented in [IDENTITY.md](IDENTITY.md), with configurable bounds and dedicated tests. The existing Expo project and default per-app Keychain access group are retained; permanent signing/access-group continuity still requires device validation.
+The implementation owner selected 7-day independent sessions, renewal within 24 hours of expiry, 10-minute approved transfers, 256-bit bearer credentials, persisted idempotent proposals and PostgreSQL-backed rate limits. These are documented in [IDENTITY.md](architecture/IDENTITY.md), with configurable bounds and dedicated tests. The existing Expo project and default per-app Keychain access group are retained; permanent signing/access-group continuity still requires device validation.
 
 ## September 17 phase 03 scope decision
 
@@ -38,7 +38,7 @@ Anthony authorized phase 02 staging follow-up and phase 03 on a feature branch. 
 
 ## September 21 phase 04 scope decisions
 
-Anthony approved venue filtering in phase 04 using Street & Park, Gym, Café & Bookshop, Bar & Party, and Errands & Transit from the reference in the “Clarify venue exclusions” task. The counter is future level progress and is omitted at launch. Per-challenge illustration, separate hint and safety-guideline fields are not required. Confirmed expired paid access locks paid functionality without a finish/reflection exception; billing remains phase 07. See [PHASE_04_SCOPE.md](PHASE_04_SCOPE.md) for approved scope, proposals and remaining details.
+Anthony approved venue filtering in phase 04 using Street & Park, Gym, Café & Bookshop, Bar & Party, and Errands & Transit from the reference in the “Clarify venue exclusions” task. The counter is future level progress and is omitted at launch. Per-challenge illustration, separate hint and safety-guideline fields are not required. Confirmed expired paid access locks paid functionality without a finish/reflection exception; billing remains phase 07. See [PHASE_04_SCOPE.md](product/PHASE_04_SCOPE.md) for approved scope, proposals and remaining details.
 
 Apple Developer enrollment is complete according to Anthony; account/team access, permanent identifier, signing and physical-device evidence have not been verified. The existing device-gate deferral remains in effect. Small device checks during development are recommended, with the full acceptance pass before release.
 

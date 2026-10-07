@@ -3,7 +3,7 @@ import {
   journeyApiUrl,
   journeyAppUrl,
   journeyEnvironment,
-} from './environment';
+} from './support/environment';
 
 journeyEnvironment(process.env);
 

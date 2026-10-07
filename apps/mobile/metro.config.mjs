@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { journeyEnvironment } from '../../e2e/environment.ts';
+import { journeyEnvironment } from '../../e2e/support/environment.ts';
 import metroConfig from 'expo/metro-config.js';
 const { getDefaultConfig } = metroConfig;
 const configRoot = import.meta.dirname;

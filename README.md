@@ -1,6 +1,8 @@
 # JustGO
 
-An iOS-first social-confidence app. Phase 01 provides the Expo development app, Fastify API, shared contracts, database foundation and test infrastructure. Phase 02 adds real account bootstrap, independent sessions, recovery keys, approved device transfers and a Swift Keychain module. [Identity setup](docs/IDENTITY.md) and the [phase 02 handoff](docs/handoffs/phase-02-identity.md) record implementation, verification and deferred physical-device acceptance. Phase 03 adds the [app shell and shared API](docs/APP_SHELL.md), account-scoped queries, protected navigation and a development-only screen preview. Phase 04 adds [venue decks and reliable attempts](docs/handoffs/phase-04-challenge-loop.md), a server-deadline timer and confirmed Success. Welcome/questionnaire onboarding is deferred; live billing remains phase 07A. `npm ci` builds the shared contracts for Node; re-run `npm run build:contracts` after editing contracts during API development.
+An iOS-first social-confidence app. Phase 01 provides the Expo development app, Fastify API, shared contracts, database foundation and test infrastructure. Phase 02 adds real account bootstrap, independent sessions, recovery keys, approved device transfers and a Swift Keychain module. [Identity setup](docs/architecture/IDENTITY.md) and the [phase 02 handoff](docs/handoffs/phase-02-identity.md) record implementation, verification and deferred physical-device acceptance. Phase 03 adds the [app shell and shared API](docs/architecture/APP_SHELL.md), account-scoped queries, protected navigation and a development-only screen preview. Phase 04 adds [venue decks and reliable attempts](docs/handoffs/phase-04-challenge-loop.md), a server-deadline timer and confirmed Success. Welcome/questionnaire onboarding is deferred; live billing remains phase 07A. `npm ci` builds the shared contracts for Node; re-run `npm run build:contracts` after editing contracts during API development.
+
+See the [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) for the current directory groupings and responsibilities.
 
 Read [repository coding and verification instructions](AGENTS.md) before changing code, plus directory-specific `AGENTS.md` files. Phase scope and handoffs live in the [implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
@@ -37,10 +39,10 @@ npm run export:ios -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
-CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. Phase 07.1B adds the saved Playwright account/catalog journey and its browser CI steps in a separate review against `main` after 07.1A merged. See [testing guidance](docs/TESTING.md) for local prerequisites and artifact handling.
+CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. Phase 07.1B adds the saved Playwright account/catalog journey and its browser CI steps in a separate review against `main` after 07.1A merged. See [testing guidance](docs/operations/TESTING.md) for local prerequisites and artifact handling.
 
 Coverage scope, thresholds, focused commands and async/UI test conventions are in
-[testing guidance](docs/TESTING.md).
+[testing guidance](docs/operations/TESTING.md).
 
 ## iOS development
 
@@ -76,4 +78,4 @@ device checks remain required.
 - `packages/contracts`: public Zod response schemas shared by mobile and API.
 - `docs`: product scope, implementation plan, extracted design references and durable phase handoffs.
 
-Read [foundation setup and versions](docs/FOUNDATION.md), [design guide](docs/DESIGN.md), [decision register](docs/DECISIONS.md), [Apple/RevenueCat checklist](docs/APPLE_SETUP.md), and the [phase 01 handoff](docs/handoffs/phase-01-foundation.md). The [PRD](docs/PRD.md) owns product behavior and the [implementation plan](docs/IMPLEMENTATION_PLAN.md) owns release gates.
+Read [foundation setup and versions](docs/operations/FOUNDATION.md), [design guide](docs/design/DESIGN.md), [decision register](docs/DECISIONS.md), [Apple/RevenueCat checklist](docs/operations/APPLE_SETUP.md), and the [phase 01 handoff](docs/handoffs/phase-01-foundation.md). The [PRD](docs/product/PRD.md) owns product behavior and the [implementation plan](docs/IMPLEMENTATION_PLAN.md) owns release gates.
