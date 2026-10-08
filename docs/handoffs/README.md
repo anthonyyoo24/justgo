@@ -3,7 +3,8 @@
 **October 8 published 07.4 implementation:** `codex/phase-07.4-progress-history`
 implements canonical Progress reads, limited offline history, local/backend
 reconciliation and the owner's Paper inline Add/Edit reflection design. The
-[07.4 handoff](phase-07-4-progress-history.md) records 621 workspace cases,
+[07.4 handoff](phase-07-4-progress-history.md) records 656 workspace cases after
+the review follow-up,
 61 database/migration cases, unchanged coverage gates, both exports and 21 saved
 journeys, plus side-panel browser and native simulator Add/Edit/save/relaunch.
 Anthony authorized publication in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20)

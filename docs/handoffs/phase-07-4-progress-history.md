@@ -819,8 +819,24 @@ progress” restored the populated calendar and removed the message. This is a
 presentation walkthrough; retry/acknowledgement behavior is automated coverage,
 and no new native/device acceptance is claimed. No screenshots are committed.
 
-Fresh clean-install/workspace/coverage/publication evidence is recorded below
-after the required checks finish.
+Fresh verification of implementation commit `f4c5672` in an isolated clean
+managed checkout passed sequentially:
+
+- `npm ci`, then `npm run check`: online Expo Doctor **21/21**, types, lint,
+  formatting and **656 cases** (175 architecture/tooling, 45 API, 415 mobile,
+  21 contracts).
+- `npm run test:db`: **60 database + 1 migration/restoration cases**. The existing
+  dedicated loopback `justgo_test` mapping was passed explicitly after validating
+  both database URLs; no ignored `.env` files were copied into the checkout.
+- `npm run test:coverage`: every unchanged all-source/critical behavior floor
+  passed, including Progress. Fresh count-based summaries and logs are retained
+  in ignored `.local/phase-07-4/review-follow-up/` before archiving the validation
+  checkout. No dependencies or lockfile changed.
+
+The final handoff-only evidence commit follows the verified implementation.
+Standalone online Doctor and formatting are checked immediately before the
+authorized push. Fresh hosted results for that pushed revision remain separate
+from the original `6782894` passes. Earlier native/device gates stay open.
 
 ## Open review and release checks
 

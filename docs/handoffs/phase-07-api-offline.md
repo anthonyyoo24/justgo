@@ -5,7 +5,8 @@
 07.4 from the approved baseline. `codex/phase-07.4-progress-history` now
 implements independent canonical Progress reads, local/backend reconciliation,
 current-month/today durability, online-only older history and Paper inline Add/Edit.
-The [07.4 handoff](phase-07-4-progress-history.md) records the publication checks (651 workspace cases),
+The [07.4 handoff](phase-07-4-progress-history.md) records 651 publication cases
+and 656 workspace cases after the review follow-up,
 61 database/migration cases, unchanged coverage gates, both exports and 21 saved
 journeys, with browser and native simulator evidence distinguished. Anthony
 authorized publication in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20).
