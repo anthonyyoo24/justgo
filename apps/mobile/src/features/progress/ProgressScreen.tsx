@@ -126,6 +126,7 @@ function AccountProgress({ repository }: { repository: AccountRepository }) {
       paginationKey={pages?.at(-1)?.nextCursor}
       editingId={reflection.editingId}
       editor={reflection.editor}
+      onEditorOpened={reflection.onEditorOpened}
       beforeClose={reflection.beforeClose}
       onEditReflection={(id) => {
         const attempt = shownDay?.entries.find((entry) => entry.id === id);

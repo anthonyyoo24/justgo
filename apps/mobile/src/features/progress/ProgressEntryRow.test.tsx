@@ -2,6 +2,12 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { Animated, TextInput } from 'react-native';
 import { legacyProgressEntrySchema } from '@justgo/contracts';
 import { ProgressEntryRow } from './ProgressEntryRow';
+import { SlidingEntryDetails } from './SlidingEntryDetails';
+
+// Exercise measurement/orchestration with the browser driver; the paired native
+// adapter has its own tests and recorded simulator frame verification.
+jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
+jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
 
 const legacyEntry = {
   attemptId: '00000000-0000-4000-8000-000000000001',
@@ -109,6 +115,56 @@ it('slides the editor from zero height using the saved-reflection motion and col
   }
 });
 
+it('premeasures a closed Add row without mounting an input, then starts its reveal immediately', () => {
+  const parallel = jest.spyOn(Animated, 'parallel').mockReturnValue({
+    start: jest.fn(),
+    stop: jest.fn(),
+  } as unknown as ReturnType<typeof Animated.parallel>);
+  try {
+    const props = {
+      entry: legacyProgressEntrySchema.parse(legacyEntry),
+      index: 0,
+      expanded: false,
+      onToggle: jest.fn(),
+      onEdit: jest.fn(),
+      reduceMotion: false,
+    };
+    const screen = render(<ProgressEntryRow {...props} />);
+    expect(screen.queryByLabelText('Your day reflection')).toBeNull();
+    expect(screen.queryByTestId('reflection-editor-measurement')).toBeNull();
+    expect(
+      screen.getByTestId('reflection-editor-measurement', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+    fireEvent(
+      screen.getByTestId('entry-details-content', {
+        includeHiddenElements: true,
+      }),
+      'layout',
+      { nativeEvent: { layout: { height: 144 } } },
+    );
+    parallel.mockClear();
+    screen.rerender(
+      <ProgressEntryRow
+        {...props}
+        editing
+        editor={<TextInput accessibilityLabel="Your day reflection" />}
+      />,
+    );
+    expect(parallel).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Hide Reflection')).toBeTruthy();
+    // The input's first identical native measurement must not restart the slide.
+    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+      nativeEvent: { layout: { height: 144 } },
+    });
+    expect(parallel).toHaveBeenCalledTimes(1);
+    screen.unmount();
+  } finally {
+    parallel.mockRestore();
+  }
+});
+
 it('shows and closes the editor immediately with reduced motion', () => {
   const timing = jest.spyOn(Animated, 'timing');
   try {
@@ -198,6 +254,113 @@ it('slides Edit in while resizing from the visible saved reflection height', () 
     );
   } finally {
     timing.mockRestore();
+  }
+});
+
+it('keeps Hide and its row action stable if editor content is temporarily unavailable during a refresh', () => {
+  const onToggle = jest.fn();
+  const props = {
+    entry: legacyProgressEntrySchema.parse(legacyEntry),
+    index: 0,
+    expanded: false,
+    onToggle,
+    onEdit: jest.fn(),
+    reduceMotion: true,
+    editing: true,
+  };
+  const screen = render(<ProgressEntryRow {...props} editor={<TextInput />} />);
+  for (const editor of [undefined, <TextInput key="restored" />]) {
+    screen.rerender(<ProgressEntryRow {...props} editor={editor} />);
+    expect(screen.getByText('Hide Reflection')).toBeTruthy();
+    expect(screen.queryByText('Add reflection')).toBeNull();
+    expect(screen.queryByTestId('add-reflection-icon')).toBeNull();
+    fireEvent.press(screen.getByRole('button'));
+  }
+  expect(onToggle).toHaveBeenCalledTimes(2);
+  expect(props.onEdit).not.toHaveBeenCalled();
+  screen.rerender(<ProgressEntryRow {...props} editing={false} />);
+  expect(screen.getByText('Add reflection')).toBeTruthy();
+});
+
+it('notifies focus only after a completed reveal and fences cancelled or unmounted completions', () => {
+  const completions: Array<(result: { finished: boolean }) => void> = [];
+  const stop = jest.fn();
+  const parallel = jest.spyOn(Animated, 'parallel').mockReturnValue({
+    start: (callback: (result: { finished: boolean }) => void) =>
+      completions.push(callback),
+    stop,
+  } as unknown as ReturnType<typeof Animated.parallel>);
+  const onOpened = jest.fn();
+  const props = {
+    open: true,
+    contentKey: 'editor' as const,
+    reduceMotion: false,
+    onOpened,
+  };
+  try {
+    const screen = render(
+      <SlidingEntryDetails {...props}>
+        <TextInput />
+      </SlidingEntryDetails>,
+    );
+    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+      nativeEvent: { layout: { height: 144 } },
+    });
+    expect(onOpened).not.toHaveBeenCalled();
+    act(() => completions[0]!({ finished: false }));
+    expect(onOpened).not.toHaveBeenCalled();
+    screen.rerender(
+      <SlidingEntryDetails {...props} open={false}>
+        <TextInput />
+      </SlidingEntryDetails>,
+    );
+    act(() => completions[0]!({ finished: true }));
+    expect(onOpened).not.toHaveBeenCalled();
+    expect(stop).toHaveBeenCalled();
+    screen.rerender(
+      <SlidingEntryDetails {...props}>
+        <TextInput />
+      </SlidingEntryDetails>,
+    );
+    act(() => completions.at(-1)!({ finished: true }));
+    expect(onOpened).toHaveBeenCalledTimes(1);
+    const late = completions.at(-1)!;
+    screen.unmount();
+    act(() => late({ finished: true }));
+    expect(onOpened).toHaveBeenCalledTimes(1);
+  } finally {
+    parallel.mockRestore();
+  }
+});
+
+it('waits for a fresh editor measurement even when it matches the saved text height', () => {
+  const parallel = jest.spyOn(Animated, 'parallel').mockReturnValue({
+    start: jest.fn(),
+    stop: jest.fn(),
+  } as unknown as ReturnType<typeof Animated.parallel>);
+  try {
+    const screen = render(
+      <SlidingEntryDetails open contentKey="saved" reduceMotion={false}>
+        <TextInput />
+      </SlidingEntryDetails>,
+    );
+    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+      nativeEvent: { layout: { height: 144 } },
+    });
+    parallel.mockClear();
+    screen.rerender(
+      <SlidingEntryDetails open contentKey="editor" reduceMotion={false}>
+        <TextInput />
+      </SlidingEntryDetails>,
+    );
+    expect(parallel).not.toHaveBeenCalled();
+    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+      nativeEvent: { layout: { height: 144 } },
+    });
+    expect(parallel).toHaveBeenCalledTimes(1);
+    screen.unmount();
+  } finally {
+    parallel.mockRestore();
   }
 });
 

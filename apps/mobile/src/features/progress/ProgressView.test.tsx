@@ -17,6 +17,7 @@ import { ProgressView } from './ProgressView';
 
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
+jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
 
 const month: ProgressResponse = {
   month: '2026-09',

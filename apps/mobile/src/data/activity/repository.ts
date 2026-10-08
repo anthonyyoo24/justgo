@@ -194,10 +194,27 @@ export class AccountRepository {
     await this.hydrate();
     await this.sender.flush();
   }
+  hasCurrentAttempt(attempt: Attempt): boolean {
+    const state = this.store.getState();
+    if (!state.ready || !state.active) return false;
+    const parsed = attemptSchema.parse(attempt);
+    const existing = state.journal.records[parsed.id];
+    return !!(
+      existing?.created &&
+      !existing.rejected &&
+      existing.phoneVersion === existing.version &&
+      existing.serverVersion === existing.version &&
+      JSON.stringify(existing.attempt) === JSON.stringify(parsed)
+    );
+  }
   async adoptAttempt(attempt: Attempt): Promise<void> {
-    await this.hydrate();
+    if (!this.store.getState().ready) await this.hydrate();
     this.checkActiveAccount();
     const parsed = attemptSchema.parse(attempt);
+    // Opening a current, durable row is a read. Avoid cloning/notifying/writing
+    // the entire journal before mounting its editor. Newer or unsaved content
+    // still goes through the adoption/persistence rules below.
+    if (this.hasCurrentAttempt(parsed)) return;
     this.update((journal) => {
       const old = journal.records[parsed.id];
       if (

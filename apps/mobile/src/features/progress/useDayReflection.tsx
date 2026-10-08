@@ -12,10 +12,17 @@ import { ReflectionController } from '../reflections/controller';
 import { DayReflectionEditor } from './DayReflectionEditor';
 
 export function useDayReflection(repository: AccountRepository) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [controller, setController] = useState<ReflectionController | null>(
-    null,
-  );
+  const [session, setSession] = useState<{
+    attemptId: string;
+    controller: ReflectionController;
+  } | null>(null);
+  const controller = session?.controller ?? null;
+  const editingId = session?.attemptId ?? null;
+  const focusedController = useRef<ReflectionController | null>(null);
+  const [revealedController, setRevealedController] =
+    useState<ReflectionController | null>(null);
+  const activeController = useRef<ReflectionController | null>(null);
+  const preparationGeneration = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const afterClose = useRef<(() => void) | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -28,8 +35,9 @@ export function useDayReflection(repository: AccountRepository) {
     };
   }, []);
   const finish = useCallback(() => {
-    setEditingId(null);
-    setController(null);
+    preparationGeneration.current += 1;
+    setSession(null);
+    setRevealedController(null);
     // Pinning protects older rows during aggregate pruning; release owns errors.
     void repository.setFlowAttempt(null).catch(() => {
       if (alive.current) setError('Couldn’t close this reflection.');
@@ -39,8 +47,10 @@ export function useDayReflection(repository: AccountRepository) {
     work?.();
   }, [repository]);
   useEffect(() => {
+    activeController.current = controller;
     controller?.connect();
     return () => {
+      activeController.current = null;
       controller?.dispose();
       if (editingId && repository.store.getState().flowAttemptId === editingId)
         void repository.setFlowAttempt(null).catch(() => {});
@@ -62,21 +72,45 @@ export function useDayReflection(repository: AccountRepository) {
   };
   const edit = (attempt: Attempt) =>
     beforeClose(() => {
+      const generation = ++preparationGeneration.current;
       opening.current = true;
       setError(null);
+      const activate = () => {
+        if (!alive.current || !repository.store.getState().active) return false;
+        setSession({
+          attemptId: attempt.id,
+          controller: new ReflectionController(repository, attempt.id, finish, {
+            isCurrent: () => repository.store.getState().active,
+          }),
+        });
+        return true;
+      };
+      if (repository.hasCurrentAttempt(attempt)) {
+        // Pinning is synchronous; pruning unrelated old rows can finish in the
+        // background. Batch editor activation with the tap, without an await
+        // that first renders the entire Progress screen in its closed state.
+        const pinned = repository.setFlowAttempt(attempt.id);
+        if (!activate()) void repository.setFlowAttempt(null).catch(() => {});
+        opening.current = false;
+        void pinned.catch(() => {
+          if (
+            alive.current &&
+            preparationGeneration.current === generation &&
+            repository.store.getState().flowAttemptId === attempt.id
+          )
+            setError('Couldn’t prepare this reflection. Please try again.');
+        });
+        return;
+      }
       // Adopt fetched older history only for an explicit edit. Ordinary reads do
       // not persist older details. Account disposal fences the asynchronous work.
       void (async () => {
         await repository.setFlowAttempt(attempt.id);
         await repository.adoptAttempt(attempt);
-        if (alive.current && repository.store.getState().active) {
-          setController(
-            new ReflectionController(repository, attempt.id, finish, {
-              isCurrent: () => repository.store.getState().active,
-            }),
-          );
-          setEditingId(attempt.id);
-        } else if (repository.store.getState().flowAttemptId === attempt.id) {
+        if (
+          !activate() &&
+          repository.store.getState().flowAttemptId === attempt.id
+        ) {
           await repository.setFlowAttempt(null);
         }
       })()
@@ -90,17 +124,46 @@ export function useDayReflection(repository: AccountRepository) {
           opening.current = false;
         });
     });
+  const onEditorOpened = useCallback(() => {
+    if (
+      !alive.current ||
+      !repository.store.getState().active ||
+      !controller ||
+      activeController.current !== controller ||
+      focusedController.current === controller
+    )
+      return;
+    setRevealedController(controller);
+  }, [controller, repository]);
+  useEffect(() => {
+    // Mounting the native input itself can stall the UI thread on first use.
+    // Reveal its lightweight layout first, then focus after the input commits.
+    if (
+      revealedController !== controller ||
+      !controller ||
+      !alive.current ||
+      !repository.store.getState().active ||
+      activeController.current !== controller ||
+      focusedController.current === controller ||
+      !inputRef.current
+    )
+      return;
+    focusedController.current = controller;
+    inputRef.current.focus();
+  }, [controller, repository, revealedController]);
   return {
     editingId,
     error,
     edit,
     beforeClose,
+    onEditorOpened,
     editor:
       controller && state ? (
         <DayReflectionEditor
           controller={controller}
           state={state}
           inputRef={inputRef}
+          inputReady={revealedController === controller}
           onKeepEditing={() => {
             afterClose.current = null;
             controller.keepEditing();

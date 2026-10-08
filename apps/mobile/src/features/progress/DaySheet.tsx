@@ -133,6 +133,7 @@ export function DaySheet({
   connectionRequired = false,
   editingId,
   editor,
+  onEditorOpened,
   onEditReflection,
   beforeClose,
   paginationKey,
@@ -152,6 +153,7 @@ export function DaySheet({
   connectionRequired?: boolean;
   editingId?: string | null | undefined;
   editor?: ReactNode;
+  onEditorOpened?: (() => void) | undefined;
   onEditReflection?: ((id: string) => void) | undefined;
   beforeClose?: ((work: () => void) => void) | undefined;
   paginationKey?: string | null | undefined;
@@ -346,6 +348,8 @@ export function DaySheet({
                       editor={
                         editingId === entry.attemptId ? editor : undefined
                       }
+                      editing={editingId === entry.attemptId}
+                      onEditorOpened={onEditorOpened}
                       onToggle={() =>
                         beforeClose
                           ? beforeClose(() =>

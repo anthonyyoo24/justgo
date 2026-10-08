@@ -940,6 +940,19 @@ staging/release gates. Deferral closes none of these.
 
 **Journey-harness extension:** extend the existing saved browser completion/reflection journeys and lower-level regressions through Progress and calendar editing; add relevant manual native verification, using real API/disposable-database assertions. Verify “10 + 1 = 11” through acknowledgement/refresh/restart, saved reflection visibility, today's cached paging, other-day/month offline restrictions, rollover, rejection corrections and retained memory-only entries. Keep lost-response/account recovery cases running against the integrated path.
 
+**October 7 motion diagnosis:** paired native recordings reproduced the owner's
+editor delay/jump. Saved text starts its animation effect after 182–228 ms; Add
+after 452–538 ms, with awaited pin/adoption work and late autofocus. The shared
+JavaScript-driven reveal has intermediate saved-text frames but jumps to the
+final Add height; disabling autofocus temporarily restores some frames. The
+handoff records evidence and limitations. The subsequent owner-review fix makes
+the editor session/action atomic, skips redundant adoption of durable current
+rows, premeasures the empty layout and runs native reveals on the UI thread.
+The lightweight form reveals before mounting/focusing its native input. Final
+cold/repeated native recordings show successive expansion heights and a stable
+Hide action; software-keyboard/device acceptance remains open. See the handoff
+for final checks, recorded frames and the before/after comparison.
+
 **Ready to hand off when**
 
 - [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.

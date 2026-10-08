@@ -2,12 +2,14 @@ import type { RefObject } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import type {
   ReflectionController,
   ReflectionSnapshot,
@@ -15,27 +17,57 @@ import type {
 import { useDelayedBusy } from '../../lib/useDelayedBusy';
 import { colors, fontFamilies } from '../../theme/tokens';
 
+// Closed Add rows measure this lightweight layout instead of mounting native
+// inputs/controllers. It shares the real empty form's typography and geometry.
+export function DayReflectionPlaceholder({ text = '' }: { text?: string }) {
+  return (
+    <View testID="reflection-editor-measurement">
+      <View style={styles.input}>
+        <Text style={[styles.placeholderText, !!text && { color: colors.ink }]}>
+          {text || 'What stood out to you?'}
+        </Text>
+      </View>
+      <View style={styles.actions}>
+        <View style={styles.cancel}>
+          <Text style={styles.cancelText}>Cancel</Text>
+        </View>
+        <View style={[styles.save, styles.disabled]}>
+          <Text style={[styles.saveText, styles.disabledText]}>
+            Save reflection
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function DayReflectionEditor({
   controller,
   state,
   inputRef,
+  inputReady = true,
   onKeepEditing,
 }: {
   controller: ReflectionController;
   state: ReflectionSnapshot;
   inputRef?: RefObject<TextInput | null>;
+  inputReady?: boolean;
   onKeepEditing: () => void;
 }) {
   const savingVisible = useDelayedBusy(state.submitting);
+  const reduceMotion = useReducedMotion();
+  const showInput = inputReady || reduceMotion || Platform.OS === 'web';
   const disabled =
     state.submitting ||
     !controller.hasChanges() ||
     (!state.text.trim() && !state.feeling);
+  // Keep the reveal lightweight, including its actions and hidden dialogs.
+  // The native editor mounts only after that reveal has finished.
+  if (!showInput) return <DayReflectionPlaceholder text={state.text} />;
   return (
     <View>
       <TextInput
         ref={inputRef}
-        autoFocus
         accessibilityLabel="Your day reflection"
         testID="day-reflection-input"
         multiline
@@ -156,6 +188,12 @@ export function DayReflectionEditor({
   );
 }
 const styles = StyleSheet.create({
+  placeholderText: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 15,
+    lineHeight: 21,
+    color: '#6B809B',
+  },
   input: {
     minHeight: 76,
     width: '100%',

@@ -3,6 +3,7 @@ import { Animated, Modal, StyleSheet } from 'react-native';
 import { DaySheet } from './DaySheet';
 
 jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => true }));
+jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
 
 it('opens and closes immediately with reduced motion, including repeated show/layout events', () => {
   const timing = jest.spyOn(Animated, 'timing');

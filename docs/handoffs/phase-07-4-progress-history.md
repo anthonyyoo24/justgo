@@ -247,10 +247,152 @@ These screenshots verify the native endpoints; automated assertions verify the
 animation settings. They do not establish frame-rate or software-keyboard/device
 acceptance. Existing API/Metro/mirror services remain running for Anthony.
 
+## October 7 owner review — Editor delay diagnosis
+
+Anthony requested a native comparison after noticing that opening the textbox
+lags and jumps while saved reflection text expands smoothly. Two paired trials
+used the same installed iPhone 17 / iOS 26.5 development app through the existing
+1052×1036 side-panel mirror. Only the known synthetic QA reflection and an empty
+Add input were opened; no writing was submitted or changed.
+
+Temporary metadata-only probes measured the native row's press callback through
+the animation effect, rather than browser click delivery or production latency:
+
+| Path / stage                         |  Trial 1 |  Trial 2 |
+| ------------------------------------ | -------: | -------: |
+| Saved text: press → animation effect |   182 ms |   228 ms |
+| Add input: press → animation effect  |   452 ms |   538 ms |
+| Add preparation: awaited pin         |   143 ms |   204 ms |
+| Add preparation: awaited adoption    |   162 ms |   213 ms |
+| Add input: press → focus event       | 1,055 ms | 1,078 ms |
+
+Saved text is already mounted and measured. `useDayReflection` instead awaits
+`setFlowAttempt` and `adoptAttempt` before constructing the editor. Adoption
+clones/notifies/persists the journal even for an unchanged already-loaded row;
+these steps add work and render passes before the input can be measured.
+Both reveals use the same 240 ms curve, but height/opacity/translation all run
+through React Native Animated's JavaScript driver. Native `simctl` recordings
+showed intermediate saved-text heights in both trials; each Add reveal had only
+the final changed height. In one controlled trial with only `autoFocus` disabled,
+Add regained seven intermediate/final height positions, although its first
+visible frame was already about 70% expanded. This supports autofocus as a
+contributor; mounting/measurement and JavaScript contention still need correction.
+It does not isolate every CPU cost or establish production/device frame rates.
+
+The MCP recording wrapper did not produce usable files (its first request also
+exceeded the recorder's supported 30 FPS maximum). Command-scoped Xcode `simctl`
+capture provided native evidence without changing global Xcode selection or
+opening an external UI. AVFoundation decoded actual presentation timestamps;
+no fixed capture rate was assumed. Ignored local evidence is under
+`.local/phase-07-4/editor-motion/` (`before.mov`, `before-probes.json`,
+`before-native-actions.json`, decoded frame JSON and `no-focus.mov`).
+`native-comparison.gif` places short native clips side by side, approximately
+aligned around the taps; use the probe table, rather than GIF alignment, for
+timing comparisons.
+
+At that diagnosis checkpoint, all diagnostic code and the temporary autofocus change were removed. App source
+matches `8778f88`; this request produced diagnosis only, with no permanent app
+fix or new automated-check claim. Existing simulator/API/Metro/mirror services
+remain available. Follow-up owned by the current 07.4 owner review: avoid redundant
+preparation for already-current local rows without bypassing newer remote data,
+keep height motion off the busy JavaScript path, and coordinate focus with the
+completed reveal. Cover stale/pending/account-change paths and cancelled motion,
+then repeat the paired native capture and software-keyboard checks.
+
+## October 7 owner review — Stable editor reveal and action
+
+Anthony still observed the jump and intermittent Add/Hide text flicker. The action
+now follows the explicit editing session, rather than the presence of an editor
+React element. Controller and attempt ID activate together; a temporary missing
+element during a refresh cannot revert Hide to Add or change the row's handler.
+
+Already-current, confirmed and phone-durable rows open synchronously without
+re-adopting/persisting the journal. Pinning remains synchronous while unrelated
+pruning may finish in the background. Missing/newer/pending/memory-only rows keep
+the adoption rules, and asynchronous account/close callbacks remain fenced.
+
+Closed Add rows premeasure a lightweight form without mounting a native input.
+The reveal retains that form (including saved text for Edit) until completion,
+then mounts and focuses the real editor once. Replacement measurements cannot
+start the reveal at the saved section's old height and restart it at the input's
+height. Native height, opacity and translation now use the already-installed
+Reanimated/Worklets libraries, with a 16 ms initial commit interval before the
+existing 240 ms opening / 230 ms closing curves. The browser retains its
+Animated adapter. Reduced motion applies endpoints directly; both adapters cancel
+motion, and stale/completed-after-close callbacks cannot focus an old editor.
+
+Early fixes shortened preparation and sometimes restored intermediate frames,
+but further recordings caught cold-mount and closing jumps. Those were not used
+as completion evidence. The final uninstrumented app was cold-restarted and
+tested through the existing in-app native mirror, without changing saved text.
+Actual presentation timestamps from `lightweight-final.mov` show:
+
+| Native interaction           | Successive changed heights including endpoint |
+| ---------------------------- | --------------------------------------------: |
+| First Add after cold restart |                                            11 |
+| Repeated Add                 |                                             9 |
+| Saved reflection expansion   |                                            13 |
+| Saved reflection → Edit      |                                            10 |
+| Whole-row editor close       |                                            10 |
+
+Both Add reveals move monotonically from sheet top 1000 to 577 at 1206×2622
+capture resolution, rather than showing only the endpoint. Hide remains stable
+during the editor reveal; Edit retains the known synthetic QA text and clean
+Cancel restores the saved row. Native input focus follows completion, with
+variable focus-delivery delay on this development simulator. These captures do
+not establish production frame rates or software-keyboard/device acceptance.
+
+[Before/after native Add recording](../checks/phase-07-4/native/editor-motion-before-after.gif),
+[final Add endpoint](../checks/phase-07-4/native/motion-fixed-add.jpg),
+[final Edit endpoint](../checks/phase-07-4/native/motion-fixed-edit.jpg).
+The comparison clips are approximately aligned around taps; precise diagnosis
+timings above came from press/effect probes, not GIF alignment. Ignored local
+evidence also includes `lightweight-actions.json`, decoded `light-*/frames.json`,
+intermediate recordings and check logs under `.local/phase-07-4/editor-motion/`.
+All temporary app probes were removed. API/Metro/mirror and the existing native
+app remain available for Anthony's review; no publication was authorized.
+
+Regression coverage protects durable no-op adoption, newer/memory-only adoption,
+blocked storage, late pruning failure, account deactivation, cancelled focus,
+stable Hide/action state, premeasurement, equal-height replacement and staged
+native input mounting with empty/existing text. Native adapter tests protect
+UI-thread callback scheduling and cancellation; browser adapter/component tests
+protect layout orchestration. Mocked tests do not establish native smoothness;
+the recording above provides separate simulator evidence.
+
+Fresh `npm run check` passes **644 cases** (175 architecture/tooling, 45 API,
+403 mobile and 21 contracts), including Doctor **21/21**, typechecks, lint and
+format checks. Earlier test typing/format/mock integration failures were repaired
+without weakening assertions or thresholds. Fresh mobile coverage passes **403
+cases** with **93.56% statements / 90.27% branches / 90.26% functions / 94.68%
+lines**. `npm run coverage:check` passes every unchanged global/critical floor
+using this mobile report and the existing unchanged API/contracts reports.
+`npm run test:db` passed **61 database/migration cases** earlier in this follow-up;
+API/contracts/database code did not change afterward. The phase's existing 21
+saved journeys were retained and were not rerun for this correction.
+Fresh `npm run export:web -w @justgo/mobile` and
+`npm run export:ios -w @justgo/mobile` both pass, verifying the platform adapter
+bundles. No native dependencies or installed binary changed. Fast Refresh during
+repository/hook edits briefly retained disposed runtime state; restarting the
+existing app restored normal fixture loading. Final owner testing uses that
+restarted app and the retained API/Metro/mirror.
+
+A tightened close/reopen regression caught an obsolete preparation failure
+appearing on a new session for the same row. A preparation-generation guard now
+discards that callback; the regression failed before the guard and passes after
+it. One coverage command accidentally overlapped a still-running full check and
+the existing feeling-preserving test exceeded its 5-second timeout. The duplicate
+run was stopped and subsequent verification was run sequentially; no timeout was
+changed.
+
 ## Open review and release checks
 
 - Anthony's code/design review and permission for any commit publication/PR/merge.
   Hosted CI is unverified for this unpushed branch.
+- Anthony's acceptance of the updated editor reveal/action above; final simulator
+  recordings now establish intermediate native heights for cold/repeated Add,
+  Edit and close. Physical-device/performance and software-keyboard checks below
+  remain open.
 - Software-keyboard sheet layout, physical-device storage/Keychain/iCloud/backup,
   actual radio connectivity, VoiceOver/focus, large text/reduced motion and the
   earlier native transition/safe-area checks remain owned by Anthony / native

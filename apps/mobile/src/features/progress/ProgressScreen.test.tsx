@@ -47,6 +47,7 @@ jest.mock('expo-router', () => ({
   Link: () => null,
 }));
 jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => true }));
+jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
 jest.mock('expo-crypto', () => {
   let n = 100;
   return {
@@ -574,7 +575,29 @@ it('keeps usable caches through a failed background refresh and reports a failed
   expect(
     screen.queryByText(/out of date|Couldn’t refresh your summary/),
   ).toBeNull();
-  openToday(screen);
+  const older = {
+    ...attempt(2),
+    activityDate: '2026-10-03',
+    startedAt: '2026-10-03T14:00:00.000Z',
+  };
+  mockClient.request.mockImplementation(async (path: string) => {
+    if (path.includes('date=2026-10-03'))
+      return {
+        date: '2026-10-03',
+        totalReps: 2,
+        entries: [older],
+        nextCursor: null,
+      };
+    throw new Error('Refresh unavailable');
+  });
+  fireEvent.press(
+    screen.getByRole('button', { name: /Saturday, October 3, 2 reps/ }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
+    ).toBeTruthy(),
+  );
   const adopt = jest
     .spyOn(mockRepository!, 'adoptAttempt')
     .mockRejectedValueOnce(new Error('Account changed'));

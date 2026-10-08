@@ -17,6 +17,15 @@ The whole Add row now includes its padded tap area, and Add/Edit share the saved
 reflection's measured slide motion. The handoff records 58 focused cases, fresh
 628-case checks, passing coverage gates and native Add/Edit endpoint proof, with
 existing acceptance gates retained.
+The subsequent native comparison reproduced the slower, jumping textbox reveal;
+the handoff records timings and autofocus isolation. The subsequent fix uses an
+atomic editor/action state, avoids redundant durable-row adoption and reveals a
+lightweight form on the native UI thread before mounting/focusing the input.
+Final cold/repeated Add, Edit and close recordings show intermediate heights;
+the owner-reported Add/Hide flicker has regression coverage. Diagnostic app
+changes were removed, and software-keyboard/device acceptance remains open.
+Fresh 644-case checks and unchanged coverage gates pass; the mobile report is
+90.27% branches / 94.68% lines, with the earlier 61-case database evidence retained.
 
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`

@@ -23,6 +23,7 @@ export type ProgressViewProps = ProgressCalendarProps & {
   dayConnectionRequired?: boolean;
   editingId?: string | null | undefined;
   editor?: ReactNode;
+  onEditorOpened?: (() => void) | undefined;
   onEditReflection?: ((id: string) => void) | undefined;
   beforeClose?: ((work: () => void) => void) | undefined;
   paginationKey?: string | null | undefined;
@@ -56,6 +57,7 @@ export function ProgressView({
   dayConnectionRequired,
   editingId,
   editor,
+  onEditorOpened,
   onEditReflection,
   beforeClose,
   paginationKey,
@@ -96,6 +98,7 @@ export function ProgressView({
         connectionRequired={dayConnectionRequired ?? false}
         editingId={editingId}
         editor={editor}
+        onEditorOpened={onEditorOpened}
         onEditReflection={onEditReflection}
         beforeClose={beforeClose}
         paginationKey={paginationKey}

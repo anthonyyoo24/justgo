@@ -7,6 +7,7 @@ import { colors, fontFamilies, typography } from '../../theme/tokens';
 import { FeelingFace } from '../reflections/FeelingFace';
 import { completionTime } from './calendar';
 import { SlidingEntryDetails } from './SlidingEntryDetails';
+import { DayReflectionPlaceholder } from './DayReflectionEditor';
 const entryMetaInk = '#5F7391';
 const feelingLabel = (feeling: FeelingCode | null) =>
   feelingChoices.find((option) => option.code === feeling)?.label ??
@@ -94,6 +95,8 @@ export function ProgressEntryRow({
   reduceMotion,
   onEdit,
   editor,
+  editing = !!editor,
+  onEditorOpened,
 }: {
   entry: ProgressEntry;
   index: number;
@@ -102,11 +105,13 @@ export function ProgressEntryRow({
   reduceMotion: boolean;
   onEdit?: (() => void) | undefined;
   editor?: ReactNode;
+  editing?: boolean;
+  onEditorOpened?: (() => void) | undefined;
 }) {
   const submitted = entry.reflectionStatus === 'submitted';
   const feeling = submitted ? entry.feeling : null;
   const reflection = submitted ? entry.reflectionText?.trim() : null;
-  const opened = (!!reflection && expanded) || !!editor;
+  const opened = (!!reflection && expanded) || editing;
   const action = opened
     ? 'Hide Reflection'
     : reflection
@@ -124,7 +129,7 @@ export function ProgressEntryRow({
         accessibilityRole={actionable ? 'button' : undefined}
         accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}.${time ? ` ${time}.` : ''} Feeling: ${feelingLabel(feeling)}${actionable ? `. ${action}` : ''}`}
         accessibilityState={actionable ? { expanded: opened } : undefined}
-        onPress={reflection || editor ? onToggle : onEdit}
+        onPress={reflection || editing ? onToggle : onEdit}
         hitSlop={actionable ? { top: 12, bottom: 12 } : undefined}
         style={styles.entryRow}
       >
@@ -146,7 +151,7 @@ export function ProgressEntryRow({
             {actionable && (
               <View testID="reflection-action" style={styles.reflectionAction}>
                 {time && <View style={styles.reflectionDivider} aria-hidden />}
-                {reflection || editor ? (
+                {reflection || editing ? (
                   <ReflectionPencil />
                 ) : (
                   <Svg
@@ -167,7 +172,7 @@ export function ProgressEntryRow({
                   </Svg>
                 )}
                 <Text style={styles.reflectionActionText}>{action}</Text>
-                {(reflection || editor) && (
+                {(reflection || editing) && (
                   <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>
                     <Path
                       d={opened ? 'm1.5 7 4-4 4 4' : 'm1.5 4 4 4 4-4'}
@@ -213,12 +218,15 @@ export function ProgressEntryRow({
         <SlidingEntryDetails
           open={opened}
           reduceMotion={reduceMotion}
-          contentKey={editor ? 'editor' : 'saved'}
+          contentKey={reflection && !editor ? 'saved' : 'editor'}
+          onOpened={editing ? onEditorOpened : undefined}
         >
           {editor ??
             (reflection ? (
               <SavedReflection text={reflection} onEdit={onEdit} />
-            ) : null)}
+            ) : (
+              <DayReflectionPlaceholder />
+            ))}
         </SlidingEntryDetails>
       )}
     </View>
