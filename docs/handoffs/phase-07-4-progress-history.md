@@ -631,6 +631,40 @@ No dependencies or native binary changed. Changes remain local and unpublished;
 earlier software-keyboard, physical-device, VoiceOver/scaled-text, actual radio
 and hosted gates remain open.
 
+## October 8 owner review — Offline month copy
+
+Anthony approved **You’re offline. Connect to view this month.** for unavailable
+months. The existing centered alert above the calendar now names the offline
+condition and the next step. It retains natural text wrapping; no explicit line
+limit or font-size reduction was added. Calendar disabling, summary retention,
+unavailable monthly totals and connection/cache rules are unchanged.
+
+The existing offline integration regression fails with the old copy and passes
+with the new alert. Two focused Progress suites pass **50/50** cases. The saved
+Progress journey's month assertion now expects the same text; its existing
+offline/reconnect/database assertions are retained. That journey is typechecked
+but not rerun for this copy follow-up.
+
+The existing iPhone 17 / iOS 26.5 app was checked through the in-app simulator
+mirror (484×648 browser viewport). A temporary guarded preview supplied the
+unavailable August calendar with synthetic cached summary values. The message
+fits on one centered line at the device's normal text size above the faded,
+disabled calendar. The [updated native screenshot](../checks/phase-07-4/native/offline-month-copy.png)
+is a 1206×2622 capture. Temporary preview wiring was restored byte-for-byte;
+no account data was edited and no network/system settings changed. This is
+presentation evidence, separate from real radio/physical-device acceptance.
+
+Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **651 cases**
+(175 architecture/tooling, 45 API, 410 mobile and 21 contracts). Fresh mobile
+coverage passes all 410 cases at **93.59% statements / 90.32% branches / 90.37%
+functions / 94.71% lines**. `npm run coverage:check` passes all unchanged
+global/critical floors with this report and retained unchanged API/contracts
+reports. Logs live under ignored `.local/phase-07-4/offline-month-copy/`.
+Earlier database, exports,
+saved-journey and hosted results retain their prior status. No dependency or
+native binary changed. Changes remain local and unpublished; earlier release
+and accessibility gates remain open.
+
 ## Open review and release checks
 
 - Anthony's code/design review and permission for any commit publication/PR/merge.

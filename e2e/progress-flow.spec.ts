@@ -255,7 +255,9 @@ test('today cached paging survives offline and other days/months require a conne
     .getByRole('button', { name: 'Previous month', exact: true })
     .click();
   await expect(
-    page.getByText('Connect to view this month.', { exact: true }),
+    page.getByText('You’re offline. Connect to view this month.', {
+      exact: true,
+    }),
   ).toBeVisible();
   expect(
     (

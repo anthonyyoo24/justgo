@@ -52,6 +52,10 @@ are centered below the day header. The handoff records the guarded offline
 preview, updated native screenshot, 63 focused cases, fresh 651-case checks and
 unchanged coverage gates; actual radio/device acceptance remains open.
 
+The subsequent offline-month copy follow-up uses **You’re offline. Connect to
+view this month.** above the unavailable calendar. The handoff records its
+50-case focused pass, updated native preview screenshot and fresh checks.
+
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`
 at `c7c67b2`. The [resume handoff](phase-07-3a-testing-checkpoint.md) records the

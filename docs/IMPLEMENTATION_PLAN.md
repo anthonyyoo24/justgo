@@ -990,6 +990,11 @@ and scrollable content. A guarded `progressDayState=offline` preview makes the
 state repeatable without saving activity. The handoff records regression checks,
 fresh 651-case checks, unchanged coverage gates and the updated native screenshot.
 
+**October 8 offline month copy:** the owner approved **You’re offline. Connect to
+view this month.** above the unavailable calendar. Existing centered alignment
+and natural wrapping are retained. The handoff records the updated alert/journey
+assertions, 50 focused cases, native presentation screenshot and fresh checks.
+
 **Ready to hand off when**
 
 - [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.

@@ -228,7 +228,9 @@ it('hydrates offline current-period data and restricts previously viewed other d
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
   );
   fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
-  expect(screen.getByText('Connect to view this month.')).toBeTruthy();
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'You’re offline. Connect to view this month.',
+  );
   expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('10');
 });
 it('adds and edits a reflection inline while preserving its feeling and local saving behavior', async () => {

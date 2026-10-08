@@ -140,7 +140,7 @@ export function ProgressCalendar({
             <View style={styles.state}>
               <Text accessibilityRole="alert" style={styles.stateText}>
                 {connectionRequired
-                  ? 'Connect to view this month.'
+                  ? 'You’re offline. Connect to view this month.'
                   : 'We couldn’t load your progress.'}
               </Text>
               {!connectionRequired && (
