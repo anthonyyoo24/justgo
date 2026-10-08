@@ -7,13 +7,15 @@ in `design-source/challenge-paper-extract.json` (token hash `55c015ad`).
 ## Contract
 
 - Home and active challenge retain the approved six venues, cycling decks,
-  existing challenge copy, five-minute attempts, recovery and confirmed outcomes.
+  existing challenge copy and five-minute goals. Phase 07 starts/discards unfinished activity in memory and saves only completed reps; current lifecycle/save rules are in the [PRD](../product/PRD.md).
 - Omit Levels, level progress and supporting card subtext as already approved.
 - Use original illustrations and icon paths, real native text, gestures and controls.
   Do not render a screenshot as an interactive screen or generate replacement art.
 - Test at 320 × 611, 390 × 844, and the running iPhone Simulator. Card frames stay the same size across
   challenge lengths. The accent panel hugs its text; oversized accessibility text
   scrolls within the copy region without truncation or resizing the deck.
+
+Phase 04 investigation sections below preserve their historical findings, commands and evidence. References there to server queues, recovery and confirmed terminal writes are superseded by Phase 07; they do not require restoring those protocols. Native artwork/geometry and documented visual decisions remain applicable.
 
 ## Measured source
 

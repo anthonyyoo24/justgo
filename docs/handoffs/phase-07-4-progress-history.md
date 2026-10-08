@@ -1,5 +1,11 @@
 # Phase 07.4 — Progress and history integration
 
+**October 8 dependency acceptance:** The owner merged PR #20 at `8dfb44d`
+and requested Phase 07.5 from updated `main`. The [07.5 handoff](phase-07-5-cutover-acceptance.md)
+owns final cutover and fixes the open singular streak-copy finding. Earlier
+native/software-keyboard/device/release gates remain open; dated publication
+and review statuses below are historical.
+
 **Status:** Published in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20)
 on `codex/phase-07.4-progress-history`, awaiting
 Anthony's review. Started October 7 from clean `main` `09754e9`, whose approved

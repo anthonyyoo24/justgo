@@ -1,5 +1,14 @@
 # Phase 07 — API & offline saving
 
+**October 8 Phase 07.5 current work:** The owner merged 07.4 / PR #20 at
+`8dfb44d` and requested a new branch and final cutover implementation.
+`codex/phase-07.5-cutover-acceptance` starts from that clean merged baseline.
+The [07.5 handoff](phase-07-5-cutover-acceptance.md) records the registered 0013
+contraction, canonical protocol/fixture removal, expanded journeys and local
+automated/browser verification passing. Current native verification, publication,
+hosted checks and owner acceptance remain open; 07.3A and earlier native/device/release gates retain their explicit status.
+The dated 07.4 publication/review notes below are historical.
+
 **October 8 current checkpoint:** Anthony deferred unfinished 07.3A, preserved at
 `c7c67b2` with its [resume handoff](phase-07-3a-testing-checkpoint.md), and requested
 07.4 from the approved baseline. `codex/phase-07.4-progress-history` now

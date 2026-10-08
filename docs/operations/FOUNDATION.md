@@ -2,26 +2,28 @@
 
 > Current setup and operations guide, established in Phase 01. See [IDENTITY.md](../architecture/IDENTITY.md) for Phase 02 identity configuration and [phase handoffs](../handoffs/README.md) for historical verification and remaining acceptance gates.
 
-Established September 17, 2026. Start with the [README](../../README.md). The Phase 01 preview did not include account/session endpoints or permanent client credential storage; Phase 02 adds those capabilities. Purchases and later domain features remain scheduled in the implementation plan.
+Established September 17, 2026. Start with the [README](../../README.md). The Phase 01 preview did not include account/session endpoints or permanent client credential storage; Phase 02 adds those capabilities. Phase 07 now implements challenge/completion/reflection/Progress saving and synchronization; purchases and verified production coverage remain Phase 07A.
 
 ## Compatible version set
 
 Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node/Vercel; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
 
-| Component                        | Pinned version / constraint                                                      |
-| -------------------------------- | -------------------------------------------------------------------------------- |
-| Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                       |
-| TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                     |
-| Expo / React Native / React      | 57.0.25 / 0.86.3 / 19.2.3                                                        |
-| Expo Router / development client | 57.0.23 / 57.0.19                                                                |
-| Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                        |
-| Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                  |
-| Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                         |
-| React Native Web                 | 0.21.2; development/browser verification only                                    |
-| iOS                              | 16.4 minimum, Hermes; simulator verification used iPhone 17 / iOS 26.4           |
-| Fastify / Drizzle / pg           | 5.12.5 / 0.45.2 (kit 0.31.10) / 8.23.0                                           |
-| PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                      |
-| Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.5, React Native Testing Library 13.3.3 |
+| Component                        | Pinned version / constraint                                                                        |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                         |
+| TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                       |
+| Expo / React Native / React      | 57.0.27 / 0.86.3 / 19.2.3                                                                          |
+| Expo Router / development client | 57.0.25 / 57.0.19                                                                                  |
+| Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                                          |
+| Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                                    |
+| Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                                           |
+| Activity storage / state         | AsyncStorage 2.2.0 / Zustand 5.0.15; explicit journal persistence                                  |
+| Connectivity / saving feedback   | NetInfo 12.0.1 / Sonner Native 0.27.0 / Sonner 2.0.8 web adapter                                   |
+| React Native Web                 | 0.21.2; development/browser verification only                                                      |
+| iOS                              | 16.4 minimum, Hermes; original iPhone 17 / iOS 26.4 smoke, retained Phase 07 QA device on iOS 26.5 |
+| Fastify / Drizzle / pg           | 5.12.5 / 0.45.2 (kit 0.31.10) / 8.23.0                                                             |
+| PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                                        |
+| Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.5, React Native Testing Library 13.3.3                   |
 
 The React family is overridden to the Expo-supported version to prevent a test renderer from pulling an incompatible React. Expo Doctor validates the installed native set. Recheck the [Expo 57 reference](https://docs.expo.dev/versions/v57.0.0/) and [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/) as a set when upgrading. Do not update Worklets independently.
 
@@ -62,7 +64,7 @@ The Phase 01 helper `withOwner(db, verifiedUserId, tx => …)` establishes trans
 
 `pg` reuses one pool per warm server instance, max 1 by default, with 5-second connect/statement and 6-second query limits. There are no named prepared statements. Runtime role connection limit is 20. Transaction pooling and those caps bound individual processes; they do not establish a traffic capacity or global Vercel instance limit. Load tests, capacity alerts and budget policy are later operational work. Certificate verification must not be disabled to fix pooler TLS errors; use the dashboard connection host and the Supabase CA.
 
-Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 54329. They create a uniquely named fixture table as migrator, execute isolation checks as the actual runtime role, and drop that fixture. There is no application seed or customer data. Never reset a shared environment to run tests. Use forward-repair migrations; restore and destructive rollback procedures require reviewed backups before domain data exists.
+Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 54329. They create a uniquely named fixture table as migrator, execute isolation checks as the actual runtime role, and drop that fixture. The local application catalog seed and synthetic accounts/history are disposable; no customer data belongs in this cluster. Never reset a shared environment to run tests. Use forward-repair migrations; restore and destructive rollback procedures require reviewed backups before domain data exists.
 
 ## API deployment and diagnostics
 
@@ -83,7 +85,7 @@ Set runtime variables in the **preview** environment before deployment. Use Secr
 | `GET /health` | 200 `{ "status": "ok", "service": "justgo-api" }`             | Process/platform failures only; not a database check |
 | `GET /ready`  | 200 `{ "status": "ready" }` after database/role/context check | 503 `{ "status": "unavailable" }`                    |
 
-Responses use `no-store`, security headers and server-generated request IDs. The Phase 01 connection probe validated both endpoints with an 8-second deadline. The current identity UI uses the authenticated API and its 10-second request deadline; see [IDENTITY.md](../architecture/IDENTITY.md). Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. Identity session records now exist; reflection content remains a later feature. Sentry and analytics export are not enabled; implement opt-in interfaces in the appropriate phase and revalidate scrubbing before export.
+Responses use `no-store`, security headers and server-generated request IDs. The Phase 01 connection probe validated both endpoints with an 8-second deadline. The current identity UI uses the authenticated API and its 10-second request deadline; see [IDENTITY.md](../architecture/IDENTITY.md). Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. Identity and private reflection records now exist; diagnostics must exclude both secrets and journal contents. Sentry and analytics export are not enabled; implement opt-in interfaces in the appropriate phase and revalidate scrubbing before export.
 
 ## Design and tests
 
@@ -93,8 +95,21 @@ Run `npm run check`, `npm run test:db`, `npm run export:web -w @justgo/mobile`, 
 
 The EAS `development-simulator` build `2c73c1af-3d5d-4216-8f25-875c72691973` completed on September 17, 2026. Its downloaded binary passed native startup and the connection check on one iPhone 17 / iOS 26.4 simulator. The artifact remains at `.local/JustGO-eas-simulator.tar.gz`, with the extracted app at `.local/eas-simulator/JustGO.app`. Start Metro from `apps/mobile` using `NODE_OPTIONS=--dns-result-order=ipv4first npx expo start --dev-client --localhost --max-workers 1`; the IPv4 option avoids a localhost/127.0.0.1 binding mismatch. Reuse this binary until a native dependency/configuration changes.
 
-The Phase 02 simulator binary and subsequent native checks are recorded in [its handoff](../handoffs/phase-02-identity.md). Use that newer development binary for identity testing.
+The Phase 02 binary and its native checks remain historical in [its handoff](../handoffs/phase-02-identity.md). The October 6 EAS simulator build and retained QA device are recorded in the [07.3 simulator setup](../handoffs/phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup); use the existing installed binary containing AsyncStorage/NetInfo for current JavaScript/UI checks.
 
 The native launch harness is `apps/mobile/e2e/launch.yaml`; run it with Maestro only after installing/launching a development build and starting Metro/API. Browser verification must cover loading/disabled state, successful readiness, offline failure/retry, keyboard activation and narrow-screen scrolling. Native verification is separately recorded in the handoff; a web export proves no Keychain, purchase or device recovery behavior.
 
 The Phase 01 `npm audit` recorded 18 moderate dependency advisories, with no high/critical findings at the recorded installation. They include transitive Expo tooling and Drizzle Kit dependencies. Review compatible upstream fixes before release; do not apply a forced Expo downgrade to silence the audit.
+
+## Phase 07 coordinated cutover and old clients
+
+This runbook prepares Phase 09 staging/release integration; Phase 07.5 local implementation does not deploy externally or prove that old installed clients are retired. The final public protocol is catalog/completed-attempt/reflection PATCH and independent summary/calendar/day resources, alongside noun identity resources. Old identity/product action routes return 404; no compatibility writer remains after contraction.
+
+1. Inventory the deployed API build/schema journal and distributed mobile/native runtime versions before maintenance. Confirm the new client contains the canonical contracts/callers and the required AsyncStorage/NetInfo runtime. Block/distribute an update for older clients before reopening paid product access; there is no implemented general minimum-version endpoint or silent old-client conversion. Preserve recovery credentials and existing securely saved identity proposals.
+2. Prepare a restorable pre-cutover database backup under the separate operator role, protect its private contents outside repository/log artifacts, and record only counts/comparison outcomes. Rehearse restoration and forward application on disposable data with `npm run test:migrations`; production backup/PITR and a reachable phone staging route are Phase 09 requirements. Never test by resetting shared staging or production.
+3. Stop all old API writers/traffic for the final comparison. Apply the unchanged additive/backfill migrations through 0012 if missing. Compare completed `(owner,id,activity_date)` sets, original starts, Level 1/challenge/venue references, canonical catalog and owner-matched submitted feeling/text/revisions. Preserve recorded historical dates and nullable unknown start zones with their historical display fallback. Do not promote drafts/skips or invent legacy lifecycle timestamps.
+4. With old writers still stopped, apply reviewed registered `0013_attempt_resources_contract.sql` using `npm run db:migrate` and the separate migration environment. It removes obsolete lifecycle, revision, queue/preferences/skips, separate reflections and action receipts; targeted `attempt_patch_receipts` remain. Repeat preservation/schema/ownership checks before opening traffic. Retain inactive historical challenge/placement references.
+5. Deploy matching canonical API/contracts and distribute/reload the matching mobile client together, then run staged recovery/revocation/transfer and completion/reflection/Progress checks. Check old paths return 404 without writes and reject old public fields. Do not grant a production test entitlement or bundle a deployment-protection bypass. Phase 07A must connect real verified access/earlier-upload coverage before paid release.
+6. If comparison or deployment fails, keep traffic closed. Before contraction, leave additive schema in place and repair forward. After contraction, an old API requires removed tables/columns and cannot safely be rolled back alone. Restore the protected pre-cutover snapshot only under the reviewed maintenance plan, coordinate its matching old API/client state, then repair/rehearse forward; account for writes since the snapshot before any restore. Prefer a new reviewed forward-repair migration when preserved data is sound. Never edit already-applied 0000–0012 SQL, reset shared data or delete credential history to retry.
+
+Relaunch hydrates same-account device-persisted submissions and resumes their stable create/PATCH operations. New-device recovery restores uploaded server history, not another phone's only pending copy. Current old-client handling is coordinated release maintenance/update, not an already implemented in-app forced-upgrade system. Record actual deployed versions, backup/restore proof, comparisons and staged/device results in the release handoff before claiming rollout acceptance.

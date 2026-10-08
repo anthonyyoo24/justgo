@@ -134,8 +134,7 @@ packages/contracts/src/
 ├── identity.ts                       account, session and recovery contracts
 ├── access.ts                         paid-access contracts
 ├── openapi.ts                        API specification composed from the contracts
-├── activity/                         canonical challenge/attempt/reflection/Progress contracts
-└── legacy/                           temporary compatibility contracts, retained until 07.5
+└── activity/                         canonical challenge/attempt/reflection/Progress contracts and colocated tests
 
 scripts/
 ├── local-database.mjs                loopback database provisioning/lifecycle
@@ -149,10 +148,7 @@ e2e/
 └── support/                         shared fixtures, environment and repository entrypoint
 ```
 
-App-specific native automation remains in `apps/mobile/e2e/`. Browser testing and
-legacy compatibility code are organized here but retained: their replacement or
-removal is still owned by 07.3A and 07.5, respectively. No dependency or CI gate
-was retired by this cleanup.
+App-specific native automation remains in `apps/mobile/e2e/`. Browser testing/adapters/CI are retained while 07.3A is deferred. Phase 07.5 removes temporary legacy contracts/routes/services; the canonical API owners are `challenges/`, `attempts/` (including reflection PATCH) and `progress/resources.ts`. The detailed cleanup diagram below remains its historical inventory, not a list of files that must survive protocol retirement.
 
 ## Documentation and evidence
 
