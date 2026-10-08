@@ -1,0 +1,859 @@
+# Phase 07.4 — Progress and history integration
+
+**Status:** Published in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20)
+on `codex/phase-07.4-progress-history`, awaiting
+Anthony's review. Started October 7 from clean `main` `09754e9`, whose approved
+code baseline is `6780406`. On October 8, Anthony authorized pushing this branch
+and opening a PR against `main`, including the implementation, UI follow-ups,
+folder organization and screenshot cleanup. Both hosted Foundation checks passed
+at `6782894`; the October 8 review follow-up below records the authorized
+corrections and fresh verification. Merge still requires separate
+owner review and explicit approval.
+
+**Dependencies:** Read the [07.1 contracts/API](phase-07-1-api-data.md),
+[07.2 repository/sender](phase-07-2-local-sync.md),
+[07.3 runtime/feedback](phase-07-3-local-flow.md) and
+[07.3A stopped checkpoint](phase-07-3a-testing-checkpoint.md).
+07.3A remains deferred; its experimental code, native harness and CI migration
+were not resumed. Existing browser/lower-level coverage and CI remain intact.
+
+**Visual evidence storage:** At Anthony’s request, Phase 07.4 screenshots and
+comparison GIFs are retained only in ignored `.local/phase-07-4/visual-evidence/`.
+Capture names below are relative to that local directory. Verification results
+and open acceptance checks remain documented here; these captures are no longer
+part of the repository files.
+
+## Implemented behavior and owners
+
+- `data/activity/progress/progress.ts` owns local/backend summary, calendar and day
+  composition. Its sibling `useProgressReads.ts` owns the three independent canonical reads;
+  `progress-read-cache.ts` preserves confirmed day edits in online query pages.
+- `app-support/providers/ProgressRefresh.tsx` preloads summary/current month/today
+  and refreshes after upload settlement and reconnection. It receives runtime
+  dependencies directly. `activity-hooks.ts` shares context-free subscriptions.
+- `features/progress/ProgressScreen.tsx` owns selected month/day and editing.
+  Its `day-details/DayReflectionEditor.tsx` renders the textbox/actions;
+  `day-details/useDayReflection.tsx`
+  uses the existing `ReflectionController`, repository, sender and saving host.
+  No second upload queue or automatic draft submission was added.
+- Add/Edit saves text explicitly, preserves the original feeling, guards dirty
+  closes and newer typing, prevents duplicate submissions, and exposes delayed
+  saving feedback. Empty text-only edits cannot be submitted from either Save
+  surface; text can be cleared when the retained feeling keeps the reflection valid.
+- Independent unavailable states keep usable summary/calendar/day data visible.
+  Available entries have no partial-history notices. An account change disposes
+  the previous editor and fences its reads and callbacks.
+
+## Paper design evidence
+
+Used the actual local Paper MCP endpoint to read its required guide, selected
+nodes, JSX, computed styles and screenshots from the
+[owner's file](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0).
+Selected `OYK-0` / `OYQ-0`: **Textbox 02 / SOFT FILL — Add / Edit**.
+The existing Progress layout is retained with the selected inline design:
+`#F8EEEA` fill, radius 10, padding 14, 76-point minimum textbox,
+Inter 15/21, “What stood out to you?”, Cancel and the 130 × 36 dark Save pill.
+Saved text expands with a separate Edit action. Feelings remain display-only.
+
+Browser proofs at 390 × 844:
+Add (`browser/add-reflection.jpg`),
+Edit (`browser/edit-reflection.jpg`),
+saved text (`browser/saved-reflection.jpg`).
+Paper reads/screenshots remain in ignored `.local/phase-07-4/`; no Paper nodes
+were modified or third-party bitmap screens shipped as UI.
+
+## Cache and reconciliation contract
+
+1. Summary totals add only eligible IDs not covered by the accepted summary.
+   Current-month counts independently add their uncovered IDs. Acknowledgement
+   alone does not remove additions; accepted aggregate snapshots rebase them.
+   Unknown create outcomes block aggregate acceptance, and generation, account,
+   date and time-zone fences reject obsolete responses.
+2. Summary, current-month counts and today's downloaded pages are durable.
+   A nullable `calendarBaseline` keeps compact reconciliation through disposable
+   cache cleanup and defaults safely for older journal envelopes. Rollover clears
+   obsolete month/day caches while retaining submitted pending activity.
+3. Other months and days are online-only, even after being viewed. Their query
+   pages stay in memory. Older-month snapshots from before a new local generation
+   become unavailable until a current snapshot arrives. Frozen activity dates
+   determine attribution, including an earlier month or a date ahead of today.
+4. Day rows merge by attempt ID and preserve higher reflection revisions and
+   later downloaded pages. Pagination tracks the cursor, avoiding a stall when a
+   page overlaps cached rows. An explicit older-day edit temporarily pins its
+   repository row; confirmed edits move to the in-memory day cache before pruning.
+   Backend-wins conflict corrections can replace optimistic cached text.
+5. Definitive ineligible/invalid/missing creates lose only their provisional
+   credit once, keep submitted writing and do not block independent uploads.
+   Temporary/uncertain failures keep provisional progress; reflection-only
+   rejection keeps the accepted rep. Missing corrected streak context displays
+   an unavailable value. Current streak ends today/yesterday; future frozen dates
+   still retain total/month/best-streak credit.
+6. Ten retained memory-only completions remain ten distinct rows/reps, with one
+   active day when their dates match. Recovery, acknowledgement, rebasing and
+   pruning do not double-count them. An active historical editor can keep its own
+   accepted input offline; closing it restores the normal online-only lookup.
+
+## Verification
+
+Final October 7 closeout ran sequentially on the owner's 8 GB Mac. Logs are
+ignored under `.local/phase-07-4/`; no coverage threshold or CI policy changed.
+
+| Command                                | Final result                                                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check`                        | Passed: Doctor 21/21, formatting/lint/types, 175 architecture/tooling + 45 API + 380 mobile + 21 contract cases = 621.                            |
+| `npm run test:db`                      | Passed against dedicated loopback `justgo_test`: 60 database + 1 migration/restoration cases.                                                     |
+| `npm run test:coverage`                | Passed all existing global/critical floors. Mobile branches/lines 89.50% / 94.31%; Progress 90.93% / 93.65%; API 91.19% / 95.71%; contracts 100%. |
+| `npm run export:web -w @justgo/mobile` | Passed cold web bundle/export.                                                                                                                    |
+| `npm run export:ios -w @justgo/mobile` | Passed cold iOS Hermes bundle/export; this is not a new native binary.                                                                            |
+| `npm run test:journey`                 | Passed 21/21 actual app/repository/API/disposable-database cases, including five Progress cases. Hosted CI remains unverified for this branch.    |
+
+The five saved Progress cases cover 10 + 1 through acknowledgement/restart and
+inline Add/Edit; today's 21-row paging/offline cache and older-history restrictions;
+ten memory-only completions/recovery; definitive rejection with retained writing
+through restart; and older-day Add/Edit after accepted-record pruning. Existing
+lost-response/session/account/recovery/cleanup cases remain in the full suite.
+Lower-level tests cover rollover, stale generations/revisions, independent query
+failures, corrected unavailable streaks, backend-wins cache repair and editor races.
+
+The final long-offline fixture measured **314,654 encoded bytes**, **0.274 ms**
+JSON serialization and **53.952 ms** for all local saves: ten 10,000-character
+reflections / 20 queued operations. Existing regression budgets remain under
+400,000 bytes and under 100 ms for serialization. The suite also verifies recovery
+and ten database reps. Measurements are attached to the ignored journey HTML
+report; they describe this fixture, not a general device-performance guarantee.
+Expo's web fixture startup logged the host's missing default `simctl` path;
+the 21 browser cases passed, and native evidence below used command-scoped Xcode.
+
+Interactive browser verification passed Add → dirty Cancel → Keep editing →
+Save → Edit → Save. The refreshed final bundle passed Add/Edit again with no
+browser warnings/errors. The initial live check found an Edit hit-target overlap
+and a provider import cycle; both were repaired. CI-mode Metro held the old bundle
+until a restart with `--clear`; final proof images use the refreshed bundle.
+Two registry-owned disposable browser accounts and their two reps were removed
+transactionally. All 18 pre-existing database accounts were preserved.
+
+Manual native verification used the existing signed JustGO app, iPhone 17 / iOS
+26.5 QA simulator `F0926FE3-5692-4241-B6C8-C5C4F9C6422E`, production native
+adapters and the Codex side-panel mirror. No new build, signing change, simulator
+erase, Keychain reset, outside simulator window or deferred testing pilot was used.
+Existing QA history increased **11 → 12 reps**, **2 → 3 active days/streak days**
+after one synthetic completion. Feeling-only save → inline Add → dirty-close /
+Keep editing → Save → Edit → Save passed; database text/revision **3** and the
+original feeling were confirmed. Reading only this fixture's native AsyncStorage
+journal confirmed its saved text, phone version and summary total 12. Termination /
+relaunch preserved the account, total and edited text; the refreshed final bundle
+also verified saved text, prefilled Edit and clean Cancel.
+
+Native proofs:
+Add (`native/add-reflection.jpg`),
+Edit (`native/edit-reflection.jpg`),
+relaunch (`native/relaunch-reflection.jpg`).
+The retained QA account/container and its one added synthetic rep remain intact.
+Task API/Metro/mirror services and temporary browser tabs were stopped; the
+previously booted simulator was retained. AX snapshotting returned no native
+children, and MCP's host Xcode path was Command Line Tools. Command-scoped full
+Xcode plus the installed debugger's HID helper enabled typing, with all visual
+inspection in the side panel. No global Xcode selection changed.
+
+## Failures caught and repaired
+
+- Saved text intercepted Edit taps: the action now renders above the text; the
+  saved app journey caught the failure and subsequently passed.
+- A test backend treated explicit `null` text as unchanged. It now distinguishes
+  null from an omitted field; feeling-preserving text clearing is covered.
+- An older-day confirmed edit disappeared after pruning and a stale read. A
+  regression failed before the fix and passes with canonical query reconciliation;
+  the saved suite now includes historical Add/Edit and online-only presentation.
+- Repeated fixture runs shared a durable identity rate namespace. A repeat run
+  returned an unexpected bootstrap error without a captured code; the namespace
+  was made unique per run while preserving actual rate limits, and safe HTTP/code
+  diagnostics were added. Subsequent full runs passed. No production rate policy
+  or assertion/coverage threshold was weakened.
+
+## October 7 owner review — Edit pencil
+
+Anthony found that the saved reflection's Edit action lacked its pencil icon.
+The action now reuses the existing decorative pencil beside Edit, with horizontal
+spacing and enough reserved text space to prevent overlap. The whole icon/label
+pair retains the single accessible Edit action and its 44-point minimum height.
+
+Anthony requested separate local commits. The original Phase 7.4 implementation
+is `ed03103`; the pencil correction, regression and proof are in `1e65db3`.
+
+A regression failed on the missing image before the fix. The updated Progress
+view/screen checks pass **48/48**; fresh `npm run check` passes **622 cases**,
+including **381 mobile cases** and Doctor **21/21**. Fresh mobile coverage and
+`npm run coverage:check` pass unchanged floors, with the same mobile coverage
+measurements as the original closeout above. Database contracts were unchanged;
+the earlier database and 21-journey evidence remains the phase baseline.
+
+The running native app refreshed through Metro. Side-panel verification confirmed
+the pencil appears left of Edit; tapping the pencil opens the existing synthetic
+QA reflection, and clean Cancel returns without changing it.
+Updated native action (`native/edit-pencil.jpg`).
+The existing simulator/account is retained, and API/Metro/mirror services are now
+left running for Anthony's testing. The earlier shutdown note describes the
+initial verification session. No publication or deferred 07.3A work occurred.
+
+## October 7 owner review — Add plus
+
+Anthony requested the original plus beside Add reflection. Paper action group
+`OXF-0` contains the 13×13 SVG with path `M8 2v12M2 8h12`, 1.5-point ink stroke
+and rounded caps. The Add action now uses that shape; View/Hide/Edit retain their
+pencils. The decorative icon remains inside the existing single accessible action.
+This follow-up is committed locally as `d8ee855`.
+
+The new regression caught the pencil mismatch before the change. Focused Progress
+view/screen checks pass **49/49**; fresh `npm run check` passes **623 cases**,
+including **382 mobile cases** and Doctor **21/21**. Fresh mobile coverage is
+**89.52% branches / 94.31% lines**. `npm run coverage:check` passes all unchanged
+global/critical floors, using the fresh mobile report and the existing unchanged
+API/contracts reports. Database and saved journey checks were not rerun for this
+icon-only correction; their earlier phase evidence remains the baseline.
+
+Side-panel verification of the running native app confirmed the plus appears
+beside Add reflection, tapping it opens the empty textbox, and clean Cancel
+returns to the row. No reflection was submitted during this check.
+Native Add action (`native/add-plus.jpg`).
+The existing simulator and API/Metro/mirror remain running for Anthony's testing.
+The software-keyboard/device and other release gates below remain open.
+
+## October 7 owner review — Whole row and editor motion
+
+Anthony requested whole-row Add taps and a textbox that slides out like saved
+reflection text. The existing title/ordinal/feeling/metadata handler remains one
+accessible row action, with its hit area extended through the 12-point vertical
+padding. Tapping an open editor's row still uses the existing dirty-close guard.
+
+`SlidingEntryDetails.tsx` now owns the shared measured-height expansion for saved
+text and Add/Edit editors. It preserves the existing 240 ms opening / 230 ms
+closing curves, opacity and 12-point vertical slide. Editor replacement resizes
+from the visible saved section's height while revealing the textbox. Reduced
+motion applies the final state directly; cleanup stops both animations, and
+collapsed content cannot receive taps or accessibility focus. The editor unmounts
+on close while its empty space collapses, preserving controller disposal.
+
+The new padding/motion regressions failed before the change; **58 focused
+Progress row/view/screen cases pass**. They cover header descendants, measured
+opening/closing, unchanged/empty measurements, animation cancellation, reduced
+motion, saved-text-to-Edit resizing and dirty row-close protection.
+
+Fresh `npm run check` passes **628 cases** (175 architecture/tooling, 45 API,
+387 mobile and 21 contracts), including Doctor **21/21**. Fresh mobile coverage
+is **89.88% branches / 94.42% lines**; `npm run coverage:check` passes every
+unchanged global/critical floor using that report and the existing unchanged
+API/contracts reports. One full run exceeded the existing 5-second timeout in the
+feeling-preserving creation/clearing test. Its unchanged targeted run passed,
+followed by the passing full check and coverage runs; no timeout or assertion was
+weakened. Database and saved journeys remain the earlier phase evidence and were
+not rerun for this presentation-only follow-up.
+
+Side-panel checks of the installed native app confirmed title/padding taps open
+the empty Add textbox, clean Cancel restores the row, and Edit loads only the
+known synthetic QA reflection. No writing was submitted or changed. The mirror
+briefly showed delayed frames/device metadata during the full checks; after it
+recovered, the final endpoints were verified again.
+Add endpoint (`native/row-add-editor.jpg`),
+Edit endpoint (`native/row-edit-editor.jpg`).
+These screenshots verify the native endpoints; automated assertions verify the
+animation settings. They do not establish frame-rate or software-keyboard/device
+acceptance. Existing API/Metro/mirror services remain running for Anthony.
+
+## October 7 owner review — Editor delay diagnosis
+
+Anthony requested a native comparison after noticing that opening the textbox
+lags and jumps while saved reflection text expands smoothly. Two paired trials
+used the same installed iPhone 17 / iOS 26.5 development app through the existing
+1052×1036 side-panel mirror. Only the known synthetic QA reflection and an empty
+Add input were opened; no writing was submitted or changed.
+
+Temporary metadata-only probes measured the native row's press callback through
+the animation effect, rather than browser click delivery or production latency:
+
+| Path / stage                         |  Trial 1 |  Trial 2 |
+| ------------------------------------ | -------: | -------: |
+| Saved text: press → animation effect |   182 ms |   228 ms |
+| Add input: press → animation effect  |   452 ms |   538 ms |
+| Add preparation: awaited pin         |   143 ms |   204 ms |
+| Add preparation: awaited adoption    |   162 ms |   213 ms |
+| Add input: press → focus event       | 1,055 ms | 1,078 ms |
+
+Saved text is already mounted and measured. `useDayReflection` instead awaits
+`setFlowAttempt` and `adoptAttempt` before constructing the editor. Adoption
+clones/notifies/persists the journal even for an unchanged already-loaded row;
+these steps add work and render passes before the input can be measured.
+Both reveals use the same 240 ms curve, but height/opacity/translation all run
+through React Native Animated's JavaScript driver. Native `simctl` recordings
+showed intermediate saved-text heights in both trials; each Add reveal had only
+the final changed height. In one controlled trial with only `autoFocus` disabled,
+Add regained seven intermediate/final height positions, although its first
+visible frame was already about 70% expanded. This supports autofocus as a
+contributor; mounting/measurement and JavaScript contention still need correction.
+It does not isolate every CPU cost or establish production/device frame rates.
+
+The MCP recording wrapper did not produce usable files (its first request also
+exceeded the recorder's supported 30 FPS maximum). Command-scoped Xcode `simctl`
+capture provided native evidence without changing global Xcode selection or
+opening an external UI. AVFoundation decoded actual presentation timestamps;
+no fixed capture rate was assumed. Ignored local evidence is under
+`.local/phase-07-4/editor-motion/` (`before.mov`, `before-probes.json`,
+`before-native-actions.json`, decoded frame JSON and `no-focus.mov`).
+`native-comparison.gif` places short native clips side by side, approximately
+aligned around the taps; use the probe table, rather than GIF alignment, for
+timing comparisons.
+
+At that diagnosis checkpoint, all diagnostic code and the temporary autofocus change were removed. App source
+matches `8778f88`; this request produced diagnosis only, with no permanent app
+fix or new automated-check claim. Existing simulator/API/Metro/mirror services
+remain available. Follow-up owned by the current 07.4 owner review: avoid redundant
+preparation for already-current local rows without bypassing newer remote data,
+keep height motion off the busy JavaScript path, and coordinate focus with the
+completed reveal. Cover stale/pending/account-change paths and cancelled motion,
+then repeat the paired native capture and software-keyboard checks.
+
+## October 7 owner review — Stable editor reveal and action
+
+Anthony still observed the jump and intermittent Add/Hide text flicker. The action
+now follows the explicit editing session, rather than the presence of an editor
+React element. Controller and attempt ID activate together; a temporary missing
+element during a refresh cannot revert Hide to Add or change the row's handler.
+
+Already-current, confirmed and phone-durable rows open synchronously without
+re-adopting/persisting the journal. Pinning remains synchronous while unrelated
+pruning may finish in the background. Missing/newer/pending/memory-only rows keep
+the adoption rules, and asynchronous account/close callbacks remain fenced.
+
+Closed Add rows premeasure a lightweight form without mounting a native input.
+The reveal retains that form (including saved text for Edit) until completion,
+then mounts and focuses the real editor once. Replacement measurements cannot
+start the reveal at the saved section's old height and restart it at the input's
+height. Native height, opacity and translation now use the already-installed
+Reanimated/Worklets libraries, with a 16 ms initial commit interval before the
+existing 240 ms opening / 230 ms closing curves. The browser retains its
+Animated adapter. Reduced motion applies endpoints directly; both adapters cancel
+motion, and stale/completed-after-close callbacks cannot focus an old editor.
+
+Early fixes shortened preparation and sometimes restored intermediate frames,
+but further recordings caught cold-mount and closing jumps. Those were not used
+as completion evidence. The final uninstrumented app was cold-restarted and
+tested through the existing in-app native mirror, without changing saved text.
+Actual presentation timestamps from `lightweight-final.mov` show:
+
+| Native interaction           | Successive changed heights including endpoint |
+| ---------------------------- | --------------------------------------------: |
+| First Add after cold restart |                                            11 |
+| Repeated Add                 |                                             9 |
+| Saved reflection expansion   |                                            13 |
+| Saved reflection → Edit      |                                            10 |
+| Whole-row editor close       |                                            10 |
+
+Both Add reveals move monotonically from sheet top 1000 to 577 at 1206×2622
+capture resolution, rather than showing only the endpoint. Hide remains stable
+during the editor reveal; Edit retains the known synthetic QA text and clean
+Cancel restores the saved row. Native input focus follows completion, with
+variable focus-delivery delay on this development simulator. These captures do
+not establish production frame rates or software-keyboard/device acceptance.
+
+Before/after native Add recording (`native/editor-motion-before-after.gif`),
+final Add endpoint (`native/motion-fixed-add.jpg`),
+final Edit endpoint (`native/motion-fixed-edit.jpg`).
+The comparison clips are approximately aligned around taps; precise diagnosis
+timings above came from press/effect probes, not GIF alignment. Ignored local
+evidence also includes `lightweight-actions.json`, decoded `light-*/frames.json`,
+intermediate recordings and check logs under `.local/phase-07-4/editor-motion/`.
+All temporary app probes were removed. API/Metro/mirror and the existing native
+app remain available for Anthony's review; no publication was authorized.
+
+Regression coverage protects durable no-op adoption, newer/memory-only adoption,
+blocked storage, late pruning failure, account deactivation, cancelled focus,
+stable Hide/action state, premeasurement, equal-height replacement and staged
+native input mounting with empty/existing text. Native adapter tests protect
+UI-thread callback scheduling and cancellation; browser adapter/component tests
+protect layout orchestration. Mocked tests do not establish native smoothness;
+the recording above provides separate simulator evidence.
+
+Fresh `npm run check` passes **644 cases** (175 architecture/tooling, 45 API,
+403 mobile and 21 contracts), including Doctor **21/21**, typechecks, lint and
+format checks. Earlier test typing/format/mock integration failures were repaired
+without weakening assertions or thresholds. Fresh mobile coverage passes **403
+cases** with **93.56% statements / 90.27% branches / 90.26% functions / 94.68%
+lines**. `npm run coverage:check` passes every unchanged global/critical floor
+using this mobile report and the existing unchanged API/contracts reports.
+`npm run test:db` passed **61 database/migration cases** earlier in this follow-up;
+API/contracts/database code did not change afterward. The phase's existing 21
+saved journeys were retained and were not rerun for this correction.
+Fresh `npm run export:web -w @justgo/mobile` and
+`npm run export:ios -w @justgo/mobile` both pass, verifying the platform adapter
+bundles. No native dependencies or installed binary changed. Fast Refresh during
+repository/hook edits briefly retained disposed runtime state; restarting the
+existing app restored normal fixture loading. Final owner testing uses that
+restarted app and the retained API/Metro/mirror.
+
+A tightened close/reopen regression caught an obsolete preparation failure
+appearing on a new session for the same row. A preparation-generation guard now
+discards that callback; the regression failed before the guard and passes after
+it. One coverage command accidentally overlapped a still-running full check and
+the existing feeling-preserving test exceeded its 5-second timeout. The duplicate
+run was stopped and subsequent verification was run sequentially; no timeout was
+changed.
+
+## October 8 owner review — Placeholder alignment
+
+Anthony reported the empty hint shifting down when the real input appeared.
+The lightweight preview uses React Native Text; the iOS multiline input draws
+its own placeholder through UILabel. The installed renderer applies a different
+baseline treatment to these surfaces despite their matching Inter font, size,
+line height and padding. The existing in-app simulator recording reproduced a
+4-pixel shift at 1206×2622 native capture resolution: the hint's first ink row
+moved from 57 to 61 pixels below the box's top while the box stayed stationary.
+
+The iOS editor now keeps the same visible Text hint during and after input
+mounting, using shared typography and padding. The overlay cannot intercept taps
+and is hidden from accessibility; the native placeholder stays present with
+transparent ink to retain its sizing/accessibility behavior. Nonempty input hides
+the overlay, and clearing restores it. Browser and Android keep their existing
+native placeholders. Input value, focus timing, animation, saving and dirty-close
+rules are preserved. This does not add a dependency or require a new native app.
+
+Paired uninstrumented native captures show the hint's first ink row remaining
+57 pixels below the box's top through the fixed handoff. The same check was
+repeated on the first opening after a cold app restart and a subsequent opening.
+The box endpoint stayed at native y=1790. A native keystroke hid the hint and
+enabled Save; deleting it restored the hint and disabled Save. Clean Cancel and
+reopen passed. No writing was submitted, and the owner's other reflection stayed
+collapsed. Native placeholder comparison (`native/placeholder-handoff.png`)
+shows the original preview, original native hint and fixed focused input.
+Cold/repeated settled-box samples all retain offset 57; moving/fading edge
+samples vary by one pixel with capture rounding/antialiasing. The first diagnostic
+assertion treated that variation as a shift and was corrected to compare the
+stationary box through the handoff, where the original 57→61 failure occurred.
+Recordings, actual-presentation-time frames, safe action metadata and pixel
+measurements live in ignored `.local/phase-07-4/placeholder-alignment/`.
+
+The empty-input regression fails against the original implementation (1 failing /
+5 passing cases), then passes with the visible-hint fix. It protects the hint
+through input mounting, accessibility exclusion, native placeholder semantics,
+typing and clearing, plus the existing saved-text path. Two added cases protect
+unchanged browser/Android behavior. The focused hook suite passes 8/8; the earlier
+four affected suites passed 36/36 before those two additions.
+
+Fresh `npm run check` passes Doctor 21/21, types/lint/format and **646 cases**:
+175 architecture/tooling, 45 API, 405 mobile and 21 contracts. Fresh
+`npm run test:coverage -w @justgo/mobile` passes 405 cases with **93.57% statements /
+90.33% branches / 90.26% functions / 94.68% lines**. `npm run coverage:check`
+passes all unchanged global/critical floors with the new mobile report and
+existing unchanged API/contracts reports. Final logs are `final-check.log` and
+`final-coverage.log` in the evidence directory. API/database/contracts code did
+not change; their earlier database, export and saved-journey evidence remains
+historical and was not rerun for this typography fix.
+
+The existing iPhone 17 / iOS 26.5 QA device, installed app and API/Metro/mirror
+remain available with the empty Add editor open. Changes stay local, with no
+push/PR/merge. This check uses hardware-keyboard input; software-keyboard layout,
+physical device, VoiceOver/scaled-text acceptance and hosted checks retain their
+existing owners/open gates. Source behavior was verified through the live native
+mirror, not inferred from component mocks or a browser app preview.
+
+## October 8 owner review — Saved Edit flash and text shift
+
+Anthony observed the textbox flashing white and its existing text shifting down
+during Edit. The open saved panel reset its reveal progress to zero on content
+replacement, exposing the white sheet while measuring/revealing the editor.
+Saved text then swapped from the lightweight Text preview to TextInput, whose
+iOS baseline differs. The prior empty-hint fix did not cover saved writing.
+
+The replacement retains its existing opacity/translation and height until the
+new content is measured, then smoothly resizes. The unused reveal-reset methods
+were removed from both motion adapters. Saved writing now mounts in its real
+input immediately, before fresh editor measurement starts the resize. It keeps
+that input when an early edit clears the text; input focus still waits for
+completed motion. Empty Add retains its lightweight form, stable hint and staged
+input. Save, feeling preservation, dirty-close, cancellation and account fences
+remain unchanged. No new dependency or native binary is required.
+
+Native recording on the existing iPhone 17 / iOS 26.5 device, through the in-app
+mirror, used only the first row's known synthetic QA reflection. Other owner
+writing remained collapsed and was excluded from recordings. Before, frames
+6.537 and 6.585 in `before.mov` have no filled textbox, followed by the fading
+preview. With the box settled at y=1232 in the 1206×2622 capture, the text's first
+ink row moves from offset 57 to 62 when the real input mounts. After, every
+recorded editor frame retains the filled textbox and offset 62, including during
+resizing and subsequent focus. Initial saved-text typography changes to input
+typography once, with no second preview/input shift. The native resize still
+shows intermediate sheet positions; this is simulator evidence, not a production
+frame-rate benchmark.
+
+Before/after saved Edit recording (`native/edit-handoff-before-after.gif`)
+is aligned approximately around content replacement, not a precise tap-latency
+comparison. Actual-time recordings, decoded frames, safe action metadata,
+pixel measurements and command logs live under ignored
+`.local/phase-07-4/edit-handoff/`. No temporary app instrumentation was added.
+
+Final-source verification cold-restarted the installed app. All **33 sampled
+editor frames** after the real input appeared retain a filled surface; every
+settled-box sample keeps text offset 62. A native hardware keystroke enables Save,
+deleting it restores the unchanged QA text/disabled Save, and clean Cancel returns
+the saved reflection. The remaining empty fourth row's Add form also opens with
+its stable hint and expected focus/actions. No reflection was submitted. The
+existing API/Metro/mirror remain running, with that empty Add editor left open
+and other writing collapsed for owner testing.
+
+The two revised regressions fail against the preceding implementation (2 failing /
+18 passing across hook/row suites). They assert visible replacement and saved
+writing already in its real input, while preserving empty Add's staging. An
+additional early-clear assertion caught an input unmount in the first fix (1
+failing / 7 passing hook cases); dirty input now stays mounted through completion.
+Final focused hook/row/motion/day-sheet/screen suites pass **42/42**. Native
+adapter tests retain reduced-motion endpoints, cancellation and completion/focus
+fencing; fresh/equal-height measurement and ordinary open/close tests remain.
+
+Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **646 cases**
+(175 architecture/tooling, 45 API, 405 mobile and 21 contracts). Fresh
+`npm run test:coverage -w @justgo/mobile` passes 405 cases with **93.55% statements /
+90.28% branches / 90.23% functions / 94.67% lines**. `npm run coverage:check`
+passes all unchanged global/critical floors with the new mobile and retained
+unchanged API/contracts reports. Backend/database/contracts code did not change;
+earlier database, bundle-export and saved-journey results are retained, not
+relabeled as fresh. Final documentation formatting and `git diff --check` pass.
+Changes remain local and unpublished. Existing software-keyboard, device,
+VoiceOver/scaled-text and hosted acceptance gates stay open.
+
+## October 8 owner review — Add cancel label and icon
+
+Anthony approved replacing the empty Add editor's misleading Hide Reflection
+action with **× Cancel**. `ProgressEntryRow.tsx` uses the authoritative editing
+state for that label and a decorative close icon, including when editor content
+is temporarily unavailable during refresh. The closed row retains its original
+plus and Add reflection label. New Add no longer shows an expansion chevron;
+saved reflections retain View/Hide, their pencil and expansion chevron. The
+row's accessible action agrees with the displayed label. Its padded full-row
+tap area, shared motion and existing Cancel/Save buttons are unchanged.
+
+Cancellation still routes through `useDayReflection.beforeClose` and the existing
+ReflectionController. An empty editor closes directly; unsent writing opens the
+existing Save / Keep editing / Discard changes confirmation. Regression coverage
+protects clean row cancellation, dirty row cancellation, retained writing after
+Keep editing, discard without a submission, saved Hide after saving, and stable
+Cancel/icon behavior during refresh. Initial checks reproduced the obsolete
+Add/Hide labels; test queries were then corrected to include decorative SVGs,
+use the supported prop matcher and scope the two visible Cancel labels. No
+assertions or coverage floors were weakened. Final four focused suites pass
+**39/39** cases.
+
+Interactive verification uses the retained iPhone 17 / iOS 26.5 QA device and
+installed app through the existing in-app simulator mirror. Clean row Cancel
+restores the plus/Add label; tapping the whole row reopens the editor with the
+close/Cancel action. One disposable hardware-keyboard character triggers dirty
+confirmation, Keep editing retains it, and Discard closes the editor. Other
+writing stays collapsed; no reflection is submitted. Opening/closing the first
+row's synthetic saved QA reflection retains its pencil and View/Hide actions.
+Native Cancel proof (`native/add-cancel-action.png`) shows
+the empty Add editor left open for owner testing. Native evidence is separate
+from component tests and earlier saved browser journeys. Logs live under ignored
+`.local/phase-07-4/cancel-action/`.
+
+Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **647 cases**
+(175 architecture/tooling, 45 API, 406 mobile and 21 contracts). Fresh mobile
+coverage passes 406 cases with **93.55% statements / 90.30% branches / 90.23%
+functions / 94.67% lines**. `npm run coverage:check` passes every unchanged
+global/critical floor, with the fresh mobile report and existing unchanged
+API/contracts reports. Database, exports and saved journey results remain
+historical; this presentation change does not alter their implementations.
+Changes stay local and unpublished. Earlier software-keyboard, physical-device,
+VoiceOver/scaled-text and hosted checks remain open.
+
+## October 8 owner review — Saved action spacing
+
+At Anthony's request, View Reflection loses its leading pencil and the icon's
+reserved space. Hide Reflection uses the same alignment to avoid a horizontal
+label jump on expansion. The separate inline Edit action keeps its pencil;
+Add/Cancel icons, metadata divider, trailing chevron, whole-row interaction and
+motion are unchanged. This supersedes the saved metadata pencil described in
+the preceding Add-cancel checkpoint.
+
+Two regressions fail against the previous code (2 failing / 12 passing row
+cases), covering saved rows with and without a timestamp. They protect the
+absence of a metadata pencil in both collapsed/expanded states, the retained
+Edit pencil, chevron and toggle action. Three affected row/screen/day-sheet
+suites pass **32/32** cases after the change.
+
+The existing iPhone 17 / iOS 26.5 native app, viewed through the in-app mirror,
+shows View/Hide moved left with no icon-sized gap. The first row's synthetic QA
+reflection opens/closes normally and retains its separate Edit pencil. Other
+writing remained collapsed; no content was edited or submitted. The simulator
+is left on the collapsed View rows. Native layout proof (`native/view-reflection-spacing.png`)
+records the updated surface. Ignored command logs and the preceding screenshot
+live in `.local/phase-07-4/view-action/`. This is an interactive native check,
+separate from saved browser journeys and physical-device acceptance.
+
+The first full check caught an older ProgressView assertion that still required
+the saved row pencil. It now explicitly asserts that the pencil is absent;
+the neighboring Edit-asset test remains intact. Fresh `npm run check` passes
+Doctor **21/21**, types/lint/format and **648 cases** (175 architecture/tooling,
+45 API, 407 mobile and 21 contracts). No dependency or native binary changed.
+Fresh mobile coverage passes all 407 cases: **93.55% statements / 90.30% branches /
+90.23% functions / 94.67% lines**. `npm run coverage:check` passes all unchanged
+global/critical floors with this mobile report and retained unchanged
+API/contracts reports. Final formatting and `git diff --check` pass. Earlier
+database, exports and saved-journey results remain historical. Changes remain
+local and unpublished; earlier keyboard/device/accessibility/hosted gates stay open.
+
+## October 8 owner review — Offline day presentation
+
+Anthony approved **You're currently offline** and **Connect to the internet to
+view this day’s activity.** for an unavailable offline day. The disconnected-plug
+illustration and message now form a centered group in the remaining space below
+the day header. The offline sheet uses the existing bounded 470-point minimum
+(capped at 78% of screen height) and scrollable content to accommodate smaller
+screens. The illustration remains decorative; the heading retains its alert
+role. Generic request failures and offline-month copy are unchanged.
+
+The guarded development preview accepts `/preview?progressDayState=offline`,
+omits entries/rep counts and supplies the existing connection-required state.
+It performs no network/account impersonation or activity writes. The production
+route still redirects without loading/rendering the developer fixture. Existing
+Progress component and saved-journey assertions now expect both copy lines.
+
+The new day-sheet regression reproduces the prior failure (2 failing / 1 passing
+cases). It checks both 400- and 900-point screens, centering/bounded height,
+decorative-image semantics and close behavior. Five affected suites pass **63/63**
+cases, including production preview guards. An initial coverage run exposed a
+preview-dismissal test waiting on the mock native animation's real completion;
+the test now explicitly completes a controlled animation callback and asserts
+that the offline state closes. No assertions, warnings or floors were weakened.
+
+Native presentation was checked through the existing in-app simulator mirror
+(1061×1036 browser viewport), using the installed iPhone 17 / iOS 26.5 QA app on
+`F0926FE3-5692-4241-B6C8-C5C4F9C6422E`. The September 17 offline preview shows the
+new copy and centered content with no entries or retry action. The updated
+native screenshot (`native/offline-day-centered.png`)
+is a 1206×2622 capture, and the preview stays open for owner review. This is
+synthetic presentation evidence, not a radio-connectivity test or saved journey.
+No private reflection was opened, edited or submitted.
+
+Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **651 cases**
+(175 architecture/tooling, 45 API, 410 mobile and 21 contracts). Fresh mobile
+coverage passes all 410 cases: **93.59% statements / 90.32% branches / 90.37%
+functions / 94.71% lines**. `npm run coverage:check` passes every unchanged
+global/critical floor with this mobile report and retained unchanged API/contracts
+reports. Logs are ignored under `.local/phase-07-4/offline-layout/`.
+Database, exports and saved-journey runs remain historical; the two changed
+journey assertions were typechecked but not rerun for this presentation follow-up.
+No dependencies or native binary changed. Changes remain local and unpublished;
+earlier software-keyboard, physical-device, VoiceOver/scaled-text, actual radio
+and hosted gates remain open.
+
+## October 8 owner review — Offline month copy
+
+Anthony approved **You’re offline. Connect to view this month.** for unavailable
+months. The existing centered alert above the calendar now names the offline
+condition and the next step. It retains natural text wrapping; no explicit line
+limit or font-size reduction was added. Calendar disabling, summary retention,
+unavailable monthly totals and connection/cache rules are unchanged.
+
+The existing offline integration regression fails with the old copy and passes
+with the new alert. Two focused Progress suites pass **50/50** cases. The saved
+Progress journey's month assertion now expects the same text; its existing
+offline/reconnect/database assertions are retained. That journey is typechecked
+but not rerun for this copy follow-up.
+
+The existing iPhone 17 / iOS 26.5 app was checked through the in-app simulator
+mirror (484×648 browser viewport). A temporary guarded preview supplied the
+unavailable August calendar with synthetic cached summary values. The message
+fits on one centered line at the device's normal text size above the faded,
+disabled calendar. The updated native screenshot (`native/offline-month-copy.png`)
+is a 1206×2622 capture. Temporary preview wiring was restored byte-for-byte;
+no account data was edited and no network/system settings changed. This is
+presentation evidence, separate from real radio/physical-device acceptance.
+
+Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **651 cases**
+(175 architecture/tooling, 45 API, 410 mobile and 21 contracts). Fresh mobile
+coverage passes all 410 cases at **93.59% statements / 90.32% branches / 90.37%
+functions / 94.71% lines**. `npm run coverage:check` passes all unchanged
+global/critical floors with this report and retained unchanged API/contracts
+reports. Logs live under ignored `.local/phase-07-4/offline-month-copy/`.
+Earlier database, exports,
+saved-journey and hosted results retain their prior status. No dependency or
+native binary changed. Changes remain local and unpublished; earlier release
+and accessibility gates remain open.
+
+## October 8 owner review — Visual artifact cleanup
+
+Anthony requested removing the phase screenshots. All 17 screenshots and two
+comparison GIFs were moved out of `docs/checks/phase-07-4/` into ignored local
+`.local/phase-07-4/visual-evidence/`, preserving their browser/native subfolders.
+The 19 handoff links now name the local captures without linking to removed
+repository files. The plan/index and recurring artifact-storage guidance are
+updated. Recorded verification, tests and remaining acceptance checks are
+retained. Application code and behavior did not change; code tests and UI checks
+were not rerun for this documentation/artifact-only cleanup.
+`npm run format:check` and `git diff --check` pass. The reference/ignore audit
+confirms all 19 local captures are ignored, no removed image links remain and
+only the requested artifact/documentation files changed.
+
+## October 8 owner review — Progress and activity folders
+
+Anthony authorized organizing both growing directories by responsibility:
+
+- `features/progress/calendar/`: calendar UI and skeleton, with its test.
+- `features/progress/day-details/`: day sheet, entry rows, reflection editor/hook
+  and slide motion, with tests and native/default motion implementations together.
+- `data/activity/persistence/`: AsyncStorage adapter and serialized writes.
+- `data/activity/sync/`: delivery transitions, sender, transport and retry rules.
+- `data/activity/progress/`: Progress composition, independent reads and cache repair.
+
+The screen/view, date helpers and display types stay at the Progress root;
+account ownership, repository, schemas and submission rules stay at the activity
+root. All 27 relocated files are retained, with tests beside their owners.
+AST-based edits update only module/asset paths, including imports, runtime loaders
+and Jest mock factories. Metro's isolated storage selector and its regression
+test, test-support imports and the saved journey export follow the new paths.
+Recursive test discovery, coverage selectors and contract-upload allowlists need
+no changes; existing floors and architecture boundaries remain intact.
+
+This local follow-up overlaps the earlier mobile cleanup's Progress/persistence/
+sync groups. Integrating that separate branch must reconcile these moves and
+retain the newer 07.4 editor/motion/read files. No other mobile cleanup, native
+binary, dependency, API/schema or product behavior changed.
+
+Automated verification ran sequentially on the owner's 8 GB Mac:
+
+- Mobile typecheck and the three Metro fixture regressions pass.
+- Fourteen focused Progress/activity suites pass all **170 cases**.
+- Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **651 cases**
+  (175 architecture/tooling, 45 API, 410 mobile and 21 contracts).
+- Fresh mobile coverage passes all **410 cases** at **93.59% statements / 90.32%
+  branches / 90.37% functions / 94.71% lines**, unchanged from before the moves.
+  `npm run coverage:check` passes the unchanged global/critical floors using that
+  fresh mobile report and retained unchanged API/contracts reports.
+- Cold web and iOS Hermes exports pass with `--clear --max-workers 1`, using
+  ignored `export-web/` and `export-ios/` output directories in the log root below.
+  The saved journey repository bundle rebuilds from the relocated sources.
+- The read-only agent review resolves all **159 relative references**. An
+  independent move audit confirms all 27 original paths are gone, their targets
+  exist, and all 40 affected source/consumer files retain their logic apart from
+  module/asset paths and formatting. No actionable omission was found.
+
+Interactive native verification passes through the existing side-panel mirror
+(1061×1036 browser viewport), using the installed iPhone 17 / iOS 26.5 app on
+`F0926FE3-5692-4241-B6C8-C5C4F9C6422E`. Metro restarted with `--clear`; the native
+development bundle rebuilt, then the app reloaded to remove stale moved-module
+state. The earlier hot-refresh runtime had shown unavailable account/catalog
+state; it cleared on this full reload. The live calendar retains **15 reps**;
+October 7 opens its four rows. Whole-row Add opens the editor and placeholder with
+**× Cancel**, clean cancellation restores **＋ Add reflection**, saved reflection
+expansion displays its writing/Edit pencil, and Edit opens with existing writing
+prefilled. Clean Edit cancellation retains that writing. No activity/reflection
+was submitted, no account/device reset or native binary rebuild was performed,
+and the existing API/simulator mirror and refreshed Metro remain running.
+This is an interactive native smoke check, not a saved end-to-end test, motion
+benchmark, software-keyboard/device acceptance or hosted CI evidence.
+
+Command logs and move/import audit are ignored under
+`.local/phase-07-4/folder-reorganization/`. Existing
+screenshot removals and all earlier acceptance gates are retained. Database and
+saved-journey execution retain their prior evidence; this mobile organization-only
+follow-up does not rerun them or establish hosted CI. No push, PR or merge was
+performed.
+
+## October 8 publication preparation
+
+Anthony requested publishing the current Phase 07.4 branch and creating its PR.
+The folder/screenshot follow-up was already saved in local commit `5900626`,
+retaining the organization-only scope recorded above.
+The branch is based on remote `main` `6780406`, with the approved 07.3A deferral
+documentation included and no deferred testing prototype or 07.5 cutover code.
+
+Fresh publication verification in an isolated clean checkout passes:
+
+- `npm ci`, then `npm run check`: Doctor **21/21**, types/lint/format and all
+  **651 cases** (175 architecture/tooling, 45 API, 410 mobile and 21 contracts).
+- `npm run test:db`: **60 database + 1 migration/restoration cases**, using the
+  validated dedicated loopback `justgo_test` environment passed explicitly to
+  the clean checkout; no ignored environment file was copied into it.
+- `npm run test:coverage`: fresh API, mobile and contract reports pass every
+  unchanged all-source/critical floor. API branches/lines are **91.19% / 95.71%**;
+  mobile **90.32% / 94.71%**; contracts **100% / 100%**.
+- The journey repository bundle rebuilds against the clean-installed packages.
+  The earlier cold web/iOS exports and native simulator smoke above retain their
+  evidence for this unchanged application source. Saved-journey execution remains
+  the earlier 21-case local result until this PR's hosted run is inspected.
+
+Command logs and count-based coverage summaries are ignored under
+`.local/phase-07-4/publication/`. The existing primary checkout, installed simulator
+app, account and running services are retained. Earlier native/device acceptance
+gates remain open and are not replaced by publication or CI.
+
+## October 8 PR #20 review follow-up
+
+Anthony requested fixing the assessed review findings and pushing the result to
+[PR #20](https://github.com/anthonyyoo24/justgo/pull/20). Both original hosted
+Foundation checks passed at `6782894`; this follow-up requires its own checks.
+
+- Unknown completion-create outcomes still fence aggregate reads, preserving the
+  existing no-double-count rule. The hook now exposes that waiting reason;
+  summary/calendar loading follows active fetching. Unavailable figures show
+  “Syncing your latest activity…” without shimmer, a generic error or Retry.
+  Cached figures and independently available day/calendar data remain usable.
+  The empty-month footer appears only when month data is actually available.
+- The plan's umbrella status and current umbrella handoff now agree with the
+  publication authorization and PR, separating hosted results from owner review,
+  explicit merge approval and outstanding keyboard/device/release gates.
+  Historical dated checkpoints retain their original evidence.
+- The CodeRabbit docstring warning is not an existing repository requirement.
+  The aggregate fence has a focused explanatory comment; no blanket docstrings,
+  dependency changes or quality-gate reductions were added.
+
+The new uncached-aggregate regression failed before the fix because the syncing
+message was absent. **77 focused cases** pass across Progress screen/view,
+projections, developer preview and guarded preview route. They cover actual
+repository retry/acknowledgement with controlled transport, a stale older month,
+retained local totals, offline guidance, automatic read recovery, suppression of
+stale errors/Retry and a usable calendar while only summary data is unavailable.
+
+Interactive side-panel browser verification at **390 × 844** used the isolated
+`/preview?progressState=syncing` presentation fixture: cached 63 reps remained
+visible, the unavailable calendar was dimmed, the syncing message fit, and there
+was no shimmer, Retry or false empty-month claim. The fixture's “Show loaded
+progress” restored the populated calendar and removed the message. This is a
+presentation walkthrough; retry/acknowledgement behavior is automated coverage,
+and no new native/device acceptance is claimed. No screenshots are committed.
+
+Fresh verification of implementation commit `f4c5672` in an isolated clean
+managed checkout passed sequentially:
+
+- `npm ci`, then `npm run check`: online Expo Doctor **21/21**, types, lint,
+  formatting and **656 cases** (175 architecture/tooling, 45 API, 415 mobile,
+  21 contracts).
+- `npm run test:db`: **60 database + 1 migration/restoration cases**. The existing
+  dedicated loopback `justgo_test` mapping was passed explicitly after validating
+  both database URLs; no ignored `.env` files were copied into the checkout.
+- `npm run test:coverage`: every unchanged all-source/critical behavior floor
+  passed, including Progress. Fresh count-based summaries and logs are retained
+  in ignored `.local/phase-07-4/review-follow-up/` before archiving the validation
+  checkout. No dependencies or lockfile changed.
+
+The final handoff-only evidence commit follows the verified implementation.
+Standalone online Doctor and formatting are checked immediately before the
+authorized push. Fresh hosted results for that pushed revision remain separate
+from the original `6782894` passes. Earlier native/device gates stay open.
+
+## Open review and release checks
+
+- Anthony's code/design review and explicit merge approval.
+  Fresh hosted checks for the review follow-up must be inspected for its pushed
+  revision; both original publication runs passed at `6782894`.
+- Anthony's acceptance of the updated editor reveal/action above; final simulator
+  recordings now establish intermediate native heights for cold/repeated Add,
+  Edit and close. Physical-device/performance and software-keyboard checks below
+  remain open.
+- Software-keyboard sheet layout, physical-device storage/Keychain/iCloud/backup,
+  actual radio connectivity, VoiceOver/focus, large text/reduced motion and the
+  earlier native transition/safe-area checks remain owned by Anthony / native
+  acceptance before release. This simulator used hardware-keyboard HID input;
+  its absence of an on-screen keyboard does not verify that layout.
+- The pre-existing metric suffix still renders “1 days”; singular copy remains
+  an open Progress polish finding for owner review / 07.5 acceptance.
+- 07.3A native automation/hosted CI remains deferred. 07.5 owns final obsolete
+  schema/routes/fixtures removal, full documentation reconciliation and the
+  integrated CI closeout. Billing remains 07A and staging/release remains 09.

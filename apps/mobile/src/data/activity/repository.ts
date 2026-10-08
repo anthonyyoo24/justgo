@@ -32,10 +32,11 @@ import {
   catalogEnvelopeSchema,
   periodSchema,
 } from './model';
-import { JournalSender } from './sender';
-import { JournalPersistence } from './persistence';
+import { JournalSender } from './sync/sender';
+import { JournalPersistence } from './persistence/persistence';
 import { addCompletion, addReflection, correctReflection } from './submissions';
-import type { JournalTransport } from './transport';
+import type { JournalTransport } from './sync/transport';
+import { preserveNewerReflection } from './progress/progress';
 
 export type AccountRepositoryOptions = {
   accountId: string;
@@ -124,9 +125,10 @@ export class AccountRepository {
             typeof journalSchema.safeParse
           >;
         }
-        if (parsed.success && parsed.data.accountId === this.accountId)
+        if (parsed.success && parsed.data.accountId === this.accountId) {
+          parsed.data.calendarBaseline ??= parsed.data.calendar;
           this.store.setState({ journal: parsed.data });
-        else {
+        } else {
           this.store.setState({ hydrationError: 'unreadable' });
           this.persistence.protected = true;
           // Never overwrite unvalidated pending bytes without a durable copy.
@@ -192,10 +194,27 @@ export class AccountRepository {
     await this.hydrate();
     await this.sender.flush();
   }
+  hasCurrentAttempt(attempt: Attempt): boolean {
+    const state = this.store.getState();
+    if (!state.ready || !state.active) return false;
+    const parsed = attemptSchema.parse(attempt);
+    const existing = state.journal.records[parsed.id];
+    return !!(
+      existing?.created &&
+      !existing.rejected &&
+      existing.phoneVersion === existing.version &&
+      existing.serverVersion === existing.version &&
+      JSON.stringify(existing.attempt) === JSON.stringify(parsed)
+    );
+  }
   async adoptAttempt(attempt: Attempt): Promise<void> {
-    await this.hydrate();
+    if (!this.store.getState().ready) await this.hydrate();
     this.checkActiveAccount();
     const parsed = attemptSchema.parse(attempt);
+    // Opening a current, durable row is a read. Avoid cloning/notifying/writing
+    // the entire journal before mounting its editor. Newer or unsaved content
+    // still goes through the adoption/persistence rules below.
+    if (this.hasCurrentAttempt(parsed)) return;
     this.update((journal) => {
       const old = journal.records[parsed.id];
       if (
@@ -378,7 +397,10 @@ export class AccountRepository {
   async acceptSummary(data: ProgressSummary, fence: number): Promise<boolean> {
     const parsed = progressSummarySchema.parse(data);
     if (
+      this.disposed ||
+      !this.store.getState().active ||
       this.captureAggregateFence() !== fence ||
+      parsed.today !== this.store.getState().period.today ||
       parsed.timeZone !== this.store.getState().period.timeZone
     )
       return false;
@@ -401,7 +423,12 @@ export class AccountRepository {
     fence: number,
   ): Promise<boolean> {
     const parsed = progressCalendarSchema.parse(data);
-    if (this.captureAggregateFence() !== fence) return false;
+    if (
+      this.disposed ||
+      !this.store.getState().active ||
+      this.captureAggregateFence() !== fence
+    )
+      return false;
     const period = this.store.getState().period;
     if (
       parsed.month !== period.today.slice(0, 7) ||
@@ -410,6 +437,7 @@ export class AccountRepository {
       return true;
     this.update((journal) => {
       journal.calendar = { data: parsed, timeZone };
+      journal.calendarBaseline = journal.calendar;
       journal.calendarAdditions = journal.calendarAdditions.filter(
         (id) =>
           journal.records[id]!.attempt.activityDate.slice(0, 7) !==
@@ -427,7 +455,13 @@ export class AccountRepository {
   ): Promise<void> {
     const parsed = progressDayResponseSchema.parse(data);
     const period = this.store.getState().period;
-    if (parsed.date !== period.today || timeZone !== period.timeZone) return;
+    if (
+      this.disposed ||
+      !this.store.getState().active ||
+      parsed.date !== period.today ||
+      timeZone !== period.timeZone
+    )
+      return;
     this.update((journal) => {
       const previous =
         append &&
@@ -437,16 +471,38 @@ export class AccountRepository {
           : [];
       const entries = new Map(previous.map((entry) => [entry.id, entry]));
       for (const entry of parsed.entries) {
-        const old = entries.get(entry.id);
-        if (
-          !old ||
-          (old.reflection?.revision ?? 0) <= (entry.reflection?.revision ?? 0)
-        )
-          entries.set(entry.id, entry);
+        entries.set(
+          entry.id,
+          preserveNewerReflection(entry, entries.get(entry.id)),
+        );
       }
+      // A first-page refresh must retain downloaded later pages and newer
+      // reflection revisions. Local pending versions are overlaid by selectors.
+      const cached = journal.today;
+      if (cached?.data.date === parsed.date && cached.timeZone === timeZone)
+        for (const entry of cached.data.entries) {
+          const fresh = entries.get(entry.id);
+          entries.set(
+            entry.id,
+            fresh ? preserveNewerReflection(fresh, entry) : entry,
+          );
+        }
       journal.today = {
         timeZone,
-        data: { ...parsed, entries: [...entries.values()] },
+        data: {
+          ...parsed,
+          entries: [...entries.values()].sort(
+            (a, b) =>
+              a.startedAt.localeCompare(b.startedAt) ||
+              a.id.localeCompare(b.id),
+          ),
+          nextCursor:
+            !append &&
+            cached?.data.entries.length &&
+            cached.data.entries.length > parsed.entries.length
+              ? cached.data.nextCursor
+              : parsed.nextCursor,
+        },
       };
     });
     await this.persist();
@@ -459,6 +515,9 @@ export class AccountRepository {
       (journal.today &&
         (journal.today.data.date !== today ||
           journal.today.timeZone !== timeZone)) ||
+      (journal.calendarBaseline &&
+        (journal.calendarBaseline.data.month !== today.slice(0, 7) ||
+          journal.calendarBaseline.timeZone !== timeZone)) ||
       (journal.calendar &&
         (journal.calendar.data.month !== today.slice(0, 7) ||
           journal.calendar.timeZone !== timeZone))
@@ -474,6 +533,11 @@ export class AccountRepository {
           value.calendar.timeZone !== timeZone
         )
           value.calendar = null;
+        if (
+          value.calendarBaseline?.data.month !== today.slice(0, 7) ||
+          value.calendarBaseline.timeZone !== timeZone
+        )
+          value.calendarBaseline = null;
       });
       await this.persist();
     }

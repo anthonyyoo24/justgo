@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/tokens';
-import { DaySheet, type ProgressDay } from './DaySheet';
+import { DaySheet, type ProgressDay } from './day-details/DaySheet';
 import {
   ProgressCalendar,
   type ProgressCalendarProps,
-} from './ProgressCalendar';
+} from './calendar/ProgressCalendar';
 export type ProgressViewProps = ProgressCalendarProps & {
   sheetAccessory?: ReactNode;
   day?: ProgressDay | undefined;
@@ -20,6 +20,13 @@ export type ProgressViewProps = ProgressCalendarProps & {
   onCloseDay: () => void;
   onRetryDay?: (() => void) | undefined;
   onLoadMore?: (() => void) | undefined;
+  dayConnectionRequired?: boolean;
+  editingId?: string | null | undefined;
+  editor?: ReactNode;
+  onEditorOpened?: (() => void) | undefined;
+  onEditReflection?: ((id: string) => void) | undefined;
+  beforeClose?: ((work: () => void) => void) | undefined;
+  paginationKey?: string | null | undefined;
 };
 
 export function ProgressView({
@@ -44,6 +51,17 @@ export function ProgressView({
   onRetryMonth,
   onRetryDay,
   onLoadMore,
+  connectionRequired,
+  summaryLoading,
+  summaryError,
+  waitingForSync,
+  dayConnectionRequired,
+  editingId,
+  editor,
+  onEditorOpened,
+  onEditReflection,
+  beforeClose,
+  paginationKey,
 }: ProgressViewProps) {
   return (
     <SafeAreaView
@@ -60,6 +78,10 @@ export function ProgressView({
         onMonth={onMonth}
         onOpenDay={onOpenDay}
         onRetryMonth={onRetryMonth}
+        connectionRequired={connectionRequired ?? false}
+        summaryLoading={summaryLoading ?? (!data && loading && !error)}
+        summaryError={summaryError ?? false}
+        waitingForSync={waitingForSync ?? false}
       />
       <DaySheet
         key={selectedDate ?? 'closed'}
@@ -75,6 +97,13 @@ export function ProgressView({
         onClose={onCloseDay}
         onRetry={onRetryDay}
         onLoadMore={onLoadMore}
+        connectionRequired={dayConnectionRequired ?? false}
+        editingId={editingId}
+        editor={editor}
+        onEditorOpened={onEditorOpened}
+        onEditReflection={onEditReflection}
+        beforeClose={beforeClose}
+        paginationKey={paginationKey}
       />
     </SafeAreaView>
   );

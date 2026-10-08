@@ -119,9 +119,13 @@ export function ScreenPreview({
   progressState = 'default',
   progressDayState = 'default',
 }: {
-  progressState?: 'default' | 'empty' | 'error' | 'loading';
+  progressState?: 'default' | 'empty' | 'error' | 'loading' | 'syncing';
   progressDayState?:
-    'default' | 'initial-error' | 'load-more-error' | 'loading-more';
+    | 'default'
+    | 'offline'
+    | 'initial-error'
+    | 'load-more-error'
+    | 'loading-more';
 }) {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
   const [progressMonth, setProgressMonth] = useState('2026-09');
@@ -132,6 +136,9 @@ export function ScreenPreview({
   const [progressError, setProgressError] = useState(progressState === 'error');
   const [progressLoading, setProgressLoading] = useState(
     progressState === 'loading',
+  );
+  const [progressSyncing, setProgressSyncing] = useState(
+    progressState === 'syncing',
   );
   const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
   const [feeling, setFeeling] = useState<FeelingCode | null>(null);
@@ -209,6 +216,24 @@ export function ScreenPreview({
             </Text>
           </Pressable>
         )}
+        {progressState === 'syncing' && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              progressSyncing
+                ? 'Show loaded progress'
+                : 'Replay progress syncing'
+            }
+            onPress={() => setProgressSyncing((current) => !current)}
+            style={styles.close}
+          >
+            <Text style={styles.note}>
+              {progressSyncing
+                ? 'Show loaded progress'
+                : 'Replay progress syncing'}
+            </Text>
+          </Pressable>
+        )}
       </SafeAreaView>
       {tab === 'home' ? (
         <DeckPreview insetTop={false} onCompleted={() => setStep('success')} />
@@ -219,23 +244,34 @@ export function ScreenPreview({
           data={
             progressError || progressLoading
               ? undefined
-              : progressState === 'empty'
-                ? { ...emptyMonth, month: progressMonth }
-                : progressMonth === '2026-09'
-                  ? previewMonth
-                  : {
-                      ...previewMonth,
-                      month: progressMonth,
-                      monthlyReps: 0,
-                      activeDays: 0,
-                      days: [],
-                    }
+              : progressSyncing
+                ? {
+                    ...previewMonth,
+                    month: progressMonth,
+                    monthlyReps: null,
+                    activeDays: null,
+                    days: undefined,
+                  }
+                : progressState === 'empty'
+                  ? { ...emptyMonth, month: progressMonth }
+                  : progressMonth === '2026-09'
+                    ? previewMonth
+                    : {
+                        ...previewMonth,
+                        month: progressMonth,
+                        monthlyReps: 0,
+                        activeDays: 0,
+                        days: [],
+                      }
           }
           error={progressError}
           loading={progressLoading}
+          waitingForSync={progressSyncing}
           selectedDate={progressDay}
           day={
-            progressDay && dayState !== 'initial-error'
+            progressDay &&
+            dayState !== 'initial-error' &&
+            dayState !== 'offline'
               ? {
                   date: progressDay,
                   totalReps: dayState === 'default' ? 3 : 12,
@@ -247,6 +283,7 @@ export function ScreenPreview({
               : undefined
           }
           dayError={progressDay !== null && dayState === 'initial-error'}
+          dayConnectionRequired={progressDay !== null && dayState === 'offline'}
           loadMoreError={progressDay !== null && dayState === 'load-more-error'}
           loadingMore={progressDay !== null && dayState === 'loading-more'}
           fetchingDay={progressDay !== null && dayState === 'loading-more'}

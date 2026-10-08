@@ -1,23 +1,37 @@
 # JustGO — Implementation Plan
 
-**Version:** 60 · Updated October 6, 2026
+**Version:** 65 · Updated October 8, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
 Phase 06 Progress/history passes local automated and simulator checks, including a live day with 21 entries, automatic paging and both retry states. Physical-device acceptance is scheduled for release validation after the app is built; staging deployment is an integration/release task. See the [phase 06 handoff](handoffs/phase-06-progress.md).
-[06A — Code quality & test hardening](#phase-06a) is complete. [07 — API & offline saving](#phase-07) remains in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). [07.3 local challenge/reflection integration](handoffs/phase-07-3-local-flow.md) was merged by the owner through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, including the final Expo and review fixes. Native durability/accessibility acceptance remains open. The planned testing migration 07.3A follows reviewed/finished 07.3, before Progress composition in 07.4 and final cutover in 07.5; native billing remains 07A. The earlier unapproved PR #12 merge was reverted; its history is preserved below. The owner merged PR #16 and authorized rebasing, verifying and publishing the separate cleanup PR; cleanup merge approval remains separate.
+[06A — Code quality & test hardening](#phase-06a) is complete. [07 — API & offline saving](#phase-07) remains in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). [07.3 local challenge/reflection integration](handoffs/phase-07-3-local-flow.md) was merged by the owner through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, including the final Expo and review fixes. Native durability/accessibility acceptance remains open. Anthony deferred 07.3A on October 7 and approved proceeding from reviewed 07.3 to Progress composition in 07.4, then final cutover in 07.5, using existing browser/lower-level checks plus relevant manual native verification; native billing remains 07A. The earlier unapproved PR #12 merge was reverted; its history is preserved below. The owner merged PR #16 and authorized rebasing, verifying and publishing the separate cleanup PR; cleanup merge approval remains separate.
 
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](product/PRD.md) · [Tech stack](architecture/TECH_STACK.md)\
 **Handoffs:** [Index](handoffs/README.md) · [Template](handoffs/TEMPLATE.md) · [Planning baseline](handoffs/00-planning-baseline.md)
 
-This authoritative Markdown plan contains eleven iOS release stages, including the quality phase 06A and separate billing phase 07A, and three deferred stages. Each phase defines what to implement, what to exclude, its completion checks and the context to hand forward. Phase 07 has six sequential subphases, including the testing migration 07.3A between 07.3 and 07.4; 07A and all later phase IDs remain unchanged.
+This authoritative Markdown plan contains eleven iOS release stages, including the quality phase 06A and separate billing phase 07A, and three deferred stages. Each phase defines what to implement, what to exclude, its completion checks and the context to hand forward. Phase 07 retains six subphase IDs, with 07.3A deferred separately and 07.4 proceeding after 07.3; 07A and all later phase IDs remain unchanged.
 
 **First release:** iOS, one easy Level 1 challenge collection with manual venue filtering, the in-app timer, Success, typed reflections, the full Progress summary/calendar/day sheet, native subscriptions, and essential Settings/privacy/recovery.
 
 **Deferred:** Welcome screens and questionnaire onboarding (owner decision September 17), Levels and progression rules, additional category filters, custom dictation, lock-screen display, Android release, Stripe and AI coaching. Stable challenge/revision/Level 1 history is kept now; thresholds and how prior completions count are decided later.
 
-**October 6 native testing migration:** Anthony approved adding [07.3A — iOS simulator testing migration](#phase-07-3a) immediately after 07.3 is reviewed and finished, before starting 07.4. Extend the existing Maestro setup to replace browser UI journeys with tests of the actual iOS app. Preserve unit/component/API/database coverage and fixture safeguards; retain the browser gate until replacement native coverage and hosted CI pass. Then remove browser-only testing code and update verification instructions. This edit schedules the work; it does not implement the migration or close existing native/device gates. Existing local changes were checkpointed first at `25e2f8c`, excluding the untracked PNG screenshots.
+**October 7 owner-approved testing deferral:** Stop further 07.3A implementation,
+optimization, benchmarks and native CI work. Preserve the unfinished hybrid pilot
+on `codex/phase-07.3a-testing-checkpoint` at `c7c67b2` and return main to approved
+code baseline `6780406`. The
+[resume handoff](handoffs/phase-07-3a-testing-checkpoint.md) records exact SHAs,
+version-specific results, failures, artifact locations and prerequisites.
+07.3A is deferred, not complete or merge-ready, and is no longer a prerequisite
+for 07.4. Keep browser tests/adapters/CI, existing coverage floors and lower-level
+checks; add relevant manual native verification during 07.4. Unresolved native,
+physical-device, VoiceOver, staging, release and future billing gates remain open.
+Local checkpoint commits are authorized; pushing, PR creation and merging are not.
+This supersedes the October 6 browser-retirement proposal; the future testing
+scope is hybrid, with four initial native journeys plus other focused checks.
+
+**October 6 native testing migration — historical, superseded by October 7:** Anthony approved adding [07.3A — iOS simulator testing migration](#phase-07-3a) immediately after 07.3 is reviewed and finished, before starting 07.4. Extend the existing Maestro setup to replace browser UI journeys with tests of the actual iOS app. Preserve unit/component/API/database coverage and fixture safeguards; retain the browser gate until replacement native coverage and hosted CI pass. Then remove browser-only testing code and update verification instructions. This edit schedules the work; it does not implement the migration or close existing native/device gates. Existing local changes were checkpointed first at `25e2f8c`, excluding the untracked PNG screenshots.
 
 **September 26 numbering correction:** The launch path now runs in number order, 01–09. Former phases 06–10 are now 05–09; the deferred lock-screen phase moves from 05 to 10. Post-launch phases 10–12 may be scheduled independently. Historical browser tracker exports use the former IDs and must not be imported without an explicit migration. Phase 01 is complete; see the stage table for current implementation status.
 
@@ -86,7 +100,7 @@ separate unfinished work.
 - Run relevant tests and UI verification during every phase. Phase 09 integrates and releases work already verified in its own stage.
 - **September 29 validation timing:** Anthony will do physical-iPhone acceptance after the full app is built, during release validation. Earlier feature phases use local automated checks and the iOS simulator; carry device-specific VoiceOver, large-text, gesture and recovery checks to Phase 09. Stage the integrated API/mobile build before release, without treating staging as a Phase 06 feature gate.
 - **September 30 quality-phase sequencing:** Phase 06A may start and complete against verified local implementations from phases 02–06 while their previously deferred physical-device and staging gates remain open. Preserve those gates in their original handoffs and Phase 09; they do not block 06A. Phase 07 implementation follows the 06A handoff.
-- Mark a phase complete only after its checks and dependency phases pass, and its handoff is saved with evidence. For Phase 07, apply this rule separately to 07.1–07.5, including 07.3A; existing drafts in a later subphase do not satisfy an earlier checkpoint. Follow the side-panel-only verification constraint recorded below.
+- Mark a phase complete only after its checks and dependency phases pass, and its handoff is saved with evidence. For Phase 07, apply this rule separately to active 07.1–07.5 checkpoints; the explicit October 7 deferral permits 07.4 without completing 07.3A. Deferral does not satisfy its checks or close release gates; existing drafts do not establish completion. Follow the side-panel-only verification constraint recorded below.
 - **September 17 sequencing exception:** Anthony approved implementing phase 02 while Apple enrollment/signing and physical-iPhone recovery acceptance remain pending. Phase 03 and later feature implementation may proceed after the backend/client identity checks pass. Keep phase 02 open and retain those device gates before valuable-data external testing and release.
 - **September 17 scope revision:** Anthony deferred welcome/questionnaire onboarding and authorized phase 02 follow-up plus phase 03 app-shell work. Build the existing screens first; onboarding is not a prerequisite for this phase. Paid access is now Phase 07A under the October 3 phase split.
 - **September 21 scope revision:** Venue selection/filtering is included in phase 04: Street & Park, Gym, Café & Bookshop, Bar & Party, and Errands & Transit. The level-progress indicator is omitted until levels ship. See [current phase 04 decisions](product/PHASE_04_SCOPE.md), which supersede the earlier general-only scope. Anthony reports Apple Developer enrollment complete; signing/device verification remains open.
@@ -113,7 +127,7 @@ separate unfinished work.
 | [11 — Optional US iOS web checkout](#phase-11)              | Eligible users can purchase on the web using the same authenticated app identity.                               | 09         | Not scheduled |
 | [12 — Future AI text coach](#phase-12)                      | A separately approved text coach uses bounded, permitted context in the existing backend.                       | 09         | Not scheduled |
 
-Release order: 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.3A → 07.4 → 07.5) → 07A → 08 → 09. Apple account and purchase-product preparation starts during 01 alongside development. Lock-screen timers (10), Stripe (11) and coaching (12) follow release when scheduled; none blocks the first submission or depends on another later phase.
+Release order: 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 07A → 08 → 09. Apple account and purchase-product preparation starts during 01 alongside development. Lock-screen timers (10), Stripe (11) and coaching (12) follow release when scheduled; none blocks the first submission or depends on another later phase.
 
 ## Decisions to settle before dependent work
 
@@ -433,9 +447,9 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 07 — API & offline saving
 
-**Status:** In progress; 07.1A, 07.1B and 07.2 are merged by the owner. 07.3 is open in PR #16 for owner review, with native evidence open. The owner authorized pushing the assessed review fixes; merge remains unapproved. Progress composition/cutover remain 07.4/07.5.
+**Status:** In progress; 07.1A, 07.1B, 07.2 and 07.3 are merged by the owner. 07.3A remains deferred. Anthony authorized publishing 07.4 in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20); both hosted Foundation checks passed at `6782894`. Review follow-ups require fresh verification for their pushed revision. Software-keyboard/device acceptance and owner review remain open. Final cutover/integrated acceptance remains 07.5; merge requires separate owner approval.
 
-**Depends on:** 06A; complete 07.1–07.5 in order before 07A.
+**Depends on:** 06A; complete active 07.1–07.5 in order before 07A. 07.3A is deferred under the October 7 owner decision; native/device/release evidence remains open.
 
 **Acceptance references:** The confirmed API/persistence requirements below govern this redesign. Billing acceptance is owned by Phase 07A. Align older product/technical acceptance lists after each implementation under the approved documentation sequence.
 
@@ -668,31 +682,31 @@ Technical references for this design: [HTTP PATCH and conditional/atomic applica
 
 <a id="phase-07-subphases"></a>
 
-The six subphases below replace the former single ten-step execution block, with 07.3A inserted on October 6 to migrate testing before further feature work. All confirmed requirements and detailed verification cases remain in scope. Original task numbers are retained to make earlier handoff references traceable; task 8 is deliberately split between backend reads in 07.1 and client integration in 07.4.
+The six subphases below replace the former single ten-step execution block, with 07.3A inserted on October 6 and deferred on October 7 so Progress work can proceed using retained browser/lower-level checks and relevant manual native verification. All confirmed requirements and detailed verification cases remain in scope. Original task numbers are retained to make earlier handoff references traceable; task 8 is deliberately split between backend reads in 07.1 and client integration in 07.4.
 
-| Subphase                                                        | Owns                                                                                  | Depends on | Current status                                                                 |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------ |
-| [07.1 — API and data foundation](#phase-07-1)                   | Tasks 1–4, backend reads from task 8, journey-harness foundation                      | 06A        | A and B verified and merged by owner in PR #13 / PR #14                        |
-| [07.2 — Durable local saving and synchronization](#phase-07-2)  | Tasks 5–6 core persistence, sender, recovery state and transport tests                | 07.1       | Merged by owner in PR #15; native durability evidence open                     |
-| [07.3 — Local challenge and reflection experience](#phase-07-3) | Task 7, presentation from tasks 5–6, app lifecycle wiring and saved journey cases     | 07.2       | PR #16 open for owner review; native evidence open                             |
-| [07.3A — iOS simulator testing migration](#phase-07-3a)         | Native journey coverage/CI and removal of browser-only testing support                | 07.3       | Not started; scheduled after owner review of 07.3                              |
-| [07.4 — Progress and history integration](#phase-07-4)          | Client portion of task 8, reconciliation/cache selectors and native journey expansion | 07.3A      | Progress partly converted; reconciliation and integrated verification remain   |
-| [07.5 — Final cutover and acceptance](#phase-07-5)              | Tasks 9–10, destructive cleanup, full CI acceptance and documentation reconciliation  | 07.4       | Contraction SQL drafted; cutover, full verification and closeout not completed |
+| Subphase                                                        | Owns                                                                                                   | Depends on | Current status                                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------- | ------------------------------------------------------------------------------ |
+| [07.1 — API and data foundation](#phase-07-1)                   | Tasks 1–4, backend reads from task 8, journey-harness foundation                                       | 06A        | A and B verified and merged by owner in PR #13 / PR #14                        |
+| [07.2 — Durable local saving and synchronization](#phase-07-2)  | Tasks 5–6 core persistence, sender, recovery state and transport tests                                 | 07.1       | Merged by owner in PR #15; native durability evidence open                     |
+| [07.3 — Local challenge and reflection experience](#phase-07-3) | Task 7, presentation from tasks 5–6, app lifecycle wiring and saved journey cases                      | 07.2       | Merged by owner in PR #16; native evidence open                                |
+| [07.3A — Hybrid testing (deferred)](#phase-07-3a)               | Preserved unfinished native pilot; browser tests/adapters/CI retained                                  | 07.3       | Deferred by owner October 7; checkpoint c7c67b2; native/CI gaps open           |
+| [07.4 — Progress and history integration](#phase-07-4)          | Client portion of task 8, reconciliation/cache selectors and browser journeys and manual native checks | 07.3       | Implemented locally for review; native/device and hosted acceptance open       |
+| [07.5 — Final cutover and acceptance](#phase-07-5)              | Tasks 9–10, destructive cleanup, full CI acceptance and documentation reconciliation                   | 07.4       | Contraction SQL drafted; cutover, full verification and closeout not completed |
 
 **Branch separation — October 4:** the owner approved preserving all drafts and using a clean branch/PR per subphase. The complete working tree is saved at local commit `6d4279f` on `codex/archive/phase-07-drafts`, with a verified local Git bundle backup. That branch is a recovery reference and must not be merged wholesale. The documentation-only [PR #11](https://github.com/anthonyyoo24/justgo/pull/11) merged at `8118bf5` after hosted checks passed. The 07.1 implementation is preserved locally on `codex/phase-07.1-api-data` for owner review. [PR #12](https://github.com/anthonyyoo24/justgo/pull/12) was created and merged without permission; the owner requested undo, and `main` was restored with revert `7845ac4` plus permission rules in `c355ef0`. The owner authorized narrowing existing PR #13 to 07.1A and keeping 07.1B local with no PR; merge approval remains pending. Passing checks and this workflow description do not authorize a push, PR or merge; obtain explicit permission for each action under `AGENTS.md`. Include necessary temporary caller compatibility; test the actual isolated branch and inspect hosted checks before each merge. The [umbrella handoff](handoffs/phase-07-api-offline.md#october-4-branch-separation--current-status) records the preservation and extraction procedure.
 
-**Branch naming and cleanup — October 4:** use `codex/phase-07.<subphase>-<scope>` for active subphase work. 07.1A uses the existing first numbered branch below and PR #13. 07.1B is preserved on a separate branch and is now authorized for publication as a PR against `main` after the owner merged A. The original combined 07.1 remote branch was removed during the undo and later republished for PR #13; B publication was authorized after the A cancellation review fix. Preserve the archive and create later branches only when their preceding checkpoint is merged. The archive is preserved for extraction and must never be merged wholesale. The already-merged planning branches (`codex/phase-07-planning`, PR #9; `codex/phase-07-subphase-plan`, PR #11) were removed locally and remotely after verifying their commits are retained in `main`. The unused original `codex/phase-07-api-offline` branch was also removed locally; historical mentions below describe where work began.
+**Branch naming and cleanup — October 4:** use `codex/phase-07.<subphase>-<scope>` for active subphase work. 07.1A uses the existing first numbered branch below and PR #13. 07.1B is preserved on a separate branch and is now authorized for publication as a PR against `main` after the owner merged A. The original combined 07.1 remote branch was removed during the undo and later republished for PR #13; B publication was authorized after the A cancellation review fix. Preserve the archive and create later branches only when their preceding active checkpoint is merged; deferred 07.3A is not a prerequisite for 07.4. The archive is preserved for extraction and must never be merged wholesale. The already-merged planning branches (`codex/phase-07-planning`, PR #9; `codex/phase-07-subphase-plan`, PR #11) were removed locally and remotely after verifying their commits are retained in `main`. The unused original `codex/phase-07-api-offline` branch was also removed locally; historical mentions below describe where work began.
 
-| Purpose                                          | Branch                                | Current state                                           |
-| ------------------------------------------------ | ------------------------------------- | ------------------------------------------------------- |
-| 07.1 — API and data foundation                   | `codex/phase-07.1-api-data`           | 07.1A merged by owner via PR #13 at `806f57f`           |
-| 07.1B — Saved app/API journey and CI             | `codex/phase-07.1b-journey-ci`        | Merged in PR #14 at `1df6406`                           |
-| 07.2 — Durable local saving and synchronization  | `codex/phase-07.2-local-sync`         | Merged via PR #15 at `8ff5d6c`; native evidence open    |
-| 07.3 — Local challenge and reflection experience | `codex/phase-07.3-local-flow`         | Created from `3e41330`; local implementation for review |
-| 07.3A — iOS simulator testing migration          | `codex/phase-07.3a-native-testing`    | Planned; not created                                    |
-| 07.4 — Progress and history integration          | `codex/phase-07.4-progress-history`   | Planned; not created                                    |
-| 07.5 — Final cutover and acceptance              | `codex/phase-07.5-cutover-acceptance` | Planned; not created                                    |
-| Preserved mixed drafts                           | `codex/archive/phase-07-drafts`       | Local archive at `6d4279f`; not for merging             |
+| Purpose                                          | Branch                                 | Current state                                               |
+| ------------------------------------------------ | -------------------------------------- | ----------------------------------------------------------- |
+| 07.1 — API and data foundation                   | `codex/phase-07.1-api-data`            | 07.1A merged by owner via PR #13 at `806f57f`               |
+| 07.1B — Saved app/API journey and CI             | `codex/phase-07.1b-journey-ci`         | Merged in PR #14 at `1df6406`                               |
+| 07.2 — Durable local saving and synchronization  | `codex/phase-07.2-local-sync`          | Merged via PR #15 at `8ff5d6c`; native evidence open        |
+| 07.3 — Local challenge and reflection experience | `codex/phase-07.3-local-flow`          | Merged by owner via PR #16 at `6bccfde`                     |
+| 07.3A — Hybrid testing (deferred)                | `codex/phase-07.3a-testing-checkpoint` | Unfinished local checkpoint at c7c67b2; not published       |
+| 07.4 — Progress and history integration          | `codex/phase-07.4-progress-history`    | Implementation/follow-ups; publication authorized October 8 |
+| 07.5 — Final cutover and acceptance              | `codex/phase-07.5-cutover-acceptance`  | Planned; not created                                        |
+| Preserved mixed drafts                           | `codex/archive/phase-07-drafts`        | Local archive at `6d4279f`; not for merging                 |
 
 **Existing evidence and drafts:** Phase 07 began on `codex/phase-07-api-offline` from `ac322ee`. The initial identity/HTTP checkpoint passed 318 workspace tests, 40 database tests, coverage gates and a side-panel account/revocation/recovery walkthrough. Since that checkpoint, domain contracts/API/schema, migrations, repository/sender and mobile flow/Progress files have changed, and the selected storage/connectivity/Zustand/Sonner dependencies were installed. That mixed archive has not passed integrated verification. The extracted 07.1 implementation now has fresh local and hosted evidence in its handoff; later drafts remain unaccepted. The umbrella handoff preserves the earlier slice and archive history separately from current checkpoint acceptance.
 
@@ -702,10 +716,10 @@ The six subphases below replace the former single ten-step execution block, with
 - Keep strict runtime contracts, OpenAPI, API behavior and relevant client adapters aligned in each checkpoint. When an intermediate contract/schema change affects an existing caller, include the minimum compatible transition needed for the checkpoint or leave it open. Record any temporary compatibility code and remove it in 07.5. Do not introduce a permanent second protocol solely to make the split independently deployable.
 - Treat these as coordinated local implementation/review checkpoints. No external deployment is required. Prepare expansion/backfill and preservation evidence in 07.1; final route/table/column removal waits for 07.5 after all callers and retained-data requirements are ready. Do not apply draft contraction SQL to a valuable database merely because the file exists.
 - Keep persistence and sender interfaces designed together in 07.2, including stable operation identities, authoritative acknowledgements, conflict resolution, failure states and account fencing. 07.3 presents that state; 07.4 composes it into Progress. Genuine reflection conflicts automatically adopt the newest backend reflection, with no attention link, chooser or manual review. Preserve ordinary unsent edits and newer-input protection.
-- Start the saved app/API/disposable-database journey harness in 07.1; add storage/transport failure controls in 07.2 and actual completion/reflection journeys in 07.3. Migrate UI journeys to iOS simulator automation in 07.3A, then extend that native harness with Progress/reconciliation journeys in 07.4. Task 10 completes and proves the integrated CI gate; it is not the first time journey automation is written. Use isolated access/provider fixtures throughout; production access and all nine subscription rules remain owned by 07A.
+- Start the saved app/API/disposable-database journey harness in 07.1; add storage/transport failure controls in 07.2 and actual completion/reflection journeys in 07.3. 07.3A native automation is deferred. Extend saved browser journeys and lower-level checks with Progress/reconciliation in 07.4; use relevant manual native verification and record device gates. Task 10 completes and proves the integrated CI gate; it is not the first time journey automation is written. Use isolated access/provider fixtures throughout; production access and all nine subscription rules remain owned by 07A.
 - Run focused tests during implementation and `npm run check` before each subphase handoff. Run `npm run test:db` for backend/shared changes and closeout, plus applicable coverage gates from `docs/operations/TESTING.md`, without lowering thresholds. Run heavy checks sequentially on the owner's 8 GB Mac. Record fresh results for the checkpoint being accepted; prior passing results do not cover later edits.
-- Interactive UI verification uses Codex side panels only. Automated unit/integration tests remain required. Until 07.3A is accepted, the saved browser suite remains a separate local/CI gate; afterward, saved iOS simulator journeys and native interactive verification replace browser UI checks. Record automated, interactive and physical-device evidence separately. If required native testing cannot use a supported side-panel surface, keep that check open; do not substitute a browser pass or silently defer it. No new native build/signing work is authorized by this planning edit. Preserve earlier physical-device/staging gates in their existing handoffs and Phase 09.
-- Each subphase has its own checklist and handoff filename below. Create/update that handoff and the handoff index with actual results when the checkpoint is verified; the filenames are planned outputs, not evidence that the files exist. Keep `handoffs/phase-07-api-offline.md` as the umbrella record and final billing handoff. Mark Phase 07 complete only after all six checkpoints and the phase-wide acceptance list pass, with any approved release deferrals explicit. Checkpoints do not add repeated permission requests or authorize stopping after a partial slice.
+- Interactive UI verification uses Codex side panels only. Automated unit/component/integration and saved browser journeys remain required local/CI checks. Use relevant manual native verification where browser checks cannot establish behavior; preserve its separate evidence and open physical-device/release gates. 07.3A native automation/CI remains deferred.
+- Each subphase has its own checklist and handoff filename below. Create/update that handoff and the handoff index with actual results when the checkpoint is verified; the filenames are planned outputs, not evidence that the files exist. Keep `handoffs/phase-07-api-offline.md` as the umbrella record and final billing handoff. Mark Phase 07 complete only after its active checkpoints and phase-wide acceptance list pass, with the approved 07.3A deferral and unresolved native/device/release gates explicit. Deferred 07.3A remains unfinished. Checkpoints do not add repeated permission requests or authorize stopping after a partial slice.
 
 <a id="phase-07-1"></a>
 
@@ -842,8 +856,8 @@ may proceed without claiming 07.3 complete or beginning 07.3A product/test chang
 
 Group Challenges, shared activity, Progress, networking/platform adapters, API
 tests, contracts, scripts/journey support, artwork and documentation by their
-implemented responsibility. Retain browser and legacy implementation/coverage
-until 07.3A/07.5 acceptance permits removal. Update dependent imports, test paths,
+implemented responsibility. Retain browser implementation/coverage under the
+approved hybrid scope; legacy protocol removal remains subject to 07.5 acceptance. Update dependent imports, test paths,
 coverage selectors, Metro fault-fixture resolution, deployment allowlists, asset
 extraction and documentation links together. Keep tests colocated and expected
 configuration/migration/reference entrypoints stable.
@@ -878,45 +892,126 @@ behavior, coverage floor or review filter changes are part of this follow-up.
 
 <a id="phase-07-3a"></a>
 
-##### 07.3A — iOS simulator testing migration
+##### 07.3A — Hybrid testing (deferred)
 
-**Depends on:** reviewed and finished 07.3. **Outcome:** saved UI journeys exercise the actual iOS app, and maintaining a browser app solely for testing is no longer required. **Status:** Not started; approved for scheduling on October 6. Existing browser checks remain active during the transition. This is a separate testing change, preserving product behavior and later phase IDs.
+**Depends on:** reviewed 07.3. **Status:** deferred by Anthony on October 7;
+unfinished, not complete and not merge-ready. It does not block 07.4.
 
-**Scope:** follow the [file-by-file removal assessment](checks/phase-07-3a-browser-testing-assessment.md) and extend the existing Maestro setup in `apps/mobile/e2e/` and `test:native` command. Replace browser UI coverage and its CI gate, preserve lower-level tests and remove support used exclusively for browser testing after replacement coverage passes. Preserve the existing Progress smoke behavior; new Progress/reconciliation features remain 07.4, billing remains 07A and physical-device/staging acceptance remains Phase 09.
+**Preserved scope:** retain browser tests, adapters, dependencies and CI as fast
+broad coverage. The checkpoint adds selective native automation: four initial
+journeys for durable saves/restart, controlled outage/duplicate prevention,
+recovery/Keychain ownership, and active navigation/lifecycle, plus focused checks
+where they leave gaps. Four is not a coverage cap. The full native suite remains
+available on the checkpoint; physical-device/VoiceOver/staging/billing evidence
+is separate. The earlier removal assessment is historical, not authorization to
+retire browser support.
 
-1. **Map the existing coverage before removing it.** Inventory the 16 saved journey cases, Playwright configuration/runner, web adapters/dependencies, Metro storage-fault seam, preview helpers and browser-specific instructions. Assign every important behavior to a native journey or retained unit/component/repository/API/database test. Move the repository/API/database cases out of Playwright into an independent runner before retiring that dependency. Preserve the disposable-account registry, loopback `justgo_test` safeguards, cleanup, migration rehearsal and coverage floors. Retain developer fixtures and shared/native infrastructure that still serve the app.
-2. **Extend saved native journeys.** Cover launch/account recovery/catalog, Accept → Completed → Success → reflection → Save/Skip, Give up without writes, exclusive active navigation, duplicate taps and delayed saving feedback, dirty-close/newer-input protection, offline/reconnect, termination/relaunch durability and unfinished-challenge reset. Exercise recovery/fallback, failed refresh/first download, expired-session replay and lost acknowledgements with real API/database assertions where appropriate. Keep deterministic storage/transport failures behind guarded test-build or test-runner seams; do not add production access bypasses or user-facing fault controls. Reuse the retained QA simulator and compatible development app; document any required binary change separately.
-3. **Verify native presentation separately.** Record targeted first/repeated Completed → Success/reflection transitions so a brief Home flash cannot be hidden by an eventual screen assertion. Check background/lock/resume countdown, keyboard, covering modals, warning/toast placement, safe areas and accessible saving actions on the appropriate native surface. A saved walkthrough alone does not establish frame-level flicker, VoiceOver or physical-device behavior; keep unavailable checks explicit in the owning handoff.
-4. **Establish a repeatable native CI gate.** Document clean local prerequisites and one command for the native app/API/disposable-database suite. Configure a macOS/Xcode runner or supported simulator service, including app build/install, fixtures, cleanup and credential-safe failure artifacts. Show a controlled assertion failure exits nonzero and causes CI to fail. Inspect hosted results for the authorized pushed revision before accepting the gate; local passes do not establish hosted execution. Keep the existing browser gate until its replacement is verified.
-5. **Retire browser-only support and align guidance.** Once replacement coverage and native CI pass, remove unused Playwright/Chromium scripts, jobs, dependencies and browser-only app/test adapters after checking their consumers. Update root/directory `AGENTS.md`, `TESTING.md`, README, tech stack/app shell and affected handoffs to require native UI verification. Preserve historical browser evidence and still-used native/shared tests, fixtures and infrastructure. Extend native journeys in 07.4 onward; do not add a web product to preserve obsolete tests.
+**Checkpoint:** `codex/phase-07.3a-testing-checkpoint` at `c7c67b2`.
+The [resume handoff](handoffs/phase-07-3a-testing-checkpoint.md) records the exact
+SHA, actual/version-limited results, unfinished fixtures/flows/CI, setup/benchmark
+roadblocks and ignored local artifacts. Original full native runs passed, but the
+optimized core was stopped after only storage/offline passed. A working native CI
+gate and a passing optimized hybrid benchmark are not established.
 
-**Ready to hand off when**
+**Resume only when requested:** debug account setup/recovery first, then active
+countdown and gestures; validate current checks, safe cleanup/artifacts and clean
+native provisioning before claiming acceptance. Keep coverage floors, ownership,
+production safeguards and regression/failure assertions. Hosted checks need a
+separately authorized push. Do not spend 07.4 completing this harness.
 
-- [ ] The coverage inventory accounts for every existing critical journey and failure case; retained repository/API/database tests run independently of browser tooling, with isolation and cleanup intact.
-- [ ] Saved native journeys pass against the actual app/API/disposable database, including native storage/relaunch and offline recovery; targeted transition/lifecycle/presentation evidence is recorded with remaining device checks explicit.
-- [ ] The documented suite runs from a clean setup, fails on a controlled regression and passes its required native CI gate for the authorized pushed revision, confirmed in hosted check results, before the browser gate is retired.
-- [ ] Browser-only testing support is removed without changing product behavior or reducing coverage floors, and verification instructions consistently require native UI evidence.
-- [ ] Save `handoffs/phase-07-3a-native-testing.md` with the coverage mapping, removed/retained paths, commands, simulator/build prerequisites, CI evidence, issues and open physical-device/staging gates; update this plan and the handoff index. Owner review and separate Git publication/merge permissions remain required.
+**Open gates:** all four focused journeys and relevant additional checks; reliable
+repeat results and optimized stage/resource measurements; artifact scrub on
+crash/cancellation and scoped Keychain cleanup; clean setup/hosted native CI;
+actual connectivity and targeted presentation; earlier native/device/VoiceOver/
+staging/release gates. Deferral closes none of these.
 
 <a id="phase-07-4"></a>
 
 ##### 07.4 — Progress and history integration
 
-**Depends on:** verified 07.3A (following reviewed 07.3) and the backend read contracts from 07.1. **Outcome:** summary, calendar and day details show local/backend activity once, with the agreed limited offline history. **Status:** Progress drafts exist; reconciliation and integration acceptance remain open.
+**Depends on:** reviewed 07.3 and backend read contracts from 07.1. Anthony approved bypassing deferred 07.3A on October 7 using existing browser/lower-level checks plus relevant manual native verification. **Outcome:** summary, calendar and day details show local/backend activity once, with the agreed limited offline history. **Status:** published on `codex/phase-07.4-progress-history` in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20), awaiting Anthony's review. The [07.4 handoff](handoffs/phase-07-4-progress-history.md) records canonical reads, reconciliation, Paper Add/Edit, 21 saved journeys and browser/native simulator evidence. Both hosted Foundation checks passed at `6782894`; October 8 review corrections and their push are authorized, with fresh evidence recorded in the handoff. Software-keyboard layout and earlier device/release gates remain open; merge requires separate owner approval.
 
 **Scope:** client task 8. Implement independent query lifecycles, same-ID merging, baseline-plus-additions and generation fencing, current-period cache selectors, rollover, rejected-completion correction and day-entry Add/Edit reflection. Reuse the verified repository, sender and feedback host; do not create another upload queue or persist older downloaded history.
+
+**October 7 design direction:** use the owner's [Paper screens](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0), selected Textbox 02 / SOFT FILL Add/Edit nodes `OYK-0` and `OYQ-0`, for inline day-entry text editing. Preserve the saved feeling and use the existing explicit local-save and dirty-close behavior. Owner review corrected the missing pencil beside Edit and restored Paper's original plus beside Add reflection (`OXF-0`). The whole Add row includes its padded tap area; Add/Edit now share the saved reflection's measured slide motion and reduced-motion behavior. These follow-ups have regression coverage and verification in the running simulator; the handoff records fresh checks.
 
 8. **Implement split Progress reads, local reconciliation and calendar editing.** Consume the independent summary/calendar/attempt contracts and API reads verified in 07.1. Replace the mobile combined/day callers; server aggregate snapshots and start-time pagination are owned by 07.1, with obsolete route retirement completed in 07.5. Add Add/Edit reflection to day entries. Implement same-ID row merging, baseline-plus-additions totals, generation-fenced refreshes, streak context and the reviewed summary/current-month/today cache, including rollover and unavailable-read presentation.
    **Verify:** switching months does not query/recalculate the summary; 10 + 1 stays 11 through acknowledgement/refresh/restart; stale responses and older reflection acknowledgements cannot regress display; current-month counts/today pages survive offline; older history obeys the chosen connection rule; midnight/month/time-zone rollover and earlier pending dates are correct; frozen activity dates later than summary.today cannot zero the current streak (truncate only current-streak calculation to today, preserving counts and best streak); available entries have no partial-history notices. A definitively rejected completion corrects reps/day/month/streak contributions once, survives relaunch without regaining credit, retains its writing and does not block independent uploads. Temporary/uncertain failures retain provisional local progress, and reflection-only rejection preserves the accepted rep. Ten memory-only completions appear once each in the applicable day sheet and add ten reps but one active day when all share a date; recovery and later pruning do not duplicate or hide them. Missing context for a corrected streak does not produce an invented or known-inflated figure.
 
-**Journey-harness extension:** extend the saved iOS simulator completion/reflection journey from 07.3A through Progress and calendar editing, using real API/disposable-database assertions. Verify “10 + 1 = 11” through acknowledgement/refresh/restart, saved reflection visibility, today's cached paging, other-day/month offline restrictions, rollover, rejection corrections and retained memory-only entries. Keep lost-response/account recovery cases running against the integrated path.
+**Journey-harness extension:** extend the existing saved browser completion/reflection journeys and lower-level regressions through Progress and calendar editing; add relevant manual native verification, using real API/disposable-database assertions. Verify “10 + 1 = 11” through acknowledgement/refresh/restart, saved reflection visibility, today's cached paging, other-day/month offline restrictions, rollover, rejection corrections and retained memory-only entries. Keep lost-response/account recovery cases running against the integrated path.
+
+**October 7 motion diagnosis:** paired native recordings reproduced the owner's
+editor delay/jump. Saved text starts its animation effect after 182–228 ms; Add
+after 452–538 ms, with awaited pin/adoption work and late autofocus. The shared
+JavaScript-driven reveal has intermediate saved-text frames but jumps to the
+final Add height; disabling autofocus temporarily restores some frames. The
+handoff records evidence and limitations. The subsequent owner-review fix makes
+the editor session/action atomic, skips redundant adoption of durable current
+rows, premeasures the empty layout and runs native reveals on the UI thread.
+The lightweight form reveals before mounting/focusing its native input. Final
+cold/repeated native recordings show successive expansion heights and a stable
+Hide action; software-keyboard/device acceptance remains open. See the handoff
+for final checks, recorded frames and the before/after comparison.
+
+**October 8 placeholder alignment:** owner review found the empty hint moving
+down when the real iOS input mounted. Native frames measured a 4-pixel shift at
+1206×2622 capture resolution. The iOS editor now retains the preview's visible
+Text hint over the input, with no touch interception or duplicate accessibility
+element; the native placeholder retains sizing/semantics with transparent ink.
+Typing hides the hint and clearing restores it. Regression checks and native
+handoff recordings pass; the handoff records fresh 646-case checks and coverage.
+Existing software-keyboard/device and hosted acceptance gates remain open.
+
+**October 8 saved Edit handoff:** owner review found a white flash and a second
+text shift when editing saved writing. Content replacement now retains the open
+panel's opacity/position while resizing, and saved writing uses its real input
+from the first editor frame. Empty Add retains its lightweight reveal. Focus,
+dirty-close and early-clear regressions pass; the handoff records paired native
+frames, fresh 646-case checks and unchanged coverage gates.
+
+**October 8 Add cancel action:** the owner approved **× Cancel** while a new
+reflection's editor is open. The closed row retains **＋ Add reflection**;
+saved reflections retain View/Hide and their pencil/chevron. The whole-row
+cancel still uses the existing clean-close and dirty-confirmation behavior.
+The handoff records 39 focused cases, fresh 647-case checks, unchanged coverage
+gates and native side-panel verification. Earlier release acceptance stays open.
+
+**October 8 saved action spacing:** owner review removes the leading pencil
+from View/Hide Reflection and its reserved space, moving both labels left at
+the same alignment. The separate Edit action keeps its pencil. The handoff
+records native side-panel layout evidence, regression checks, fresh 648-case
+checks and unchanged coverage gates.
+
+**October 8 offline day presentation:** owner review changes the unavailable-day
+heading to **You're currently offline**, with **Connect to the internet to view
+this day’s activity.** below it. The illustration and message are centered
+together in the remaining space below the day header, with bounded sheet height
+and scrollable content. A guarded `progressDayState=offline` preview makes the
+state repeatable without saving activity. The handoff records regression checks,
+fresh 651-case checks, unchanged coverage gates and the updated native screenshot.
+
+**October 8 offline month copy:** the owner approved **You’re offline. Connect to
+view this month.** above the unavailable calendar. Existing centered alignment
+and natural wrapping are retained. The handoff records the updated alert/journey
+assertions, 50 focused cases, native presentation screenshot and fresh checks.
+
+**October 8 visual artifact cleanup:** at the owner's request, all 19 phase
+screenshots/comparison GIFs move to ignored local storage. The handoff retains
+verification results and local capture names; repository image links are removed.
+
+**October 8 Progress/activity organization:** the owner requested subfolders for
+both directories. Calendar UI and day details are grouped under Progress;
+persistence, sync and Progress composition/reads are grouped under shared activity.
+All 27 source/test moves update imports, asset references and fixture paths while
+retaining behavior and existing tests. The handoff records verification and the
+overlap to reconcile with the separately pending mobile cleanup.
 
 **Ready to hand off when**
 
-- [ ] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.
-- [ ] Counts, rows and reflection text remain correct through stale reads/acknowledgements, restart, rollover, ten memory-only rounds, partial recovery and pruning. Definitive completion rejection removes only its credit once while preserving writing; reflection-only rejection preserves the accepted rep.
-- [ ] Full completion → reflection → Progress and calendar-edit journeys pass saved native automation and native side-panel verification under the shared rules, including failure/recovery cases and accurate unavailable streak context.
-- [ ] Save `handoffs/phase-07-4-progress-history.md` with cache/reconciliation rules, measurements, journey evidence and open release checks; update the umbrella handoff/index.
+- [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.
+- [x] Counts, rows and reflection text remain correct through stale reads/acknowledgements, restart, rollover, ten memory-only rounds, partial recovery and pruning. Definitive completion rejection removes only its credit once while preserving writing; reflection-only rejection preserves the accepted rep.
+- [ ] Full completion → reflection → Progress and calendar-edit journeys pass saved browser automation, relevant lower-level checks, side-panel verification and manual native verification under the shared rules, including failure/recovery cases and accurate unavailable streak context. Saved/lower-level and side-panel browser checks pass; native simulator Add/Edit/save/relaunch passed with hardware-keyboard HID input. Software-keyboard layout and earlier device/release acceptance remain open as recorded in the handoff.
+- [x] Save `handoffs/phase-07-4-progress-history.md` with cache/reconciliation rules, measurements, journey evidence and open release checks; update the umbrella handoff/index.
 
 <a id="phase-07-5"></a>
 
@@ -929,7 +1024,7 @@ behavior, coverage floor or review filter changes are part of this follow-up.
 9. **Complete caller/protocol cutover and remove obsolete implementation.** Re-run the backfill comparison with legacy writers stopped, finalize new constraints and remove old tables/columns/routes/callers, including separate reflections, revisions, queues/preferences/skips, active lifecycle and legacy draft/final/skip receipts. Preserve new targeted PATCH replay support. Record coordinated API/mobile migration order and old-client handling for release integration; do not deploy externally just to complete this documentation task.
    **Verify:** clean-database and representative existing-database migrations pass; legacy product routes cannot write obsolete state; account recovery/revocation/transfer still passes through noun routes; source/contracts/seeds/tests contain no accidental dependency on removed tables/fields; completed history dates/content survive the final contract migration.
 
-10. **Finish automated journey CI gates, verification and handoff.** Complete and commit the repeatable end-to-end suite built incrementally in 07.1–07.4 for challenge → completion → reflection → Progress against the actual app, API and disposable database, using the isolated test-access boundary. Cover the implemented Phase 07 local-save/background-upload behavior, saved reflection visibility, account/session recovery and controlled failure/retry cases, including offline recording/reconnection and lost acknowledgements without duplicate reps. Keep these as saved tests beyond the existing launch/account-refresh smoke flow and presentation previews. Provide a documented local command and a required CI step that starts its services, prepares isolated fixtures, runs the suite and fails on regression; retain useful failure logs/screenshots containing only disposable fixture data. Use the saved iOS simulator harness and required native CI established in 07.3A, preserving independent repository/API/database tests. Verify native Keychain/AsyncStorage behavior explicitly; physical-device acceptance remains separate. Run the affected workspace/database checks and measured storage/serialization/queue tests, verify affected UI in the in-app side panel, repair failures and repeat. Update PRD, tech stack, decisions, design/app-shell/scope/identity guidance, architecture learning map, relevant README/handoffs and prior-phase supersession references to the actual result. Preserve historical test evidence and carry physical-device/staging release gates forward. Save `handoffs/phase-07-api-offline.md` with actual migration/contracts/retry/cache choices and the billing integration boundary, test evidence, issues and next steps.
+10. **Finish automated journey CI gates, verification and handoff.** Complete and commit the repeatable end-to-end suite built incrementally in 07.1–07.4 for challenge → completion → reflection → Progress against the actual app, API and disposable database, using the isolated test-access boundary. Cover the implemented Phase 07 local-save/background-upload behavior, saved reflection visibility, account/session recovery and controlled failure/retry cases, including offline recording/reconnection and lost acknowledgements without duplicate reps. Keep these as saved tests beyond the existing launch/account-refresh smoke flow and presentation previews. Provide a documented local command and a required CI step that starts its services, prepares isolated fixtures, runs the suite and fails on regression; retain useful failure logs/screenshots containing only disposable fixture data. Retain and extend the existing browser CI gate and repository/API/database tests. Use relevant manual native verification while 07.3A automation/CI is deferred; preserve native/device/release gates explicitly. Verify native Keychain/AsyncStorage behavior explicitly; physical-device acceptance remains separate. Run the affected workspace/database checks and measured storage/serialization/queue tests, verify affected UI in the in-app side panel, repair failures and repeat. Update PRD, tech stack, decisions, design/app-shell/scope/identity guidance, architecture learning map, relevant README/handoffs and prior-phase supersession references to the actual result. Preserve historical test evidence and carry physical-device/staging release gates forward. Save `handoffs/phase-07-api-offline.md` with actual migration/contracts/retry/cache choices and the billing integration boundary, test evidence, issues and next steps.
     **Verify:** the saved journey suite runs from a clean local/CI setup, succeeds for the full flow and recovery cases, and its CI command exits nonzero when a journey assertion fails. Record the command, scenarios and CI evidence; a one-off native walkthrough or coverage report does not satisfy this gate. Acceptance checks below pass; documentation matches code rather than the draft; no pending uploads are lost under the chosen retention policy; code/UI/native evidence is distinguished accurately and remaining release gates are named.
 
 **Ready to hand off when**
@@ -947,12 +1042,12 @@ behavior, coverage floor or review filter changes are part of this follow-up.
 
 #### Ready to hand off when
 
-- [ ] API/local-save workstreams pass the recorded completion, reflection, offline/cache/retry, start-date, resource-contract and migration checks; split Progress queries do not refetch overall summary on month changes or double-count local completions. Normal saves continue after device persistence and use background retries; actual device-write failures pass cleanup/one-retry/online-backend-attempt and warned memory-only continuation checks with stable identities and no false save claim. Manual banner dismissal, accurate causes, full/partial recovery, all retained rounds in Progress and safe pruning are verified. The selected Sonner Native integration passes its native feedback checks without introducing ordinary upload-error toasts; 07.3A retires the temporary web adapter after replacement coverage passes.
+- [ ] API/local-save workstreams pass the recorded completion, reflection, offline/cache/retry, start-date, resource-contract and migration checks; split Progress queries do not refetch overall summary on month changes or double-count local completions. Normal saves continue after device persistence and use background retries; actual device-write failures pass cleanup/one-retry/online-backend-attempt and warned memory-only continuation checks with stable identities and no false save claim. Manual banner dismissal, accurate causes, full/partial recovery, all retained rounds in Progress and safe pruning are verified. The selected Sonner Native integration passes its native feedback checks without introducing ordinary upload-error toasts; the browser adapter/coverage remain retained, and deferred 07.3A native feedback evidence remains open.
 - [ ] Repeated local-save activation produces one operation/navigation; delayed accessible feedback covers slow device writes without flashing for fast writes or waiting for normal HTTP uploads. Sparse active/online retries recover after a sustained backend outage without a new lifecycle/connectivity event and respect cooldown/Retry-After/cleanup. Backup behavior remains unchanged under the accepted pre-upload loss risk. Genuine reflection revision conflicts adopt the latest backend version automatically without attention/review UI, including restart and newer-input race tests. Other actionable failures remain discoverable with preserved input and account isolation; finalize their presentation before dependent implementation.
 - [ ] Definitively rejected completions are retained for recovery but excluded from reps/calendar/streaks, with tested reconciliation and relaunch behavior; unresolved failures and rejected reflection edits cannot silently remove valid completion credit.
 - [x] Oversized bodies and unsupported content types return documented typed `413`/`415` responses, with API parser/error-handler and client retry regression tests; neither case is mislabeled or retried as `503 UNAVAILABLE`. Reverified in the isolated [07.1 checkpoint](handoffs/phase-07-1-api-data.md) with passing local and hosted checks.
 - [ ] A committed full-journey suite covers challenge → completion → reflection → Progress and the specified recovery/failure/retry cases, runs through a documented local command and gates CI with isolated app/API/database fixtures and useful failure artifacts.
-- [ ] 07.3A is accepted: native replacements and hosted CI pass before browser retirement, useful repository/API/database regressions remain, browser-only support is removed and current verification guidance requires native UI evidence.
+- [ ] Required native storage/Keychain/lifecycle/presentation and device/release evidence is recorded or remains an explicit owned acceptance gate. 07.3A automation/hosted CI is deferred, not accepted; browser support and useful lower-level regressions remain, and the deferral does not block 07.4.
 - [x] Authenticated earlier-upload eligibility and access seams have tested isolated provider fixtures and documented production integration requirements for Phase 07A; no live provider/paid-access completion claim or production bypass is introduced. Verified in 07.1; real billing remains 07A.
 - [ ] Shared contracts/mobile/API are cut over together, completed historical dates/content survive migration, and no obsolete route/table/caller remains in the implemented product flow.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; reconcile implemented API/offline guidance and the handoff index under the approved documentation sequence.

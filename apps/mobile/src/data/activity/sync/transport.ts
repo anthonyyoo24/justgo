@@ -6,8 +6,8 @@ import {
   type PatchAttempt,
   type PatchAttemptResponse,
 } from '@justgo/contracts';
-import type { AccountClient } from '../../lib/account-client';
-import { ApiError } from '../../lib/http';
+import type { AccountClient } from '../../../lib/account-client';
+import { ApiError } from '../../../lib/http';
 
 export interface JournalTransport {
   create(input: CreateAttempt, signal: AbortSignal): Promise<Attempt>;

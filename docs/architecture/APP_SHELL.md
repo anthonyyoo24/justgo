@@ -1,6 +1,6 @@
 # App shell and shared API
 
-Phase 03 established navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026; no onboarding state or answer collection is implemented. Phase 07.3 now integrates the account activity repository, local challenge/completion/reflection flow and saving feedback. Progress data composition remains 07.4 and billing remains 07A.
+Phase 03 established navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026; no onboarding state or answer collection is implemented. Phase 07.3 integrates the account activity repository, local challenge/completion/reflection flow and saving feedback. The local 07.4 implementation adds Progress reconciliation and inline day-entry reflection editing; billing remains 07A.
 
 ## Implemented folder responsibilities
 
@@ -35,7 +35,7 @@ access policy and foreground behavior are unchanged. The
 ## Routes and access
 
 - `/`: restore the real account, then check `/v1/access`. Loading, unavailable and unpaid have distinct UI. Only a fresh, unexpired server verification admits the paid routes.
-- `/(tabs)` and `/progress`: Home uses the downloaded catalog and local venue/start/countdown/completion state. Progress still uses the retained account-scoped compatibility reads until 07.4; no pending activity overlay is claimed yet.
+- `/(tabs)` and `/progress`: Home uses the downloaded catalog and local venue/start/countdown/completion state. Progress uses independent canonical summary/calendar/day reads and the shared repository's local activity overlay. Current-month counts and today's downloaded pages survive offline; other days and months require a connection.
 - `/success` and `/reflection`: guarded focused routes read a completed attempt from the current account’s repository. There is no server success lookup or reflection draft recovery/autosave. Visiting a URL cannot fabricate a completion. Only explicit reflection submissions enter the journal; empty Skip sends nothing.
 - `/settings` and `/recovery`: reachable regardless of paid access. The recovery route exposes Account / Recovery keys / Device transfer / Manage devices directly, with Return-key submission and automatic keyboard insets. It shares the one app-level identity controller; it does not create another vault or account.
 - `/preview`: development-only presentation fixture. It has no domain queries or writes and never changes an account's entitlement. The route guard and module load both require `__DEV__`. There is no runtime flag, API parameter or production environment switch that unlocks it.
@@ -71,9 +71,12 @@ References checked: [Expo 57](https://docs.expo.dev/versions/v57.0.0/), [protect
 ## Maintainer entrypoints after Phase 06A
 
 Follow [root coding instructions](../../AGENTS.md) and [testing guidance](../operations/TESTING.md).
-`ProgressScreen` owns account-scoped queries; `ProgressView` composes
+`ProgressScreen` owns account-scoped selection and editing; `useProgressReads`
+owns independent queries and repository acceptance. `ProgressView` composes
 `ProgressCalendar` (summary/calendar), `DaySheet` (modal/paging/retry) and
 `ProgressEntryRow` (metadata/reflection expansion). Each owns its related styles.
+`DayReflectionEditor` renders the Paper textbox/actions and `useDayReflection`
+reuses the existing reflection controller for explicit saves and guarded closes.
 `ChallengeScreen` owns deck orchestration; `ActiveChallenge` owns the countdown and
 outcome controls; `SuccessScreen` owns the confirmed-result route. The shared
 feeling choices come from the versioned contracts. No route or persistence policy
@@ -83,20 +86,22 @@ JavaScript wiring; native Keychain behavior still needs its separate device gate
 ## Phase 07.1 API compatibility boundary
 
 The API now exposes canonical catalog, completed-attempt and inline-reflection
-resources plus independent Progress summary/calendar/day reads. Mobile Progress still uses explicitly named `Legacy*` contracts and retained
-read routes until 07.4/07.5. Challenge/completion/reflection callers now use the
+resources plus independent Progress summary/calendar/day reads. The local 07.4
+Progress caller consumes those canonical reads. Legacy presentation fixtures and
+backend compatibility routes remain until 07.5. Challenge/completion/reflection callers use the
 canonical catalog and local repository flow. Legacy completion/final-reflection
 writes mirror canonical columns in the same transaction; new records appear in
 legacy Progress with their actual start timestamp and nullable obsolete fields.
 No fake completion timestamp or revision/card identity is added. The Progress
-row uses its compatibility `activityAt` value, falling back to the old completed
-value for older responses.
+row uses canonical `startedAt` with its frozen display time zone; legacy presentation
+fixtures still allow unknown old timestamps.
 
 The mobile identity transport is already on noun resources. Generic HTTP calls
 support GET/POST/PATCH/DELETE, omit JSON content type for bodyless requests, and
 retry only eligible GET failures; 413/415 remain permanent request failures.
 The offline journal and local challenge/completion/reflection flow are wired in
-07.2/07.3. Progress cache/reconciliation remains 07.4. The [07.1 handoff](../handoffs/phase-07-1-api-data.md)
+07.2/07.3. The [07.4 handoff](../handoffs/phase-07-4-progress-history.md) records
+Progress cache/reconciliation and local verification. The [07.1 handoff](../handoffs/phase-07-1-api-data.md)
 owns the temporary compatibility inventory, database rehearsal and current test
 evidence. Full product-document reconciliation is assigned to 07.5.
 
@@ -108,10 +113,15 @@ saving, cached activity and upload coordination for the user-facing features.
 Features may import data; data uses shared infrastructure/contracts and cannot
 import routes, app-support, developer code, features, components or theme. Shared
 components/lib/theme/platform cannot import routes, app-support, developer code, data
-or features. The stored journal envelope is unchanged.
+or features. The journal now also retains a nullable compact current-month
+reconciliation baseline, with a default for previously stored envelopes.
 07.3 wires challenge/completion/reflection screens and provider/lifecycle
-coordination into this boundary. Progress retains compatibility reads until 07.4
-accepts local/backend composition. The
+coordination into this boundary. 07.4 composes local/backend Progress through
+`data/activity/progress/progress.ts` and independent read/cache helpers in the
+same `progress/` folder. Storage adapters and serialized writes live under
+`data/activity/persistence/`; delivery, transport and retry scheduling live under
+`data/activity/sync/`. Repository, account ownership, schemas and submission rules
+stay at the activity root. The
 [07.2 handoff](../handoffs/phase-07-2-local-sync.md) records version/durability rules,
 retry/recovery interfaces, test evidence and open native checks. HTTP now preserves
 validated reflection-conflict data and Retry-After; normal uploads have one retry
@@ -155,3 +165,21 @@ No generic Progress sync-status feature or placeholder support action is added.
 `platform/Toast` uses Sonner Native on iOS and the documented Sonner web adapter.
 Native keyboard/modal/VoiceOver/durability evidence remains open; bundle exports
 and web screenshots are separate evidence. See the [07.3 handoff](../handoffs/phase-07-3-local-flow.md).
+
+## Phase 07.4 Progress composition
+
+`ProgressRefresh` receives the runtime from `AppProvider`, preloads summary,
+current-month counts and today's pages, and refreshes reads after upload settlement
+and reconnection. Its shared activity subscription is independent of provider
+context, avoiding an import cycle. Summary/calendar acceptance rejects obsolete
+account, period and generation responses; unknown create outcomes block aggregate
+refreshes without blocking local progress or day lookups.
+
+The summary and current-month baseline add only their not-yet-covered local IDs.
+Rows merge by attempt ID, and lower reflection revisions cannot erase confirmed
+writing. Before pruning an uploaded older-day edit, its canonical reflection
+moves into the account's in-memory query pages. Backend-wins conflict results can
+replace optimistic text there. Downloaded older history is never persisted and is
+hidden offline; an active older-day editor can retain its own accepted input.
+See the [07.4 handoff](../handoffs/phase-07-4-progress-history.md) for verification
+and the native/release gates that remain open.

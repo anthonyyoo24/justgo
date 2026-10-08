@@ -12,11 +12,13 @@ export default function PreviewRoute() {
       progressState={
         progressState === 'empty' ||
         progressState === 'error' ||
-        progressState === 'loading'
+        progressState === 'loading' ||
+        progressState === 'syncing'
           ? progressState
           : 'default'
       }
       progressDayState={
+        progressDayState === 'offline' ||
         progressDayState === 'initial-error' ||
         progressDayState === 'load-more-error' ||
         progressDayState === 'loading-more'

@@ -2,6 +2,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Modal,
   StyleSheet,
   Text,
@@ -16,6 +17,9 @@ import { ProgressView } from './ProgressView';
 
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
+jest.mock('./day-details/useEntryMotion', () =>
+  jest.requireActual('./day-details/useEntryMotion.ts'),
+);
 
 const month: ProgressResponse = {
   month: '2026-09',
@@ -138,6 +142,64 @@ it('preserves available progress during a refresh and stops skeletons on a failu
       includeHiddenElements: true,
     }),
   ).toHaveLength(0);
+});
+
+it('explains paused aggregate reads without shimmer or a misleading error and retry', () => {
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      selectedDate={null}
+      data={{ ...month, monthlyReps: null, activeDays: null, days: undefined }}
+      loading
+      summaryLoading
+      error
+      summaryError
+      waitingForSync
+      {...callbacks()}
+    />,
+  );
+  expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
+  expect(
+    screen.getByTestId('progress-calendar-card').props.accessibilityState.busy,
+  ).toBe(false);
+  expect(screen.queryByLabelText('Loading progress')).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(
+    screen.queryByText('No completed challenges this month yet.'),
+  ).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
+  expect(
+    screen.queryAllByTestId('progress-calendar-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(0);
+  expect(
+    screen.queryAllByTestId('progress-metric-skeleton-reps', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(0);
+});
+
+it('keeps a loaded calendar usable while an uncached summary waits for sync', () => {
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      selectedDate={null}
+      data={{
+        ...month,
+        totalReps: null,
+        currentStreak: null,
+        bestStreak: null,
+      }}
+      waitingForSync
+      {...callbacks()}
+    />,
+  );
+  expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }),
+  ).toBeEnabled();
+  expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
 });
 
 it('uses the warm Paper calendar panel and inactive day colors', () => {
@@ -536,7 +598,7 @@ it('keeps the marker behind the date and resizes it when the heading reflows', (
   expect(underline().props.width).toBeCloseTo(208.8);
   expect(underline().props.height).toBe(18);
   expect(underline()).toHaveStyle({ transform: [{ translateY: -6 }] });
-  expect(screen.queryByText('2 reps')).toBeNull();
+  expect(screen.getByText('2 reps')).toBeTruthy();
   const entryList = screen.getByTestId('day-sheet-entry-list');
   expect(entryList).toHaveStyle({ marginTop: 12 });
   expect(
@@ -619,7 +681,7 @@ it('keeps a past active day white while its details sheet is open', () => {
   expect(today).toHaveStyle({ backgroundColor: colors.ink });
 });
 
-it('shows completion times without a day total or duration in the day sheet', () => {
+it('shows completion times and the Paper day total without duration', () => {
   const screen = render(
     <ProgressView
       month="2026-09"
@@ -643,7 +705,7 @@ it('shows completion times without a day total or duration in the day sheet', ()
   const clocks = screen.getAllByTestId('entry-clock-icon', {
     includeHiddenElements: true,
   });
-  expect(screen.queryByText('2 reps')).toBeNull();
+  expect(screen.getByText('2 reps')).toBeTruthy();
   expect(screen.queryByText(/4 min 4 sec total/)).toBeNull();
   expect(screen.queryByText('2 min 2 sec')).toBeNull();
   expect(
@@ -726,6 +788,80 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
   expect(screen.getAllByText('View Reflection')).toHaveLength(2);
 });
 
+it('uses the Paper plus for Add reflection and omits the saved row pencil', () => {
+  const edit = jest.fn();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: 2,
+        entries: [
+          {
+            ...entry('addable', 'submitted'),
+            feeling: 'a_little_better',
+          },
+          {
+            ...entry('saved', 'submitted'),
+            reflectionText: 'A saved reflection.',
+          },
+        ],
+      }}
+      onEditReflection={edit}
+      {...callbacks()}
+    />,
+  );
+  const add = screen.getByRole('button', { name: /Rep 1.*Add reflection/ });
+  const plus = screen.getByTestId('add-reflection-icon', {
+    includeHiddenElements: true,
+  });
+  expect(plus.props.width).toBe(13);
+  expect(plus.props.height).toBe(13);
+  expect(plus.props['aria-hidden']).toBe(true);
+  expect(plus.findByType(Path).props.d).toBe('M8 2v12M2 8h12');
+  expect(add.findAllByType(Image)).toHaveLength(0);
+  expect(
+    screen
+      .getByRole('button', { name: /Rep 2.*View Reflection/ })
+      .findAllByType(Image),
+  ).toHaveLength(0);
+  fireEvent.press(add);
+  expect(edit).toHaveBeenCalledWith('addable');
+});
+
+it('shows the pencil inside the Edit action and opens the selected saved reflection', () => {
+  const edit = jest.fn();
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={month}
+      selectedDate="2026-09-18"
+      day={{
+        date: '2026-09-18',
+        totalReps: 1,
+        entries: [
+          {
+            ...entry('editable', 'submitted'),
+            reflectionText: 'A saved reflection.',
+          },
+        ],
+      }}
+      onEditReflection={edit}
+      {...callbacks()}
+    />,
+  );
+  fireEvent.press(screen.getByRole('button', { name: /View Reflection/ }));
+  const action = screen.getByRole('button', { name: 'Edit reflection' });
+  expect(action.findByType(Image).props.source).toEqual(
+    require('../../../assets/icons/reflection-pencil.png'),
+  );
+  expect(action.findByType(Image).props['aria-hidden']).toBe(true);
+  fireEvent.press(action);
+  expect(edit).toHaveBeenCalledWith('editable');
+});
+
 it('animates the saved reflection both into and out of the row', () => {
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
     start: jest.fn(),
@@ -750,7 +886,7 @@ it('animates the saved reflection both into and out of the row', () => {
         {...callbacks()}
       />,
     );
-    const content = screen.getByTestId('reflection-content', {
+    const content = screen.getByTestId('entry-details-content', {
       includeHiddenElements: true,
     });
     expect(

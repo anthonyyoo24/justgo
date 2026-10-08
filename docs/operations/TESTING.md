@@ -328,3 +328,23 @@ Keep native saving/relaunch, background/lock countdown, keyboard/toast/modal,
 VoiceOver/scalable-text/reduced-motion checks open until evidenced; earlier
 physical-device/staging gates remain open. The brief native smoke check and owner
 manual session are separate from saved end-to-end tests and hosted CI.
+
+## Phase 07.4 Progress evidence
+
+`npm run test:journey` adds five cases in `e2e/progress-flow.spec.ts` to the
+16 retained cases: 10 + 1 reconciliation through acknowledgement/restart with
+inline Add/Edit; today's paging/offline cache and older-history restrictions;
+ten memory-only completions/recovery; definitive rejection retaining submitted
+writing through restart; and historical Add/Edit after accepted-record pruning.
+Repository/component tests cover independent reads, rollover, stale revisions,
+generation/account fences, streak context and dirty-close/save races. The fixture
+API uses a unique identity rate namespace per run; actual rate limits remain intact.
+
+The [07.4 handoff](../handoffs/phase-07-4-progress-history.md) records the final
+21-case pass, coverage and serialization measurements. Side-panel browser checks
+and the existing native app's simulator Add/Edit/save/relaunch are separate
+evidence. Native hardware-keyboard HID typing does not establish software-keyboard
+layout or physical-device/VoiceOver/radio/backup acceptance. 07.3A remains deferred;
+retained browser CI runs this extended suite; Anthony authorized Phase 07.4
+publication on October 8, and its published-revision hosted result still needs
+inspection. 07.5 owns final cutover and integrated acceptance.

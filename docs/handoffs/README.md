@@ -1,5 +1,94 @@
 # Implementation handoffs
 
+**October 8 published 07.4 implementation:** `codex/phase-07.4-progress-history`
+implements canonical Progress reads, limited offline history, local/backend
+reconciliation and the owner's Paper inline Add/Edit reflection design. The
+[07.4 handoff](phase-07-4-progress-history.md) records 656 workspace cases after
+the review follow-up,
+61 database/migration cases, unchanged coverage gates, both exports and 21 saved
+journeys, plus side-panel browser and native simulator Add/Edit/save/relaunch.
+Anthony authorized publication in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20)
+on October 8; both hosted Foundation checks passed at `6782894`. The
+[review follow-up](phase-07-4-progress-history.md#october-8-pr-20-review-follow-up)
+records the aggregate-sync waiting state, regressions and fresh verification.
+Owner review and separate merge approval remain pending. Software-keyboard
+layout and earlier device/release gates remain open. 07.3A stays
+deferred; 07.5 owns final cutover and integrated acceptance.
+The owner's missing-Edit-pencil finding is fixed and verified in the running
+simulator, with fresh 622-case checks and unchanged mobile coverage gates passing.
+The subsequent Add action now uses Paper's original plus, verified in the same
+simulator with 49 focused cases, fresh 623-case checks and unchanged coverage gates.
+The whole Add row now includes its padded tap area, and Add/Edit share the saved
+reflection's measured slide motion. The handoff records 58 focused cases, fresh
+628-case checks, passing coverage gates and native Add/Edit endpoint proof, with
+existing acceptance gates retained.
+The subsequent native comparison reproduced the slower, jumping textbox reveal;
+the handoff records timings and autofocus isolation. The subsequent fix uses an
+atomic editor/action state, avoids redundant durable-row adoption and reveals a
+lightweight form on the native UI thread before mounting/focusing the input.
+Final cold/repeated Add, Edit and close recordings show intermediate heights;
+the owner-reported Add/Hide flicker has regression coverage. Diagnostic app
+changes were removed, and software-keyboard/device acceptance remains open.
+Fresh 644-case checks and unchanged coverage gates pass; the mobile report is
+90.27% branches / 94.68% lines, with the earlier 61-case database evidence retained.
+The October 8 placeholder follow-up fixes a measured 4-pixel hint shift during
+the iOS input handoff. Typing/clearing and cold/repeated native openings pass;
+fresh 646-case checks and unchanged coverage gates pass (mobile 90.33% branches /
+94.68% lines). The handoff retains earlier device/keyboard/hosted acceptance gaps.
+The subsequent saved Edit follow-up removes the panel's transparency reset and
+saved-text preview/input swap. Paired native frames retain the filled surface
+and text baseline. Fresh 646-case checks and coverage gates pass (mobile 90.28%
+branches / 94.67% lines); Add's lightweight reveal and earlier acceptance gaps remain.
+
+The owner-approved Add action now changes from **＋ Add reflection** to **× Cancel**
+while its editor is open, with whole-row clean cancellation and dirty-close
+confirmation preserved. Saved reflections keep View/Hide. The handoff records
+39 focused cases, fresh 647-case checks and unchanged coverage gates (mobile
+90.30% branches / 94.67% lines), plus the existing simulator's side-panel checks.
+
+The owner's saved-action spacing follow-up removes the leading pencil from
+View/Hide Reflection, moving the labels left while retaining the separate Edit
+pencil. The handoff records the new regression, native simulator evidence,
+fresh 648-case checks and unchanged coverage gates.
+
+The offline-day presentation follow-up uses the owner-approved **You're currently
+offline** heading and explanatory connection copy. Its illustration and message
+are centered below the day header. The handoff records the guarded offline
+preview, updated native screenshot, 63 focused cases, fresh 651-case checks and
+unchanged coverage gates; actual radio/device acceptance remains open.
+
+The subsequent offline-month copy follow-up uses **You’re offline. Connect to
+view this month.** above the unavailable calendar. The handoff records its
+50-case focused pass, updated native preview screenshot and fresh checks.
+
+At the owner's request, the 19 phase screenshots/comparison GIFs now live only
+in ignored `.local/phase-07-4/visual-evidence/`. The handoff retains the check
+results and local capture names without repository image links.
+
+The subsequent owner-authorized folder follow-up groups Progress calendar/day
+details and activity persistence/sync/Progress reads, retaining tests beside the
+27 moved files and updating all import/asset/fixture consumers. The 07.4 handoff
+records verification and the overlap with the separate mobile cleanup branch.
+Fresh checks pass 651 cases, mobile coverage and unchanged gates, both cold
+exports and the journey repository rebuild. The existing simulator's side-panel
+calendar/day/Add/Edit/cancel smoke passes after Metro's cache-cleared reload.
+
+The October 8 publication request includes the complete Phase 07.4 branch and
+these follow-ups. The handoff records fresh clean `npm ci`, 651-case checks,
+61 database/migration cases and all-workspace coverage gates; hosted
+results must be inspected for the pushed revision. Earlier native/device and
+release acceptance stays open.
+
+**October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
+preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`
+at `c7c67b2`. The [resume handoff](phase-07-3a-testing-checkpoint.md) records the
+exact SHA, version-specific passes, failures, timings, local artifacts and next
+debugging step. Main uses approved code baseline `6780406`.
+07.3A is deferred, not complete or merge-ready; proceed to 07.4 after 07.3 with
+existing browser/lower-level checks plus relevant manual native verification.
+Browser support/CI remain retained; native/device/VoiceOver/staging/release and
+future billing gates remain open. Local commits are authorized; no push/PR/merge.
+
 **October 6 cleanup review follow-up:** Anthony authorized fixing the assessed
 issues and pushing updates to PRs #18 and #19. The
 [cleanup handoff](project-folder-cleanup.md#october-6-pr-18-review-follow-up)
@@ -38,7 +127,7 @@ Fresh local verification passes: 558 workspace tests, 61 database/migration case
 coverage, both exports, 21 Doctor checks and 16 saved journeys. The authorized push
 at `fd3ac78` passed both hosted runs; native acceptance remains open.
 
-**October 6 native testing migration plan:** Anthony requested scheduling [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) after reviewed/finished 07.3 and before 07.4. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) inventories browser-only files (including modal isolation), responsibilities to migrate and native/shared code to retain. Keep existing browser coverage until native replacements and hosted CI pass. The phase has not started; its handoff filename is reserved below. Existing work was committed first at `25e2f8c`; the three PNG screenshots remain local and uncommitted.
+**October 6 native testing migration plan — historical, superseded by October 7:** Anthony requested scheduling [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) after reviewed/finished 07.3 and before 07.4. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) inventories browser-only files (including modal isolation), responsibilities to migrate and native/shared code to retain. Keep existing browser coverage until native replacements and hosted CI pass. The phase has not started; its handoff filename is reserved below. Existing work was committed first at `25e2f8c`; the three PNG screenshots remain local and uncommitted.
 
 **October 6 saving-spinner follow-up:** Existing unstaged work was checkpointed locally at `1048372` before Anthony's requested UI change. Completed, Save Reflection and dialog Save Reflection now replace their contents with a centered circular loader after the existing 200 ms delay. [Follow-up evidence](phase-07-3-local-flow.md#october-6-centered-saving-spinner-follow-up) records 346 mobile tests, the coverage gate, repository checks, the affected saved slow-write journey and side-panel layout proof. This follow-up is committed locally at `25e2f8c`, excluding PNG screenshots; native acceptance and Git publication permissions remain open.
 
@@ -168,16 +257,16 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 11 — Optional US iOS web checkout             | Not scheduled | 09           | `phase-11-optional-stripe.md`                            |
 | 12 — Future AI text coach                     | Not scheduled | 09           | `phase-12-future-text-coach.md`                          |
 
-The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with native durability evidence open. The owner merged 07.3 through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, after both final review-fix hosted runs passed at `cc3f0f2`. Native/device acceptance remains open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A/07.4/07.5 filenames remain reserved outputs.
+The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with physical-device durability evidence open. The owner merged 07.3 through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, after both final review-fix hosted runs passed at `cc3f0f2`. Native/device acceptance remains open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A is deferred with its checkpoint resume handoff. 07.4 is implemented locally with the handoff below, awaiting review and open acceptance checks; 07.5's filename remains reserved.
 
-| Subphase                                         | Depends on | Handoff filename                                       |
-| ------------------------------------------------ | ---------- | ------------------------------------------------------ |
-| 07.1A — API and data foundation                  | 06A        | [phase-07-1-api-data.md](phase-07-1-api-data.md)       |
-| 07.1B — Saved app/API journey and CI             | 07.1A      | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md) |
-| 07.2 — Durable local saving and synchronization  | 07.1       | [phase-07-2-local-sync.md](phase-07-2-local-sync.md)   |
-| 07.3 — Local challenge and reflection experience | 07.2       | [phase-07-3-local-flow.md](phase-07-3-local-flow.md)   |
-| 07.3A — iOS simulator testing migration          | 07.3       | `phase-07-3a-native-testing.md`                        |
-| 07.4 — Progress and history integration          | 07.3A      | `phase-07-4-progress-history.md`                       |
-| 07.5 — Final cutover and acceptance              | 07.4       | `phase-07-5-cutover-acceptance.md`                     |
+| Subphase                                         | Depends on                | Handoff filename                                                 |
+| ------------------------------------------------ | ------------------------- | ---------------------------------------------------------------- |
+| 07.1A — API and data foundation                  | 06A                       | [phase-07-1-api-data.md](phase-07-1-api-data.md)                 |
+| 07.1B — Saved app/API journey and CI             | 07.1A                     | [phase-07-1b-journey-ci.md](phase-07-1b-journey-ci.md)           |
+| 07.2 — Durable local saving and synchronization  | 07.1                      | [phase-07-2-local-sync.md](phase-07-2-local-sync.md)             |
+| 07.3 — Local challenge and reflection experience | 07.2                      | [phase-07-3-local-flow.md](phase-07-3-local-flow.md)             |
+| 07.3A — Hybrid testing (deferred)                | 07.3; does not block 07.4 | [checkpoint resume](phase-07-3a-testing-checkpoint.md)           |
+| 07.4 — Progress and history integration          | 07.3                      | [phase-07-4-progress-history.md](phase-07-4-progress-history.md) |
+| 07.5 — Final cutover and acceptance              | 07.4                      | `phase-07-5-cutover-acceptance.md`                               |
 
-The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.3A → 07.4 → 07.5) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.
+The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.

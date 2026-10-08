@@ -97,6 +97,7 @@ export class ReflectionController {
     return () => this.listeners.delete(listener);
   };
   getSnapshot = () => this.snapshot;
+  hasChanges = () => !same(this.snapshot, this.saved);
   private update(value: Partial<ReflectionSnapshot>) {
     if (!this.alive) return;
     this.snapshot = { ...this.snapshot, ...value };

@@ -4,6 +4,7 @@ import {
   Animated,
   Easing,
   Image,
+  KeyboardAvoidingView,
   Modal,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -19,9 +20,9 @@ import {
 import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import type { LegacyProgressEntry as ProgressEntry } from '@justgo/contracts';
-import { colors, fontFamilies, typography } from '../../theme/tokens';
-import { dayLabel } from './calendar';
+import type { ProgressEntry } from '../types';
+import { colors, fontFamilies, typography } from '../../../theme/tokens';
+import { dayLabel } from '../calendar';
 import { ProgressEntryRow } from './ProgressEntryRow';
 export type ProgressDay = {
   date: string;
@@ -48,7 +49,7 @@ function DisconnectedPlugs() {
   return (
     <Image
       testID="day-initial-error-illustration"
-      source={require('../../../assets/illustrations/disconnected-plugs.png')}
+      source={require('../../../../assets/illustrations/disconnected-plugs.png')}
       style={styles.initialErrorIllustration}
       resizeMode="contain"
       aria-hidden
@@ -129,6 +130,13 @@ export function DaySheet({
   onClose,
   onRetry,
   onLoadMore,
+  connectionRequired = false,
+  editingId,
+  editor,
+  onEditorOpened,
+  onEditReflection,
+  beforeClose,
+  paginationKey,
 }: {
   topAccessory?: ReactNode;
   date: string | null;
@@ -142,9 +150,16 @@ export function DaySheet({
   onClose: () => void;
   onRetry?: (() => void) | undefined;
   onLoadMore?: (() => void) | undefined;
+  connectionRequired?: boolean;
+  editingId?: string | null | undefined;
+  editor?: ReactNode;
+  onEditorOpened?: (() => void) | undefined;
+  onEditReflection?: ((id: string) => void) | undefined;
+  beforeClose?: ((work: () => void) => void) | undefined;
+  paginationKey?: string | null | undefined;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const lastRequestedCount = useRef<number | null>(null);
+  const lastRequestedCount = useRef<string | number | null>(null);
   const [backdropVisible, setBackdropVisible] = useState(true);
   const reduceMotion = useReducedMotion();
   const { height } = useWindowDimensions();
@@ -165,7 +180,7 @@ export function DaySheet({
       useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [date, reduceMotion, sheetOffset]);
-  const close = useCallback(() => {
+  const animateClose = useCallback(() => {
     setBackdropVisible(false);
     if (reduceMotion) {
       sheetOffset.setValue(height);
@@ -185,6 +200,10 @@ export function DaySheet({
       }
     });
   }, [height, onClose, reduceMotion, sheetOffset]);
+  const close = useCallback(
+    () => (beforeClose ? beforeClose(animateClose) : animateClose()),
+    [beforeClose, animateClose],
+  );
   const responder = useMemo(
     () =>
       PanResponder.create({
@@ -204,10 +223,10 @@ export function DaySheet({
     if (
       contentOffset.y <= 0 ||
       contentOffset.y + layoutMeasurement.height < contentSize.height - 160 ||
-      lastRequestedCount.current === day.entries.length
+      lastRequestedCount.current === (paginationKey ?? day.entries.length)
     )
       return;
-    lastRequestedCount.current = day.entries.length;
+    lastRequestedCount.current = paginationKey ?? day.entries.length;
     onLoadMore();
   };
   return (
@@ -221,7 +240,10 @@ export function DaySheet({
     >
       <View style={{ flex: 1 }} accessibilityViewIsModal>
         {topAccessory}
-        <View style={styles.modalRoot}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <Pressable
             testID="day-sheet-backdrop"
             accessibilityRole="button"
@@ -235,7 +257,8 @@ export function DaySheet({
             edges={['bottom']}
             style={[
               styles.sheet,
-              error && !day && { minHeight: Math.min(470, height * 0.78) },
+              (connectionRequired || error) &&
+                !day && { minHeight: Math.min(470, height * 0.78) },
               { transform: [{ translateY: sheetOffset }] },
             ]}
           >
@@ -251,7 +274,29 @@ export function DaySheet({
               <Text style={styles.closeText}>×</Text>
             </Pressable>
             {date && <DayHeading date={date} />}
-            {loading && !day ? (
+            {day && (
+              <Text style={styles.repCount}>
+                {day.totalReps} {day.totalReps === 1 ? 'rep' : 'reps'}
+              </Text>
+            )}
+            {connectionRequired ? (
+              <ScrollView
+                testID="day-offline-state"
+                style={styles.offlineScroll}
+                contentContainerStyle={styles.offlineState}
+              >
+                <DisconnectedPlugs />
+                <Text
+                  accessibilityRole="alert"
+                  style={styles.initialErrorTitle}
+                >
+                  You're currently offline
+                </Text>
+                <Text style={styles.initialErrorBody}>
+                  Connect to the internet to view this day’s activity.
+                </Text>
+              </ScrollView>
+            ) : loading && !day ? (
               <View style={styles.state}>
                 <ActivityIndicator
                   accessibilityLabel="Loading day details"
@@ -291,18 +336,45 @@ export function DaySheet({
                   contentContainerStyle={styles.entries}
                   onScroll={loadNearEnd}
                   scrollEventThrottle={16}
+                  keyboardShouldPersistTaps="handled"
                 >
                   {day.entries.map((entry, index) => (
                     <ProgressEntryRow
                       key={entry.attemptId}
                       entry={entry}
                       index={index}
-                      expanded={expanded === entry.attemptId}
+                      expanded={
+                        expanded === entry.attemptId ||
+                        editingId === entry.attemptId
+                      }
                       reduceMotion={reduceMotion}
+                      onEdit={
+                        onEditReflection
+                          ? () => {
+                              setExpanded(entry.attemptId);
+                              onEditReflection(entry.attemptId);
+                            }
+                          : undefined
+                      }
+                      editor={
+                        editingId === entry.attemptId ? editor : undefined
+                      }
+                      editing={editingId === entry.attemptId}
+                      onEditorOpened={onEditorOpened}
                       onToggle={() =>
-                        setExpanded(
-                          expanded === entry.attemptId ? null : entry.attemptId,
-                        )
+                        beforeClose
+                          ? beforeClose(() =>
+                              setExpanded(
+                                expanded === entry.attemptId
+                                  ? null
+                                  : entry.attemptId,
+                              ),
+                            )
+                          : setExpanded(
+                              expanded === entry.attemptId
+                                ? null
+                                : entry.attemptId,
+                            )
                       }
                     />
                   ))}
@@ -339,14 +411,22 @@ export function DaySheet({
               </>
             ) : null}
           </AnimatedSafeAreaView>
-        </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  offlineScroll: { flexGrow: 1, flexShrink: 1 },
+  offlineState: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
   state: { paddingVertical: 12, alignItems: 'center', gap: 4 },
+  repCount: { ...typography.body, color: '#6B809B', marginTop: 8 },
   stateText: { ...typography.body, color: colors.ink, textAlign: 'center' },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   backdrop: {

@@ -474,6 +474,55 @@ it('adopts confirmed online history even when device caching fails and protects 
   );
 });
 
+it('opens an unchanged durable attempt without a journal write or notification, while adopting newer remote text', async () => {
+  const { repo, storage } = await setup();
+  await repo.adoptAttempt(attempt());
+  const journal = state(repo).journal;
+  expect(repo.hasCurrentAttempt(attempt())).toBe(true);
+  expect(repo.hasCurrentAttempt(attempt(2))).toBe(false);
+  const writes = storage.writes.length;
+  const changed = jest.fn();
+  const unsubscribe = repo.store.subscribe(changed);
+  try {
+    storage.blocked = deferred<void>();
+    await repo.adoptAttempt(attempt());
+    expect(storage.writes).toHaveLength(writes);
+    expect(changed).not.toHaveBeenCalled();
+    expect(state(repo).journal).toBe(journal);
+    storage.blocked.resolve();
+    storage.blocked = null;
+    const newer = {
+      ...attempt(),
+      reflection: { feeling: null, text: 'Newer remote fixture', revision: 1 },
+    };
+    expect(repo.hasCurrentAttempt(newer)).toBe(false);
+    await repo.adoptAttempt(newer);
+    expect(repo.getAttempt(uuid(1))).toEqual(newer);
+    expect(disk(storage).records[uuid(1)]?.attempt).toEqual(newer);
+    expect(storage.writes.length).toBeGreaterThan(writes);
+    repo.dispose();
+    expect(repo.hasCurrentAttempt(newer)).toBe(false);
+    await expect(repo.adoptAttempt(newer)).rejects.toMatchObject({
+      code: 'ACCOUNT_CHANGED',
+    });
+  } finally {
+    storage.blocked?.resolve();
+    storage.blocked = null;
+    unsubscribe();
+  }
+});
+
+it('persists a previously memory-only adopted row when storage becomes available', async () => {
+  const { repo, storage } = await setup();
+  storage.fail = true;
+  await repo.adoptAttempt(attempt());
+  expect(state(repo).journal.records[uuid(1)]?.phoneVersion).toBe(0);
+  expect(repo.hasCurrentAttempt(attempt())).toBe(false);
+  storage.fail = false;
+  await repo.adoptAttempt(attempt());
+  expect(disk(storage).records[uuid(1)]?.phoneVersion).toBe(1);
+});
+
 it('preserves feeling-only reflections, normalizes empty input and keeps returned attempts outside the mutable journal', async () => {
   const { repo } = await setup();
   await repo.complete(input(), card);

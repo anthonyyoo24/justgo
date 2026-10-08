@@ -9,9 +9,11 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 import { listenToConnectivity } from '../../platform/connectivity';
-import { asyncStorageJournalStorage } from '../../data/activity/storage';
+import { asyncStorageJournalStorage } from '../../data/activity/persistence/storage';
 import type { JournalStorage } from '../../data/activity/model';
 import { ActivityRuntime } from './activity-runtime';
+import { ProgressRefresh } from './ProgressRefresh';
+import { useActivityStore } from './activity-hooks';
 import {
   QueryClientProvider,
   focusManager,
@@ -120,6 +122,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   return (
     <Context.Provider value={runtime}>
       <QueryClientProvider client={runtime.client.queries}>
+        <ProgressRefresh client={runtime.client} activity={runtime.activity} />
         {children}
       </QueryClientProvider>
     </Context.Provider>
@@ -180,11 +183,6 @@ export function useJournal() {
   );
 }
 export function useActivityState() {
-  const repository = useJournal();
-  const state = useSyncExternalStore(
-    repository?.store.subscribe ?? (() => () => {}),
-    repository?.store.getState ?? (() => null),
-    repository?.store.getState ?? (() => null),
-  );
-  return { repository, state };
+  const { activity } = useRuntime();
+  return useActivityStore(activity);
 }

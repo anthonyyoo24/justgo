@@ -2,8 +2,11 @@
 
 The owner-authorized cleanup is split into foundation and mobile PRs for review.
 This guide shows the final structure after **both** land. In the foundation stage,
-mobile source and artwork still use their merged-07.3 locations; tooling, API tests,
-contracts and documentation already use the groups below. See the
+most mobile source and artwork still use their merged-07.3 locations; tooling, API tests,
+contracts and documentation already use the groups below. The owner-authorized
+October 8 follow-up on `codex/phase-07.4-progress-history` implements the Progress
+and shared activity groups below, including the newer reflection editor and
+Progress read/cache files. Other mobile cleanup remains separate. See the
 [cleanup handoff](../handoffs/project-folder-cleanup.md) for sequencing and checks.
 
 The October 6 dedicated cleanup groups existing files by responsibility. Tests
@@ -46,15 +49,35 @@ apps/mobile/src/
 │       ├── ProgressScreen.tsx        query and navigation coordination
 │       ├── ProgressView.tsx          calendar/day-detail composition
 │       ├── calendar.ts               shared date and calendar helpers
+│       ├── types.ts                  shared Progress display types
 │       ├── calendar/                 calendar UI and loading presentation
+│       │   ├── ProgressCalendar.tsx
+│       │   └── ProgressSkeleton.tsx
 │       └── day-details/              day sheet and activity/reflection rows
+│           ├── DaySheet.tsx
+│           ├── ProgressEntryRow.tsx
+│           ├── DayReflectionEditor.tsx
+│           ├── useDayReflection.tsx
+│           ├── SlidingEntryDetails.tsx
+│           ├── useEntryMotion.ts
+│           └── useEntryMotion.native.ts
 ├── data/activity/
 │   ├── accounts.ts                   account repository ownership
 │   ├── repository.ts                 activity storage/submission/sync orchestration
 │   ├── model.ts                      shared journal schemas and controllable interfaces
 │   ├── submissions.ts                completion/reflection domain transitions
 │   ├── persistence/                  AsyncStorage adapter and serialized writes
-│   └── sync/                         delivery, acknowledgements, transport and retries
+│   │   ├── storage.ts
+│   │   └── persistence.ts
+│   ├── sync/                         delivery, acknowledgements, transport and retries
+│   │   ├── delivery.ts
+│   │   ├── retry.ts
+│   │   ├── sender.ts
+│   │   └── transport.ts
+│   └── progress/                     Progress composition, reads and query-cache repair
+│       ├── progress.ts
+│       ├── progress-read-cache.ts
+│       └── useProgressReads.ts
 ├── components/                       reusable visual building blocks
 ├── lib/
 │   ├── network/                      HTTP transport and coordinated account client
@@ -75,6 +98,15 @@ The diagram omits colocated `*.test.ts` / `*.test.tsx` files. Native and `.web.*
 implementations stay in the same adapter folder so platform resolution continues
 to work. The feature's card presentation is shared by deck browsing and the
 active challenge; moving it into `deck/` does not duplicate it.
+
+The October 8 follow-up moves 27 Progress/activity source and test files, retaining
+tests beside their owner and both entry-motion implementations together. Shared
+`progress/calendar.ts` remains outside the calendar UI folder; its consumers use
+an explicit `../calendar` import. Metro's guarded storage fixture, its regression
+test, journey exports, asset paths and all consumers follow the new locations.
+The [07.4 handoff](../handoffs/phase-07-4-progress-history.md#october-8-owner-review--progress-and-activity-folders)
+records current verification. This overlap with the earlier mobile cleanup must
+be reconciled when integrating its branch, retaining the newer editor/read files.
 
 Mobile assets keep application icons at `apps/mobile/assets/`; challenge artwork
 uses `assets/challenges/venues/` for six venue/color pairs and
@@ -163,7 +195,9 @@ There are **43 phase additions**, **5 cleanup additions** and **133 moves**;
 [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) contains the phase changes
 at their original locations. The cleanup remains a separate branch and PR based on merged `main`.
 The earlier overview explains each responsibility group; this tree expands every
-new or relocated file instead of omitting tests and images.
+new or relocated file instead of omitting tests and images. This is the October 6
+cleanup inventory; it predates the later 07.4 files and October 8 folder follow-up
+described above, and is retained as the historical cleanup snapshot.
 
 ```text
 justgo/

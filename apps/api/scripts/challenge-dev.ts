@@ -20,7 +20,8 @@ const allocatedAccounts = new Set<string>();
 const app = buildApp({
   logger: false,
   identity: new IdentityService(database.db, {
-    rateKey: 'local-challenge-fixtures',
+    // Keep the real limits, but separate this run from prior fixture sessions.
+    rateKey: `local-challenge-fixtures:${randomUUID()}`,
     rateLimit: 300,
     newUserId: () => {
       const id = randomUUID();

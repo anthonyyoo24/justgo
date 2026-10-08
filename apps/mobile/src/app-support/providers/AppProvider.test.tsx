@@ -39,7 +39,7 @@ jest.mock('expo-crypto', () => {
 jest.mock('../../platform/connectivity', () => ({
   listenToConnectivity: jest.fn(() => () => {}),
 }));
-jest.mock('../../data/activity/storage', () => ({
+jest.mock('../../data/activity/persistence/storage', () => ({
   asyncStorageJournalStorage: {
     getItem: async () => null,
     setItem: async () => {},

@@ -1,22 +1,13 @@
-import { useEffect, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import type { ReactNode } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import {
-  feelingChoices,
-  type FeelingCode,
-  type LegacyProgressEntry as ProgressEntry,
-} from '@justgo/contracts';
-import { colors, fontFamilies, typography } from '../../theme/tokens';
-import { FeelingFace } from '../reflections/FeelingFace';
-import { completionTime } from './calendar';
+import { feelingChoices, type FeelingCode } from '@justgo/contracts';
+import type { ProgressEntry } from '../types';
+import { colors, fontFamilies, typography } from '../../../theme/tokens';
+import { FeelingFace } from '../../reflections/FeelingFace';
+import { completionTime } from '../calendar';
+import { SlidingEntryDetails } from './SlidingEntryDetails';
+import { DayReflectionPlaceholder } from './DayReflectionEditor';
 const entryMetaInk = '#5F7391';
 const feelingLabel = (feeling: FeelingCode | null) =>
   feelingChoices.find((option) => option.code === feeling)?.label ??
@@ -53,7 +44,7 @@ function EntryClockIcon() {
 function ReflectionPencil() {
   return (
     <Image
-      source={require('../../../assets/icons/reflection-pencil.png')}
+      source={require('../../../../assets/icons/reflection-pencil.png')}
       style={styles.reflectionPencil}
       resizeMode="contain"
       aria-hidden
@@ -61,85 +52,38 @@ function ReflectionPencil() {
   );
 }
 
-function SlidingReflection({
-  open,
+function SavedReflection({
   text,
-  reduceMotion,
+  onEdit,
 }: {
-  open: boolean;
   text: string;
-  reduceMotion: boolean;
+  onEdit?: (() => void) | undefined;
 }) {
-  const [contentHeight, setContentHeight] = useState(0);
-  const [progress] = useState(() => new Animated.Value(open ? 1 : 0));
-
-  useEffect(() => {
-    if (contentHeight === 0) return;
-    if (reduceMotion) {
-      progress.setValue(open ? 1 : 0);
-      return;
-    }
-    const animation = Animated.timing(progress, {
-      toValue: open ? 1 : 0,
-      duration: open ? 240 : 230,
-      easing: open ? Easing.out(Easing.cubic) : Easing.inOut(Easing.cubic),
-      useNativeDriver: false,
-    });
-    animation.start();
-    return () => animation.stop();
-  }, [contentHeight, open, progress, reduceMotion]);
-
   return (
-    <Animated.View
-      testID="sliding-reflection"
-      aria-hidden={!open}
-      accessibilityElementsHidden={!open}
-      importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
-      style={[
-        styles.reflectionClip,
-        {
-          height: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, contentHeight],
-          }),
-          opacity: progress,
-        },
-      ]}
-    >
-      <Animated.View
-        style={[
-          styles.reflectionContentLayer,
-          {
-            transform: [
-              {
-                translateY: progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-12, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <View
-          testID="reflection-content"
-          style={styles.reflection}
-          onLayout={({ nativeEvent }) => {
-            const height = nativeEvent.layout.height + 12;
-            if (height <= 12) return;
-            setContentHeight((current) =>
-              Math.abs(current - height) > 0.5 ? height : current,
-            );
-          }}
-        >
-          <View style={styles.reflectionHeading}>
-            <ReflectionPencil />
-            <Text style={styles.reflectionLabel}>Saved reflection</Text>
-          </View>
-          <Text style={styles.reflectionText}>{text}</Text>
+    <View testID="reflection-content" style={styles.reflection}>
+      {!onEdit && (
+        <View style={styles.reflectionHeading}>
+          <ReflectionPencil />
+          <Text style={styles.reflectionLabel}>Saved reflection</Text>
         </View>
-      </Animated.View>
-    </Animated.View>
+      )}
+      <Text
+        style={[styles.reflectionText, onEdit && styles.editableReflectionText]}
+      >
+        {text}
+      </Text>
+      {onEdit && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit reflection"
+          onPress={onEdit}
+          style={styles.editAction}
+        >
+          <ReflectionPencil />
+          <Text style={styles.reflectionActionText}>Edit</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -149,19 +93,35 @@ export function ProgressEntryRow({
   expanded,
   onToggle,
   reduceMotion,
+  onEdit,
+  editor,
+  editing = !!editor,
+  onEditorOpened,
 }: {
   entry: ProgressEntry;
   index: number;
   expanded: boolean;
   onToggle: () => void;
   reduceMotion: boolean;
+  onEdit?: (() => void) | undefined;
+  editor?: ReactNode;
+  editing?: boolean;
+  onEditorOpened?: (() => void) | undefined;
 }) {
   const submitted = entry.reflectionStatus === 'submitted';
   const feeling = submitted ? entry.feeling : null;
   const reflection = submitted ? entry.reflectionText?.trim() : null;
-  const opened = !!reflection && expanded;
-  const action = opened ? 'Hide Reflection' : 'View Reflection';
-  const Row = reflection ? Pressable : View;
+  const opened = (!!reflection && expanded) || editing;
+  const action =
+    editing && !reflection
+      ? 'Cancel'
+      : opened
+        ? 'Hide Reflection'
+        : reflection
+          ? 'View Reflection'
+          : 'Add reflection';
+  const actionable = !!reflection || !!onEdit;
+  const Row = actionable ? Pressable : View;
   const activityAt = entry.activityAt ?? entry.completedAt;
   const time = activityAt ? completionTime(activityAt, entry.timeZone) : null;
 
@@ -169,10 +129,11 @@ export function ProgressEntryRow({
     <View style={styles.entry}>
       <Row
         accessible
-        accessibilityRole={reflection ? 'button' : undefined}
-        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}.${time ? ` ${time}.` : ''} Feeling: ${feelingLabel(feeling)}${reflection ? `. ${action}` : ''}`}
-        accessibilityState={reflection ? { expanded: opened } : undefined}
-        onPress={reflection ? onToggle : undefined}
+        accessibilityRole={actionable ? 'button' : undefined}
+        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}.${time ? ` ${time}.` : ''} Feeling: ${feelingLabel(feeling)}${actionable ? `. ${action}` : ''}`}
+        accessibilityState={actionable ? { expanded: opened } : undefined}
+        onPress={reflection || editing ? onToggle : onEdit}
+        hitSlop={actionable ? { top: 12, bottom: 12 } : undefined}
         style={styles.entryRow}
       >
         <Text style={styles.ordinal}>{String(index + 1).padStart(2, '0')}</Text>
@@ -190,21 +151,48 @@ export function ProgressEntryRow({
                 <Text style={styles.entryMetaText}>{time}</Text>
               </View>
             )}
-            {!!reflection && (
+            {actionable && (
               <View testID="reflection-action" style={styles.reflectionAction}>
                 {time && <View style={styles.reflectionDivider} aria-hidden />}
-                <ReflectionPencil />
+                {!reflection && (
+                  <Svg
+                    testID={
+                      editing ? 'cancel-reflection-icon' : 'add-reflection-icon'
+                    }
+                    width={13}
+                    height={13}
+                    viewBox="0 0 16 16"
+                    style={{ flexShrink: 0 }}
+                    aria-hidden
+                  >
+                    <Path
+                      d={editing ? 'M3.5 3.5l9 9m0-9-9 9' : 'M8 2v12M2 8h12'}
+                      fill="none"
+                      stroke={colors.ink}
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                    />
+                  </Svg>
+                )}
                 <Text style={styles.reflectionActionText}>{action}</Text>
-                <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>
-                  <Path
-                    d={opened ? 'm1.5 7 4-4 4 4' : 'm1.5 4 4 4 4-4'}
-                    fill="none"
-                    stroke="#647D99"
-                    strokeWidth={1.6}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </Svg>
+                {!!reflection && (
+                  <Svg
+                    testID="reflection-chevron"
+                    width={11}
+                    height={11}
+                    viewBox="0 0 11 11"
+                    aria-hidden
+                  >
+                    <Path
+                      d={opened ? 'm1.5 7 4-4 4 4' : 'm1.5 4 4 4 4-4'}
+                      fill="none"
+                      stroke="#647D99"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                )}
               </View>
             )}
           </View>
@@ -235,12 +223,20 @@ export function ProgressEntryRow({
           )}
         </View>
       </Row>
-      {!!reflection && (
-        <SlidingReflection
+      {actionable && (
+        <SlidingEntryDetails
           open={opened}
-          text={reflection}
           reduceMotion={reduceMotion}
-        />
+          contentKey={reflection && !editor ? 'saved' : 'editor'}
+          onOpened={editing ? onEditorOpened : undefined}
+        >
+          {editor ??
+            (reflection ? (
+              <SavedReflection text={reflection} onEdit={onEdit} />
+            ) : (
+              <DayReflectionPlaceholder />
+            ))}
+        </SlidingEntryDetails>
       )}
     </View>
   );
@@ -327,16 +323,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAEFEB',
     borderRadius: 8,
     padding: 12,
-    marginTop: 12,
   },
-  reflectionClip: { overflow: 'hidden' },
-  reflectionContentLayer: { position: 'absolute', top: 0, left: 0, right: 0 },
   reflectionHeading: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   reflectionLabel: { ...typography.caption, color: '#6B809B' },
+  editAction: {
+    position: 'absolute',
+    right: 4,
+    top: 0,
+    minWidth: 54,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  editableReflectionText: { paddingRight: 56, marginTop: 0 },
   reflectionText: {
     fontFamily: fontFamilies.display,
     fontStyle: 'italic',

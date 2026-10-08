@@ -4,7 +4,7 @@ import {
   journalSchema,
   type JournalState,
   type JournalStorage,
-} from './model';
+} from '../model';
 
 // A single serialized envelope commits displayed content, upload intent and receipts.
 // Native writes cannot be cancelled safely: a later write waits for the earlier I/O.
