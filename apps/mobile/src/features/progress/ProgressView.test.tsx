@@ -728,7 +728,7 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
   expect(screen.getAllByText('View Reflection')).toHaveLength(2);
 });
 
-it('uses the Paper plus for Add reflection and keeps the pencil for saved text', () => {
+it('uses the Paper plus for Add reflection and omits the saved row pencil', () => {
   const edit = jest.fn();
   const screen = render(
     <ProgressView
@@ -765,8 +765,8 @@ it('uses the Paper plus for Add reflection and keeps the pencil for saved text',
   expect(
     screen
       .getByRole('button', { name: /Rep 2.*View Reflection/ })
-      .findByType(Image).props.source,
-  ).toEqual(require('../../../assets/icons/reflection-pencil.png'));
+      .findAllByType(Image),
+  ).toHaveLength(0);
   fireEvent.press(add);
   expect(edit).toHaveBeenCalledWith('addable');
 });

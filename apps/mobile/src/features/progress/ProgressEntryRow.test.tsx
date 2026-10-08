@@ -1,5 +1,5 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
-import { Animated, TextInput } from 'react-native';
+import { Animated, Image, TextInput } from 'react-native';
 import { legacyProgressEntrySchema } from '@justgo/contracts';
 import { ProgressEntryRow } from './ProgressEntryRow';
 import { SlidingEntryDetails } from './SlidingEntryDetails';
@@ -313,41 +313,60 @@ it('keeps Cancel and its close icon stable if Add content is temporarily unavail
   ).toBeNull();
 });
 
-it('reserves the pencil and expansion chevron for saved reflections', () => {
-  const props = {
-    entry: legacyProgressEntrySchema.parse({
-      ...legacyEntry,
-      reflectionStatus: 'submitted',
-      reflectionText: 'A saved reflection.',
-    }),
-    index: 0,
-    onToggle: jest.fn(),
-    onEdit: jest.fn(),
-    reduceMotion: true,
-  };
-  const screen = render(<ProgressEntryRow {...props} expanded={false} />);
-  expect(screen.getByText('View Reflection')).toBeTruthy();
-  expect(
-    screen.getByTestId('reflection-chevron', { includeHiddenElements: true }),
-  ).toBeTruthy();
-  screen.rerender(<ProgressEntryRow {...props} expanded />);
-  expect(
-    screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
-  ).toBeTruthy();
-  expect(
-    screen.getByTestId('reflection-chevron', { includeHiddenElements: true }),
-  ).toBeTruthy();
-  expect(
-    screen.queryByTestId('cancel-reflection-icon', {
-      includeHiddenElements: true,
-    }),
-  ).toBeNull();
-  fireEvent.press(
-    screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
-  );
-  expect(props.onToggle).toHaveBeenCalledTimes(1);
-  expect(props.onEdit).not.toHaveBeenCalled();
-});
+it.each([legacyEntry.completedAt, null])(
+  'aligns View/Hide without a leading pencil, retaining the Edit pencil (time: %s)',
+  (completedAt) => {
+    const props = {
+      entry: legacyProgressEntrySchema.parse({
+        ...legacyEntry,
+        completedAt,
+        reflectionStatus: 'submitted',
+        reflectionText: 'A saved reflection.',
+      }),
+      index: 0,
+      onToggle: jest.fn(),
+      onEdit: jest.fn(),
+      reduceMotion: true,
+    };
+    const screen = render(<ProgressEntryRow {...props} expanded={false} />);
+    expect(screen.getByText('View Reflection')).toBeTruthy();
+    expect(
+      within(screen.getByTestId('reflection-action')).UNSAFE_queryAllByType(
+        Image,
+      ),
+    ).toHaveLength(0);
+    expect(
+      screen.getByTestId('reflection-chevron', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    screen.rerender(<ProgressEntryRow {...props} expanded />);
+    expect(
+      screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId('reflection-action')).UNSAFE_queryAllByType(
+        Image,
+      ),
+    ).toHaveLength(0);
+    expect(
+      within(
+        screen.getByRole('button', { name: 'Edit reflection' }),
+      ).UNSAFE_getByType(Image),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('reflection-chevron', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByTestId('cancel-reflection-icon', {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
+    fireEvent.press(
+      screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
+    );
+    expect(props.onToggle).toHaveBeenCalledTimes(1);
+    expect(props.onEdit).not.toHaveBeenCalled();
+  },
+);
 
 it('notifies focus only after a completed reveal and fences cancelled or unmounted completions', () => {
   const completions: Array<(result: { finished: boolean }) => void> = [];

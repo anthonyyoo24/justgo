@@ -976,6 +976,12 @@ cancel still uses the existing clean-close and dirty-confirmation behavior.
 The handoff records 39 focused cases, fresh 647-case checks, unchanged coverage
 gates and native side-panel verification. Earlier release acceptance stays open.
 
+**October 8 saved action spacing:** owner review removes the leading pencil
+from View/Hide Reflection and its reserved space, moving both labels left at
+the same alignment. The separate Edit action keeps its pencil. The handoff
+records native side-panel layout evidence, regression checks, fresh 648-case
+checks and unchanged coverage gates.
+
 **Ready to hand off when**
 
 - [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.

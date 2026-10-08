@@ -154,9 +154,7 @@ export function ProgressEntryRow({
             {actionable && (
               <View testID="reflection-action" style={styles.reflectionAction}>
                 {time && <View style={styles.reflectionDivider} aria-hidden />}
-                {reflection ? (
-                  <ReflectionPencil />
-                ) : (
+                {!reflection && (
                   <Svg
                     testID={
                       editing ? 'cancel-reflection-icon' : 'add-reflection-icon'

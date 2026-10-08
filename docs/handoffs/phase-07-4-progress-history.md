@@ -550,6 +550,42 @@ historical; this presentation change does not alter their implementations.
 Changes stay local and unpublished. Earlier software-keyboard, physical-device,
 VoiceOver/scaled-text and hosted checks remain open.
 
+## October 8 owner review — Saved action spacing
+
+At Anthony's request, View Reflection loses its leading pencil and the icon's
+reserved space. Hide Reflection uses the same alignment to avoid a horizontal
+label jump on expansion. The separate inline Edit action keeps its pencil;
+Add/Cancel icons, metadata divider, trailing chevron, whole-row interaction and
+motion are unchanged. This supersedes the saved metadata pencil described in
+the preceding Add-cancel checkpoint.
+
+Two regressions fail against the previous code (2 failing / 12 passing row
+cases), covering saved rows with and without a timestamp. They protect the
+absence of a metadata pencil in both collapsed/expanded states, the retained
+Edit pencil, chevron and toggle action. Three affected row/screen/day-sheet
+suites pass **32/32** cases after the change.
+
+The existing iPhone 17 / iOS 26.5 native app, viewed through the in-app mirror,
+shows View/Hide moved left with no icon-sized gap. The first row's synthetic QA
+reflection opens/closes normally and retains its separate Edit pencil. Other
+writing remained collapsed; no content was edited or submitted. The simulator
+is left on the collapsed View rows. [Native layout proof](../checks/phase-07-4/native/view-reflection-spacing.png)
+records the updated surface. Ignored command logs and the preceding screenshot
+live in `.local/phase-07-4/view-action/`. This is an interactive native check,
+separate from saved browser journeys and physical-device acceptance.
+
+The first full check caught an older ProgressView assertion that still required
+the saved row pencil. It now explicitly asserts that the pencil is absent;
+the neighboring Edit-asset test remains intact. Fresh `npm run check` passes
+Doctor **21/21**, types/lint/format and **648 cases** (175 architecture/tooling,
+45 API, 407 mobile and 21 contracts). No dependency or native binary changed.
+Fresh mobile coverage passes all 407 cases: **93.55% statements / 90.30% branches /
+90.23% functions / 94.67% lines**. `npm run coverage:check` passes all unchanged
+global/critical floors with this mobile report and retained unchanged
+API/contracts reports. Final formatting and `git diff --check` pass. Earlier
+database, exports and saved-journey results remain historical. Changes remain
+local and unpublished; earlier keyboard/device/accessibility/hosted gates stay open.
+
 ## Open review and release checks
 
 - Anthony's code/design review and permission for any commit publication/PR/merge.

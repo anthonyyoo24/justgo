@@ -41,6 +41,11 @@ confirmation preserved. Saved reflections keep View/Hide. The handoff records
 39 focused cases, fresh 647-case checks and unchanged coverage gates (mobile
 90.30% branches / 94.67% lines), plus the existing simulator's side-panel checks.
 
+The owner's saved-action spacing follow-up removes the leading pencil from
+View/Hide Reflection, moving the labels left while retaining the separate Edit
+pencil. The handoff records the new regression, native simulator evidence,
+fresh 648-case checks and unchanged coverage gates.
+
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`
 at `c7c67b2`. The [resume handoff](phase-07-3a-testing-checkpoint.md) records the
