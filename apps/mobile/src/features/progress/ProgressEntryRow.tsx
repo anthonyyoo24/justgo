@@ -112,11 +112,14 @@ export function ProgressEntryRow({
   const feeling = submitted ? entry.feeling : null;
   const reflection = submitted ? entry.reflectionText?.trim() : null;
   const opened = (!!reflection && expanded) || editing;
-  const action = opened
-    ? 'Hide Reflection'
-    : reflection
-      ? 'View Reflection'
-      : 'Add reflection';
+  const action =
+    editing && !reflection
+      ? 'Cancel'
+      : opened
+        ? 'Hide Reflection'
+        : reflection
+          ? 'View Reflection'
+          : 'Add reflection';
   const actionable = !!reflection || !!onEdit;
   const Row = actionable ? Pressable : View;
   const activityAt = entry.activityAt ?? entry.completedAt;
@@ -151,11 +154,13 @@ export function ProgressEntryRow({
             {actionable && (
               <View testID="reflection-action" style={styles.reflectionAction}>
                 {time && <View style={styles.reflectionDivider} aria-hidden />}
-                {reflection || editing ? (
+                {reflection ? (
                   <ReflectionPencil />
                 ) : (
                   <Svg
-                    testID="add-reflection-icon"
+                    testID={
+                      editing ? 'cancel-reflection-icon' : 'add-reflection-icon'
+                    }
                     width={13}
                     height={13}
                     viewBox="0 0 16 16"
@@ -163,7 +168,7 @@ export function ProgressEntryRow({
                     aria-hidden
                   >
                     <Path
-                      d="M8 2v12M2 8h12"
+                      d={editing ? 'M3.5 3.5l9 9m0-9-9 9' : 'M8 2v12M2 8h12'}
                       fill="none"
                       stroke={colors.ink}
                       strokeWidth={1.5}
@@ -172,8 +177,14 @@ export function ProgressEntryRow({
                   </Svg>
                 )}
                 <Text style={styles.reflectionActionText}>{action}</Text>
-                {(reflection || editing) && (
-                  <Svg width={11} height={11} viewBox="0 0 11 11" aria-hidden>
+                {!!reflection && (
+                  <Svg
+                    testID="reflection-chevron"
+                    width={11}
+                    height={11}
+                    viewBox="0 0 11 11"
+                    aria-hidden
+                  >
                     <Path
                       d={opened ? 'm1.5 7 4-4 4 4' : 'm1.5 4 4 4 4-4'}
                       fill="none"

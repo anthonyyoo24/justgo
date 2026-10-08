@@ -242,6 +242,12 @@ it('adds and edits a reflection inline while preserving its feeling and local sa
   expect(
     screen.getByRole('button', { name: 'Save reflection' }),
   ).toBeDisabled();
+  expect(screen.getByRole('button', { name: /Rep 1.*Cancel/ })).toBeTruthy();
+  expect(
+    screen.getByTestId('cancel-reflection-icon', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
   fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'First day entry text.',
@@ -254,6 +260,14 @@ it('adds and edits a reflection inline while preserving its feeling and local sa
     'First day entry text.',
   );
   expect(screen.getByText('First day entry text.')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByTestId('cancel-reflection-icon', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Edit reflection' }));
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection').props.value).toBe(
@@ -281,6 +295,7 @@ it('opens Add from the row title and guards dirty input when the row is tapped a
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
+  expect(screen.getByRole('button', { name: /Rep 1.*Cancel/ })).toBeTruthy();
   fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Keep this unsent writing.',
@@ -291,7 +306,7 @@ it('opens Add from the row title and guards dirty input when the row is tapped a
   expect(screen.getByLabelText('Your day reflection').props.value).toBe(
     'Keep this unsent writing.',
   );
-  fireEvent.press(screen.getByText('01'));
+  fireEvent.press(screen.getByRole('button', { name: /Rep 1.*Cancel/ }));
   fireEvent.press(screen.getByRole('button', { name: 'Discard changes' }));
   expect(screen.queryByLabelText('Your day reflection')).toBeNull();
   expect(mockRepository!.getAttempt(uuid(1))?.reflection).toBeNull();
@@ -550,9 +565,13 @@ it('allows clean cancellation and reports unavailable today cache instead of a f
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Cancel reflection' }));
+  fireEvent.press(screen.getByRole('button', { name: /Rep 1.*Cancel/ }));
   expect(screen.queryByLabelText('Your day reflection')).toBeNull();
   expect(screen.queryByText('Leave your reflection?')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
+  ).toBeTruthy();
+  expect(mockRepository!.getAttempt(uuid(1))?.reflection).toBeNull();
   await act(async () => {
     mockRepository!.setEnvironment({ active: true, online: false });
     const journal = mockRepository!.store.getState().journal;

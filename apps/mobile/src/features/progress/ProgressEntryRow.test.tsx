@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { Animated, TextInput } from 'react-native';
 import { legacyProgressEntrySchema } from '@justgo/contracts';
 import { ProgressEntryRow } from './ProgressEntryRow';
@@ -153,7 +153,9 @@ it('premeasures a closed Add row without mounting an input, then starts its reve
       />,
     );
     expect(parallel).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Hide Reflection')).toBeTruthy();
+    expect(
+      within(screen.getByTestId('reflection-action')).getByText('Cancel'),
+    ).toBeTruthy();
     // The input's first identical native measurement must not restart the slide.
     fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
@@ -257,7 +259,7 @@ it('keeps Edit visible while resizing from the saved reflection height', () => {
   }
 });
 
-it('keeps Hide and its row action stable if editor content is temporarily unavailable during a refresh', () => {
+it('keeps Cancel and its close icon stable if Add content is temporarily unavailable during a refresh', () => {
   const onToggle = jest.fn();
   const props = {
     entry: legacyProgressEntrySchema.parse(legacyEntry),
@@ -271,15 +273,80 @@ it('keeps Hide and its row action stable if editor content is temporarily unavai
   const screen = render(<ProgressEntryRow {...props} editor={<TextInput />} />);
   for (const editor of [undefined, <TextInput key="restored" />]) {
     screen.rerender(<ProgressEntryRow {...props} editor={editor} />);
-    expect(screen.getByText('Hide Reflection')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Rep 1.*Cancel/ })).toHaveProp(
+      'accessibilityState',
+      { expanded: true },
+    );
+    expect(
+      within(screen.getByTestId('reflection-action')).getByText('Cancel'),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('cancel-reflection-icon', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByTestId('reflection-chevron', {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
+    expect(screen.queryByText('Hide Reflection')).toBeNull();
     expect(screen.queryByText('Add reflection')).toBeNull();
-    expect(screen.queryByTestId('add-reflection-icon')).toBeNull();
+    expect(
+      screen.queryByTestId('add-reflection-icon', {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
     fireEvent.press(screen.getByRole('button'));
   }
   expect(onToggle).toHaveBeenCalledTimes(2);
   expect(props.onEdit).not.toHaveBeenCalled();
   screen.rerender(<ProgressEntryRow {...props} editing={false} />);
   expect(screen.getByText('Add reflection')).toBeTruthy();
+  expect(
+    screen.getByTestId('add-reflection-icon', { includeHiddenElements: true }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByTestId('cancel-reflection-icon', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
+});
+
+it('reserves the pencil and expansion chevron for saved reflections', () => {
+  const props = {
+    entry: legacyProgressEntrySchema.parse({
+      ...legacyEntry,
+      reflectionStatus: 'submitted',
+      reflectionText: 'A saved reflection.',
+    }),
+    index: 0,
+    onToggle: jest.fn(),
+    onEdit: jest.fn(),
+    reduceMotion: true,
+  };
+  const screen = render(<ProgressEntryRow {...props} expanded={false} />);
+  expect(screen.getByText('View Reflection')).toBeTruthy();
+  expect(
+    screen.getByTestId('reflection-chevron', { includeHiddenElements: true }),
+  ).toBeTruthy();
+  screen.rerender(<ProgressEntryRow {...props} expanded />);
+  expect(
+    screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('reflection-chevron', { includeHiddenElements: true }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByTestId('cancel-reflection-icon', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
+  fireEvent.press(
+    screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
+  );
+  expect(props.onToggle).toHaveBeenCalledTimes(1);
+  expect(props.onEdit).not.toHaveBeenCalled();
 });
 
 it('notifies focus only after a completed reveal and fences cancelled or unmounted completions', () => {

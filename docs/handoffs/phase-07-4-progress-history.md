@@ -506,6 +506,50 @@ relabeled as fresh. Final documentation formatting and `git diff --check` pass.
 Changes remain local and unpublished. Existing software-keyboard, device,
 VoiceOver/scaled-text and hosted acceptance gates stay open.
 
+## October 8 owner review — Add cancel label and icon
+
+Anthony approved replacing the empty Add editor's misleading Hide Reflection
+action with **× Cancel**. `ProgressEntryRow.tsx` uses the authoritative editing
+state for that label and a decorative close icon, including when editor content
+is temporarily unavailable during refresh. The closed row retains its original
+plus and Add reflection label. New Add no longer shows an expansion chevron;
+saved reflections retain View/Hide, their pencil and expansion chevron. The
+row's accessible action agrees with the displayed label. Its padded full-row
+tap area, shared motion and existing Cancel/Save buttons are unchanged.
+
+Cancellation still routes through `useDayReflection.beforeClose` and the existing
+ReflectionController. An empty editor closes directly; unsent writing opens the
+existing Save / Keep editing / Discard changes confirmation. Regression coverage
+protects clean row cancellation, dirty row cancellation, retained writing after
+Keep editing, discard without a submission, saved Hide after saving, and stable
+Cancel/icon behavior during refresh. Initial checks reproduced the obsolete
+Add/Hide labels; test queries were then corrected to include decorative SVGs,
+use the supported prop matcher and scope the two visible Cancel labels. No
+assertions or coverage floors were weakened. Final four focused suites pass
+**39/39** cases.
+
+Interactive verification uses the retained iPhone 17 / iOS 26.5 QA device and
+installed app through the existing in-app simulator mirror. Clean row Cancel
+restores the plus/Add label; tapping the whole row reopens the editor with the
+close/Cancel action. One disposable hardware-keyboard character triggers dirty
+confirmation, Keep editing retains it, and Discard closes the editor. Other
+writing stays collapsed; no reflection is submitted. Opening/closing the first
+row's synthetic saved QA reflection retains its pencil and View/Hide actions.
+[Native Cancel proof](../checks/phase-07-4/native/add-cancel-action.png) shows
+the empty Add editor left open for owner testing. Native evidence is separate
+from component tests and earlier saved browser journeys. Logs live under ignored
+`.local/phase-07-4/cancel-action/`.
+
+Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **647 cases**
+(175 architecture/tooling, 45 API, 406 mobile and 21 contracts). Fresh mobile
+coverage passes 406 cases with **93.55% statements / 90.30% branches / 90.23%
+functions / 94.67% lines**. `npm run coverage:check` passes every unchanged
+global/critical floor, with the fresh mobile report and existing unchanged
+API/contracts reports. Database, exports and saved journey results remain
+historical; this presentation change does not alter their implementations.
+Changes stay local and unpublished. Earlier software-keyboard, physical-device,
+VoiceOver/scaled-text and hosted checks remain open.
+
 ## Open review and release checks
 
 - Anthony's code/design review and permission for any commit publication/PR/merge.

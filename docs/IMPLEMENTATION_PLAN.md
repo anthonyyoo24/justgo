@@ -969,6 +969,13 @@ from the first editor frame. Empty Add retains its lightweight reveal. Focus,
 dirty-close and early-clear regressions pass; the handoff records paired native
 frames, fresh 646-case checks and unchanged coverage gates.
 
+**October 8 Add cancel action:** the owner approved **× Cancel** while a new
+reflection's editor is open. The closed row retains **＋ Add reflection**;
+saved reflections retain View/Hide and their pencil/chevron. The whole-row
+cancel still uses the existing clean-close and dirty-confirmation behavior.
+The handoff records 39 focused cases, fresh 647-case checks, unchanged coverage
+gates and native side-panel verification. Earlier release acceptance stays open.
+
 **Ready to hand off when**
 
 - [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.

@@ -35,6 +35,12 @@ saved-text preview/input swap. Paired native frames retain the filled surface
 and text baseline. Fresh 646-case checks and coverage gates pass (mobile 90.28%
 branches / 94.67% lines); Add's lightweight reveal and earlier acceptance gaps remain.
 
+The owner-approved Add action now changes from **＋ Add reflection** to **× Cancel**
+while its editor is open, with whole-row clean cancellation and dirty-close
+confirmation preserved. Saved reflections keep View/Hide. The handoff records
+39 focused cases, fresh 647-case checks and unchanged coverage gates (mobile
+90.30% branches / 94.67% lines), plus the existing simulator's side-panel checks.
+
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`
 at `c7c67b2`. The [resume handoff](phase-07-3a-testing-checkpoint.md) records the
