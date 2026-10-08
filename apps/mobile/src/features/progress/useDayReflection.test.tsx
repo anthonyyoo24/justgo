@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { ReactElement, RefObject } from 'react';
-import { Pressable, type TextInput } from 'react-native';
+import { Platform, Pressable, type TextInput } from 'react-native';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
@@ -18,6 +18,8 @@ import {
   deferred,
 } from '../../../test-support/journal';
 import { useDayReflection } from './useDayReflection';
+import { DayReflectionEditor } from './DayReflectionEditor';
+import { ReflectionController } from '../reflections/controller';
 
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '30000000-0000-4000-8000-000000000001',
@@ -43,6 +45,39 @@ afterEach(() => {
   storage.blocked?.resolve();
   repository.dispose();
 });
+
+it.each(['android', 'web'] as const)(
+  'retains the native placeholder on %s without a duplicate visible hint',
+  (platform) => {
+    const os = jest.replaceProperty(Platform, 'OS', platform);
+    const controller = new ReflectionController(
+      repository,
+      attempt().id,
+      () => {},
+    );
+    try {
+      const screen = render(
+        <DayReflectionEditor
+          controller={controller}
+          state={controller.getSnapshot()}
+          onKeepEditing={() => {}}
+        />,
+      );
+      const input = screen.getByLabelText('Your day reflection');
+      expect(input.props.placeholder).toBe('What stood out to you?');
+      expect(input.props.placeholderTextColor).toBe('#6B809B');
+      expect(
+        screen.queryByText('What stood out to you?', {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      screen.unmount();
+    } finally {
+      controller.dispose();
+      os.restore();
+    }
+  },
+);
 
 it('opens an already durable row despite blocked storage and focuses once after the reveal', async () => {
   const screen = renderHook(() => useDayReflection(repository));
@@ -114,6 +149,43 @@ it.each(['', 'Existing synthetic QA reflection.'])(
     expect(screen.getByLabelText('Your day reflection').props.value).toBe(
       initialText,
     );
+    if (!initialText) {
+      // Keep the same Text hint through native input mounting: UILabel's
+      // placeholder baseline differs from the lightweight Text preview.
+      const hint = () =>
+        screen.getByText('What stood out to you?', {
+          includeHiddenElements: true,
+        });
+      expect(hint().props.pointerEvents).toBe('none');
+      expect(hint().props['aria-hidden']).toBe(true);
+      expect(screen.queryByText('What stood out to you?')).toBeNull();
+      expect(
+        screen.getByLabelText('Your day reflection').props.placeholder,
+      ).toBe('What stood out to you?');
+      expect(
+        screen.getByLabelText('Your day reflection').props.placeholderTextColor,
+      ).toBe('transparent');
+      fireEvent.changeText(
+        screen.getByLabelText('Your day reflection'),
+        'Synthetic typed reflection.',
+      );
+      expect(
+        screen.queryByText('What stood out to you?', {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(screen.getByLabelText('Your day reflection').props.value).toBe(
+        'Synthetic typed reflection.',
+      );
+      fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
+      expect(hint()).toBeTruthy();
+    } else {
+      expect(
+        screen.queryByText('What stood out to you?', {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    }
     expect(
       screen.queryByTestId('reflection-editor-measurement', {
         includeHiddenElements: true,

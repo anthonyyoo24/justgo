@@ -26,6 +26,10 @@ the owner-reported Add/Hide flicker has regression coverage. Diagnostic app
 changes were removed, and software-keyboard/device acceptance remains open.
 Fresh 644-case checks and unchanged coverage gates pass; the mobile report is
 90.27% branches / 94.68% lines, with the earlier 61-case database evidence retained.
+The October 8 placeholder follow-up fixes a measured 4-pixel hint shift during
+the iOS input handoff. Typing/clearing and cold/repeated native openings pass;
+fresh 646-case checks and unchanged coverage gates pass (mobile 90.33% branches /
+94.68% lines). The handoff retains earlier device/keyboard/hosted acceptance gaps.
 
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`

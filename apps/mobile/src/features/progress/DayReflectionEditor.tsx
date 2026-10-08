@@ -17,6 +17,9 @@ import type {
 import { useDelayedBusy } from '../../lib/useDelayedBusy';
 import { colors, fontFamilies } from '../../theme/tokens';
 
+const reflectionHint = 'What stood out to you?';
+const inputPadding = 14;
+
 // Closed Add rows measure this lightweight layout instead of mounting native
 // inputs/controllers. It shares the real empty form's typography and geometry.
 export function DayReflectionPlaceholder({ text = '' }: { text?: string }) {
@@ -24,7 +27,7 @@ export function DayReflectionPlaceholder({ text = '' }: { text?: string }) {
     <View testID="reflection-editor-measurement">
       <View style={styles.input}>
         <Text style={[styles.placeholderText, !!text && { color: colors.ink }]}>
-          {text || 'What stood out to you?'}
+          {text || reflectionHint}
         </Text>
       </View>
       <View style={styles.actions}>
@@ -66,20 +69,37 @@ export function DayReflectionEditor({
   if (!showInput) return <DayReflectionPlaceholder text={state.text} />;
   return (
     <View>
-      <TextInput
-        ref={inputRef}
-        accessibilityLabel="Your day reflection"
-        testID="day-reflection-input"
-        multiline
-        scrollEnabled
-        textAlignVertical="top"
-        placeholder="What stood out to you?"
-        placeholderTextColor="#6B809B"
-        value={state.text}
-        onChangeText={controller.setText}
-        maxLength={10000}
-        style={styles.input}
-      />
+      <View>
+        <TextInput
+          ref={inputRef}
+          accessibilityLabel="Your day reflection"
+          testID="day-reflection-input"
+          multiline
+          scrollEnabled
+          textAlignVertical="top"
+          placeholder={reflectionHint}
+          placeholderTextColor={
+            Platform.OS === 'ios' ? 'transparent' : '#6B809B'
+          }
+          value={state.text}
+          onChangeText={controller.setText}
+          maxLength={10000}
+          style={styles.input}
+        />
+        {Platform.OS === 'ios' && !state.text && (
+          // iOS's UILabel placeholder has a different baseline from Text.
+          // Retain the preview's Text renderer; the native hint still supplies
+          // input sizing/accessibility, and this overlay cannot intercept taps.
+          <Text
+            pointerEvents="none"
+            accessible={false}
+            aria-hidden
+            style={[styles.placeholderText, styles.inputHint]}
+          >
+            {reflectionHint}
+          </Text>
+        )}
+      </View>
       {!!state.error && (
         <Text accessibilityRole="alert" style={styles.error}>
           {state.error}
@@ -194,10 +214,16 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: '#6B809B',
   },
+  inputHint: {
+    position: 'absolute',
+    top: inputPadding,
+    left: inputPadding,
+    right: inputPadding,
+  },
   input: {
     minHeight: 76,
     width: '100%',
-    padding: 14,
+    padding: inputPadding,
     borderRadius: 10,
     backgroundColor: '#F8EEEA',
     fontFamily: fontFamilies.regular,

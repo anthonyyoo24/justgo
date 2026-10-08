@@ -385,6 +385,63 @@ the existing feeling-preserving test exceeded its 5-second timeout. The duplicat
 run was stopped and subsequent verification was run sequentially; no timeout was
 changed.
 
+## October 8 owner review — Placeholder alignment
+
+Anthony reported the empty hint shifting down when the real input appeared.
+The lightweight preview uses React Native Text; the iOS multiline input draws
+its own placeholder through UILabel. The installed renderer applies a different
+baseline treatment to these surfaces despite their matching Inter font, size,
+line height and padding. The existing in-app simulator recording reproduced a
+4-pixel shift at 1206×2622 native capture resolution: the hint's first ink row
+moved from 57 to 61 pixels below the box's top while the box stayed stationary.
+
+The iOS editor now keeps the same visible Text hint during and after input
+mounting, using shared typography and padding. The overlay cannot intercept taps
+and is hidden from accessibility; the native placeholder stays present with
+transparent ink to retain its sizing/accessibility behavior. Nonempty input hides
+the overlay, and clearing restores it. Browser and Android keep their existing
+native placeholders. Input value, focus timing, animation, saving and dirty-close
+rules are preserved. This does not add a dependency or require a new native app.
+
+Paired uninstrumented native captures show the hint's first ink row remaining
+57 pixels below the box's top through the fixed handoff. The same check was
+repeated on the first opening after a cold app restart and a subsequent opening.
+The box endpoint stayed at native y=1790. A native keystroke hid the hint and
+enabled Save; deleting it restored the hint and disabled Save. Clean Cancel and
+reopen passed. No writing was submitted, and the owner's other reflection stayed
+collapsed. [Native placeholder comparison](../checks/phase-07-4/native/placeholder-handoff.png)
+shows the original preview, original native hint and fixed focused input.
+Cold/repeated settled-box samples all retain offset 57; moving/fading edge
+samples vary by one pixel with capture rounding/antialiasing. The first diagnostic
+assertion treated that variation as a shift and was corrected to compare the
+stationary box through the handoff, where the original 57→61 failure occurred.
+Recordings, actual-presentation-time frames, safe action metadata and pixel
+measurements live in ignored `.local/phase-07-4/placeholder-alignment/`.
+
+The empty-input regression fails against the original implementation (1 failing /
+5 passing cases), then passes with the visible-hint fix. It protects the hint
+through input mounting, accessibility exclusion, native placeholder semantics,
+typing and clearing, plus the existing saved-text path. Two added cases protect
+unchanged browser/Android behavior. The focused hook suite passes 8/8; the earlier
+four affected suites passed 36/36 before those two additions.
+
+Fresh `npm run check` passes Doctor 21/21, types/lint/format and **646 cases**:
+175 architecture/tooling, 45 API, 405 mobile and 21 contracts. Fresh
+`npm run test:coverage -w @justgo/mobile` passes 405 cases with **93.57% statements /
+90.33% branches / 90.26% functions / 94.68% lines**. `npm run coverage:check`
+passes all unchanged global/critical floors with the new mobile report and
+existing unchanged API/contracts reports. Final logs are `final-check.log` and
+`final-coverage.log` in the evidence directory. API/database/contracts code did
+not change; their earlier database, export and saved-journey evidence remains
+historical and was not rerun for this typography fix.
+
+The existing iPhone 17 / iOS 26.5 QA device, installed app and API/Metro/mirror
+remain available with the empty Add editor open. Changes stay local, with no
+push/PR/merge. This check uses hardware-keyboard input; software-keyboard layout,
+physical device, VoiceOver/scaled-text acceptance and hosted checks retain their
+existing owners/open gates. Source behavior was verified through the live native
+mirror, not inferred from component mocks or a browser app preview.
+
 ## Open review and release checks
 
 - Anthony's code/design review and permission for any commit publication/PR/merge.

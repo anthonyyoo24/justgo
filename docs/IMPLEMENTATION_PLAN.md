@@ -953,6 +953,15 @@ cold/repeated native recordings show successive expansion heights and a stable
 Hide action; software-keyboard/device acceptance remains open. See the handoff
 for final checks, recorded frames and the before/after comparison.
 
+**October 8 placeholder alignment:** owner review found the empty hint moving
+down when the real iOS input mounted. Native frames measured a 4-pixel shift at
+1206×2622 capture resolution. The iOS editor now retains the preview's visible
+Text hint over the input, with no touch interception or duplicate accessibility
+element; the native placeholder retains sizing/semantics with transparent ink.
+Typing hides the hint and clearing restores it. Regression checks and native
+handoff recordings pass; the handoff records fresh 646-case checks and coverage.
+Existing software-keyboard/device and hosted acceptance gates remain open.
+
 **Ready to hand off when**
 
 - [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.
