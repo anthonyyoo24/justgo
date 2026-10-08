@@ -19,7 +19,6 @@ export function useEntryMotion() {
           },
         ],
       },
-      resetReveal: () => progress.setValue(0),
       set: (open: boolean, contentHeight: number) => {
         height.setValue(open ? contentHeight : 0);
         progress.setValue(open ? 1 : 0);

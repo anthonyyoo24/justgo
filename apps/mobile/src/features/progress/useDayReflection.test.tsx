@@ -109,7 +109,7 @@ it('opens an already durable row despite blocked storage and focuses once after 
 });
 
 it.each(['', 'Existing synthetic QA reflection.'])(
-  'mounts the native input only after its layout reveal completes, retaining %s',
+  'prepares saved text in its real input while staging an empty form, retaining %s',
   async (initialText) => {
     const source = {
       ...attempt(),
@@ -138,13 +138,30 @@ it.each(['', 'Existing synthetic QA reflection.'])(
     }
     const screen = render(<Fixture />);
     fireEvent.press(screen.getByRole('button', { name: 'Open' }));
-    expect(screen.queryByLabelText('Your day reflection')).toBeNull();
-    expect(
-      screen.getByTestId('reflection-editor-measurement', {
-        includeHiddenElements: true,
-      }),
-    ).toBeTruthy();
-    if (initialText) expect(screen.getByText(initialText)).toBeTruthy();
+    if (initialText) {
+      expect(screen.getByLabelText('Your day reflection').props.value).toBe(
+        initialText,
+      );
+      expect(
+        screen.queryByTestId('reflection-editor-measurement', {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      // An early tap/clear must keep this mounted input through the reveal.
+      fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
+      expect(screen.getByLabelText('Your day reflection').props.value).toBe('');
+      fireEvent.changeText(
+        screen.getByLabelText('Your day reflection'),
+        initialText,
+      );
+    } else {
+      expect(screen.queryByLabelText('Your day reflection')).toBeNull();
+      expect(
+        screen.getByTestId('reflection-editor-measurement', {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+    }
     fireEvent.press(screen.getByRole('button', { name: 'Reveal completed' }));
     expect(screen.getByLabelText('Your day reflection').props.value).toBe(
       initialText,

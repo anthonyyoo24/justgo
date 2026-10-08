@@ -22,16 +22,12 @@ export function SlidingEntryDetails({
   const contentHeight = measurement.height;
   const measuredKey = open ? measurement.key : null;
   const motion = useEntryMotion();
-  const previousContent = useRef(contentKey);
   const openedCallback = useRef(onOpened);
   useEffect(() => {
     openedCallback.current = onOpened;
   }, [onOpened]);
 
   useEffect(() => {
-    const changedContent = previousContent.current !== contentKey;
-    previousContent.current = contentKey;
-    if (changedContent && open) motion.resetReveal();
     // A replacement must be measured before starting its reveal. Reusing the
     // saved text's height would start and then restart the textbox animation.
     if (contentHeight === 0 || (open && measuredKey !== contentKey)) return;
@@ -40,8 +36,8 @@ export function SlidingEntryDetails({
       if (open) openedCallback.current?.();
       return;
     }
-    // Edit replaces visible saved text: resize from the existing height while
-    // the new textbox slides in, without snapping the whole section shut.
+    // Edit replaces visible saved text: retain opacity and position while
+    // resizing. Resetting the reveal would flash the white sheet underneath.
     let cancelled = false;
     const stop = motion.animate(open, contentHeight, () => {
       if (open && !cancelled) openedCallback.current?.();

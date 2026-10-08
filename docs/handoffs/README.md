@@ -30,6 +30,10 @@ The October 8 placeholder follow-up fixes a measured 4-pixel hint shift during
 the iOS input handoff. Typing/clearing and cold/repeated native openings pass;
 fresh 646-case checks and unchanged coverage gates pass (mobile 90.33% branches /
 94.68% lines). The handoff retains earlier device/keyboard/hosted acceptance gaps.
+The subsequent saved Edit follow-up removes the panel's transparency reset and
+saved-text preview/input swap. Paired native frames retain the filled surface
+and text baseline. Fresh 646-case checks and coverage gates pass (mobile 90.28%
+branches / 94.67% lines); Add's lightweight reveal and earlier acceptance gaps remain.
 
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`

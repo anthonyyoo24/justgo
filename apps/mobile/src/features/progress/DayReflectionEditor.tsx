@@ -59,13 +59,19 @@ export function DayReflectionEditor({
 }) {
   const savingVisible = useDelayedBusy(state.submitting);
   const reduceMotion = useReducedMotion();
-  const showInput = inputReady || reduceMotion || Platform.OS === 'web';
+  const hasChanges = controller.hasChanges();
+  // Saved → Edit already has an open panel. Measure its real input before
+  // resizing, so saved writing never swaps between Text and TextInput baselines.
+  const showInput =
+    inputReady ||
+    !!state.text ||
+    hasChanges ||
+    reduceMotion ||
+    Platform.OS === 'web';
   const disabled =
-    state.submitting ||
-    !controller.hasChanges() ||
-    (!state.text.trim() && !state.feeling);
+    state.submitting || !hasChanges || (!state.text.trim() && !state.feeling);
   // Keep the reveal lightweight, including its actions and hidden dialogs.
-  // The native editor mounts only after that reveal has finished.
+  // An empty native editor mounts only after that reveal has finished.
   if (!showInput) return <DayReflectionPlaceholder text={state.text} />;
   return (
     <View>

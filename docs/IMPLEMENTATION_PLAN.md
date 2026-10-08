@@ -962,6 +962,13 @@ Typing hides the hint and clearing restores it. Regression checks and native
 handoff recordings pass; the handoff records fresh 646-case checks and coverage.
 Existing software-keyboard/device and hosted acceptance gates remain open.
 
+**October 8 saved Edit handoff:** owner review found a white flash and a second
+text shift when editing saved writing. Content replacement now retains the open
+panel's opacity/position while resizing, and saved writing uses its real input
+from the first editor frame. Empty Add retains its lightweight reveal. Focus,
+dirty-close and early-clear regressions pass; the handoff records paired native
+frames, fresh 646-case checks and unchanged coverage gates.
+
 **Ready to hand off when**
 
 - [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.

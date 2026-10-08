@@ -19,7 +19,6 @@ export function useEntryMotion() {
   const contentStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: -12 * (1 - progress.get()) }],
   }));
-  const resetReveal = useCallback(() => progress.set(0), [progress]);
   const set = useCallback(
     (open: boolean, contentHeight: number) => {
       cancelAnimation(height);
@@ -54,8 +53,8 @@ export function useEntryMotion() {
     [height, progress],
   );
   return useMemo(
-    () => ({ clipStyle, contentStyle, resetReveal, set, animate }),
-    [clipStyle, contentStyle, resetReveal, set, animate],
+    () => ({ clipStyle, contentStyle, set, animate }),
+    [clipStyle, contentStyle, set, animate],
   );
 }
 

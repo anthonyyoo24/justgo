@@ -202,7 +202,7 @@ it('shows and closes the editor immediately with reduced motion', () => {
   }
 });
 
-it('slides Edit in while resizing from the visible saved reflection height', () => {
+it('keeps Edit visible while resizing from the saved reflection height', () => {
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
@@ -239,7 +239,7 @@ it('slides Edit in while resizing from the visible saved reflection height', () 
     );
     expect(screen.getByTestId('sliding-entry-details')).toHaveStyle({
       height: 84,
-      opacity: 0,
+      opacity: 1,
     });
     fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 156 } },

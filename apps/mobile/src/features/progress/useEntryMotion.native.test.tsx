@@ -82,13 +82,11 @@ it('schedules the RN focus callback only when native reveal actually finishes', 
   stop();
 });
 
-it('sets reduced-motion endpoints and resets replacement opacity without timing', () => {
+it('sets reduced-motion endpoints without timing', () => {
   const { result } = renderHook(useEntryMotion);
   result.current.set(true, 156);
   const values = cancel.mock.calls.map(([value]) => value);
   expect(values.map((value) => value.get())).toEqual([156, 1]);
-  result.current.resetReveal();
-  expect(values.map((value) => value.get())).toEqual([156, 0]);
   result.current.set(false, 156);
   expect(values.map((value) => value.get())).toEqual([0, 0]);
   expect(timing).not.toHaveBeenCalled();

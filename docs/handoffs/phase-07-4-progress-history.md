@@ -442,6 +442,70 @@ physical device, VoiceOver/scaled-text acceptance and hosted checks retain their
 existing owners/open gates. Source behavior was verified through the live native
 mirror, not inferred from component mocks or a browser app preview.
 
+## October 8 owner review — Saved Edit flash and text shift
+
+Anthony observed the textbox flashing white and its existing text shifting down
+during Edit. The open saved panel reset its reveal progress to zero on content
+replacement, exposing the white sheet while measuring/revealing the editor.
+Saved text then swapped from the lightweight Text preview to TextInput, whose
+iOS baseline differs. The prior empty-hint fix did not cover saved writing.
+
+The replacement retains its existing opacity/translation and height until the
+new content is measured, then smoothly resizes. The unused reveal-reset methods
+were removed from both motion adapters. Saved writing now mounts in its real
+input immediately, before fresh editor measurement starts the resize. It keeps
+that input when an early edit clears the text; input focus still waits for
+completed motion. Empty Add retains its lightweight form, stable hint and staged
+input. Save, feeling preservation, dirty-close, cancellation and account fences
+remain unchanged. No new dependency or native binary is required.
+
+Native recording on the existing iPhone 17 / iOS 26.5 device, through the in-app
+mirror, used only the first row's known synthetic QA reflection. Other owner
+writing remained collapsed and was excluded from recordings. Before, frames
+6.537 and 6.585 in `before.mov` have no filled textbox, followed by the fading
+preview. With the box settled at y=1232 in the 1206×2622 capture, the text's first
+ink row moves from offset 57 to 62 when the real input mounts. After, every
+recorded editor frame retains the filled textbox and offset 62, including during
+resizing and subsequent focus. Initial saved-text typography changes to input
+typography once, with no second preview/input shift. The native resize still
+shows intermediate sheet positions; this is simulator evidence, not a production
+frame-rate benchmark.
+
+[Before/after saved Edit recording](../checks/phase-07-4/native/edit-handoff-before-after.gif)
+is aligned approximately around content replacement, not a precise tap-latency
+comparison. Actual-time recordings, decoded frames, safe action metadata,
+pixel measurements and command logs live under ignored
+`.local/phase-07-4/edit-handoff/`. No temporary app instrumentation was added.
+
+Final-source verification cold-restarted the installed app. All **33 sampled
+editor frames** after the real input appeared retain a filled surface; every
+settled-box sample keeps text offset 62. A native hardware keystroke enables Save,
+deleting it restores the unchanged QA text/disabled Save, and clean Cancel returns
+the saved reflection. The remaining empty fourth row's Add form also opens with
+its stable hint and expected focus/actions. No reflection was submitted. The
+existing API/Metro/mirror remain running, with that empty Add editor left open
+and other writing collapsed for owner testing.
+
+The two revised regressions fail against the preceding implementation (2 failing /
+18 passing across hook/row suites). They assert visible replacement and saved
+writing already in its real input, while preserving empty Add's staging. An
+additional early-clear assertion caught an input unmount in the first fix (1
+failing / 7 passing hook cases); dirty input now stays mounted through completion.
+Final focused hook/row/motion/day-sheet/screen suites pass **42/42**. Native
+adapter tests retain reduced-motion endpoints, cancellation and completion/focus
+fencing; fresh/equal-height measurement and ordinary open/close tests remain.
+
+Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **646 cases**
+(175 architecture/tooling, 45 API, 405 mobile and 21 contracts). Fresh
+`npm run test:coverage -w @justgo/mobile` passes 405 cases with **93.55% statements /
+90.28% branches / 90.23% functions / 94.67% lines**. `npm run coverage:check`
+passes all unchanged global/critical floors with the new mobile and retained
+unchanged API/contracts reports. Backend/database/contracts code did not change;
+earlier database, bundle-export and saved-journey results are retained, not
+relabeled as fresh. Final documentation formatting and `git diff --check` pass.
+Changes remain local and unpublished. Existing software-keyboard, device,
+VoiceOver/scaled-text and hosted acceptance gates stay open.
+
 ## Open review and release checks
 
 - Anthony's code/design review and permission for any commit publication/PR/merge.
