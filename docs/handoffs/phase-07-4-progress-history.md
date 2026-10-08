@@ -1,10 +1,13 @@
 # Phase 07.4 — Progress and history integration
 
-**Status:** Implementation on `codex/phase-07.4-progress-history`, awaiting
+**Status:** Published in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20)
+on `codex/phase-07.4-progress-history`, awaiting
 Anthony's review. Started October 7 from clean `main` `09754e9`, whose approved
 code baseline is `6780406`. On October 8, Anthony authorized pushing this branch
 and opening a PR against `main`, including the implementation, UI follow-ups,
-folder organization and screenshot cleanup. Merge still requires separate
+folder organization and screenshot cleanup. Both hosted Foundation checks passed
+at `6782894`; the October 8 review follow-up below records the authorized
+corrections and fresh verification. Merge still requires separate
 owner review and explicit approval.
 
 **Dependencies:** Read the [07.1 contracts/API](phase-07-1-api-data.md),
@@ -781,10 +784,49 @@ Command logs and count-based coverage summaries are ignored under
 app, account and running services are retained. Earlier native/device acceptance
 gates remain open and are not replaced by publication or CI.
 
+## October 8 PR #20 review follow-up
+
+Anthony requested fixing the assessed review findings and pushing the result to
+[PR #20](https://github.com/anthonyyoo24/justgo/pull/20). Both original hosted
+Foundation checks passed at `6782894`; this follow-up requires its own checks.
+
+- Unknown completion-create outcomes still fence aggregate reads, preserving the
+  existing no-double-count rule. The hook now exposes that waiting reason;
+  summary/calendar loading follows active fetching. Unavailable figures show
+  “Syncing your latest activity…” without shimmer, a generic error or Retry.
+  Cached figures and independently available day/calendar data remain usable.
+  The empty-month footer appears only when month data is actually available.
+- The plan's umbrella status and current umbrella handoff now agree with the
+  publication authorization and PR, separating hosted results from owner review,
+  explicit merge approval and outstanding keyboard/device/release gates.
+  Historical dated checkpoints retain their original evidence.
+- The CodeRabbit docstring warning is not an existing repository requirement.
+  The aggregate fence has a focused explanatory comment; no blanket docstrings,
+  dependency changes or quality-gate reductions were added.
+
+The new uncached-aggregate regression failed before the fix because the syncing
+message was absent. **77 focused cases** pass across Progress screen/view,
+projections, developer preview and guarded preview route. They cover actual
+repository retry/acknowledgement with controlled transport, a stale older month,
+retained local totals, offline guidance, automatic read recovery, suppression of
+stale errors/Retry and a usable calendar while only summary data is unavailable.
+
+Interactive side-panel browser verification at **390 × 844** used the isolated
+`/preview?progressState=syncing` presentation fixture: cached 63 reps remained
+visible, the unavailable calendar was dimmed, the syncing message fit, and there
+was no shimmer, Retry or false empty-month claim. The fixture's “Show loaded
+progress” restored the populated calendar and removed the message. This is a
+presentation walkthrough; retry/acknowledgement behavior is automated coverage,
+and no new native/device acceptance is claimed. No screenshots are committed.
+
+Fresh clean-install/workspace/coverage/publication evidence is recorded below
+after the required checks finish.
+
 ## Open review and release checks
 
 - Anthony's code/design review and explicit merge approval.
-  Hosted CI remains unverified until inspected for the published revision.
+  Fresh hosted checks for the review follow-up must be inspected for its pushed
+  revision; both original publication runs passed at `6782894`.
 - Anthony's acceptance of the updated editor reveal/action above; final simulator
   recordings now establish intermediate native heights for cold/repeated Add,
   Edit and close. Physical-device/performance and software-keyboard checks below

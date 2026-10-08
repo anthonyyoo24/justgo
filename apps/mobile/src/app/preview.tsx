@@ -12,7 +12,8 @@ export default function PreviewRoute() {
       progressState={
         progressState === 'empty' ||
         progressState === 'error' ||
-        progressState === 'loading'
+        progressState === 'loading' ||
+        progressState === 'syncing'
           ? progressState
           : 'default'
       }

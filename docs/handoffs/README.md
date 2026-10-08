@@ -1,14 +1,17 @@
 # Implementation handoffs
 
-**October 7 local 07.4 implementation:** `codex/phase-07.4-progress-history`
+**October 8 published 07.4 implementation:** `codex/phase-07.4-progress-history`
 implements canonical Progress reads, limited offline history, local/backend
 reconciliation and the owner's Paper inline Add/Edit reflection design. The
 [07.4 handoff](phase-07-4-progress-history.md) records 621 workspace cases,
 61 database/migration cases, unchanged coverage gates, both exports and 21 saved
 journeys, plus side-panel browser and native simulator Add/Edit/save/relaunch.
-Anthony authorized the branch push and PR on October 8; owner review and separate
-merge approval remain pending. Software-keyboard
-layout, earlier device/release gates and hosted checks remain open. 07.3A stays
+Anthony authorized publication in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20)
+on October 8; both hosted Foundation checks passed at `6782894`. The
+[review follow-up](phase-07-4-progress-history.md#october-8-pr-20-review-follow-up)
+records the aggregate-sync waiting state, regressions and fresh verification.
+Owner review and separate merge approval remain pending. Software-keyboard
+layout and earlier device/release gates remain open. 07.3A stays
 deferred; 07.5 owns final cutover and integrated acceptance.
 The owner's missing-Edit-pencil finding is fixed and verified in the running
 simulator, with fresh 622-case checks and unchanged mobile coverage gates passing.

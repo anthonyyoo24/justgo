@@ -19,6 +19,7 @@ import type {
   ProgressDayResponse,
 } from '@justgo/contracts';
 import { AccountRepository } from '../../data/activity/repository';
+import { ApiError } from '../../lib/http';
 import {
   MemoryStorage,
   backend,
@@ -29,6 +30,8 @@ import {
   attempt,
   uuid,
   deferred,
+  input,
+  card,
 } from '../../../test-support/journal';
 import { ProgressScreen } from './ProgressScreen';
 import { ProgressRefresh } from '../../app-support/providers/ProgressRefresh';
@@ -204,6 +207,92 @@ it('loads independent summary/calendar/today reads and does not query summary wh
     expect(screen.getByText('on 2 active days')).toBeTruthy(),
   );
   expect(requests('/summary?')).toHaveLength(initial);
+});
+it('explains an uncached aggregate waiting for upload retry and resumes reads after acknowledgement', async () => {
+  await mockRepository!.complete(input(2), card);
+  jest
+    .spyOn(transport, 'create')
+    .mockRejectedValueOnce(new ApiError('UNAVAILABLE'));
+  await online();
+  await act(async () => mockRepository!.synchronize());
+  const screen = mount();
+  await loaded();
+  expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
+  expect(screen.queryByLabelText('Loading progress')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
+  expect(requests('/summary?')).toHaveLength(0);
+  expect(requests('/calendar?')).toHaveLength(0);
+  await act(async () => jest.advanceTimersByTimeAsync(2000));
+  await loaded();
+  await waitFor(() =>
+    expect(screen.queryByText('Syncing your latest activity…')).toBeNull(),
+  );
+  expect(requests('/summary?').length).toBeGreaterThan(0);
+  expect(requests('/calendar?').length).toBeGreaterThan(0);
+  expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('10');
+  expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
+});
+it('explains a stale older month while preserving local totals, offline guidance and automatic recovery', async () => {
+  const september: ProgressCalendar = {
+    month: '2026-09',
+    monthlyReps: 4,
+    activeDays: 1,
+    days: [{ date: '2026-09-10', reps: 4 }],
+  };
+  mockClient.request.mockImplementation(async (path: string) =>
+    path.includes('month=2026-09')
+      ? september
+      : path.includes('/summary?')
+        ? { ...summary, totalReps: transport.records.has(uuid(2)) ? 11 : 10 }
+        : path.includes('/calendar?')
+          ? calendar
+          : page,
+  );
+  await online();
+  const screen = mount();
+  await loaded();
+  fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
+  await loaded();
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: /September 10.*4 reps/ }),
+    ).toBeTruthy(),
+  );
+  fireEvent.press(screen.getByRole('button', { name: 'Next month' }));
+  await loaded();
+  await act(async () => {
+    mockRepository!.setEnvironment({ active: true, online: false });
+    await mockRepository!.complete(input(2), card);
+  });
+  jest
+    .spyOn(transport, 'create')
+    .mockRejectedValueOnce(new ApiError('UNAVAILABLE'));
+  await online();
+  await act(async () => mockRepository!.synchronize());
+  const previousReads = requests('month=2026-09').length;
+  fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
+  expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
+  expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('11');
+  expect(screen.queryByLabelText('Loading progress')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
+  expect(requests('month=2026-09')).toHaveLength(previousReads);
+  await act(async () =>
+    mockRepository!.setEnvironment({ active: true, online: false }),
+  );
+  expect(screen.queryByText('Syncing your latest activity…')).toBeNull();
+  expect(
+    screen.getByText('You’re offline. Connect to view this month.'),
+  ).toBeTruthy();
+  await online();
+  await act(async () => jest.advanceTimersByTimeAsync(2000));
+  await loaded();
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: /September 10.*4 reps/ }),
+    ).toBeTruthy(),
+  );
+  expect(screen.queryByText('Syncing your latest activity…')).toBeNull();
+  expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('11');
 });
 it('hydrates offline current-period data and restricts previously viewed other days/months', async () => {
   await online();

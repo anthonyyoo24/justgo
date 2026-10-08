@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 64 · Updated October 7, 2026
+**Version:** 65 · Updated October 8, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -447,7 +447,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 07 — API & offline saving
 
-**Status:** In progress; 07.1A, 07.1B, 07.2 and 07.3 are merged by the owner. 07.3A remains deferred. 07.4 is implemented and verified locally on `codex/phase-07.4-progress-history`, awaiting review with software-keyboard/device acceptance and hosted checks open. Final cutover/integrated acceptance remains 07.5; no 07.4 publication or merge is authorized.
+**Status:** In progress; 07.1A, 07.1B, 07.2 and 07.3 are merged by the owner. 07.3A remains deferred. Anthony authorized publishing 07.4 in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20); both hosted Foundation checks passed at `6782894`. Review follow-ups require fresh verification for their pushed revision. Software-keyboard/device acceptance and owner review remain open. Final cutover/integrated acceptance remains 07.5; merge requires separate owner approval.
 
 **Depends on:** 06A; complete active 07.1–07.5 in order before 07A. 07.3A is deferred under the October 7 owner decision; native/device/release evidence remains open.
 
@@ -929,7 +929,7 @@ staging/release gates. Deferral closes none of these.
 
 ##### 07.4 — Progress and history integration
 
-**Depends on:** reviewed 07.3 and backend read contracts from 07.1. Anthony approved bypassing deferred 07.3A on October 7 using existing browser/lower-level checks plus relevant manual native verification. **Outcome:** summary, calendar and day details show local/backend activity once, with the agreed limited offline history. **Status:** implemented and verified locally on `codex/phase-07.4-progress-history`, awaiting Anthony's review. The [07.4 handoff](handoffs/phase-07-4-progress-history.md) records canonical reads, reconciliation, Paper Add/Edit, 21 saved journeys and browser/native simulator evidence. Anthony authorized pushing the branch and creating its PR on October 8. Software-keyboard layout, earlier device/release gates and hosted verification remain open; merge requires separate owner approval.
+**Depends on:** reviewed 07.3 and backend read contracts from 07.1. Anthony approved bypassing deferred 07.3A on October 7 using existing browser/lower-level checks plus relevant manual native verification. **Outcome:** summary, calendar and day details show local/backend activity once, with the agreed limited offline history. **Status:** published on `codex/phase-07.4-progress-history` in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20), awaiting Anthony's review. The [07.4 handoff](handoffs/phase-07-4-progress-history.md) records canonical reads, reconciliation, Paper Add/Edit, 21 saved journeys and browser/native simulator evidence. Both hosted Foundation checks passed at `6782894`; October 8 review corrections and their push are authorized, with fresh evidence recorded in the handoff. Software-keyboard layout and earlier device/release gates remain open; merge requires separate owner approval.
 
 **Scope:** client task 8. Implement independent query lifecycles, same-ID merging, baseline-plus-additions and generation fencing, current-period cache selectors, rollover, rejected-completion correction and day-entry Add/Edit reflection. Reuse the verified repository, sender and feedback host; do not create another upload queue or persist older downloaded history.
 

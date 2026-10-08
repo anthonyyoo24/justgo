@@ -56,6 +56,23 @@ it('previews loading and loaded Progress without saving any activity', () => {
   expect(screen.getByLabelText('Loading progress')).toBeTruthy();
 });
 
+it('previews aggregate syncing and recovery without loading placeholders or retry', () => {
+  const screen = render(<ScreenPreview progressState="syncing" />);
+  fireEvent.press(screen.getByRole('tab', { name: 'Progress' }));
+  expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
+  expect(screen.getByText('63')).toBeTruthy();
+  expect(
+    screen.queryByText('No completed challenges this month yet.'),
+  ).toBeNull();
+  expect(screen.queryByLabelText('Loading progress')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Show loaded progress' }));
+  expect(screen.queryByText('Syncing your latest activity…')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: /September 18.*3 reps/ }),
+  ).toBeTruthy();
+});
+
 it('shows progress activity, read-only saved reflection, and an empty adjacent month without writing', () => {
   const screen = render(<ScreenPreview />);
   fireEvent.press(screen.getByRole('tab', { name: 'Progress' }));

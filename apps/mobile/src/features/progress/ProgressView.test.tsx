@@ -144,6 +144,64 @@ it('preserves available progress during a refresh and stops skeletons on a failu
   ).toHaveLength(0);
 });
 
+it('explains paused aggregate reads without shimmer or a misleading error and retry', () => {
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      selectedDate={null}
+      data={{ ...month, monthlyReps: null, activeDays: null, days: undefined }}
+      loading
+      summaryLoading
+      error
+      summaryError
+      waitingForSync
+      {...callbacks()}
+    />,
+  );
+  expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
+  expect(
+    screen.getByTestId('progress-calendar-card').props.accessibilityState.busy,
+  ).toBe(false);
+  expect(screen.queryByLabelText('Loading progress')).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(
+    screen.queryByText('No completed challenges this month yet.'),
+  ).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
+  expect(
+    screen.queryAllByTestId('progress-calendar-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(0);
+  expect(
+    screen.queryAllByTestId('progress-metric-skeleton-reps', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveLength(0);
+});
+
+it('keeps a loaded calendar usable while an uncached summary waits for sync', () => {
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      selectedDate={null}
+      data={{
+        ...month,
+        totalReps: null,
+        currentStreak: null,
+        bestStreak: null,
+      }}
+      waitingForSync
+      {...callbacks()}
+    />,
+  );
+  expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }),
+  ).toBeEnabled();
+  expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
+});
+
 it('uses the warm Paper calendar panel and inactive day colors', () => {
   const screen = render(
     <ProgressView

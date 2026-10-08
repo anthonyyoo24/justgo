@@ -30,6 +30,7 @@ export type ProgressCalendarProps = {
   connectionRequired?: boolean;
   summaryLoading?: boolean;
   summaryError?: boolean;
+  waitingForSync?: boolean;
   selectedDate: string | null;
   onMonth: (offset: number) => void;
   onOpenDay: (date: string) => void;
@@ -45,6 +46,7 @@ export function ProgressCalendar({
   connectionRequired = false,
   summaryLoading = !data && loading && !error,
   summaryError = false,
+  waitingForSync = false,
   selectedDate,
   onMonth,
   onOpenDay,
@@ -54,9 +56,14 @@ export function ProgressCalendar({
   const headerScale = challengeScale(width);
   const cells = useMemo(() => calendarCells(month), [month]);
   const calendarAvailable = data?.days !== undefined;
+  const summaryIsLoading = summaryLoading && !waitingForSync;
   const skeletonLoading =
-    !calendarAvailable && loading && !error && !connectionRequired;
-  const shimmer = useProgressShimmer(skeletonLoading || summaryLoading);
+    !calendarAvailable &&
+    loading &&
+    !error &&
+    !connectionRequired &&
+    !waitingForSync;
+  const shimmer = useProgressShimmer(skeletonLoading || summaryIsLoading);
   const counts = useMemo(
     () => new Map(data?.days?.map((item) => [item.date, item.reps]) ?? []),
     [data],
@@ -77,9 +84,9 @@ export function ProgressCalendar({
           testID="progress-calendar-card"
           style={styles.card}
           accessibilityLabel={
-            skeletonLoading || summaryLoading ? 'Loading progress' : undefined
+            skeletonLoading || summaryIsLoading ? 'Loading progress' : undefined
           }
-          accessibilityState={{ busy: skeletonLoading || summaryLoading }}
+          accessibilityState={{ busy: skeletonLoading || summaryIsLoading }}
         >
           <View style={styles.stats}>
             <Metric
@@ -87,7 +94,7 @@ export function ProgressCalendar({
               label="Current streak"
               value={data?.currentStreak ?? null}
               suffix="days"
-              loading={summaryLoading}
+              loading={summaryIsLoading}
               shimmer={shimmer}
             />
             <Metric
@@ -95,14 +102,14 @@ export function ProgressCalendar({
               label="Best streak"
               value={data?.bestStreak ?? null}
               suffix="days"
-              loading={summaryLoading}
+              loading={summaryIsLoading}
               shimmer={shimmer}
             />
             <Metric
               icon="reps"
               label="Total reps"
               value={data?.totalReps ?? null}
-              loading={summaryLoading}
+              loading={summaryIsLoading}
               shimmer={shimmer}
             />
           </View>
@@ -136,24 +143,33 @@ export function ProgressCalendar({
               </Pressable>
             </View>
           </View>
-          {summaryError && (
+          {summaryError && !waitingForSync && (
             <Text accessibilityRole="alert" style={styles.warning}>
               Couldn’t refresh your summary.
             </Text>
           )}
-          {!calendarAvailable && !skeletonLoading && (
+          {((!calendarAvailable && !skeletonLoading) ||
+            (waitingForSync && data?.totalReps == null)) && (
             <View style={styles.state}>
-              <Text accessibilityRole="alert" style={styles.stateText}>
-                {connectionRequired
-                  ? 'You’re offline. Connect to view this month.'
-                  : 'We couldn’t load your progress.'}
-              </Text>
-              {!connectionRequired && (
-                <Retry label="Retry progress" onPress={onRetryMonth} />
+              {waitingForSync ? (
+                <Text accessibilityLiveRegion="polite" style={styles.stateText}>
+                  Syncing your latest activity…
+                </Text>
+              ) : (
+                <>
+                  <Text accessibilityRole="alert" style={styles.stateText}>
+                    {connectionRequired
+                      ? 'You’re offline. Connect to view this month.'
+                      : 'We couldn’t load your progress.'}
+                  </Text>
+                  {!connectionRequired && (
+                    <Retry label="Retry progress" onPress={onRetryMonth} />
+                  )}
+                </>
               )}
             </View>
           )}
-          {calendarAvailable && error && (
+          {calendarAvailable && error && !waitingForSync && (
             <Text accessibilityRole="alert" style={styles.warning}>
               Your activity may be out of date.{' '}
               <Retry label="Retry progress" onPress={onRetryMonth} />
@@ -319,7 +335,7 @@ export function ProgressCalendar({
             </View>
           </View>
         </View>
-        {(!!data || skeletonLoading) && (
+        {(calendarAvailable || skeletonLoading) && (
           <Text style={styles.instruction}>
             {skeletonLoading
               ? 'Tap an active day to see your challenges'

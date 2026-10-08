@@ -54,6 +54,7 @@ export function ProgressView({
   connectionRequired,
   summaryLoading,
   summaryError,
+  waitingForSync,
   dayConnectionRequired,
   editingId,
   editor,
@@ -80,6 +81,7 @@ export function ProgressView({
         connectionRequired={connectionRequired ?? false}
         summaryLoading={summaryLoading ?? (!data && loading && !error)}
         summaryError={summaryError ?? false}
+        waitingForSync={waitingForSync ?? false}
       />
       <DaySheet
         key={selectedDate ?? 'closed'}

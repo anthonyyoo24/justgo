@@ -104,9 +104,10 @@ function AccountProgress({ repository }: { repository: AccountRepository }) {
             }
           : undefined
       }
-      summaryLoading={!metrics && online && reads.summary.isPending}
+      summaryLoading={!metrics && reads.summary.isFetching}
       summaryError={!metrics && online && reads.summary.isError}
-      loading={!calendar && online && !reads.calendar.isError}
+      loading={!calendar && reads.calendar.isFetching}
+      waitingForSync={reads.waitingForSync}
       updatingMonth={!calendar && reads.calendar.isFetching}
       error={!calendar && reads.calendar.isError}
       connectionRequired={!calendar && !online}

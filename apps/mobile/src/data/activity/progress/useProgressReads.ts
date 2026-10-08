@@ -26,7 +26,9 @@ export function useProgressReads(
   date ??= today;
   const enabled =
     !!repository && !!state?.ready && state.active && state.online && focused;
-  const aggregates = enabled && repository.captureAggregateFence() !== null;
+  // Unknown create outcomes pause aggregate reads to avoid double-counting reps.
+  const waitingForSync = enabled && repository.captureAggregateFence() === null;
+  const aggregates = enabled && !waitingForSync;
   const summary = useQuery({
     queryKey: accountKey(owner, 'progress', 'summary', today, timeZone),
     enabled: aggregates,
@@ -82,5 +84,5 @@ export function useProgressReads(
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
-  return { summary, calendar, day };
+  return { summary, calendar, day, waitingForSync };
 }

@@ -1,15 +1,18 @@
 # Phase 07 — API & offline saving
 
-**October 7 current checkpoint:** Anthony deferred unfinished 07.3A, preserved at
+**October 8 current checkpoint:** Anthony deferred unfinished 07.3A, preserved at
 `c7c67b2` with its [resume handoff](phase-07-3a-testing-checkpoint.md), and requested
-07.4 from the approved baseline. Local `codex/phase-07.4-progress-history` now
+07.4 from the approved baseline. `codex/phase-07.4-progress-history` now
 implements independent canonical Progress reads, local/backend reconciliation,
 current-month/today durability, online-only older history and Paper inline Add/Edit.
-The [07.4 handoff](phase-07-4-progress-history.md) records 621 workspace cases,
+The [07.4 handoff](phase-07-4-progress-history.md) records the publication checks (651 workspace cases),
 61 database/migration cases, unchanged coverage gates, both exports and 21 saved
-journeys, with browser and native simulator evidence distinguished. Changes are
-local and unpublished, awaiting owner review. Software-keyboard layout,
-earlier device/release gates and hosted checks remain open; 07.5 owns final
+journeys, with browser and native simulator evidence distinguished. Anthony
+authorized publication in [PR #20](https://github.com/anthonyyoo24/justgo/pull/20).
+Both hosted Foundation checks passed at `6782894`; October 8 review corrections
+and their push are authorized and require fresh revision-specific checks.
+Owner review and separate merge approval remain pending. Software-keyboard layout
+and earlier device/release gates remain open; 07.5 owns final
 cutover/acceptance and 07A owns billing. Historical checkpoint restrictions and
 draft inventories below do not describe the current branch.
 

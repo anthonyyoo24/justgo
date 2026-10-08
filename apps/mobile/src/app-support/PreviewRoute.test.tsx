@@ -32,6 +32,7 @@ const initialDevelopment = development.__DEV__;
 afterEach(() => {
   development.__DEV__ = initialDevelopment;
   mockPreviewParams.progressDayState = 'initial-error';
+  mockPreviewParams.progressState = 'loading';
 });
 
 it('does not load developer fixtures in production and preserves the development route', () => {
@@ -57,10 +58,17 @@ it('does not load developer fixtures in production and preserves the development
     progressDayState: 'offline',
   });
 
+  mockPreviewParams.progressState = 'syncing';
+  screen.rerender(<PreviewRoute />);
+  expect(mockPreviewRendered).toHaveBeenLastCalledWith({
+    progressState: 'syncing',
+    progressDayState: 'offline',
+  });
+
   development.__DEV__ = false;
   screen.rerender(<PreviewRoute />);
   expect(screen.getByText('Redirect: /')).toBeTruthy();
   expect(screen.queryByText('Development preview')).toBeNull();
   expect(mockPreviewModuleLoaded).toHaveBeenCalledTimes(1);
-  expect(mockPreviewRendered).toHaveBeenCalledTimes(2);
+  expect(mockPreviewRendered).toHaveBeenCalledTimes(3);
 });
