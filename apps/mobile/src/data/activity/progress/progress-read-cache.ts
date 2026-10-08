@@ -1,7 +1,7 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import type { ProgressDayResponse } from '@justgo/contracts';
-import { accountKey } from '../../lib/account-client';
-import type { JournalState } from './model';
+import { accountKey } from '../../../lib/account-client';
+import type { JournalState } from '../model';
 import { preserveNewerReflection } from './progress';
 
 /** Online-only day pages retain confirmed edits when journal rows are pruned. */

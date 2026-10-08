@@ -995,6 +995,17 @@ view this month.** above the unavailable calendar. Existing centered alignment
 and natural wrapping are retained. The handoff records the updated alert/journey
 assertions, 50 focused cases, native presentation screenshot and fresh checks.
 
+**October 8 visual artifact cleanup:** at the owner's request, all 19 phase
+screenshots/comparison GIFs move to ignored local storage. The handoff retains
+verification results and local capture names; repository image links are removed.
+
+**October 8 Progress/activity organization:** the owner requested subfolders for
+both directories. Calendar UI and day details are grouped under Progress;
+persistence, sync and Progress composition/reads are grouped under shared activity.
+All 27 source/test moves update imports, asset references and fixture paths while
+retaining behavior and existing tests. The handoff records verification and the
+overlap to reconcile with the separately pending mobile cleanup.
+
 **Ready to hand off when**
 
 - [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.

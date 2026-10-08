@@ -173,6 +173,9 @@ installed development app to clear stale Metro module/asset paths.
 - Work in small reviewable changes. Update the phase handoff, plan and handoff
   index with actual commands/results, UI evidence and remaining work. Do not
   put secrets, real private reflections or credentials in logs or handoffs.
+- Keep routine screenshots and diagnostic recordings in ignored `.local/`
+  storage, with verification results recorded in the handoff. Commit visual
+  evidence only when the owner explicitly requests it.
 - Before claiming completion, reconcile the agreed requirements and relevant
   review findings with the implementation. Each must have passing evidence or
   an explicit, approved deferral with an owner/phase and an open task. Do not

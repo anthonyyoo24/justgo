@@ -3,7 +3,7 @@ import type {
   ProgressCalendar,
   ProgressDayResponse,
 } from '@justgo/contracts';
-import type { JournalState } from './model';
+import type { JournalState } from '../model';
 
 export type ProgressMetrics = {
   totalReps: number;

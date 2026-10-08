@@ -7,8 +7,8 @@ import {
 } from 'react';
 import type { TextInput } from 'react-native';
 import type { Attempt } from '@justgo/contracts';
-import type { AccountRepository } from '../../data/activity/repository';
-import { ReflectionController } from '../reflections/controller';
+import type { AccountRepository } from '../../../data/activity/repository';
+import { ReflectionController } from '../../reflections/controller';
 import { DayReflectionEditor } from './DayReflectionEditor';
 
 export function useDayReflection(repository: AccountRepository) {

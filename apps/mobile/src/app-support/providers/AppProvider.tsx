@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 import { listenToConnectivity } from '../../platform/connectivity';
-import { asyncStorageJournalStorage } from '../../data/activity/storage';
+import { asyncStorageJournalStorage } from '../../data/activity/persistence/storage';
 import type { JournalStorage } from '../../data/activity/model';
 import { ActivityRuntime } from './activity-runtime';
 import { ProgressRefresh } from './ProgressRefresh';

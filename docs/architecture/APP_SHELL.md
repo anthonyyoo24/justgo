@@ -117,7 +117,11 @@ or features. The journal now also retains a nullable compact current-month
 reconciliation baseline, with a default for previously stored envelopes.
 07.3 wires challenge/completion/reflection screens and provider/lifecycle
 coordination into this boundary. 07.4 composes local/backend Progress through
-`data/activity/progress.ts` and independent read/cache helpers. The
+`data/activity/progress/progress.ts` and independent read/cache helpers in the
+same `progress/` folder. Storage adapters and serialized writes live under
+`data/activity/persistence/`; delivery, transport and retry scheduling live under
+`data/activity/sync/`. Repository, account ownership, schemas and submission rules
+stay at the activity root. The
 [07.2 handoff](../handoffs/phase-07-2-local-sync.md) records version/durability rules,
 retry/recovery interfaces, test evidence and open native checks. HTTP now preserves
 validated reflection-conflict data and Retry-After; normal uploads have one retry

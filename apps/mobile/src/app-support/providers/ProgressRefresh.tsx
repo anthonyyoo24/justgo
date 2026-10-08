@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { accountKey, type AccountClient } from '../../lib/account-client';
-import { useProgressReads } from '../../data/activity/useProgressReads';
-import { reconcileDayQueries } from '../../data/activity/progress-read-cache';
+import { useProgressReads } from '../../data/activity/progress/useProgressReads';
+import { reconcileDayQueries } from '../../data/activity/progress/progress-read-cache';
 import type { ActivityRuntime } from './activity-runtime';
 import { useActivityStore } from './activity-hooks';
 

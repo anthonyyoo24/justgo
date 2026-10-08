@@ -20,9 +20,9 @@ import {
 import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import type { ProgressEntry } from './types';
-import { colors, fontFamilies, typography } from '../../theme/tokens';
-import { dayLabel } from './calendar';
+import type { ProgressEntry } from '../types';
+import { colors, fontFamilies, typography } from '../../../theme/tokens';
+import { dayLabel } from '../calendar';
 import { ProgressEntryRow } from './ProgressEntryRow';
 export type ProgressDay = {
   date: string;
@@ -49,7 +49,7 @@ function DisconnectedPlugs() {
   return (
     <Image
       testID="day-initial-error-illustration"
-      source={require('../../../assets/illustrations/disconnected-plugs.png')}
+      source={require('../../../../assets/illustrations/disconnected-plugs.png')}
       style={styles.initialErrorIllustration}
       resizeMode="contain"
       aria-hidden

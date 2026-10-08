@@ -32,11 +32,11 @@ import {
   catalogEnvelopeSchema,
   periodSchema,
 } from './model';
-import { JournalSender } from './sender';
-import { JournalPersistence } from './persistence';
+import { JournalSender } from './sync/sender';
+import { JournalPersistence } from './persistence/persistence';
 import { addCompletion, addReflection, correctReflection } from './submissions';
-import type { JournalTransport } from './transport';
-import { preserveNewerReflection } from './progress';
+import type { JournalTransport } from './sync/transport';
+import { preserveNewerReflection } from './progress/progress';
 
 export type AccountRepositoryOptions = {
   accountId: string;

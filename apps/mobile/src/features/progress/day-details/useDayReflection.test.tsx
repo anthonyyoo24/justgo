@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react-native';
 import type { ReactElement, RefObject } from 'react';
 import { Platform, Pressable, type TextInput } from 'react-native';
-import { AccountRepository } from '../../data/activity/repository';
+import { AccountRepository } from '../../../data/activity/repository';
 import {
   MemoryStorage,
   backend,
@@ -16,10 +16,10 @@ import {
   zone,
   attempt,
   deferred,
-} from '../../../test-support/journal';
+} from '../../../../test-support/journal';
 import { useDayReflection } from './useDayReflection';
 import { DayReflectionEditor } from './DayReflectionEditor';
-import { ReflectionController } from '../reflections/controller';
+import { ReflectionController } from '../../reflections/controller';
 
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '30000000-0000-4000-8000-000000000001',

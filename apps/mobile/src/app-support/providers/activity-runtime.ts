@@ -7,7 +7,7 @@ import {
   type JournalClock,
   type JournalStorage,
 } from '../../data/activity/model';
-import { createJournalTransport } from '../../data/activity/transport';
+import { createJournalTransport } from '../../data/activity/sync/transport';
 
 export class ActivityRuntime {
   private channel = 'activity';

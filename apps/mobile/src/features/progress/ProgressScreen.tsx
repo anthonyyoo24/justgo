@@ -11,12 +11,12 @@ import {
   progressCalendar,
   progressDay,
   progressMetrics,
-} from '../../data/activity/progress';
-import { useProgressReads } from '../../data/activity/useProgressReads';
+} from '../../data/activity/progress/progress';
+import { useProgressReads } from '../../data/activity/progress/useProgressReads';
 import { moveMonth } from './calendar';
 import { ProgressView } from './ProgressView';
 import { displayEntry } from './types';
-import { useDayReflection } from './useDayReflection';
+import { useDayReflection } from './day-details/useDayReflection';
 
 export function ProgressScreen() {
   const { repository } = useActivityState();

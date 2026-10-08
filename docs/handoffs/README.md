@@ -56,6 +56,18 @@ The subsequent offline-month copy follow-up uses **You’re offline. Connect to
 view this month.** above the unavailable calendar. The handoff records its
 50-case focused pass, updated native preview screenshot and fresh checks.
 
+At the owner's request, the 19 phase screenshots/comparison GIFs now live only
+in ignored `.local/phase-07-4/visual-evidence/`. The handoff retains the check
+results and local capture names without repository image links.
+
+The subsequent owner-authorized folder follow-up groups Progress calendar/day
+details and activity persistence/sync/Progress reads, retaining tests beside the
+27 moved files and updating all import/asset/fixture consumers. The 07.4 handoff
+records verification and the overlap with the separate mobile cleanup branch.
+Fresh checks pass 651 cases, mobile coverage and unchanged gates, both cold
+exports and the journey repository rebuild. The existing simulator's side-panel
+calendar/day/Add/Edit/cancel smoke passes after Metro's cache-cleared reload.
+
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`
 at `c7c67b2`. The [resume handoff](phase-07-3a-testing-checkpoint.md) records the

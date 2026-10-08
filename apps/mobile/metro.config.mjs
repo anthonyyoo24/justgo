@@ -14,7 +14,7 @@ if (process.env.JUSTGO_JOURNEY_FIXTURES === '1') {
       platform === 'web' &&
       context.originModulePath ===
         path.join(configRoot, 'src/app-support/providers/AppProvider.tsx') &&
-      moduleName === '../../data/activity/storage'
+      moduleName === '../../data/activity/persistence/storage'
     ) {
       return {
         type: 'sourceFile',

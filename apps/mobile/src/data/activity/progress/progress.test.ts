@@ -1,9 +1,9 @@
 import { QueryClient } from '@tanstack/react-query';
-import { accountKey } from '../../lib/account-client';
+import { accountKey } from '../../../lib/account-client';
 import { reconcileDayQueries, preserveDayRead } from './progress-read-cache';
 import { progressCalendar, progressDay, progressMetrics } from './progress';
-import { AccountRepository } from './repository';
-import { ApiError } from '../../lib/http';
+import { AccountRepository } from '../repository';
+import { ApiError } from '../../../lib/http';
 import type {
   ProgressSummary,
   ProgressCalendar,
@@ -19,7 +19,7 @@ import {
   zone,
   uuid,
   attempt,
-} from '../../../test-support/journal';
+} from '../../../../test-support/journal';
 const repositories: AccountRepository[] = [];
 const summary: ProgressSummary = {
   today,

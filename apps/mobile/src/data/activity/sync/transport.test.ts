@@ -1,5 +1,5 @@
-import { AccountClient } from '../../lib/account-client';
-import { createHttpClient } from '../../lib/http';
+import { AccountClient } from '../../../lib/account-client';
+import { createHttpClient } from '../../../lib/http';
 import { createJournalTransport } from './transport';
 import {
   attempt,
@@ -7,7 +7,7 @@ import {
   owner,
   otherOwner,
   uuid,
-} from '../../../test-support/journal';
+} from '../../../../test-support/journal';
 
 it('uses canonical create/PATCH contracts, coordinates session renewal and fences the original owner', async () => {
   let session = { userId: owner, token: 'old' };

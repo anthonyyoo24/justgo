@@ -5,7 +5,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { useEntryMotion } from './useEntryMotion.native';
+import { useEntryMotion } from './useEntryMotion.native.ts';
 
 jest.mock('react-native-reanimated', () => {
   const { View } = require('react-native');

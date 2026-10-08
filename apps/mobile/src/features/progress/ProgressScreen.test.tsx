@@ -47,7 +47,9 @@ jest.mock('expo-router', () => ({
   Link: () => null,
 }));
 jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => true }));
-jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
+jest.mock('./day-details/useEntryMotion', () =>
+  jest.requireActual('./day-details/useEntryMotion.ts'),
+);
 jest.mock('expo-crypto', () => {
   let n = 100;
   return {

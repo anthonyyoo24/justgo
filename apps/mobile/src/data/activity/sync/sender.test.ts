@@ -1,6 +1,6 @@
-import { AccountRepository } from './repository';
-import { ApiError } from '../../lib/http';
-import { journalSchema } from './model';
+import { AccountRepository } from '../repository';
+import { ApiError } from '../../../lib/http';
+import { journalSchema } from '../model';
 import { sparseRetryDelay } from './retry';
 import {
   MemoryStorage,
@@ -13,7 +13,7 @@ import {
   uuid,
   zone,
   attempt,
-} from '../../../test-support/journal';
+} from '../../../../test-support/journal';
 
 const repos: AccountRepository[] = [];
 beforeEach(() =>

@@ -4,10 +4,10 @@ import {
   progressCalendarSchema,
   progressDayResponseSchema,
 } from '@justgo/contracts';
-import { accountKey, type AccountClient } from '../../lib/account-client';
-import { ApiError } from '../../lib/http';
-import type { JournalState } from './model';
-import type { AccountRepository } from './repository';
+import { accountKey, type AccountClient } from '../../../lib/account-client';
+import { ApiError } from '../../../lib/http';
+import type { JournalState } from '../model';
+import type { AccountRepository } from '../repository';
 import { preserveDayRead } from './progress-read-cache';
 
 /** Independent reads; repository acceptance owns durable aggregate rebasing. */

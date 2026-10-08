@@ -12,16 +12,23 @@ requested or performed. Publication and merge still require separate permission.
 07.3A remains deferred; its experimental code, native harness and CI migration
 were not resumed. Existing browser/lower-level coverage and CI remain intact.
 
+**Visual evidence storage:** At Anthony’s request, Phase 07.4 screenshots and
+comparison GIFs are retained only in ignored `.local/phase-07-4/visual-evidence/`.
+Capture names below are relative to that local directory. Verification results
+and open acceptance checks remain documented here; these captures are no longer
+part of the repository files.
+
 ## Implemented behavior and owners
 
-- `data/activity/progress.ts` owns local/backend summary, calendar and day
-  composition. `useProgressReads.ts` owns the three independent canonical reads;
+- `data/activity/progress/progress.ts` owns local/backend summary, calendar and day
+  composition. Its sibling `useProgressReads.ts` owns the three independent canonical reads;
   `progress-read-cache.ts` preserves confirmed day edits in online query pages.
 - `app-support/providers/ProgressRefresh.tsx` preloads summary/current month/today
   and refreshes after upload settlement and reconnection. It receives runtime
   dependencies directly. `activity-hooks.ts` shares context-free subscriptions.
 - `features/progress/ProgressScreen.tsx` owns selected month/day and editing.
-  `DayReflectionEditor.tsx` renders the textbox/actions; `useDayReflection.tsx`
+  Its `day-details/DayReflectionEditor.tsx` renders the textbox/actions;
+  `day-details/useDayReflection.tsx`
   uses the existing `ReflectionController`, repository, sender and saving host.
   No second upload queue or automatic draft submission was added.
 - Add/Edit saves text explicitly, preserves the original feeling, guards dirty
@@ -44,9 +51,9 @@ Inter 15/21, “What stood out to you?”, Cancel and the 130 × 36 dark Save pi
 Saved text expands with a separate Edit action. Feelings remain display-only.
 
 Browser proofs at 390 × 844:
-[Add](../checks/phase-07-4/browser/add-reflection.jpg),
-[Edit](../checks/phase-07-4/browser/edit-reflection.jpg),
-[saved text](../checks/phase-07-4/browser/saved-reflection.jpg).
+Add (`browser/add-reflection.jpg`),
+Edit (`browser/edit-reflection.jpg`),
+saved text (`browser/saved-reflection.jpg`).
 Paper reads/screenshots remain in ignored `.local/phase-07-4/`; no Paper nodes
 were modified or third-party bitmap screens shipped as UI.
 
@@ -133,9 +140,9 @@ relaunch preserved the account, total and edited text; the refreshed final bundl
 also verified saved text, prefilled Edit and clean Cancel.
 
 Native proofs:
-[Add](../checks/phase-07-4/native/add-reflection.jpg),
-[Edit](../checks/phase-07-4/native/edit-reflection.jpg),
-[relaunch](../checks/phase-07-4/native/relaunch-reflection.jpg).
+Add (`native/add-reflection.jpg`),
+Edit (`native/edit-reflection.jpg`),
+relaunch (`native/relaunch-reflection.jpg`).
 The retained QA account/container and its one added synthetic rep remain intact.
 Task API/Metro/mirror services and temporary browser tabs were stopped; the
 previously booted simulator was retained. AX snapshotting returned no native
@@ -178,7 +185,7 @@ the earlier database and 21-journey evidence remains the phase baseline.
 The running native app refreshed through Metro. Side-panel verification confirmed
 the pencil appears left of Edit; tapping the pencil opens the existing synthetic
 QA reflection, and clean Cancel returns without changing it.
-[Updated native action](../checks/phase-07-4/native/edit-pencil.jpg).
+Updated native action (`native/edit-pencil.jpg`).
 The existing simulator/account is retained, and API/Metro/mirror services are now
 left running for Anthony's testing. The earlier shutdown note describes the
 initial verification session. No publication or deferred 07.3A work occurred.
@@ -202,7 +209,7 @@ icon-only correction; their earlier phase evidence remains the baseline.
 Side-panel verification of the running native app confirmed the plus appears
 beside Add reflection, tapping it opens the empty textbox, and clean Cancel
 returns to the row. No reflection was submitted during this check.
-[Native Add action](../checks/phase-07-4/native/add-plus.jpg).
+Native Add action (`native/add-plus.jpg`).
 The existing simulator and API/Metro/mirror remain running for Anthony's testing.
 The software-keyboard/device and other release gates below remain open.
 
@@ -241,8 +248,8 @@ the empty Add textbox, clean Cancel restores the row, and Edit loads only the
 known synthetic QA reflection. No writing was submitted or changed. The mirror
 briefly showed delayed frames/device metadata during the full checks; after it
 recovered, the final endpoints were verified again.
-[Add endpoint](../checks/phase-07-4/native/row-add-editor.jpg),
-[Edit endpoint](../checks/phase-07-4/native/row-edit-editor.jpg).
+Add endpoint (`native/row-add-editor.jpg`),
+Edit endpoint (`native/row-edit-editor.jpg`).
 These screenshots verify the native endpoints; automated assertions verify the
 animation settings. They do not establish frame-rate or software-keyboard/device
 acceptance. Existing API/Metro/mirror services remain running for Anthony.
@@ -342,9 +349,9 @@ Cancel restores the saved row. Native input focus follows completion, with
 variable focus-delivery delay on this development simulator. These captures do
 not establish production frame rates or software-keyboard/device acceptance.
 
-[Before/after native Add recording](../checks/phase-07-4/native/editor-motion-before-after.gif),
-[final Add endpoint](../checks/phase-07-4/native/motion-fixed-add.jpg),
-[final Edit endpoint](../checks/phase-07-4/native/motion-fixed-edit.jpg).
+Before/after native Add recording (`native/editor-motion-before-after.gif`),
+final Add endpoint (`native/motion-fixed-add.jpg`),
+final Edit endpoint (`native/motion-fixed-edit.jpg`).
 The comparison clips are approximately aligned around taps; precise diagnosis
 timings above came from press/effect probes, not GIF alignment. Ignored local
 evidence also includes `lightweight-actions.json`, decoded `light-*/frames.json`,
@@ -409,7 +416,7 @@ repeated on the first opening after a cold app restart and a subsequent opening.
 The box endpoint stayed at native y=1790. A native keystroke hid the hint and
 enabled Save; deleting it restored the hint and disabled Save. Clean Cancel and
 reopen passed. No writing was submitted, and the owner's other reflection stayed
-collapsed. [Native placeholder comparison](../checks/phase-07-4/native/placeholder-handoff.png)
+collapsed. Native placeholder comparison (`native/placeholder-handoff.png`)
 shows the original preview, original native hint and fixed focused input.
 Cold/repeated settled-box samples all retain offset 57; moving/fading edge
 samples vary by one pixel with capture rounding/antialiasing. The first diagnostic
@@ -471,7 +478,7 @@ typography once, with no second preview/input shift. The native resize still
 shows intermediate sheet positions; this is simulator evidence, not a production
 frame-rate benchmark.
 
-[Before/after saved Edit recording](../checks/phase-07-4/native/edit-handoff-before-after.gif)
+Before/after saved Edit recording (`native/edit-handoff-before-after.gif`)
 is aligned approximately around content replacement, not a precise tap-latency
 comparison. Actual-time recordings, decoded frames, safe action metadata,
 pixel measurements and command logs live under ignored
@@ -535,7 +542,7 @@ close/Cancel action. One disposable hardware-keyboard character triggers dirty
 confirmation, Keep editing retains it, and Discard closes the editor. Other
 writing stays collapsed; no reflection is submitted. Opening/closing the first
 row's synthetic saved QA reflection retains its pencil and View/Hide actions.
-[Native Cancel proof](../checks/phase-07-4/native/add-cancel-action.png) shows
+Native Cancel proof (`native/add-cancel-action.png`) shows
 the empty Add editor left open for owner testing. Native evidence is separate
 from component tests and earlier saved browser journeys. Logs live under ignored
 `.local/phase-07-4/cancel-action/`.
@@ -569,7 +576,7 @@ The existing iPhone 17 / iOS 26.5 native app, viewed through the in-app mirror,
 shows View/Hide moved left with no icon-sized gap. The first row's synthetic QA
 reflection opens/closes normally and retains its separate Edit pencil. Other
 writing remained collapsed; no content was edited or submitted. The simulator
-is left on the collapsed View rows. [Native layout proof](../checks/phase-07-4/native/view-reflection-spacing.png)
+is left on the collapsed View rows. Native layout proof (`native/view-reflection-spacing.png`)
 records the updated surface. Ignored command logs and the preceding screenshot
 live in `.local/phase-07-4/view-action/`. This is an interactive native check,
 separate from saved browser journeys and physical-device acceptance.
@@ -614,7 +621,7 @@ Native presentation was checked through the existing in-app simulator mirror
 (1061×1036 browser viewport), using the installed iPhone 17 / iOS 26.5 QA app on
 `F0926FE3-5692-4241-B6C8-C5C4F9C6422E`. The September 17 offline preview shows the
 new copy and centered content with no entries or retry action. The updated
-[native screenshot](../checks/phase-07-4/native/offline-day-centered.png)
+native screenshot (`native/offline-day-centered.png`)
 is a 1206×2622 capture, and the preview stays open for owner review. This is
 synthetic presentation evidence, not a radio-connectivity test or saved journey.
 No private reflection was opened, edited or submitted.
@@ -649,7 +656,7 @@ The existing iPhone 17 / iOS 26.5 app was checked through the in-app simulator
 mirror (484×648 browser viewport). A temporary guarded preview supplied the
 unavailable August calendar with synthetic cached summary values. The message
 fits on one centered line at the device's normal text size above the faded,
-disabled calendar. The [updated native screenshot](../checks/phase-07-4/native/offline-month-copy.png)
+disabled calendar. The updated native screenshot (`native/offline-month-copy.png`)
 is a 1206×2622 capture. Temporary preview wiring was restored byte-for-byte;
 no account data was edited and no network/system settings changed. This is
 presentation evidence, separate from real radio/physical-device acceptance.
@@ -664,6 +671,85 @@ Earlier database, exports,
 saved-journey and hosted results retain their prior status. No dependency or
 native binary changed. Changes remain local and unpublished; earlier release
 and accessibility gates remain open.
+
+## October 8 owner review — Visual artifact cleanup
+
+Anthony requested removing the phase screenshots. All 17 screenshots and two
+comparison GIFs were moved out of `docs/checks/phase-07-4/` into ignored local
+`.local/phase-07-4/visual-evidence/`, preserving their browser/native subfolders.
+The 19 handoff links now name the local captures without linking to removed
+repository files. The plan/index and recurring artifact-storage guidance are
+updated. Recorded verification, tests and remaining acceptance checks are
+retained. Application code and behavior did not change; code tests and UI checks
+were not rerun for this documentation/artifact-only cleanup.
+`npm run format:check` and `git diff --check` pass. The reference/ignore audit
+confirms all 19 local captures are ignored, no removed image links remain and
+only the requested artifact/documentation files changed.
+
+## October 8 owner review — Progress and activity folders
+
+Anthony authorized organizing both growing directories by responsibility:
+
+- `features/progress/calendar/`: calendar UI and skeleton, with its test.
+- `features/progress/day-details/`: day sheet, entry rows, reflection editor/hook
+  and slide motion, with tests and native/default motion implementations together.
+- `data/activity/persistence/`: AsyncStorage adapter and serialized writes.
+- `data/activity/sync/`: delivery transitions, sender, transport and retry rules.
+- `data/activity/progress/`: Progress composition, independent reads and cache repair.
+
+The screen/view, date helpers and display types stay at the Progress root;
+account ownership, repository, schemas and submission rules stay at the activity
+root. All 27 relocated files are retained, with tests beside their owners.
+AST-based edits update only module/asset paths, including imports, runtime loaders
+and Jest mock factories. Metro's isolated storage selector and its regression
+test, test-support imports and the saved journey export follow the new paths.
+Recursive test discovery, coverage selectors and contract-upload allowlists need
+no changes; existing floors and architecture boundaries remain intact.
+
+This local follow-up overlaps the earlier mobile cleanup's Progress/persistence/
+sync groups. Integrating that separate branch must reconcile these moves and
+retain the newer 07.4 editor/motion/read files. No other mobile cleanup, native
+binary, dependency, API/schema or product behavior changed.
+
+Automated verification ran sequentially on the owner's 8 GB Mac:
+
+- Mobile typecheck and the three Metro fixture regressions pass.
+- Fourteen focused Progress/activity suites pass all **170 cases**.
+- Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **651 cases**
+  (175 architecture/tooling, 45 API, 410 mobile and 21 contracts).
+- Fresh mobile coverage passes all **410 cases** at **93.59% statements / 90.32%
+  branches / 90.37% functions / 94.71% lines**, unchanged from before the moves.
+  `npm run coverage:check` passes the unchanged global/critical floors using that
+  fresh mobile report and retained unchanged API/contracts reports.
+- Cold web and iOS Hermes exports pass with `--clear --max-workers 1`, using
+  ignored `export-web/` and `export-ios/` output directories in the log root below.
+  The saved journey repository bundle rebuilds from the relocated sources.
+- The read-only agent review resolves all **159 relative references**. An
+  independent move audit confirms all 27 original paths are gone, their targets
+  exist, and all 40 affected source/consumer files retain their logic apart from
+  module/asset paths and formatting. No actionable omission was found.
+
+Interactive native verification passes through the existing side-panel mirror
+(1061×1036 browser viewport), using the installed iPhone 17 / iOS 26.5 app on
+`F0926FE3-5692-4241-B6C8-C5C4F9C6422E`. Metro restarted with `--clear`; the native
+development bundle rebuilt, then the app reloaded to remove stale moved-module
+state. The earlier hot-refresh runtime had shown unavailable account/catalog
+state; it cleared on this full reload. The live calendar retains **15 reps**;
+October 7 opens its four rows. Whole-row Add opens the editor and placeholder with
+**× Cancel**, clean cancellation restores **＋ Add reflection**, saved reflection
+expansion displays its writing/Edit pencil, and Edit opens with existing writing
+prefilled. Clean Edit cancellation retains that writing. No activity/reflection
+was submitted, no account/device reset or native binary rebuild was performed,
+and the existing API/simulator mirror and refreshed Metro remain running.
+This is an interactive native smoke check, not a saved end-to-end test, motion
+benchmark, software-keyboard/device acceptance or hosted CI evidence.
+
+Command logs and move/import audit are ignored under
+`.local/phase-07-4/folder-reorganization/`. Existing
+screenshot removals and all earlier acceptance gates are retained. Database and
+saved-journey execution retain their prior evidence; this mobile organization-only
+follow-up does not rerun them or establish hosted CI. No push, PR or merge was
+performed.
 
 ## Open review and release checks
 

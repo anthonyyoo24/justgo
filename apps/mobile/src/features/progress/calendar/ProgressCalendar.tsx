@@ -10,12 +10,17 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
-import type { ProgressDisplay as ProgressResponse } from './types';
-import { ScreenHeader } from '../../components/ScreenHeader';
-import { challengeScale } from '../challenges/challenge-design';
-import { colors, fontFamilies, layout, typography } from '../../theme/tokens';
+import type { ProgressDisplay as ProgressResponse } from '../types';
+import { ScreenHeader } from '../../../components/ScreenHeader';
+import { challengeScale } from '../../challenges/challenge-design';
+import {
+  colors,
+  fontFamilies,
+  layout,
+  typography,
+} from '../../../theme/tokens';
 import { ProgressSkeleton, useProgressShimmer } from './ProgressSkeleton';
-import { calendarCells, dayLabel, monthLabel } from './calendar';
+import { calendarCells, dayLabel, monthLabel } from '../calendar';
 export type ProgressCalendarProps = {
   month: string;
   data?: ProgressResponse | undefined;

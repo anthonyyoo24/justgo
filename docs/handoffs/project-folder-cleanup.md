@@ -26,6 +26,14 @@
 
 ## October 6 review split and worktree cleanup
 
+**October 8 local overlap:** Anthony subsequently authorized reorganizing
+`features/progress/` and `data/activity/` on `codex/phase-07.4-progress-history`.
+That follow-up implements the calendar/day-details and persistence/sync groups
+plus the new Progress data folder. The [07.4 handoff](phase-07-4-progress-history.md#october-8-owner-review--progress-and-activity-folders)
+records its moves and current checks. Other mobile source/artwork groups remain
+separate; this is not a merge of the mobile cleanup. Future integration must
+reconcile overlapping moves and preserve the newer editor/motion/read files.
+
 Anthony requested archiving the unused Phase 07.3 worktree and splitting the
 cleanup into two PRs so CodeRabbit can review fewer than 100 selected files each.
 This authorizes publishing the two replacement PRs and retiring the combined

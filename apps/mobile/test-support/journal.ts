@@ -6,7 +6,7 @@ import type {
 } from '@justgo/contracts';
 import { ApiError } from '../src/lib/http';
 import type { JournalStorage } from '../src/data/activity/model';
-import type { JournalTransport } from '../src/data/activity/transport';
+import type { JournalTransport } from '../src/data/activity/sync/transport';
 export const owner = '10000000-0000-4000-8000-000000000001';
 export const otherOwner = '10000000-0000-4000-8000-000000000002';
 export const today = '2026-10-05';

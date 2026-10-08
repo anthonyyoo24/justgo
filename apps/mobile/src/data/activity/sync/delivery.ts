@@ -1,6 +1,6 @@
 import type { Attempt, PatchAttemptResponse } from '@justgo/contracts';
-import type { ApiError } from '../../lib/http';
-import type { Journal, Operation } from './model';
+import type { ApiError } from '../../../lib/http';
+import type { Journal, Operation } from '../model';
 import { SHORT_RETRY_MS, sparseRetryDelay } from './retry';
 
 const transient = new Set([
