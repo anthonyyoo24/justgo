@@ -46,6 +46,12 @@ View/Hide Reflection, moving the labels left while retaining the separate Edit
 pencil. The handoff records the new regression, native simulator evidence,
 fresh 648-case checks and unchanged coverage gates.
 
+The offline-day presentation follow-up uses the owner-approved **You're currently
+offline** heading and explanatory connection copy. Its illustration and message
+are centered below the day header. The handoff records the guarded offline
+preview, updated native screenshot, 63 focused cases, fresh 651-case checks and
+unchanged coverage gates; actual radio/device acceptance remains open.
+
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`
 at `c7c67b2`. The [resume handoff](phase-07-3a-testing-checkpoint.md) records the

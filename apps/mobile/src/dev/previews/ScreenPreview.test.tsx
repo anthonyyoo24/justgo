@@ -1,4 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { Animated } from 'react-native';
 import { ScreenPreview } from './ScreenPreview';
 jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
 jest.mock('../../features/progress/useEntryMotion', () =>
@@ -124,6 +125,44 @@ it.each([
         screen.getByLabelText(/Rep 6\. Send a thank you note/),
       ).toBeTruthy();
     }
+  }
+});
+
+it('previews the offline day without entries or network retry controls', () => {
+  let finishClose: ((result: { finished: boolean }) => void) | undefined;
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: (callback: (result: { finished: boolean }) => void) => {
+      finishClose = callback;
+    },
+    stop: jest.fn(),
+  } as unknown as ReturnType<typeof Animated.timing>);
+  try {
+    const screen = render(<ScreenPreview progressDayState="offline" />);
+    fireEvent.press(screen.getByRole('tab', { name: 'Progress' }));
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Thursday, September 17, 2 reps' }),
+    );
+    expect(screen.getByText("You're currently offline")).toBeTruthy();
+    expect(
+      screen.getByText('Connect to the internet to view this day’s activity.'),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('day-sheet-entry-list')).toBeNull();
+    expect(screen.queryByText('Couldn’t load attempts')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Try loading attempts again' }),
+    ).toBeNull();
+    fireEvent.press(
+      screen.getAllByRole('button', { name: 'Close day details' })[0]!,
+    );
+    expect(finishClose).toBeDefined();
+    act(() => finishClose!({ finished: true }));
+    expect(screen.queryByText("You're currently offline")).toBeNull();
+    expect(
+      screen.getByText('SCREEN PREVIEW · No activity is saved'),
+    ).toBeTruthy();
+    screen.unmount();
+  } finally {
+    timing.mockRestore();
   }
 });
 

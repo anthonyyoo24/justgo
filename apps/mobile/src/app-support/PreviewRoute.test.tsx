@@ -2,6 +2,10 @@ import { render } from '@testing-library/react-native';
 
 const mockPreviewModuleLoaded = jest.fn();
 const mockPreviewRendered = jest.fn();
+const mockPreviewParams = {
+  progressState: 'loading',
+  progressDayState: 'initial-error',
+};
 jest.mock('../dev/previews/ScreenPreview', () => {
   mockPreviewModuleLoaded();
   const { Text } = require('react-native') as typeof import('react-native');
@@ -16,10 +20,7 @@ jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   return {
     Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
-    useLocalSearchParams: () => ({
-      progressState: 'loading',
-      progressDayState: 'initial-error',
-    }),
+    useLocalSearchParams: () => mockPreviewParams,
   };
 });
 
@@ -30,6 +31,7 @@ const development = globalThis as typeof globalThis & { __DEV__: boolean };
 const initialDevelopment = development.__DEV__;
 afterEach(() => {
   development.__DEV__ = initialDevelopment;
+  mockPreviewParams.progressDayState = 'initial-error';
 });
 
 it('does not load developer fixtures in production and preserves the development route', () => {
@@ -48,9 +50,17 @@ it('does not load developer fixtures in production and preserves the development
     progressDayState: 'initial-error',
   });
 
+  mockPreviewParams.progressDayState = 'offline';
+  screen.rerender(<PreviewRoute />);
+  expect(mockPreviewRendered).toHaveBeenLastCalledWith({
+    progressState: 'loading',
+    progressDayState: 'offline',
+  });
+
   development.__DEV__ = false;
   screen.rerender(<PreviewRoute />);
   expect(screen.getByText('Redirect: /')).toBeTruthy();
   expect(screen.queryByText('Development preview')).toBeNull();
-  expect(mockPreviewRendered).toHaveBeenCalledTimes(1);
+  expect(mockPreviewModuleLoaded).toHaveBeenCalledTimes(1);
+  expect(mockPreviewRendered).toHaveBeenCalledTimes(2);
 });

@@ -121,7 +121,11 @@ export function ScreenPreview({
 }: {
   progressState?: 'default' | 'empty' | 'error' | 'loading';
   progressDayState?:
-    'default' | 'initial-error' | 'load-more-error' | 'loading-more';
+    | 'default'
+    | 'offline'
+    | 'initial-error'
+    | 'load-more-error'
+    | 'loading-more';
 }) {
   const [tab, setTab] = useState<'home' | 'progress'>('home');
   const [progressMonth, setProgressMonth] = useState('2026-09');
@@ -235,7 +239,9 @@ export function ScreenPreview({
           loading={progressLoading}
           selectedDate={progressDay}
           day={
-            progressDay && dayState !== 'initial-error'
+            progressDay &&
+            dayState !== 'initial-error' &&
+            dayState !== 'offline'
               ? {
                   date: progressDay,
                   totalReps: dayState === 'default' ? 3 : 12,
@@ -247,6 +253,7 @@ export function ScreenPreview({
               : undefined
           }
           dayError={progressDay !== null && dayState === 'initial-error'}
+          dayConnectionRequired={progressDay !== null && dayState === 'offline'}
           loadMoreError={progressDay !== null && dayState === 'load-more-error'}
           loadingMore={progressDay !== null && dayState === 'loading-more'}
           fetchingDay={progressDay !== null && dayState === 'loading-more'}

@@ -240,7 +240,12 @@ test('today cached paging survives offline and other days/months require a conne
   await expect(page.getByTestId('progress-value-reps')).toHaveText('22');
   await page.getByRole('button', { name: /, 1 rep$/ }).click();
   await expect(
-    page.getByText('Connect to view this day.', { exact: true }),
+    page.getByText("You're currently offline", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Connect to the internet to view this day’s activity.', {
+      exact: true,
+    }),
   ).toBeVisible();
   await page
     .getByRole('button', { name: 'Close day details', exact: true })
@@ -458,7 +463,12 @@ test('older-day Add/Edit keeps confirmed text after pruning and remains online-o
   ).toBeVisible();
   await context.setOffline(true);
   await expect(
-    page.getByText('Connect to view this day.', { exact: true }),
+    page.getByText("You're currently offline", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Connect to the internet to view this day’s activity.', {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByText('Updated historical disposable reflection.', {

@@ -17,6 +17,7 @@ export default function PreviewRoute() {
           : 'default'
       }
       progressDayState={
+        progressDayState === 'offline' ||
         progressDayState === 'initial-error' ||
         progressDayState === 'load-more-error' ||
         progressDayState === 'loading-more'

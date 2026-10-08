@@ -257,7 +257,8 @@ export function DaySheet({
             edges={['bottom']}
             style={[
               styles.sheet,
-              error && !day && { minHeight: Math.min(470, height * 0.78) },
+              (connectionRequired || error) &&
+                !day && { minHeight: Math.min(470, height * 0.78) },
               { transform: [{ translateY: sheetOffset }] },
             ]}
           >
@@ -279,12 +280,22 @@ export function DaySheet({
               </Text>
             )}
             {connectionRequired ? (
-              <View style={styles.state}>
+              <ScrollView
+                testID="day-offline-state"
+                style={styles.offlineScroll}
+                contentContainerStyle={styles.offlineState}
+              >
                 <DisconnectedPlugs />
-                <Text accessibilityRole="alert" style={styles.stateText}>
-                  Connect to view this day.
+                <Text
+                  accessibilityRole="alert"
+                  style={styles.initialErrorTitle}
+                >
+                  You're currently offline
                 </Text>
-              </View>
+                <Text style={styles.initialErrorBody}>
+                  Connect to the internet to view this day’s activity.
+                </Text>
+              </ScrollView>
             ) : loading && !day ? (
               <View style={styles.state}>
                 <ActivityIndicator
@@ -407,6 +418,13 @@ export function DaySheet({
 }
 
 const styles = StyleSheet.create({
+  offlineScroll: { flexGrow: 1, flexShrink: 1 },
+  offlineState: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
   state: { paddingVertical: 12, alignItems: 'center', gap: 4 },
   repCount: { ...typography.body, color: '#6B809B', marginTop: 8 },
   stateText: { ...typography.body, color: colors.ink, textAlign: 'center' },

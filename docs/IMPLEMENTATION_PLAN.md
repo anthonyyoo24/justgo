@@ -982,6 +982,14 @@ the same alignment. The separate Edit action keeps its pencil. The handoff
 records native side-panel layout evidence, regression checks, fresh 648-case
 checks and unchanged coverage gates.
 
+**October 8 offline day presentation:** owner review changes the unavailable-day
+heading to **You're currently offline**, with **Connect to the internet to view
+this day’s activity.** below it. The illustration and message are centered
+together in the remaining space below the day header, with bounded sheet height
+and scrollable content. A guarded `progressDayState=offline` preview makes the
+state repeatable without saving activity. The handoff records regression checks,
+fresh 651-case checks, unchanged coverage gates and the updated native screenshot.
+
 **Ready to hand off when**
 
 - [x] Task 8 client checks pass: independent summary/month loading, current-month/today durability, connection-required unavailable reads, stable date attribution and no partial-history notice for available data.

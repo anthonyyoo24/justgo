@@ -586,6 +586,51 @@ API/contracts reports. Final formatting and `git diff --check` pass. Earlier
 database, exports and saved-journey results remain historical. Changes remain
 local and unpublished; earlier keyboard/device/accessibility/hosted gates stay open.
 
+## October 8 owner review — Offline day presentation
+
+Anthony approved **You're currently offline** and **Connect to the internet to
+view this day’s activity.** for an unavailable offline day. The disconnected-plug
+illustration and message now form a centered group in the remaining space below
+the day header. The offline sheet uses the existing bounded 470-point minimum
+(capped at 78% of screen height) and scrollable content to accommodate smaller
+screens. The illustration remains decorative; the heading retains its alert
+role. Generic request failures and offline-month copy are unchanged.
+
+The guarded development preview accepts `/preview?progressDayState=offline`,
+omits entries/rep counts and supplies the existing connection-required state.
+It performs no network/account impersonation or activity writes. The production
+route still redirects without loading/rendering the developer fixture. Existing
+Progress component and saved-journey assertions now expect both copy lines.
+
+The new day-sheet regression reproduces the prior failure (2 failing / 1 passing
+cases). It checks both 400- and 900-point screens, centering/bounded height,
+decorative-image semantics and close behavior. Five affected suites pass **63/63**
+cases, including production preview guards. An initial coverage run exposed a
+preview-dismissal test waiting on the mock native animation's real completion;
+the test now explicitly completes a controlled animation callback and asserts
+that the offline state closes. No assertions, warnings or floors were weakened.
+
+Native presentation was checked through the existing in-app simulator mirror
+(1061×1036 browser viewport), using the installed iPhone 17 / iOS 26.5 QA app on
+`F0926FE3-5692-4241-B6C8-C5C4F9C6422E`. The September 17 offline preview shows the
+new copy and centered content with no entries or retry action. The updated
+[native screenshot](../checks/phase-07-4/native/offline-day-centered.png)
+is a 1206×2622 capture, and the preview stays open for owner review. This is
+synthetic presentation evidence, not a radio-connectivity test or saved journey.
+No private reflection was opened, edited or submitted.
+
+Fresh `npm run check` passes Doctor **21/21**, types/lint/format and **651 cases**
+(175 architecture/tooling, 45 API, 410 mobile and 21 contracts). Fresh mobile
+coverage passes all 410 cases: **93.59% statements / 90.32% branches / 90.37%
+functions / 94.71% lines**. `npm run coverage:check` passes every unchanged
+global/critical floor with this mobile report and retained unchanged API/contracts
+reports. Logs are ignored under `.local/phase-07-4/offline-layout/`.
+Database, exports and saved-journey runs remain historical; the two changed
+journey assertions were typechecked but not rerun for this presentation follow-up.
+No dependencies or native binary changed. Changes remain local and unpublished;
+earlier software-keyboard, physical-device, VoiceOver/scaled-text, actual radio
+and hosted gates remain open.
+
 ## Open review and release checks
 
 - Anthony's code/design review and permission for any commit publication/PR/merge.

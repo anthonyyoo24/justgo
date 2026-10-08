@@ -220,7 +220,10 @@ it('hydrates offline current-period data and restricts previously viewed other d
   fireEvent.press(
     screen.getByRole('button', { name: /Saturday, October 3, 2 reps/ }),
   );
-  expect(screen.getByText('Connect to view this day.')).toBeTruthy();
+  expect(screen.getByText("You're currently offline")).toBeTruthy();
+  expect(
+    screen.getByText('Connect to the internet to view this day’s activity.'),
+  ).toBeTruthy();
   fireEvent.press(
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
   );
@@ -582,7 +585,10 @@ it('allows clean cancellation and reports unavailable today cache instead of a f
       predicate: (query) => query.queryKey.includes('day'),
     });
   });
-  expect(screen.getByText('Connect to view this day.')).toBeTruthy();
+  expect(screen.getByText("You're currently offline")).toBeTruthy();
+  expect(
+    screen.getByText('Connect to the internet to view this day’s activity.'),
+  ).toBeTruthy();
 });
 it('keeps usable caches through a failed background refresh and reports a failed explicit editor adoption', async () => {
   await online();
