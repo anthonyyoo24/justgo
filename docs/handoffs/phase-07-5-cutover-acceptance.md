@@ -80,7 +80,7 @@ Heavy checks run sequentially on the owner's 8 GB Mac.
 | Controlled journey assertion failure | Root command exits 1 for the deliberate fixture assertion, generates a nonempty HTML report and a visually verified masked screenshot, then restores source/environment bytes and modes.                                                                                                                      |
 | Cold exports                         | Web and Hermes iOS exports pass with `--clear --max-workers 1` into ignored phase evidence directories.                                                                                                                                                                                                       |
 | Interactive side-panel browser       | Pass at 390 × 844: challenge → completed rep → explicit feeling/text → Save → Progress → captured start → View/Edit/Save, one rep, both `1 day` streaks and `1 rep this month`. One nonfatal web `pointerEvents` deprecation appeared during navigation; no browser error was observed or warning suppressed. |
-| Native simulator                     | Existing QA simulator is shut down. Boot permission requested under the installed iOS debugger skill; no new native claim.                                                                                                                                                                                    |
+| Native simulator                     | Owner-authorized boot/launch now passes: the installed app renders Home in the live side-panel mirror. Full native save/relaunch/Keychain/AsyncStorage acceptance remains open.                                                                                                                               |
 | Hosted CI                            | Not run for this unpublished branch; separate publication permission and revision-specific hosted results are required.                                                                                                                                                                                       |
 
 The final source includes the monthly-copy correction. Full workspace/coverage
@@ -94,8 +94,9 @@ attempts and 14 PATCH receipts**, including original IDs, owners, starts, dates,
 submitted text/feelings/revisions, Level 1 context and inactive history. The
 journey runs retain those counts, and the one registry-owned browser account was
 removed transactionally afterward; existing QA accounts were not cleanup targets.
-All run-owned browser tabs and API/Metro services were stopped; no fixture listener
-remains on ports 3000/8081.
+The automated/browser acceptance services and tabs were stopped after verification.
+The later owner testing session below intentionally starts and retains fresh
+API/Metro/mirror services.
 
 The retained long-offline measurement submits 10 completions and 10 maximum-length
 reflections: **314,654 encoded bytes**, **0.286459 ms serialization** and
@@ -110,13 +111,29 @@ attachment and extracted `journal-measurement.json` own the measurement. Browser
 the ignored evidence directory. No credentials or real private reflections are
 added to committed artifacts.
 
-The iOS debugger's boot requirement is explicit: “If none are booted, ask the user
-to boot one (do not boot automatically unless asked).” The existing JustGO QA
-simulator (`F0926FE3-5692-4241-B6C8-C5C4F9C6422E`, iOS 26.5) is shut down; the
-boot question is pending. No app/container/Keychain reset, reinstall, signing
-upgrade or new native binary was performed. Resume save/relaunch and
-Keychain/AsyncStorage checks on that existing device once boot is authorized;
-record them here without closing the physical-device gates below.
+## October 8 owner simulator session
+
+Anthony requested the simulator for testing after local implementation. The
+existing QA device (`F0926FE3-5692-4241-B6C8-C5C4F9C6422E`, iOS 26.5) was booted
+with command-scoped full Xcode tooling. Its system UI stalled on the first boot;
+restarting the same device recovered it. No device/app/container/Keychain erase,
+reinstall, signing upgrade or new native binary was performed.
+
+The local fixture API uses dedicated loopback `justgo_test`. Metro uses native
+production storage/connectivity adapters, one worker, the current Phase 07.5
+source and `NODE_OPTIONS=--dns-result-order=ipv4first`, matching the installed
+client's `127.0.0.1:8081` address. Its initial IPv6-only listener was corrected
+before accepting launch. The installed `dev.justgo.foundation` connects through
+the existing development-client URL. A live side-panel simulator frame confirms
+Home and its challenge content; the temporary simulator/tools panels are closed.
+
+API on `127.0.0.1:3000`, Metro on `127.0.0.1:8081`, and the UDID-scoped mirror at
+`http://localhost:3200` are intentionally left running for Anthony. The mirror tab
+is retained as a deliverable. Logs and Home screenshot remain ignored under
+`.local/phase-07-5/owner-simulator-*`. This verifies launch/readiness only: no new
+rep/reflection was submitted and full native save/relaunch, Keychain/AsyncStorage,
+software-keyboard and physical-device acceptance remain open. Boot permission
+is now granted; the earlier pending boot question no longer applies.
 
 ## Release rollout and repair
 
