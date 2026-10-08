@@ -71,12 +71,7 @@ async function removeFixtureAccounts(database: Pool) {
     try {
       for (const table of [
         'attempt_patch_receipts',
-        'reflection_actions',
-        'reflections',
         'attempts',
-        'deck_skips',
-        'venue_queues',
-        'challenge_preferences',
         'device_transfers',
         'device_sessions',
         'recovery_credentials',

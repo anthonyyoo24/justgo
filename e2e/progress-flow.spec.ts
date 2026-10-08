@@ -2,8 +2,12 @@ import type {} from '../apps/mobile/test-support/journey-storage';
 import { randomUUID } from 'node:crypto';
 import {
   catalogSchema,
+  createAttemptSchema,
+  patchAttemptSchema,
   sessionCreateSchema,
   sessionResponseSchema,
+  type CreateAttempt,
+  type PatchAttempt,
   type SessionCreate,
 } from '@justgo/contracts';
 import type { Page } from '@playwright/test';
@@ -213,6 +217,219 @@ test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline 
   } finally {
     release();
   }
+});
+
+test('lost completion and reflection acknowledgements replay once and preserve the full Progress journey after recovery', async ({
+  page,
+  fixtureDatabase,
+}) => {
+  const current = await account(page);
+  const creates: CreateAttempt[] = [];
+  const patches: PatchAttempt[] = [];
+  await page.route(`${journeyApiUrl}/v1/attempts`, async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+      return;
+    }
+    creates.push(createAttemptSchema.parse(route.request().postDataJSON()));
+    if (creates.length === 1) {
+      const committed = await route.fetch();
+      expect(committed.ok()).toBe(true);
+      // Commit through the actual API, then lose only its acknowledgement.
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  await page.route(`${journeyApiUrl}/v1/attempts/*`, async (route) => {
+    if (route.request().method() !== 'PATCH') {
+      await route.continue();
+      return;
+    }
+    patches.push(patchAttemptSchema.parse(route.request().postDataJSON()));
+    if (patches.length === 1) {
+      const committed = await route.fetch();
+      expect(committed.ok()).toBe(true);
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  await complete(page, 'Disposable lost-acknowledgement reflection.');
+  await progress(page, 1);
+  await expect
+    .poll(() =>
+      page.evaluate((owner) => {
+        const raw = localStorage.getItem(`justgo:v1:${owner}:journal`);
+        return raw ? JSON.parse(raw).operations.length : -1;
+      }, current.userId),
+    )
+    .toBe(0);
+  expect(creates).toHaveLength(2);
+  expect(creates[1]).toEqual(creates[0]);
+  expect(patches).toHaveLength(2);
+  expect(patches[1]).toEqual(patches[0]);
+  const saved = await fixtureDatabase.query(
+    'select id,started_at,reflection_text,reflection_revision from justgo.attempts where user_id=$1',
+    [current.userId],
+  );
+  expect(saved.rows).toHaveLength(1);
+  expect(saved.rows[0]).toMatchObject({
+    id: creates[0]!.id,
+    reflection_text: 'Disposable lost-acknowledgement reflection.',
+    reflection_revision: 1,
+  });
+  expect(saved.rows[0]!.started_at.toISOString()).toBe(creates[0]!.startedAt);
+  const receipts = await fixtureDatabase.query(
+    'select id from justgo.attempt_patch_receipts where user_id=$1',
+    [current.userId],
+  );
+  expect(receipts.rows).toEqual([{ id: patches[0]!.submissionId }]);
+  await recover(page, current.proof);
+  await progress(page, 1);
+  await openToday(page, 1);
+  await page.getByRole('button', { name: /Rep 1\..*View Reflection/ }).click();
+  await expect(
+    page.getByText('Disposable lost-acknowledgement reflection.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
+test('offline submitted reflection appears in Progress and reconnects without duplication through account recovery', async ({
+  page,
+  context,
+  fixtureDatabase,
+}) => {
+  const current = await account(page);
+  await progress(page, 0);
+  await page.getByRole('tab', { name: 'Home', exact: true }).click();
+  await context.setOffline(true);
+  await complete(page, 'Disposable offline reflection.');
+  await progress(page, 1);
+  await openToday(page, 1);
+  await page.getByRole('button', { name: /Rep 1\..*View Reflection/ }).click();
+  await expect(
+    page.getByText('Disposable offline reflection.', { exact: true }),
+  ).toBeVisible();
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select id from justgo.attempts where user_id=$1',
+        [current.userId],
+      )
+    ).rows,
+  ).toHaveLength(0);
+  await context.setOffline(false);
+  await expect
+    .poll(async () => {
+      const saved = await fixtureDatabase.query(
+        'select reflection_text,reflection_revision from justgo.attempts where user_id=$1',
+        [current.userId],
+      );
+      return saved.rows;
+    })
+    .toEqual([
+      {
+        reflection_text: 'Disposable offline reflection.',
+        reflection_revision: 1,
+      },
+    ]);
+  await recover(page, current.proof);
+  await progress(page, 1);
+  await openToday(page, 1);
+  await page.getByRole('button', { name: /Rep 1\..*View Reflection/ }).click();
+  await expect(
+    page.getByText('Disposable offline reflection.', { exact: true }),
+  ).toBeVisible();
+});
+
+test('self-device revocation rejects its session and explicit account recovery preserves saved reflection and Progress', async ({
+  page,
+  fixtureDatabase,
+}) => {
+  const current = await account(page);
+  await complete(page, 'Disposable revoked-device reflection.');
+  await expect
+    .poll(async () => {
+      const saved = await fixtureDatabase.query(
+        'select reflection_revision from justgo.attempts where user_id=$1',
+        [current.userId],
+      );
+      return saved.rows[0]?.reflection_revision;
+    })
+    .toBe(1);
+  await progress(page, 1);
+  await page.getByRole('tab', { name: 'Home', exact: true }).click();
+  await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Account & recovery', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Manage devices', exact: true })
+    .click();
+  await page
+    .getByRole('button', {
+      name: `Revoke device ${current.deviceId.slice(0, 8)}`,
+      exact: true,
+    })
+    .click();
+  const revokedResponse = page.waitForResponse(
+    (response) =>
+      response.url() === `${journeyApiUrl}/v1/devices/${current.deviceId}` &&
+      response.request().method() === 'DELETE',
+  );
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  expect((await revokedResponse).ok()).toBe(true);
+  await expect(
+    page.getByText('This device has been revoked.', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Connected', { exact: true })).toHaveCount(0);
+  const refused = await page.request.get(
+    `${journeyApiUrl}/v1/sessions/current`,
+    {
+      headers: { authorization: `Bearer ${current.proof.sessionToken}` },
+    },
+  );
+  expect(refused.status()).toBe(401);
+  expect(await refused.json()).toMatchObject({ code: 'SESSION_REVOKED' });
+  const revoked = await fixtureDatabase.query(
+    'select revoked_at from justgo.devices where user_id=$1 and id=$2',
+    [current.userId, current.deviceId],
+  );
+  expect(revoked.rows[0]?.revoked_at).toBeTruthy();
+  const recoveredResponse = page.waitForResponse(
+    (response) =>
+      response.url() === `${journeyApiUrl}/v1/sessions` &&
+      response.request().method() === 'POST',
+  );
+  await page
+    .getByRole('button', { name: 'Recover an existing account', exact: true })
+    .click();
+  await page
+    .getByLabel('Recovery key', { exact: true })
+    .fill(current.proof.credential);
+  await page
+    .getByRole('button', { name: 'Recover with key', exact: true })
+    .click();
+  const recovery = sessionResponseSchema.parse(
+    await (await recoveredResponse).json(),
+  );
+  expect(recovery.userId).toBe(current.userId);
+  expect(recovery.deviceId).not.toBe(current.deviceId);
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await progress(page, 1);
+  await openToday(page, 1);
+  await page.getByRole('button', { name: /Rep 1\..*View Reflection/ }).click();
+  await expect(
+    page.getByText('Disposable revoked-device reflection.', { exact: true }),
+  ).toBeVisible();
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select id from justgo.attempts where user_id=$1',
+        [current.userId],
+      )
+    ).rows,
+  ).toHaveLength(1);
 });
 
 test('today cached paging survives offline and other days/months require a connection', async ({

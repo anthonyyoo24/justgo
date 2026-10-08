@@ -55,7 +55,7 @@ jobs:
           if-no-files-found: error
       - name: Install journey browser
         run: npx playwright install --with-deps chromium
-      - name: Verify saved app/API account and catalog journey
+      - name: Verify full app/API/database journeys and recovery
         run: |
           npm run test:journey
           test -s .local/journey-report/index.html
