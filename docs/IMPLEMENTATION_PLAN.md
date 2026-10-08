@@ -697,16 +697,16 @@ The six subphases below replace the former single ten-step execution block, with
 
 **Branch naming and cleanup — October 4:** use `codex/phase-07.<subphase>-<scope>` for active subphase work. 07.1A uses the existing first numbered branch below and PR #13. 07.1B is preserved on a separate branch and is now authorized for publication as a PR against `main` after the owner merged A. The original combined 07.1 remote branch was removed during the undo and later republished for PR #13; B publication was authorized after the A cancellation review fix. Preserve the archive and create later branches only when their preceding active checkpoint is merged; deferred 07.3A is not a prerequisite for 07.4. The archive is preserved for extraction and must never be merged wholesale. The already-merged planning branches (`codex/phase-07-planning`, PR #9; `codex/phase-07-subphase-plan`, PR #11) were removed locally and remotely after verifying their commits are retained in `main`. The unused original `codex/phase-07-api-offline` branch was also removed locally; historical mentions below describe where work began.
 
-| Purpose                                          | Branch                                 | Current state                                           |
-| ------------------------------------------------ | -------------------------------------- | ------------------------------------------------------- |
-| 07.1 — API and data foundation                   | `codex/phase-07.1-api-data`            | 07.1A merged by owner via PR #13 at `806f57f`           |
-| 07.1B — Saved app/API journey and CI             | `codex/phase-07.1b-journey-ci`         | Merged in PR #14 at `1df6406`                           |
-| 07.2 — Durable local saving and synchronization  | `codex/phase-07.2-local-sync`          | Merged via PR #15 at `8ff5d6c`; native evidence open    |
-| 07.3 — Local challenge and reflection experience | `codex/phase-07.3-local-flow`          | Merged by owner via PR #16 at `6bccfde`                 |
-| 07.3A — Hybrid testing (deferred)                | `codex/phase-07.3a-testing-checkpoint` | Unfinished local checkpoint at c7c67b2; not published   |
-| 07.4 — Progress and history integration          | `codex/phase-07.4-progress-history`    | Local implementation and review follow-ups; unpublished |
-| 07.5 — Final cutover and acceptance              | `codex/phase-07.5-cutover-acceptance`  | Planned; not created                                    |
-| Preserved mixed drafts                           | `codex/archive/phase-07-drafts`        | Local archive at `6d4279f`; not for merging             |
+| Purpose                                          | Branch                                 | Current state                                               |
+| ------------------------------------------------ | -------------------------------------- | ----------------------------------------------------------- |
+| 07.1 — API and data foundation                   | `codex/phase-07.1-api-data`            | 07.1A merged by owner via PR #13 at `806f57f`               |
+| 07.1B — Saved app/API journey and CI             | `codex/phase-07.1b-journey-ci`         | Merged in PR #14 at `1df6406`                               |
+| 07.2 — Durable local saving and synchronization  | `codex/phase-07.2-local-sync`          | Merged via PR #15 at `8ff5d6c`; native evidence open        |
+| 07.3 — Local challenge and reflection experience | `codex/phase-07.3-local-flow`          | Merged by owner via PR #16 at `6bccfde`                     |
+| 07.3A — Hybrid testing (deferred)                | `codex/phase-07.3a-testing-checkpoint` | Unfinished local checkpoint at c7c67b2; not published       |
+| 07.4 — Progress and history integration          | `codex/phase-07.4-progress-history`    | Implementation/follow-ups; publication authorized October 8 |
+| 07.5 — Final cutover and acceptance              | `codex/phase-07.5-cutover-acceptance`  | Planned; not created                                        |
+| Preserved mixed drafts                           | `codex/archive/phase-07-drafts`        | Local archive at `6d4279f`; not for merging                 |
 
 **Existing evidence and drafts:** Phase 07 began on `codex/phase-07-api-offline` from `ac322ee`. The initial identity/HTTP checkpoint passed 318 workspace tests, 40 database tests, coverage gates and a side-panel account/revocation/recovery walkthrough. Since that checkpoint, domain contracts/API/schema, migrations, repository/sender and mobile flow/Progress files have changed, and the selected storage/connectivity/Zustand/Sonner dependencies were installed. That mixed archive has not passed integrated verification. The extracted 07.1 implementation now has fresh local and hosted evidence in its handoff; later drafts remain unaccepted. The umbrella handoff preserves the earlier slice and archive history separately from current checkpoint acceptance.
 
@@ -929,7 +929,7 @@ staging/release gates. Deferral closes none of these.
 
 ##### 07.4 — Progress and history integration
 
-**Depends on:** reviewed 07.3 and backend read contracts from 07.1. Anthony approved bypassing deferred 07.3A on October 7 using existing browser/lower-level checks plus relevant manual native verification. **Outcome:** summary, calendar and day details show local/backend activity once, with the agreed limited offline history. **Status:** implemented and verified locally on `codex/phase-07.4-progress-history`, awaiting Anthony's review. The [07.4 handoff](handoffs/phase-07-4-progress-history.md) records canonical reads, reconciliation, Paper Add/Edit, 21 saved journeys and browser/native simulator evidence. Software-keyboard layout, earlier device/release gates and hosted checks remain open; changes remain local and unpublished.
+**Depends on:** reviewed 07.3 and backend read contracts from 07.1. Anthony approved bypassing deferred 07.3A on October 7 using existing browser/lower-level checks plus relevant manual native verification. **Outcome:** summary, calendar and day details show local/backend activity once, with the agreed limited offline history. **Status:** implemented and verified locally on `codex/phase-07.4-progress-history`, awaiting Anthony's review. The [07.4 handoff](handoffs/phase-07-4-progress-history.md) records canonical reads, reconciliation, Paper Add/Edit, 21 saved journeys and browser/native simulator evidence. Anthony authorized pushing the branch and creating its PR on October 8. Software-keyboard layout, earlier device/release gates and hosted verification remain open; merge requires separate owner approval.
 
 **Scope:** client task 8. Implement independent query lifecycles, same-ID merging, baseline-plus-additions and generation fencing, current-period cache selectors, rollover, rejected-completion correction and day-entry Add/Edit reflection. Reuse the verified repository, sender and feedback host; do not create another upload queue or persist older downloaded history.
 

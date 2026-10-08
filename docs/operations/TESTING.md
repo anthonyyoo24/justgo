@@ -345,5 +345,6 @@ The [07.4 handoff](../handoffs/phase-07-4-progress-history.md) records the final
 and the existing native app's simulator Add/Edit/save/relaunch are separate
 evidence. Native hardware-keyboard HID typing does not establish software-keyboard
 layout or physical-device/VoiceOver/radio/backup acceptance. 07.3A remains deferred;
-retained browser CI runs this extended suite, with this unpushed branch's hosted
-result still open. 07.5 owns final cutover and integrated acceptance.
+retained browser CI runs this extended suite; Anthony authorized Phase 07.4
+publication on October 8, and its published-revision hosted result still needs
+inspection. 07.5 owns final cutover and integrated acceptance.

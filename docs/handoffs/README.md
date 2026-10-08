@@ -6,7 +6,8 @@ reconciliation and the owner's Paper inline Add/Edit reflection design. The
 [07.4 handoff](phase-07-4-progress-history.md) records 621 workspace cases,
 61 database/migration cases, unchanged coverage gates, both exports and 21 saved
 journeys, plus side-panel browser and native simulator Add/Edit/save/relaunch.
-Changes remain local and unpublished, awaiting Anthony's review. Software-keyboard
+Anthony authorized the branch push and PR on October 8; owner review and separate
+merge approval remain pending. Software-keyboard
 layout, earlier device/release gates and hosted checks remain open. 07.3A stays
 deferred; 07.5 owns final cutover and integrated acceptance.
 The owner's missing-Edit-pencil finding is fixed and verified in the running
@@ -67,6 +68,12 @@ records verification and the overlap with the separate mobile cleanup branch.
 Fresh checks pass 651 cases, mobile coverage and unchanged gates, both cold
 exports and the journey repository rebuild. The existing simulator's side-panel
 calendar/day/Add/Edit/cancel smoke passes after Metro's cache-cleared reload.
+
+The October 8 publication request includes the complete Phase 07.4 branch and
+these follow-ups. The handoff records fresh clean `npm ci`, 651-case checks,
+61 database/migration cases and all-workspace coverage gates; hosted
+results must be inspected for the pushed revision. Earlier native/device and
+release acceptance stays open.
 
 **October 7 testing checkpoint and deferral:** Anthony stopped 07.3A and authorized
 preserving its unfinished hybrid pilot on `codex/phase-07.3a-testing-checkpoint`

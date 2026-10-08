@@ -1,9 +1,11 @@
 # Phase 07.4 — Progress and history integration
 
-**Status:** Local implementation on `codex/phase-07.4-progress-history`, awaiting
+**Status:** Implementation on `codex/phase-07.4-progress-history`, awaiting
 Anthony's review. Started October 7 from clean `main` `09754e9`, whose approved
-code baseline is `6780406`. Changes remain local; no push, PR or merge was
-requested or performed. Publication and merge still require separate permission.
+code baseline is `6780406`. On October 8, Anthony authorized pushing this branch
+and opening a PR against `main`, including the implementation, UI follow-ups,
+folder organization and screenshot cleanup. Merge still requires separate
+owner review and explicit approval.
 
 **Dependencies:** Read the [07.1 contracts/API](phase-07-1-api-data.md),
 [07.2 repository/sender](phase-07-2-local-sync.md),
@@ -751,10 +753,38 @@ saved-journey execution retain their prior evidence; this mobile organization-on
 follow-up does not rerun them or establish hosted CI. No push, PR or merge was
 performed.
 
+## October 8 publication preparation
+
+Anthony requested publishing the current Phase 07.4 branch and creating its PR.
+The folder/screenshot follow-up was already saved in local commit `5900626`,
+retaining the organization-only scope recorded above.
+The branch is based on remote `main` `6780406`, with the approved 07.3A deferral
+documentation included and no deferred testing prototype or 07.5 cutover code.
+
+Fresh publication verification in an isolated clean checkout passes:
+
+- `npm ci`, then `npm run check`: Doctor **21/21**, types/lint/format and all
+  **651 cases** (175 architecture/tooling, 45 API, 410 mobile and 21 contracts).
+- `npm run test:db`: **60 database + 1 migration/restoration cases**, using the
+  validated dedicated loopback `justgo_test` environment passed explicitly to
+  the clean checkout; no ignored environment file was copied into it.
+- `npm run test:coverage`: fresh API, mobile and contract reports pass every
+  unchanged all-source/critical floor. API branches/lines are **91.19% / 95.71%**;
+  mobile **90.32% / 94.71%**; contracts **100% / 100%**.
+- The journey repository bundle rebuilds against the clean-installed packages.
+  The earlier cold web/iOS exports and native simulator smoke above retain their
+  evidence for this unchanged application source. Saved-journey execution remains
+  the earlier 21-case local result until this PR's hosted run is inspected.
+
+Command logs and count-based coverage summaries are ignored under
+`.local/phase-07-4/publication/`. The existing primary checkout, installed simulator
+app, account and running services are retained. Earlier native/device acceptance
+gates remain open and are not replaced by publication or CI.
+
 ## Open review and release checks
 
-- Anthony's code/design review and permission for any commit publication/PR/merge.
-  Hosted CI is unverified for this unpushed branch.
+- Anthony's code/design review and explicit merge approval.
+  Hosted CI remains unverified until inspected for the published revision.
 - Anthony's acceptance of the updated editor reveal/action above; final simulator
   recordings now establish intermediate native heights for cold/repeated Add,
   Edit and close. Physical-device/performance and software-keyboard checks below
