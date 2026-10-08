@@ -7,56 +7,37 @@ import { moveMonth } from '../../features/progress/calendar';
 import { DeckPreview } from '../../features/challenges/DeckPreview';
 import { SuccessView } from '../../features/challenges/SuccessView';
 import { ReflectionView } from '../../features/reflections/ReflectionView';
+import type { FeelingCode } from '@justgo/contracts';
 import type {
-  FeelingCode,
-  LegacyProgressEntry as ProgressEntry,
-  LegacyProgressResponse as ProgressResponse,
-} from '@justgo/contracts';
+  ProgressEntry,
+  ProgressDisplay as ProgressResponse,
+} from '../../features/progress/types';
 import { NavigationIcon } from '../../components/NavigationIcon';
 import { colors, spacing, typography } from '../../theme/tokens';
 const previewEntries: ProgressEntry[] = [
   {
     attemptId: '00000000-0000-4000-8000-000000000001',
-    completedAt: '2026-09-18T13:15:00.000Z',
+    startedAt: '2026-09-18T13:15:00.000Z',
     timeZone: 'America/Toronto',
-    cardId: 'preview-card-1',
-    venue: 'streets',
-    challengeId: 'preview-challenge-1',
-    revisionId: 'preview-revision-1',
-    levelId: 'level-1',
     instruction: 'Say hello to someone',
-    feelingVersion: 1,
     reflectionStatus: 'submitted',
     feeling: 'about_the_same',
     reflectionText: 'I felt more at ease with each try.',
   },
   {
     attemptId: '00000000-0000-4000-8000-000000000002',
-    completedAt: null,
-    activityAt: '2026-09-18T16:40:00.000Z',
+    startedAt: '2026-09-18T16:40:00.000Z',
     timeZone: 'America/Toronto',
-    cardId: null,
-    venue: 'streets',
-    challengeId: 'preview-challenge-2',
-    revisionId: null,
-    levelId: 'level-1',
     instruction: 'Ask for a recommendation',
-    feelingVersion: 1,
     reflectionStatus: 'none',
     feeling: null,
     reflectionText: null,
   },
   {
     attemptId: '00000000-0000-4000-8000-000000000003',
-    completedAt: '2026-09-18T22:10:00.000Z',
+    startedAt: '2026-09-18T22:10:00.000Z',
     timeZone: 'America/Toronto',
-    cardId: 'preview-card-3',
-    venue: 'park',
-    challengeId: 'preview-challenge-3',
-    revisionId: 'preview-revision-3',
-    levelId: 'level-1',
     instruction: 'Say hello to someone',
-    feelingVersion: 1,
     reflectionStatus: 'submitted',
     feeling: 'a_little_better',
     reflectionText: 'Saying hello felt easier the second time.',
@@ -68,13 +49,12 @@ const previewPagedEntries: ProgressEntry[] = [
     ['Take a short walk', '2026-09-19T00:22:00.000Z'],
     ['Compliment someone', '2026-09-19T01:03:00.000Z'],
     ['Send a thank you note', '2026-09-19T01:28:00.000Z'],
-  ].map(([instruction, completedAt], index) => ({
+  ].map(([instruction, startedAt], index) => ({
     ...previewEntries[index]!,
     attemptId: `preview-page-two-${index}`,
     instruction: instruction!,
-    completedAt: completedAt!,
-    activityAt: completedAt!,
-    reflectionStatus: 'skipped' as const,
+    startedAt: startedAt!,
+    reflectionStatus: 'none' as const,
     feeling: null,
     reflectionText: null,
   })),

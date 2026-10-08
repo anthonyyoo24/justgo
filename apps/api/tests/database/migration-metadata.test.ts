@@ -9,11 +9,11 @@ describe('reviewed migration history', () => {
   it('keeps the current declarative schema equal to its latest Drizzle snapshot', async () => {
     const generated = generateDrizzleJson(schema, undefined, ['justgo']);
     const saved = JSON.parse(
-      await readFile(new URL('meta/0012_snapshot.json', root), 'utf8'),
+      await readFile(new URL('meta/0013_snapshot.json', root), 'utf8'),
     );
     expect({ ...generated, id: saved.id, prevId: saved.prevId }).toEqual(saved);
   });
-  it('keeps already-applied SQL unchanged and contraction outside the journal', async () => {
+  it('keeps already-applied SQL unchanged and registers the reviewed final contraction', async () => {
     const hashes = JSON.parse(
       await readFile(
         new URL('./fixtures/applied-migration-hashes.json', import.meta.url),
@@ -29,11 +29,9 @@ describe('reviewed migration history', () => {
     const journal = JSON.parse(
       await readFile(new URL('meta/_journal.json', root), 'utf8'),
     ) as { entries: { tag: string }[] };
-    expect(journal.entries.at(-1)?.tag).toBe(
-      '0012_normalize_reflection_whitespace',
-    );
-    expect(journal.entries.some((entry) => /contract/i.test(entry.tag))).toBe(
-      false,
-    );
+    expect(journal.entries.at(-1)?.tag).toBe('0013_attempt_resources_contract');
+    expect(
+      journal.entries.filter((entry) => /contract/i.test(entry.tag)),
+    ).toHaveLength(1);
   });
 });

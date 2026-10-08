@@ -93,7 +93,7 @@ export function ProgressCalendar({
               icon="streak"
               label="Current streak"
               value={data?.currentStreak ?? null}
-              suffix="days"
+              suffix={data?.currentStreak === 1 ? 'day' : 'days'}
               loading={summaryIsLoading}
               shimmer={shimmer}
             />
@@ -101,7 +101,7 @@ export function ProgressCalendar({
               icon="best"
               label="Best streak"
               value={data?.bestStreak ?? null}
-              suffix="days"
+              suffix={data?.bestStreak === 1 ? 'day' : 'days'}
               loading={summaryIsLoading}
               shimmer={shimmer}
             />
@@ -299,7 +299,9 @@ export function ProgressCalendar({
               </Text>
             )}
             <View style={styles.summaryCopy}>
-              <Text style={styles.summaryHeading}>reps this month</Text>
+              <Text style={styles.summaryHeading}>
+                {data?.monthlyReps === 1 ? 'rep' : 'reps'} this month
+              </Text>
               {skeletonLoading ? (
                 <View style={styles.activeDaysLoading}>
                   <Text style={styles.summarySub}>on </Text>

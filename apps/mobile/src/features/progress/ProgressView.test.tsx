@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import type {
-  LegacyProgressEntry as ProgressEntry,
-  LegacyProgressResponse as ProgressResponse,
-} from '@justgo/contracts';
+  ProgressEntry,
+  ProgressDisplay as ProgressResponse,
+} from './types';
 import { colors } from '../../theme/tokens';
 import { ProgressView } from './ProgressView';
 
@@ -36,15 +36,9 @@ const entry = (
   status: ProgressEntry['reflectionStatus'],
 ): ProgressEntry => ({
   attemptId,
-  completedAt: '2026-09-18T13:15:00.000Z',
+  startedAt: '2026-09-18T13:15:00.000Z',
   timeZone: 'America/Toronto',
-  cardId: 'card-1',
-  venue: 'streets',
-  challengeId: 'challenge-1',
-  revisionId: 'revision-1',
-  levelId: 'level-1',
   instruction: 'Say hello to someone',
-  feelingVersion: 1,
   reflectionStatus: status,
   feeling: null,
   reflectionText: null,
@@ -53,6 +47,30 @@ const callbacks = () => ({
   onMonth: jest.fn(),
   onOpenDay: jest.fn(),
   onCloseDay: jest.fn(),
+});
+
+it.each([0, 1, 2])('uses singular and plural Progress copy for %s', (days) => {
+  const screen = render(
+    <ProgressView
+      month="2026-09"
+      data={{
+        ...month,
+        currentStreak: days,
+        bestStreak: days,
+        monthlyReps: days,
+      }}
+      selectedDate={null}
+      {...callbacks()}
+    />,
+  );
+  const expected = new RegExp(`^${days}\\s${days === 1 ? 'day' : 'days'}$`);
+  expect(screen.getByTestId('progress-value-streak')).toHaveTextContent(
+    expected,
+  );
+  expect(screen.getByTestId('progress-value-best')).toHaveTextContent(expected);
+  expect(
+    screen.getByText(`${days === 1 ? 'rep' : 'reps'} this month`),
+  ).toBeTruthy();
 });
 
 it('keeps loading inside the calendar and numeric slots, then enables loaded days', () => {
@@ -334,7 +352,7 @@ it('matches the Paper dumbbell proportions with a long grip and touching plates'
   }
 });
 
-it('opens only active days and shows empty circles for draft and skipped feedback', async () => {
+it('opens only active days and shows empty circles for attempts without submitted feedback', async () => {
   const actions = callbacks();
   const screen = render(
     <ProgressView
@@ -360,8 +378,8 @@ it('opens only active days and shows empty circles for draft and skipped feedbac
         date: '2026-09-18',
         totalReps: 2,
         entries: [
-          entry('00000000-0000-4000-8000-000000000001', 'draft'),
-          entry('00000000-0000-4000-8000-000000000002', 'skipped'),
+          entry('00000000-0000-4000-8000-000000000001', 'none'),
+          entry('00000000-0000-4000-8000-000000000002', 'none'),
         ],
       }}
       {...actions}
@@ -484,7 +502,7 @@ it('keeps the current slide when day data arrives and a show event arrives durin
         day={{
           date: '2026-09-18',
           totalReps: 1,
-          entries: [entry('one', 'skipped')],
+          entries: [entry('one', 'none')],
         }}
         {...actions}
       />,
@@ -681,7 +699,7 @@ it('keeps a past active day white while its details sheet is open', () => {
   expect(today).toHaveStyle({ backgroundColor: colors.ink });
 });
 
-it('shows completion times and the Paper day total without duration', () => {
+it('shows captured start times and the Paper day total without duration', () => {
   const screen = render(
     <ProgressView
       month="2026-09"
@@ -691,8 +709,8 @@ it('shows completion times and the Paper day total without duration', () => {
         date: '2026-09-18',
         totalReps: 2,
         entries: [
-          entry('00000000-0000-4000-8000-000000000001', 'draft'),
-          entry('00000000-0000-4000-8000-000000000002', 'skipped'),
+          entry('00000000-0000-4000-8000-000000000001', 'none'),
+          entry('00000000-0000-4000-8000-000000000002', 'none'),
         ],
       }}
       {...callbacks()}
@@ -737,7 +755,7 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
       ...entry('first', 'submitted'),
       reflectionText: 'I felt more at ease with each try.',
     },
-    entry('second', 'skipped'),
+    entry('second', 'none'),
     {
       ...entry('third', 'submitted'),
       reflectionText: 'Saying hello felt easier the second time.',
@@ -919,13 +937,13 @@ it('animates the saved reflection both into and out of the row', () => {
   }
 });
 
-it('omits reflection controls for empty, unsaved, or skipped reflections', () => {
+it('omits reflection controls for empty text or absent submitted reflections', () => {
   const entries: ProgressEntry[] = [
     entry('no-text', 'submitted'),
     { ...entry('empty', 'submitted'), reflectionText: '' },
     { ...entry('whitespace', 'submitted'), reflectionText: ' \n ' },
-    { ...entry('draft', 'draft'), reflectionText: 'Not submitted yet' },
-    { ...entry('skipped', 'skipped'), reflectionText: 'Not submitted' },
+    { ...entry('absent-1', 'none'), reflectionText: 'Not submitted yet' },
+    { ...entry('absent-2', 'none'), reflectionText: 'Not submitted' },
   ];
   const screen = render(
     <ProgressView
@@ -962,7 +980,7 @@ it('centers each Feeling rating with four points between its label and result', 
             ...entry('00000000-0000-4000-8000-000000000001', 'submitted'),
             feeling: 'a_little_better',
           },
-          entry('00000000-0000-4000-8000-000000000002', 'draft'),
+          entry('00000000-0000-4000-8000-000000000002', 'none'),
         ],
       }}
       {...callbacks()}
@@ -1139,7 +1157,7 @@ it('keeps loaded entries and shows a bottom retry when a later page fails', () =
       day={{
         date: '2026-09-18',
         totalReps: 21,
-        entries: [entry('first', 'skipped')],
+        entries: [entry('first', 'none')],
       }}
       hasMore
       loadMoreError
@@ -1177,7 +1195,7 @@ it('keeps loaded attempts visible while the next page loads', () => {
       day={{
         date: '2026-09-18',
         totalReps: 21,
-        entries: [entry('first', 'skipped')],
+        entries: [entry('first', 'none')],
       }}
       hasMore
       loadingMore
@@ -1196,7 +1214,7 @@ it('keeps loaded attempts visible while the next page loads', () => {
 it('fetches once near the end of each page as the sheet scrolls', () => {
   const loadMore = jest.fn();
   const first = Array.from({ length: 20 }, (_, index) =>
-    entry(`attempt-${index}`, 'skipped'),
+    entry(`attempt-${index}`, 'none'),
   );
   const renderDay = (entries: ProgressEntry[], fetchingDay = false) => (
     <ProgressView
@@ -1233,7 +1251,7 @@ it('fetches once near the end of each page as the sheet scrolls', () => {
   screen.rerender(renderDay(first, true));
   scroll(900);
   expect(loadMore).toHaveBeenCalledTimes(1);
-  screen.rerender(renderDay([...first, entry('attempt-20', 'skipped')]));
+  screen.rerender(renderDay([...first, entry('attempt-20', 'none')]));
   scroll(900);
   expect(loadMore).toHaveBeenCalledTimes(2);
   screen.rerender(

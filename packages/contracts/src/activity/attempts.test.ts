@@ -137,17 +137,15 @@ describe('completed attempt resource contracts', () => {
         .success,
     ).toBe(false);
   });
-  it('publishes new resources and explicitly temporary deprecated legacy domain routes', () => {
+  it('publishes only canonical resources and their replay/conflict statuses', () => {
     expect(openApiDocument.paths['/v1/attempts'].post.responses).toHaveProperty(
       '201',
     );
     expect(
       openApiDocument.paths['/v1/attempts/{id}'].patch.responses,
     ).toHaveProperty('409');
-    expect(openApiDocument.paths['/v1/challenges/state'].get.deprecated).toBe(
-      true,
-    );
-    expect(openApiDocument.paths['/v1/progress'].get.deprecated).toBe(true);
+    expect(openApiDocument.paths).not.toHaveProperty('/v1/challenges/state');
+    expect(openApiDocument.paths).not.toHaveProperty('/v1/progress');
     expect(openApiDocument.paths['/v1/challenges']).toHaveProperty('get');
   });
 });

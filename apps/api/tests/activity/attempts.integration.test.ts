@@ -7,7 +7,6 @@ import type {
   Attempt,
   CreateAttempt,
   Catalog,
-  LegacyChallengeQueue,
   ProgressDayResponse,
 } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
@@ -131,35 +130,6 @@ const patch = (
     expectedReflectionRevision,
     reflection,
   });
-async function legacy(
-  token: string,
-  outcome: 'completed' | 'active' | 'given_up' = 'completed',
-) {
-  const queue = (
-    await request(token, '/v1/challenges/queue/streets')
-  ).json<LegacyChallengeQueue>();
-  const card = queue.cards[0]!,
-    id = randomUUID();
-  const result = await request(token, '/v1/challenges/start', 'POST', {
-    attemptId: id,
-    venue: queue.venue,
-    cardId: card.id,
-    revisionId: card.revisionId,
-    queueVersion: queue.version,
-  });
-  expect(result.statusCode, result.body).toBe(200);
-  if (outcome !== 'active')
-    expect(
-      (
-        await request(token, '/v1/challenges/finish', 'POST', {
-          attemptId: id,
-          outcome,
-          timeZone: 'UTC',
-        })
-      ).statusCode,
-    ).toBe(200);
-  return id;
-}
 afterEach(() => {
   access = 'verified';
   eligibility = 'eligible';
@@ -171,12 +141,7 @@ afterAll(async () => {
     for (const owner of owners) {
       for (const table of [
         'attempt_patch_receipts',
-        'reflection_actions',
-        'reflections',
         'attempts',
-        'deck_skips',
-        'venue_queues',
-        'challenge_preferences',
         'device_sessions',
         'recovery_credentials',
         'devices',
@@ -192,8 +157,8 @@ afterAll(async () => {
   }
 });
 
-describe('completed attempt resources and temporary legacy compatibility', () => {
-  it('downloads ordered current catalog for all six venues and preserves legacy catalog routes', async () => {
+describe('completed attempt resources', () => {
+  it('downloads ordered current catalog for all six venues', async () => {
     const a = await account(),
       catalog = (
         await request(a.sessionToken, '/v1/challenges')
@@ -211,9 +176,9 @@ describe('completed attempt resources and temporary legacy compatibility', () =>
     );
     expect(
       (await request(a.sessionToken, '/v1/challenges/state')).statusCode,
-    ).toBe(200);
+    ).toBe(404);
   });
-  it('creates201, replays concurrent lost acknowledgements200, and keeps obsolete fields null', async () => {
+  it('creates201 and replays concurrent lost acknowledgements200 with completed-only metadata', async () => {
     const a = await account(),
       body = await input(a.sessionToken);
     const results = await Promise.all([
@@ -223,19 +188,13 @@ describe('completed attempt resources and temporary legacy compatibility', () =>
     expect(results.map((r) => r.statusCode).sort()).toEqual([200, 201]);
     expect(results[0]!.json()).toEqual(results[1]!.json());
     const rows = await admin.query(
-      'select card_id,revision_id,queue_version,deadline_at,ended_at,completion_date,time_zone,start_time_zone,activity_date from justgo.attempts where user_id=$1 and id=$2',
+      'select start_time_zone,legacy_display_time_zone,activity_date from justgo.attempts where user_id=$1 and id=$2',
       [a.userId, body.id],
     );
     expect(rows.rows).toEqual([
       {
-        card_id: null,
-        revision_id: null,
-        queue_version: null,
-        deadline_at: null,
-        ended_at: null,
-        completion_date: null,
-        time_zone: null,
         start_time_zone: body.startTimeZone,
+        legacy_display_time_zone: null,
         activity_date: '2026-09-18',
       },
     ]);
@@ -449,7 +408,7 @@ describe('completed attempt resources and temporary legacy compatibility', () =>
   });
 });
 
-describe('inline reflection rules, history and compatibility', () => {
+describe('inline reflection rules and history', () => {
   it('keeps inactive references uploadable and projects live challenge wording', async () => {
     const a = await account(),
       body = await input(a.sessionToken);
@@ -498,19 +457,6 @@ describe('inline reflection rules, history and compatibility', () => {
         saved = await patch(a.sessionToken, attempt.id, 0, reflection);
       expect(saved.statusCode, saved.body).toBe(200);
       expect(saved.json().attempt.reflection.revision).toBe(1);
-      const compatible = await request(
-        a.sessionToken,
-        `/v1/reflections/${attempt.id}`,
-      );
-      expect(compatible.statusCode, compatible.body).toBe(200);
-      expect(compatible.json()).toMatchObject({
-        status: 'submitted',
-        revision: 1,
-        updatedAt: null,
-        feeling: saved.json().attempt.reflection.feeling,
-        text: saved.json().attempt.reflection.text,
-        inputMethod: 'text' in reflection ? 'typed' : null,
-      });
       const edited = await patch(a.sessionToken, attempt.id, 1, {
         text: 'Edited',
       });
@@ -633,182 +579,6 @@ describe('inline reflection rules, history and compatibility', () => {
       ).statusCode,
     ).toBe(400);
   });
-  it('mirrors legacy final submissions and never promotes draft/skip or noncompleted attempts', async () => {
-    const a = await account(),
-      id = await legacy(a.sessionToken);
-    const first = {
-      actionId: randomUUID(),
-      expectedRevision: 0,
-      feeling: null,
-      text: 'Draft stays private',
-    };
-    expect(
-      (
-        await request(
-          a.sessionToken,
-          `/v1/reflections/${id}/draft`,
-          'POST',
-          first,
-        )
-      ).statusCode,
-    ).toBe(200);
-    const date = (
-      await admin.query(
-        'select activity_date from justgo.attempts where user_id=$1 and id=$2',
-        [a.userId, id],
-      )
-    ).rows[0].activity_date;
-    const day = () => request(a.sessionToken, `/v1/attempts?date=${date}`);
-    expect(
-      (await day()).json<ProgressDayResponse>().entries[0]?.reflection,
-    ).toBeNull();
-    const final = {
-      ...first,
-      actionId: randomUUID(),
-      expectedRevision: 1,
-      text: 'Final',
-    };
-    expect(
-      (
-        await request(
-          a.sessionToken,
-          `/v1/reflections/${id}/final`,
-          'POST',
-          final,
-        )
-      ).statusCode,
-    ).toBe(200);
-    expect((await day()).json<ProgressDayResponse>().entries[0]).toMatchObject({
-      startTimeZone: null,
-      displayTimeZone: 'UTC',
-      reflection: { text: 'Final', feeling: null, revision: 2 },
-    });
-    expect(
-      (await patch(a.sessionToken, id, 2, { text: 'Newest' })).statusCode,
-    ).toBe(200);
-    expect(
-      (await request(a.sessionToken, `/v1/reflections/${id}`)).json(),
-    ).toMatchObject({
-      status: 'submitted',
-      revision: 3,
-      text: 'Newest',
-      updatedAt: null,
-    });
-    expect(
-      (
-        await request(
-          a.sessionToken,
-          `/v1/reflections/${id}/final`,
-          'POST',
-          final,
-        )
-      ).statusCode,
-    ).toBe(200);
-    expect(
-      (await day()).json<ProgressDayResponse>().entries[0]?.reflection?.text,
-    ).toBe('Newest');
-    const skipped = await legacy(a.sessionToken);
-    expect(
-      (
-        await request(
-          a.sessionToken,
-          `/v1/reflections/${skipped}/skip`,
-          'POST',
-          { actionId: randomUUID(), expectedRevision: 0 },
-        )
-      ).statusCode,
-    ).toBe(200);
-    expect(
-      (await day())
-        .json<ProgressDayResponse>()
-        .entries.find((e) => e.id === skipped)?.reflection,
-    ).toBeNull();
-    const given = await legacy(a.sessionToken, 'given_up'),
-      active = await legacy(a.sessionToken, 'active');
-    for (const id of [given, active])
-      expect(
-        (await patch(a.sessionToken, id, 0, { text: 'No rep' })).statusCode,
-      ).toBe(409);
-    expect(
-      (
-        await request(a.sessionToken, '/v1/progress/summary?timeZone=UTC')
-      ).json().totalReps,
-    ).toBe(2);
-  });
-  it('protects a canonical submission from an old unfinished legacy draft', async () => {
-    const a = await account(),
-      id = await legacy(a.sessionToken);
-    expect(
-      (
-        await request(a.sessionToken, `/v1/reflections/${id}/draft`, 'POST', {
-          actionId: randomUUID(),
-          expectedRevision: 0,
-          feeling: null,
-          text: 'Old draft',
-        })
-      ).statusCode,
-    ).toBe(200);
-    expect(
-      (await patch(a.sessionToken, id, 0, { text: 'New explicit save' }))
-        .statusCode,
-    ).toBe(200);
-    expect(
-      (
-        await request(a.sessionToken, `/v1/reflections/${id}/final`, 'POST', {
-          actionId: randomUUID(),
-          expectedRevision: 1,
-          feeling: null,
-          text: 'Stale draft',
-        })
-      ).statusCode,
-    ).toBe(409);
-    expect(
-      (await request(a.sessionToken, `/v1/reflections/${id}`)).json().text,
-    ).toBe('New explicit save');
-  });
-  it('shows new reps in legacy Progress truthfully and leaves lifecycle continuation on legacy attempts', async () => {
-    const a = await account(),
-      { body, attempt } = await create(a.sessionToken);
-    await patch(a.sessionToken, attempt.id, 0, {
-      text: 'Visible in both protocols',
-    });
-    const oldDay = await request(
-      a.sessionToken,
-      `/v1/progress/days/${attempt.activityDate}`,
-    );
-    expect(oldDay.statusCode, oldDay.body).toBe(200);
-    expect(oldDay.json()).toMatchObject({
-      totalReps: 1,
-      entries: [
-        {
-          attemptId: body.id,
-          completedAt: null,
-          activityAt: body.startedAt,
-          cardId: null,
-          revisionId: null,
-          reflectionStatus: 'submitted',
-          reflectionText: 'Visible in both protocols',
-        },
-      ],
-    });
-    expect(
-      (
-        await request(a.sessionToken, '/v1/progress?month=2026-09&timeZone=UTC')
-      ).json(),
-    ).toMatchObject({ totalReps: 1, monthlyReps: 1, activeDays: 1 });
-    expect(
-      (await request(a.sessionToken, '/v1/challenges/state')).json(),
-    ).toMatchObject({ active: null, latestOutcome: null });
-    expect(
-      (
-        await request(a.sessionToken, '/v1/challenges/finish', 'POST', {
-          attemptId: body.id,
-          outcome: 'completed',
-          timeZone: 'UTC',
-        })
-      ).statusCode,
-    ).toBe(404);
-  });
   it('pages by precise start time and UUID, keeps cursors self-contained and rejects invalid or cross-date cursors', async () => {
     const a = await account();
     const ids = [randomUUID(), randomUUID()].sort();
@@ -890,10 +660,7 @@ describe('inline reflection rules, history and compatibility', () => {
     expect(tomorrow.attempt.activityDate > today.attempt.activityDate).toBe(
       true,
     );
-    for (const path of [
-      '/v1/progress/summary?timeZone=Pacific/Honolulu',
-      `/v1/progress?month=${today.attempt.activityDate.slice(0, 7)}&timeZone=Pacific/Honolulu`,
-    ]) {
+    for (const path of ['/v1/progress/summary?timeZone=Pacific/Honolulu']) {
       const response = await request(a.sessionToken, path);
       expect(response.statusCode, response.body).toBe(200);
       expect(response.json()).toMatchObject({

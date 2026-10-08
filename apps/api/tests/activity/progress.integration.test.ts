@@ -3,8 +3,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import {
   type AccessResponse,
-  type LegacyProgressDayResponse,
-  type LegacyProgressResponse,
+  type ProgressDayResponse,
+  type ProgressSummary,
 } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
@@ -73,32 +73,26 @@ const dateOffset = (days: number) => {
 async function insertCompletion(
   userId: string,
   date: string,
-  endedAt: string,
+  startedAt: string,
   options: { timeZone?: string } = {},
 ) {
   const id = randomUUID();
+  // Represent preserved pre-cutover history: its original completion date/zone
+  // survives even when no reliable start zone was recorded by the old client.
   await admin.query(
     `insert into justgo.attempts
-       (user_id,id,card_id,venue_id,challenge_id,revision_id,level_id,
-        queue_version,status,started_at,deadline_at,ended_at,completion_date,time_zone)
-     select $1,$2,c.id,c.venue_id,r.challenge_id,r.id,r.level_id,0,'completed',
-       $4::timestamptz - interval '5 minutes',
-       $4::timestamptz,$4::timestamptz,$3,$5
-     from justgo.venue_cards c join justgo.challenge_revisions r on r.id=c.revision_id
-     order by c.position limit 1`,
-    [userId, id, date, endedAt, options.timeZone ?? 'UTC'],
+      (user_id,id,venue_id,challenge_id,level_id,started_at,activity_date,legacy_display_time_zone)
+    select $1,$2,v.venue_id,c.id,c.level_id,$4::timestamptz,$3,$5
+    from justgo.venue_cards v join justgo.challenges c on c.id=v.challenge_id
+    order by v.position limit 1`,
+    [userId, id, date, startedAt, options.timeZone ?? 'UTC'],
   );
   return id;
 }
 afterAll(async () => {
   for (const id of owners) {
     for (const table of [
-      'reflection_actions',
-      'reflections',
       'attempts',
-      'deck_skips',
-      'venue_queues',
-      'challenge_preferences',
       'device_sessions',
       'recovery_credentials',
       'devices',
@@ -111,7 +105,7 @@ afterAll(async () => {
 });
 
 describe('owner-scoped Progress history', () => {
-  it('counts one active day per frozen completion date and measures streaks through yesterday', async () => {
+  it('counts preserved history dates independently from summary and measures streaks through yesterday', async () => {
     const a = await account();
     const b = await account();
     const yesterday = dateOffset(-1);
@@ -125,12 +119,11 @@ describe('owner-scoped Progress history', () => {
     await insertCompletion(b.userId, yesterday, `${yesterday}T13:00:00Z`);
     const res = await request(
       a.sessionToken,
-      `/v1/progress?month=${month}&timeZone=UTC`,
+      '/v1/progress/summary?timeZone=UTC',
     );
     expect(res.statusCode, res.body).toBe(200);
-    const result = res.json() as LegacyProgressResponse;
+    const result = res.json() as ProgressSummary;
     expect(result).toMatchObject({
-      month,
       today: dateOffset(0),
       currentStreak: 2,
       bestStreak: 2,
@@ -139,30 +132,33 @@ describe('owner-scoped Progress history', () => {
     const inMonth = [yesterday, yesterday, prior, old].filter((d) =>
       d.startsWith(month),
     );
-    expect(result.monthlyReps).toBe(inMonth.length);
-    expect(result.activeDays).toBe(new Set(inMonth).size);
-    expect(result.days.find((day) => day.date === yesterday)?.reps).toBe(2);
+    const calendar = (
+      await request(a.sessionToken, `/v1/progress/calendar?month=${month}`)
+    ).json();
+    expect(calendar.monthlyReps).toBe(inMonth.length);
+    expect(calendar.activeDays).toBe(new Set(inMonth).size);
+    expect(
+      calendar.days.find(
+        (day: { date: string; reps: number }) => day.date === yesterday,
+      )?.reps,
+    ).toBe(2);
     const empty = await request(
       a.sessionToken,
-      '/v1/progress?month=2020-01&timeZone=UTC',
+      '/v1/progress/calendar?month=2020-01',
     );
     expect(empty.json()).toMatchObject({
       monthlyReps: 0,
       activeDays: 0,
       days: [],
-      totalReps: 4,
     });
     expect(
       (
-        await request(
-          b.sessionToken,
-          `/v1/progress?month=${month}&timeZone=UTC`,
-        )
+        await request(b.sessionToken, '/v1/progress/summary?timeZone=UTC')
       ).json().totalReps,
     ).toBe(1);
   });
 
-  it('orders and pages ties exactly, keeps travel/DST dates frozen, and hides unfinished drafts', async () => {
+  it('orders and pages starts exactly, keeps historical travel/DST dates frozen and returns only inline submissions', async () => {
     const a = await account();
     const date = '2024-11-03';
     const ids = [
@@ -180,18 +176,15 @@ describe('owner-scoped Progress history', () => {
       }),
     ];
     await admin.query(
-      `insert into justgo.reflections(user_id,attempt_id,status,feeling,reflection_text,input_method)
-       values ($1,$2,'draft','a_lot_worse','Unfinished secret','typed'),
-              ($1,$3,'submitted','a_little_better','Saved note','typed'),
-              ($1,$4,'skipped',null,null,null)`,
-      [a.userId, ...ids.slice(0, 3)],
+      `update justgo.attempts set reflection_feeling='a_little_better',reflection_text='Saved note',reflection_revision=6 where user_id=$1 and id=$2`,
+      [a.userId, ids[1]],
     );
     const first = await request(
       a.sessionToken,
-      `/v1/progress/days/${date}?limit=1`,
+      `/v1/attempts?date=${date}&limit=1`,
     );
     expect(first.statusCode, first.body).toBe(200);
-    const page1 = first.json() as LegacyProgressDayResponse;
+    const page1 = first.json() as ProgressDayResponse;
     expect(page1).toMatchObject({
       date,
       totalReps: 4,
@@ -199,55 +192,50 @@ describe('owner-scoped Progress history', () => {
     expect(page1).not.toHaveProperty('totalElapsedSeconds');
     expect(page1.entries[0]).not.toHaveProperty('elapsedSeconds');
     expect(page1.entries[0]).toMatchObject({
-      attemptId: ids[0],
-      reflectionStatus: 'draft',
-      feeling: null,
-      reflectionText: null,
-      timeZone: 'America/Toronto',
+      id: ids[0],
+      reflection: null,
+      startTimeZone: null,
+      displayTimeZone: 'America/Toronto',
       levelId: 'level-1',
     });
     expect(page1.entries[0]?.instruction.length).toBeGreaterThan(0);
-    expect(page1.entries[0]?.revisionId?.length).toBeGreaterThan(0);
+    expect(page1.entries[0]).not.toHaveProperty('revisionId');
     expect(first.body).not.toContain('Unfinished secret');
     const second = await request(
       a.sessionToken,
-      `/v1/progress/days/${date}?limit=1&cursor=${page1.nextCursor}`,
+      `/v1/attempts?date=${date}&limit=1&cursor=${page1.nextCursor}`,
     );
-    const page2 = second.json() as LegacyProgressDayResponse;
+    const page2 = second.json() as ProgressDayResponse;
     expect(page2.entries[0]).toMatchObject({
-      attemptId: ids[1],
-      reflectionStatus: 'submitted',
-      feeling: 'a_little_better',
-      reflectionText: 'Saved note',
+      id: ids[1],
+      reflection: {
+        feeling: 'a_little_better',
+        text: 'Saved note',
+        revision: 6,
+      },
     });
     const third = await request(
       a.sessionToken,
-      `/v1/progress/days/${date}?limit=1&cursor=${page2.nextCursor}`,
+      `/v1/attempts?date=${date}&limit=1&cursor=${page2.nextCursor}`,
     );
-    const page3 = third.json() as LegacyProgressDayResponse;
+    const page3 = third.json() as ProgressDayResponse;
     expect(page3.entries[0]).toMatchObject({
-      attemptId: ids[2],
-      reflectionStatus: 'skipped',
-      feeling: null,
-      reflectionText: null,
+      id: ids[2],
+      reflection: null,
     });
     expect(page3.nextCursor).not.toBeNull();
     const fourth = await request(
       a.sessionToken,
-      `/v1/progress/days/${date}?limit=1&cursor=${page3.nextCursor}`,
+      `/v1/attempts?date=${date}&limit=1&cursor=${page3.nextCursor}`,
     );
-    expect(
-      (fourth.json() as LegacyProgressDayResponse).entries[0],
-    ).toMatchObject({
-      attemptId: ids[3],
-      reflectionStatus: 'none',
-      feeling: null,
-      reflectionText: null,
+    expect((fourth.json() as ProgressDayResponse).entries[0]).toMatchObject({
+      id: ids[3],
+      reflection: null,
     });
-    expect((fourth.json() as LegacyProgressDayResponse).nextCursor).toBeNull();
+    expect((fourth.json() as ProgressDayResponse).nextCursor).toBeNull();
     const month = await request(
       a.sessionToken,
-      '/v1/progress?month=2024-11&timeZone=Asia/Tokyo',
+      '/v1/progress/calendar?month=2024-11',
     );
     expect(month.json()).toMatchObject({
       monthlyReps: 4,
@@ -255,11 +243,11 @@ describe('owner-scoped Progress history', () => {
       days: [{ date, reps: 4 }],
     });
     expect(
-      (await request(a.sessionToken, `/v1/progress/days/${date}?cursor=bad`))
+      (await request(a.sessionToken, `/v1/attempts?date=${date}&cursor=bad`))
         .statusCode,
     ).toBe(400);
     expect(
-      (await request(a.sessionToken, `/v1/progress/days/${date}?limit=51`))
+      (await request(a.sessionToken, `/v1/attempts?date=${date}&limit=51`))
         .statusCode,
     ).toBe(400);
   });
@@ -268,39 +256,36 @@ describe('owner-scoped Progress history', () => {
     const a = await account();
     const summary = await request(
       a.sessionToken,
-      '/v1/progress?month=2026-09&timeZone=UTC',
+      '/v1/progress/summary?timeZone=UTC',
     );
     expect(summary.json()).toMatchObject({
       currentStreak: 0,
       bestStreak: 0,
       totalReps: 0,
-      monthlyReps: 0,
-      activeDays: 0,
-      days: [],
     });
     expect(
-      (await request(a.sessionToken, '/v1/progress/days/2026-09-01')).json(),
+      (await request(a.sessionToken, '/v1/attempts?date=2026-09-01')).json(),
     ).toMatchObject({
       totalReps: 0,
       entries: [],
       nextCursor: null,
     });
     expect(
-      (await request(a.sessionToken, '/v1/progress?month=2026-13&timeZone=UTC'))
+      (await request(a.sessionToken, '/v1/progress/calendar?month=2026-13'))
         .statusCode,
     ).toBe(400);
     expect(
-      (await request(a.sessionToken, '/v1/progress/days/2026-02-30'))
+      (await request(a.sessionToken, '/v1/attempts?date=2026-02-30'))
         .statusCode,
     ).toBe(400);
     access = 'unpaid';
     expect(
-      (await request(a.sessionToken, '/v1/progress?month=2026-09&timeZone=UTC'))
+      (await request(a.sessionToken, '/v1/progress/summary?timeZone=UTC'))
         .statusCode,
     ).toBe(403);
     access = 'unavailable';
     expect(
-      (await request(a.sessionToken, '/v1/progress/days/2026-09-01'))
+      (await request(a.sessionToken, '/v1/attempts?date=2026-09-01'))
         .statusCode,
     ).toBe(503);
     access = 'verified';

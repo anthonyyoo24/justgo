@@ -1,4 +1,4 @@
-import { calendarCells, completionTime, dayLabel, moveMonth } from './calendar';
+import { calendarCells, activityTime, dayLabel, moveMonth } from './calendar';
 
 it('navigates across year boundaries and makes Monday-first month grids without local date drift', () => {
   expect(moveMonth('2026-12', 1)).toBe('2027-01');
@@ -11,10 +11,8 @@ it('navigates across year boundaries and makes Monday-first month grids without 
 });
 
 it('formats a completion in its frozen time zone', () => {
-  expect(completionTime('2026-11-01T05:30:00Z', 'America/Toronto')).toBe(
+  expect(activityTime('2026-11-01T05:30:00Z', 'America/Toronto')).toBe(
     '1:30 AM',
   );
-  expect(completionTime('2026-11-01T05:30:00Z', 'Europe/London')).toBe(
-    '5:30 AM',
-  );
+  expect(activityTime('2026-11-01T05:30:00Z', 'Europe/London')).toBe('5:30 AM');
 });

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { Animated, Image, TextInput } from 'react-native';
-import { legacyProgressEntrySchema } from '@justgo/contracts';
+import type { ProgressEntry } from '../types';
 import { ProgressEntryRow } from './ProgressEntryRow';
 import { SlidingEntryDetails } from './SlidingEntryDetails';
 
@@ -9,17 +9,11 @@ import { SlidingEntryDetails } from './SlidingEntryDetails';
 jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
 jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
 
-const legacyEntry = {
+const savedEntry: ProgressEntry = {
   attemptId: '00000000-0000-4000-8000-000000000001',
-  completedAt: '2026-09-18T13:15:00.000Z',
+  startedAt: '2026-09-18T13:15:00.000Z',
   timeZone: 'America/Toronto',
-  cardId: 'ST-01',
-  venue: 'streets',
-  challengeId: 'hello',
-  revisionId: 'hello-v1',
-  levelId: 'level-1',
   instruction: 'Say hello to someone',
-  feelingVersion: 1,
   reflectionStatus: 'none',
   feeling: null,
   reflectionText: null,
@@ -30,7 +24,7 @@ it('opens Add from the title, ordinal, feeling and metadata with padded row cove
   const onToggle = jest.fn();
   const screen = render(
     <ProgressEntryRow
-      entry={legacyProgressEntrySchema.parse(legacyEntry)}
+      entry={savedEntry}
       index={0}
       expanded={false}
       onToggle={onToggle}
@@ -57,7 +51,7 @@ it('slides the editor from zero height using the saved-reflection motion and col
   } as unknown as ReturnType<typeof Animated.timing>);
   try {
     const props = {
-      entry: legacyProgressEntrySchema.parse(legacyEntry),
+      entry: savedEntry,
       index: 0,
       expanded: false,
       onToggle: jest.fn(),
@@ -122,7 +116,7 @@ it('premeasures a closed Add row without mounting an input, then starts its reve
   } as unknown as ReturnType<typeof Animated.parallel>);
   try {
     const props = {
-      entry: legacyProgressEntrySchema.parse(legacyEntry),
+      entry: savedEntry,
       index: 0,
       expanded: false,
       onToggle: jest.fn(),
@@ -171,7 +165,7 @@ it('shows and closes the editor immediately with reduced motion', () => {
   const timing = jest.spyOn(Animated, 'timing');
   try {
     const props = {
-      entry: legacyProgressEntrySchema.parse(legacyEntry),
+      entry: savedEntry,
       index: 0,
       onToggle: jest.fn(),
       onEdit: jest.fn(),
@@ -211,11 +205,11 @@ it('keeps Edit visible while resizing from the saved reflection height', () => {
   } as unknown as ReturnType<typeof Animated.timing>);
   try {
     const props = {
-      entry: legacyProgressEntrySchema.parse({
-        ...legacyEntry,
-        reflectionStatus: 'submitted',
+      entry: {
+        ...savedEntry,
+        reflectionStatus: 'submitted' as const,
         reflectionText: 'A saved reflection.',
-      }),
+      },
       index: 0,
       expanded: true,
       onToggle: jest.fn(),
@@ -262,7 +256,7 @@ it('keeps Edit visible while resizing from the saved reflection height', () => {
 it('keeps Cancel and its close icon stable if Add content is temporarily unavailable during a refresh', () => {
   const onToggle = jest.fn();
   const props = {
-    entry: legacyProgressEntrySchema.parse(legacyEntry),
+    entry: savedEntry,
     index: 0,
     expanded: false,
     onToggle,
@@ -313,16 +307,16 @@ it('keeps Cancel and its close icon stable if Add content is temporarily unavail
   ).toBeNull();
 });
 
-it.each([legacyEntry.completedAt, null])(
-  'aligns View/Hide without a leading pencil, retaining the Edit pencil (time: %s)',
-  (completedAt) => {
+it.each(['America/Toronto', 'Europe/London'])(
+  'aligns View/Hide without a leading pencil, retaining the Edit pencil (zone: %s)',
+  (timeZone) => {
     const props = {
-      entry: legacyProgressEntrySchema.parse({
-        ...legacyEntry,
-        completedAt,
-        reflectionStatus: 'submitted',
+      entry: {
+        ...savedEntry,
+        timeZone,
+        reflectionStatus: 'submitted' as const,
         reflectionText: 'A saved reflection.',
-      }),
+      },
       index: 0,
       onToggle: jest.fn(),
       onEdit: jest.fn(),
@@ -450,37 +444,15 @@ it('waits for a fresh editor measurement even when it matches the saved text hei
   }
 });
 
-it('preserves the completion time for an existing legacy history row', () => {
-  const screen = render(
-    <ProgressEntryRow
-      entry={legacyProgressEntrySchema.parse(legacyEntry)}
-      index={0}
-      expanded={false}
-      onToggle={jest.fn()}
-      reduceMotion
-    />,
-  );
-
-  expect(screen.getByText('9:15 AM')).toBeTruthy();
-  expect(
-    screen.getByLabelText(
-      'Rep 1. Say hello to someone. 9:15 AM. Feeling: Not recorded',
-    ),
-  ).toBeTruthy();
-});
-
-it.each([null, '2026-09-18T13:15:00.000Z'])(
-  'uses the activity timestamp when the completion timestamp is %s',
-  (completedAt) => {
+it.each([
+  ['America/Toronto', '9:15 AM'],
+  ['Europe/London', '2:15 PM'],
+])(
+  'shows the captured start in its display time zone (%s)',
+  (timeZone, time) => {
     const screen = render(
       <ProgressEntryRow
-        entry={legacyProgressEntrySchema.parse({
-          ...legacyEntry,
-          completedAt,
-          activityAt: '2026-09-18T12:05:00.000Z',
-          cardId: null,
-          revisionId: null,
-        })}
+        entry={{ ...savedEntry, timeZone: timeZone! }}
         index={0}
         expanded={false}
         onToggle={jest.fn()}
@@ -488,28 +460,25 @@ it.each([null, '2026-09-18T13:15:00.000Z'])(
       />,
     );
 
-    expect(screen.getByText('8:05 AM')).toBeTruthy();
-    expect(screen.queryByText('9:15 AM')).toBeNull();
+    expect(screen.getByText(time!)).toBeTruthy();
     expect(
       screen.getByLabelText(
-        'Rep 1. Say hello to someone. 8:05 AM. Feeling: Not recorded',
+        `Rep 1. Say hello to someone. ${time}. Feeling: Not recorded`,
       ),
     ).toBeTruthy();
   },
 );
 
-it('omits unknown time without hiding the entry or its reflection action', () => {
+it('uses the captured start time when displaying saved reflection controls', () => {
   const onToggle = jest.fn();
   const screen = render(
     <ProgressEntryRow
-      entry={legacyProgressEntrySchema.parse({
-        ...legacyEntry,
-        completedAt: null,
-        cardId: null,
-        revisionId: null,
-        reflectionStatus: 'submitted',
+      entry={{
+        ...savedEntry,
+        startedAt: '2026-09-18T12:05:00.000Z',
+        reflectionStatus: 'submitted' as const,
         reflectionText: 'A small step.',
-      })}
+      }}
       index={0}
       expanded={false}
       onToggle={onToggle}
@@ -517,9 +486,13 @@ it('omits unknown time without hiding the entry or its reflection action', () =>
     />,
   );
 
-  expect(screen.queryByTestId('entry-clock-icon')).toBeNull();
+  expect(
+    screen.getByTestId('entry-clock-icon', { includeHiddenElements: true }),
+  ).toBeTruthy();
+  expect(screen.getByText('8:05 AM')).toBeTruthy();
+  expect(screen.queryByText('9:15 AM')).toBeNull();
   const row = screen.getByRole('button', {
-    name: 'Rep 1. Say hello to someone. Feeling: Not recorded. View Reflection',
+    name: 'Rep 1. Say hello to someone. 8:05 AM. Feeling: Not recorded. View Reflection',
   });
   fireEvent.press(row);
   expect(onToggle).toHaveBeenCalledTimes(1);

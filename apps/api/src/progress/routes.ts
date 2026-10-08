@@ -1,19 +1,13 @@
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import {
-  calendarDateSchema,
   progressSummaryQuerySchema,
   progressSummarySchema,
   progressCalendarQuerySchema,
   progressCalendarSchema,
-  legacyProgressDayQuerySchema,
-  legacyProgressDayResponseSchema,
-  legacyProgressQuerySchema,
-  legacyProgressResponseSchema,
 } from '@justgo/contracts';
 import { bearer } from '../identity/routes.js';
 import { IdentityError } from '../identity/service.js';
-import type { ProgressService } from './service.js';
 import type { ProgressResources } from './resources.js';
 
 const parse = <T>(schema: z.ZodType<T>, value: unknown): T => {
@@ -23,7 +17,6 @@ const parse = <T>(schema: z.ZodType<T>, value: unknown): T => {
 };
 export function progressRoutes(
   app: FastifyInstance,
-  service: ProgressService,
   resources: ProgressResources,
 ) {
   app.get('/summary', async (req) =>
@@ -42,20 +35,4 @@ export function progressRoutes(
       ),
     ),
   );
-  app.get('/', async (req) => {
-    const { month, timeZone } = parse(legacyProgressQuerySchema, req.query);
-    return legacyProgressResponseSchema.parse(
-      await service.summary(bearer(req), month, timeZone),
-    );
-  });
-  app.get('/days/:date', async (req) => {
-    const { date } = parse(
-      z.object({ date: calendarDateSchema }).strict(),
-      req.params,
-    );
-    const { limit, cursor } = parse(legacyProgressDayQuerySchema, req.query);
-    return legacyProgressDayResponseSchema.parse(
-      await service.day(bearer(req), date, limit, cursor),
-    );
-  });
 }

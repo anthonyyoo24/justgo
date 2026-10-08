@@ -5,7 +5,7 @@ import { feelingChoices, type FeelingCode } from '@justgo/contracts';
 import type { ProgressEntry } from '../types';
 import { colors, fontFamilies, typography } from '../../../theme/tokens';
 import { FeelingFace } from '../../reflections/FeelingFace';
-import { completionTime } from '../calendar';
+import { activityTime } from '../calendar';
 import { SlidingEntryDetails } from './SlidingEntryDetails';
 import { DayReflectionPlaceholder } from './DayReflectionEditor';
 const entryMetaInk = '#5F7391';
@@ -122,15 +122,14 @@ export function ProgressEntryRow({
           : 'Add reflection';
   const actionable = !!reflection || !!onEdit;
   const Row = actionable ? Pressable : View;
-  const activityAt = entry.activityAt ?? entry.completedAt;
-  const time = activityAt ? completionTime(activityAt, entry.timeZone) : null;
+  const time = activityTime(entry.startedAt, entry.timeZone);
 
   return (
     <View style={styles.entry}>
       <Row
         accessible
         accessibilityRole={actionable ? 'button' : undefined}
-        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}.${time ? ` ${time}.` : ''} Feeling: ${feelingLabel(feeling)}${actionable ? `. ${action}` : ''}`}
+        accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}. ${time}. Feeling: ${feelingLabel(feeling)}${actionable ? `. ${action}` : ''}`}
         accessibilityState={actionable ? { expanded: opened } : undefined}
         onPress={reflection || editing ? onToggle : onEdit}
         hitSlop={actionable ? { top: 12, bottom: 12 } : undefined}
@@ -145,15 +144,13 @@ export function ProgressEntryRow({
             {entry.instruction}
           </Text>
           <View testID="entry-metadata-row" style={styles.entryMeta}>
-            {time && (
-              <View style={styles.entryMetaItem}>
-                <EntryClockIcon />
-                <Text style={styles.entryMetaText}>{time}</Text>
-              </View>
-            )}
+            <View style={styles.entryMetaItem}>
+              <EntryClockIcon />
+              <Text style={styles.entryMetaText}>{time}</Text>
+            </View>
             {actionable && (
               <View testID="reflection-action" style={styles.reflectionAction}>
-                {time && <View style={styles.reflectionDivider} aria-hidden />}
+                <View style={styles.reflectionDivider} aria-hidden />
                 {!reflection && (
                   <Svg
                     testID={

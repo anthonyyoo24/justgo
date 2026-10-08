@@ -18,7 +18,6 @@ export class AttemptPatchService {
     return this.identity.withSession(token, async (tx, session) => {
       const row = await readAttempt(tx, session.userId, id);
       if (!row) throw new IdentityError('NOT_FOUND', 404);
-      if (row.status !== 'completed') throw new IdentityError('CONFLICT', 409);
       const normalized = {
         expectedReflectionRevision: input.expectedReflectionRevision,
         reflection: {

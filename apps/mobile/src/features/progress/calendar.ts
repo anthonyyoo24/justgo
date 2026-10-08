@@ -39,7 +39,7 @@ export function dayLabel(date: string) {
   }).format(new Date(Date.UTC(year!, month! - 1, day)));
 }
 
-export function completionTime(iso: string, timeZone: string) {
+export function activityTime(iso: string, timeZone: string) {
   return new Intl.DateTimeFormat('en', {
     hour: 'numeric',
     minute: '2-digit',

@@ -61,12 +61,12 @@ export class ProgressResources {
           preceding_run: number;
           best_before_month: number;
         }>(sql`
-        with days as (select coalesce(activity_date,completion_date)::date as day from justgo.attempts where user_id=${userId} and status='completed' group by coalesce(activity_date,completion_date)),
+        with days as (select activity_date::date as day from justgo.attempts where user_id=${userId} group by activity_date),
         islands as (select day,day-row_number() over(order by day)::integer as run_id from days),
         runs as (select max(day) as last_day,count(*)::integer as length from islands group by run_id),
         current_runs as (select max(day) as last_day,count(*)::integer as length from islands where day<=${today}::date group by run_id),
         previous_runs as (select max(day) as last_day,count(*)::integer as length from islands where day<${first}::date group by run_id)
-        select (select count(*)::integer from justgo.attempts where user_id=${userId} and status='completed') as total_reps,
+        select (select count(*)::integer from justgo.attempts where user_id=${userId}) as total_reps,
         coalesce((select max(length) from current_runs where last_day in (${today}::date,${today}::date-1)),0)::integer as current_streak,
         coalesce((select max(length) from runs),0)::integer as best_streak,
         coalesce((select max(length) from previous_runs where last_day=${first}::date-1),0)::integer as preceding_run,
@@ -92,9 +92,9 @@ export class ProgressResources {
         await tx.execute<{
           date: string;
           reps: number;
-        }>(sql`select coalesce(activity_date,completion_date) as date,count(*)::integer as reps from justgo.attempts
-        where user_id=${userId} and status='completed' and coalesce(activity_date,completion_date)>=${month + '-01'} and coalesce(activity_date,completion_date)<to_char(${month + '-01'}::date+interval '1 month','YYYY-MM-DD')
-        group by coalesce(activity_date,completion_date) order by coalesce(activity_date,completion_date)`)
+        }>(sql`select activity_date as date,count(*)::integer as reps from justgo.attempts
+        where user_id=${userId} and activity_date>=${month + '-01'} and activity_date<to_char(${month + '-01'}::date+interval '1 month','YYYY-MM-DD')
+        group by activity_date order by activity_date`)
       ).rows;
       return {
         month,
@@ -109,11 +109,11 @@ export class ProgressResources {
     return this.run(token, async (tx, userId): Promise<ProgressDayResponse> => {
       const total = (
         await tx.execute<{ count: number }>(
-          sql`select count(*)::integer as count from justgo.attempts where user_id=${userId} and status='completed' and coalesce(activity_date,completion_date)=${date}`,
+          sql`select count(*)::integer as count from justgo.attempts where user_id=${userId} and activity_date=${date}`,
         )
       ).rows[0]!.count;
       const rows = (
-        await tx.execute<AttemptRow>(sql`${attemptQuery} where a.user_id=${userId} and a.status='completed' and coalesce(a.activity_date,a.completion_date)=${date}
+        await tx.execute<AttemptRow>(sql`${attemptQuery} where a.user_id=${userId} and a.activity_date=${date}
         ${cursor ? sql`and (a.started_at,a.id)>(${cursor[1]}::timestamptz,${cursor[2]}::uuid)` : sql``}
         order by a.started_at,a.id limit ${limit + 1}`)
       ).rows;
