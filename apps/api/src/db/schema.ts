@@ -10,7 +10,6 @@ import {
   primaryKey,
   foreignKey,
   check,
-  jsonb,
   pgPolicy,
   boolean,
 } from 'drizzle-orm/pg-core';
@@ -197,7 +196,7 @@ export const rateBuckets = appSchema
   )
   .enableRLS();
 
-// Phase 07.1 retains legacy revision/queue columns until the coordinated cutover.
+// Catalog wording is canonical; historical attempts retain their recorded references.
 export const levels = appSchema
   .table(
     'levels',
@@ -238,27 +237,6 @@ export const challenges = appSchema
     ],
   )
   .enableRLS();
-export const challengeRevisions = appSchema
-  .table(
-    'challenge_revisions',
-    {
-      id: text().primaryKey(),
-      challengeId: text('challenge_id')
-        .notNull()
-        .references(() => challenges.id),
-      levelId: text('level_id')
-        .notNull()
-        .references(() => levels.id),
-      text: text().notNull(),
-      subtext: text(),
-      durationSeconds: integer('duration_seconds').notNull(),
-    },
-    (t) => [
-      check('positive_duration', sql`${t.durationSeconds} > 0`),
-      ...catalogPolicies(),
-    ],
-  )
-  .enableRLS();
 export const venueCards = appSchema
   .table(
     'venue_cards',
@@ -267,9 +245,6 @@ export const venueCards = appSchema
       venueId: text('venue_id')
         .notNull()
         .references(() => venues.id),
-      revisionId: text('revision_id')
-        .notNull()
-        .references(() => challengeRevisions.id),
       position: integer().notNull(),
       challengeId: text('challenge_id')
         .notNull()
@@ -283,62 +258,6 @@ export const venueCards = appSchema
     ],
   )
   .enableRLS();
-export const challengePreferences = appSchema
-  .table(
-    'challenge_preferences',
-    {
-      userId: uuid('user_id')
-        .primaryKey()
-        .references(() => users.id),
-      venueId: text('venue_id')
-        .notNull()
-        .references(() => venues.id),
-    },
-    () => ownerPolicies(),
-  )
-  .enableRLS();
-export const venueQueues = appSchema
-  .table(
-    'venue_queues',
-    {
-      userId: uuid('user_id')
-        .notNull()
-        .references(() => users.id),
-      venueId: text('venue_id')
-        .notNull()
-        .references(() => venues.id),
-      version: integer().notNull().default(0),
-      cardIds: text('card_ids').array().notNull(),
-    },
-    (t) => [
-      primaryKey({ columns: [t.userId, t.venueId] }),
-      check('queue_version_positive', sql`${t.version} >= 0`),
-      ...ownerPolicies(),
-    ],
-  )
-  .enableRLS();
-export const deckSkips = appSchema
-  .table(
-    'deck_skips',
-    {
-      userId: uuid('user_id')
-        .notNull()
-        .references(() => users.id),
-      id: uuid().notNull(),
-      venueId: text('venue_id')
-        .notNull()
-        .references(() => venues.id),
-      cardId: text('card_id')
-        .notNull()
-        .references(() => venueCards.id),
-      revisionId: text('revision_id')
-        .notNull()
-        .references(() => challengeRevisions.id),
-      queueVersion: integer('queue_version').notNull(),
-    },
-    (t) => [primaryKey({ columns: [t.userId, t.id] }), ...ownerPolicies()],
-  )
-  .enableRLS();
 export const attempts = appSchema
   .table(
     'attempts',
@@ -347,25 +266,17 @@ export const attempts = appSchema
         .notNull()
         .references(() => users.id),
       id: uuid().notNull(),
-      cardId: text('card_id').references(() => venueCards.id),
       venueId: text('venue_id')
         .notNull()
         .references(() => venues.id),
       challengeId: text('challenge_id')
         .notNull()
         .references(() => challenges.id),
-      revisionId: text('revision_id').references(() => challengeRevisions.id),
       levelId: text('level_id')
         .notNull()
         .references(() => levels.id),
-      queueVersion: integer('queue_version'),
-      status: text().notNull().default('active'),
       startedAt: time('started_at').notNull(),
-      deadlineAt: time('deadline_at'),
-      endedAt: time('ended_at'),
-      completionDate: text('completion_date'),
-      timeZone: text('time_zone'),
-      activityDate: text('activity_date'),
+      activityDate: text('activity_date').notNull(),
       startTimeZone: text('start_time_zone'),
       legacyDisplayTimeZone: text('legacy_display_time_zone'),
       reflectionFeeling: text('reflection_feeling'),
@@ -374,38 +285,24 @@ export const attempts = appSchema
     },
     (t) => [
       primaryKey({ columns: [t.userId, t.id] }),
-      uniqueIndex('one_active_attempt')
-        .on(t.userId)
-        .where(sql`${t.status} = 'active'`),
-      index('attempt_owner_end_idx').on(t.userId, t.endedAt),
-      index('attempt_history_day_idx')
-        .on(t.userId, t.completionDate, t.endedAt, t.id)
-        .where(sql`${t.status} = 'completed'`),
-      index('attempt_canonical_history_idx')
-        .on(
-          t.userId,
-          sql`coalesce(${t.activityDate}, ${t.completionDate})`,
-          t.startedAt,
-          t.id,
-        )
-        .where(sql`${t.status} = 'completed'`),
+      index('attempt_history_day_idx').on(
+        t.userId,
+        t.activityDate,
+        t.startedAt,
+        t.id,
+      ),
       index('attempt_challenge_idx').on(t.challengeId),
       check(
-        'attempt_status',
-        sql`${t.status} in ('active','completed','given_up')`,
-      ),
-      check(
-        'attempt_outcome_fields',
-        sql`(${t.startTimeZone} is null and ${t.cardId} is not null and ${t.revisionId} is not null and ${t.queueVersion} is not null and ${t.deadlineAt} is not null and ((${t.status} = 'active' and ${t.endedAt} is null and ${t.timeZone} is null and ${t.completionDate} is null) or (${t.status} <> 'active' and ${t.endedAt} is not null and ${t.endedAt} >= ${t.startedAt} and ${t.timeZone} is not null and ((${t.status} = 'completed' and ${t.completionDate} is not null) or (${t.status} = 'given_up' and ${t.completionDate} is null))))) or (${t.startTimeZone} is not null and ${t.status} = 'completed' and ${t.activityDate} is not null and ${t.cardId} is null and ${t.revisionId} is null and ${t.queueVersion} is null and ${t.deadlineAt} is null and ${t.endedAt} is null and ${t.completionDate} is null and ${t.timeZone} is null and ${t.legacyDisplayTimeZone} is null)`,
-      ),
-      check('attempt_deadline', sql`${t.deadlineAt} > ${t.startedAt}`),
-      check(
         'attempt_activity_date',
-        sql`${t.activityDate} is null or (${t.status} = 'completed' and ${t.activityDate} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$')`,
+        sql`${t.activityDate} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'`,
+      ),
+      check(
+        'attempt_time_zone_attribution',
+        sql`(${t.startTimeZone} is not null and ${t.legacyDisplayTimeZone} is null) or (${t.startTimeZone} is null and ${t.legacyDisplayTimeZone} is not null)`,
       ),
       check(
         'attempt_reflection_content',
-        sql`(${t.reflectionRevision} = 0 and ${t.reflectionFeeling} is null and ${t.reflectionText} is null) or (${t.status} = 'completed' and ${t.reflectionRevision} > 0 and (${t.reflectionFeeling} is not null or ${t.reflectionText} is not null))`,
+        sql`(${t.reflectionRevision} = 0 and ${t.reflectionFeeling} is null and ${t.reflectionText} is null) or (${t.reflectionRevision} > 0 and (${t.reflectionFeeling} is not null or ${t.reflectionText} is not null))`,
       ),
       check(
         'attempt_reflection_feeling',
@@ -440,92 +337,6 @@ export const attemptPatchReceipts = appSchema
       index('attempt_patch_receipts_attempt_idx').on(t.userId, t.attemptId),
       check('attempt_patch_digest', sql`${t.inputDigest} ~ '^[a-f0-9]{64}$'`),
       check('attempt_patch_revision', sql`${t.appliedRevision} > 0`),
-      ...ownerPolicies(),
-    ],
-  )
-  .enableRLS();
-
-export const reflections = appSchema
-  .table(
-    'reflections',
-    {
-      userId: uuid('user_id').notNull(),
-      attemptId: uuid('attempt_id').notNull(),
-      revision: integer().notNull().default(1),
-      status: text().notNull(),
-      feelingVersion: integer('feeling_version').notNull().default(1),
-      feeling: text(),
-      reflectionText: text('reflection_text'),
-      inputMethod: text('input_method'),
-      updatedAt: time('updated_at').notNull().defaultNow(),
-    },
-    (t) => [
-      primaryKey({
-        name: 'reflections_pkey',
-        columns: [t.userId, t.attemptId],
-      }),
-      foreignKey({
-        name: 'reflections_user_id_attempt_id_fkey',
-        columns: [t.userId, t.attemptId],
-        foreignColumns: [attempts.userId, attempts.id],
-      }),
-      check('reflection_revision_positive', sql`${t.revision} > 0`),
-      check('reflection_scale_version', sql`${t.feelingVersion} = 1`),
-      check(
-        'reflection_status',
-        sql`${t.status} in ('draft','submitted','skipped')`,
-      ),
-      check(
-        'reflection_feeling',
-        sql`${t.feeling} is null or ${t.feeling} in ('a_lot_worse','a_little_worse','about_the_same','a_little_better','a_lot_better')`,
-      ),
-      check(
-        'reflection_input_method',
-        sql`(${t.reflectionText} is null and ${t.inputMethod} is null) or (${t.reflectionText} is not null and ${t.inputMethod} = 'typed')`,
-      ),
-      check(
-        'reflection_terminal_content',
-        sql`(${t.status} = 'draft') or (${t.status} = 'skipped' and ${t.feeling} is null and ${t.reflectionText} is null) or (${t.status} = 'submitted' and (${t.feeling} is not null or ${t.reflectionText} is not null))`,
-      ),
-      check(
-        'reflection_text_length',
-        sql`${t.reflectionText} is null or char_length(${t.reflectionText}) <= 10000`,
-      ),
-      ...ownerPolicies(),
-    ],
-  )
-  .enableRLS();
-
-export const reflectionActions = appSchema
-  .table(
-    'reflection_actions',
-    {
-      userId: uuid('user_id').notNull(),
-      id: uuid().notNull(),
-      attemptId: uuid('attempt_id').notNull(),
-      action: text().notNull(),
-      inputDigest: text('input_digest').notNull(),
-      response: jsonb().notNull(),
-    },
-    (t) => [
-      primaryKey({
-        name: 'reflection_actions_pkey',
-        columns: [t.userId, t.id],
-      }),
-      foreignKey({
-        name: 'reflection_actions_user_id_attempt_id_fkey',
-        columns: [t.userId, t.attemptId],
-        foreignColumns: [attempts.userId, attempts.id],
-      }),
-      check(
-        'reflection_action_kind',
-        sql`${t.action} in ('draft','final','skip')`,
-      ),
-      check(
-        'reflection_action_digest',
-        sql`${t.inputDigest} ~ '^[a-f0-9]{64}$'`,
-      ),
-      index('reflection_actions_attempt_idx').on(t.userId, t.attemptId),
       ...ownerPolicies(),
     ],
   )

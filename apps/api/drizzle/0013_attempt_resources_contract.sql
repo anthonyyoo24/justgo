@@ -1,10 +1,10 @@
--- Proposed Phase 07.5 contraction. NOT a registered migration or rollout command.
--- Only the disposable migration rehearsal enables this guard. Final cutover
--- needs the accepted 07.2–07.4 callers and a fresh reviewed migration/snapshot.
-DO $$ BEGIN
-  IF current_database() <> 'justgo_test' OR current_setting('justgo.phase07_rehearsal', true) IS DISTINCT FROM 'on'
-  THEN RAISE EXCEPTION 'Contraction rehearsal requires its disposable fixture'; END IF;
-END $$;
+-- Phase 07.5 final protocol/schema cutover. Deploy only while old API/mobile
+-- writers are retired or blocked. Take a protected restorable backup first.
+-- The transaction lock waits for in-flight writers and fences both protocols
+-- during the final normalization/backfill/preservation comparison and removal.
+LOCK TABLE justgo.attempts, justgo.reflections, justgo.reflection_actions,
+  justgo.deck_skips, justgo.venue_queues, justgo.challenge_preferences,
+  justgo.venue_cards, justgo.challenge_revisions IN ACCESS EXCLUSIVE MODE;
 
 -- Repeat the 0012 normalization/preflight for any late legacy records before
 -- comparing representations. Preserve every nonblank byte and all receipts.
@@ -36,8 +36,13 @@ UPDATE justgo.attempts a SET reflection_feeling = r.feeling,
 FROM justgo.reflections r WHERE (a.user_id, a.id) = (r.user_id, r.attempt_id)
   AND a.status = 'completed' AND r.status = 'submitted' AND r.revision > a.reflection_revision;
 DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM justgo.attempts WHERE status = 'completed' AND activity_date IS NULL)
-  THEN RAISE EXCEPTION 'Missing historical date'; END IF;
+  IF EXISTS (
+    SELECT 1 FROM justgo.attempts WHERE status = 'completed'
+      AND (activity_date IS NULL OR
+        (start_time_zone IS NULL AND
+          (activity_date IS DISTINCT FROM completion_date OR
+           legacy_display_time_zone IS DISTINCT FROM time_zone)))
+  ) THEN RAISE EXCEPTION 'Historical date/zone comparison failed'; END IF;
   IF EXISTS (
     SELECT 1 FROM justgo.reflections r JOIN justgo.attempts a ON (a.user_id, a.id) = (r.user_id, r.attempt_id)
     WHERE r.status = 'submitted' AND (a.status <> 'completed' OR a.reflection_revision < r.revision OR
@@ -60,10 +65,17 @@ ALTER TABLE justgo.attempts DROP COLUMN card_id, DROP COLUMN revision_id,
   DROP COLUMN queue_version, DROP COLUMN status, DROP COLUMN deadline_at,
   DROP COLUMN ended_at, DROP COLUMN completion_date, DROP COLUMN time_zone;
 ALTER TABLE justgo.attempts ALTER COLUMN activity_date SET NOT NULL;
+ALTER TABLE justgo.attempts ADD CONSTRAINT attempt_activity_date
+  CHECK (activity_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+ALTER TABLE justgo.attempts ADD CONSTRAINT attempt_time_zone_attribution CHECK (
+  (start_time_zone IS NOT NULL AND legacy_display_time_zone IS NULL)
+  OR (start_time_zone IS NULL AND legacy_display_time_zone IS NOT NULL)
+);
 ALTER TABLE justgo.attempts ADD CONSTRAINT attempt_reflection_content CHECK (
   (reflection_revision = 0 AND reflection_feeling IS NULL AND reflection_text IS NULL)
   OR (reflection_revision > 0 AND (reflection_feeling IS NOT NULL OR reflection_text IS NOT NULL))
 );
 ALTER TABLE justgo.venue_cards DROP COLUMN revision_id;
 DROP TABLE justgo.challenge_revisions;
+DROP FUNCTION justgo.immutable_revision();
 CREATE INDEX attempt_history_day_idx ON justgo.attempts (user_id, activity_date, started_at, id);

@@ -5,20 +5,26 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/tokens';
 import { challengeScale } from './challenge-design';
 
+/**
+ * Lay out the challenge header and content with caller-controlled safe-area edges.
+ * Pass an empty edge list when the parent already owns all inset padding.
+ */
 export function ChallengeLayout({
   title,
   children,
   insetTop = true,
+  safeAreaEdges,
   fillContent = false,
   showSettings = true,
 }: PropsWithChildren<{
   title: string;
   insetTop?: boolean;
+  safeAreaEdges?: readonly Edge[];
   fillContent?: boolean;
   showSettings?: boolean;
 }>) {
@@ -28,7 +34,10 @@ export function ChallengeLayout({
     <SafeAreaView
       testID="challenge-screen-surface"
       style={styles.safe}
-      edges={insetTop ? ['top', 'left', 'right'] : ['left', 'right']}
+      edges={
+        safeAreaEdges ??
+        (insetTop ? ['top', 'left', 'right'] : ['left', 'right'])
+      }
     >
       <ScrollView
         contentContainerStyle={styles.scroll}

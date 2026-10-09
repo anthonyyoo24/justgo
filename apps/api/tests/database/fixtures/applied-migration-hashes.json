@@ -8,5 +8,8 @@
   "0006_bc10_copy.sql": "9f374eed1411a9bb9cf07f74b3dda3be361068836a950b68878ba18d2df0c786",
   "0007_reflections.sql": "df1ff21eda4d1e8ce0214193188e1a5f1fc93d67aa172e4c69430d0f178b64f1",
   "0008_progress_history.sql": "e975fecd23024c1a76ae5f72d3bbe46c5eee335e5c3291aab53c50f98f550af7",
-  "0009_drop_attempt_elapsed_seconds.sql": "54baf2771f02af68122da39648a8a3a4c3096e0ab8d510606624236d7f20c7fc"
+  "0009_drop_attempt_elapsed_seconds.sql": "54baf2771f02af68122da39648a8a3a4c3096e0ab8d510606624236d7f20c7fc",
+  "0010_attempt_resources_expand.sql": "edfef9ab25cc553510209a5a2545300bd7d051142c622ed64b8c9d7341eccf2f",
+  "0011_compatibility_history_index.sql": "5bdafd3512ad747e6f53cf53190ad0345f5c46c16a0c6bca8f10256745331b68",
+  "0012_normalize_reflection_whitespace.sql": "5aa3c19bc38a755b72e3dbd98ffbfd71e1e7e9fd66e11ed1e982e50815f297e1"
 }

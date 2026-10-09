@@ -6,6 +6,13 @@ import { IdentityError, IdentityService } from '../src/identity/service.js';
 
 const authorization = `Bearer ${'a'.repeat(64)}`;
 const privateValue = 'private-parser-fixture';
+const completion = {
+  id: '00000000-0000-4000-8000-000000000001',
+  challengeId: 'st-01',
+  venue: 'streets',
+  startedAt: '2026-10-01T12:00:00Z',
+  startTimeZone: 'UTC',
+};
 
 function setup() {
   const db = drizzle.mock();
@@ -57,7 +64,7 @@ describe('versioned API request errors', () => {
       try {
         const response = await app.inject({
           method: 'POST',
-          url: '/v1/challenges/venue',
+          url: '/v1/attempts',
           headers: {
             authorization,
             'content-type': contentType,
@@ -86,8 +93,8 @@ describe('versioned API request errors', () => {
     try {
       const response = await app.inject({
         method: 'POST',
-        url: '/v1/challenges/venue',
-        payload: { venue: 'cafe' },
+        url: '/v1/attempts',
+        payload: completion,
       });
       expect(response.statusCode).toBe(401);
       expect(identityErrorSchema.parse(response.json())).toEqual({
@@ -143,9 +150,9 @@ describe('versioned API request errors', () => {
     try {
       const response = await app.inject({
         method: 'POST',
-        url: '/v1/challenges/venue',
+        url: '/v1/attempts',
         headers: { authorization },
-        payload: { venue: 'cafe' },
+        payload: completion,
       });
       expect(response.statusCode).toBe(status);
       expect(identityErrorSchema.parse(response.json())).toEqual({

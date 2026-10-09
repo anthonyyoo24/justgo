@@ -1,0 +1,1296 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "justgo.attempt_patch_receipts": {
+      "name": "attempt_patch_receipts",
+      "schema": "justgo",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempt_id": {
+          "name": "attempt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "input_digest": {
+          "name": "input_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "applied_revision": {
+          "name": "applied_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "attempt_patch_receipts_attempt_idx": {
+          "name": "attempt_patch_receipts_attempt_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "attempt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "attempt_patch_receipts_attempt_fk": {
+          "name": "attempt_patch_receipts_attempt_fk",
+          "tableFrom": "attempt_patch_receipts",
+          "tableTo": "attempts",
+          "schemaTo": "justgo",
+          "columnsFrom": ["user_id", "attempt_id"],
+          "columnsTo": ["user_id", "id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "attempt_patch_receipts_user_id_id_pk": {
+          "name": "attempt_patch_receipts_user_id_id_pk",
+          "columns": ["user_id", "id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "owner_access": {
+          "name": "owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_runtime"],
+          "using": "user_id = (select justgo.current_user_id())",
+          "withCheck": "user_id = (select justgo.current_user_id())"
+        }
+      },
+      "checkConstraints": {
+        "attempt_patch_digest": {
+          "name": "attempt_patch_digest",
+          "value": "\"justgo\".\"attempt_patch_receipts\".\"input_digest\" ~ '^[a-f0-9]{64}$'"
+        },
+        "attempt_patch_revision": {
+          "name": "attempt_patch_revision",
+          "value": "\"justgo\".\"attempt_patch_receipts\".\"applied_revision\" > 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "justgo.attempts": {
+      "name": "attempts",
+      "schema": "justgo",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "venue_id": {
+          "name": "venue_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "challenge_id": {
+          "name": "challenge_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level_id": {
+          "name": "level_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activity_date": {
+          "name": "activity_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_time_zone": {
+          "name": "start_time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "legacy_display_time_zone": {
+          "name": "legacy_display_time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reflection_feeling": {
+          "name": "reflection_feeling",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reflection_text": {
+          "name": "reflection_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reflection_revision": {
+          "name": "reflection_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "attempt_history_day_idx": {
+          "name": "attempt_history_day_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "activity_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "attempt_challenge_idx": {
+          "name": "attempt_challenge_idx",
+          "columns": [
+            {
+              "expression": "challenge_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "attempts_user_id_users_id_fk": {
+          "name": "attempts_user_id_users_id_fk",
+          "tableFrom": "attempts",
+          "tableTo": "users",
+          "schemaTo": "justgo",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "attempts_venue_id_venues_id_fk": {
+          "name": "attempts_venue_id_venues_id_fk",
+          "tableFrom": "attempts",
+          "tableTo": "venues",
+          "schemaTo": "justgo",
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "attempts_challenge_id_challenges_id_fk": {
+          "name": "attempts_challenge_id_challenges_id_fk",
+          "tableFrom": "attempts",
+          "tableTo": "challenges",
+          "schemaTo": "justgo",
+          "columnsFrom": ["challenge_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "attempts_level_id_levels_id_fk": {
+          "name": "attempts_level_id_levels_id_fk",
+          "tableFrom": "attempts",
+          "tableTo": "levels",
+          "schemaTo": "justgo",
+          "columnsFrom": ["level_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "attempts_user_id_id_pk": {
+          "name": "attempts_user_id_id_pk",
+          "columns": ["user_id", "id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "owner_access": {
+          "name": "owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_runtime"],
+          "using": "user_id = (select justgo.current_user_id())",
+          "withCheck": "user_id = (select justgo.current_user_id())"
+        }
+      },
+      "checkConstraints": {
+        "attempt_activity_date": {
+          "name": "attempt_activity_date",
+          "value": "\"justgo\".\"attempts\".\"activity_date\" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+        },
+        "attempt_time_zone_attribution": {
+          "name": "attempt_time_zone_attribution",
+          "value": "(\"justgo\".\"attempts\".\"start_time_zone\" is not null and \"justgo\".\"attempts\".\"legacy_display_time_zone\" is null) or (\"justgo\".\"attempts\".\"start_time_zone\" is null and \"justgo\".\"attempts\".\"legacy_display_time_zone\" is not null)"
+        },
+        "attempt_reflection_content": {
+          "name": "attempt_reflection_content",
+          "value": "(\"justgo\".\"attempts\".\"reflection_revision\" = 0 and \"justgo\".\"attempts\".\"reflection_feeling\" is null and \"justgo\".\"attempts\".\"reflection_text\" is null) or (\"justgo\".\"attempts\".\"reflection_revision\" > 0 and (\"justgo\".\"attempts\".\"reflection_feeling\" is not null or \"justgo\".\"attempts\".\"reflection_text\" is not null))"
+        },
+        "attempt_reflection_feeling": {
+          "name": "attempt_reflection_feeling",
+          "value": "\"justgo\".\"attempts\".\"reflection_feeling\" is null or \"justgo\".\"attempts\".\"reflection_feeling\" in ('a_lot_worse','a_little_worse','about_the_same','a_little_better','a_lot_better')"
+        },
+        "attempt_reflection_text_length": {
+          "name": "attempt_reflection_text_length",
+          "value": "\"justgo\".\"attempts\".\"reflection_text\" is null or char_length(\"justgo\".\"attempts\".\"reflection_text\") <= 10000"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "justgo.challenges": {
+      "name": "challenges",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "level_id": {
+          "name": "level_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subtext": {
+          "name": "subtext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {
+        "challenges_level_idx": {
+          "name": "challenges_level_idx",
+          "columns": [
+            {
+              "expression": "level_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "challenges_level_id_levels_id_fk": {
+          "name": "challenges_level_id_levels_id_fk",
+          "tableFrom": "challenges",
+          "tableTo": "levels",
+          "schemaTo": "justgo",
+          "columnsFrom": ["level_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "catalog_read": {
+          "name": "catalog_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["justgo_runtime"],
+          "using": "(select justgo.current_user_id()) is not null"
+        }
+      },
+      "checkConstraints": {
+        "challenge_positive_duration": {
+          "name": "challenge_positive_duration",
+          "value": "\"justgo\".\"challenges\".\"duration_seconds\" > 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "justgo.recovery_credentials": {
+      "name": "recovery_credentials",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "digest": {
+          "name": "digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "credentials_digest_uq": {
+          "name": "credentials_digest_uq",
+          "columns": [
+            {
+              "expression": "digest",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "credentials_owner_idx": {
+          "name": "credentials_owner_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "recovery_credentials_user_id_users_id_fk": {
+          "name": "recovery_credentials_user_id_users_id_fk",
+          "tableFrom": "recovery_credentials",
+          "tableTo": "users",
+          "schemaTo": "justgo",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "identity_read": {
+          "name": "identity_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["justgo_runtime"],
+          "using": "user_id = (select justgo.current_user_id()) OR digest = (select current_setting('app.credential_digest',true))"
+        },
+        "owner_insert": {
+          "name": "owner_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["justgo_runtime"],
+          "withCheck": "user_id = (select justgo.current_user_id())"
+        },
+        "owner_update": {
+          "name": "owner_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["justgo_runtime"],
+          "using": "user_id = (select justgo.current_user_id())",
+          "withCheck": "user_id = (select justgo.current_user_id())"
+        }
+      },
+      "checkConstraints": {
+        "credential_kind": {
+          "name": "credential_kind",
+          "value": "\"justgo\".\"recovery_credentials\".\"kind\" in ('sync', 'key')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "justgo.devices": {
+      "name": "devices",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "devices_user_id_users_id_fk": {
+          "name": "devices_user_id_users_id_fk",
+          "tableFrom": "devices",
+          "tableTo": "users",
+          "schemaTo": "justgo",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "devices_user_id_id_pk": {
+          "name": "devices_user_id_id_pk",
+          "columns": ["user_id", "id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "owner_access": {
+          "name": "owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_runtime"],
+          "using": "user_id = (select justgo.current_user_id())",
+          "withCheck": "user_id = (select justgo.current_user_id())"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "justgo.levels": {
+      "name": "levels",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "catalog_read": {
+          "name": "catalog_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["justgo_runtime"],
+          "using": "(select justgo.current_user_id()) is not null"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "justgo.identity_rate_buckets": {
+      "name": "identity_rate_buckets",
+      "schema": "justgo",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "window_start": {
+          "name": "window_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "identity_rate_window_idx": {
+          "name": "identity_rate_window_idx",
+          "columns": [
+            {
+              "expression": "window_start",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "owner_access": {
+          "name": "owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_runtime"],
+          "using": "key = (select current_setting('app.rate_key',true))",
+          "withCheck": "key = (select current_setting('app.rate_key',true))"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "justgo.device_sessions": {
+      "name": "device_sessions",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "device_id": {
+          "name": "device_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "digest": {
+          "name": "digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rotated_to": {
+          "name": "rotated_to",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sessions_digest_uq": {
+          "name": "sessions_digest_uq",
+          "columns": [
+            {
+              "expression": "digest",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sessions_owner_device_idx": {
+          "name": "sessions_owner_device_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "device_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "device_sessions_user_id_users_id_fk": {
+          "name": "device_sessions_user_id_users_id_fk",
+          "tableFrom": "device_sessions",
+          "tableTo": "users",
+          "schemaTo": "justgo",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "device_sessions_user_id_device_id_devices_user_id_id_fk": {
+          "name": "device_sessions_user_id_device_id_devices_user_id_id_fk",
+          "tableFrom": "device_sessions",
+          "tableTo": "devices",
+          "schemaTo": "justgo",
+          "columnsFrom": ["user_id", "device_id"],
+          "columnsTo": ["user_id", "id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "identity_read": {
+          "name": "identity_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["justgo_runtime"],
+          "using": "user_id = (select justgo.current_user_id()) OR digest = (select current_setting('app.session_digest',true))"
+        },
+        "owner_insert": {
+          "name": "owner_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["justgo_runtime"],
+          "withCheck": "user_id = (select justgo.current_user_id())"
+        },
+        "owner_update": {
+          "name": "owner_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["justgo_runtime"],
+          "using": "user_id = (select justgo.current_user_id())",
+          "withCheck": "user_id = (select justgo.current_user_id())"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "justgo.device_transfers": {
+      "name": "device_transfers",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "code_digest": {
+          "name": "code_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "claim_digest": {
+          "name": "claim_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "device_id": {
+          "name": "device_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_digest": {
+          "name": "session_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "credential_digest": {
+          "name": "credential_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verification": {
+          "name": "verification",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verification_attempts": {
+          "name": "verification_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "redeemed_at": {
+          "name": "redeemed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "transfers_code_uq": {
+          "name": "transfers_code_uq",
+          "columns": [
+            {
+              "expression": "code_digest",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transfers_owner_idx": {
+          "name": "transfers_owner_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transfers_expiry_idx": {
+          "name": "transfers_expiry_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "device_transfers_user_id_users_id_fk": {
+          "name": "device_transfers_user_id_users_id_fk",
+          "tableFrom": "device_transfers",
+          "tableTo": "users",
+          "schemaTo": "justgo",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "owner_access": {
+          "name": "owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_runtime"],
+          "using": "user_id = (select justgo.current_user_id()) OR code_digest = (select current_setting('app.transfer_digest',true))",
+          "withCheck": "user_id = (select justgo.current_user_id()) OR code_digest = (select current_setting('app.transfer_digest',true))"
+        }
+      },
+      "checkConstraints": {
+        "transfers_verification_hmac": {
+          "name": "transfers_verification_hmac",
+          "value": "\"justgo\".\"device_transfers\".\"verification\" ~ '^[a-f0-9]{64}$'"
+        },
+        "transfers_verification_attempts": {
+          "name": "transfers_verification_attempts",
+          "value": "\"justgo\".\"device_transfers\".\"verification_attempts\" between 0 and 5"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "justgo.users": {
+      "name": "users",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "owner_access": {
+          "name": "owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_runtime"],
+          "using": "id = (select justgo.current_user_id())",
+          "withCheck": "id = (select justgo.current_user_id())"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "justgo.venue_cards": {
+      "name": "venue_cards",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "venue_id": {
+          "name": "venue_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "challenge_id": {
+          "name": "challenge_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {
+        "venue_card_position": {
+          "name": "venue_card_position",
+          "columns": [
+            {
+              "expression": "venue_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "venue_cards_challenge_idx": {
+          "name": "venue_cards_challenge_idx",
+          "columns": [
+            {
+              "expression": "challenge_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "venue_cards_venue_id_venues_id_fk": {
+          "name": "venue_cards_venue_id_venues_id_fk",
+          "tableFrom": "venue_cards",
+          "tableTo": "venues",
+          "schemaTo": "justgo",
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "venue_cards_challenge_id_challenges_id_fk": {
+          "name": "venue_cards_challenge_id_challenges_id_fk",
+          "tableFrom": "venue_cards",
+          "tableTo": "challenges",
+          "schemaTo": "justgo",
+          "columnsFrom": ["challenge_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "catalog_read": {
+          "name": "catalog_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["justgo_runtime"],
+          "using": "(select justgo.current_user_id()) is not null"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "justgo.venues": {
+      "name": "venues",
+      "schema": "justgo",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "migration_maintenance": {
+          "name": "migration_maintenance",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": ["justgo_migrator"],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "catalog_read": {
+          "name": "catalog_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["justgo_runtime"],
+          "using": "(select justgo.current_user_id()) is not null"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "justgo": "justgo"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "id": "806a9213-8be9-4458-94fe-e2363dafde8a",
+  "prevId": "81e7b5f9-6723-4f51-96b9-12068045ecd1"
+}

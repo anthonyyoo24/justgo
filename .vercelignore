@@ -28,7 +28,3 @@
 !packages/contracts/src/activity/attempts.ts
 !packages/contracts/src/activity/reflections.ts
 !packages/contracts/src/activity/progress.ts
-!packages/contracts/src/legacy
-!packages/contracts/src/legacy/legacy-challenges.ts
-!packages/contracts/src/legacy/legacy-reflections.ts
-!packages/contracts/src/legacy/legacy-progress.ts

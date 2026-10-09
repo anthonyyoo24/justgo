@@ -136,6 +136,11 @@ installed development app to clear stale Metro module/asset paths.
   importing their composing provider back. Share context-free subscriptions to
   avoid module cycles. When a preview disables file watching, restart it before
   treating its served bundle as evidence for edited source.
+- For a full-screen native modal sharing the root window, use already measured
+  safe-area values for its first visible layout and avoid applying the same
+  inset twice. Native inset measurement after presentation can hide the title
+  and move content. Verify first and repeated openings on the native surface;
+  browser/component checks cannot establish that timing.
 
 ## Verification and handoff
 

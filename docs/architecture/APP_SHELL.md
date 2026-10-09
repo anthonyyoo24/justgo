@@ -1,14 +1,13 @@
 # App shell and shared API
 
-Phase 03 established navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026; no onboarding state or answer collection is implemented. Phase 07.3 integrates the account activity repository, local challenge/completion/reflection flow and saving feedback. The local 07.4 implementation adds Progress reconciliation and inline day-entry reflection editing; billing remains 07A.
+Phase 03 established navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026; no onboarding state or answer collection is implemented. Phase 07.3 integrates the account activity repository, local challenge/completion/reflection flow and saving feedback. 07.4 adds Progress reconciliation and inline day-entry reflection editing; 07.5 removes the temporary protocol/schema compatibility and reconciles this guide. Billing remains 07A, with physical-device/staging release gates in 09.
 
 ## Implemented folder responsibilities
 
-The October 6 dedicated cleanup groups existing modules without changing product
-behavior in two stacked PRs. [Foundation PR #18](https://github.com/anthonyyoo24/justgo/pull/18)
+The October 6 dedicated cleanup groups modules without changing product behavior in two stacked PRs. Its foundation organization is present; the remaining mobile cleanup is a separate review. Current activity and Progress groups landed through the 07.4 follow-up. [Foundation PR #18](https://github.com/anthonyyoo24/justgo/pull/18)
 organizes tooling, API tests, contracts and documentation while retaining the
 merged-07.3 mobile source/artwork paths. [Mobile PR #19](https://github.com/anthonyyoo24/justgo/pull/19)
-then moves challenge previews to `dev/previews/challenges/`, groups Challenges into
+proposes moving challenge previews to `dev/previews/challenges/`, groups Challenges into
 `deck/`, `active/` and `success/`, activity into `persistence/` and `sync/`, and
 Progress into `calendar/` and `day-details/`. Native/web adapter families remain
 colocated. [FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md) describes the final structure
@@ -40,15 +39,15 @@ access policy and foreground behavior are unchanged. The
 - `/settings` and `/recovery`: reachable regardless of paid access. The recovery route exposes Account / Recovery keys / Device transfer / Manage devices directly, with Return-key submission and automatic keyboard insets. It shares the one app-level identity controller; it does not create another vault or account.
 - `/preview`: development-only presentation fixture. It has no domain queries or writes and never changes an account's entitlement. The route guard and module load both require `__DEV__`. There is no runtime flag, API parameter or production environment switch that unlocks it.
 
-`AccessService` calls `IdentityService.withSession` and passes the same verified owner transaction into an entitlement reader. The default reader returns **unavailable** until phase 07A implements a verified billing projection. Tests inject readers only into isolated app instances. Mobile accepts a verification for at most 60 seconds and never past its expiry; checks repeat every 30 seconds and on foreground. A failed recheck closes access. Future premium mutation endpoints must enforce their own server entitlement checks; a navigation guard is not authorization.
+`AccessService` calls `IdentityService.withSession` and passes the same verified owner transaction into an entitlement reader. The default reader returns **unavailable** until phase 07A implements a verified billing projection. Tests inject readers only into isolated app instances. Mobile accepts a verification for at most 60 seconds and never past its expiry; checks repeat every 30 seconds and on foreground. A failed recheck closes access. This current short-window guard is superseded only when 07A implements its nine confirmed saved-access/expiry rules. Attempt uploads already authenticate ownership and use the isolated earlier-coverage interface; 07A connects the provider-backed implementation. A navigation guard is not authorization.
 
 Settings currently offers the existing recovery tools and an honest analytics-off notice. Privacy/export/deletion, reminders, billing purchases and final Settings rows remain later work.
 
 ## Request and state rules
 
-`lib/network/http.ts` is the shared transport, including identity requests. It validates HTTPS (development loopback only may use HTTP), strict response schemas and typed errors. Tokens are restricted to headers/bodies. It never logs response bodies or transport messages. The full HTTP operation, including body parsing, has a maximum ten-second deadline and supports cancellation even if a transport ignores AbortSignal.
+`lib/http.ts` is the shared transport, including identity requests. It validates HTTPS (development loopback only may use HTTP), strict response schemas and typed errors. Tokens are restricted to headers/bodies. It never logs response bodies or transport messages. The full HTTP operation, including body parsing, has a maximum ten-second deadline and supports cancellation even if a transport ignores AbortSignal.
 
-`lib/network/account-client.ts` owns the domain-request policy: at most two sends within one ten-second total budget, covering either a transient read retry or authentication replay. Writes never replay after a network/uncertain failure. The transport supports explicit GET/POST/PATCH/DELETE methods; both retry layers classify a read by the resolved GET method, so a bodyless DELETE cannot be retried as a read. Oversized-body and unsupported-media responses retain typed 413/415 failures and do not enter outage retries. Rate-limit, validation, conflict and revoked-session errors never trigger transient retries. An authentication replay reuses the original serialized body. Concurrent expired-session responses share one recovery operation; an already-rotated token is reused and there is no recursive recovery loop. The identity controller's persisted proposals preserve recovery/renewal idempotency. Shared renewal has its own ten-second deadline, independent of individual request deadlines, and releases its cached promise on timeout. Identity actions also bound their I/O and release the busy state on timeout; late API results cannot resume the expired action. Native storage calls remain serialized even after timeout because native writes cannot be cancelled safely. A timed-out write invalidates the in-memory state so retry reads the durable pending intent before continuing. If native storage never returns, retries report storage unavailable rather than starting overlapping writes.
+`lib/account-client.ts` owns the domain-request policy: at most two sends within one ten-second total budget, covering either a transient read retry or authentication replay. This request layer never retries an uncertain write itself; the activity sender separately replays its persisted stable completion/PATCH operations. The transport supports explicit GET/POST/PATCH/DELETE methods; both retry layers classify a read by the resolved GET method, so a bodyless DELETE cannot be retried as a read. Oversized-body and unsupported-media responses retain typed 413/415 failures and do not enter outage retries. Rate-limit, validation, conflict and revoked-session errors never trigger transient retries. An authentication replay reuses the original serialized body. Concurrent expired-session responses share one recovery operation; an already-rotated token is reused and there is no recursive recovery loop. The identity controller's persisted proposals preserve recovery/renewal idempotency. Shared renewal has its own ten-second deadline, independent of individual request deadlines, and releases its cached promise on timeout. Identity actions also bound their I/O and release the busy state on timeout; late API results cannot resume the expired action. Native storage calls remain serialized even after timeout because native writes cannot be cancelled safely. A timed-out write invalidates the in-memory state so retry reads the durable pending intent before continuing. If native storage never returns, retries report storage unavailable rather than starting overlapping writes.
 
 TanStack Query 5.103.1 has query and mutation retries disabled, with in-memory caches only. Requests consume its abort signal. Query keys begin with `['account', userId, ...]`. Account loss or switching synchronously increments a generation, aborts pending requests and clears all queries/mutations before the next account appears. A late response is rejected even if the transport ignores cancellation. Account-local form state should be keyed/reset at the same boundary when those features are implemented. Automatic same-account expired-session recovery preserves the owner boundary; explicit recovery still clears it.
 
@@ -58,11 +57,11 @@ TanStack Query 5.103.1 has query and mutation retries disabled, with in-memory c
 
 ## Phase 07 identity resource cutover
 
-The first Phase 07 slice replaces `/v1/identity/*` action paths with the session, device, credential and transfer resources documented in [IDENTITY.md](IDENTITY.md#api-contracts). API/mobile contracts and callers move together. Persisted identity intents and secure proofs remain compatible; an old running client must update with the API. This slice does not implement the planned offline challenge/reflection flow or change access verification.
+The first Phase 07 slice replaces `/v1/identity/*` action paths with the session, device, credential and transfer resources documented in [IDENTITY.md](IDENTITY.md#api-contracts). API/mobile contracts and callers move together. Persisted identity intents and secure proofs remain compatible; an old running client must update with the API. The identity route slice preserves secure proposals and access verification; later 07.2–07.4 integrate the implemented activity journal/flow/Progress independently.
 
 ## Contracts and extension points
 
-`packages/contracts/src/access.ts` owns the access response and freshness predicate. `/openapi.json` serves OpenAPI 3.1 generated from the strict Zod access and identity contracts, including the transfer inspection/approval distinction. Add new contracts to `.vercelignore`'s exact upload allowlist before deploying.
+`packages/contracts/src/access.ts` owns the current access response and freshness predicate. `/openapi.json` serves OpenAPI 3.1 generated from strict Zod access, identity and canonical activity contracts, including transfer inspection/approval, completed-attempt replay, reflection PATCH/conflict and independent Progress reads. Add new contracts to `.vercelignore`'s exact upload allowlist before deploying.
 
 Routes stay thin. Shared visual components use `theme/tokens.ts`; tab artwork uses the extracted Paper SVG paths. Navigation has no animation, so reduced-motion users receive the same behavior. Screen content scrolls with safe areas and scalable text. Do not use reference screenshots as screen backgrounds or treat their sample data as approved product content.
 
@@ -78,32 +77,19 @@ owns independent queries and repository acceptance. `ProgressView` composes
 `DayReflectionEditor` renders the Paper textbox/actions and `useDayReflection`
 reuses the existing reflection controller for explicit saves and guarded closes.
 `ChallengeScreen` owns deck orchestration; `ActiveChallenge` owns the countdown and
-outcome controls; `SuccessScreen` owns the confirmed-result route. The shared
-feeling choices come from the versioned contracts. No route or persistence policy
-changed in this refactor. App-provider and vault adapter tests cover their real
+outcome controls; `SuccessScreen` owns the local completed-result route. The shared
+feeling choices come from the versioned contracts. The Phase 06A refactor preserved behavior; Phase 07 separately replaces its server-backed persistence policy with the journal flow below. App-provider and vault adapter tests cover their real
 JavaScript wiring; native Keychain behavior still needs its separate device gates.
 
-## Phase 07.1 API compatibility boundary
+## Phase 07 final API/schema boundary
 
-The API now exposes canonical catalog, completed-attempt and inline-reflection
-resources plus independent Progress summary/calendar/day reads. The local 07.4
-Progress caller consumes those canonical reads. Legacy presentation fixtures and
-backend compatibility routes remain until 07.5. Challenge/completion/reflection callers use the
-canonical catalog and local repository flow. Legacy completion/final-reflection
-writes mirror canonical columns in the same transaction; new records appear in
-legacy Progress with their actual start timestamp and nullable obsolete fields.
-No fake completion timestamp or revision/card identity is added. The Progress
-row uses canonical `startedAt` with its frozen display time zone; legacy presentation
-fixtures still allow unknown old timestamps.
+Catalog, completed-attempt and inline-reflection resources plus independent summary/calendar/day reads are the only product protocol. `POST /v1/attempts` creates a completed rep with the UUID generated on Completed and original start/zone; `PATCH /v1/attempts/:id` submits reflection or edits text with a stable submission ID/expected revision. Day entries come from filtered `GET /v1/attempts`; there is no separate reflection GET or combined Progress route.
 
-The mobile identity transport is already on noun resources. Generic HTTP calls
-support GET/POST/PATCH/DELETE, omit JSON content type for bodyless requests, and
-retry only eligible GET failures; 413/415 remain permanent request failures.
-The offline journal and local challenge/completion/reflection flow are wired in
-07.2/07.3. The [07.4 handoff](../handoffs/phase-07-4-progress-history.md) records
-Progress cache/reconciliation and local verification. The [07.1 handoff](../handoffs/phase-07-1-api-data.md)
-owns the temporary compatibility inventory, database rehearsal and current test
-evidence. Full product-document reconciliation is assigned to 07.5.
+Migration `0013_attempt_resources_contract.sql` follows expansion/backfill 0010–0012 and removes active/given-up lifecycle, content revisions, personal queues/preferences/skips, separate reflections and legacy action receipts. The new targeted PATCH receipts remain. Historical IDs/owners/dates/starts and submitted reflection content/revisions are preserved, including nullable legacy display-zone fallback. Canonical history projects current challenge wording and original start time.
+
+Old action/compatibility routes return 404 and cannot write obsolete state; canonical mobile/contracts/API must roll out together. See the [coordinated deployment and old-client procedure](../operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients). A local migration/test pass does not establish a staging deployment or retirement of all old installed clients.
+
+HTTP remains method-aware with eligible GET/authentication replay only; the journal sender owns background create/PATCH retries. 413/415 are typed permanent failures. The [07.5 handoff](../handoffs/phase-07-5-cutover-acceptance.md) records current cutover verification, while earlier handoffs preserve slice evidence.
 
 ## Phase 07.2 local persistence boundary
 
@@ -144,11 +130,13 @@ captures a frozen card, timestamp and time zone; the deadline is derived from st
 plus original duration. `ActiveChallenge` samples the clock once per second and
 immediately on foreground; it never depends on a background interval. A fresh
 mount/account change resets unfinished activity. `ActiveChallengeModal` covers
-navigation full screen, omits Settings and accepts only Completed/Give up. Native
-modal input isolation and the web inert/ARIA adapter keep underlying navigation
-unavailable. Its saving surface retains warnings/details/dismissal, with page links
+navigation full screen, omits Settings and accepts only Completed/Give up. Native modal input isolation and the web inert/ARIA adapter keep underlying navigation unavailable. Its saving surface retains warnings/details/dismissal, with page links
 deferred until the challenge ends. The modal closes when Success takes focus;
-Give up returns to the existing venue/deck without a saved attempt.
+Give up returns to the existing venue/deck without a saved attempt. The iOS/web
+full-screen modal uses measured root safe-area padding on its first render, with
+inner native inset edges disabled. Android retains modal-owned safe-area measurement
+because its dialog bounds can exclude system bars. The covered deck retains the departed accepted card
+until the active surface closes, rather than restoring it during presentation.
 Completed creates one UUID and awaits repository saving. Ordinary local success
 never waits for HTTP. `features/reflections/controller.ts` owns React-form state,
 validation, dirty-close choices and newer-input protection; explicit submissions
@@ -163,8 +151,7 @@ invalid reflection requests open retained input for an explicit correction.
 Genuine revision conflicts adopt backend data automatically, without a chooser.
 No generic Progress sync-status feature or placeholder support action is added.
 `platform/Toast` uses Sonner Native on iOS and the documented Sonner web adapter.
-Native keyboard/modal/VoiceOver/durability evidence remains open; bundle exports
-and web screenshots are separate evidence. See the [07.3 handoff](../handoffs/phase-07-3-local-flow.md).
+Native simulator evidence and remaining keyboard/modal/VoiceOver/durability gates are recorded separately in the phase handoffs; bundle exports and web screenshots are distinct evidence. See the [07.3 handoff](../handoffs/phase-07-3-local-flow.md).
 
 ## Phase 07.4 Progress composition
 

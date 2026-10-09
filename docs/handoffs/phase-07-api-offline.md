@@ -1,5 +1,19 @@
 # Phase 07 — API & offline saving
 
+**October 8 Phase 07.5 current work:** The owner merged 07.4 / PR #20 at
+`8dfb44d` and requested a new branch and final cutover implementation.
+`codex/phase-07.5-cutover-acceptance` starts from that clean merged baseline.
+The [07.5 handoff](phase-07-5-cutover-acceptance.md) records the registered 0013
+contraction, canonical protocol/fixture removal, expanded journeys and local
+automated/browser verification passing. Anthony authorized pushing this branch and
+creating its PR on October 8. [PR #21](https://github.com/anthonyyoo24/justgo/pull/21)
+is published after clean-install/workspace checks and immediate online Doctor
+validation. Both hosted Foundation runs passed at `7d5705c`; the
+[07.5 hosted acceptance](phase-07-5-cutover-acceptance.md#october-8-hosted-ci-acceptance)
+records the inspected revision and run links. Current native verification and
+owner acceptance remain open; 07.3A and earlier native/device/release gates retain their explicit status.
+The dated 07.4 publication/review notes below are historical.
+
 **October 8 current checkpoint:** Anthony deferred unfinished 07.3A, preserved at
 `c7c67b2` with its [resume handoff](phase-07-3a-testing-checkpoint.md), and requested
 07.4 from the approved baseline. `codex/phase-07.4-progress-history` now

@@ -444,8 +444,8 @@ function pgEnvironment() {
   };
 }
 
-describe('Phase 07.1 additive migration and disposable restoration', () => {
-  it('preserves owned history, reconciles truthful metadata, rehearses contraction and restores its snapshot', async () => {
+describe('Phase 07 expansion, final contraction and disposable restoration', () => {
+  it('preserves owned history through registered cutover, clean migrations, restoration and forward repair', async () => {
     expect(
       (await admin.query('SELECT current_user')).rows[0].current_user,
     ).toBe('justgo_migrator');
@@ -673,24 +673,119 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
       ),
     );
     expect(await receipts()).toEqual(acceptedReceipts);
-    // A late legacy row must be normalized again by the proposed contraction,
-    // without changing its positive revision or conflicting with inline null.
+    // Stop legacy writers with the exact registered lock before comparing the
+    // two projections. A competing old writer cannot pass the table fence.
+    const contraction = await readFile(
+      new URL('0013_attempt_resources_contract.sql', base),
+      'utf8',
+    );
+    const lock = await admin.connect();
+    try {
+      await lock.query('BEGIN');
+      await lock.query(
+        rewrite(
+          contraction.slice(0, contraction.indexOf('-- Repeat the 0012')),
+        ),
+      );
+      await expect(
+        owned(owner, async (client) => {
+          await client.query("SET LOCAL lock_timeout='100ms'");
+          return client.query(
+            `UPDATE ${schema}.reflections SET revision=revision+1 WHERE user_id=$1 AND attempt_id=$2`,
+            [owner, sharedAttempt],
+          );
+        }),
+      ).rejects.toMatchObject({ code: '55P03' });
+    } finally {
+      await lock.query('ROLLBACK');
+      lock.release();
+    }
+    // A same-revision disagreement is ambiguous: fail atomically, retaining all
+    // legacy state. Correct the known synthetic mismatch forward, then retry.
+    await admin.query(
+      `UPDATE ${schema}.attempts SET reflection_text='Synthetic mismatched inline value' WHERE user_id=$1 AND id=$2`,
+      [owner, ids[1]],
+    );
+    const mismatch = await normalizationRows();
+    await expect(migration(13)).rejects.toThrow(
+      'Submitted reflection comparison failed',
+    );
+    expect(await normalizationRows()).toEqual(mismatch);
+    await admin.query(
+      `UPDATE ${schema}.attempts a SET reflection_text=r.reflection_text FROM ${schema}.reflections r WHERE (a.user_id,a.id)=(r.user_id,r.attempt_id) AND a.user_id=$1 AND a.id=$2`,
+      [owner, ids[1]],
+    );
+    await admin.query(
+      `UPDATE ${schema}.attempts SET activity_date='2026-09-29' WHERE user_id=$1 AND id=$2`,
+      [owner, sharedAttempt],
+    );
+    const wrongDate = await normalizationRows();
+    await expect(migration(13)).rejects.toThrow(
+      'Historical date/zone comparison failed',
+    );
+    expect(await normalizationRows()).toEqual(wrongDate);
+    await admin.query(
+      `UPDATE ${schema}.attempts SET activity_date=completion_date WHERE user_id=$1 AND id=$2`,
+      [owner, sharedAttempt],
+    );
+    // Late old writes and newer canonical edits coexist. Reconcile only a
+    // strictly later legacy submission; never overwrite a newer canonical edit.
     await admin.query(
       `UPDATE ${schema}.reflections SET reflection_text=$1,input_method='typed' WHERE user_id=$2 AND attempt_id=$3`,
       ['\u00a0\t', owner, whitespaceIds[0]],
     );
-    const contraction = await readFile(
-      new URL(
-        '../../scripts/rehearsals/phase07-contraction.sql',
-        import.meta.url,
-      ),
-      'utf8',
+    await admin.query(
+      `UPDATE ${schema}.reflections SET reflection_text='Synthetic late legacy submission',revision=revision+1 WHERE user_id=$1 AND attempt_id=$2`,
+      [owner, ids[1]],
     );
-    await expect(apply(contraction)).rejects.toThrow(
-      'Contraction rehearsal requires its disposable fixture',
+    await admin.query(
+      `UPDATE ${schema}.attempts SET reflection_text='Synthetic newer canonical edit',reflection_revision=reflection_revision+1 WHERE user_id=$1 AND id=$2`,
+      [owner, ids[2]],
     );
-    await apply(`SET LOCAL justgo.phase07_rehearsal='on';\n${contraction}`);
-    expect(await canonicalRows()).toEqual(normalizedBefore);
+    const finalExpected = (await legacyRows()).map((row) => ({
+      ...row,
+      text:
+        row.id === ids[2]
+          ? 'Synthetic newer canonical edit'
+          : typeof row.text === 'string' && row.text.trim() === ''
+            ? null
+            : row.text,
+      revision: row.id === ids[2] ? Number(row.revision) + 1 : row.revision,
+    }));
+    const finalReceipt = (await receipts()).canonical;
+    const canonicalAccepted = (
+      await admin.query(
+        `SELECT user_id,id,challenge_id,venue_id,level_id,started_at,activity_date,start_time_zone,legacy_display_time_zone,reflection_feeling,reflection_text,reflection_revision FROM ${schema}.attempts WHERE id=$1`,
+        [canonicalId],
+      )
+    ).rows;
+
+    const beforeContractSnapshot = join(snapshotFolder, 'pre-contraction.sql');
+    await execute(
+      pgTool('pg_dump'),
+      [
+        '--schema',
+        schema,
+        '--enable-row-security',
+        '--inserts',
+        '--no-owner',
+        '--file',
+        beforeContractSnapshot,
+      ],
+      { env: pgEnvironment() },
+    );
+    await migration(13);
+    await compareMetadata(13);
+    expect(await canonicalRows()).toEqual(finalExpected);
+    expect(
+      (
+        await admin.query(
+          `SELECT user_id,id,challenge_id,venue_id,level_id,started_at,activity_date,start_time_zone,legacy_display_time_zone,reflection_feeling,reflection_text,reflection_revision FROM ${schema}.attempts WHERE id=$1`,
+          [canonicalId],
+        )
+      ).rows,
+    ).toEqual(canonicalAccepted);
+
     expect(
       (
         await admin.query(
@@ -698,6 +793,13 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
         )
       ).rows[0].count,
     ).toBe(11);
+    expect(
+      (
+        await admin.query(
+          `SELECT * FROM ${schema}.attempt_patch_receipts ORDER BY user_id,id`,
+        )
+      ).rows,
+    ).toEqual(finalReceipt);
     expect(
       (
         await owned(owner, (client) =>
@@ -713,7 +815,102 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
           ]),
         )
       ).rows,
-    ).toHaveLength(0);
+    ).toEqual([]);
+    await expect(
+      owned(otherOwner, (client) =>
+        client.query(
+          `INSERT INTO ${schema}.attempt_patch_receipts VALUES ($1,$2,$3,repeat('c',64),2)`,
+          [owner, randomUUID(), canonicalId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      owned(owner, (client) =>
+        client.query(
+          `UPDATE ${schema}.attempts SET legacy_display_time_zone='UTC' WHERE id=$1`,
+          [canonicalId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      owned(owner, (client) =>
+        client.query(
+          `UPDATE ${schema}.attempts SET reflection_revision=-1 WHERE id=$1`,
+          [canonicalId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      owned(owner, (client) =>
+        client.query(
+          `UPDATE ${schema}.attempts SET activity_date=NULL WHERE id=$1`,
+          [canonicalId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23502' });
+    // Rehearse a post-cutover correction using only canonical state, fenced to
+    // the known fixture revision. A fresh unrelated canonical write and replay
+    // receipt survive; rollback to an old app/database is never needed.
+    const repairId = ids[1]!;
+    const repaired = finalExpected.find((row) => row.id === repairId)!;
+    await admin.query(
+      `UPDATE ${schema}.attempts SET reflection_text='Synthetic forward-repair fault' WHERE user_id=$1 AND id=$2`,
+      [owner, repairId],
+    );
+    await apply(
+      `UPDATE justgo.attempts SET reflection_text='Synthetic late legacy submission' WHERE user_id='${owner}' AND id='${repairId}' AND reflection_revision=${Number(repaired.revision)};`,
+    );
+    expect(await canonicalRows()).toEqual(finalExpected);
+    expect(
+      (
+        await admin.query(
+          `SELECT user_id,id,challenge_id,venue_id,level_id,started_at,activity_date,start_time_zone,legacy_display_time_zone,reflection_feeling,reflection_text,reflection_revision FROM ${schema}.attempts WHERE id=$1`,
+          [canonicalId],
+        )
+      ).rows,
+    ).toEqual(canonicalAccepted);
+
+    expect(
+      (
+        await admin.query(
+          `SELECT * FROM ${schema}.attempt_patch_receipts ORDER BY user_id,id`,
+        )
+      ).rows,
+    ).toEqual(finalReceipt);
+    // A protected pre-contraction backup can restore both protocols, including
+    // canonical writes accepted since expansion, then safely reapply cutover.
+    await admin.query(`DROP SCHEMA ${schema} CASCADE`);
+    await execute(
+      pgTool('psql'),
+      [
+        '--no-psqlrc',
+        '--set',
+        'ON_ERROR_STOP=1',
+        '--file',
+        beforeContractSnapshot,
+      ],
+      { env: pgEnvironment() },
+    );
+    await compareMetadata(12);
+    await migration(13);
+    await compareMetadata(13);
+    expect(await canonicalRows()).toEqual(finalExpected);
+    expect(
+      (
+        await admin.query(
+          `SELECT user_id,id,challenge_id,venue_id,level_id,started_at,activity_date,start_time_zone,legacy_display_time_zone,reflection_feeling,reflection_text,reflection_revision FROM ${schema}.attempts WHERE id=$1`,
+          [canonicalId],
+        )
+      ).rows,
+    ).toEqual(canonicalAccepted);
+
+    expect(
+      (
+        await admin.query(
+          `SELECT * FROM ${schema}.attempt_patch_receipts ORDER BY user_id,id`,
+        )
+      ).rows,
+    ).toEqual(finalReceipt);
     await admin.query(`DROP SCHEMA ${schema} CASCADE`);
     await execute(
       pgTool('psql'),
@@ -731,5 +928,24 @@ describe('Phase 07.1 additive migration and disposable restoration', () => {
     await compareMetadata(12);
     expect(await canonicalRows()).toEqual(normalizedBefore);
     expect(await legacyRows()).toEqual(normalizedBefore);
+    await migration(13);
+    await compareMetadata(13);
+    expect(await canonicalRows()).toEqual(normalizedBefore);
+    // Clean installation also applies the complete immutable journal.
+    await admin.query(
+      `DROP SCHEMA ${schema} CASCADE; CREATE SCHEMA ${schema} AUTHORIZATION justgo_migrator; REVOKE ALL ON SCHEMA ${schema} FROM public; GRANT USAGE ON SCHEMA ${schema} TO justgo_runtime`,
+    );
+    for (let index = 0; index <= 13; index++) await migration(index);
+    await compareMetadata(13);
+    expect(
+      (
+        await admin.query(
+          `SELECT count(*)::int AS count FROM ${schema}.venue_cards`,
+        )
+      ).rows[0].count,
+    ).toBe(61);
+    expect(
+      (await admin.query(`SELECT id FROM ${schema}.attempts`)).rows,
+    ).toEqual([]);
   }, 60_000);
 });

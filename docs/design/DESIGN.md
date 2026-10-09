@@ -1,20 +1,20 @@
 # JustGO design guide
 
-**September 24 scope update:** [Phase 04 decisions](../product/PHASE_04_SCOPE.md) define six manual venues, independent cycling stacks, the 39O fanned deck and five-minute attempts. Omit subtext and the future level-progress indicator. Shared content keeps separate venue placements; completed cards can recur as new attempts. Confirmed expired access locks paid functionality without a finish/reflection exception. See the [implementation handoff](../handoffs/phase-04-challenge-loop.md) for evidence and remaining device gates.
+**September 24 scope update:** [Phase 04 decisions](../product/PHASE_04_SCOPE.md) define six manual venues, independent cycling stacks, the 39O fanned deck and five-minute attempts. Omit subtext and the future level-progress indicator. Shared content keeps separate venue placements; completed cards can recur as new attempts. Current local-saving behavior is described by the [PRD](../product/PRD.md); verified subscription/expiry rules are implemented separately in Phase 07A. See the [implementation handoff](../handoffs/phase-04-challenge-loop.md) for evidence and remaining device gates.
 
 Extracted September 17, 2026 from [Paper Version 3](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0). The selected final row is authoritative for appearance; [PRD §2](../product/PRD.md#2-design-authority-and-changes-from-the-previous-prd) owns behavior. The earlier cobalt page tokens and local inspiration screenshots do not override the selected row.
 
 ## Authoritative references
 
-| Surface          | Selected Paper reference                                                 | Implementation interpretation                                                                                                         |
-| ---------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Home             | 39O centered front card; cream-front and peach-front three-card variants | Six venue pills; independent fanned queues. X/left skips, heart/right accepts. Three colors cycle; omit subtext and level progress.   |
-| Active challenge | 19 — Navy timer · Pill action buttons                                    | Readable instruction, timer, Give up / Completed; retain Home and Progress navigation.                                                |
-| Success          | 40B — A small medal · Larger illustration · That’s a win!                | Separate celebration and Continue; medal is decorative, not an awards system.                                                         |
-| Reflection       | D1 — Mood and reflection · Simplified                                    | Five labeled relative feelings, no default, typed text, no Dictate button.                                                            |
-| Progress         | P37 — Progress · Total reps summary                                      | Preserve current/best streak, all-time reps, month/year calendar, daily rep badges, monthly reps and active days.                     |
-| Day sheet        | P31 — Day journal · Friday, September 18                                 | Overlay P37; retain attempt timings/feelings and add the later approved saved-reflection interaction. Omit the entire Day note block. |
-| Settings         | F1 — Outlined icon groups · Meetup                                       | Visual reference only; PRD defines the rows. No device-only storage claim.                                                            |
+| Surface          | Selected Paper reference                                                 | Implementation interpretation                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Home             | 39O centered front card; cream-front and peach-front three-card variants | Six venue pills; independent fanned queues. X/left skips, heart/right accepts. Three colors cycle; omit subtext and level progress. |
+| Active challenge | 19 — Navy timer · Pill action buttons                                    | Readable instruction, timer and Give up / Completed; full-screen active view hides Settings and bottom navigation.                  |
+| Success          | 40B — A small medal · Larger illustration · That’s a win!                | Separate celebration and Continue; medal is decorative, not an awards system.                                                       |
+| Reflection       | D1 — Mood and reflection · Simplified                                    | Five labeled relative feelings, no default, typed text, no Dictate button.                                                          |
+| Progress         | P37 — Progress · Total reps summary                                      | Preserve current/best streak, all-time reps, month/year calendar, daily rep badges, monthly reps and active days.                   |
+| Day sheet        | P31 — Day journal · Friday, September 18                                 | Overlay P37; display original start times/feelings, expand submitted text, and use the approved inline Add/Edit. Omit Day note.     |
+| Settings         | F1 — Outlined icon groups · Meetup                                       | Visual reference only; PRD defines the rows. Explain phone saving/background uploads/cloud recovery accurately.                     |
 
 `design-source/paper-extract.json` retains exact JSX and token content hashes for the editable source. `design-source/{success,reflection,progress,day-sheet}.png` are reference exports, never runtime screen images. Many Paper screens use full-screen raster compositions: their embedded text, type metrics and color values cannot be represented as verified editable measurements. Record reconstruction decisions separately from verified editable measurements. Challenge-specific measurements, asset provenance, conservative typography/contour reconstructions and verification live in [CHALLENGE_FIDELITY.md](CHALLENGE_FIDELITY.md). Do not claim raster lettering has verified font metrics.
 
@@ -43,13 +43,13 @@ Use React Native `StyleSheet` and imported tokens, with no second styling framew
 
 Owner: Anthony (product/design), with implementation measurements recorded in each consuming phase.
 
-- Phase 03: navigation and supporting empty/error states using existing references. Welcome/questionnaire onboarding is deferred; paywall designs belong to phase 07.
+- Phase 03: navigation and supporting empty/error states using existing references. Welcome/questionnaire onboarding is deferred; paywall designs belong to phase 07A.
 - Phase 04: implemented per [handoff](../handoffs/phase-04-challenge-loop.md). Physical-iPhone motion/large-text/VoiceOver/Reduce Motion acceptance remains open. Original venue illustrations and the lower flourish are extracted from the source image fills; native text and irregular panel geometry remain separate. The [fidelity specification](CHALLENGE_FIDELITY.md) supersedes generic foundation type/spacing defaults for these screens.
 - Phase 05: D1 is reconstructed as native text, five SVG faces and a multiline text field. The neutral fill is a close visual reconstruction because the reference only exposes it as raster; the other four face colors and expression paths come from the saved Paper extraction. The September 27 approved bottom action reads Skip with no input and Save Reflection with a feeling or nonblank text. Empty Back/X skips; dirty Back/X offers save, keep editing or discard and skip. No Dictate control is present. Physical-iPhone keyboard, long-text and VoiceOver acceptance remain open in the phase 05 handoff.
-- Phase 06: the calendar/day sheet reconstruction and read-only saved-reflection expansion are implemented locally. Native visual and accessibility acceptance remains open.
+- Phase 06 established calendar/day-sheet and read-only text expansion. Phase 07.4 adds the Paper **Textbox 02 / SOFT FILL — Add / Edit** from nodes `OYK-0` / `OYQ-0`: `#F8EEEA`, radius 10, padding 14, 76-point minimum textbox, Inter 15/21, “What stood out to you?”, Cancel and the 130 × 36 dark Save pill. Feelings remain display-only; text edits save explicitly through the same local journal/PATCH flow. Native software-keyboard and physical-device/VoiceOver acceptance remain open in the handoffs.
 - Phase 08: approved Settings rows/reminder defaults and accessibility adaptations.
 
-The foundation preview borrows approved visual elements to verify fonts, controls, layout and connectivity. Its introductory copy is temporary development copy; it does not approve onboarding or implement the challenge loop.
+The original Foundation preview and unused Shell placeholders are retired. Guarded developer fixtures retain representative loading/error layouts and no domain writes or entitlement changes. Current native controls/text and local saving feedback remain separate from raster reference artwork.
 
 ## September 24 challenge references
 

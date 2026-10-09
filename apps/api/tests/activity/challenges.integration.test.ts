@@ -1,13 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
-import { sql } from 'drizzle-orm';
-import {
-  venues,
-  type AccessResponse,
-  type LegacyAttempt,
-  type LegacyChallengeQueue,
-} from '@justgo/contracts';
+import { venues, type AccessResponse, type Catalog } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { IdentityService } from '../../src/identity/service.js';
@@ -32,7 +26,7 @@ const admin = new Pool(
 const identity = new IdentityService(db.db, {
   rateKey: 'challenge-integration-tests',
 });
-let access: 'verified' | 'unpaid' | 'unavailable' = 'verified';
+const access: 'verified' | 'unpaid' | 'unavailable' = 'verified';
 const reader = async (): Promise<AccessResponse> =>
   access === 'verified'
     ? {
@@ -66,33 +60,10 @@ const request = (token: string, path: string, body?: object) =>
     headers: { authorization: `Bearer ${token}` },
     ...(body ? { payload: body } : {}),
   });
-async function queue(
-  token: string,
-  venue = 'streets',
-): Promise<LegacyChallengeQueue> {
-  const result = await request(token, `/queue/${venue}`);
-  expect(result.statusCode, result.body).toBe(200);
-  return result.json();
-}
-const selection = (q: LegacyChallengeQueue) => ({
-  venue: q.venue,
-  cardId: q.cards[0]!.id,
-  revisionId: q.cards[0]!.revisionId,
-  queueVersion: q.version,
-});
-const start = async (token: string, q: LegacyChallengeQueue) => {
-  const body = { attemptId: randomUUID(), ...selection(q) };
-  const result = await request(token, '/start', body);
-  expect(result.statusCode, result.body).toBe(200);
-  return { body, attempt: result.json().attempt as LegacyAttempt };
-};
 afterAll(async () => {
   for (const id of owners) {
     for (const table of [
       'attempts',
-      'deck_skips',
-      'venue_queues',
-      'challenge_preferences',
       'device_sessions',
       'recovery_credentials',
       'devices',
@@ -103,267 +74,132 @@ afterAll(async () => {
   await app.close();
   await Promise.all([db.pool.end(), admin.end()]);
 });
-describe('real challenge loop through restricted PostgreSQL role', () => {
-  it('has no elapsed-duration column in the attempts table', async () => {
-    const columns = await admin.query(
-      `select column_name from information_schema.columns
-       where table_schema='justgo' and table_name='attempts' and column_name='elapsed_seconds'`,
-    );
-    expect(columns.rows).toHaveLength(0);
-  });
-  it('seeds exactly the reviewed 61 placements, six queues and stable Level 1 revisions', async () => {
+describe('canonical catalog and final route cutover', () => {
+  it('keeps exactly the reviewed 61 placements, all six venues and current Level 1 wording', async () => {
     const a = await account();
-    let total = 0;
+    const response = await request(a.sessionToken, '');
+    expect(response.statusCode, response.body).toBe(200);
+    const { cards } = response.json<Catalog>();
+    expect(cards).toHaveLength(61);
     for (const venue of venues) {
-      const q = await queue(a.sessionToken, venue.id);
-      expect(q.cards).toHaveLength(venue.id === 'gym' ? 11 : 10);
-      total += q.cards.length;
-      for (const c of q.cards)
-        expect(c).toMatchObject({
-          venue: venue.id,
+      const selected = cards.filter((card) => card.venue === venue.id);
+      expect(selected).toHaveLength(venue.id === 'gym' ? 11 : 10);
+      expect(selected.map((card) => card.position)).toEqual(
+        [...selected.map((card) => card.position)].sort((a, b) => a - b),
+      );
+      for (const card of selected) {
+        expect(card).toMatchObject({
           levelId: 'level-1',
           durationSeconds: 300,
         });
+        expect(card).not.toHaveProperty('revisionId');
+      }
     }
-    expect(total).toBe(61);
-    const bars = await queue(a.sessionToken, 'bars');
-    expect(bars.cards.find((card) => card.id === 'BC-10')).toMatchObject({
-      revisionId: 'bc-10-v2',
+    expect(cards.find((card) => card.id === 'BC-10')).toMatchObject({
       text: 'Comment on the song to someone beside you on the dance floor.',
     });
-    const historical = await admin.query(
-      'select text from justgo.challenge_revisions where id=$1',
-      ['bc-10-v1'],
+    expect(cards.find((card) => card.id === 'ST-05')?.challengeId).toBe(
+      cards.find((card) => card.id === 'PK-02')?.challengeId,
     );
-    expect(historical.rows[0]?.text).toBe(
-      'Make a friendly comment about the song to someone beside you on the dance floor.',
-    );
-    await expect(
-      admin.query(
-        "update justgo.challenge_revisions set text='changed' where id='st-01-v1'",
-      ),
-    ).rejects.toThrow('immutable');
   });
-  it('rejects incomplete terminal records at the database boundary', async () => {
+  it('rejects every obsolete product route without creating state', async () => {
     const a = await account();
-    await start(a.sessionToken, await queue(a.sessionToken));
-    await expect(
-      admin.query(
-        "update justgo.attempts set status='completed',time_zone='UTC',completion_date='2026-09-24' where user_id=$1",
-        [a.userId],
-      ),
-    ).rejects.toThrow('attempt_outcome_fields');
-  });
-  it('skips without attempts, cycles full stacks, and keeps shared placements independent', async () => {
-    const a = await account(),
-      q = await queue(a.sessionToken),
-      park = await queue(a.sessionToken, 'park');
-    let current = q;
-    for (let i = 0; i < q.cards.length; i++) {
-      const body = { actionId: randomUUID(), ...selection(current) };
-      const result = await request(a.sessionToken, '/skip', body);
-      expect(result.statusCode, result.body).toBe(200);
-      current = result.json();
-      const retry = await request(a.sessionToken, '/skip', body);
-      expect(retry.json()).toEqual(current);
+    const id = randomUUID();
+    for (const [method, url] of [
+      ['GET', '/v1/challenges/state'],
+      ['GET', '/v1/challenges/queue/streets'],
+      ['GET', `/v1/challenges/attempt/${id}`],
+      ['POST', '/v1/challenges/venue'],
+      ['POST', '/v1/challenges/skip'],
+      ['POST', '/v1/challenges/start'],
+      ['POST', '/v1/challenges/finish'],
+      ['GET', `/v1/reflections/${id}`],
+      ['POST', `/v1/reflections/${id}/draft`],
+      ['POST', `/v1/reflections/${id}/final`],
+      ['POST', `/v1/reflections/${id}/skip`],
+      ['GET', '/v1/progress?month=2026-10&timeZone=UTC'],
+      ['GET', '/v1/progress/days/2026-10-01'],
+    ] as const) {
+      const result = await app.inject({
+        method,
+        url,
+        headers: { authorization: `Bearer ${a.sessionToken}` },
+        ...(method === 'POST'
+          ? {
+              payload: {
+                attemptId: id,
+                venue: 'streets',
+                outcome: 'completed',
+                timeZone: 'UTC',
+                text: 'Synthetic stale client input',
+              },
+            }
+          : {}),
+      });
+      expect(result.statusCode, `${method} ${url}: ${result.body}`).toBe(404);
+      expect(result.json()).toMatchObject({ code: 'NOT_FOUND' });
+      expect(result.body).not.toContain('Synthetic stale client input');
     }
-    expect(current.cards).toEqual(q.cards);
-    expect(current.version).toBe(10);
-    expect(await queue(a.sessionToken, 'park')).toEqual(park);
-    expect(q.cards.find((c) => c.id === 'ST-05')?.challengeId).toBe(
-      park.cards.find((c) => c.id === 'PK-02')?.challengeId,
-    );
-    expect((await request(a.sessionToken, '/state')).json().active).toBeNull();
-    const count = await admin.query(
-      'select count(*)::int as count from justgo.attempts where user_id=$1',
-      [a.userId],
-    );
-    expect(count.rows[0].count).toBe(0);
+    expect(
+      (
+        await admin.query('select id from justgo.attempts where user_id=$1', [
+          a.userId,
+        ])
+      ).rows,
+    ).toEqual([]);
+    expect(
+      (
+        await admin.query(
+          'select id from justgo.attempt_patch_receipts where user_id=$1',
+          [a.userId],
+        )
+      ).rows,
+    ).toEqual([]);
   });
-  it('replays concurrent/lost starts and completions once and rejects different inputs', async () => {
-    const a = await account(),
-      q = await queue(a.sessionToken),
-      body = { attemptId: randomUUID(), ...selection(q) };
-    const starts = await Promise.all([
-      request(a.sessionToken, '/start', body),
-      request(a.sessionToken, '/start', body),
-    ]);
-    for (const r of starts) expect(r.statusCode, r.body).toBe(200);
-    expect(starts[0]!.json().attempt).toEqual(starts[1]!.json().attempt);
-    expect(starts[0]!.json().attempt).not.toHaveProperty('elapsedSeconds');
-    expect(
-      Date.parse(starts[0]!.json().attempt.deadlineAt) -
-        Date.parse(starts[0]!.json().attempt.startedAt),
-    ).toBe(300000);
-    expect(
-      (await request(a.sessionToken, '/start', { ...body, cardId: 'ST-02' }))
-        .statusCode,
-    ).toBe(409);
+  it('has no obsolete product tables or lifecycle columns after the registered migration', async () => {
     expect(
       (
-        await request(a.sessionToken, '/start', {
-          ...body,
-          attemptId: randomUUID(),
-        })
-      ).statusCode,
-    ).toBe(409);
+        await admin.query(
+          `select table_name from information_schema.tables where table_schema='justgo' and table_name=any($1::text[])`,
+          [
+            [
+              'challenge_revisions',
+              'challenge_preferences',
+              'venue_queues',
+              'deck_skips',
+              'reflections',
+              'reflection_actions',
+            ],
+          ],
+        )
+      ).rows,
+    ).toEqual([]);
     expect(
       (
-        await request(a.sessionToken, '/skip', {
-          actionId: randomUUID(),
-          ...selection(q),
-        })
-      ).statusCode,
-    ).toBe(409);
-    await request(a.sessionToken, '/venue', { venue: 'gym' });
-    const saved = (await request(a.sessionToken, '/state')).json();
-    expect(saved.active).toEqual(starts[0]!.json().attempt);
-    expect(saved.selectedVenue).toBe('gym');
-    const end = {
-      attemptId: body.attemptId,
-      outcome: 'completed',
-      timeZone: 'America/Toronto',
-    };
-    const outcomes = await Promise.all([
-      request(a.sessionToken, '/finish', end),
-      request(a.sessionToken, '/finish', end),
-    ]);
-    expect(outcomes[0]!.statusCode, outcomes[0]!.body).toBe(200);
-    expect(outcomes[1]!.json().attempt).toEqual(outcomes[0]!.json().attempt);
-    expect((await queue(a.sessionToken)).version).toBe(1);
+        await admin.query(
+          `select column_name from information_schema.columns where table_schema='justgo' and table_name='attempts' and column_name=any($1::text[])`,
+          [
+            [
+              'status',
+              'card_id',
+              'revision_id',
+              'queue_version',
+              'deadline_at',
+              'ended_at',
+              'completion_date',
+              'time_zone',
+              'elapsed_seconds',
+            ],
+          ],
+        )
+      ).rows,
+    ).toEqual([]);
     expect(
       (
-        await request(a.sessionToken, '/finish', {
-          ...end,
-          outcome: 'given_up',
-        })
-      ).statusCode,
-    ).toBe(409);
-    expect(
-      (await request(a.sessionToken, '/finish', { ...end, timeZone: 'UTC' }))
-        .statusCode,
-    ).toBe(409);
-    expect(
-      (await request(a.sessionToken, '/start', body)).json().attempt.status,
-    ).toBe('completed');
-    const count = await admin.query(
-      "select count(*)::int as count from justgo.attempts where user_id=$1 and status='completed'",
-      [a.userId],
-    );
-    expect(count.rows[0].count).toBe(1);
-  });
-  it('allows only one of simultaneous device starts, then accepts a new deliberate repetition', async () => {
-    const a = await account(),
-      q = await queue(a.sessionToken);
-    const device = {
-      deviceId: randomUUID(),
-      sessionId: randomUUID(),
-      sessionToken: randomBytes(32).toString('hex'),
-      credential: a.credential,
-    };
-    await identity.bootstrap(device, false);
-    const bodies = [
-      { attemptId: randomUUID(), ...selection(q) },
-      { attemptId: randomUUID(), ...selection(q) },
-    ];
-    const results = await Promise.all([
-      request(a.sessionToken, '/start', bodies[0]),
-      request(device.sessionToken, '/start', bodies[1]),
-    ]);
-    expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
-    const original = results.find((r) => r.statusCode === 200)!.json().attempt;
-    await request(a.sessionToken, '/finish', {
-      attemptId: original.id,
-      outcome: 'given_up',
-      timeZone: 'UTC',
-    });
-    let current = await queue(a.sessionToken);
-    for (let i = 0; i < q.cards.length - 1; i++)
-      current = (
-        await request(a.sessionToken, '/skip', {
-          actionId: randomUUID(),
-          ...selection(current),
-        })
-      ).json();
-    const repeated = await start(a.sessionToken, current);
-    expect(repeated.attempt.card.id).toBe(original.card.id);
-    expect(repeated.attempt.id).not.toBe(original.id);
-  });
-  it('keeps zero active and freezes the completion day in the selected time zone', async () => {
-    const a = await account(),
-      s = await start(a.sessionToken, await queue(a.sessionToken));
-    await admin.query(
-      "update justgo.attempts set started_at=now()-interval '8 minutes',deadline_at=now()-interval '3 minutes' where user_id=$1",
-      [a.userId],
-    );
-    expect((await request(a.sessionToken, '/state')).json().active.status).toBe(
-      'active',
-    );
-    const done = await request(a.sessionToken, '/finish', {
-      attemptId: s.attempt.id,
-      outcome: 'completed',
-      timeZone: 'Pacific/Kiritimati',
-    });
-    expect(done.statusCode, done.body).toBe(200);
-    const result = done.json().attempt as LegacyAttempt;
-    expect(result).not.toHaveProperty('elapsedSeconds');
-    expect(result.completionDate).toBe(
-      new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Pacific/Kiritimati',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(new Date(result.endedAt!)),
-    );
-    expect(result.card.revisionId).toBe(s.attempt.card.revisionId);
-  });
-  it('isolates owners, validates inputs and locks every paid operation on expiry', async () => {
-    const a = await account(),
-      b = await account(),
-      q = await queue(a.sessionToken),
-      s = await start(a.sessionToken, q);
-    expect(
-      (await request(b.sessionToken, `/attempt/${s.attempt.id}`)).statusCode,
-    ).toBe(404);
-    expect(
-      (
-        await request(b.sessionToken, '/finish', {
-          attemptId: s.attempt.id,
-          outcome: 'completed',
-          timeZone: 'UTC',
-        })
-      ).statusCode,
-    ).toBe(404);
-    const visible = await identity.withSession(b.sessionToken, (tx) =>
-      tx.execute(sql`select id from justgo.attempts where user_id=${a.userId}`),
-    );
-    expect(visible.rows).toHaveLength(0);
-    expect(
-      (
-        await request(a.sessionToken, '/finish', {
-          attemptId: s.attempt.id,
-          outcome: 'completed',
-          timeZone: 'garbage',
-        })
-      ).statusCode,
-    ).toBe(400);
-    access = 'unpaid';
-    try {
-      expect((await request(a.sessionToken, '/state')).statusCode).toBe(403);
-      expect(
-        (
-          await request(a.sessionToken, '/finish', {
-            attemptId: s.attempt.id,
-            outcome: 'completed',
-            timeZone: 'UTC',
-          })
-        ).statusCode,
-      ).toBe(403);
-    } finally {
-      access = 'verified';
-    }
-    expect((await request(a.sessionToken, '/state')).json().active.id).toBe(
-      s.attempt.id,
-    );
+        await admin.query(
+          `select proname from pg_proc join pg_namespace on pg_namespace.oid=pronamespace where nspname='justgo' and proname='immutable_revision'`,
+        )
+      ).rows,
+    ).toEqual([]);
   });
 });

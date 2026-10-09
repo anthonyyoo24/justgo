@@ -1,57 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import {
-  legacyStartAttemptSchema,
-  legacyFinishAttemptSchema,
+  catalogSchema,
+  challengeCardSchema,
+  timeZoneSchema,
   venueSchema,
 } from '../index.js';
-const id = '00000000-0000-4000-8000-000000000001';
-describe('challenge contracts', () => {
-  it('requires stable input identity and rejects caller-supplied ownership/deadlines', () => {
-    const request = {
-      attemptId: id,
-      venue: 'streets',
-      cardId: 'ST-01',
-      revisionId: 'st-01-v1',
-      queueVersion: 0,
-    };
-    expect(legacyStartAttemptSchema.safeParse(request).success).toBe(true);
+const card = {
+  id: 'ST-01',
+  challengeId: 'st-01',
+  levelId: 'level-1',
+  venue: 'streets',
+  position: 0,
+  text: 'Say hello.',
+  subtext: null,
+  durationSeconds: 300,
+};
+describe('canonical challenge catalog contracts', () => {
+  it('validates ordered placements without obsolete revisions or queue state', () => {
+    expect(catalogSchema.parse({ cards: [card] }).cards).toEqual([card]);
     for (const extra of [
-      { userId: id },
-      { deadlineAt: '2026-09-24T12:00:00Z' },
-      { queueVersion: -1 },
+      { revisionId: 'st-01-v1' },
+      { userId: 'owner' },
+      { position: -1 },
+      { durationSeconds: 0 },
     ])
-      expect(
-        legacyStartAttemptSchema.safeParse({ ...request, ...extra }).success,
-      ).toBe(false);
+      expect(challengeCardSchema.safeParse({ ...card, ...extra }).success).toBe(
+        false,
+      );
   });
-  it('accepts only the six approved venues and a valid explicit completion time zone', () => {
+  it('accepts six named venues and IANA zones while rejecting offsets and unknown zones', () => {
     expect(venueSchema.options).toHaveLength(6);
     expect(venueSchema.safeParse('all').success).toBe(false);
-    const done = {
-      attemptId: id,
-      outcome: 'completed',
-      timeZone: 'America/Toronto',
-    };
-    expect(legacyFinishAttemptSchema.safeParse(done).success).toBe(true);
-    expect(
-      legacyFinishAttemptSchema.safeParse({
-        ...done,
-        timeZone: 'invalid/timezone',
-      }).success,
-    ).toBe(false);
-    expect(
-      legacyFinishAttemptSchema.safeParse({ ...done, outcome: 'expired' })
-        .success,
-    ).toBe(false);
+    expect(timeZoneSchema.safeParse('America/Toronto').success).toBe(true);
+    for (const zone of ['invalid/timezone', '+05:30'])
+      expect(timeZoneSchema.safeParse(zone).success).toBe(false);
   });
-});
-
-it('rejects numeric UTC offsets, preserving named time-zone date semantics', () => {
-  expect(
-    legacyFinishAttemptSchema.safeParse({
-      attemptId: '00000000-0000-4000-8000-000000000001',
-      outcome: 'completed',
-      timeZone: '+05:30',
-    }).success,
-  ).toBe(false);
 });

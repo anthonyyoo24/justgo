@@ -11,11 +11,11 @@
 - **Difficulty:** Level 1, the easiest version. Each challenge starts an interaction with a small greeting, comment, or question. Continuing the conversation is optional.
 - **Duration:** Five-minute attempt window for all cards. The interaction may be much shorter; reaching zero does not automatically mark the attempt failed or completed.
 - **Subtext:** The accompanying line below the challenge text. Example wording can be adapted naturally; bracketed words such as `[item]` or `[name]` are conversational placeholders.
-- **Venue stacks:** Each user has an independent card order for each venue. Completing a card moves it to the back of that venue's stack. A shared challenge's card in another venue stays in place. Each new accepted repetition has its own attempt history.
+- **Venue stacks:** Each account has an independent in-memory card order for each venue, reset on fresh launch. Completing a card moves it to the back of that venue's stack. A shared challenge's card in another venue stays in place. Each new completed repetition has its own attempt history; Start/Give up create no saved record.
 - **Shared content:** A challenge can supply content for multiple venue cards without coupling their ordering. The overlap index below identifies related actions while preserving the reviewed wording for every card.
 - **Card copy length:** Review each new batch on the actual card at the standard type size, including database, preview, and demo text. Every challenge should render in two to four complete lines without scrolling; character count alone cannot reliably predict wrapping.
 
-The earlier no-replay and grouped-venue proposals are superseded by the venue list and cycling-stack decisions above. The app's consuming implementation and plan must reflect these decisions when phase 04 is implemented.
+The earlier no-replay and grouped-venue proposals are superseded by the venue list and cycling-stack decisions above. Phase 04 seeded this catalog; Phase 07 retains stable challenge IDs/current wording, 58 shared challenges and 61 placements, with catalog persistence for offline use. Minor wording changes become visible in historical entries; substantial activity changes get new IDs. Current UI omits subtext; the guidance below is authoring reference, not an additional launch feature.
 
 ## Subtext writing guidance
 

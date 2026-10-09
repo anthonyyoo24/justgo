@@ -39,7 +39,11 @@ export function dayLabel(date: string) {
   }).format(new Date(Date.UTC(year!, month! - 1, day)));
 }
 
-export function completionTime(iso: string, timeZone: string) {
+/**
+ * Format a captured ISO start instant in its supplied historical display zone.
+ * This label never determines the frozen activity date or uses the device's zone.
+ */
+export function activityTime(iso: string, timeZone: string) {
   return new Intl.DateTimeFormat('en', {
     hour: 'numeric',
     minute: '2-digit',

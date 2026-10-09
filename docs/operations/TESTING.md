@@ -5,27 +5,11 @@ The [Phase 06A handoff](../handoffs/phase-06a-code-quality.md) records the measu
 baseline, changes and browser evidence. Tests protect current behavior; Phase 07
 owns API/offline changes and Phase 07A owns billing.
 
-## Scheduled iOS testing migration — 07.3A
+## Deferred native testing migration — 07.3A
 
-Anthony approved [07.3A — iOS simulator testing migration](../IMPLEMENTATION_PLAN.md#phase-07-3a)
-after reviewed/finished 07.3 and before 07.4. The
-[file-by-file removal assessment](../checks/phase-07-3a-browser-testing-assessment.md)
-identifies browser-only modules, tests that must move to independent runners and
-native/shared code to retain, including the `useModalIsolation` hook and caller.
+Anthony stopped unfinished [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) on October 7 and approved 07.4/07.5 using retained browser/lower-level checks plus relevant manual native verification. The checkpoint `c7c67b2`, [resume handoff](../handoffs/phase-07-3a-testing-checkpoint.md) and [file inventory](../checks/phase-07-3a-browser-testing-assessment.md) remain available; native journeys/hosted CI are not accepted.
 
-Extend the existing `apps/mobile/e2e/launch.yaml` Maestro setup and `test:native`
-command into saved journeys against the actual iOS app/API/disposable database.
-Preserve unit/component/repository/API/database tests, coverage floors and fixture
-safeguards. Native storage/relaunch, lifecycle, keyboard/modal and transition
-evidence must be distinguished from mocks and eventual screen assertions.
-
-Current browser commands and UI requirements below remain active until equivalent
-coverage exists and the required native CI gate passes for the authorized pushed
-revision, confirmed in hosted check results. Then retire Playwright/Chromium and
-unused browser-only adapters/dependencies, update `AGENTS.md` and this guide, and
-use native simulator journeys/interactive checks for future UI changes. Historical
-browser evidence stays intact; physical-device/staging release checks remain open.
-This is a scheduled migration, not a claim that native CI or full journeys exist.
+Keep the Playwright/Chromium browser suite, web adapters, fixture safeguards and unchanged coverage floors. A future native replacement must prove equivalent actual-app/API/database journeys and inspect the authorized commit's hosted gate before retiring browser support. Retain the Maestro launch smoke and relevant manual simulator checks meanwhile. Mocks, browser storage and exports cannot establish native Keychain/AsyncStorage persistence, OS lifecycle, software keyboard, VoiceOver, radio/backup or physical-device behavior. Carry those release gates to 09 with their recorded evidence/limits.
 
 ## Commands
 
@@ -38,6 +22,8 @@ npm run db:local
 npm run db:migrate
 npm run test:db
 npm run test:coverage
+npm run test:journey
+npm run test:migrations
 npm run export:web -w @justgo/mobile
 npm run export:ios -w @justgo/mobile
 ```
@@ -120,8 +106,7 @@ percentage point of branch headroom. Critical-file floors apply independently:
 provider and native vault 95% branches/lines; account client 85% branches / 95%
 lines; HTTP 82% / 94%; Progress as a group 90% / 92%. Existing controllers also
 have separate floors so higher presentation coverage cannot hide regressions.
-Database service branch floors are 85% for identity/challenges and 95% for
-reflections/history. The JSON file owns exact thresholds.
+Database service branch floors are 85% for identity/challenges and 95% for reflection PATCH/Progress resources. The final cutover moves the existing reflection 95% branch/99% line and history 95%/96% floors to `src/attempts/patch.ts` and `src/progress/resources.ts`; no floor is reduced. The JSON file owns exact thresholds.
 
 The provider's selector follows its current `src/app-support/providers/AppProvider.tsx`
 location at the unchanged 95% branch/line floor. Identity vault/storage/controller
@@ -166,29 +151,11 @@ never creates user activity or grants production access. Record actual viewport,
 flow, fixtures, failures and recovery; keep automated/browser/native claims separate.
 The earlier physical-device and staging gates remain in their original handoffs.
 
-Phase 07.1 is split for review. **07.1A** retains application/unit/component,
-database, migration-restoration and coverage gates. The **07.1B** saved app/API
-journey is on `codex/phase-07.1b-journey-ci`, now authorized for a separate PR
-against `main` after the owner merged A through PR #13.
-Its root `e2e/` files, environment-guard test, runner, Playwright dependency,
-journey typecheck/scripts and browser CI/artifact steps move together. They are
-not part of A; `npm run test:journey` is available only on B. No review filters or
-coverage floors were weakened to meet the file limit.
+## Saved app/API/database journeys
 
-B must verify clean service startup/cleanup, disposable accounts/access fixtures,
-masked failure artifacts and the actual identity-renewal/catalog/Progress smoke,
-then verify its published CI step on the pushed revision. Full completion,
-reflection and offline/history journeys remain 07.2–07.5. A one-off side-panel
-walkthrough and A's lower-level tests do not replace B's saved journey gate.
-Complete both A and B before proceeding to 07.2. The existing mobile Maestro
-launch flow is unchanged.
+07.1A/07.1B and the later local flow/Progress slices established the retained required journey gate. Historical branch/publication evidence stays in their handoffs; current setup is described here. The suite exercises the actual browser app, API and disposable database, plus production repository/transport cases. It is distinct from presentation previews, one-off side-panel walkthroughs and native/device evidence.
 
-## Saved app/API journey foundation (07.1B)
-
-The owner merged A through PR #13 at `806f57f` and authorized B's push and PR
-against updated `main`. The B diff contains only its harness, CI and documentation.
-B still requires owner review and separate merge approval. Historical combined
-verification does not establish B acceptance.
+The full flow covers challenge → local completion → explicit reflection → Progress, with controlled offline/reconnect, phone-write/cloud fallback/memory recovery, lost acknowledgements/restart without duplicate reps, independent aggregate reconciliation/history restrictions, reflection text editing and identity/session recovery. `.github/workflows/ci.yml` requires the same command after clean dependency/database/browser setup and uploads the masked report/artifacts. A local pass does not establish a current-revision hosted pass; inspect the authorized pushed commit before closing that evidence.
 
 Use Node 24 and the root lockfile, PostgreSQL 17 tools (including `pg_dump` and
 `psql`), and the dedicated database prepared by `npm run db:local`. Install the
@@ -202,15 +169,12 @@ npm run test:journey
 The wrapper validates the loopback `justgo_test` database, restricted runtime and
 migration roles, local SSL setting and nonproduction environment **before**
 migration or service startup. It builds contracts, applies migrations, starts the
-isolated fixture API on 127.0.0.1:3000 and Expo on 127.0.0.1:8081, runs the saved
-test and shuts its services down. Expo starts with `--localhost`; a saved test
+isolated fixture API on 127.0.0.1:3000 and Expo on 127.0.0.1:8081, runs the saved suite and shuts its services down. Expo starts with `--localhost`; a saved test
 checks that neither service accepts connections on local non-loopback IPv4
-interfaces. Keep both ports free; it refuses to reuse an
-unknown running server. Local settings come from the ignored `apps/api/.env`;
+interfaces. Keep both ports free; preflight refuses occupied 3000/8081 before migrations or service startup, rather than reusing an unknown server. Local settings come from the ignored `apps/api/.env`;
 CI supplies the same explicit database mapping used by database/coverage tests.
 
-The saved case creates and renews a real disposable account in the app, opens its
-challenge deck and Progress, and checks the database. Fixture cleanup deletes
+Saved cases create/renew/recover real disposable accounts, execute completion/reflection/Progress and controlled recovery paths, and assert actual database state. Fixture cleanup deletes
 only account UUIDs allocated by this run's isolated fixture API. The trusted
 registry is independent of browser requests and response delivery, so rejected
 requests and successful recovery of pre-existing accounts cannot nominate cleanup
@@ -218,38 +182,30 @@ targets. Its read-only endpoint is absent from the deployable API. Failed creati
 transactions can leave registry UUIDs without rows; deleting those is a harmless
 no-op. Registry failures fail teardown instead of falling back to browser IDs. The dedicated
 fixture server grants isolated test access and upload eligibility; deployed API
-startup has no such provider. Browser storage remains memory-only in 07.1.
+startup has no such provider. Browser identity credentials remain memory-only; the activity adapter persists catalog/journal independently and reload tests explicitly recover the same synthetic account.
 
 This automated browser runs headlessly. Interactive walkthroughs use the Codex
 side panel, under the same fixture API/Expo configuration. These are separate
-evidence types; neither proves native Keychain behavior. No external browser
-window is required. Later subphases extend this harness with local storage,
-controlled failures, completion/reflection and Progress assertions.
+evidence types; neither proves native Keychain behavior. No external browser window is required. The suite uses local activity storage, controlled failures and completed-attempt/reflection/Progress assertions; test controls are excluded from native/production resolution.
 
 Failure output is under `.local/journey-results` and `.local/journey-report`.
 Network traces, videos and automatic screenshots are disabled because they can
 retain credentials. The fixture captures a masked UI screenshot on failure;
 never add real account data or token logging. Both test failure and service
 startup failure make the command fail. CI uploads these artifacts and enforces
-the saved smoke step alongside the existing checks. CI also requires a nonempty
+the full journey step alongside the existing checks. CI also requires a nonempty
 `.local/journey-report/index.html`, preventing a report-directory mismatch from
 silently dropping the HTML report and its screenshot attachments.
 
 ## Migration preservation rehearsal (07.1)
 
-`npm run test:migrations` runs the standalone rehearsal; `test:db` includes it.
-It builds migrations 0000–0009 in a uniquely named disposable schema within
-`justgo_test`, compares the restored Drizzle metadata with PostgreSQL, seeds
-synthetic history and creates a temporary SQL snapshot with PostgreSQL 17
-`pg_dump`. It verifies expansion 0010, compatibility index 0011 and historical
-blank-text normalization 0012, rehearses the unregistered contraction, restores
-the snapshot using `psql`, reapplies the migrations and compares preserved
-history again. Normalization preserves nonblank text, receipts, revisions and
-timestamps, and rejects invalid blank-only/no-feeling submissions atomically. Its schema and snapshot are removed after the test. Production
-`justgo`/Drizzle migration state is not reset. The contraction SQL under
-`apps/api/scripts/rehearsals` is not a deployable migration; 07.5 owns its final
-review and acceptance. Set `JUSTGO_PG_BIN` when PostgreSQL 17 tools are not on
-PATH or in the standard Apple Silicon Homebrew directory.
+`npm run test:migrations` runs the standalone rehearsal; `test:db` includes it. Use PostgreSQL 17 `pg_dump`/`psql`, with `JUSTGO_PG_BIN` when tools are not on PATH or in the standard Apple Silicon Homebrew directory.
+
+The rehearsal builds 0000–0009 in a uniquely named disposable schema in loopback `justgo_test`, compares metadata/schema, seeds representative synthetic historical records and saves a SQL snapshot. It verifies expansion 0010, compatibility index 0011 and blank normalization 0012, stops legacy writes for the final preservation comparison and applies registered contraction `0013_attempt_resources_contract.sql`. It compares completed IDs/owners/frozen dates/starts, owner-matched submitted feeling/text/revisions and historical inactive references, proves legacy schema removal and canonical/runtime ownership behavior, restores the pre-migration snapshot using `psql`, and reapplies forward migrations/comparisons. Clean-database migrations and immutable hashes of 0000–0012 are also checked.
+
+Only synthetic fixture data, uniquely named schema and temporary snapshot are used; teardown removes them. Application/Drizzle state is not reset, and no private content/credentials are written to artifacts. Draft/skipped records and legacy action receipts are retired, never promoted to submitted reflections. Nonblank text/revisions survive; whitespace-only text normalizes to null.
+
+The contraction is now a registered migration rather than the historical rehearsal-only SQL. This is a local/CI acceptance tool, not authorization for external deployment. See the [coordinated cutover/old-client/restore runbook](FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients). The phase handoff owns fresh results and limits; original 07.1 restoration evidence remains historical.
 
 ## Enforced code boundaries
 
@@ -273,7 +229,7 @@ References: [Vitest coverage](https://vitest.dev/guide/coverage.html),
 
 ## Phase 07.2 repository and transport evidence
 
-07.1A/07.1B are merged; the prior review-stage restrictions above are historical.
+07.1A/07.1B are merged; their original review-stage restrictions remain historical in their handoffs.
 The 07.2 branch adds deterministic journal/storage/sender/transport tests to the
 normal mobile test and coverage commands. The production modules and colocated
 tests now live under `apps/mobile/src/data/activity/`. Boundary regressions enforce
@@ -290,9 +246,9 @@ are injected at the repository/transport boundary, never exposed as production f
 The database fixture owns cleanup for browser and repository-only tests. Safe size/
 serialization measurements are attached to the HTML report. These saved cases do
 not establish the new completion/reflection UI journey or native AsyncStorage
-durability. 07.3 adds app integration and side-panel checks. The October 6 owner
+durability. 07.3 added app integration and side-panel checks. The October 6 owner
 session installed an updated EAS simulator app with AsyncStorage and NetInfo;
-native saving/relaunch evidence remains open. The default tools path does not
+subsequent native simulator evidence is recorded in the 07.4/07.5 handoffs; physical-device/storage acceptance remains distinct and open. The default tools path does not
 expose `simctl`; command-scoped `DEVELOPER_DIR` selects the existing full Xcode
 without changing system configuration. See the [07.2 handoff](../handoffs/phase-07-2-local-sync.md)
 and [07.3 simulator setup](../handoffs/phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup).
@@ -315,9 +271,7 @@ seam validates the existing loopback/database/role/nonproduction safeguards befo
 substituting the controllable journal-write adapter, only for web AppProvider.
 Normal/native/production resolution remains the default. Architecture tests cover
 the seam and refusal cases. There are no product UI fault controls or production
-access bypasses. The existing hosted journey step already runs the full suite;
-07.3’s hosted result cannot be claimed until publication is authorized and that
-commit’s checks pass.
+access bypasses. The existing required hosted step runs the full suite; each current revision still requires authorized publication and inspected hosted results before claiming its CI acceptance.
 
 Interactive side-panel evidence lives in [the 07.3 handoff](../handoffs/phase-07-3-local-flow.md).
 Only disposable registry-owned accounts were used and cleaned up. NetInfo 12.0.1,
@@ -345,6 +299,10 @@ The [07.4 handoff](../handoffs/phase-07-4-progress-history.md) records the final
 and the existing native app's simulator Add/Edit/save/relaunch are separate
 evidence. Native hardware-keyboard HID typing does not establish software-keyboard
 layout or physical-device/VoiceOver/radio/backup acceptance. 07.3A remains deferred;
-retained browser CI runs this extended suite; Anthony authorized Phase 07.4
-publication on October 8, and its published-revision hosted result still needs
-inspection. 07.5 owns final cutover and integrated acceptance.
+retained browser CI runs this extended suite. The 07.4 handoff owns its inspected published-revision results; 07.5 owns final cutover and integrated acceptance. Local 07.5 results do not establish new hosted acceptance without separately authorized publication.
+
+## Phase 07.5 integrated cutover checks
+
+`npm run test:journey` retains earlier cases and adds actual-app lost-create-acknowledgement → reflection → Progress/restart and self-device revocation/same-account recovery with retained history, plus lost-PATCH-acknowledgement/restart coverage. Confirm database counts, reflection visibility and unchanged UUID/start/date across recovery. The required CI step starts only isolated fixture services and fails on assertion or startup failure; verify that failure path with a controlled assertion regression and record it in the handoff.
+
+Run `npm run check`, `npm run test:db`, `npm run test:coverage`, the saved journey suite and both exports sequentially before handoff, then verify affected UI in the Codex side panel. Migration/coverage removal checks must protect the canonical schema rather than retain references to removed implementation. Native simulator Keychain/AsyncStorage/relaunch evidence is separately recorded when obtained; no 07.5 native pass follows from automated/browser results. Deferred 07.3A automation and physical-device/staging/release gates stay explicit. Run fresh Expo Doctor again immediately before an authorized push. Do not call the new revision's hosted CI verified from a local run.

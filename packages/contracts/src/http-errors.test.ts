@@ -22,7 +22,7 @@ describe('permanent request error contracts', () => {
         }).success,
       ).toBe(false);
       const response =
-        openApiDocument.paths['/v1/challenges/venue'].post.responses[status];
+        openApiDocument.paths['/v1/attempts'].post.responses[status];
       expect(response?.description).toContain('do not retry unchanged input');
       expect(response?.content['application/json'].schema).toMatchObject({
         type: 'object',

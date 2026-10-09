@@ -8,7 +8,7 @@
     "start": "tsx --env-file-if-exists=.env src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/database/database.integration.test.ts tests/identity/identity.integration.test.ts tests/activity/challenges.integration.test.ts tests/activity/reflections.integration.test.ts tests/activity/progress.integration.test.ts tests/activity/attempts.integration.test.ts && npm run test:migrations",
+    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/database/database.integration.test.ts tests/identity/identity.integration.test.ts tests/activity/challenges.integration.test.ts tests/activity/progress.integration.test.ts tests/activity/attempts.integration.test.ts && npm run test:migrations",
     "db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "dev:challenges": "tsx --env-file-if-exists=.env scripts/challenge-dev.ts",

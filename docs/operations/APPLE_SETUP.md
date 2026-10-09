@@ -5,19 +5,19 @@ Started September 17, 2026. Owner: **Anthony**. **September 21 update:** Anthony
 | Item                                                                                  | Status                                                               | Required by                  |
 | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------- |
 | Choose individual or organization enrollment                                          | Enrollment reported complete; enrollment type/team not recorded      | Physical-device distribution |
-| Apple Account access and Developer Program enrollment                                 | Enrollment reported complete September 21; account access unverified | Device distribution / 08     |
+| Apple Account access and Developer Program enrollment                                 | Enrollment reported complete September 21; account access unverified | Device distribution / 09     |
 | Identity/business verification and agreements                                         | Owner must complete                                                  | Distribution/sales           |
 | Banking and tax information                                                           | Owner must complete; never put values in this repo                   | Sales                        |
 | Reserve permanent bundle ID                                                           | Pending; `dev.justgo.foundation` is local-only and unreserved        | 02 device identity tests     |
-| App Store Connect app record                                                          | Pending permanent bundle ID and account setup                        | 08                           |
+| App Store Connect app record                                                          | Pending permanent bundle ID and account setup                        | 07A                          |
 | Expo account/team and EAS project                                                     | Linked and remotely verified: @anthonyyoos-team/justgo               | EAS development build        |
 | Signing access and physical iPhone registration                                       | Pending                                                              | 02                           |
-| Existing JustGO RevenueCat project access                                             | Mentioned by plan; access/configuration not verified here            | 08                           |
-| Connect RevenueCat iOS app, store credentials                                         | Pending Apple app/product setup                                      | 08                           |
-| Subscription group/products, pricing/trials                                           | Owner product decision pending                                       | 08                           |
-| Product → entitlement → offering/paywall mapping                                      | Pending agreed offer                                                 | 08                           |
-| Sandbox purchase and restore                                                          | Not run; no purchase code in 01                                      | 08                           |
-| Release-like build, TestFlight, App Review metadata and first subscription submission | Future release work                                                  | 10                           |
+| Existing JustGO RevenueCat project access                                             | Mentioned by plan; access/configuration not verified here            | 07A                          |
+| Connect RevenueCat iOS app, store credentials                                         | Pending Apple app/product setup                                      | 07A                          |
+| Subscription group/products, pricing/trials                                           | Owner product decision pending                                       | 07A                          |
+| Product → entitlement → offering/paywall mapping                                      | Pending agreed offer                                                 | 07A                          |
+| Sandbox purchase and restore                                                          | Not run; no purchase code in 01                                      | 07A                          |
+| Release-like build, TestFlight, App Review metadata and first subscription submission | Future release work                                                  | 09                           |
 
 Next steps: confirm the active Apple Developer team, choose/register the permanent identifier, then configure signing for the existing linked Expo project. Register the first iPhone with `eas device:create`, set the environment below, and create an iOS development build with `eas build --platform ios --profile development` from `apps/mobile`. Anthony handles Apple sign-in/2FA. Enable Developer Mode on the iPhone and install the signed build. See the [Expo device-build walkthrough](https://docs.expo.dev/tutorial/eas/ios-development-build-for-devices/). Set `IOS_BUNDLE_IDENTIFIER` in the appropriate EAS environment. Do not create another Expo project. Keep credentials in provider secret storage, never in `EXPO_PUBLIC_*` or checked-in files.
 

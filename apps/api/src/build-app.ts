@@ -7,9 +7,6 @@ import { attemptRoutes } from './attempts/routes.js';
 import { ProgressResources } from './progress/resources.js';
 import { ChallengeService } from './challenges/service.js';
 import { challengeRoutes } from './challenges/routes.js';
-import { ReflectionService } from './reflections/service.js';
-import { reflectionRoutes } from './reflections/routes.js';
-import { ProgressService } from './progress/service.js';
 import { progressRoutes } from './progress/routes.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
@@ -25,6 +22,11 @@ import { IdentityError, type IdentityService } from './identity/service.js';
 import { bearer, identityRoutes } from './identity/routes.js';
 import { AccessService, type EntitlementReader } from './access/service.js';
 
+/**
+ * Compose the HTTP app with injected database, identity and access boundaries.
+ * Authenticated product routes are registered only when identity is supplied;
+ * missing access/coverage providers remain unavailable rather than granting access.
+ */
 export function buildApp(
   options: {
     checkDatabase: () => Promise<void>;
@@ -78,18 +80,8 @@ export function buildApp(
   if (options.identity)
     app.register(
       async (scope) =>
-        reflectionRoutes(
-          scope,
-          new ReflectionService(options.identity!, options.entitlementReader),
-        ),
-      { prefix: '/v1/reflections' },
-    );
-  if (options.identity)
-    app.register(
-      async (scope) =>
         progressRoutes(
           scope,
-          new ProgressService(options.identity!, options.entitlementReader),
           new ProgressResources(options.identity!, options.entitlementReader),
         ),
       { prefix: '/v1/progress' },

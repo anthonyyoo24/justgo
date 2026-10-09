@@ -1,5 +1,16 @@
 # Phase 06A — Code quality & test hardening
 
+**October 8 follow-up:** The historical October 3 assignments below now have
+implementation evidence in Phase 07. Typed `413`/`415` handling was completed in
+[07.1](phase-07-1-api-data.md). The retained full app/API/database journey gate
+has grown to 24 saved cases in [07.5](phase-07-5-cutover-acceptance.md), including
+offline/reconnection, lost acknowledgements, reflection visibility and account
+recovery/revocation. Clean local execution and deliberate assertion failure pass
+their acceptance checks. Both hosted Foundation runs for PR #21 at `7d5705c`
+passed; the [07.5 hosted acceptance](phase-07-5-cutover-acceptance.md#october-8-hosted-ci-acceptance)
+records the inspected revision and run links. Phase 06A's original evidence and
+release deferrals below are preserved.
+
 ## Snapshot
 
 - **Status:** Complete.

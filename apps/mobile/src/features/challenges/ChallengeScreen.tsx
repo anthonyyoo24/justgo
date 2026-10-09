@@ -14,10 +14,19 @@ import { VenueTabs } from './VenueTabs';
 import { ChallengeDeck } from './ChallengeDeck';
 import { ActiveChallengeModal } from './ActiveChallengeModal';
 import { useActiveChallenge } from './useActiveChallenge';
+/**
+ * Scope unfinished React activity to the current identity.
+ * Changing accounts remounts the flow rather than retaining the old active challenge.
+ */
 export function ChallengeScreen() {
   const { account } = useIdentity();
   return <ChallengeFlow key={account?.userId ?? 'disconnected'} />;
 }
+/**
+ * Compose the memory-owned deck and active surface with local-save navigation.
+ * The active modal covers the accepted deck; each successful attempt opens Success
+ * once, with focus changes handling return navigation without reopening it.
+ */
 function ChallengeFlow() {
   const { challenges } = useRuntime();
   const { account } = useIdentity();
@@ -93,6 +102,7 @@ function ChallengeFlow() {
             label={venue.label}
             turn={queue.turn}
             disabled={!!active || state.saving || !focused}
+            covered={!!active}
             onBusyChange={setMoving}
             onAction={onAction}
           />

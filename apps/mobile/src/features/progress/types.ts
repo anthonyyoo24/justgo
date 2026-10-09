@@ -10,23 +10,23 @@ export type ProgressDisplay = {
   activeDays: number | null;
   days: ProgressCalendar['days'] | undefined;
 };
-// Presentation preserves legacy unknown timestamps without carrying obsolete
-// card/revision resource identifiers into the resource-based Progress caller.
 export type ProgressEntry = {
   attemptId: string;
   instruction: string;
-  completedAt: string | null;
-  activityAt?: string | null | undefined;
+  startedAt: string;
   timeZone: string;
-  reflectionStatus: string;
+  reflectionStatus: 'submitted' | 'none';
   feeling: NonNullable<Attempt['reflection']>['feeling'];
   reflectionText: string | null;
 };
+/**
+ * Map a canonical attempt into row presentation without inventing draft states.
+ * Use the captured start and recorded display zone for both new and legacy history.
+ */
 export const displayEntry = (attempt: Attempt): ProgressEntry => ({
   attemptId: attempt.id,
   instruction: attempt.instruction,
-  activityAt: attempt.startedAt,
-  completedAt: null,
+  startedAt: attempt.startedAt,
   timeZone: attempt.displayTimeZone,
   reflectionStatus: attempt.reflection ? 'submitted' : 'none',
   feeling: attempt.reflection?.feeling ?? null,
