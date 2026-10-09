@@ -29,6 +29,7 @@ export function SavingSheetSurface({
       <SavingNotice
         onNavigate={onLeave}
         navigationEnabled={navigationEnabled}
+        toastChannel="activity-sheet"
       />
       <ToastHost channel="activity-sheet" />
     </>

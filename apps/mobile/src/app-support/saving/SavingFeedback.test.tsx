@@ -1,9 +1,14 @@
 import { SavingNotice } from './SavingNotice';
-import { act, fireEvent, render } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Linking, Text } from 'react-native';
 import { SavingFeedbackShell, SavingSheetSurface } from './SavingFeedback';
 import { savingRiskCopy } from './presentation';
-import { dismissActivityToasts, showRecoveryToast } from '../../platform/Toast';
+import {
+  dismissActivityToasts,
+  showRecoveryToast,
+  showMessageToast,
+} from '../../platform/Toast';
+import { contactFailureMessage, supportContact } from '../contact';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
@@ -29,6 +34,7 @@ jest.mock('../../platform/Toast', () => ({
   ToastHost: () => null,
   showRecoveryToast: jest.fn(),
   dismissActivityToasts: jest.fn(),
+  showMessageToast: jest.fn(),
 }));
 jest.mock('../providers/AppProvider', () => ({
   useRuntime: () => ({ activity: mockActivity }),
@@ -47,6 +53,7 @@ beforeEach(async () => {
   mockRouter.push.mockReset();
   jest.mocked(showRecoveryToast).mockClear();
   jest.mocked(dismissActivityToasts).mockClear();
+  jest.mocked(showMessageToast).mockClear();
   mockRepository = new AccountRepository({
     accountId: owner,
     storage: new MemoryStorage(),
@@ -58,6 +65,35 @@ beforeEach(async () => {
   await mockRepository.complete(input(), card);
 });
 afterEach(() => mockRepository.dispose());
+it.each([false, true])(
+  'uses private support and the visible toast host in saving recovery (sheet=%s)',
+  async (sheet) => {
+    const open = jest
+      .spyOn(Linking, 'openURL')
+      .mockRejectedValueOnce(new Error('native detail'))
+      .mockResolvedValueOnce(undefined);
+    mockRepository.store.setState({ hydrationError: 'unreadable' });
+    const screen = render(sheet ? <SavingSheetSurface /> : <SavingNotice />);
+    fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Review activity that couldn’t upload',
+      }),
+    );
+    const help = screen.getByRole('button', { name: 'Get help' });
+    fireEvent.press(help);
+    await waitFor(() =>
+      expect(showMessageToast).toHaveBeenCalledWith(
+        sheet ? 'activity-sheet' : 'activity',
+        contactFailureMessage,
+      ),
+    );
+    expect(help.props.accessibilityState.disabled).toBe(false);
+    fireEvent.press(help);
+    await waitFor(() => expect(help.props.accessibilityState.busy).toBe(false));
+    expect(open).toHaveBeenNthCalledWith(2, supportContact);
+    open.mockRestore();
+  },
+);
 it('removes account presentation on disconnection and ignores recovery while the account is parked', () => {
   const screen = render(
     <SavingFeedbackShell>

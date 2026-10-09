@@ -4,10 +4,11 @@ import {
   ToastHost,
   showRecoveryToast,
   dismissActivityToasts,
+  showMessageToast,
 } from './Toast.web';
 jest.mock('sonner', () => ({
   Toaster: jest.fn(() => null),
-  toast: { success: jest.fn(), dismiss: jest.fn() },
+  toast: { success: jest.fn(), dismiss: jest.fn(), error: jest.fn() },
 }));
 it('uses the documented web host and account-scoped toast identity', () => {
   render(<ToastHost channel="activity" />);
@@ -22,4 +23,11 @@ it('uses the documented web host and account-scoped toast identity', () => {
   });
   dismissActivityToasts();
   expect(toast.dismiss).toHaveBeenCalled();
+});
+it('presents safe link failure copy on the matching web host', () => {
+  showMessageToast('activity', 'Couldn’t open the Privacy Policy.');
+  expect(toast.error).toHaveBeenCalledWith(
+    'Couldn’t open the Privacy Policy.',
+    { toasterId: 'activity' },
+  );
 });

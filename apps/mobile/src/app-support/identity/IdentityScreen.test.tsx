@@ -2,6 +2,9 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { IdentityScreen } from './IdentityScreen';
 import { IdentityController } from './controller';
 import { createMemoryVault } from './storage';
+import { Linking } from 'react-native';
+import { supportContact, contactFailureMessage } from '../contact';
+import { showMessageToast } from '../../platform/Toast';
 import {
   createIdentityApi,
   IdentityClientError,
@@ -13,6 +16,30 @@ jest.mock('expo-crypto', () => ({
   randomUUID: () => '00000000-0000-4000-8000-000000000001',
 }));
 jest.mock('./vault', () => ({ createVault: jest.fn() }));
+jest.mock('../../platform/Toast', () => ({ showMessageToast: jest.fn() }));
+it('offers private email support from account recovery and keeps it available after failure', async () => {
+  const controller = new IdentityController(createMemoryVault(), {
+    request: jest.fn(),
+  });
+  const open = jest
+    .spyOn(Linking, 'openURL')
+    .mockRejectedValueOnce(new Error('native detail'))
+    .mockResolvedValueOnce(undefined);
+  const screen = render(<IdentityScreen controller={controller} managed />);
+  const help = screen.getByRole('button', { name: 'Get help' });
+  fireEvent.press(help);
+  await waitFor(() =>
+    expect(showMessageToast).toHaveBeenCalledWith(
+      'activity',
+      contactFailureMessage,
+    ),
+  );
+  expect(help.props.accessibilityState.disabled).toBe(false);
+  fireEvent.press(help);
+  await waitFor(() => expect(help.props.accessibilityState.busy).toBe(false));
+  expect(open).toHaveBeenNthCalledWith(2, supportContact);
+  open.mockRestore();
+});
 it('asks for verification from the new device and submits the entered digits only', async () => {
   const transferId = '00000000-0000-4000-8000-000000000002';
   const fetcher = jest.fn(async (url: string, init: RequestInit) => {

@@ -29,3 +29,7 @@ export function showRecoveryToast(channel: string, id: string) {
 export function dismissActivityToasts() {
   toast.dismiss();
 }
+export function showMessageToast(channel: string, message: string) {
+  toast.error(message, { toasterId: channel });
+  AccessibilityInfo.announceForAccessibility(message);
+}
