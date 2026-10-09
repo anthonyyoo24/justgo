@@ -22,6 +22,11 @@ import { IdentityError, type IdentityService } from './identity/service.js';
 import { bearer, identityRoutes } from './identity/routes.js';
 import { AccessService, type EntitlementReader } from './access/service.js';
 
+/**
+ * Compose the HTTP app with injected database, identity and access boundaries.
+ * Authenticated product routes are registered only when identity is supplied;
+ * missing access/coverage providers remain unavailable rather than granting access.
+ */
 export function buildApp(
   options: {
     checkDatabase: () => Promise<void>;

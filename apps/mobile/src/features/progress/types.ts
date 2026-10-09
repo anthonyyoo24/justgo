@@ -19,6 +19,10 @@ export type ProgressEntry = {
   feeling: NonNullable<Attempt['reflection']>['feeling'];
   reflectionText: string | null;
 };
+/**
+ * Map a canonical attempt into row presentation without inventing draft states.
+ * Use the captured start and recorded display zone for both new and legacy history.
+ */
 export const displayEntry = (attempt: Attempt): ProgressEntry => ({
   attemptId: attempt.id,
   instruction: attempt.instruction,

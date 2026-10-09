@@ -14,6 +14,11 @@ export class ReflectionConflict extends IdentityError {
 }
 export class AttemptPatchService {
   constructor(private readonly identity: IdentityService) {}
+  /**
+   * Save an explicit reflection and its replay receipt in one owner transaction.
+   * Identical retries return the original applied revision without writing again.
+   * Later text edits require the current revision and preserve the first feeling.
+   */
   patch(token: string, id: string, input: PatchAttempt) {
     return this.identity.withSession(token, async (tx, session) => {
       const row = await readAttempt(tx, session.userId, id);

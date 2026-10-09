@@ -10,6 +10,10 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/tokens';
 import { challengeScale } from './challenge-design';
 
+/**
+ * Lay out the challenge header and content with caller-controlled safe-area edges.
+ * Pass an empty edge list when the parent already owns all inset padding.
+ */
 export function ChallengeLayout({
   title,
   children,

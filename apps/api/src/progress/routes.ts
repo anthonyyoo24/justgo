@@ -15,6 +15,10 @@ const parse = <T>(schema: z.ZodType<T>, value: unknown): T => {
   if (!result.success) throw new IdentityError('INVALID_REQUEST', 400);
   return result.data;
 };
+/**
+ * Register independent summary and calendar reads with validated query inputs.
+ * Day-history paging belongs to the attempt routes, not a combined Progress read.
+ */
 export function progressRoutes(
   app: FastifyInstance,
   resources: ProgressResources,

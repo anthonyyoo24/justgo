@@ -2,6 +2,10 @@ import { spawn } from 'node:child_process';
 import { journeyEnvironment } from '../../e2e/support/environment.ts';
 import { assertJourneyPortsAvailable } from './journey-ports.mjs';
 
+/**
+ * Run a child with inherited output and return its exit status.
+ * Signals become status 1; process-start errors reject instead of reporting success.
+ */
 async function runCommand(command, args, env) {
   const child = spawn(command, args, { stdio: 'inherit', env });
   return new Promise((resolve, reject) => {
@@ -10,6 +14,11 @@ async function runCommand(command, args, env) {
   });
 }
 
+/**
+ * Run the guarded contract/migration/build/Playwright pipeline in order.
+ * Validate the test environment and free fixture ports before any command runs;
+ * stop on the first nonzero status and forward caller arguments only to Playwright.
+ */
 export async function runJourney({
   args = [],
   environment = process.env,

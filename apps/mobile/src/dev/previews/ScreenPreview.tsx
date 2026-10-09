@@ -94,7 +94,10 @@ const emptyMonth: ProgressResponse = {
   activeDays: 0,
   days: [],
 };
-// Presentation fixtures only. No API, account impersonation, or entitlement override.
+/**
+ * Render development-only presentation fixtures without API or account writes.
+ * Production redirects home; local preview transitions never override entitlement.
+ */
 export function ScreenPreview({
   progressState = 'default',
   progressDayState = 'default',

@@ -87,6 +87,11 @@ function SavedReflection({
   );
 }
 
+/**
+ * Display captured start metadata and caller-owned reflection controls.
+ * Only submitted content supplies saved feeling/text; expansion and explicit
+ * editing share the row surface without creating a persistence operation here.
+ */
 export function ProgressEntryRow({
   entry,
   index,

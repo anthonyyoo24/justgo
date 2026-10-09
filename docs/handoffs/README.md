@@ -8,8 +8,10 @@ contraction, canonical protocol/fixture removal, expanded journeys and local
 automated/browser verification passing. Anthony authorized pushing this branch and
 creating its PR on October 8. [PR #21](https://github.com/anthonyyoo24/justgo/pull/21)
 is published after clean-install/workspace checks and immediate online Doctor
-validation; revision-specific hosted checks are running. Current native verification
-and owner acceptance remain open; 07.3A and earlier native/device/release gates retain their explicit status.
+validation. Both hosted Foundation runs passed at `7d5705c`; the
+[07.5 hosted acceptance](phase-07-5-cutover-acceptance.md#october-8-hosted-ci-acceptance)
+records the inspected revision and run links. Current native verification and
+owner acceptance remain open; 07.3A and earlier native/device/release gates retain their explicit status.
 The dated 07.4 publication/review notes below are historical.
 
 **October 8 published 07.4 implementation:** `codex/phase-07.4-progress-history`

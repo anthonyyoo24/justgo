@@ -3,9 +3,10 @@
 ## Snapshot
 
 - **Status:** Published for owner review in [PR #21](https://github.com/anthonyyoo24/justgo/pull/21).
-  Automated/browser acceptance passes; current native verification and hosted
-  acceptance remain open. The Phase 07 umbrella is not marked complete.
-- **Updated:** October 8, 2026.
+  Automated/browser and hosted acceptance pass for the recorded implementation
+  revision; current native verification and owner acceptance remain open. The
+  Phase 07 umbrella is not marked complete.
+- **Updated:** October 9, 2026.
 - **Branch/base:** `codex/phase-07.5-cutover-acceptance`, created from clean `main`
   at `8dfb44d`, the owner's Phase 07.4 / PR #20 merge.
 - **Authorization:** Anthony requested a new branch and Phase 07.5 implementation,
@@ -82,7 +83,7 @@ Heavy checks run sequentially on the owner's 8 GB Mac.
 | Cold exports                         | Web and Hermes iOS exports pass with `--clear --max-workers 1` into ignored phase evidence directories.                                                                                                                                                                                                       |
 | Interactive side-panel browser       | Pass at 390 × 844: challenge → completed rep → explicit feeling/text → Save → Progress → captured start → View/Edit/Save, one rep, both `1 day` streaks and `1 rep this month`. One nonfatal web `pointerEvents` deprecation appeared during navigation; no browser error was observed or warning suppressed. |
 | Native simulator                     | Owner-authorized boot/launch now passes: the installed app renders Home in the live side-panel mirror. Full native save/relaunch/Keychain/AsyncStorage acceptance remains open.                                                                                                                               |
-| Hosted CI                            | PR #21 is published; revision-specific Foundation push/PR checks are running. The publication section records fresh local verification.                                                                                                                                                                       |
+| Hosted CI                            | Pass at `7d5705c`: both inspected Foundation [push](https://github.com/anthonyyoo24/justgo/actions/runs/37879679424) and [PR](https://github.com/anthonyyoo24/justgo/actions/runs/37879682730) runs passed. See the dated hosted acceptance below; native/owner acceptance remains open.                      |
 
 The final source includes the monthly-copy correction. Full workspace/coverage
 checks, cold exports and the clean 24-case saved journey suite were repeated
@@ -222,6 +223,58 @@ Earlier database, coverage, saved journey, export and UI evidence above remains
 applicable to the unchanged product source. Revision-specific hosted results must
 be inspected on the PR; native swipe review, full native/device acceptance and
 owner merge approval remain open.
+
+## October 8 hosted CI acceptance
+
+Both Foundation runs for implementation revision
+`7d5705c52497c3352e8d9d2efd70383eb82c92bd` completed successfully and were
+inspected after publication:
+
+- [Push run 37879679424](https://github.com/anthonyyoo24/justgo/actions/runs/37879679424).
+- [PR run 37879682730](https://github.com/anthonyyoo24/justgo/actions/runs/37879682730).
+
+Each provisioned its isolated PostgreSQL database and passed clean installation,
+online Expo/workspace checks, migrations/database/restoration, unchanged coverage
+gates, all **24 saved journeys**, nonempty journey-report validation and web/iOS
+exports. This is revision-specific hosted evidence, distinct from the local runs
+and the native recordings above. Later revision results must be inspected on
+[PR #21](https://github.com/anthonyyoo24/justgo/pull/21); this dated result does not
+claim a pass for an unverified revision. Native swipe/device/full save-relaunch
+acceptance and explicit owner merge approval remain open.
+
+## October 9 review follow-up
+
+Anthony requested fixing the assessed review findings and pushing the updates.
+The handoffs, index and plan now reference inspected hosted results, the six
+future handoff tasks remain unchecked, and Phase 09 requires all reviewed
+migrations including 0013 under the coordinated stopped-writer/backup/repair
+procedure. The existing migrations are unchanged.
+
+Function documentation is added in response to the docstring warning for the
+changed API, presentation and journey entry points. Comments explain ownership,
+reflection replay, timestamp attribution, modal/deck settlement and fixture
+startup/error contracts. They add no runtime statements or product behavior and
+do not change the project's test/coverage floors or the bot's configuration.
+
+Verification for this follow-up:
+
+- Static comparison of all **19** edited source files produces identical syntax
+  after comments are removed; all runtime statements are unchanged.
+- Phase-bounded reconciliation confirms six unchecked future handoffs, the 0013
+  release procedure and working central hosted-evidence references.
+- A fresh isolated checkout of the tracked review changes passed `npm ci` and
+  `npm run check`: online Expo Doctor **21/21**, contracts build, types, lint,
+  formatting, boundaries and **667 tests** (180 tooling, 45 API, 422 mobile,
+  20 contracts). The final evidence-only handoff edit passes formatting and diff
+  checks separately. Standalone online Doctor runs immediately before push.
+- Logs remain ignored as `review-comment-equivalence.log`,
+  `review-document-reconciliation.log` and
+  `review-publication-{install,check,doctor}.log` under `.local/phase-07-5/`.
+
+This is a documentation-only follow-up; no UI/device walkthrough or new behavior
+regression test is required. Earlier native acceptance gates remain open.
+CodeRabbit's recalculated docstring percentage is distinct from these checks; no
+uninspected bot percentage is claimed.
 
 ## Release rollout and repair
 

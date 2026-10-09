@@ -1,13 +1,13 @@
 # JustGO — Implementation Plan
 
-**Version:** 66 · Updated October 8, 2026
+**Version:** 67 · Updated October 9, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
 Phase 06 Progress/history passes local automated and simulator checks, including a live day with 21 entries, automatic paging and both retry states. Physical-device acceptance is scheduled for release validation after the app is built; staging deployment is an integration/release task. See the [phase 06 handoff](handoffs/phase-06-progress.md).
 [06A — Code quality & test hardening](#phase-06a) is complete. [07 — API & offline saving](#phase-07) remains in progress through [07.1–07.5](#phase-07-subphases). The owner merged 07.1A / PR #13, 07.1B / PR #14 and 07.2 / PR #15 (`8ff5d6c`). [07.3 local challenge/reflection integration](handoffs/phase-07-3-local-flow.md) was merged by the owner through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, including the final Expo and review fixes. Native durability/accessibility acceptance remains open. Anthony deferred 07.3A on October 7 and approved proceeding from reviewed 07.3 to Progress composition in 07.4, then final cutover in 07.5, using existing browser/lower-level checks plus relevant manual native verification; native billing remains 07A. The earlier unapproved PR #12 merge was reverted; its history is preserved below. The owner merged PR #16 and authorized rebasing, verifying and publishing the separate cleanup PR; cleanup merge approval remains separate.
 
-**October 8 Phase 07.5 implementation:** Anthony requested a new branch and implementation after merging 07.4. The [07.5 handoff](handoffs/phase-07-5-cutover-acceptance.md) records the final registered contraction, canonical caller/fixture removal, saved-journey additions, unchanged quality floors and passing local automated/browser verification. Current native verification remains open. Keep publication/hosted acceptance and the earlier native/device/release gates separate; Anthony authorized publication on October 8; [PR #21](https://github.com/anthonyyoo24/justgo/pull/21) is open after clean-install/workspace and immediate online Doctor checks. Hosted results are pending; merge requires separate owner approval.
+**October 8 Phase 07.5 implementation:** Anthony requested a new branch and implementation after merging 07.4. The [07.5 handoff](handoffs/phase-07-5-cutover-acceptance.md) records the final registered contraction, canonical caller/fixture removal, saved-journey additions, unchanged quality floors and passing local automated/browser verification. Current native verification remains open. Keep publication/hosted acceptance and the earlier native/device/release gates separate; Anthony authorized publication on October 8; [PR #21](https://github.com/anthonyyoo24/justgo/pull/21) is open after clean-install/workspace and immediate online Doctor checks. Both Foundation runs passed at `7d5705c`; the handoff records inspected hosted evidence. Native/owner acceptance remains open, and merge requires separate owner approval.
 
 **Tracker:** This Markdown file is authoritative. The historical HTML companion is not present in this checkout.  
 **Sources:** [PRD](product/PRD.md) · [Tech stack](architecture/TECH_STACK.md)\
@@ -449,7 +449,7 @@ EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does
 
 ### Phase 07 — API & offline saving
 
-**Status:** In progress. The owner merged active checkpoints through 07.4 / [PR #20](https://github.com/anthonyyoo24/justgo/pull/20) at `8dfb44d`. Anthony requested Phase 07.5 on a new branch from that merged baseline. Final protocol/schema cutover and documentation reconciliation are implemented with passing local automated/browser checks on `codex/phase-07.5-cutover-acceptance`; see the [07.5 handoff](handoffs/phase-07-5-cutover-acceptance.md). 07.3A remains deferred. 07.5 is published in [PR #21](https://github.com/anthonyyoo24/justgo/pull/21); hosted acceptance and owner review remain open, with earlier native/device/release gates explicit.
+**Status:** In progress. The owner merged active checkpoints through 07.4 / [PR #20](https://github.com/anthonyyoo24/justgo/pull/20) at `8dfb44d`. Anthony requested Phase 07.5 on a new branch from that merged baseline. Final protocol/schema cutover and documentation reconciliation are implemented with passing local automated/browser checks on `codex/phase-07.5-cutover-acceptance`; see the [07.5 handoff](handoffs/phase-07-5-cutover-acceptance.md). 07.3A remains deferred. 07.5 is published in [PR #21](https://github.com/anthonyyoo24/justgo/pull/21); hosted checks pass for recorded revision `7d5705c`; owner/native acceptance and earlier device/release gates remain open.
 
 **Depends on:** 06A; complete active 07.1–07.5 in order before 07A. 07.3A is deferred under the October 7 owner decision; native/device/release evidence remains open.
 
@@ -1019,7 +1019,7 @@ overlap to reconcile with the separately pending mobile cleanup.
 
 ##### 07.5 — Final cutover and acceptance
 
-**Depends on:** verified 07.4. **Outcome:** one coherent protocol/schema/client implementation passes migration rehearsals and the full journey CI gate, with complete documentation and a billing handoff. **Status:** implemented locally for review on `codex/phase-07.5-cutover-acceptance` from owner-merged 07.4 / `8dfb44d`. Workspace, database, coverage, exports and side-panel checks pass; the retained journey gate passes 24 cases and fails on a controlled regression. The owner-authorized simulator launch passes; full native save/relaunch acceptance remains open; hosted acceptance and owner review remain open. No full phase acceptance is claimed.
+**Depends on:** verified 07.4. **Outcome:** one coherent protocol/schema/client implementation passes migration rehearsals and the full journey CI gate, with complete documentation and a billing handoff. **Status:** implemented locally for review on `codex/phase-07.5-cutover-acceptance` from owner-merged 07.4 / `8dfb44d`. Workspace, database, coverage, exports and side-panel checks pass; the retained journey gate passes 24 cases and fails on a controlled regression. The owner-authorized simulator launch passes; full native save/relaunch and owner acceptance remain open; both hosted Foundation runs pass at recorded revision `7d5705c`. No full phase acceptance is claimed.
 
 **Scope:** original tasks 9–10. Inventory all remaining old callers and temporary compatibility code, stop legacy writers for the final preservation comparison, then accept contraction and removal. Finish the existing journey suite/CI gate and documentation reconciliation. No external deployment is required; preserve the coordinated release rollout procedure for 09.
 
@@ -1032,7 +1032,7 @@ overlap to reconcile with the separately pending mobile cleanup.
 **Ready to hand off when**
 
 - [x] Task 9 and database portions of task 10 pass on clean and representative existing databases, including final preservation comparisons, restoration/forward-repair procedure, ownership/RLS and removal of obsolete protocol/schema/callers.
-- [ ] The committed journey suite runs from a clean setup, covers the full flow and specified offline/lost-acknowledgement/recovery failures, fails on a controlled assertion regression and is required in CI. Inspect hosted results for the pushed commit before claiming the new CI gate passed; a local run alone leaves that evidence open.
+- [x] The committed journey suite runs from a clean setup, covers the full flow and specified offline/lost-acknowledgement/recovery failures, fails on a controlled assertion regression and is required in CI. Both inspected Foundation runs passed for `7d5705c`; the [07.5 hosted acceptance](handoffs/phase-07-5-cutover-acceptance.md#october-8-hosted-ci-acceptance) records the revision and run links. Inspect later revisions separately before claiming their hosted gates pass.
 - [ ] Whole-workspace/database/coverage checks and affected side-panel verification pass, all agreed requirements/review findings have evidence or explicit approved deferrals, and the phase-wide acceptance list below is reconciled.
 - [x] Save `handoffs/phase-07-5-cutover-acceptance.md`; reconcile the umbrella `handoffs/phase-07-api-offline.md`, handoff index and all named product/architecture documents. Carry verified access/eligibility interfaces to 07A and keep earlier physical-device/staging gates explicit for 09.
 
@@ -1044,6 +1044,13 @@ checks pass 667 cases; focused checks pass 44 and mobile coverage retains all fl
 First/repeated native button-entry recordings retain stable title/timer/card layout.
 The [07.5 handoff](handoffs/phase-07-5-cutover-acceptance.md#october-8-accept-entry-flicker)
 records the evidence and remaining owner swipe/device/full native acceptance.
+
+**October 9 review follow-up:** The hosted-evidence references and six future
+handoff checkboxes are reconciled. Phase 09 now requires all reviewed migrations,
+including 0013, under the stopped-writer/backup/forward-repair procedure. Function
+documentation is added without runtime changes; the
+[07.5 follow-up](handoffs/phase-07-5-cutover-acceptance.md#october-9-review-follow-up)
+records verification. Native and owner acceptance remain open.
 
 #### Keep out of this phase
 
@@ -1058,7 +1065,7 @@ records the evidence and remaining owner swipe/device/full native acceptance.
 - [x] Definitively rejected completions are retained for recovery but excluded from reps/calendar/streaks, with tested reconciliation and relaunch behavior; unresolved failures and rejected reflection edits cannot silently remove valid completion credit.
 - [x] Oversized bodies and unsupported content types return documented typed `413`/`415` responses, with API parser/error-handler and client retry regression tests; neither case is mislabeled or retried as `503 UNAVAILABLE`. Reverified in the isolated [07.1 checkpoint](handoffs/phase-07-1-api-data.md) with passing local and hosted checks.
 - [x] A committed full-journey suite covers challenge → completion → reflection → Progress and the specified recovery/failure/retry cases, runs through a documented local command and gates CI with isolated app/API/database fixtures and useful failure artifacts.
-- [x] Required native storage/Keychain/lifecycle/presentation and device/release evidence is recorded or remains an explicit owned acceptance gate. The owner-authorized 07.5 simulator launch passes; full save/relaunch checks remain open in its handoff; hosted 07.5 acceptance remains open. 07.3A automation/hosted CI is deferred, not accepted; browser support and useful lower-level regressions remain, and the deferral does not block 07.4.
+- [x] Required native storage/Keychain/lifecycle/presentation and device/release evidence is recorded or remains an explicit owned acceptance gate. The owner-authorized 07.5 simulator launch passes; full save/relaunch checks remain open in its handoff; both hosted 07.5 Foundation runs pass at recorded revision `7d5705c`. 07.3A automation/hosted CI is deferred, not accepted; browser support and useful lower-level regressions remain, and the deferral does not block 07.4.
 - [x] Authenticated earlier-upload eligibility and access seams have tested isolated provider fixtures and documented production integration requirements for Phase 07A; no live provider/paid-access completion claim or production bypass is introduced. Verified in 07.1; real billing remains 07A.
 - [x] Shared contracts/mobile/API are cut over together, completed historical dates/content survive migration, and no obsolete route/table/caller remains in the implemented product flow.
 - [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; reconcile implemented API/offline guidance and the handoff index under the approved documentation sequence.
@@ -1153,7 +1160,7 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 - [ ] Duplicate/out-of-order events, failed/uncertain handoffs, termination, stale claims and overlapping refreshes cannot regress entitlements or lose business state.
 - [ ] Missing notifications, exhausted delivery, overlapping/missed cron runs and full database outages recover or report honestly; alerts and plan/cost settings are recorded.
 - [ ] Integrated Phase 07 recording/synchronization still passes with verified access and after expiry; account changes/revocation preserve pending data without granting unauthorized paid use. Purchase transfers refresh both affected billing accounts, keep private history separate and preserve original-account eligibility for earlier valid pending activity.
-- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; update implemented billing guidance and the handoff index.
+- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; update implemented billing guidance and the handoff index.
 
 **Carry forward:** Product/entitlement mappings (no secrets), paywall gates, all nine subscription rules, offline paid-access/restore policy, verified historical coverage and earlier-upload eligibility, billing event/claim state machines, QStash/cron configuration, failure matrix and replay runbook; browser/native evidence and remaining release gates.
 
@@ -1191,7 +1198,7 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 - [ ] Get help opens the configured, working support destination from each recovery surface that offers it; no placeholder action or sensitive diagnostic payload is shipped.
 - [ ] Export/deletion isolate the owner, revoke credentials and document any pending cleanup; deleted identities cannot resurrect accounts.
 - [ ] Declining analytics blocks client/server forwarding while the app still works; telemetry/diagnostics contain no sensitive payloads.
-- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Settings scope, recovery/data-control flows, reminder scheduling, consent and event schemas, retention/deletion runbook and redaction evidence.
 
@@ -1214,7 +1221,7 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 - Run the first-release PRD acceptance matrix and applicable iOS tech checks on release-like builds and physical iPhones. Recheck identity, in-app countdown recovery, typed reflections, full calendar/day sheet, purchases, accessibility and keyboard/sheet behavior. Deferred Android, lock-screen, dictation and level tests do not block this release.
 - Load-test interactive saves/history/purchase checks together with billing bursts and reconciliation using provider test doubles. Measure database connections/CPU/locks, API latency, queue age/drain time and choose configurable capacity limits.
-- Deploy the integrated API and mobile build to a non-production staging environment, applying migration 0008 after its predecessors; verify end-to-end behavior before production. Verify environment isolation, restore from backup, additive migrations/rollback, older-client compatibility, alert delivery, scheduler heartbeat and incident/replay instructions. Confirm paid-plan allowances and operating budgets.
+- Deploy the integrated API and mobile build to a non-production staging environment, applying all reviewed migrations in order, including `0013_attempt_resources_contract`, under the [coordinated cutover and repair procedure](operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients). Retire/block incompatible writers, verify a restorable backup and preservation comparisons, and accept the matching API/mobile together before reopening traffic. Verify end-to-end behavior before production, environment isolation, restoration/forward repair, old-client retirement, alert delivery, scheduler heartbeat and incident/replay instructions. After contraction, do not roll back the old API alone against removed schema. Confirm paid-plan allowances and operating budgets.
 - Follow the App Store checklist below: EAS production build/upload, TestFlight, listing/screenshots/privacy/support, reviewer access and App Review submission. Upload is not review approval. Record submission/release authorization and monitor real purchase/restore and errors after launch.
 
 #### Keep out of this phase
@@ -1227,7 +1234,7 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 - [ ] All launch PRD criteria (AC-01–06, AC-08–11, AC-13–17) and applicable iOS tech checks have linked passing evidence; no unresolved launch-blocking product decisions.
 - [ ] Capacity, recovery/restore, security/privacy, rollback and device coverage meet documented release targets; limitations have explicit disposition.
 - [ ] Store/release checklist, operational ownership and handoffs are complete; authorized release and post-release smoke results are recorded before marking launch complete.
-- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Release/build identifiers and commits, acceptance evidence, measured capacity/budgets, known limits, rollback/incident playbooks and post-release verification.
 
@@ -1266,7 +1273,7 @@ These stages do not count toward first-release readiness. Lock-screen display is
 - [ ] Real-device lock, background, reopen and zero behavior on the platforms being released use the original deadline; device/OS evidence is saved.
 - [ ] Confirmed completion/give-up ends the display; lost responses and cross-device stale displays reconcile safely.
 - [ ] Permission denial, dismissal and unsupported-device paths retain a usable in-app countdown; native limitations are documented.
-- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Native module/library configuration, OS support, permission behavior, lifecycle integration and real-device recordings/results.
 
@@ -1300,7 +1307,7 @@ These stages do not count toward first-release readiness. Lock-screen display is
 - [ ] Optional scope is approved and current storefront/integration rules are verified.
 - [ ] Eligible/ineligible flows, forged redirects/webhooks, delayed payment, return/restore, refund/cancel and duplicate subscriptions pass.
 - [ ] Rollout/rollback, provider reconciliation and measurement evidence are recorded.
-- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Eligibility policy/date, account/provider mappings, feature flag, additional tests, support/rollback steps and measured results.
 
@@ -1335,7 +1342,7 @@ These stages do not count toward first-release readiness. Lock-screen display is
 - [ ] Feature scope/provider/privacy decisions are approved; quality/context evaluation meets documented targets.
 - [ ] Real-device streams, duplicate sends, interruption/cancellation, unknown outcomes and concurrent allowance enforcement pass.
 - [ ] Cross-user/context-consent isolation, deletion, prompt-injection handling, latency and cost limits are verified.
-- [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **Carry forward:** Provider/prompt versions, context policy, streaming protocol, usage/recovery states, evaluations, cost budgets and release controls.
 

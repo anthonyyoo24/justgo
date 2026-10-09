@@ -37,6 +37,11 @@ export type ProgressCalendarProps = {
   onRetryMonth?: (() => void) | undefined;
 };
 const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+/**
+ * Render independently available summary values and month activity counts.
+ * Missing day data retains loading/offline/error presentation instead of becoming
+ * an empty calendar; day and rep labels follow the displayed counts.
+ */
 export function ProgressCalendar({
   month,
   data,

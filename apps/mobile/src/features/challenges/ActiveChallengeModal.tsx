@@ -22,6 +22,11 @@ type Props = {
   finish: (outcome: 'completed' | 'given_up') => Promise<void>;
 };
 
+/**
+ * Present unfinished activity as an opaque surface with explicit outcome exits.
+ * Root insets are captured before the shared-window iOS/web portal appears so its
+ * first layout is stable; Android retains modal-owned safe-area measurement.
+ */
 export function ActiveChallengeModal(props: Props) {
   // The iOS/web full-screen portal shares the root window. Use its measured
   // insets on the first render; native SafeAreaView measures again after
@@ -43,7 +48,11 @@ export function ActiveChallengeModal(props: Props) {
     </Modal>
   );
 }
-// Mounted inside the portal, so the web surface exists before isolation runs.
+/**
+ * Mount the active surface inside the portal before applying web isolation.
+ * The outer surface owns iOS/web padding, while Android keeps its existing edges;
+ * inner layout must not apply the same root insets again.
+ */
 function ActiveChallengeContent({
   start,
   error,

@@ -48,6 +48,11 @@ const cardFrame = (scale: number) => ({
   width: 220 * scale,
   height: 273 * scale,
 });
+/**
+ * Coordinate gesture/button actions with one authoritative queue settlement.
+ * An accepted card stays departed while covered by the active modal; an
+ * unconfirmed action restores it, and duplicate actions remain locked out.
+ */
 export function ChallengeDeck({
   cards,
   venue,

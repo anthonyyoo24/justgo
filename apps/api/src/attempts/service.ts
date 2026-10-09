@@ -15,6 +15,11 @@ export class AttemptService {
     private readonly eligibility?: UploadEligibilityReader,
     private readonly now: () => number = Date.now,
   ) {}
+  /**
+   * Create one completed rep, or replay an identical owner-scoped attempt ID.
+   * Existing records replay before coverage checks; new records require verified
+   * start-time coverage and freeze the activity date in the captured start zone.
+   */
   create(token: string, input: CreateAttempt) {
     return this.identity.withSession(token, async (tx, session) => {
       const old = await readAttempt(tx, session.userId, input.id);

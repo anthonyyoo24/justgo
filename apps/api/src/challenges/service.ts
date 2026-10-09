@@ -7,6 +7,10 @@ export class ChallengeService {
     private readonly identity: IdentityService,
     private readonly entitlement?: EntitlementReader,
   ) {}
+  /**
+   * Return active Level 1 placements in stable venue/position order.
+   * Reads require verified access; personal deck order remains client-owned.
+   */
   catalog(token: string) {
     return this.identity.withSession(token, async (tx) => {
       const access = await this.entitlement?.(tx);

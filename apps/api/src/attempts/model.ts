@@ -18,6 +18,11 @@ export type AttemptRow = Record<string, unknown> & {
   reflection_revision: number;
 };
 export const attemptQuery = sql`select a.*, to_char(a.started_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_started_at,c.text as instruction from justgo.attempts a join justgo.challenges c on c.id=a.challenge_id`;
+/**
+ * Project stored history without losing start-time precision or date attribution.
+ * Unknown legacy start zones retain their recorded display zone; revision zero
+ * represents an absent reflection rather than a draft.
+ */
 export const projectAttempt = (row: AttemptRow): Attempt => ({
   id: row.id,
   challengeId: row.challenge_id,
@@ -38,6 +43,10 @@ export const projectAttempt = (row: AttemptRow): Attempt => ({
           revision: row.reflection_revision,
         },
 });
+/**
+ * Read an attempt within the supplied owner transaction.
+ * The explicit owner predicate is retained alongside database row-level security.
+ */
 export const readAttempt = async (tx: Tx, userId: string, id: string) =>
   (
     await tx.execute<AttemptRow>(

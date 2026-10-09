@@ -15,6 +15,10 @@ import {
   type Tx,
 } from '../attempts/model.js';
 const cursorSchema = z.tuple([z.iso.date(), z.iso.datetime(), z.uuid()]);
+/**
+ * Decode a start-time/ID cursor scoped to its requested historical day.
+ * Malformed or mismatched-day cursors are permanent invalid requests.
+ */
 const decodeCursor = (value: string, date: string) => {
   try {
     const parsed = cursorSchema.parse(
@@ -31,6 +35,10 @@ export class ProgressResources {
     private readonly identity: IdentityService,
     private readonly entitlement?: EntitlementReader,
   ) {}
+  /**
+   * Run a verified-access read under the authenticated owner transaction.
+   * The shared owner lock keeps multi-query totals and rows consistent with writes.
+   */
   private run<T>(token: string, work: (tx: Tx, userId: string) => Promise<T>) {
     return this.identity.withSession(token, async (tx, session) => {
       // The owner lock also serializes creates/PATCHes across devices, so totals
@@ -44,6 +52,10 @@ export class ProgressResources {
       return work(tx, session.userId);
     });
   }
+  /**
+   * Read total reps and streak context independently of the selected calendar month.
+   * The requested zone determines today; historical activity dates stay frozen.
+   */
   summary(token: string, timeZone: string) {
     return this.run(token, async (tx, userId): Promise<ProgressSummary> => {
       const today = (
@@ -86,6 +98,10 @@ export class ProgressResources {
       };
     });
   }
+  /**
+   * Count reps by recorded activity date within the requested month.
+   * This read does not recompute history dates or fetch the overall summary.
+   */
   calendar(token: string, month: string) {
     return this.run(token, async (tx, userId): Promise<ProgressCalendar> => {
       const days = (
@@ -104,6 +120,11 @@ export class ProgressResources {
       };
     });
   }
+  /**
+   * Page one owner's recorded day by the precise captured start and attempt ID.
+   * The cursor retains database timestamp precision so equal-start rows are stable;
+   * total reps and page rows share the same owner transaction.
+   */
   day(token: string, date: string, limit: number, encodedCursor?: string) {
     const cursor = encodedCursor ? decodeCursor(encodedCursor, date) : null;
     return this.run(token, async (tx, userId): Promise<ProgressDayResponse> => {

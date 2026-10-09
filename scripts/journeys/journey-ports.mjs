@@ -1,8 +1,11 @@
 import { createServer } from 'node:net';
 import { journeyApiUrl, journeyAppUrl } from '../../e2e/support/environment.ts';
 
-// Refuse existing writers before applying the final contract migration. This
-// probe releases its listeners immediately; Playwright still refuses races.
+/**
+ * Reject occupied loopback fixture ports before any migration can affect writers.
+ * Each probe releases its listener immediately; startup must still refuse a server
+ * that wins the interval between this preflight and launching the fixtures.
+ */
 export async function assertJourneyPortsAvailable(
   urls = [journeyApiUrl, journeyAppUrl],
 ) {
