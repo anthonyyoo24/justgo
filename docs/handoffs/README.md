@@ -278,4 +278,6 @@ The Phase 07 checkpoint handoffs below track separate acceptance. The owner merg
 | 07.4 — Progress and history integration          | 07.3                      | [phase-07-4-progress-history.md](phase-07-4-progress-history.md)     |
 | 07.5 — Final cutover and acceptance              | 07.4                      | [phase-07-5-cutover-acceptance.md](phase-07-5-cutover-acceptance.md) |
 
+The October 8 [07.5 owner follow-up](phase-07-5-cutover-acceptance.md#october-8-accept-entry-flicker) fixes native accept-entry safe-area movement and the deck's covered handoff, with fresh automated and first/repeated native button-entry evidence. Owner swipe/device and full native acceptance remain open.
+
 The release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 07A → 08 → 09. Deferred stages 10, 11 and 12 each follow launch and do not block it. Additional levels/filters, dictation and Android stages will be detailed when scheduled.

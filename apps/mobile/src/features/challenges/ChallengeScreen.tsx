@@ -93,6 +93,7 @@ function ChallengeFlow() {
             label={venue.label}
             turn={queue.turn}
             disabled={!!active || state.saving || !focused}
+            covered={!!active}
             onBusyChange={setMoving}
             onAction={onAction}
           />

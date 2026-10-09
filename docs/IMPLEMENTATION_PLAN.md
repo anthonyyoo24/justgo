@@ -1038,6 +1038,13 @@ overlap to reconcile with the separately pending mobile cleanup.
 
 **October 8 local evidence:** `npm run check` passes 662 cases and Expo Doctor 21/21; database checks pass 48 cases plus the final migration rehearsal; all coverage floors, cold web/Hermes iOS exports, 63 focused mobile cases and affected 390 × 844 side-panel flows pass. The 24-case saved journey run preserves 18 existing QA accounts / 102 completed attempts / 14 replay receipts, and a deliberate assertion regression exits nonzero with masked failure evidence. The [07.5 handoff](handoffs/phase-07-5-cutover-acceptance.md) records commands, measurements, the browser deprecation observation, independent review and explicit native/hosted/owner acceptance gaps. The first phase-wide checkbox remains open for native feedback acceptance; the retained browser/lower-level results do not close it.
 
+**October 8 owner follow-up:** native accept-entry flicker was reproduced and fixed
+using immediate root safe-area spacing and a covered deck handoff. Fresh workspace
+checks pass 667 cases; focused checks pass 44 and mobile coverage retains all floors.
+First/repeated native button-entry recordings retain stable title/timer/card layout.
+The [07.5 handoff](handoffs/phase-07-5-cutover-acceptance.md#october-8-accept-entry-flicker)
+records the evidence and remaining owner swipe/device/full native acceptance.
+
 #### Keep out of this phase
 
 - Native purchase/paywall/restore implementation, subscription refresh/expiry policy, provider billing records/webhooks, QStash and scheduled billing recovery. These belong to Phase 07A; recorded subscription decisions remain intact there.

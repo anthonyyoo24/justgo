@@ -135,6 +135,75 @@ rep/reflection was submitted and full native save/relaunch, Keychain/AsyncStorag
 software-keyboard and physical-device acceptance remain open. Boot permission
 is now granted; the earlier pending boot question no longer applies.
 
+## October 8 accept-entry flicker
+
+Anthony reported intermittent flicker when accepting a challenge. The challenge
+entry code was unchanged from merged 07.4. The native recording reproduces the
+earlier open 07.3 safe-area/title observation: the first active frame hides the
+title beneath the status bar, then the whole content moves downward after native
+inset measurement. At 256-pixel recording width, the timer's top moves from
+42 to 81 pixels between 6.1917 and 6.3033 seconds (about 112 ms).
+
+`ActiveChallengeModal` now reads the existing root safe-area values before the
+full-screen iOS/web portal and applies all four paddings to its outer View immediately.
+`ChallengeLayout` accepts an explicit edge override; the modal passes no edges
+to avoid a second native measurement. The opaque `overFullScreen` presentation,
+modal isolation, saving feedback and explicit outcome controls remain intact.
+The accepted deck also holds its departed card while covered: unchanged queue
+turn no longer triggers the failed-action return animation during presentation.
+An unconfirmed action still restores the card; Give up advances/unlocks the
+existing deck. No dependency, binary, timer delay or account/storage change.
+
+Independent review caught Android's different dialog bounds: default system-bar
+insetting need not match the root. Its original bottom-edge SafeAreaView/default
+inner edges are preserved, with no root padding added. The platform regression
+fails before that containment and passes afterward; Android device acceptance
+remains separate.
+
+Verification distinguishes the evidence types:
+
+- Regression run against the previous source: 3 expected failures / 34 passes.
+  Final focused deck/layout/active-flow suite: **44/44**. Coverage includes first
+  render and reactive safe-area spacing, no duplicate insets, covered normal and
+  reduced-motion settlement, and unconfirmed-action restoration.
+- Fresh final `npm run check`: **667** cases (180 tooling, 45 API, 422 mobile, 20
+  contracts), online Expo Doctor **21/21**, types, lint, formatting and boundaries.
+- Fresh final mobile coverage: **422** cases, **94.85% lines / 90.49% branches**.
+  `npm run coverage:check` passes all unchanged global/critical floors. Unchanged
+  API/contracts reports retain the earlier full phase coverage evidence.
+- Native recording: first acceptance after a bundle reload and two repeated
+  button acceptances, across three card themes, keep the timer at **81–140 pixels**
+  from their first active sample through settled samples; title/card positions
+  remain stable. Each Give up returns a usable deck. These are one-off native
+  recordings, not a saved visual CI test or a new-binary/device acceptance gate.
+  A final iOS reload/Accept/Give-up recording also verifies the same entry layout
+  after platform containment; its later blue Refreshing overlay is development
+  tooling during the checks, separate from acceptance presentation.
+- Actual browser app in the side panel (1053 × 1247): two accept/Give-up entries
+  preserve the dialog, background input isolation and distinct challenge text,
+  with no console warnings/errors. The single newly allocated registry-owned
+  account was removed transactionally; existing QA identities/activity remain.
+
+Native mirror pointer drags did not commit a gesture in this automation session;
+the recorded entry checks use the equivalent Accept button path. XcodeBuildMCP's
+AX tools could not resolve the host's Command Line Tools selector; its recorder
+could not save an output path, so command-scoped full Xcode `simctl` recording and
+AVFoundation extraction supplied evidence. No global Xcode setting was changed.
+Captured warm sequences also contain 5–13 ms artwork/texture arrival samples
+without a layout jump; this does not prove every intermediate capture sample is
+a physical display frame. Owner swipe review and physical-device/VoiceOver/full
+native save-relaunch gates remain open. Earlier Completed/Success mixed-sample
+observations are not closed by this entry fix.
+
+Ignored evidence: `accept-{before,after}.mov`, their `*-frames/` manifests/contact
+sheets, `accept-timer-layout-measurement.json`, `accept-regression-before.log`,
+`accept-focused-final.log`, `accept-check-final.log`, `accept-mobile-coverage-final.log`,
+`accept-coverage-gate-final.log`, `accept-android-regression-before.log`,
+`accept-final.mov`, `accept-final-frames/`, `accept-layout-comparison.png`,
+`accept-web-active.png` and `accept-web-cleanup.json`
+under `.local/phase-07-5/`. API/Metro/mirror remain running with the updated native
+bundle for owner testing. No rep/reflection was submitted by these walkthroughs.
+
 ## Release rollout and repair
 
 Phase 09 owns external integration/deployment. Before accepting contraction on a

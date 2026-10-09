@@ -132,7 +132,11 @@ immediately on foreground; it never depends on a background interval. A fresh
 mount/account change resets unfinished activity. `ActiveChallengeModal` covers
 navigation full screen, omits Settings and accepts only Completed/Give up. Native modal input isolation and the web inert/ARIA adapter keep underlying navigation unavailable. Its saving surface retains warnings/details/dismissal, with page links
 deferred until the challenge ends. The modal closes when Success takes focus;
-Give up returns to the existing venue/deck without a saved attempt.
+Give up returns to the existing venue/deck without a saved attempt. The iOS/web
+full-screen modal uses measured root safe-area padding on its first render, with
+inner native inset edges disabled. Android retains modal-owned safe-area measurement
+because its dialog bounds can exclude system bars. The covered deck retains the departed accepted card
+until the active surface closes, rather than restoring it during presentation.
 Completed creates one UUID and awaits repository saving. Ordinary local success
 never waits for HTTP. `features/reflections/controller.ts` owns React-form state,
 validation, dirty-close choices and newer-input protection; explicit submissions

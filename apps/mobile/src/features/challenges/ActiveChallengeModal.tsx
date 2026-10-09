@@ -1,7 +1,11 @@
 import { useRef } from 'react';
 import { useModalIsolation } from '../../platform/useModalIsolation';
-import { Modal, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Modal, Platform, StyleSheet, Text, View } from 'react-native';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+  type EdgeInsets,
+} from 'react-native-safe-area-context';
 import { SavingSheetSurface } from '../../app-support/saving/SavingFeedback';
 import { colors, typography } from '../../theme/tokens';
 import { ChallengeLayout } from './ChallengeLayout';
@@ -19,6 +23,10 @@ type Props = {
 };
 
 export function ActiveChallengeModal(props: Props) {
+  // The iOS/web full-screen portal shares the root window. Use its measured
+  // insets on the first render; native SafeAreaView measures again after
+  // presentation and briefly places the header beneath the status bar.
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       testID="active-challenge-modal"
@@ -31,7 +39,7 @@ export function ActiveChallengeModal(props: Props) {
       // An unfinished challenge exits only through the explicit outcome controls.
       onRequestClose={() => {}}
     >
-      <ActiveChallengeContent {...props} />
+      <ActiveChallengeContent {...props} insets={insets} />
     </Modal>
   );
 }
@@ -44,18 +52,36 @@ function ActiveChallengeContent({
   completed,
   savingVisible,
   finish,
-}: Props) {
+  insets,
+}: Props & { insets: EdgeInsets }) {
   const surface = useRef<View>(null);
+  // Android's default dialog can exclude system bars, unlike its root window.
+  // Preserve its modal-owned inset measurement rather than padding twice.
+  const android = Platform.OS === 'android';
+  const Surface = android ? SafeAreaView : View;
   useModalIsolation(surface);
   return (
-    <SafeAreaView
+    <Surface
+      testID="active-challenge-surface"
       ref={surface}
-      style={styles.surface}
-      edges={['bottom']}
+      style={[
+        styles.surface,
+        !android && {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+      {...(android ? { edges: ['bottom'] as const } : {})}
       accessibilityViewIsModal
     >
       <SavingSheetSurface navigationEnabled={false} />
-      <ChallengeLayout title="Active challenge" showSettings={false}>
+      <ChallengeLayout
+        title="Active challenge"
+        showSettings={false}
+        {...(!android ? { safeAreaEdges: [] } : {})}
+      >
         {!!error && (
           <Text accessibilityRole="alert" style={styles.error}>
             {error}
@@ -70,7 +96,7 @@ function ActiveChallengeContent({
           finish={finish}
         />
       </ChallengeLayout>
-    </SafeAreaView>
+    </Surface>
   );
 }
 const styles = StyleSheet.create({

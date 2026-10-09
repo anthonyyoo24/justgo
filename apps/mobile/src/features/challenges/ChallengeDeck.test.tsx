@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
 import { Path } from 'react-native-svg';
+import { withTiming } from 'react-native-reanimated';
 import { ChallengeCard, ChallengeDeck } from './ChallengeDeck';
 import { VenueArt } from './VenueArt';
 import { panelOutline } from './challenge-design';
@@ -52,14 +53,12 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedStyle: () => ({}),
     cancelAnimation: jest.fn(),
     Easing: { out: () => 0, cubic: 0, bezier: () => 0 },
-    withTiming: (
-      to: unknown,
-      _config: unknown,
-      callback?: (done: boolean) => void,
-    ) => {
-      callback?.(true);
-      return to;
-    },
+    withTiming: jest.fn(
+      (to: unknown, _config: unknown, callback?: (done: boolean) => void) => {
+        callback?.(true);
+        return to;
+      },
+    ),
   };
 });
 jest.mock('react-native-worklets', () => ({
@@ -71,6 +70,75 @@ const cards = [
   { id: '3', text: 'Give a compliment.' },
   { id: '4', text: 'Ask for a recommendation.' },
 ];
+it.each([false, true])(
+  'holds the accepted deck until the active surface closes (reduced motion: %s)',
+  async (reduced) => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(reduced);
+    jest.mocked(withTiming).mockClear();
+    const onBusyChange = jest.fn();
+    const onAction = jest.fn(async () => 0);
+    const props = {
+      cards,
+      venue: 'cafe',
+      label: 'Cafe',
+      onBusyChange,
+      onAction,
+    };
+    const screen = render(<ChallengeDeck {...props} turn={0} />);
+    await act(async () => {});
+    fireEvent.press(screen.getByRole('button', { name: 'Accept challenge' }));
+    // The parent opens the modal without advancing the browsing queue.
+    screen.rerender(<ChallengeDeck {...props} turn={0} covered disabled />);
+    await act(async () => {});
+    expect(onAction).toHaveBeenCalledWith(1);
+    expect(withTiming).toHaveBeenCalledTimes(reduced ? 0 : 1);
+    expect(onBusyChange.mock.calls).toEqual([[true]]);
+    expect(
+      screen.getByRole('button', { name: 'Accept challenge' }),
+    ).toBeDisabled();
+    // Give up advances the queue and uncovers the existing deck; input works
+    // again without a return animation of the accepted card.
+    screen.rerender(
+      <ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Accept challenge' }),
+    ).toBeEnabled();
+    expect(onBusyChange.mock.calls).toEqual([[true], [false]]);
+    expect(withTiming).toHaveBeenCalledTimes(reduced ? 0 : 1);
+    screen.unmount();
+  },
+);
+it('restores an unconfirmed action so the same card can be tried again', async () => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(false);
+  jest.mocked(withTiming).mockClear();
+  const action = jest.fn(async () => 0);
+  const screen = render(
+    <ChallengeDeck
+      cards={cards}
+      venue="cafe"
+      label="Cafe"
+      turn={0}
+      onAction={action}
+    />,
+  );
+  await act(async () => {});
+  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  await act(async () => {});
+  expect(withTiming).toHaveBeenCalledTimes(2);
+  expect(jest.mocked(withTiming).mock.calls[1]![0]).toMatchObject({
+    x: 0,
+    progress: 0,
+  });
+  expect(
+    screen.getByRole('button', { name: 'Accept challenge' }),
+  ).toBeEnabled();
+  screen.unmount();
+});
 it.each([0, 1, 2, 5])(
   'preserves the full deck theme on acceptance at turn %s',
   async (turn) => {

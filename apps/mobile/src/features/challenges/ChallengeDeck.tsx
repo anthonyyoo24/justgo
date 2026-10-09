@@ -54,6 +54,7 @@ export function ChallengeDeck({
   label,
   turn,
   disabled = false,
+  covered = false,
   onBusyChange,
   onAction,
 }: {
@@ -62,6 +63,7 @@ export function ChallengeDeck({
   label: string;
   turn: number;
   disabled?: boolean;
+  covered?: boolean;
   onBusyChange?: (busy: boolean) => void;
   // Resolve with the authoritative queue version, even when it did not advance.
   onAction: (direction: -1 | 1) => Promise<number | void>;
@@ -98,6 +100,9 @@ export function ChallengeDeck({
   // Resetting shared values in the promise's finally can reveal the old card
   // for a frame before the new props arrive on the native UI thread.
   useLayoutEffect(() => {
+    // Acceptance does not advance the queue. Hold its departed card while the
+    // opaque active surface opens, instead of animating it back underneath.
+    if (covered) return;
     if (!busy.current) {
       motion.set(restingMotion(turn));
       return;
@@ -126,7 +131,7 @@ export function ChallengeDeck({
       motion.set(restingMotion(turn));
       unlock();
     }
-  }, [turn, settlement, reduced, motion, locked, onBusyChange]);
+  }, [turn, settlement, covered, reduced, motion, locked, onBusyChange]);
 
   async function commit(direction: -1 | 1) {
     if (busy.current) return;
