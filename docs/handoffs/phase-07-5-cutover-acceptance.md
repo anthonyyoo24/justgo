@@ -205,6 +205,22 @@ sheets, `accept-timer-layout-measurement.json`, `accept-regression-before.log`,
 under `.local/phase-07-5/`. API/Metro/mirror remain running with the updated native
 bundle for owner testing. No rep/reflection was submitted by these walkthroughs.
 
+## October 8 publication verification
+
+Anthony explicitly authorized pushing this branch and creating its PR. A clean,
+detached checkout of `dcd00c2` passed `npm ci` and `npm run check`: fresh online
+Expo Doctor **21/21**, contract build, all types, lint, formatting, boundaries and
+**667 tests** (180 tooling, 45 API, 422 mobile, 20 contracts). This rechecks the
+final cutover and flicker-fix source without ignored local environment files or
+existing dependency/build artifacts. The publication documentation changes no
+product code. The standalone online Doctor is repeated immediately before push.
+
+Logs remain ignored under `.local/phase-07-5/publication-{install,check,doctor}.log`.
+Earlier database, coverage, saved journey, export and UI evidence above remains
+applicable to the unchanged product source. Revision-specific hosted results must
+be inspected on the PR; native swipe review, full native/device acceptance and
+owner merge approval remain open.
+
 ## Release rollout and repair
 
 Phase 09 owns external integration/deployment. Before accepting contraction on a
