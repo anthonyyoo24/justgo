@@ -5,8 +5,9 @@
 `codex/phase-07.5-cutover-acceptance` starts from that clean merged baseline.
 The [07.5 handoff](phase-07-5-cutover-acceptance.md) records the registered 0013
 contraction, canonical protocol/fixture removal, expanded journeys and local
-automated/browser verification passing. Current native verification, publication,
-hosted checks and owner acceptance remain open; 07.3A and earlier native/device/release gates retain their explicit status.
+automated/browser verification passing. Anthony authorized pushing this branch and
+creating its PR on October 8. Fresh publication/hosted checks, current native
+verification and owner acceptance remain open; 07.3A and earlier native/device/release gates retain their explicit status.
 The dated 07.4 publication/review notes below are historical.
 
 **October 8 published 07.4 implementation:** `codex/phase-07.4-progress-history`

@@ -9,8 +9,9 @@
 - **Branch/base:** `codex/phase-07.5-cutover-acceptance`, created from clean `main`
   at `8dfb44d`, the owner's Phase 07.4 / PR #20 merge.
 - **Authorization:** Anthony requested a new branch and Phase 07.5 implementation,
-  with multiple agents where useful. No push, PR, merge or external deployment
-  is authorized for this phase.
+  with multiple agents where useful, and explicitly authorized pushing this branch
+  and creating its PR on October 8. Merge and external deployment remain separate
+  owner decisions.
 - **Dependencies:** [07.1 API/data](phase-07-1-api-data.md),
   [07.1B journey/CI](phase-07-1b-journey-ci.md),
   [07.2 local synchronization](phase-07-2-local-sync.md),
