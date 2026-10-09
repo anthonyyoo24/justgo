@@ -2,9 +2,9 @@
 
 ## Snapshot
 
-- **Status:** Implemented locally for owner review. Automated/browser acceptance
-  passes; current native verification, publication and hosted acceptance remain
-  open. The Phase 07 umbrella is not marked complete.
+- **Status:** Published for owner review in [PR #21](https://github.com/anthonyyoo24/justgo/pull/21).
+  Automated/browser acceptance passes; current native verification and hosted
+  acceptance remain open. The Phase 07 umbrella is not marked complete.
 - **Updated:** October 8, 2026.
 - **Branch/base:** `codex/phase-07.5-cutover-acceptance`, created from clean `main`
   at `8dfb44d`, the owner's Phase 07.4 / PR #20 merge.
@@ -82,7 +82,7 @@ Heavy checks run sequentially on the owner's 8 GB Mac.
 | Cold exports                         | Web and Hermes iOS exports pass with `--clear --max-workers 1` into ignored phase evidence directories.                                                                                                                                                                                                       |
 | Interactive side-panel browser       | Pass at 390 × 844: challenge → completed rep → explicit feeling/text → Save → Progress → captured start → View/Edit/Save, one rep, both `1 day` streaks and `1 rep this month`. One nonfatal web `pointerEvents` deprecation appeared during navigation; no browser error was observed or warning suppressed. |
 | Native simulator                     | Owner-authorized boot/launch now passes: the installed app renders Home in the live side-panel mirror. Full native save/relaunch/Keychain/AsyncStorage acceptance remains open.                                                                                                                               |
-| Hosted CI                            | Not run for this unpublished branch; separate publication permission and revision-specific hosted results are required.                                                                                                                                                                                       |
+| Hosted CI                            | PR #21 is published; revision-specific Foundation push/PR checks are running. The publication section records fresh local verification.                                                                                                                                                                       |
 
 The final source includes the monthly-copy correction. Full workspace/coverage
 checks, cold exports and the clean 24-case saved journey suite were repeated
@@ -207,13 +207,15 @@ bundle for owner testing. No rep/reflection was submitted by these walkthroughs.
 
 ## October 8 publication verification
 
-Anthony explicitly authorized pushing this branch and creating its PR. A clean,
+Anthony explicitly authorized pushing this branch and creating its PR. The branch
+is published in [PR #21](https://github.com/anthonyyoo24/justgo/pull/21) against `main`. A clean,
 detached checkout of `dcd00c2` passed `npm ci` and `npm run check`: fresh online
 Expo Doctor **21/21**, contract build, all types, lint, formatting, boundaries and
 **667 tests** (180 tooling, 45 API, 422 mobile, 20 contracts). This rechecks the
 final cutover and flicker-fix source without ignored local environment files or
 existing dependency/build artifacts. The publication documentation changes no
-product code. The standalone online Doctor is repeated immediately before push.
+product code. Standalone online Doctor passed **21/21** immediately before the
+initial push and is repeated before the publication-handoff follow-up push.
 
 Logs remain ignored under `.local/phase-07-5/publication-{install,check,doctor}.log`.
 Earlier database, coverage, saved journey, export and UI evidence above remains

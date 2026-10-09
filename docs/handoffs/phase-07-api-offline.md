@@ -6,8 +6,10 @@
 The [07.5 handoff](phase-07-5-cutover-acceptance.md) records the registered 0013
 contraction, canonical protocol/fixture removal, expanded journeys and local
 automated/browser verification passing. Anthony authorized pushing this branch and
-creating its PR on October 8. Fresh publication/hosted checks, current native
-verification and owner acceptance remain open; 07.3A and earlier native/device/release gates retain their explicit status.
+creating its PR on October 8. [PR #21](https://github.com/anthonyyoo24/justgo/pull/21)
+is published after clean-install/workspace checks and immediate online Doctor
+validation; revision-specific hosted checks are running. Current native verification
+and owner acceptance remain open; 07.3A and earlier native/device/release gates retain their explicit status.
 The dated 07.4 publication/review notes below are historical.
 
 **October 8 current checkpoint:** Anthony deferred unfinished 07.3A, preserved at
