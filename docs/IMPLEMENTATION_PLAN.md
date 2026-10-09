@@ -19,7 +19,7 @@ This authoritative Markdown plan contains eleven iOS release stages, including t
 
 **First release:** iOS, one easy Level 1 challenge collection with manual venue filtering, the in-app timer, Success, typed reflections, the full Progress summary/calendar/day sheet, native subscriptions, and essential Settings/privacy/recovery.
 
-**Deferred:** Welcome screens and questionnaire onboarding (owner decision September 17), Levels and progression rules, additional category filters, custom dictation, lock-screen display, Android release, Stripe and AI coaching. Stable challenge IDs and Level 1 history are kept now; thresholds and how prior completions count are decided later.
+**Deferred:** Welcome screens and questionnaire onboarding (owner decision September 17), practice reminders (owner decision October 9), Levels and progression rules, additional category filters, custom dictation, lock-screen display, Android release, Stripe and AI coaching. Stable challenge IDs and Level 1 history are kept now; thresholds and how prior completions count are decided later.
 
 **October 7 owner-approved testing deferral:** Stop further 07.3A implementation,
 optimization, benchmarks and native CI work. Preserve the unfinished hybrid pilot
@@ -125,7 +125,7 @@ separate unfinished work.
 | [06A — Code quality & test hardening](#phase-06a)           | Existing code is easier to understand and change, with meaningful regression tests and durable coding guidance. | 06 (local)                            | Complete                                    |
 | [07 — API & offline saving](#phase-07)                      | Completions/reflections display after local saving and synchronize reliably through resource APIs.              | 06A                                   | In progress                                 |
 | [07A — Native subscriptions & reliable billing](#phase-07a) | Verified purchases unlock promptly, and later subscription changes recover reliably.                            | 07.5; activate after free beta        | Local work in progress; activation deferred |
-| [08 — Settings, privacy & measurement](#phase-08)           | Users control recovery, private data and preferences; useful measurement respects their choices.                | 07.5                                  | Not started                                 |
+| [08 — Settings, privacy & measurement](#phase-08)           | Users control recovery, private data and preferences; useful measurement respects their choices.                | 07.5                                  | Settings UI in progress; legal review open  |
 | [09 — Release validation & launch](#phase-09)               | A free beta validates the core product, then the complete paid product is ready for store submission.           | 08 for beta; 08 + 07A for paid launch | Not started                                 |
 | [10 — Lock-screen countdowns](#phase-10)                    | The same accepted challenge is visible on supported lock screens without a JavaScript background timer.         | 09                                    | Not scheduled                               |
 | [11 — Optional US iOS web checkout](#phase-11)              | Eligible users can purchase on the web using the same authenticated app identity.                               | 09                                    | Not scheduled                               |
@@ -146,7 +146,7 @@ These remain open in PRD §13. Resolve each with the product owner and update th
 | Reflection save & dismissal     | Approved September 27       | Feeling-only/text-only/both; empty bottom action and empty Back/X skip; dirty Back/X offers save, keep editing or discard and skip.                        |
 | Reading saved reflections       | 06                          | Per-attempt detail/expansion and whether editing/deletion is offered there.                                                                                |
 | Apple account & offer           | Start in 01; ready for 07A  | Enrollment status, bundle ID/app record, subscription product IDs/pricing/trials and RevenueCat mapping. Finalize paywall and expiry behavior before 07A.  |
-| Supporting designs & formatting | Relevant phase              | Home color variants, Settings rows, reminder defaults, duration rounding and small-screen/accessibility states.                                            |
+| Supporting designs & formatting | Relevant phase              | Home color variants, Settings rows, haptic/motion preferences, duration rounding and small-screen/accessibility states.                                    |
 
 ## App Store setup — start alongside development
 
@@ -1174,7 +1174,7 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 ### Phase 08 — Settings, privacy & measurement
 
-**Status:** Not started  
+**Status:** In progress — Settings layout/contact slice for owner review; legal drafts and remaining controls are open\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
 
 **Acceptance references:** PRD AC-15–17 · Tech acceptance 3–4, 8–9, 17
@@ -1183,10 +1183,12 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 #### Implement
 
-- Finish Settings with recovery-key/transfer UI, restore/manage subscription links, scoped reminder/haptic/motion preferences and privacy/terms. Schedule reminders per authorized device using cloud preferences.
+- Finish Settings with recovery-key/transfer UI, restore/manage subscription links, scoped haptic/motion preferences and privacy/terms. Practice reminders are deferred beyond the first release by the October 9 owner decision; do not add notification permission requests or reminder scheduling in this phase.
+- Implement the haptic feedback and its Settings switch together in Phase 08, reusing a shared platform adapter and preference check. Wire a small set of deliberate action responses; finalize triggers/defaults during design, prevent duplicate feedback and keep haptic failure independent of product actions/saving. Verify preference behavior and action wiring with automated tests, and assess the feedback on a physical iPhone before release.
+- Add a Feature requests section using the same private contact flow and configured destination as support, as clarified by the owner October 9. Distinguish feature suggestions with an email subject or form request type. Open a user-reviewed email draft or private form, with no automatic reflection/history/credential attachments. Configure and verify the destination before release; share support's link-opening failure feedback and keep the action available. The owner selected email to `anthonyyoo24@gmail.com` October 9; opening the draft on a physical phone remains a release check. Public boards/voting are outside this scope.
 - Keep Settings, recovery, export/deletion and privacy usable in the free beta without a purchase. Hide or clearly disable commercial purchase controls while billing is inactive. Implement cleanup for configured vendors now; verify real billing-provider cleanup and management again when 07A is activated, before paid launch.
-- Configure and verify the owner-selected support email or help destination before release, as confirmed in the October 4 review. Any Get help action in account/saving recovery must open this working destination; do not ship placeholder actions or automatically include private reflection content/credentials. Selecting the actual destination remains a release setup item, not a blocker for core Phase 07 implementation. Reuse the Phase 07 toast presentation for failed support/legal/subscription-management link opening, with plain-language feedback and the original action still available; account and purchase-verification failures retain their dedicated recovery UI.
-- Implement authenticated export and confirmed deletion, immediate credential/session revocation, account cache clearing and durable vendor cleanup where required. Define retention/backup behavior consistent with the published policy.
+- Configure and verify the owner-selected support email or help destination before release, as confirmed in the October 4 review. Any Get help action in account/saving recovery must open this working destination; do not ship placeholder actions or automatically include private reflection content/credentials. The owner selected `anthonyyoo24@gmail.com` October 9; verify the email-draft flow before release. Reuse the Phase 07 toast presentation for failed support/legal/subscription-management link opening, with plain-language feedback and the original action still available; account and purchase-verification failures retain their dedicated recovery UI.
+- Implement authenticated export and confirmed in-app deletion, immediate credential/session revocation, account cache clearing and durable vendor cleanup where required. Deletion must cover the automatically created no-signup account and associated data, not only deactivate it or require contacting support. Explain retained data and any cleanup delay. When billing is active, explain that account deletion does not cancel an Apple subscription, offer subscription management/cancellation, and retain the option to delete immediately. Define retention/backup behavior consistent with the published policy. See [Apple account-deletion guidance](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion).
 - Activate explicit PostHog events through consent-aware client/server adapters. Separate general analytics and sensitive metadata choices; use stable IDs for confirmed domain events and keep analytics failure independent of product saves.
 - Finish diagnostic redaction and operational dashboards. Record metric definitions and baseline collection; do not invent conversion or wellbeing targets.
 
@@ -1194,20 +1196,24 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 - No Reset progress from the mockup, unconditional vendor forwarding, session replay/autocapture or journal/credential/audio payloads in telemetry.
 - No optional-analytics requirement for paid access or cloud saves.
+- No practice reminders, reminder notification permissions/scheduling or public feature-request board in the first release. Revisit reminders in separately scheduled post-launch work.
 
 #### Ready to hand off when
 
-- [ ] All required controls remain reachable when unpaid; recovery/transfer, reminder permissions and preferences work on iOS.
+- [ ] All required controls remain reachable when unpaid; recovery/transfer and haptic/motion preferences work on iOS. No reminder permission prompt or scheduling is introduced.
 - [ ] Get help opens the configured, working support destination from each recovery surface that offers it; no placeholder action or sensitive diagnostic payload is shipped.
+- [ ] Feature requests reuses the configured support contact flow/destination with a feature-request subject/type, remains usable without a purchase, sends no automatic private attachments and handles link-opening failure honestly.
 - [ ] Export/deletion isolate the owner, revoke credentials and document any pending cleanup; deleted identities cannot resurrect accounts.
 - [ ] Declining analytics blocks client/server forwarding while the app still works; telemetry/diagnostics contain no sensitive payloads.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
-**Carry forward:** Settings scope, recovery/data-control flows, reminder scheduling, consent and event schemas, retention/deletion runbook and redaction evidence.
+**Carry forward:** Settings scope, recovery/data-control flows, haptic/motion preferences, private feature-request destination, reminder deferral, consent and event schemas, retention/deletion runbook and redaction evidence.
 
-**Handoff file to create:** `handoffs/phase-08-settings-privacy.md`
+**Handoff:** [phase-08-settings-privacy.md](handoffs/phase-08-settings-privacy.md)
 
-**Working notes / blocker:** None recorded.
+**Working notes / blocker:** October 9 scope discussion: Anthony approved a private email or form for Feature requests, clarified that it should work like support, and deferred practice reminders beyond the first release. Haptic feedback and its switch belong together in Phase 08; triggers/defaults, motion-control presentation and final analytics consent copy still need finalizing during Settings design. Anthony declined Tminus and Lance for now; retain the existing EAS release workflow. The initial planning update did not implement app code. The owner subsequently authorized building the Paper F1 Settings layout and connecting existing recovery/support actions. This first UI slice preserves the secondary stack route without bottom tabs, exposes the existing recovery tools and private Support/Feature requests email drafts, and explicitly marks unimplemented controls as unavailable. It does not complete haptic/motion preferences, analytics consent, export/deletion or legal publication; evidence is recorded in the phase handoff. The owner subsequently authorized the legal preparation sequence: [data inventory, policy/terms drafts and review](legal/LEGAL_REVIEW.md), then hosting. Operator: Youngshin Yoo personally, Canada; intended draft audience: 18+ across available App Store countries and regions. Retention, provider configuration, regional/individual-developer eligibility and publication remain open review items.
+
+**October 9 typography review:** At Anthony's request, the Settings title and all section headings now reuse the narrower Bodoni 72 bold treatment already used on the other refined screens. Font sizes and line heights are preserved. Verification and remaining phase work are recorded in the [Phase 08 handoff](handoffs/phase-08-settings-privacy.md).
 
 <a id="phase-09"></a>
 
@@ -1237,6 +1243,7 @@ Complete real store/provider configuration, native purchase/restore and all 07A 
 - Load-test interactive saves/history/purchase checks together with billing bursts and reconciliation using provider test doubles. Measure database connections/CPU/locks, API latency, queue age/drain time and choose configurable capacity limits.
 - Deploy the integrated API and mobile build to a non-production staging environment, applying all reviewed migrations in order, including `0013_attempt_resources_contract`, under the [coordinated cutover and repair procedure](operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients). Retire/block incompatible writers, verify a restorable backup and preservation comparisons, and accept the matching API/mobile together before reopening traffic. Verify end-to-end behavior before production, environment isolation, restoration/forward repair, old-client retirement, alert delivery, scheduler heartbeat and incident/replay instructions. After contraction, do not roll back the old API alone against removed schema. Confirm paid-plan allowances and operating budgets.
 - Follow the App Store checklist below: EAS production build/upload, TestFlight, listing/screenshots/privacy/support, reviewer access and App Review submission. Upload is not review approval. Record submission/release authorization and monitor real purchase/restore and errors after launch.
+- Audit the submitted native bundle and configured SDKs for valid privacy manifests and approved reasons for any required-reason APIs. Reconcile actual cloud journal, analytics, billing and private feedback collection with App Privacy disclosures and the published policy; distinguish optional product analytics consent from Apple's ATT permission, which is required if the actual SDK/data use performs tracking under Apple's definition. Check current screenshot, build-SDK and export-compliance requirements immediately before submission. See [Apple privacy/data-use guidance](https://developer.apple.com/app-store/user-privacy-and-data-use/) and [required-reason API guidance](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api).
 
 #### Keep out of this phase
 

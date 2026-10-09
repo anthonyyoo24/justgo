@@ -14,6 +14,8 @@
 
 JustGO helps adults build social confidence through short, real-world social challenges. Users find an appropriate challenge, attempt it, acknowledge completion, optionally reflect, and see their activity history and progress.
 
+For the October 9 legal drafts, the owner identified the personal operator as Youngshin Yoo in Canada and proposed adults 18 and older across available App Store countries and regions. Final distribution, eligibility behavior, age rating and regional legal review remain release decisions. The [data inventory and legal review](../legal/LEGAL_REVIEW.md) track the policy assumptions and required follow-up; no new onboarding is approved by these drafts.
+
 ```text
 First use: Credential bootstrap → Verify paid access / Hard paywall → Home
 Returning use: Recover account → Verify access → Hydrate saved activity → Home
@@ -22,7 +24,7 @@ Primary destinations: Home · Progress
 Supporting surfaces: Settings · Calendar day sheet
 ```
 
-The first iOS release includes native paid access, recovery, cloud saves, one Level 1 collection with six venue decks, the in-app timer, Success, optional typed reflections, and the complete Progress screen with its calendar and day sheet. Levels and their progression rules, additional category filters, custom dictation, and lock-screen timers are deferred. On September 17, Anthony deferred welcome screens and questionnaire onboarding so implementation can focus on the approved core screens. This is a deferral, not permanent removal. Paywall and native subscriptions remain phase 07A; their final designs and offer remain to be specified.
+The first iOS release includes native paid access, recovery, cloud saves, one Level 1 collection with six venue decks, the in-app timer, Success, optional typed reflections, and the complete Progress screen with its calendar and day sheet. Practice reminders, Levels and their progression rules, additional category filters, custom dictation, and lock-screen timers are deferred. On September 17, Anthony deferred welcome screens and questionnaire onboarding so implementation can focus on the approved core screens. This is a deferral, not permanent removal. Paywall and native subscriptions remain phase 07A; their final designs and offer remain to be specified.
 
 Goals:
 
@@ -219,10 +221,16 @@ Use the supplied grouped-row visual style, spacing, icons, and hierarchy as a re
 | Scope                                           | Settings capability                                                                                                                                                                                    |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Required by the tech-stack product flow         | Restore Purchases, manage subscription, optional Save recovery key and Transfer to another device, analytics/privacy choices, authenticated data export and account deletion, privacy policy and terms |
-| Specified preferences; details to finalize      | Practice-reminder scheduling, haptics, and motion preference; OS permissions remain separate                                                                                                           |
+| Specified preferences; details to finalize      | Haptics and motion preference                                                                                                                                                                          |
+| Owner-approved October 9 addition               | Feature requests reuse Support’s private email draft to anthonyyoo24@gmail.com with a distinct subject and no automatic private attachments                                                            |
+| Deferred beyond the first release October 9     | Practice reminders, their notification permission flow and per-device scheduling                                                                                                                       |
 | Reference-only; not committed by the screenshot | Reset progress, exact help/feedback/about rows, app-version footer, and the “On this device” grouping                                                                                                  |
 
 Any storage explanation must describe phone saving, background uploads and credential-based cloud recovery accurately. Recovery on another device restores uploaded history; it cannot recover the only device copy of a still-pending submission. Do not promise complete backup or cross-device availability before upload. System reduced-motion settings apply even if a custom preference is omitted. Account deletion requires explicit confirmation and revokes recovery/access; it is not the same action as an unapproved Reset progress feature.
+
+Feature requests remain available without paid access and reuse support's private contact flow and configured destination. Distinguish suggestions with an email subject or form request type. Requests contain only what the user deliberately submits; do not automatically attach private reflections, activity history or recovery credentials. Public boards and voting are outside the first-release scope. A failed link opening shares support's existing toast presentation and leaves the action available.
+
+In-app account deletion includes the automatically created no-signup account and associated data. Do not require a support email or call to delete it. Explain any retained data or delayed cleanup. When subscriptions are active, explain that deleting the app account does not cancel billing through Apple, offer subscription management and retain immediate deletion. See [Apple account-deletion guidance](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion).
 
 ## 6. Challenge selection and activity counts
 
@@ -279,7 +287,7 @@ Initial metrics are onboarding/paywall conversion, challenge start and completio
 - XP, points, speed bonuses, collectible badges, leaderboards, social feeds, or sharing.
 - Favorites implied by the heart, a browsable challenge library, or GPS-based venue discovery.
 - Personalized recommendations based on feelings/reflections or “More/Fewer like this” feedback.
-- Levels UI, level unlocking/skipping/advancement, additional category filters, custom dictation, lock-screen timers, and an Android release at launch.
+- Practice reminders, Levels UI, level unlocking/skipping/advancement, additional category filters, custom dictation, lock-screen timers, and an Android release at launch.
 - A shipped AI coach, voice coach, or Stripe checkout in the initial release.
 - Automatic inclusion of every Settings reference row or every draft curriculum course.
 - SQLite, exhaustive offline history, multi-phone reflection conflict choosers, additional backup systems or a generic server upload outbox.
@@ -337,4 +345,4 @@ The remaining rows are unresolved. The reflection save and dismissal rule was ap
 | Reflection optionality and dismissal | Approved September 27: optional overall step; feeling-only, text-only or both; Skip when empty, Save Reflection when either has input; empty Back/X skips, dirty Back/X offers save, keep editing or discard and skip. |
 | Reading saved reflection text        | Approved September 27: expand a day entry to read its submitted per-attempt reflection. Phase 07.4 adds explicit text-only Add/Edit while preserving feeling; deletion remains excluded. Do not use a day-level note.  |
 | Future levels — not a launch blocker | Decide thresholds, unlocking/skipping, partial/final-level behavior and treatment of prior Level 1 completions when scheduling levels. Preserve history now; do not implement hidden progression.                      |
-| Supporting UI and formatting         | Finalize Settings rows, reminder defaults, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.                             |
+| Supporting UI and formatting         | Finalize Settings rows, haptic/motion preferences, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.                     |
