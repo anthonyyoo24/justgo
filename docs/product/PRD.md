@@ -320,7 +320,8 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 2. Prove no-signup iPhone identity/recovery and its fallback, then build shared API/navigation boundaries; welcome/questionnaire onboarding is deferred.
 3. Build the six Level 1 venue decks, local unfinished challenge/countdown and phone-saved completion/Success flow.
 4. Add typed reflections and the full Progress summary/calendar/day sheet against real cloud data.
-5. Finish native iOS purchases, billing recovery, Settings/privacy controls, TestFlight testing and App Store submission preparation.
+5. Finish Settings/privacy controls and validate the core app in a free TestFlight beta with server-authorized tester access.
+6. Activate native iOS purchases and billing recovery, verify the free-to-paid transition and complete paid App Store submission acceptance. The October 9 beta-first sequence defers commercial setup; it preserves all nine paid subscription rules.
 
 Use the detailed [implementation plan](../IMPLEMENTATION_PLAN.md) for dependencies and the release checklist. Launch acceptance is AC-01–06, AC-08–11, and AC-13–17. AC-07 and AC-12 are deferred; they do not block submission.
 
