@@ -230,6 +230,8 @@ Any storage explanation must describe phone saving, background uploads and crede
 
 Feature requests remain available without paid access and reuse support's private contact flow and configured destination. Distinguish suggestions with an email subject or form request type. Requests contain only what the user deliberately submits; do not automatically attach private reflections, activity history or recovery credentials. Public boards and voting are outside the first-release scope. A failed link opening shares support's existing toast presentation and leaves the action available.
 
+The owner approved five Settings groups on October 9: Preferences, Account & data, Privacy, Support, and About. Support sits directly above About and contains separate Get help and Suggest a feature email-draft actions. About contains the legal links, Rate on the App Store, and Instagram, TikTok and Twitter/X profiles. The owner confirmed the profiles and App Store listing are not ready; their rows stay unavailable until public destinations are configured. The rating action links directly to Write a Review. Link-opening failure shows plain feedback and permits retry; no activity or account payload is appended.
+
 In-app account deletion includes the automatically created no-signup account and associated data. Do not require a support email or call to delete it. Explain any retained data or delayed cleanup. When subscriptions are active, explain that deleting the app account does not cancel billing through Apple, offer subscription management and retain immediate deletion. See [Apple account-deletion guidance](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion).
 
 ## 6. Challenge selection and activity counts

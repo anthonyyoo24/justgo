@@ -6,8 +6,8 @@ links the drafts and their open retention, provider, regional and age decisions.
 Youngshin Yoo is the personal operator in Canada; intended draft distribution is
 adults 18+ across available App Store countries and regions. Current checkout is
 `codex/phase-08-settings-privacy`; billing code is preserved on
-`codex/phase-07a-native-billing` at `4d5c9f2`. The owner subsequently authorized the Paper Settings layout and existing recovery/contact actions; the first UI slice is locally verified for review, with the Settings title and section headings refined to the narrower serif used elsewhere. Phase 08 controls and legal publication remain open. No public site or Git publication occurred.
-The beta-first sequence and all remaining phase/device acceptance stay open.
+`codex/phase-07a-native-billing` at `4d5c9f2`. The owner subsequently authorized the Paper Settings layout and existing recovery/contact actions; the first UI slice is locally verified for review, with the Settings title and section headings refined to the narrower serif used elsewhere. The subsequent rating/social rows and separate Support section above About are in local review; the owner confirmed their public destinations are not ready. Phase 08 controls and legal publication remain open. No public site or Git publication occurred.
+The owner also requested removing the explanatory paragraphs below Account & data, Privacy and Support, followed by the Account & recovery and Terms of use subtext. The phase handoff records these presentation refinements and their local commit/verification evidence. The beta-first sequence and all remaining phase/device acceptance stay open.
 
 **October 8 Phase 07.5 current work:** The owner merged 07.4 / PR #20 at
 `8dfb44d` and requested a new branch and final cutover implementation.
