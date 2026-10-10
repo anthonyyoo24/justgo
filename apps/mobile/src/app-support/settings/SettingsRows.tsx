@@ -12,9 +12,8 @@ import { SettingsIcon, type SettingsIconName } from './SettingsIcon';
 
 export function SettingsGroup({
   title,
-  note,
   children,
-}: PropsWithChildren<{ title: string; note?: string }>) {
+}: PropsWithChildren<{ title: string }>) {
   return (
     <View style={styles.group}>
       <Text accessibilityRole="header" style={styles.heading}>
@@ -28,7 +27,6 @@ export function SettingsGroup({
           </View>
         ))}
       </View>
-      {note && <Text style={styles.note}>{note}</Text>}
     </View>
   );
 }
@@ -36,13 +34,11 @@ export function SettingsGroup({
 export function SettingsRowContent({
   icon,
   label,
-  detail,
   status,
   chevron = false,
 }: {
   icon: SettingsIconName;
   label: string;
-  detail?: string | undefined;
   status?: string | undefined;
   chevron?: boolean;
 }) {
@@ -53,7 +49,6 @@ export function SettingsRowContent({
       </View>
       <View style={styles.copy}>
         <Text style={styles.label}>{label}</Text>
-        {detail && <Text style={styles.detail}>{detail}</Text>}
       </View>
       {status && <Text style={styles.status}>{status}</Text>}
       {chevron && (
@@ -115,14 +110,8 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   icon: { width: 24, height: 24, flexShrink: 0 },
-  copy: { flex: 1, gap: spacing.xs },
+  copy: { flex: 1 },
   label: { ...typography.body, color: colors.ink },
-  detail: {
-    ...typography.caption,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.ink,
-  },
   status: {
     ...typography.caption,
     color: colors.ink,
@@ -131,11 +120,4 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   chevron: { width: 24, flexShrink: 0 },
-  note: {
-    ...typography.caption,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.ink,
-    paddingHorizontal: spacing.xs,
-  },
 });

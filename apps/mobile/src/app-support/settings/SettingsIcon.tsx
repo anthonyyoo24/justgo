@@ -13,6 +13,10 @@ export type SettingsIconName =
   | 'sensitive'
   | 'help'
   | 'idea'
+  | 'rate'
+  | 'instagram'
+  | 'tiktok'
+  | 'twitter'
   | 'privacy'
   | 'terms';
 
@@ -33,6 +37,11 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
       'M12 3L20 7V12C20 17 16 20 12 22C8 20 4 17 4 12V7L12 3ZM8 12L11 15L16 9',
     help: 'M9 9C9 5 16 5 16 9C16 12 12 11 12 15M12 18V18.1',
     idea: 'M9 18H15M10 21H14M8 15C3 10 6 3 12 3C18 3 21 10 16 15L15 18H9L8 15Z',
+    rate: 'M12 3L14.8 8.7L21 9.6L16.5 14L17.6 20.2L12 17.3L6.4 20.2L7.5 14L3 9.6L9.2 8.7Z',
+    instagram:
+      'M8 3H16A5 5 0 0 1 21 8V16A5 5 0 0 1 16 21H8A5 5 0 0 1 3 16V8A5 5 0 0 1 8 3ZM16 12A4 4 0 1 1 8 12A4 4 0 1 1 16 12ZM17 7H17.1',
+    tiktok: 'M14 3V16A5 5 0 1 1 10 11M14 3C15 7 18 8 21 8',
+    twitter: 'M5 4H9L19 20H15ZM19 4L5 20',
     privacy:
       'M12 3L20 7V12C20 17 16 20 12 22C8 20 4 17 4 12V7L12 3ZM12 10V14M12 17V17.1',
     terms: 'M8 7H16M8 11H16M8 15H13',

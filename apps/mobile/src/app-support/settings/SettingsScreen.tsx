@@ -2,13 +2,6 @@ import { Link, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ExternalLinkButton } from '../../components/ExternalLinkButton';
-import { useIdentity } from '../providers/AppProvider';
-import {
-  contactFailureMessage,
-  featureRequestContact,
-  supportContact,
-} from '../contact';
 import {
   colors,
   fontFamilies,
@@ -16,7 +9,7 @@ import {
   spacing,
   typography,
 } from '../../theme/tokens';
-import { appleStandardTerms, getLegalLinks } from './legal-links';
+import { SettingsInformationGroups } from './SettingsInformationGroups';
 import { SettingsIcon } from './SettingsIcon';
 import {
   PendingSettingsRow,
@@ -26,8 +19,6 @@ import {
 
 export function SettingsScreen() {
   const router = useRouter();
-  const { account } = useIdentity();
-  const legal = getLegalLinks();
   const version = Constants.expoConfig?.version;
   return (
     <SafeAreaView style={styles.safe}>
@@ -59,10 +50,7 @@ export function SettingsScreen() {
             <PendingSettingsRow icon="motion" label="Reduce motion" />
           </SettingsGroup>
 
-          <SettingsGroup
-            title="Account & data"
-            note="Activity saves on this phone first. Uploaded activity can be recovered on another device; activity waiting to upload stays on this phone."
-          >
+          <SettingsGroup title="Account & data">
             <Link href="/recovery" asChild>
               <Pressable
                 accessibilityRole="link"
@@ -72,11 +60,6 @@ export function SettingsScreen() {
                 <SettingsRowContent
                   icon="account"
                   label="Account & recovery"
-                  detail={
-                    account
-                      ? 'Recovery keys, device transfer & devices'
-                      : 'Connect or recover your account'
-                  }
                   chevron
                 />
               </Pressable>
@@ -85,80 +68,12 @@ export function SettingsScreen() {
             <PendingSettingsRow icon="delete" label="Delete account" />
           </SettingsGroup>
 
-          <SettingsGroup
-            title="Privacy"
-            note="Optional analytics are off. Reflection text is never included in analytics."
-          >
+          <SettingsGroup title="Privacy">
             <PendingSettingsRow icon="analytics" label="General analytics" />
             <PendingSettingsRow icon="sensitive" label="Sensitive metadata" />
           </SettingsGroup>
 
-          <SettingsGroup title="Support">
-            <ExternalLinkButton
-              label="Get help"
-              url={supportContact}
-              failureMessage={contactFailureMessage}
-              channel="activity"
-              style={styles.external}
-            >
-              <SettingsRowContent icon="help" label="Get help" chevron />
-            </ExternalLinkButton>
-          </SettingsGroup>
-
-          <SettingsGroup
-            title="Feature requests"
-            note="Send a private suggestion by email. No activity or account information is attached."
-          >
-            <ExternalLinkButton
-              label="Suggest a feature"
-              url={featureRequestContact}
-              failureMessage={contactFailureMessage}
-              channel="activity"
-              style={styles.external}
-            >
-              <SettingsRowContent
-                icon="idea"
-                label="Suggest a feature"
-                chevron
-              />
-            </ExternalLinkButton>
-          </SettingsGroup>
-
-          <SettingsGroup title="Legal">
-            <ExternalLinkButton
-              label="Privacy policy"
-              url={legal.privacy}
-              failureMessage="Couldn’t open the Privacy Policy. Please try again."
-              channel="activity"
-              style={styles.external}
-            >
-              <SettingsRowContent
-                icon="privacy"
-                label="Privacy policy"
-                status={legal.privacy ? undefined : 'Coming soon'}
-                chevron={!!legal.privacy}
-              />
-            </ExternalLinkButton>
-            <ExternalLinkButton
-              label="Terms of use"
-              url={legal.terms}
-              failureMessage="Couldn’t open the Terms of Use. Please try again."
-              channel="activity"
-              style={styles.external}
-            >
-              <SettingsRowContent
-                icon="terms"
-                label="Terms of use"
-                detail={
-                  legal.terms === appleStandardTerms
-                    ? 'Apple’s standard license agreement'
-                    : undefined
-                }
-                status={legal.terms ? undefined : 'Coming soon'}
-                chevron={!!legal.terms}
-              />
-            </ExternalLinkButton>
-          </SettingsGroup>
+          <SettingsInformationGroups />
 
           <Text style={styles.footer}>
             JustGO{version ? ` · Version ${version}` : ''}
@@ -211,7 +126,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   pressed: { opacity: 0.65 },
-  external: { paddingVertical: 0 },
   footer: { ...typography.caption, color: colors.ink, textAlign: 'center' },
   preview: {
     ...typography.caption,

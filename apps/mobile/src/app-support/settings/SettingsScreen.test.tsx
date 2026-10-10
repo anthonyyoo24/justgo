@@ -1,8 +1,14 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import type { LinkProps } from 'expo-router';
 import { Linking } from 'react-native';
 import SettingsRoute from '../../app/settings';
 import { SettingsScreen } from './SettingsScreen';
+import { SettingsGroup } from './SettingsRows';
 import { appleStandardTerms } from './legal-links';
 import {
   supportContact,
@@ -11,18 +17,12 @@ import {
 } from '../contact';
 import { showMessageToast } from '../../platform/Toast';
 
-let mockAccount: { userId: string } | null = {
-  userId: 'disposable-test-account',
-};
 const mockRouter = {
   canGoBack: jest.fn(() => true),
   back: jest.fn(),
   replace: jest.fn(),
   push: jest.fn(),
 };
-jest.mock('../providers/AppProvider', () => ({
-  useIdentity: () => ({ account: mockAccount }),
-}));
 jest.mock('../../platform/Toast', () => ({ showMessageToast: jest.fn() }));
 jest.mock('expo-constants', () => ({ expoConfig: { version: '0.1.0' } }));
 jest.mock('expo-router', () => {
@@ -47,13 +47,20 @@ jest.mock('expo-router', () => {
       ),
   };
 });
-const originalPrivacy = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL;
-const originalTerms = process.env.EXPO_PUBLIC_TERMS_URL;
+const linkEnvironmentKeys = [
+  'EXPO_PUBLIC_PRIVACY_POLICY_URL',
+  'EXPO_PUBLIC_TERMS_URL',
+  'EXPO_PUBLIC_APP_STORE_ID',
+  'EXPO_PUBLIC_INSTAGRAM_URL',
+  'EXPO_PUBLIC_TIKTOK_URL',
+  'EXPO_PUBLIC_TWITTER_URL',
+] as const;
+const originalLinks = Object.fromEntries(
+  linkEnvironmentKeys.map((key) => [key, process.env[key]]),
+);
 const openUrl = jest.spyOn(Linking, 'openURL');
 beforeEach(() => {
-  delete process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL;
-  delete process.env.EXPO_PUBLIC_TERMS_URL;
-  mockAccount = { userId: 'disposable-test-account' };
+  for (const key of linkEnvironmentKeys) delete process.env[key];
   mockRouter.canGoBack.mockReturnValue(true);
   mockRouter.back.mockClear();
   mockRouter.replace.mockClear();
@@ -62,26 +69,26 @@ beforeEach(() => {
   jest.mocked(showMessageToast).mockClear();
 });
 afterAll(() => {
-  if (originalPrivacy === undefined)
-    delete process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL;
-  else process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL = originalPrivacy;
-  if (originalTerms === undefined) delete process.env.EXPO_PUBLIC_TERMS_URL;
-  else process.env.EXPO_PUBLIC_TERMS_URL = originalTerms;
+  for (const key of linkEnvironmentKeys) {
+    const value = originalLinks[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
   openUrl.mockRestore();
 });
 
 it('renders the actual route with scoped groups, honest pending controls and no reminders or reset', () => {
   const screen = render(<SettingsRoute />);
-  for (const title of [
+  expect(
+    screen.getAllByRole('header').map((header) => header.props.children),
+  ).toEqual([
     'Settings',
     'Preferences',
     'Account & data',
     'Privacy',
     'Support',
-    'Feature requests',
-    'Legal',
-  ])
-    expect(screen.getByRole('header', { name: title })).toBeTruthy();
+    'About',
+  ]);
   for (const label of [
     'Haptics',
     'Reduce motion',
@@ -98,15 +105,121 @@ it('renders the actual route with scoped groups, honest pending controls and no 
   expect(screen.queryByText('Reset progress')).toBeNull();
   expect(screen.queryAllByRole('tab')).toHaveLength(0);
   expect(screen.getByText('JustGO · Version 0.1.0')).toBeTruthy();
-  expect(
-    screen.getByText(/activity waiting to upload stays on this phone/),
-  ).toBeTruthy();
+  for (const description of [
+    /Activity saves on this phone first/,
+    /Optional analytics are off/,
+    /Help and suggestions open your email app/,
+    /Recovery keys, device transfer & devices/,
+    /Connect or recover your account/,
+    /Apple’s standard license agreement/,
+  ])
+    expect(screen.queryByText(description)).toBeNull();
 });
 
-it('opens existing account tools even when no account is connected', () => {
-  mockAccount = null;
+it('groups the two contact actions under Support above About and keeps information links in About', () => {
   const screen = render(<SettingsScreen />);
-  expect(screen.getByText('Connect or recover your account')).toBeTruthy();
+  const groups = screen.UNSAFE_getAllByType(SettingsGroup);
+  const support = within(
+    groups.find((group) => group.props.title === 'Support')!,
+  );
+  const about = within(groups.find((group) => group.props.title === 'About')!);
+  expect(
+    support
+      .getAllByRole('button')
+      .map((button) => button.props.accessibilityLabel),
+  ).toEqual(['Get help', 'Suggest a feature']);
+  expect(
+    about
+      .getAllByRole('button')
+      .map((button) => button.props.accessibilityLabel),
+  ).toEqual([
+    'Rate on the App Store',
+    'Instagram',
+    'TikTok',
+    'Twitter / X',
+    'Privacy policy',
+    'Terms of use',
+  ]);
+  expect(screen.queryByText('Help & about')).toBeNull();
+});
+
+it('keeps rating and social rows unavailable until their destinations are configured', () => {
+  const screen = render(<SettingsScreen />);
+  for (const label of [
+    'Rate on the App Store',
+    'Instagram',
+    'TikTok',
+    'Twitter / X',
+  ]) {
+    const button = screen.getByRole('button', { name: label });
+    expect(button.props.accessibilityState.disabled).toBe(true);
+    fireEvent.press(button);
+  }
+  expect(openUrl).not.toHaveBeenCalled();
+});
+
+const communityDestinations = [
+  [
+    'Rate on the App Store',
+    'https://apps.apple.com/app/id1234567890?action=write-review',
+    'Couldn’t open the App Store. Please try again.',
+  ],
+  [
+    'Instagram',
+    'https://www.instagram.com/justgo-test',
+    'Couldn’t open Instagram. Please try again.',
+  ],
+  [
+    'TikTok',
+    'https://www.tiktok.com/@justgo-test',
+    'Couldn’t open TikTok. Please try again.',
+  ],
+  [
+    'Twitter / X',
+    'https://x.com/justgo-test',
+    'Couldn’t open Twitter / X. Please try again.',
+  ],
+] as const;
+function configureCommunityLinks() {
+  process.env.EXPO_PUBLIC_APP_STORE_ID = '1234567890';
+  process.env.EXPO_PUBLIC_INSTAGRAM_URL =
+    'https://www.instagram.com/justgo-test';
+  process.env.EXPO_PUBLIC_TIKTOK_URL = 'https://www.tiktok.com/@justgo-test';
+  process.env.EXPO_PUBLIC_TWITTER_URL = 'https://x.com/justgo-test';
+}
+
+it('opens configured rating and social destinations without attaching account or activity data', async () => {
+  configureCommunityLinks();
+  const screen = render(<SettingsScreen />);
+  for (const [label, url] of communityDestinations) {
+    fireEvent.press(screen.getByRole('button', { name: label }));
+    await waitFor(() => expect(openUrl).toHaveBeenCalledWith(url));
+  }
+  expect(openUrl).toHaveBeenCalledTimes(4);
+});
+
+it.each(communityDestinations)(
+  'keeps %s available after opening fails',
+  async (label, url, failureMessage) => {
+    configureCommunityLinks();
+    openUrl.mockRejectedValueOnce(new Error('private device detail'));
+    const screen = render(<SettingsScreen />);
+    const button = screen.getByRole('button', { name: label });
+    fireEvent.press(button);
+    await waitFor(() =>
+      expect(showMessageToast).toHaveBeenCalledWith('activity', failureMessage),
+    );
+    expect(button.props.accessibilityState.disabled).toBe(false);
+    fireEvent.press(button);
+    await waitFor(() =>
+      expect(button.props.accessibilityState.busy).toBe(false),
+    );
+    expect(openUrl).toHaveBeenNthCalledWith(2, url);
+  },
+);
+
+it('keeps the existing account recovery action available', () => {
+  const screen = render(<SettingsScreen />);
   fireEvent.press(screen.getByRole('link', { name: 'Account & recovery' }));
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
 });
@@ -154,13 +267,13 @@ it('keeps feature requests usable after email opening fails', async () => {
   expect(button.props.accessibilityState.disabled).toBe(false);
 });
 
-it('disables missing policy and identifies the existing Apple license destination', async () => {
+it('disables missing policy and opens the existing Apple license destination without subtext', async () => {
   const screen = render(<SettingsScreen />);
   expect(
     screen.getByRole('button', { name: 'Privacy policy' }).props
       .accessibilityState.disabled,
   ).toBe(true);
-  expect(screen.getByText('Apple’s standard license agreement')).toBeTruthy();
+  expect(screen.queryByText('Apple’s standard license agreement')).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Terms of use' }));
   await waitFor(() => expect(openUrl).toHaveBeenCalledWith(appleStandardTerms));
 });
