@@ -5,13 +5,22 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
-import { AccessibilityInfo, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { Path } from 'react-native-svg';
-import { withTiming } from 'react-native-reanimated';
+import { cancelAnimation, withTiming } from 'react-native-reanimated';
 import { ChallengeCard, ChallengeDeck } from './ChallengeDeck';
 import { VenueArt } from './VenueArt';
 import { panelOutline } from './challenge-design';
 import { colors } from '../../theme/tokens';
+type PanEvent = {
+  translationX: number;
+  translationY: number;
+  velocityX: number;
+};
+let mockPanCallbacks: Record<
+  string,
+  (event: PanEvent, success?: boolean) => void
+> = {};
 jest.mock('react-native-gesture-handler', () => {
   const chain = () => {
     const g: Record<string, unknown> = {};
@@ -23,7 +32,11 @@ jest.mock('react-native-gesture-handler', () => {
       'onEnd',
       'onFinalize',
     ])
-      g[name] = () => g;
+      g[name] = (value: unknown) => {
+        if (name.startsWith('on'))
+          mockPanCallbacks[name] = value as (typeof mockPanCallbacks)[string];
+        return g;
+      };
     return g;
   };
   return {
@@ -62,20 +75,88 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 jest.mock('react-native-worklets', () => ({
-  scheduleOnRN: (callback: () => void) => callback(),
+  scheduleOnRN: (
+    callback: (...mockArgs: unknown[]) => void,
+    ...args: unknown[]
+  ) => callback(...args),
 }));
+let mockReduceMotion = false;
+jest.mock('../../platform/motion', () => ({
+  useReduceMotion: () => mockReduceMotion,
+}));
+beforeEach(() => {
+  mockReduceMotion = false;
+  mockPanCallbacks = {};
+});
 const cards = [
   { id: '1', text: 'Say hello.' },
   { id: '2', text: 'Ask a question.' },
   { id: '3', text: 'Give a compliment.' },
   { id: '4', text: 'Ask for a recommendation.' },
 ];
+
+it.each([false, true])(
+  'preserves swipes and removes automatic travel when motion is reduced: %s',
+  async (reduced) => {
+    mockReduceMotion = reduced;
+    jest.mocked(withTiming).mockClear();
+    const onAction = jest.fn(async () => 1);
+    const props = { venue: 'cafe', label: 'Cafe', onAction };
+    const screen = render(<ChallengeDeck {...props} cards={cards} turn={0} />);
+    const short = { translationX: 20, translationY: 10, velocityX: 0 };
+    act(() => {
+      mockPanCallbacks.onUpdate!(short);
+      mockPanCallbacks.onEnd!(short);
+      mockPanCallbacks.onFinalize!(short, false);
+    });
+    expect(withTiming).toHaveBeenCalledTimes(reduced ? 0 : 2);
+    expect(onAction).not.toHaveBeenCalled();
+    jest.mocked(withTiming).mockClear();
+    await act(async () =>
+      mockPanCallbacks.onEnd!({
+        translationX: -100,
+        translationY: 0,
+        velocityX: 0,
+      }),
+    );
+    expect(onAction).toHaveBeenCalledWith(-1);
+    screen.rerender(
+      <ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Skip challenge' }),
+    ).toBeEnabled();
+    expect(withTiming).toHaveBeenCalledTimes(reduced ? 0 : 1);
+  },
+);
+
+it('finishes acceptance when a reduced-motion change cancels its in-flight exit', async () => {
+  let finish!: (done: boolean) => void;
+  jest.mocked(withTiming).mockImplementationOnce((to, _config, callback) => {
+    finish = callback!;
+    return to;
+  });
+  jest.mocked(cancelAnimation).mockImplementation(() => finish(false));
+  const onAction = jest.fn(async () => 0);
+  const props = { cards, venue: 'cafe', label: 'Cafe', turn: 0, onAction };
+  const screen = render(<ChallengeDeck {...props} />);
+  fireEvent.press(screen.getByRole('button', { name: 'Accept challenge' }));
+  expect(onAction).not.toHaveBeenCalled();
+  mockReduceMotion = true;
+  screen.rerender(<ChallengeDeck {...props} />);
+  await act(async () => {});
+  expect(onAction).toHaveBeenCalledTimes(1);
+  expect(onAction).toHaveBeenCalledWith(1);
+  expect(
+    screen.getByRole('button', { name: 'Accept challenge' }),
+  ).toBeEnabled();
+  screen.unmount();
+  jest.mocked(cancelAnimation).mockReset();
+});
 it.each([false, true])(
   'holds the accepted deck until the active surface closes (reduced motion: %s)',
   async (reduced) => {
-    jest
-      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-      .mockResolvedValue(reduced);
+    mockReduceMotion = reduced;
     jest.mocked(withTiming).mockClear();
     const onBusyChange = jest.fn();
     const onAction = jest.fn(async () => 0);
@@ -112,9 +193,7 @@ it.each([false, true])(
   },
 );
 it('restores an unconfirmed action so the same card can be tried again', async () => {
-  jest
-    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-    .mockResolvedValue(false);
+  mockReduceMotion = false;
   jest.mocked(withTiming).mockClear();
   const action = jest.fn(async () => 0);
   const screen = render(
@@ -182,9 +261,7 @@ it('uses the same cream surface for the light card as the challenge page', () =>
   ).toBe(colors.cream);
 });
 it('keeps button input exclusive while the same confirmed action is pending', async () => {
-  jest
-    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-    .mockResolvedValue(true);
+  mockReduceMotion = true;
   let finish!: () => void;
   const action = jest.fn(
     () =>
@@ -285,9 +362,7 @@ it('hides queued content from screen readers and renders no duplicate cards for 
   expect(screen.queryByText('Ask a question.')).toBeNull();
 });
 it('does not send an acceptance when navigation interrupts before the animation hands off', async () => {
-  jest
-    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-    .mockResolvedValue(true);
+  mockReduceMotion = true;
   const action = jest.fn(async () => {});
   const screen = render(
     <ChallengeDeck
@@ -490,9 +565,7 @@ it('preserves the flourish coordinate system when a queued card becomes the fron
 });
 
 it('holds the promoted stack and locks input until the acknowledged queue is rendered', async () => {
-  jest
-    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-    .mockResolvedValue(true);
+  mockReduceMotion = true;
   const action = jest.fn(async () => 1);
   const props = { venue: 'cafe', label: 'Cafe', onAction: action };
   const screen = render(<ChallengeDeck {...props} cards={cards} turn={0} />);
@@ -514,9 +587,7 @@ it('holds the promoted stack and locks input until the acknowledged queue is ren
 });
 
 it('restores the original card when a save does not advance the queue', async () => {
-  jest
-    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-    .mockResolvedValue(false);
+  mockReduceMotion = false;
   const screen = render(
     <ChallengeDeck
       cards={cards}

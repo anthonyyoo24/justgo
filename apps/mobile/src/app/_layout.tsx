@@ -10,6 +10,7 @@ import { AppProvider, useAccess } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
 import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
+import { MotionPreferencesProvider } from '../platform/MotionPreferencesProvider';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -43,13 +44,15 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
-      <AppProvider>
-        <SavingFeedbackShell>
-          <ChallengeActivityProvider>
-            <Navigation />
-          </ChallengeActivityProvider>
-        </SavingFeedbackShell>
-      </AppProvider>
+      <MotionPreferencesProvider>
+        <AppProvider>
+          <SavingFeedbackShell>
+            <ChallengeActivityProvider>
+              <Navigation />
+            </ChallengeActivityProvider>
+          </SavingFeedbackShell>
+        </AppProvider>
+      </MotionPreferencesProvider>
     </GestureHandlerRootView>
   );
 }

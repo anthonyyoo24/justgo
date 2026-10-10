@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 70 · Updated October 10, 2026
+**Version:** 72 · Updated October 10, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -101,7 +101,7 @@ separate unfinished work.
 ## How to use this plan
 
 - Build each slice through the database, API and UI it needs; introduce tables and indexes with their consuming feature.
-- Run relevant tests and UI verification during every phase. Phase 09 integrates and releases work already verified in its own stage.
+- Run relevant tests and UI verification during every phase. Phase 09 integrates and releases work already verified in its own stage, and owns the explicitly rescheduled haptics implementation and physical-iPhone acceptance before the free beta.
 - **September 29 validation timing:** Anthony will do physical-iPhone acceptance after the full app is built, during release validation. Earlier feature phases use local automated checks and the iOS simulator; carry device-specific VoiceOver, large-text, gesture and recovery checks to Phase 09. Stage the integrated API/mobile build before release, without treating staging as a Phase 06 feature gate.
 - **September 30 quality-phase sequencing:** Phase 06A may start and complete against verified local implementations from phases 02–06 while their previously deferred physical-device and staging gates remain open. Preserve those gates in their original handoffs and Phase 09; they do not block 06A. Phase 07 implementation follows the 06A handoff.
 - Mark a phase complete only after its checks and dependency phases pass, and its handoff is saved with evidence. For Phase 07, apply this rule separately to active 07.1–07.5 checkpoints; the explicit October 7 deferral permits 07.4 without completing 07.3A. Deferral does not satisfy its checks or close release gates; existing drafts do not establish completion. Follow the side-panel-only verification constraint recorded below.
@@ -125,7 +125,7 @@ separate unfinished work.
 | [06A — Code quality & test hardening](#phase-06a)           | Existing code is easier to understand and change, with meaningful regression tests and durable coding guidance. | 06 (local)                            | Complete                                    |
 | [07 — API & offline saving](#phase-07)                      | Completions/reflections display after local saving and synchronize reliably through resource APIs.              | 06A                                   | In progress                                 |
 | [07A — Native subscriptions & reliable billing](#phase-07a) | Verified purchases unlock promptly, and later subscription changes recover reliably.                            | 07.5; activate after free beta        | Local work in progress; activation deferred |
-| [08 — Settings, privacy & measurement](#phase-08)           | Users control recovery, private data and preferences; useful measurement respects their choices.                | 07.5                                  | Settings UI in progress; legal review open  |
+| [08 — Settings, privacy & measurement](#phase-08)           | Users control recovery, private data and preferences; useful measurement respects their choices.                | 07.5                                  | Settings/motion UI; privacy controls open   |
 | [09 — Release validation & launch](#phase-09)               | A free beta validates the core product, then the complete paid product is ready for store submission.           | 08 for beta; 08 + 07A for paid launch | Not started                                 |
 | [10 — Lock-screen countdowns](#phase-10)                    | The same accepted challenge is visible on supported lock screens without a JavaScript background timer.         | 09                                    | Not scheduled                               |
 | [11 — Optional US iOS web checkout](#phase-11)              | Eligible users can purchase on the web using the same authenticated app identity.                               | 09                                    | Not scheduled                               |
@@ -1174,7 +1174,7 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 ### Phase 08 — Settings, privacy & measurement
 
-**Status:** In progress — Settings layout/contact slice for owner review; legal drafts and remaining controls are open\
+**Status:** In progress — Settings/contact and Reduce Motion slices for owner review; legal drafts and remaining privacy controls are open\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
 
 **Acceptance references:** PRD AC-15–17 · Tech acceptance 3–4, 8–9, 17
@@ -1183,10 +1183,10 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 #### Implement
 
-- Finish Settings with recovery-key/transfer UI, restore/manage subscription links, scoped haptic/motion preferences and privacy/terms. Practice reminders are deferred beyond the first release by the October 9 owner decision; do not add notification permission requests or reminder scheduling in this phase.
+- Finish Settings with recovery-key/transfer UI, restore/manage subscription links, scoped motion preferences and privacy/terms. Haptics implementation, its saved Settings switch and physical-iPhone acceptance belong together in Phase 09 before the free beta under the October 10 owner decision; the existing unavailable row may remain in Phase 08. Practice reminders are deferred beyond the first release by the October 9 owner decision; do not add notification permission requests or reminder scheduling in this phase.
+- Reduce Motion is an installation-level switch remembered on the phone, independent of account or paid access. The phone's accessibility setting always takes priority. Apply the effective choice to card movement, day-sheet slides, reflection-panel movement, loading shimmer and toast transitions, including live setting changes. Keep actions usable and save failures retryable; no server preference table or account synchronization is required.
 - Use five groups: Preferences, Account & data, Privacy, Support, and About. Support sits directly above About and contains Get help and Suggest a feature as separate email-draft actions. About contains Rate on the App Store, Instagram, TikTok, Twitter/X, Privacy policy and Terms of use. Profiles and the public App Store listing are not ready; leave these rows unavailable until their destinations are configured and verified. The explicit rating action opens the store's Write a Review destination rather than requesting a discretionary in-app rating prompt.
 - Omit explanatory paragraphs below Account & data, Privacy and Support per the October 9 owner refinement. Account & recovery and Terms of use also show only their labels, without subtext. Keep each section heading, row action and availability indicator.
-- Implement the haptic feedback and its Settings switch together in Phase 08, reusing a shared platform adapter and preference check. Wire a small set of deliberate action responses; finalize triggers/defaults during design, prevent duplicate feedback and keep haptic failure independent of product actions/saving. Verify preference behavior and action wiring with automated tests, and assess the feedback on a physical iPhone before release.
 - Add a Suggest a feature row under Support using the same private contact flow and configured destination as Get help, as clarified by the owner October 9. Distinguish feature suggestions with an email subject or form request type. Open a user-reviewed email draft or private form, with no automatic reflection/history/credential attachments. Configure and verify the destination before release; share support's link-opening failure feedback and keep the action available. The owner selected email to `anthonyyoo24@gmail.com` October 9; opening the draft on a physical phone remains a release check. Public boards/voting are outside this scope.
 - Keep Settings, recovery, export/deletion and privacy usable in the free beta without a purchase. Hide or clearly disable commercial purchase controls while billing is inactive. Implement cleanup for configured vendors now; verify real billing-provider cleanup and management again when 07A is activated, before paid launch.
 - Configure and verify the owner-selected support email or help destination before release, as confirmed in the October 4 review. Any Get help action in account/saving recovery must open this working destination; do not ship placeholder actions or automatically include private reflection content/credentials. The owner selected `anthonyyoo24@gmail.com` October 9; verify the email-draft flow before release. Reuse the Phase 07 toast presentation for failed support/legal/subscription-management link opening, with plain-language feedback and the original action still available; account and purchase-verification failures retain their dedicated recovery UI.
@@ -1199,10 +1199,11 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 - No Reset progress from the mockup, unconditional vendor forwarding, session replay/autocapture or journal/credential/audio payloads in telemetry.
 - No optional-analytics requirement for paid access or cloud saves.
 - No practice reminders, reminder notification permissions/scheduling or public feature-request board in the first release. Revisit reminders in separately scheduled post-launch work.
+- Haptic feedback and its working Settings switch are scheduled in Phase 09 with automated checks, physical-iPhone testing and corrections; they do not block Phase 08 acceptance.
 
 #### Ready to hand off when
 
-- [ ] All required controls remain reachable when unpaid; recovery/transfer and haptic/motion preferences work on iOS. No reminder permission prompt or scheduling is introduced.
+- [ ] All required Phase 08 controls remain reachable when unpaid; recovery/transfer and motion preferences work on iOS. Haptics remains an explicit open Phase 09 task. No reminder permission prompt or scheduling is introduced.
 - [ ] Get help opens the configured, working support destination from each recovery surface that offers it; no placeholder action or sensitive diagnostic payload is shipped.
 - [ ] Feature requests reuses the configured support contact flow/destination with a feature-request subject/type, remains usable without a purchase, sends no automatic private attachments and handles link-opening failure honestly.
 - [ ] Rating and social rows open their verified public destinations when configured, remain honestly unavailable otherwise, and retain a usable retry with plain feedback if opening fails. Actual App Store/profile opening remains a Phase 09 device check once these destinations exist.
@@ -1210,11 +1211,15 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 - [ ] Declining analytics blocks client/server forwarding while the app still works; telemetry/diagnostics contain no sensitive payloads.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
-**Carry forward:** Settings scope, recovery/data-control flows, haptic/motion preferences, private feature-request destination, reminder deferral, consent and event schemas, retention/deletion runbook and redaction evidence.
+**Carry forward:** Settings scope, recovery/data-control flows, motion preferences, the open Phase 09 haptics implementation/testing task, private feature-request destination, reminder deferral, consent and event schemas, retention/deletion runbook and redaction evidence.
 
 **Handoff:** [phase-08-settings-privacy.md](handoffs/phase-08-settings-privacy.md)
 
-**Working notes / blocker:** October 9 scope discussion: Anthony approved a private email or form for Feature requests, clarified that it should work like support, and deferred practice reminders beyond the first release. Haptic feedback and its switch belong together in Phase 08; triggers/defaults, motion-control presentation and final analytics consent copy still need finalizing during Settings design. Anthony declined Tminus and Lance for now; retain the existing EAS release workflow. The initial planning update did not implement app code. The owner subsequently authorized building the Paper F1 Settings layout and connecting existing recovery/support actions. This first UI slice preserves the secondary stack route without bottom tabs, exposes the existing recovery tools and private Support/Feature requests email drafts, and explicitly marks unimplemented controls as unavailable. It does not complete haptic/motion preferences, analytics consent, export/deletion or legal publication; evidence is recorded in the phase handoff. The owner subsequently authorized the legal preparation sequence: [data inventory, policy/terms drafts and review](legal/LEGAL_REVIEW.md), then hosting. Operator: Youngshin Yoo personally, Canada; intended draft audience: 18+ across available App Store countries and regions. Retention, provider configuration, regional/individual-developer eligibility and publication remain open review items.
+**Working notes / blocker:** October 9 scope discussion: Anthony approved a private email or form for Feature requests, clarified that it should work like support, and deferred practice reminders beyond the first release. Haptics was initially assigned to Phase 08; the October 10 owner decision below moves implementation and testing together to Phase 09. Final analytics consent copy still needs finalizing. Anthony declined Tminus and Lance for now; retain the existing EAS release workflow. The initial planning update did not implement app code. The owner subsequently authorized building the Paper F1 Settings layout and connecting existing recovery/support actions. This first UI slice preserves the secondary stack route without bottom tabs, exposes the existing recovery tools and private Support/Feature requests email drafts, and explicitly marks unimplemented controls as unavailable. The subsequent Reduce Motion slice is recorded below. Analytics consent, export/deletion and legal publication remain open. The owner subsequently authorized the legal preparation sequence: [data inventory, policy/terms drafts and review](legal/LEGAL_REVIEW.md), then hosting. Operator: Youngshin Yoo personally, Canada; intended draft audience: 18+ across available App Store countries and regions. Retention, provider configuration, regional/individual-developer eligibility and publication remain open review items.
+
+**October 10 Reduce Motion implementation:** Anthony authorized the first remaining Phase 08 slice. Settings now has a working saved switch, with system priority and one shared effective choice for the app's movement effects. Local automated, side-panel browser and iPhone simulator evidence is recorded in the [motion handoff](handoffs/phase-08-settings-privacy.md#october-10-reduce-motion-implementation). Physical-iPhone, VoiceOver and large-text acceptance remain Phase 09 release checks. This slice does not complete Phase 08 or activate analytics, export/deletion, haptics or billing.
+
+**October 10 haptics sequencing:** Anthony moved haptic feedback, its saved Settings switch, automated checks, physical-iPhone testing and resulting corrections together into Phase 09's pre-beta work. Haptics no longer blocks Phase 08; Reduce motion remains Phase 08. Mark haptics complete only after the physical-phone check and necessary retesting pass. This change schedules work without implementing haptics, granting native build/upload permission or changing the other phase acceptance gates.
 
 **October 9 typography review:** At Anthony's request, the Settings title and all section headings now reuse the narrower Bodoni 72 bold treatment already used on the other refined screens. Font sizes and line heights are preserved. Verification and remaining phase work are recorded in the [Phase 08 handoff](handoffs/phase-08-settings-privacy.md).
 
@@ -1248,6 +1253,12 @@ publication permissions remain unchanged.
 
 **Outcome:** A free TestFlight beta validates the complete core product; payment activation and final release acceptance follow before paid store submission.
 
+#### Haptics implementation and phone acceptance — before the free beta
+
+- Implement haptic feedback and its saved Settings switch together, reusing a shared platform adapter and preference check. Finalize defaults and a small set of deliberate action triggers; prevent duplicate feedback and keep failures independent of product actions and saving. The switch remains usable without a purchase.
+- Verify preference persistence, disabled feedback, trigger wiring, duplicate prevention and failure isolation with automated tests. Test the actual feedback on a physical iPhone for timing, strength and feel; correct issues and retest within this phase before marking the feature complete or accepting the free beta. Simulator/mocked calls do not establish tactile behavior.
+- Anthony owns physical-device acceptance; record the tested build/device, triggers, results and corrections in the Phase 09 handoff. Review any required native dependency/build changes under the existing build/signing permissions.
+
 #### Free TestFlight beta checkpoint — before payment activation
 
 - Define authenticated, server-authorized free tester access in an isolated non-production environment, including coverage for offline use and synchronization. Keep real identity/ownership boundaries, preserve tester history and plan how beta access ends or transitions when payments launch. Do not deploy the local fixture server or rely on a client premium switch. Purchases remain disabled and the beta explains that access is free during testing.
@@ -1269,11 +1280,12 @@ Complete real store/provider configuration, native purchase/restore and all 07A 
 
 #### Keep out of this phase
 
-- No unmeasured million-user claim, overdue launch blockers, incompatible native changes through an OTA update or new feature scope during stabilization.
+- No unmeasured million-user claim, overdue launch blockers, incompatible native changes through an OTA update or additional feature scope during stabilization beyond the explicitly scheduled pre-beta haptics slice.
 - Do not count Stripe or the future coach toward MVP readiness.
 
 #### Ready to hand off when
 
+- [ ] Haptic feedback and its saved Settings switch pass automated checks and physical-iPhone acceptance, with any issues corrected and retested before the free beta checkpoint.
 - [ ] All launch PRD criteria (AC-01–06, AC-08–11, AC-13–17) and applicable iOS tech checks have linked passing evidence; no unresolved launch-blocking product decisions.
 - [ ] Capacity, recovery/restore, security/privacy, rollback and device coverage meet documented release targets; limitations have explicit disposition.
 - [ ] Store/release checklist, operational ownership and handoffs are complete; authorized release and post-release smoke results are recorded before marking launch complete.

@@ -11,6 +11,7 @@ import {
 } from '../../theme/tokens';
 import { SettingsInformationGroups } from './SettingsInformationGroups';
 import { SettingsIcon } from './SettingsIcon';
+import { SettingsMotionRow } from './SettingsMotionRow';
 import {
   PendingSettingsRow,
   SettingsGroup,
@@ -47,7 +48,7 @@ export function SettingsScreen() {
 
           <SettingsGroup title="Preferences">
             <PendingSettingsRow icon="haptics" label="Haptics" />
-            <PendingSettingsRow icon="motion" label="Reduce motion" />
+            <SettingsMotionRow />
           </SettingsGroup>
 
           <SettingsGroup title="Account & data">

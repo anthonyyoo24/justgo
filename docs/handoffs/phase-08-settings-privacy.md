@@ -1,7 +1,7 @@
 # Phase 08 settings and privacy handoff
 
-**Date:** October 9, 2026\
-**Status:** Settings UI/contact slice for owner review and legal drafts prepared; Phase 08 remains open.\
+**Date:** October 10, 2026\
+**Status:** Settings/contact and Reduce Motion slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
 
 ## Current authorized work
@@ -11,6 +11,8 @@ The owner accepted the legal sequence: data checklist, policy/terms drafts, revi
 Youngshin Yoo is the confirmed personal operator in Canada. The owner's proposed distribution is all available App Store countries and regions for ages 18 and older. The operator's province, final territorial availability, age-related implementation and required regional notices remain review decisions.
 
 The owner subsequently accepted separate email-draft contact actions and added App Store rating plus Instagram, TikTok and Twitter/X rows. After reviewing the combined Help & about group, the owner requested Support directly above About: Support contains Get help and Suggest a feature, while About contains rating, socials and legal links. The owner confirmed the profiles and public App Store listing are not ready; those rows remain unavailable until public destinations are configured.
+
+On October 10 Anthony authorized implementing the first remaining slice, Reduce Motion, while keeping implementation and focused verification together within Phase 08. Haptics remains a separate, explicitly open Phase 09 implementation/device-testing task.
 
 ## Documents prepared
 
@@ -135,8 +137,122 @@ the root check and unchanged coverage gate pass. The [Accept follow-up](phase-07
 records failing-before regressions, final frame timestamps and verification limits.
 This remains a local mobile fix, with owner acceptance and wider device gates open.
 
+## October 10 haptics moved to Phase 09
+
+Anthony requested keeping haptics implementation and its testing together in
+Phase 09. Feedback, the saved Settings toggle, automated checks, physical-iPhone
+acceptance and any corrections/retests are now one pre-beta Phase 09 task. Haptics
+does not block Phase 08; the existing unavailable row remains unchanged. Reduce
+motion remains Phase 08. The [plan](../IMPLEMENTATION_PLAN.md#phase-09) owns the
+implementation scope and acceptance gate; Anthony owns physical-phone acceptance.
+This is a documentation-only scheduling change, with no haptics implementation,
+dependency/build change or Git publication.
+
+Documentation verification: Prettier checks pass for the plan, tech stack, this
+handoff and the index; updated link/section targets resolve and `git diff --check`
+passes. This scheduling change requires no application tests or UI checks.
+
+## October 10 Reduce Motion implementation
+
+Settings now replaces the unavailable Reduce motion row with a working native
+switch. One boolean is saved in installation-level AsyncStorage under
+`justgo:reduce-motion:v1`. It survives relaunch, is available without paid access
+and remains independent of accounts, recovery and journal storage. It is not
+uploaded or synchronized. The data inventory and policy draft now describe this
+actual local behavior; no legal document was published.
+
+`platform/MotionPreferencesProvider` combines the saved choice with React
+Native's accessibility query, live changes and foreground refresh. Phone-level
+Reduce Motion always wins: Settings shows the enabled, unavailable switch with
+“Enabled by your phone’s accessibility setting.” Initial unresolved reads keep
+motion reduced and disable input so late hydration cannot replace a newer choice.
+Failed saves preserve the earlier choice and expose a retryable message. Failed
+system queries keep motion reduced until an event or foreground read succeeds.
+Subscriptions, stale reads and delayed saves are fenced on cleanup.
+
+The root wraps app providers and toast hosts with this shared preference. Cards,
+Progress shimmer, day-sheet slides, reflection-panel motion and native/web toast
+entry/exit consume its effective flag. Reduced motion settles movement directly
+without blocking Skip/Accept or sheet/reflection actions. Enabling it during a
+card exit resolves the canceled animation wait; enabling it during sheet opening
+or closing settles the sheet exactly once. `useDaySheetMotion` owns this animation
+lifecycle separately from paging/reflection UI and rejects late close callbacks
+after unmount. Existing in-place Completed → Success and prepared Accept cover
+behavior is preserved; fade-only dialogs and native loading controls remain.
+
+### Motion verification
+
+- Focused tests: **114 pass across five suites** for motion preferences, cards,
+  day sheets and actual Progress composition. Coverage includes storage validation,
+  slow reads, both persisted choices, live system priority, overlapping/stale
+  foreground reads, save failures/retry, duplicate input, cleanup, canceled card
+  exits, swipe/cancel gestures and interrupted/late sheet callbacks.
+- Browser review exposed an existing deprecated `pointerEvents` prop in the
+  reflection panel. Its style now owns the same open/closed input isolation;
+  the regression checks both states. The affected panel/day-sheet/Progress
+  suites pass **38 cases**, and fresh browser reload/expansion produces no new
+  console warnings or errors.
+- Early lint feedback caught synchronous effect resets and a shared-directory
+  test importing feature/app-support code. The adapter is now stable for the
+  provider lifetime, unnecessary resets are removed, and integration tests live
+  beside the Settings owner. Gesture mocks now forward callback arguments. No
+  lint or coverage requirement was relaxed.
+- One later full run hit the existing five-second timeout in Progress's
+  feeling-preserving text-clear test. The unchanged 19-case Progress suite then
+  passed in isolation, including that case in about two seconds. The final full
+  run and coverage results are recorded below; no assertion or timeout was
+  weakened.
+- Final `npm run check`: **pass**, fresh online Expo Doctor **21/21**, contracts
+  build, workspace/journey typechecks, lint, formatting, tooling/API/mobile/
+  contracts tests. Mobile: **496 cases across 63 suites**.
+- `npm run test:coverage -w @justgo/mobile`: **pass**, **95.76% lines / 91.24%
+  branches**. `npm run coverage:check`: **pass**, unchanged all-source/critical
+  floors using fresh mobile and prior verified API/contracts reports. The new
+  provider/shared flag and switch have 100% line coverage. Important preference
+  failures and animation interruption branches have focused behavioral evidence.
+- Browser Use in the in-app side panel: **pass** for Settings at **390 × 844**
+  and **320 × 568**, keyboard switching, both choices after reload, preview card
+  advancement, day-sheet open/close and reflection expansion/hiding with normal
+  and reduced motion. The pointer-events warning was reproduced and fixed;
+  fresh final reload/panel review has no new warnings or errors. Metro's existing
+  live watcher served the source, viewport overrides were reset, and Settings
+  was retained for review. This walkthrough is separate from saved end-to-end
+  evidence; browser system-media override was not tested interactively.
+- Native Computer Use on the existing iPhone 17 / iOS 26.5 QA simulator verifies
+  the functional switch, persistence after terminate/launch, and phone-level
+  priority with the app preference off. Foregrounding after system Reduce Motion
+  changes shows the explanatory disabled switch; restoring the system setting
+  returns the app's saved off choice and usable control. The phone setting was
+  restored to its original off value. No native rebuild, signing change,
+  reinstall or account/Keychain erase occurred.
+- Native synthetic preview: **pass** for Skip advancing the card with the
+  preference enabled, Progress/day-sheet opening, saved reflection expansion/
+  hiding and sheet closure. App and system preferences were returned to off;
+  Settings remains open for review. Coordinate-based Computer Use briefly
+  reported no available window; reconnecting and using the observed AX elements
+  completed the walkthrough. No desktop screen recorder was used.
+- XcodeBuildMCP's default `simctl` discovery remains unavailable under Command
+  Line Tools. Command-scoped `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`
+  uses the installed Xcode for the existing simulator without changing global
+  configuration. Browser/component evidence does not establish physical-phone
+  behavior.
+- Manual review uses existing local QA and synthetic preview content, with zero
+  new fixture accounts or recovery secrets. Backend, public contracts and
+  database behavior are unchanged; database and saved journey suites are not
+  rerun for this mobile-only slice. Physical-iPhone, VoiceOver and large-text
+  checks remain owned by Anthony in Phase 09 before the beta. All wider prior
+  recovery/device/release gates remain open. No Git publication was performed.
+- Ignored evidence: `.local/phase-08/motion-{focused,progress-regression,
+panel-regression,check,coverage,coverage-gate}.log`, the earlier timeout log,
+  `motion-settings-web.jpg`, `motion-ios-system.png` and
+  `motion-ios-reflection.png`. No screenshots or recordings are committed.
+- Final documentation checks: Prettier passes, **19** added/updated internal
+  links resolve, and `git diff --check` passes. Plan, product/architecture
+  guidance, local-data inventory and handoff index match the implemented slice
+  and retain all open acceptance/deferral records.
+
 ## Open Phase 08 work
 
-All phase acceptance boxes remain open. Haptic/motion preferences, authenticated export/deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
+All combined phase acceptance boxes remain open. Reduce Motion implementation and local verification are recorded above; physical-device accessibility checks remain Phase 09 work. Authenticated export/deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Haptics implementation and acceptance are explicitly scheduled together in Phase 09 before the free beta. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
 
 Before publication, resolve retention and backup behavior, provider configuration, operator/contact and regional requirements, individual-versus-legal-entity App Review eligibility, age treatment and final Terms/EULA compatibility. Review the concrete policy before creating and publishing the public site. Resume commercial activation after the free beta and reconcile the policy for the paid build.

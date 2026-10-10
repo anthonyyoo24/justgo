@@ -1,4 +1,4 @@
-import { Children, type PropsWithChildren } from 'react';
+import { Children, type PropsWithChildren, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
   colors,
@@ -36,11 +36,13 @@ export function SettingsRowContent({
   label,
   status,
   chevron = false,
+  accessory,
 }: {
   icon: SettingsIconName;
   label: string;
   status?: string | undefined;
   chevron?: boolean;
+  accessory?: ReactNode;
 }) {
   return (
     <View style={styles.row}>
@@ -51,6 +53,7 @@ export function SettingsRowContent({
         <Text style={styles.label}>{label}</Text>
       </View>
       {status && <Text style={styles.status}>{status}</Text>}
+      {accessory}
       {chevron && (
         <View style={styles.chevron}>
           <SettingsIcon name="chevron" />

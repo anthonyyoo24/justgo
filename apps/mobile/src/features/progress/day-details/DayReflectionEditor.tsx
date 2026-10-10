@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
+import { useReduceMotion } from '../../../platform/motion';
 import type {
   ReflectionController,
   ReflectionSnapshot,
@@ -58,7 +58,7 @@ export function DayReflectionEditor({
   onKeepEditing: () => void;
 }) {
   const savingVisible = useDelayedBusy(state.submitting);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const hasChanges = controller.hasChanges();
   // Saved → Edit already has an open panel. Measure its real input before
   // resizing, so saved writing never swaps between Text and TextInput baselines.

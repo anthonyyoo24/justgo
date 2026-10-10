@@ -24,7 +24,7 @@ import { ReflectionController } from '../../reflections/controller';
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '30000000-0000-4000-8000-000000000001',
 }));
-jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
+jest.mock('../../../platform/motion', () => ({ useReduceMotion: () => false }));
 
 let repository: AccountRepository;
 let storage: MemoryStorage;

@@ -17,6 +17,17 @@ import {
 } from '../contact';
 import { showMessageToast } from '../../platform/Toast';
 
+jest.mock('../../platform/motion', () => ({
+  useMotionPreferences: () => ({
+    reduceMotion: false,
+    systemReduced: false,
+    loading: false,
+    saving: false,
+    error: null,
+    setReduced: jest.fn(),
+  }),
+}));
+
 const mockRouter = {
   canGoBack: jest.fn(() => true),
   back: jest.fn(),
@@ -91,7 +102,6 @@ it('renders the actual route with scoped groups, honest pending controls and no 
   ]);
   for (const label of [
     'Haptics',
-    'Reduce motion',
     'Export my data',
     'Delete account',
     'General analytics',
@@ -101,6 +111,7 @@ it('renders the actual route with scoped groups, honest pending controls and no 
       screen.getByLabelText(`${label}. Not available yet.`).props
         .accessibilityState.disabled,
     ).toBe(true);
+  expect(screen.getByRole('switch', { name: 'Reduce motion' })).toBeEnabled();
   expect(screen.queryByText('Practice reminders')).toBeNull();
   expect(screen.queryByText('Reset progress')).toBeNull();
   expect(screen.queryAllByRole('tab')).toHaveLength(0);

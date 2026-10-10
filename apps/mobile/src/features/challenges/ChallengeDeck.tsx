@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks/refs -- Gesture Handler registers callbacks; it does not execute these event handlers during render. */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  AccessibilityInfo,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +18,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { useReduceMotion } from '../../platform/motion';
 import Svg, { Path } from 'react-native-svg';
 import {
   colors,
@@ -80,26 +80,24 @@ export function ChallengeDeck({
   const locked = useSharedValue(false);
   const busy = useRef(false),
     alive = useRef(true);
-  const [working, setWorking] = useState(false),
-    [reduced, setReduced] = useState(false);
+  const [working, setWorking] = useState(false);
+  const reduced = useReduceMotion();
   const [settlement, setSettlement] = useState<{
     from: number;
     to: number;
   } | null>(null);
   useEffect(() => {
     alive.current = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
-    const listener = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduced,
-    );
     return () => {
       alive.current = false;
-      listener.remove();
       cancelAnimation(motion);
       onBusyChange?.(false);
     };
   }, [motion, onBusyChange]);
+
+  useEffect(() => {
+    if (reduced) cancelAnimation(motion);
+  }, [reduced, motion]);
 
   // Rebase only after React has committed the queue acknowledged by the action.
   // Resetting shared values in the promise's finally can reveal the old card
@@ -165,8 +163,10 @@ export function ChallengeDeck({
             duration: deckMotion.duration,
             easing: Easing.bezier(0.22, 1, 0.36, 1),
           },
-          (done) => {
-            if (done) scheduleOnRN(resolve);
+          () => {
+            // Reduced Motion can cancel an in-flight exit. Resolve its wait so
+            // the accepted action still finishes; unmount is fenced below.
+            scheduleOnRN(resolve);
           },
         ),
       );
@@ -185,7 +185,7 @@ export function ChallengeDeck({
     .activeOffsetX([-12, 12])
     .failOffsetY([-22, 22])
     .onUpdate((event) => {
-      if (!locked.get()) {
+      if (!locked.get() && !reduced) {
         motion.set({
           ...motion.get(),
           x: event.translationX,
@@ -201,14 +201,18 @@ export function ChallengeDeck({
         scheduleOnRN(commit, direction);
       } else {
         motion.set(
-          withTiming(restingMotion(turn), { duration: deckMotion.settle }),
+          reduced
+            ? restingMotion(turn)
+            : withTiming(restingMotion(turn), { duration: deckMotion.settle }),
         );
       }
     })
     .onFinalize((_event, success) => {
       if (!success && !locked.get()) {
         motion.set(
-          withTiming(restingMotion(turn), { duration: deckMotion.settle }),
+          reduced
+            ? restingMotion(turn)
+            : withTiming(restingMotion(turn), { duration: deckMotion.settle }),
         );
       }
     });

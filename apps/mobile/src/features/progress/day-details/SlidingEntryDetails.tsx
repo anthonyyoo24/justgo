@@ -51,11 +51,14 @@ export function SlidingEntryDetails({
   return (
     <EntryMotionView
       testID="sliding-entry-details"
-      pointerEvents={open ? 'auto' : 'none'}
       aria-hidden={!open}
       accessibilityElementsHidden={!open}
       importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
-      style={[styles.clip, motion.clipStyle]}
+      style={[
+        styles.clip,
+        motion.clipStyle,
+        { pointerEvents: open ? 'auto' : 'none' },
+      ]}
     >
       <EntryMotionView style={[styles.contentLayer, motion.contentStyle]}>
         <View
