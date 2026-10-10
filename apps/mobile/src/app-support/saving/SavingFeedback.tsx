@@ -13,17 +13,22 @@ import { SavingNotice } from './SavingNotice';
 export function SavingSheetSurface({
   onLeave,
   navigationEnabled = true,
+  toastHostEnabled = true,
 }: {
   onLeave?: () => void;
   navigationEnabled?: boolean;
+  toastHostEnabled?: boolean;
 }) {
   const { activity } = useRuntime();
   useEffect(() => {
+    // A prepared native cover mirrors the notice while its destination owns
+    // the channel. Removing that cover must not release the destination host.
+    if (!toastHostEnabled) return;
     activity.setToastChannel('activity-sheet');
     return () => {
       activity.setToastChannel('activity');
     };
-  }, [activity]);
+  }, [activity, toastHostEnabled]);
   return (
     <>
       <SavingNotice
@@ -31,7 +36,7 @@ export function SavingSheetSurface({
         navigationEnabled={navigationEnabled}
         toastChannel="activity-sheet"
       />
-      <ToastHost channel="activity-sheet" />
+      {toastHostEnabled && <ToastHost channel="activity-sheet" />}
     </>
   );
 }

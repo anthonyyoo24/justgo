@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 68 · Updated October 9, 2026
+**Version:** 70 · Updated October 10, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -1217,6 +1217,25 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 **Working notes / blocker:** October 9 scope discussion: Anthony approved a private email or form for Feature requests, clarified that it should work like support, and deferred practice reminders beyond the first release. Haptic feedback and its switch belong together in Phase 08; triggers/defaults, motion-control presentation and final analytics consent copy still need finalizing during Settings design. Anthony declined Tminus and Lance for now; retain the existing EAS release workflow. The initial planning update did not implement app code. The owner subsequently authorized building the Paper F1 Settings layout and connecting existing recovery/support actions. This first UI slice preserves the secondary stack route without bottom tabs, exposes the existing recovery tools and private Support/Feature requests email drafts, and explicitly marks unimplemented controls as unavailable. It does not complete haptic/motion preferences, analytics consent, export/deletion or legal publication; evidence is recorded in the phase handoff. The owner subsequently authorized the legal preparation sequence: [data inventory, policy/terms drafts and review](legal/LEGAL_REVIEW.md), then hosting. Operator: Youngshin Yoo personally, Canada; intended draft audience: 18+ across available App Store countries and regions. Retention, provider configuration, regional/individual-developer eligibility and publication remain open review items.
 
 **October 9 typography review:** At Anthony's request, the Settings title and all section headings now reuse the narrower Bodoni 72 bold treatment already used on the other refined screens. Font sizes and line heights are preserved. Verification and remaining phase work are recorded in the [Phase 08 handoff](handoffs/phase-08-settings-privacy.md).
+
+**October 10 native completion follow-up:** After the owner rejected the earlier
+overlay fix, recordings captured mixed native-route frames and a separate first-frame
+Success layout/artwork shift. The current iOS flow keeps Active and prepared Success
+inside one `/challenge` route and reveals Success without native navigation. First
+and repeated final captures are clean. [Investigation and verification](handoffs/phase-07-3-local-flow.md#october-10-native-completion-handoff-follow-up)
+record the evidence and limits; owner acceptance, interactive side-panel verification
+and wider native/device gates remain open. This mobile fix does not advance Settings
+or authorize Git publication.
+
+**October 10 Accept follow-up:** Native recordings reproduced the accepted card
+snapping back into Home, followed by a separate mixed frame/late artwork after
+the first correction. iOS now preserves the exiting deck and prepares an opaque
+Accept cover until destination layout/images and native entry finish. The cover
+does not duplicate the saving toast host. Final first/repeated Accept and Completed
+captures are clean; the root check, **471 mobile tests / 62 suites** and unchanged
+coverage gate pass. [Reproduction and verification](handoffs/phase-07-3-local-flow.md#october-10-accept-handoff-follow-up)
+retain owner acceptance and wider device/gesture gates. Phase 08 scope and Git
+publication permissions remain unchanged.
 
 <a id="phase-09"></a>
 

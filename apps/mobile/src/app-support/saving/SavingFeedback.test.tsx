@@ -31,7 +31,10 @@ const mockActivity = {
 const mockRouter = { push: jest.fn() };
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
 jest.mock('../../platform/Toast', () => ({
-  ToastHost: () => null,
+  ToastHost: ({ channel }: { channel: string }) => {
+    const { View } = require('react-native');
+    return <View testID={`toast-host-${channel}`} />;
+  },
   showRecoveryToast: jest.fn(),
   dismissActivityToasts: jest.fn(),
   showMessageToast: jest.fn(),
@@ -225,6 +228,32 @@ it('presents notices within a covering sheet and routes the sole toast to that h
   );
   expect(mockActivity.toastChannel).toBe('activity');
   expect(showRecoveryToast).toHaveBeenCalledTimes(1);
+});
+it('mirrors a saving notice in a temporary native cover without duplicating or releasing the destination toast host', () => {
+  mockRepository.store.setState({
+    warning: {
+      visible: true,
+      dismissed: false,
+      episode: 1,
+      online: false,
+      storageFull: true,
+    },
+  });
+  const surfaces = (covered: boolean) => (
+    <>
+      {covered && <SavingSheetSurface key="cover" toastHostEnabled={false} />}
+      <SavingSheetSurface key="destination" />
+    </>
+  );
+  const screen = render(surfaces(true));
+  expect(screen.getAllByTestId('saving-risk-banner')).toHaveLength(2);
+  expect(screen.getAllByTestId('toast-host-activity-sheet')).toHaveLength(1);
+  expect(mockActivity.toastChannel).toBe('activity-sheet');
+  screen.rerender(surfaces(false));
+  expect(screen.getAllByTestId('saving-risk-banner')).toHaveLength(1);
+  expect(mockActivity.toastChannel).toBe('activity-sheet');
+  screen.unmount();
+  expect(mockActivity.toastChannel).toBe('activity');
 });
 it('clears stale account feedback without treating switching accounts as recovery', () => {
   const screen = render(

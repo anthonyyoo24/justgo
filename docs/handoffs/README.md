@@ -1,5 +1,17 @@
 # Implementation handoffs
 
+**October 10 native transition investigation:** Completion recordings captured
+mixed native-route frames and first-frame Success layout/artwork settling. Accept
+recordings then reproduced an exiting deck remount plus a separate native blend
+and late artwork. iOS now preserves the departing deck, prepares an Accept cover
+until destination layout/images and native entry finish, and reveals prepared
+Success in place. The cover does not duplicate the saving toast host. First and
+repeated final captures are clean. [Completion](phase-07-3-local-flow.md#october-10-native-completion-handoff-follow-up)
+and [Accept verification](phase-07-3-local-flow.md#october-10-accept-handoff-follow-up)
+record the evidence and limits; owner acceptance, interactive side-panel verification
+and wider native/device gates remain open. This mobile fix does not advance Settings
+or authorize Git publication.
+
 **October 9 privacy document preparation:** The owner accepted a data checklist,
 policy/terms drafts, review and later hosting. The [Phase 08 handoff](phase-08-settings-privacy.md)
 links the drafts and their open retention, provider, regional and age decisions.

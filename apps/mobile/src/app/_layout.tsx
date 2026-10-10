@@ -9,6 +9,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { AppProvider, useAccess } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
+import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -44,7 +45,9 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <AppProvider>
         <SavingFeedbackShell>
-          <Navigation />
+          <ChallengeActivityProvider>
+            <Navigation />
+          </ChallengeActivityProvider>
         </SavingFeedbackShell>
       </AppProvider>
     </GestureHandlerRootView>
@@ -65,6 +68,7 @@ function Navigation() {
       <Stack.Screen name="recovery" />
       <Stack.Protected guard={access.verified}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="challenge" options={{ gestureEnabled: false }} />
         <Stack.Screen name="success" />
         <Stack.Screen name="reflection" options={{ gestureEnabled: false }} />
       </Stack.Protected>

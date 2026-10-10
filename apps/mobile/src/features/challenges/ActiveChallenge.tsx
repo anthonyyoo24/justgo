@@ -22,6 +22,8 @@ export function ActiveChallenge({
   disabled,
   giveUpDisabled = disabled,
   finish,
+  onArtworkSettled,
+  onTextureSettled,
 }: {
   attempt: Pick<ChallengeStart, 'card' | 'startedAt'>;
   turn?: number;
@@ -29,6 +31,8 @@ export function ActiveChallenge({
   giveUpDisabled?: boolean;
   disabled: boolean;
   finish: (outcome: 'completed' | 'given_up') => Promise<void>;
+  onArtworkSettled?: (() => void) | undefined;
+  onTextureSettled?: (() => void) | undefined;
 }) {
   const { width, fontScale } = useWindowDimensions();
   const scale = challengeScale(width);
@@ -104,6 +108,8 @@ export function ActiveChallenge({
       <ChallengeCard
         card={attempt.card}
         turn={cardTurn}
+        onArtworkSettled={onArtworkSettled}
+        onTextureSettled={onTextureSettled}
         venue={attempt.card.venue}
         label={venues.find((v) => v.id === attempt.card.venue)!.label}
       />

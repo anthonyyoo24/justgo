@@ -112,6 +112,29 @@ The owner requested removing the Account & recovery and Terms of use subtext, th
 - Native/device, database and saved journey checks were not rerun for this final presentation refinement. Earlier physical-device mail/store/social opening, VoiceOver and large-text acceptance remain open. Native billing remains preserved on `codex/phase-07a-native-billing` at `4d5c9f2`.
 - Ignored evidence: `.local/phase-08/settings-final-{check,coverage}.log`, `settings-final-account-web.png` and `settings-final-about-web.png`.
 
+### October 10 challenge completion investigation
+
+The owner reported a brief page flash after Completed on the iPhone simulator and
+rejected the provisional overlay fix. Further recordings captured native mixed
+frames and first-frame Success layout/artwork settling. The current iOS flow uses
+one `/challenge` route with Success prepared beneath Active; Completed reveals it
+in place. First/repeated final captures are clean. The [07.3 follow-up](phase-07-3-local-flow.md#october-10-native-completion-handoff-follow-up)
+records final checks, diagnostic evidence and remaining owner/device acceptance.
+Settings scope, preserved native billing and Git permissions remain unchanged.
+
+### October 10 Accept and Completed verification
+
+The owner subsequently reported Accept flicker. Native recordings reproduced an
+accepted-card snapback from Home's focus-based deck key, then a separate mixed
+native frame and late artwork. The current iOS flow preserves the exiting deck
+and prepares an opaque Accept cover until destination layout/images and native
+entry finish. The temporary cover mirrors saving warnings without duplicating
+the destination toast host. Completed retains its in-place prepared Success view.
+First/repeated final native recordings are clean; **471 mobile tests / 62 suites**,
+the root check and unchanged coverage gate pass. The [Accept follow-up](phase-07-3-local-flow.md#october-10-accept-handoff-follow-up)
+records failing-before regressions, final frame timestamps and verification limits.
+This remains a local mobile fix, with owner acceptance and wider device gates open.
+
 ## Open Phase 08 work
 
 All phase acceptance boxes remain open. Haptic/motion preferences, authenticated export/deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.

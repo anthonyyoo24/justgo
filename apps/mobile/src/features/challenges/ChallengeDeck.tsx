@@ -370,12 +370,14 @@ function CardContent({
   label,
   scale,
   theme,
+  onArtworkSettled,
 }: {
   card: DeckCard;
   venue: string;
   label: string;
   scale: number;
   theme: ChallengeCardTheme;
+  onArtworkSettled?: (() => void) | undefined;
 }) {
   return (
     <View
@@ -412,7 +414,12 @@ function CardContent({
       >
         {label.toUpperCase()}
       </Text>
-      <VenueArt venue={venue} scale={scale} background={theme.artwork} />
+      <VenueArt
+        venue={venue}
+        scale={scale}
+        background={theme.artwork}
+        onSettled={onArtworkSettled}
+      />
       <View style={styles.copyRegion}>
         <ScrollView
           testID={`challenge-copy-scroll-${card.id}`}
@@ -465,11 +472,15 @@ export function ChallengeCard({
   venue,
   label,
   turn = 0,
+  onArtworkSettled,
+  onTextureSettled,
 }: {
   card: DeckCard;
   venue: string;
   label: string;
   turn?: number;
+  onArtworkSettled?: (() => void) | undefined;
+  onTextureSettled?: (() => void) | undefined;
 }) {
   const { width } = useWindowDimensions();
   const scale = challengeScale(width);
@@ -487,13 +498,14 @@ export function ChallengeCard({
         },
       ]}
     >
-      <PaperTexture />
+      <PaperTexture onSettled={onTextureSettled} />
       <CardContent
         card={card}
         venue={venue}
         label={label}
         scale={scale}
         theme={theme}
+        onArtworkSettled={onArtworkSettled}
       />
     </View>
   );

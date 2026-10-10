@@ -141,6 +141,9 @@ installed development app to clear stale Metro module/asset paths.
   inset twice. Native inset measurement after presentation can hide the title
   and move content. Verify first and repeated openings on the native surface;
   browser/component checks cannot establish that timing.
+- Preserve an outgoing animated component's identity through navigation focus
+  loss. A focus-based key can remount its resting state before the destination
+  covers it; protect that handoff with a regression and inspect native frames.
 
 ## Verification and handoff
 

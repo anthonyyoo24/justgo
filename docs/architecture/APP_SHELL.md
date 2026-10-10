@@ -35,6 +35,7 @@ access policy and foreground behavior are unchanged. The
 
 - `/`: restore the real account, then check `/v1/access`. Loading, unavailable and unpaid have distinct UI. Only a fresh, unexpired server verification admits the paid routes.
 - `/(tabs)` and `/progress`: Home uses the downloaded catalog and local venue/start/countdown/completion state. Progress uses independent canonical summary/calendar/day reads and the shared repository's local activity overlay. Current-month counts and today's downloaded pages survive offline; other days and months require a connection.
+- `/challenge`: guarded iOS Active → Success flow with memory-only start context; Completed changes content in place. Give up returns Home and Continue opens Reflection. An empty direct/restarted route returns Home.
 - `/success` and `/reflection`: guarded focused routes read a completed attempt from the current account’s repository. There is no server success lookup or reflection draft recovery/autosave. Visiting a URL cannot fabricate a completion. Only explicit reflection submissions enter the journal; empty Skip sends nothing.
 - `/settings` and `/recovery`: reachable regardless of paid access. The recovery route exposes Account / Recovery keys / Device transfer / Manage devices directly, with Return-key submission and automatic keyboard insets. It shares the one app-level identity controller; it does not create another vault or account.
 - `/preview`: development-only presentation fixture. It has no domain queries or writes and never changes an account's entitlement. The route guard and module load both require `__DEV__`. There is no runtime flag, API parameter or production environment switch that unlocks it.
@@ -124,19 +125,44 @@ memory-only submissions for same-account recovery while the process survives.
 `useJournal` and `useActivityState` expose the current repository/live state.
 
 `features/challenges/controller.ts` owns a focused Zustand store for downloaded
-venue decks, cycling and accepted completion context. `useActiveChallenge` owns
-unfinished activity in React state inside the account-keyed Home feature. Start
+venue decks, cycling and accepted completion context. `ChallengeActivityProvider`
+scopes `useActiveChallenge` to the current account above the navigator, retaining
+unfinished activity only in React memory across Home and `/challenge`. Start
 captures a frozen card, timestamp and time zone; the deadline is derived from start
 plus original duration. `ActiveChallenge` samples the clock once per second and
-immediately on foreground; it never depends on a background interval. A fresh
-mount/account change resets unfinished activity. `ActiveChallengeModal` covers
-navigation full screen, omits Settings and accepts only Completed/Give up. Native modal input isolation and the web inert/ARIA adapter keep underlying navigation unavailable. Its saving surface retains warnings/details/dismissal, with page links
-deferred until the challenge ends. The modal closes when Success takes focus;
-Give up returns to the existing venue/deck without a saved attempt. The iOS/web
-full-screen modal uses measured root safe-area padding on its first render, with
-inner native inset edges disabled. Android retains modal-owned safe-area measurement
-because its dialog bounds can exclude system bars. The covered deck retains the departed accepted card
-until the active surface closes, rather than restoring it during presentation.
+immediately on foreground; it never depends on a background interval. Provider
+remount/account change resets unfinished activity.
+
+On iOS, the exiting deck keeps its identity when Home loses focus; remounting it
+at that point would flash the accepted card back into the deck. Accept prepares
+`NativeChallengeHandoff` in a window overlay, hidden until its layout and decorative
+images settle. The opaque cover opens `/challenge` once and remains until that
+destination's layout/images are ready and its opening `transitionEnd` arrives.
+Image errors also settle readiness; the cover blocks actions during this handoff
+and disappears when the account-owned provider acknowledges the presented start.
+The temporary cover mirrors saving notices without registering a second toast
+host/channel; the native destination owns the sheet host through cover removal.
+The native route disables back gestures while active. Its
+`ChallengeFlowScreen` prepares Success beneath an opaque `ActiveChallengeContent`,
+with hidden accessibility/pointer input until completion. Both views use measured
+window safe-area padding from above the stack. Completed reveals the existing
+Success view in place: it neither dismisses a native modal nor changes native
+routes, avoiding the intermediate stack blend and first-layout/artwork settling
+observed in the [October 10 investigation](../handoffs/phase-07-3-local-flow.md#october-10-native-completion-handoff-follow-up).
+Success enables back navigation; Continue replaces `/challenge` with `/reflection`.
+Returning Home clears the activity/result without reopening Success. Standalone
+`/success` remains available for restored results and Android/web completion.
+Give up clears the active route to Home without recording a rep.
+
+Android/web retain `ActiveChallengeModal` and focus-based dismissal. Native
+input/accessibility isolation and the web inert/ARIA adapter keep underlying
+navigation unavailable. The active saving surface retains warnings/details/
+dismissal, with page links deferred until the challenge ends. Web uses measured
+root safe-area padding on first render, with inner inset edges disabled. Android
+retains modal-owned measurement because its dialog bounds can exclude system
+bars. The covered deck retains the departed accepted card until the active
+surface closes, rather than restoring it during presentation.
+
 Completed creates one UUID and awaits repository saving. Ordinary local success
 never waits for HTTP. `features/reflections/controller.ts` owns React-form state,
 validation, dirty-close choices and newer-input protection; explicit submissions
