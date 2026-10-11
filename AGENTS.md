@@ -76,8 +76,10 @@ paths, upload allowlists, fixture resolution, asset extraction and documentation
 links together; organizing retained code does not authorize its removal.
 
 Use import-aware rewrites rather than replacing arbitrary quoted fragments in
-SQL or data. Verify large moves with cold bundles, then reload the existing
-installed development app to clear stale Metro module/asset paths.
+SQL or data. Verify large moves with cold bundles. Restart the owned running Metro server
+with `--clear` before reloading the existing installed development app: a
+successful separate export does not rebuild that server's live dependency graph.
+Reload the app to clear stale module/asset paths.
 
 - **Choose the owner before creating files.** Identify the product capability or
   supporting responsibility the code serves, then place it with that owner.

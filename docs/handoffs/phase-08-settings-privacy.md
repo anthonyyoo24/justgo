@@ -485,3 +485,27 @@ Verification:
 Physical export delivery, support drafts, motion/system accessibility, transition
 frames and wider native/beta gates remain open as recorded above. This cleanup
 neither closes Phase 08 nor accepts Phase 09.
+
+### Phone reload follow-up after folder moves
+
+Anthony reported an error while reloading the installed phone app. The owned
+8084 server log reproduced `Got unexpected undefined` from Metro's
+`Graph._recursivelyCommitModule` during an incremental iOS bundle. The separate
+cold exports had passed, but they had not rebuilt this still-running server's
+old dependency graph. Restarting that server with `--clear` resolved the observed
+bundling failure; no application code, credentials, data or installed binary was
+changed. The recurring folder-move guidance in `AGENTS.md` now requires that
+server restart before asking the owner to reload.
+
+Only the verified 8084 Metro process was stopped. Its replacement uses the same
+LAN address, one worker, existing public staging API URL and bundle identifier.
+A scoped Xcode developer path avoids the earlier CommandLineTools/simctl warning.
+A recorded terminal session keeps keyboard reload available. The separate browser
+and local API servers were preserved.
+
+The running replacement server served its iOS launch bundle with HTTP 200
+(11,086,791 bytes), then served the same bundle again with HTTP 200. Its fresh
+build logged 2,196 modules without the previous graph error. Ignored diagnostic
+artifacts are under `.local/phase-08/phone-folder-restart*`. These are development
+server checks, not physical UI evidence. Anthony was asked to tap Reload/Retry;
+confirmation that the installed phone app opens again is pending.
