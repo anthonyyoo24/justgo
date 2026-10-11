@@ -7,7 +7,7 @@ import {
   dismissActivityToasts,
   showRecoveryToast,
   showMessageToast,
-} from '../../platform/Toast';
+} from '../../platform/toast/Toast';
 import { contactFailureMessage, supportContact } from '../contact';
 import { AccountRepository } from '../../data/activity/repository';
 import {
@@ -30,7 +30,7 @@ const mockActivity = {
 };
 const mockRouter = { push: jest.fn() };
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
-jest.mock('../../platform/Toast', () => ({
+jest.mock('../../platform/toast/Toast', () => ({
   ToastHost: ({ channel }: { channel: string }) => {
     const { View } = require('react-native');
     return <View testID={`toast-host-${channel}`} />;

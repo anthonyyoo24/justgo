@@ -161,7 +161,7 @@ and remains independent of accounts, recovery and journal storage. It is not
 uploaded or synchronized. The data inventory and policy draft now describe this
 actual local behavior; no legal document was published.
 
-`platform/MotionPreferencesProvider` combines the saved choice with React
+`platform/motion/MotionPreferencesProvider` combines the saved choice with React
 Native's accessibility query, live changes and foreground refresh. Phone-level
 Reduce Motion always wins: Settings shows the enabled, unavailable switch with
 “Enabled by your phone’s accessibility setting.” Initial unresolved reads keep
@@ -436,3 +436,52 @@ The phone's separate Metro session on 8084 now supplies the current API URL. A r
 All combined phase acceptance boxes remain open. Reduce Motion and authenticated export implementation/local verification are recorded above; physical-device accessibility and file delivery checks remain Phase 09 work. Confirmed deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Haptics implementation and acceptance are explicitly scheduled together in Phase 09 before the free beta. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
 
 Before publication, resolve retention and backup behavior, provider configuration, operator/contact and regional requirements, individual-versus-legal-entity App Review eligibility, age treatment and final Terms/EULA compatibility. Review the concrete policy before creating and publishing the public site. Resume commercial activation after the free beta and reconcile the policy for the paid build.
+
+## October 11 folder organization
+
+Anthony approved the five Settings/platform subfolders and saving the existing
+feature work before moving files. Four local commits preserve the baseline:
+`238f6e3` (CSV/JSON ZIP export), `1eb95af` (approved staging test access),
+`fee2a29` (bounded phone/server clock alignment), and `360e348` (shared progress
+and physical-phone/server handoffs). No push, PR or merge was performed.
+
+The separate organization slice moves 19 existing files: four into
+`app-support/settings/export`, five into `app-support/settings/information`,
+four into `platform/export`, four into `platform/toast`, and two into
+`platform/motion`. Settings retains 15 files total and platform retains 17.
+Native/web pairs and their tests stay together. Imports, route re-exports, Jest
+mocks and current architecture references follow their owners. Coverage discovery
+and critical thresholds remain unchanged. No dependencies, route URLs, API
+contracts, stored records or product behavior changed in this slice.
+
+An initial import-normalization attempt altered the ambiguous sibling
+`../calendar` reference; its original path was restored. Formatting also caught
+five longer import/mock declarations; these were formatted before the final
+checks. No checks or assertions were weakened.
+
+Verification:
+
+- `npm run check`: passed; fresh Expo Doctor 21/21, architecture, contracts build,
+  all TypeScript checks, lint, formatting, 54 API unit tests, 535 mobile tests in
+  67 suites, and 24 contract tests.
+- `npm run test:coverage`: passed, including real loopback database integration
+  tests and migration/restoration rehearsal. All existing coverage floors pass;
+  mobile lines 95.90%, branches 91.28%.
+- Side-panel browser: a fresh Settings render showed the Preferences, Account &
+  data, Privacy, Support and About sections. Settings → Export → Account &
+  recovery → disposable local account → Export ZIP downloaded a usable archive;
+  inspection found `activity.csv`, `data.json` and `README.txt`, no top-level
+  credential/diagnostic fields, and the expected empty activity. Returning to
+  Settings worked. This used only localhost API/database fixtures. Ignored
+  evidence: `.local/phase-08/folder-export-browser.png`.
+- Cold web and iOS exports passed with cleared caches and one Metro worker,
+  using ignored output directories. These confirm bundle resolution, not native
+  UI behavior. The phone Metro server remains on 8084. Its original background
+  command has closed stdin, so its keyboard reload shortcut could not be sent;
+  CoreDevice also reports the phone disconnected. Anthony should reload the
+  existing installed development app when connected again to clear old module
+  paths. No phone data, installation or signing configuration was reset.
+
+Physical export delivery, support drafts, motion/system accessibility, transition
+frames and wider native/beta gates remain open as recorded above. This cleanup
+neither closes Phase 08 nor accepts Phase 09.

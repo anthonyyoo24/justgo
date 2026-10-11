@@ -1,10 +1,10 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { exportPageSchema, type ExportPage } from '@justgo/contracts';
-import { AccountClient, createQueryClient } from '../../lib/account-client';
-import { ApiError, createHttpClient } from '../../lib/http';
-import { AccountRepository } from '../../data/activity/repository';
+import { AccountClient, createQueryClient } from '../../../lib/account-client';
+import { ApiError, createHttpClient } from '../../../lib/http';
+import { AccountRepository } from '../../../data/activity/repository';
 import { collectExport } from './data-export';
-import { captureLocalExport } from '../../data/activity/export';
+import { captureLocalExport } from '../../../data/activity/export';
 import {
   MemoryStorage,
   backend,
@@ -17,7 +17,7 @@ import {
   zone,
   attempt,
   deferred,
-} from '../../../test-support/journal';
+} from '../../../../test-support/journal';
 
 const resources: { repo: AccountRepository; client: AccountClient }[] = [];
 afterEach(() => {

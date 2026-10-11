@@ -1,8 +1,8 @@
 import { Toaster, toast } from 'sonner-native';
 import { AccessibilityInfo } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, typography } from '../theme/tokens';
-import { useReduceMotion } from './motion';
+import { colors, typography } from '../../theme/tokens';
+import { useReduceMotion } from '../motion/motion';
 
 function stationaryToast() {
   'worklet';

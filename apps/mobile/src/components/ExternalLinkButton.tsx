@@ -7,7 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { showMessageToast } from '../platform/Toast';
+import { showMessageToast } from '../platform/toast/Toast';
 import { colors, layout, spacing, typography } from '../theme/tokens';
 
 /** Open a user-reviewed destination; never attach app state or private content. */

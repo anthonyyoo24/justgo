@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useReduceMotion } from '../../../platform/motion';
+import { useReduceMotion } from '../../../platform/motion/motion';
 import type {
   ReflectionController,
   ReflectionSnapshot,

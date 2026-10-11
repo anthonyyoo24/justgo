@@ -113,6 +113,31 @@ uses `assets/challenges/venues/` for six venue/color pairs and
 `assets/challenges/decoration/` for the paper texture and lower flourish. The
 native Keychain module remains under `apps/mobile/modules/justgo-keychain/`.
 
+## Phase 08 Settings and platform organization
+
+The October 11 owner-approved follow-up groups 19 existing files into five
+folders on `codex/phase-08-settings-privacy`. This is implemented independently
+of the broader mobile cleanup diagram above. Tests stay beside their owner;
+iOS and `.web.*` file pairs retain the same names and platform resolution.
+
+```text
+apps/mobile/src/
+├── app-support/settings/             15 files total
+│   ├── export/                       4 files: export screen, ZIP collection and tests
+│   ├── information/                  5 files: Support/About, legal/social links and tests
+│   └── remaining files               6 files: main screen, rows, icons and motion row/tests
+└── platform/                         17 files total
+    ├── export/                       4 files: native/web file delivery and tests
+    ├── toast/                        4 files: native/web notices and tests
+    ├── motion/                       2 files: preferences provider and context/hooks
+    └── remaining files               7 files: connectivity and modal isolation adapters/tests
+```
+
+`remaining files` describes files directly in their parent, not another folder.
+Routes, API contracts, dependencies, stored data and application behavior are
+unchanged. The [Phase 08 follow-up](../handoffs/phase-08-settings-privacy.md#october-11-folder-organization)
+records verification and remaining physical-device acceptance.
+
 ## API, contracts and verification
 
 ```text

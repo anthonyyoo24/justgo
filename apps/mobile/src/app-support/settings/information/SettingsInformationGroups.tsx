@@ -1,14 +1,14 @@
 import { StyleSheet } from 'react-native';
-import { ExternalLinkButton } from '../../components/ExternalLinkButton';
+import { ExternalLinkButton } from '../../../components/ExternalLinkButton';
 import {
   contactFailureMessage,
   featureRequestContact,
   supportContact,
-} from '../contact';
+} from '../../contact';
 import { getCommunityLinks } from './community-links';
 import { getLegalLinks } from './legal-links';
-import type { SettingsIconName } from './SettingsIcon';
-import { SettingsGroup, SettingsRowContent } from './SettingsRows';
+import type { SettingsIconName } from '../SettingsIcon';
+import { SettingsGroup, SettingsRowContent } from '../SettingsRows';
 
 type SettingsLinkAction = {
   label: string;

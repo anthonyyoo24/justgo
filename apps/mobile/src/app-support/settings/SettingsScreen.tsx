@@ -9,7 +9,7 @@ import {
   spacing,
   typography,
 } from '../../theme/tokens';
-import { SettingsInformationGroups } from './SettingsInformationGroups';
+import { SettingsInformationGroups } from './information/SettingsInformationGroups';
 import { SettingsIcon } from './SettingsIcon';
 import { SettingsMotionRow } from './SettingsMotionRow';
 import { useAccess } from '../providers/AppProvider';

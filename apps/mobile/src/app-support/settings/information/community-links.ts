@@ -1,4 +1,4 @@
-import { publicHttpsUrl } from '../../lib/public-url';
+import { publicHttpsUrl } from '../../../lib/public-url';
 
 /** Configure the store ID only once the public listing can accept reviews. */
 export function getCommunityLinks({

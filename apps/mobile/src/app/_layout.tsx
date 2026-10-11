@@ -10,7 +10,7 @@ import { AppProvider, useAccess } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
 import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
-import { MotionPreferencesProvider } from '../platform/MotionPreferencesProvider';
+import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({

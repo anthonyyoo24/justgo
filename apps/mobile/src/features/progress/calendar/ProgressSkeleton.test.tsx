@@ -3,7 +3,7 @@ import { Animated, StyleSheet } from 'react-native';
 import { ProgressSkeleton, useProgressShimmer } from './ProgressSkeleton';
 
 let mockReduceMotion = false;
-jest.mock('../../../platform/motion', () => ({
+jest.mock('../../../platform/motion/motion', () => ({
   useReduceMotion: () => mockReduceMotion,
 }));
 

@@ -17,8 +17,11 @@ import {
   MotionPreferencesProvider,
   motionPreferenceKey,
   type MotionStorage,
-} from '../../platform/MotionPreferencesProvider';
-import { useMotionPreferences, useReduceMotion } from '../../platform/motion';
+} from '../../platform/motion/MotionPreferencesProvider';
+import {
+  useMotionPreferences,
+  useReduceMotion,
+} from '../../platform/motion/motion';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(async () => null),

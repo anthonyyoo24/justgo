@@ -7,7 +7,9 @@ import { SlidingEntryDetails } from './SlidingEntryDetails';
 // Exercise measurement/orchestration with the browser driver; the paired native
 // adapter has its own tests and recorded simulator frame verification.
 jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
-jest.mock('../../../platform/motion', () => ({ useReduceMotion: () => false }));
+jest.mock('../../../platform/motion/motion', () => ({
+  useReduceMotion: () => false,
+}));
 
 const savedEntry: ProgressEntry = {
   attemptId: '00000000-0000-4000-8000-000000000001',

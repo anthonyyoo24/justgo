@@ -9,18 +9,18 @@ import { Linking } from 'react-native';
 import SettingsRoute from '../../app/settings';
 import { SettingsScreen } from './SettingsScreen';
 import { SettingsGroup } from './SettingsRows';
-import { appleStandardTerms } from './legal-links';
+import { appleStandardTerms } from './information/legal-links';
 import {
   supportContact,
   featureRequestContact,
   contactFailureMessage,
 } from '../contact';
-import { showMessageToast } from '../../platform/Toast';
+import { showMessageToast } from '../../platform/toast/Toast';
 import { useAccess } from '../providers/AppProvider';
 
 jest.mock('../providers/AppProvider', () => ({ useAccess: jest.fn() }));
 
-jest.mock('../../platform/motion', () => ({
+jest.mock('../../platform/motion/motion', () => ({
   useMotionPreferences: () => ({
     reduceMotion: false,
     systemReduced: false,
@@ -37,7 +37,9 @@ const mockRouter = {
   replace: jest.fn(),
   push: jest.fn(),
 };
-jest.mock('../../platform/Toast', () => ({ showMessageToast: jest.fn() }));
+jest.mock('../../platform/toast/Toast', () => ({
+  showMessageToast: jest.fn(),
+}));
 jest.mock('expo-constants', () => ({ expoConfig: { version: '0.1.0' } }));
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');

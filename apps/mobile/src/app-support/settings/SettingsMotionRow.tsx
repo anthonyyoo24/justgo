@@ -1,5 +1,5 @@
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import { useMotionPreferences } from '../../platform/motion';
+import { useMotionPreferences } from '../../platform/motion/motion';
 import { colors, spacing, typography } from '../../theme/tokens';
 import { SettingsRowContent } from './SettingsRows';
 

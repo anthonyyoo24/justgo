@@ -1,1 +1,1 @@
-export { ExportDataScreen as default } from '../app-support/settings/ExportDataScreen';
+export { ExportDataScreen as default } from '../app-support/settings/export/ExportDataScreen';

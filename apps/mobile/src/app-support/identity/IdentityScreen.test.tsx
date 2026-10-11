@@ -4,7 +4,7 @@ import { IdentityController } from './controller';
 import { createMemoryVault } from './storage';
 import { Linking } from 'react-native';
 import { supportContact, contactFailureMessage } from '../contact';
-import { showMessageToast } from '../../platform/Toast';
+import { showMessageToast } from '../../platform/toast/Toast';
 import {
   createIdentityApi,
   IdentityClientError,
@@ -16,7 +16,9 @@ jest.mock('expo-crypto', () => ({
   randomUUID: () => '00000000-0000-4000-8000-000000000001',
 }));
 jest.mock('./vault', () => ({ createVault: jest.fn() }));
-jest.mock('../../platform/Toast', () => ({ showMessageToast: jest.fn() }));
+jest.mock('../../platform/toast/Toast', () => ({
+  showMessageToast: jest.fn(),
+}));
 it('offers private email support from account recovery and keeps it available after failure', async () => {
   const controller = new IdentityController(createMemoryVault(), {
     request: jest.fn(),

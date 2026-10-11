@@ -1,10 +1,10 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { strFromU8, unzipSync } from 'fflate';
-import { AccountClient, createQueryClient } from '../../lib/account-client';
-import { createHttpClient } from '../../lib/http';
-import { AccountRepository } from '../../data/activity/repository';
+import { AccountClient, createQueryClient } from '../../../lib/account-client';
+import { createHttpClient } from '../../../lib/http';
+import { AccountRepository } from '../../../data/activity/repository';
 import { ExportDataScreen } from './ExportDataScreen';
-import { saveExportFile } from '../../platform/export-file';
+import { saveExportFile } from '../../../platform/export/export-file';
 import {
   MemoryStorage,
   backend,
@@ -15,21 +15,23 @@ import {
   today,
   zone,
   deferred,
-} from '../../../test-support/journal';
+} from '../../../../test-support/journal';
 
 let mockOwner: string | null = owner;
 let mockRepo: AccountRepository | null;
 let mockClient: AccountClient;
 let mockBlur: (() => void) | undefined;
-jest.mock('../providers/AppProvider', () => ({
+jest.mock('../../providers/AppProvider', () => ({
   useRuntime: () => ({ client: mockClient }),
   useIdentity: () => ({ account: mockOwner ? { userId: mockOwner } : null }),
   useJournal: () => mockRepo,
 }));
-jest.mock('../../platform/motion', () => ({
+jest.mock('../../../platform/motion/motion', () => ({
   useMotionPreferences: () => ({ reduceMotion: false }),
 }));
-jest.mock('../../platform/export-file', () => ({ saveExportFile: jest.fn() }));
+jest.mock('../../../platform/export/export-file', () => ({
+  saveExportFile: jest.fn(),
+}));
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   const { useEffect } = require('react') as typeof import('react');
