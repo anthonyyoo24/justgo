@@ -136,6 +136,11 @@ installed development app to clear stale Metro module/asset paths.
   importing their composing provider back. Share context-free subscriptions to
   avoid module cycles. When a preview disables file watching, restart it before
   treating its served bundle as evidence for edited source.
+- Device/server clocks can differ even when both use automatic time. Keep access
+  clock alignment bounded and apply the same clock to admission, freshness and
+  expiry timers; test the bounds without extending validity. Fully reload the
+  development app after editing provider lifecycle effects when Fast Refresh has
+  retained an already disposed runtime; verify the fresh runtime before handoff.
 - For a full-screen native modal sharing the root window, use already measured
   safe-area values for its first visible layout and avoid applying the same
   inset twice. Native inset measurement after presentation can hide the title

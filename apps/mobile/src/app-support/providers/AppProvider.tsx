@@ -152,6 +152,13 @@ export function useAccess() {
     refetchInterval: 30_000,
   });
   const [now, setNow] = useState(Date.now);
+  // A fresh server response can be slightly ahead of a phone's clock. Align only
+  // small positive differences; stale or implausibly future checks stay closed.
+  const serverAheadMs = query.data
+    ? Date.parse(query.data.checkedAt) - query.dataUpdatedAt
+    : 0;
+  const clockOffsetMs =
+    serverAheadMs > 0 && serverAheadMs <= 5_000 ? serverAheadMs : 0;
   useEffect(() => {
     if (query.data?.status !== 'verified') return;
     // Expiry/freshness closes the route even if a recheck is unavailable.
@@ -161,16 +168,19 @@ export function useAccess() {
     );
     const timer = setTimeout(
       () => setNow(Date.now()),
-      Math.max(0, Math.min(expires - Date.now(), 60_000)),
+      Math.max(0, Math.min(expires - (Date.now() + clockOffsetMs), 60_000)),
     );
     return () => clearTimeout(timer);
-  }, [query.data]);
+  }, [query.data, clockOffsetMs]);
   return {
     ...query,
     verified:
       !!account &&
       !query.isError &&
-      hasVerifiedAccess(query.data, Math.max(now, query.dataUpdatedAt)),
+      hasVerifiedAccess(
+        query.data,
+        Math.max(now, query.dataUpdatedAt) + clockOffsetMs,
+      ),
   };
 }
 
