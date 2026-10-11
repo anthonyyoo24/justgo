@@ -1,5 +1,11 @@
 # Implementation handoffs
 
+**October 11 hosted phone prerequisite:** Anthony approved bringing forward the test-server update/free account admission. The [server handoff](phase-09-test-server.md) records backup/restoration, migration through 0013 with identity preservation, old-writer fencing, the reachable application-staging route and passing checks. A reproduced phone-clock difference initially blocked access; the corrected check preserves expiry/freshness bounds and passes regressions. Anthony confirmed real Home with challenge cards and Home → Settings → Back on his phone. Physical feature acceptance remains open. No Git publication or beta/release acceptance occurred.
+
+**October 11 physical development build:** Anthony's iPhone is registered with Apple/Expo and the first signed physical development build succeeded and is installed. The [setup follow-up](phase-08-settings-privacy.md#physical-development-build-follow-up) records checks, build identity and the installation QR. The subsequent hosted API/tester-access work is recorded above; physical feature acceptance remains open. No Git publication occurred.
+
+**October 10 data export:** Phase 08 step 2 implements a Settings action producing a CSV + JSON ZIP with complete online history and labeled pending local changes. The [export handoff](phase-08-settings-privacy.md#october-10-data-export-implementation) records authenticated owner isolation, file delivery and verification. Deletion, analytics and legal publication remain open; this slice does not close Phase 08.
+
 **October 10 Reduce Motion:** The first remaining Phase 08 slice implements a
 saved installation-level Settings switch and shared app motion behavior, with
 phone-level accessibility priority. The [motion handoff](phase-08-settings-privacy.md#october-10-reduce-motion-implementation)

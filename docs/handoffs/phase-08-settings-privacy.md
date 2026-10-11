@@ -251,8 +251,188 @@ panel-regression,check,coverage,coverage-gate}.log`, the earlier timeout log,
   guidance, local-data inventory and handoff index match the implemented slice
   and retain all open acceptance/deferral records.
 
+## October 10 data export implementation
+
+Anthony authorized step 2 and selected a ZIP with CSV and JSON. Settings now
+opens a separate Export my data screen, available without paid access. Export
+is explicit, blocks repeated taps while preparing/sharing and leaves existing
+data unchanged. The screen explains the private contents, internet requirement
+and user-selected save destination. Back navigation, account changes and route
+blur cancel preparation; retry, unreadable local storage, cancellation and
+successful delivery have distinct feedback.
+
+`GET /v1/account/export` authenticates every page using the existing session
+transaction and owner policy. Strict shared contracts/OpenAPI reject unknown
+input or response fields. The existing `(user_id,id)` primary key supports
+50-attempt pages across all history, including historical timestamps, challenge
+details, submitted feelings and reflection text. Account creation and registered
+device metadata are included; credentials, session tokens, recovery keys and
+request diagnostics are excluded. The route requires identity only and has no
+entitlement check. The upload allowlist explicitly includes the new contract.
+
+The Settings coordinator captures pending/rejected local records before reading
+online pages. A challenge with an unuploaded edit retains both versions, labeled
+`cloud`, `pending_upload` or `needs_attention`; exporting does not discard writing
+or acknowledge operations. Invalid pages, ownership changes, cancellation and a
+failed later page prevent file delivery. Another device's changes can appear
+between pages; README and timestamps describe the read interval rather than
+promise an atomic cross-device snapshot. Only saved/submitted content is included,
+not unsaved text or challenge starts/give-ups that the product does not persist.
+
+The archive contains `activity.csv`, `data.json` and `README.txt`. CSV includes
+UTF-8 BOM, quoted fields and spreadsheet-formula protection; JSON preserves exact
+Unicode, quotes and newlines. The effective Reduce Motion preference from this
+installation is included. Pinned `fflate@0.8.2` creates stored ZIP entries without
+native compression modules. `expo-file-system@57.0.7`, already present in the
+installed development app, is now a direct dependency. iOS writes to a private
+cache folder and opens the native share sheet, cleaning up after success,
+dismissal or failure. A process interruption can leave a temporary file until
+the next export clears the folder. The web adapter downloads a ZIP and removes
+its temporary anchor/object URL. Android file sharing remains outside the first
+iOS release; no rebuild, signing change or external file upload was performed.
+
+### Export verification
+
+- Focused mobile checks: **47 cases across five suites pass**, covering all-page
+  reads, cloud/local copies, exact text and CSV escaping, rejected changes,
+  unreadable hydration, failure after a successful page, invalid/cyclic pages,
+  ownership and late-response fences, same-account backgrounding, repeated taps,
+  retry, still-mounted route blur, account change, native cleanup and web URL
+  cleanup. These adapter tests do not establish native file-provider behavior.
+- Real PostgreSQL export integration: **four cases pass** for 51 rows split
+  50 + 1, historical precision/legacy attribution, exact feelings/text, owner
+  isolation, empty history, safe device metadata, invalid queries and
+  expired/revoked/retired identities. Full `npm run test:db`: **52 cases across
+  six suites plus the migration/restoration rehearsal pass**.
+- The first database run found raw timestamps could be strings; normalization
+  now handles both strings and `Date` values. The first full check found the new
+  contract missing from the deploy allowlist; the explicit allowlist entry fixes
+  it. Lint/format feedback was fixed without suppressing warnings or weakening
+  checks.
+- `npm run check`: **pass**, including fresh online Expo Doctor, contract build,
+  workspace/journey typechecks, lint, formatting and architecture/API/mobile/
+  contract tests. Mobile: **529 cases / 67 suites**; contracts: **23 / 9**.
+- Fresh root `npm run test:coverage`: **pass** for every workspace and unchanged
+  all-source/critical floors. Mobile: **95.89% lines / 91.25% branches**; API:
+  **94.75% / 90.44%**; contracts: **100% / 100%**. Export service/routes and
+  local snapshot have 100% line/branch coverage. Archive collection has 100%
+  lines and 95.45% branches; UI has 97.43% lines and 91.89% branches. Native
+  adapter has all lines covered; its uncovered folder-existence branches do not
+  replace the tested write/share/cancellation/ownership cleanup behaviors.
+- Saved app/API/database journeys: `npm run test:journey --
+e2e/data-export.spec.ts` **passes both cases**. The downloaded archive contains
+  all 51 historical online attempts plus a pending local reflection, with exact
+  text and spreadsheet protection. The second case fails the export network
+  read and downloads after an explicit retry. Database assertions verify export
+  added no activity rows; the isolated server registry cleans accounts created by
+  this run. Earlier saved suites were not rerun for this additive slice. This
+  local result does not establish hosted CI or native platform acceptance.
+- `npm run export:web -w @justgo/mobile` and `npm run export:ios -w
+@justgo/mobile -- --max-workers 1`: **pass**. The export route and ZIP library
+  resolve in both production bundles. Bundling is separate from actual delivery,
+  installed app behavior and physical-device acceptance.
+- Browser Use in the in-app side panel: an actual ZIP download was unzipped and
+  its three files, exact synthetic reflection, CSV formula protection and
+  credential exclusion verified. The export screen fits **390 × 844** and
+  **320 × 568**, exposes honest missing-account feedback and returns to Settings.
+  The viewport override was reset. The stale fixture server initially returned
+  NOT_FOUND; restarting this workspace's isolated fixture API with current code
+  resolved the environment mismatch. No production server or bypass was used.
+- Native Computer Use on the existing iPhone 17 / iOS 26.5 QA simulator reached
+  the actual ZIP share sheet and Save to Files picker. Save completion,
+  cancellation and real file-provider cleanup are **not yet native acceptance
+  evidence**. Anthony requested a five-minute pause while another task used the
+  simulator; that pause was honored. The other task's Progress UI was then
+  visible, and its Metro/API processes were left alone. This observation did
+  not verify its server connection; the reconnection follow-up below corrects
+  that gap. No physical-iPhone pass is claimed.
+  Phase 09 still owns physical file delivery, VoiceOver and large-text checks
+  before beta, alongside the wider recovery/storage/staging gates.
+- The one manually created browser account contained only disposable test text;
+  its exact UUID was read from this task's ZIP and removed from loopback
+  `justgo_test` after verification. No native account or other task's records
+  were deleted. Diagnostic ZIP/screenshot/logs stay under ignored
+  `.local/phase-08/`; no private journal content, credentials or recordings are
+  committed. A Simulator shortcut briefly selected screen capture during native
+  navigation; it was stopped and its control confirmed inactive.
+- Plan, app-shell boundaries, data inventory, policy draft, testing guidance and
+  handoff index describe the implemented slice and preserve remaining gates.
+  No policy was published and no Git push, PR or merge was performed.
+- Final Prettier and `git diff --check`: **pass**; all four added internal links
+  resolve, including this implementation section. The browser fixture API and
+  live Metro preview are restored on their original 3000/8081 ports; the other
+  task's 3003/8083 processes were not stopped or edited.
+
+### Simulator connection follow-up
+
+Anthony reported a simulator issue after the export handoff. Direct inspection
+found the development client still connected to `http://127.0.0.1:8081`, with
+“Could not connect to the server” over cached Progress content. The export journey
+checks had restarted this preview server; restoring the process had not restored
+the client connection or the other task's original server selection.
+
+Both preview servers responded as running. The untouched 8083 process belongs to
+the `day-sheet-performance` worktree. In the development launcher's Recently
+opened list, selecting `http://127.0.0.1:8083` restored the app. Native Home and
+Progress loaded normally; the developer menu explicitly confirmed that URL, then
+was closed. Progress still displayed the existing local QA totals. No app data,
+Keychain, simulator configuration or server was erased/rebuilt/restarted in this
+follow-up. The simulator was left on Progress for the other task. Ignored proof:
+`.local/phase-08/simulator-reconnected.png`.
+
+This was an environment reconnection, with no application-code change. Native
+inspection and final document formatting/diff checks are the applicable evidence;
+the earlier export test results and open file-delivery gates remain unchanged.
+
+### Owner preview switch to the export implementation
+
+Anthony then explicitly requested running these changes in the simulator for
+manual testing while preserving the other worktree. The development menu
+confirmed the initial connection was `http://127.0.0.1:8083`. Its launcher still
+listed that preview and this workspace's `http://localhost:8081`. Selecting 8081
+loaded the Phase 08 app from the existing live Metro server and fixture API on 3000. Settings exposed Export my data as a link, and opening it displayed the
+enabled Export ZIP action. The simulator was left on that screen for Anthony;
+no export was sent or save destination chosen during this setup.
+
+The other worktree's source and existing 8083 server were untouched; its preview
+remains in the launcher's Recently opened list for switching back. No branch
+merge, native rebuild, reinstall, signing change or account erase was needed.
+The floating development control was moved away from the export heading.
+Ignored proof: `.local/phase-08/export-ios-ready.png`. This launch/navigation
+check does not close the outstanding native save/cancel/cleanup acceptance gates.
+
+## October 11 physical-phone setup
+
+At Anthony's request, the agent inspected Apple Developer and the existing Expo project in the Codex side panel, plus EAS CLI read-only metadata. Active individual Apple membership, the existing `com.anthonyyoo.justgo` identifier and the matching EAS development variable were verified. The setup notes previously marked these as pending; [APPLE_SETUP.md](../operations/APPLE_SETUP.md) now records current evidence and the first-phone checklist. No replacement identifier or Expo project was created.
+
+The Mac detected Anthony's iPhone 15 Pro / iOS 26.6.2, initially unpaired. Anthony explicitly authorized submitting the phone's device name and UDID to Apple/Expo for JustGO testing. The Apple side-panel registration reached **Registration Complete**. The UDID stays out of committed documentation; ignored discovery data and `phone-registration-complete.png` record local evidence. EAS has only simulator builds and no Apple team/device registration for this Expo account yet. `eas device:create` reached Apple's password prompt; it was cancelled without requesting a password in chat. Anthony must authenticate privately in his terminal and import the already registered phone using Developer Portal.
+
+Physical signing/build, Developer Mode, phone installation and the HTTPS test API are still open. There is no `EXPO_PUBLIC_API_URL` in the EAS development environment. The current loopback fixture cannot be exposed as a phone backend; a reviewed test API and tester-access path are necessary. No signing credential, API deployment, build upload, Git publication or physical-phone acceptance occurred. This is setup evidence, not a change to the previously recorded Phase 08/09 feature sequencing.
+
+### Physical development build follow-up
+
+Anthony completed Apple authentication privately in his terminal and imported the already registered iPhone into the existing Expo team. EAS CLI verified that registration. The agent reused that session, selected the existing phone and let EAS generate an Apple distribution certificate and ad hoc provisioning profile; no existing signing credential was removed. Signing secrets remain in provider-managed credential storage and were not printed or committed.
+
+Fresh `npm run check` **passed**, including online Expo Doctor and the existing **529 mobile tests / 67 suites**. `eas build:inspect --platform ios --profile development --stage archive` verified the upload contains the current export implementation, custom Keychain module and required workspace dependencies, excluding private environment files, local test data, generated native projects and signing credentials. The completed source upload was 18.2 MB. Logs and archive inspection remain under ignored `.local/phase-08/`.
+
+EAS build [1500d7ee-c49a-4047-b88a-278eccdc21bc](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/1500d7ee-c49a-4047-b88a-278eccdc21bc) used the physical `development` profile, `com.anthonyyoo.justgo`, version 0.1.0 (1), and **finished successfully October 11 at 14:25:51 UTC**. Both CLI status and the side-panel Succeeded/IPA/Install controls confirm the result. Its source includes the uncommitted export changes despite the dashboard displaying HEAD `e146adc*`. Compilation ran on Expo, not the 8 GB Mac. The installation QR dialog was opened for Anthony; ignored proof is `phone-build-install.png`. Phone installation/Developer Mode and real device acceptance are still pending. A subsequent USB discovery confirmed the iPhone is now paired; this does not establish app launch or Developer Mode.
+
+Read-only backend inventory found the existing Vercel preview is still the Phase 02 API. The existing Canadian Supabase `JustGo` project is on the free organization plan and was paused. Reactivation reached `ACTIVE_HEALTHY`; no migration or account-data change occurred. Metadata verified four migrations (0000–0003), four accounts and only identity tables, with no product activity/reflection tables. The current app needs the canonical API/schema and the planned server-authorized free tester access before full phone testing. [The scoped backend preparation](../operations/APPLE_SETUP.md#hosted-test-backend-prerequisite) preserves those identities, requires backup/cutover review and an approved reachable route, and keeps deployment protection and real ownership boundaries. The loopback fixture was not exposed, no entitlement bypass or API deployment was created, and no Git publication occurred. A live API address can be supplied through Metro without rebuilding this compatible native client.
+
+Anthony subsequently reported successful installation and opening to the development launcher. Local IPA inspection confirms the expected bundle ID/team/version, the included development launcher and a provisioning profile containing the connected iPhone. A separate LAN Metro session runs on port 8084 with one worker and no API URL while hosted setup is pending; no simulator server was restarted. Sending its URL to the phone using `devicectl` was rejected with **Developer Mode is disabled**. Anthony was given the phone-side Developer Mode/restart steps. Live bundle loading, physical Settings/export behavior and all wider device gates remain open. This is owner-reported installation and tool-observed setup evidence, not a physical feature pass.
+
+After reactivation, authenticated `vercel curl` checks of the existing protected preview's `/health` and `/ready` returned healthy/ready JSON. This confirms the older API can reach its existing database; it does not verify the newer API/schema, mobile reachability or free tester access. Final document formatting and `git diff --check` passed. The IPA, provisioning-profile inspection, full build metadata and screenshot are confirmed ignored by Git.
+
+After Anthony enabled Developer Mode and restarted, a fresh `devicectl device info details` confirmed **enabled**, and opening JustGO with the LAN development link succeeded. The earlier list-devices response briefly retained stale disabled metadata. Anthony reported the development launcher could not load the project, with the internet connection appearing offline. Metro remains listening on 8084 and serves its status and SDK 57 iOS manifest on the Mac; there is no observed phone bundle request. IPA inspection confirms the local-network usage notice, Bonjour discovery service and local-network transport allowance are already present. Anthony was asked to enable the phone's JustGO Local Network permission, check the same Wi-Fi and retry. App bundle loading and physical feature acceptance remain unresolved; no rebuild, network-protection change or public tunnel was made for this connection diagnosis.
+
+### Connected phone and approved server preparation
+
+Anthony enabled/retried Local Network on the same Wi-Fi; Metro received a real iOS bundle request and he confirmed Settings opened. The exact cause of the earlier offline error was not isolated. He explicitly approved bringing the hosted test API/schema and approved-account free access forward from Phase 09. The [server handoff](phase-09-test-server.md) records its implementation, protected backup/restoration, unchanged migrations through 0013, preserved identity history, old-writer credential fencing, stable HTTPS application-staging address and passing checks. Preview protection was preserved; no loopback fixture or public bypass was deployed.
+
+The phone's separate Metro session on 8084 now supplies the current API URL. A real account connected, and Anthony confirmed its displayed reference before a private 30-day grant was added. The access check initially rejected a verified response because its server timestamp was 25–46 ms ahead of the phone clock. The [clock follow-up](phase-09-test-server.md#phone-clock-and-real-home-follow-up) records bounded clock alignment, expiry/freshness regressions, fresh root checks and browser verification. Anthony then confirmed that real Home shows challenge cards and Home → Settings → Back returns to Home. The original deep-linked Settings history and developer preview are separate from this confirmed normal route. The existing physical development binary was reused; no additional signing/build or Git publication occurred. Phase 08 export/support/motion and the wider physical acceptance gates remain open.
+
 ## Open Phase 08 work
 
-All combined phase acceptance boxes remain open. Reduce Motion implementation and local verification are recorded above; physical-device accessibility checks remain Phase 09 work. Authenticated export/deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Haptics implementation and acceptance are explicitly scheduled together in Phase 09 before the free beta. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
+All combined phase acceptance boxes remain open. Reduce Motion and authenticated export implementation/local verification are recorded above; physical-device accessibility and file delivery checks remain Phase 09 work. Confirmed deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Haptics implementation and acceptance are explicitly scheduled together in Phase 09 before the free beta. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
 
 Before publication, resolve retention and backup behavior, provider configuration, operator/contact and regional requirements, individual-versus-legal-entity App Review eligibility, age treatment and final Terms/EULA compatibility. Review the concrete policy before creating and publishing the public site. Resume commercial activation after the free beta and reconcile the policy for the paid build.
