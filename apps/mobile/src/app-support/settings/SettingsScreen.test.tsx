@@ -16,6 +16,9 @@ import {
   contactFailureMessage,
 } from '../contact';
 import { showMessageToast } from '../../platform/Toast';
+import { useAccess } from '../providers/AppProvider';
+
+jest.mock('../providers/AppProvider', () => ({ useAccess: jest.fn() }));
 
 jest.mock('../../platform/motion', () => ({
   useMotionPreferences: () => ({
@@ -71,6 +74,9 @@ const originalLinks = Object.fromEntries(
 );
 const openUrl = jest.spyOn(Linking, 'openURL');
 beforeEach(() => {
+  jest
+    .mocked(useAccess)
+    .mockReturnValue({ data: undefined } as ReturnType<typeof useAccess>);
   for (const key of linkEnvironmentKeys) delete process.env[key];
   mockRouter.canGoBack.mockReturnValue(true);
   mockRouter.back.mockClear();
@@ -124,6 +130,21 @@ it('renders the actual route with scoped groups, honest pending controls and no 
     /Apple’s standard license agreement/,
   ])
     expect(screen.queryByText(description)).toBeNull();
+});
+
+it('identifies free testing only when the account server reports beta access', () => {
+  const screen = render(<SettingsScreen />);
+  expect(screen.queryByText(/Free test build/)).toBeNull();
+  jest.mocked(useAccess).mockReturnValue({
+    data: {
+      status: 'verified',
+      source: 'free_beta',
+      checkedAt: '2026-10-11T12:00:00.000Z',
+      expiresAt: '2026-11-01T12:00:00.000Z',
+    },
+  } as ReturnType<typeof useAccess>);
+  screen.rerender(<SettingsScreen />);
+  expect(screen.getByText(/Free test build/)).toBeTruthy();
 });
 
 it('groups the two contact actions under Support above About and keeps information links in About', () => {

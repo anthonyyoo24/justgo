@@ -12,6 +12,7 @@ import {
 import { SettingsInformationGroups } from './SettingsInformationGroups';
 import { SettingsIcon } from './SettingsIcon';
 import { SettingsMotionRow } from './SettingsMotionRow';
+import { useAccess } from '../providers/AppProvider';
 import {
   PendingSettingsRow,
   SettingsGroup,
@@ -20,6 +21,7 @@ import {
 
 export function SettingsScreen() {
   const router = useRouter();
+  const access = useAccess();
   const version = Constants.expoConfig?.version;
   return (
     <SafeAreaView style={styles.safe}>
@@ -90,6 +92,7 @@ export function SettingsScreen() {
 
           <Text style={styles.footer}>
             JustGO{version ? ` · Version ${version}` : ''}
+            {access.data?.source === 'free_beta' ? '\nFree test build' : ''}
           </Text>
           {__DEV__ && (
             <Link href="/preview" style={styles.preview}>

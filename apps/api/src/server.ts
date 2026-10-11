@@ -4,6 +4,7 @@ import { readConfig } from './config.js';
 import { checkDatabase, createDatabase } from './db/client.js';
 import { loggerOptions } from './diagnostics.js';
 import { IdentityService } from './identity/service.js';
+import { createBetaAccess } from './access/beta-access.js';
 
 const config = readConfig();
 // Once per warm process/function instance; never construct a pool per request.
@@ -12,6 +13,9 @@ const app = buildApp(
   {
     logger: loggerOptions(config.LOG_LEVEL),
     onVercel: process.env.VERCEL === '1',
+    ...(config.APP_ENVIRONMENT === 'staging'
+      ? createBetaAccess(config.BETA_ACCESS_GRANTS)
+      : {}),
     ...(database
       ? {
           identity: new IdentityService(database.db, {

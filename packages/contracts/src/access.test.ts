@@ -59,4 +59,23 @@ describe('verified access', () => {
     expect(inspection.properties).not.toHaveProperty('verification');
     expect(inspection.additionalProperties).toBe(false);
   });
+  it('accepts server-described free access without weakening verification or strict fields', () => {
+    const data = accessResponseSchema.parse({
+      status: 'verified',
+      source: 'free_beta',
+      checkedAt: time(0),
+      expiresAt: time(60_000),
+    });
+    expect(hasVerifiedAccess(data, now)).toBe(true);
+    expect(
+      hasVerifiedAccess(
+        { status: 'unpaid', source: 'free_beta', checkedAt: time(0) },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      accessResponseSchema.safeParse({ ...data, source: 'client_override' })
+        .success,
+    ).toBe(false);
+  });
 });

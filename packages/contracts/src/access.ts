@@ -1,18 +1,28 @@
 import { z } from 'zod';
 
-// Only a server billing provider may produce verified access. No client premium flag.
+// Only a server access provider may produce verified access. No client premium flag.
+const source = z.literal('free_beta').optional();
 export const accessResponseSchema = z.discriminatedUnion('status', [
   z
-    .object({ status: z.literal('unavailable'), checkedAt: z.iso.datetime() })
+    .object({
+      status: z.literal('unavailable'),
+      checkedAt: z.iso.datetime(),
+      source,
+    })
     .strict(),
   z
-    .object({ status: z.literal('unpaid'), checkedAt: z.iso.datetime() })
+    .object({
+      status: z.literal('unpaid'),
+      checkedAt: z.iso.datetime(),
+      source,
+    })
     .strict(),
   z
     .object({
       status: z.literal('verified'),
       checkedAt: z.iso.datetime(),
       expiresAt: z.iso.datetime(),
+      source,
     })
     .strict(),
 ]);

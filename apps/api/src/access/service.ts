@@ -1,7 +1,7 @@
 import { accessResponseSchema, type AccessResponse } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
 
-// Phase VIII supplies a database-backed billing projection here. Provider calls
+// Billing or explicitly configured staging grants supply verified access. Provider calls
 // must happen outside the owner's short transaction. Tests inject isolated fixtures.
 export type EntitlementReader = (
   tx: Parameters<Parameters<IdentityService['withSession']>[1]>[0],
@@ -25,6 +25,7 @@ export class AccessService {
         return {
           status: 'unpaid' as const,
           checkedAt: new Date().toISOString(),
+          ...(access.source ? { source: access.source } : {}),
         };
       return access;
     });
