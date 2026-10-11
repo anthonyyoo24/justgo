@@ -18,7 +18,7 @@ import type {
   ProgressCalendar,
   ProgressDayResponse,
 } from '@justgo/contracts';
-import { DayEntryList } from './day-details/DayEntryList';
+import { DayEntryList } from './day-details/entries/DayEntryList';
 import { AccountRepository } from '../../data/activity/repository';
 import { ApiError } from '../../lib/http';
 import {
@@ -51,8 +51,8 @@ jest.mock('expo-router', () => ({
   Link: () => null,
 }));
 jest.mock('../../platform/motion', () => ({ useReduceMotion: () => true }));
-jest.mock('./day-details/useEntryMotion', () =>
-  jest.requireActual('./day-details/useEntryMotion.ts'),
+jest.mock('./day-details/entries/useEntryMotion', () =>
+  jest.requireActual('./day-details/entries/useEntryMotion.ts'),
 );
 jest.mock('expo-crypto', () => {
   let n = 100;

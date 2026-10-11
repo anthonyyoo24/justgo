@@ -9,13 +9,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useReduceMotion } from '../../../platform/motion';
+import { useReduceMotion } from '../../../../platform/motion';
 import type {
   ReflectionController,
   ReflectionSnapshot,
-} from '../../reflections/controller';
-import { useDelayedBusy } from '../../../lib/useDelayedBusy';
-import { colors, fontFamilies } from '../../../theme/tokens';
+} from '../../../reflections/controller';
+import { useDelayedBusy } from '../../../../lib/useDelayedBusy';
+import { colors, fontFamilies } from '../../../../theme/tokens';
 
 const reflectionHint = 'What stood out to you?';
 const inputPadding = 14;

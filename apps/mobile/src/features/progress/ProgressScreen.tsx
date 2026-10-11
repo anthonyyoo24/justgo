@@ -16,7 +16,7 @@ import { useProgressReads } from '../../data/activity/progress/useProgressReads'
 import { moveMonth } from './calendar';
 import { ProgressView } from './ProgressView';
 import { displayEntry } from './types';
-import { useDayReflection } from './day-details/useDayReflection';
+import { useDayReflection } from './day-details/reflection-editor/useDayReflection';
 
 export function ProgressScreen() {
   const { repository } = useActivityState();

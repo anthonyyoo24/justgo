@@ -9,7 +9,7 @@ import {
 import * as calendar from '../calendar';
 import type { ProgressEntry } from '../types';
 import { DaySheet } from './DaySheet';
-import { DayEntryList } from './DayEntryList';
+import { DayEntryList } from './entries/DayEntryList';
 
 let mockReduceMotion = true;
 jest.mock('../../../platform/motion', () => ({
@@ -18,7 +18,9 @@ jest.mock('../../../platform/motion', () => ({
 beforeEach(() => {
   mockReduceMotion = true;
 });
-jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
+jest.mock('./entries/useEntryMotion', () =>
+  jest.requireActual('./entries/useEntryMotion.ts'),
+);
 
 it('bounds initial mounting for 41 attempts and updates only the selected row with current callbacks', () => {
   const entries: ProgressEntry[] = Array.from({ length: 41 }, (_, index) => ({

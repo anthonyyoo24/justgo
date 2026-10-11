@@ -29,8 +29,8 @@ import Svg, { Path } from 'react-native-svg';
 import type { ProgressEntry } from '../types';
 import { colors, fontFamilies, typography } from '../../../theme/tokens';
 import { dayLabel } from '../calendar';
-import { ProgressEntryRow } from './ProgressEntryRow';
-import { DayEntryList } from './DayEntryList';
+import { ProgressEntryRow } from './entries/ProgressEntryRow';
+import { DayEntryList } from './entries/DayEntryList';
 export type ProgressDay = {
   date: string;
   totalReps: number;

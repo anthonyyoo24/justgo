@@ -17,8 +17,8 @@ import { ProgressView } from './ProgressView';
 
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../platform/motion', () => ({ useReduceMotion: () => false }));
-jest.mock('./day-details/useEntryMotion', () =>
-  jest.requireActual('./day-details/useEntryMotion.ts'),
+jest.mock('./day-details/entries/useEntryMotion', () =>
+  jest.requireActual('./day-details/entries/useEntryMotion.ts'),
 );
 
 const month: ProgressResponse = {

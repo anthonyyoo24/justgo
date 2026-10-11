@@ -79,6 +79,10 @@ owns independent queries and repository acceptance. `ProgressView` composes
 `ProgressEntryRow` (metadata/reflection expansion). Each owns its related styles.
 `DayReflectionEditor` renders the Paper textbox/actions and `useDayReflection`
 reuses the existing reflection controller for explicit saves and guarded closes.
+Within `day-details/`, the sheet and its motion hook remain at the root.
+`entries/` owns the list, rows, expanding details and native/browser motion pair;
+`reflection-editor/` owns the form and editor-session hook. Tests stay beside
+their implementations, and consumers import these owners directly.
 `DayEntryList` mounts eight rows initially and fills ahead of scrolling before
 requesting the next backend page. Visited rows stay mounted until the day closes,
 preserving animated layout and active drafts. Rows compare their complete display

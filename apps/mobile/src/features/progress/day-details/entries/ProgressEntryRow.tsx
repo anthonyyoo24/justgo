@@ -2,12 +2,12 @@ import { memo, type ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { feelingChoices, type FeelingCode } from '@justgo/contracts';
-import type { ProgressEntry } from '../types';
-import { colors, fontFamilies, typography } from '../../../theme/tokens';
-import { FeelingFace } from '../../reflections/FeelingFace';
-import { activityTime } from '../calendar';
+import type { ProgressEntry } from '../../types';
+import { colors, fontFamilies, typography } from '../../../../theme/tokens';
+import { FeelingFace } from '../../../reflections/FeelingFace';
+import { activityTime } from '../../calendar';
 import { SlidingEntryDetails } from './SlidingEntryDetails';
-import { DayReflectionPlaceholder } from './DayReflectionEditor';
+import { DayReflectionPlaceholder } from '../reflection-editor/DayReflectionEditor';
 const entryMetaInk = '#5F7391';
 const feelingLabel = (feeling: FeelingCode | null) =>
   feelingChoices.find((option) => option.code === feeling)?.label ??
@@ -44,7 +44,7 @@ function EntryClockIcon() {
 function ReflectionPencil() {
   return (
     <Image
-      source={require('../../../../assets/icons/reflection-pencil.png')}
+      source={require('../../../../../assets/icons/reflection-pencil.png')}
       style={styles.reflectionPencil}
       resizeMode="contain"
       aria-hidden

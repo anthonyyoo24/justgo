@@ -954,6 +954,11 @@ change is local on `codex/day-sheet-performance`; publication and owner
 acceptance remain open. Existing Phase 09 physical-device, accessibility and
 release gates are unchanged.
 
+Anthony also authorized grouping the implemented day-detail responsibilities
+into `entries/` and `reflection-editor/`, with tests and motion adapter pairs
+colocated. Keep this organization in a separate local commit from the measured
+performance fix; the same handoff records updated paths and verification.
+
 **October 7 motion diagnosis:** paired native recordings reproduced the owner's
 editor delay/jump. Saved text starts its animation effect after 182–228 ms; Add
 after 452–538 ms, with awaited pin/adoption work and late autofocus. The shared

@@ -2,8 +2,10 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { Animated } from 'react-native';
 import { ScreenPreview } from './ScreenPreview';
 jest.mock('../../platform/motion', () => ({ useReduceMotion: () => false }));
-jest.mock('../../features/progress/day-details/useEntryMotion', () =>
-  jest.requireActual('../../features/progress/day-details/useEntryMotion.ts'),
+jest.mock('../../features/progress/day-details/entries/useEntryMotion', () =>
+  jest.requireActual(
+    '../../features/progress/day-details/entries/useEntryMotion.ts',
+  ),
 );
 jest.mock('../../features/challenges/DeckPreview', () => ({
   DeckPreview: ({ onCompleted }: { onCompleted: () => void }) => {

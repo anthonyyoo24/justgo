@@ -24,7 +24,7 @@ each input/dismissal change. Opening a two-attempt day did much less work.
 
 | Owner                                              | Change                                                                                                                                                                                                                                      |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `day-details/DayEntryList.tsx`                     | Mount eight initial rows and add batches ahead of scrolling. Finish rendering the loaded page before delegating backend pagination. Preserve visited rows until closure.                                                                    |
+| `day-details/entries/DayEntryList.tsx`             | Mount eight initial rows and add batches ahead of scrolling. Finish rendering the loaded page before delegating backend pagination. Preserve visited rows until closure.                                                                    |
 | `DaySheet.tsx` / `ProgressEntryRow.tsx`            | Stable ID callbacks read current action handlers; memoized rows compare every display field, callbacks, selection and editor identity. Equivalent repository overlays do not force every row to render.                                     |
 | `SlidingEntryDetails.tsx`                          | Mount and measure only an opened panel; retain its outgoing animation, release it afterward and handle cancellation before the first layout. Preserve saved-to-Edit resizing and reduced motion.                                            |
 | `DayReflectionEditor.tsx` / `useDayReflection.tsx` | Subscribe within the connected editor. Session, accepted-input ownership, adoption, pinning, account fencing and focus remain above the list.                                                                                               |
@@ -169,3 +169,48 @@ simulator's inspector connection on 8083 confirmed it was running the worktree
 bundle. The initial MCP simulator discovery failed because the system's selected
 developer tools lack `simctl`; command-scoped `DEVELOPER_DIR` selected the existing
 Xcode without changing global configuration.
+
+## Owner-authorized folder organization — October 10
+
+Anthony authorized the proposed grouping and local commits. The performance fix
+is retained in `2dc17b9` (`Improve day-sheet rendering for large attempt histories`),
+followed by a separate organization commit. Sheet orchestration and sheet motion
+remain at the `day-details/` root. `entries/` owns the progressive list, rows,
+expanding details and browser/native motion pair; `reflection-editor/` owns the
+inline form and editor-session hook. All four existing tests remain beside their
+owners. Ten files moved; no product behavior or test assertions changed.
+
+Import-aware rewrites updated relative imports, test mocks/`requireActual` and
+the reflection-pencil asset path, including preview and Progress consumers.
+Existing recursive test, coverage and architecture paths already include both
+subdirectories. Current architecture/owner documentation now points at the new
+paths; dated historical cleanup inventories retain their original paths.
+
+Verification after the moves:
+
+- Focused sheet, row, native motion, editor-session, Progress screen/view and
+  preview suites: **7 suites / 101 tests passed**.
+- `npm run check`: fresh online Expo Doctor **21/21**, builds, typechecking,
+  lint, formatting and **744 tests passed**.
+- `npm run test:coverage`: **613 tests passed** and every coverage floor passed;
+  mobile remained **91.29% branches / 95.83% lines**, API **89.80% / 94.58%** and
+  contracts **100% / 100%**.
+- Cold `export:web` and `export:ios` with `--clear --max-workers 1`: both passed,
+  including the moved reflection-pencil asset. These are JavaScript/asset
+  exports, not a new native binary build.
+- Saved Progress suite on the same disposable loopback harness: **9/9 passed**,
+  including 41-attempt scrolling with draft retention and an explicit save.
+  Playwright shut down its own API and web services after the run; original
+  checkout services on 3000/8081 remained running.
+- After restarting this worktree's Metro on **8083** with `--clear`, the existing
+  installed simulator app reloaded successfully. Its inspector connection on
+  8083 confirmed the worktree bundle. Progress retained 58 total reps; the
+  41-attempt October 10 sheet opened with eight initial rows, Add focused the
+  empty input with Save disabled, and Cancel returned to the sheet. No reflection
+  was submitted. Metro remains running and the sheet is open for owner testing.
+  Native screenshots are ignored `native-add.png` and `native-ready.png`.
+
+Ignored organization evidence and temporary exports are under
+`.local/day-sheet-performance/organization/`. The source diff was reviewed as
+file moves, module/asset paths and formatting only. No push, PR or merge is
+authorized by the local commit request.

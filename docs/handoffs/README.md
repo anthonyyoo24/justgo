@@ -6,6 +6,8 @@ The [performance handoff](day-sheet-performance.md) records the measured render
 cost, progressive row mounting, isolated editor updates and native/browser
 verification. Owner review and Git publication remain open; the existing
 physical-device and release acceptance gates stay with Phase 09.
+The owner-authorized `entries/` and `reflection-editor/` organization is retained
+in a separate local commit from the performance fix.
 
 **October 10 Reduce Motion:** The first remaining Phase 08 slice implements a
 saved installation-level Settings switch and shared app motion behavior, with

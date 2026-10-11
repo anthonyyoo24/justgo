@@ -11,7 +11,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import type { ProgressEntry } from '../types';
+import type { ProgressEntry } from '../../types';
 
 const rowBatch = 8;
 
