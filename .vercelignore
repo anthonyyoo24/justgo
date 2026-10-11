@@ -21,6 +21,7 @@
 !packages/contracts/src/index.ts
 !packages/contracts/src/identity.ts
 !packages/contracts/src/access.ts
+!packages/contracts/src/data-export.ts
 !packages/contracts/src/openapi.ts
 
 !packages/contracts/src/activity

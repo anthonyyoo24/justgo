@@ -102,7 +102,6 @@ it('renders the actual route with scoped groups, honest pending controls and no 
   ]);
   for (const label of [
     'Haptics',
-    'Export my data',
     'Delete account',
     'General analytics',
     'Sensitive metadata',
@@ -233,6 +232,12 @@ it('keeps the existing account recovery action available', () => {
   const screen = render(<SettingsScreen />);
   fireEvent.press(screen.getByRole('link', { name: 'Account & recovery' }));
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
+});
+
+it('opens the data export screen without requiring paid access', () => {
+  const screen = render(<SettingsScreen />);
+  fireEvent.press(screen.getByRole('link', { name: 'Export my data' }));
+  expect(mockRouter.push).toHaveBeenCalledWith('/export-data');
 });
 
 it('returns to the originating screen, or safely goes home when opened directly', () => {

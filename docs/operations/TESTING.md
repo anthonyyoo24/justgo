@@ -306,3 +306,20 @@ retained browser CI runs this extended suite. The 07.4 handoff owns its inspecte
 `npm run test:journey` retains earlier cases and adds actual-app lost-create-acknowledgement → reflection → Progress/restart and self-device revocation/same-account recovery with retained history, plus lost-PATCH-acknowledgement/restart coverage. Confirm database counts, reflection visibility and unchanged UUID/start/date across recovery. The required CI step starts only isolated fixture services and fails on assertion or startup failure; verify that failure path with a controlled assertion regression and record it in the handoff.
 
 Run `npm run check`, `npm run test:db`, `npm run test:coverage`, the saved journey suite and both exports sequentially before handoff, then verify affected UI in the Codex side panel. Migration/coverage removal checks must protect the canonical schema rather than retain references to removed implementation. Native simulator Keychain/AsyncStorage/relaunch evidence is separately recorded when obtained; no 07.5 native pass follows from automated/browser results. Deferred 07.3A automation and physical-device/staging/release gates stay explicit. Run fresh Expo Doctor again immediately before an authorized push. Do not call the new revision's hosted CI verified from a local run.
+
+## Phase 08 data export checks
+
+`test:db` and API coverage include `tests/privacy/export.integration.test.ts`:
+owner-isolated authenticated paging, precise historical data, safe account/device
+metadata, invalid input and expired/revoked sessions. Mobile checks cover captured
+pending/rejected copies, archive contents, spreadsheet-safe CSV, cancellation,
+account isolation, failures/retry and platform file cleanup.
+
+The saved `e2e/data-export.spec.ts` cases use the real app/API/database to download
+51 older cloud rows plus a reflection whose upload is blocked, unzip and inspect
+the result, and recover from an export network failure through explicit retry.
+Run `npm run test:journey -- e2e/data-export.spec.ts` for this slice or the normal
+command for the full suite; the existing fixture/port/cleanup safeguards apply.
+Side-panel downloads and simulator share sheets are separate manual evidence.
+Physical-iPhone Save to Files, cancellation, accessibility and native cleanup
+remain release checks in Phase 09 until evidenced in the phase handoff.

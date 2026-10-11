@@ -65,7 +65,19 @@ export function SettingsScreen() {
                 />
               </Pressable>
             </Link>
-            <PendingSettingsRow icon="export" label="Export my data" />
+            <Link href="/export-data" asChild>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Export my data"
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <SettingsRowContent
+                  icon="export"
+                  label="Export my data"
+                  chevron
+                />
+              </Pressable>
+            </Link>
             <PendingSettingsRow icon="delete" label="Delete account" />
           </SettingsGroup>
 

@@ -68,6 +68,7 @@ function Navigation() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="export-data" />
       <Stack.Screen name="recovery" />
       <Stack.Protected guard={access.verified}>
         <Stack.Screen name="(tabs)" />

@@ -4,6 +4,7 @@ import * as identity from './identity.ts';
 import * as attempts from './activity/attempts.ts';
 import * as progress from './activity/progress.ts';
 import { accessResponseSchema } from './access.ts';
+import { exportPageSchema } from './data-export.ts';
 
 const json = (schema: z.ZodType) => ({
   'application/json': { schema: z.toJSONSchema(schema) },
@@ -49,7 +50,7 @@ function operation(
 }
 export const openApiDocument = {
   openapi: '3.1.0',
-  info: { title: 'JustGO API', version: '0.6.0' },
+  info: { title: 'JustGO API', version: '0.7.0' },
   components: {
     securitySchemes: {
       deviceSession: {
@@ -60,6 +61,21 @@ export const openApiDocument = {
     },
   },
   paths: {
+    '/v1/account/export': {
+      get: {
+        ...operation(exportPageSchema),
+        description:
+          'Owner-only data export, available without paid access. Follow nextCursor until null; pages contain up to 50 attempts in ID order. Each page is read in an owner transaction; concurrent changes on other devices may be reflected between pages. No credentials, session tokens or diagnostics are returned.',
+        parameters: [
+          {
+            name: 'cursor',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+      },
+    },
     '/v1/challenges': { get: operation(challenges.catalogSchema) },
     '/v1/attempts': {
       get: {
