@@ -508,4 +508,4 @@ The running replacement server served its iOS launch bundle with HTTP 200
 build logged 2,196 modules without the previous graph error. Ignored diagnostic
 artifacts are under `.local/phase-08/phone-folder-restart*`. These are development
 server checks, not physical UI evidence. Anthony was asked to tap Reload/Retry;
-confirmation that the installed phone app opens again is pending.
+Anthony confirmed that the installed phone app opens normally after the restart. This closes the folder-move reload follow-up with owner-reported physical-device evidence; the other feature/device acceptance gates remain open.
