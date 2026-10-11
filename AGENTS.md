@@ -81,6 +81,14 @@ with `--clear` before reloading the existing installed development app: a
 successful separate export does not rebuild that server's live dependency graph.
 Reload the app to clear stale module/asset paths.
 
+- **Review changed directories after the task.** Complete the requested
+  implementation normally, then before handoff identify every directory where
+  the task added or modified files. Review each directory's full contents to
+  see whether it has become too large after the changes. If sensible groups
+  would improve navigation, reorganize them into responsibility-based
+  subfolders without waiting for Anthony to ask. Use judgment rather than a
+  fixed file-count threshold; follow the move/verification rules above and keep
+  functional changes separately reviewable. Record any necessary deferral.
 - **Choose the owner before creating files.** Identify the product capability or
   supporting responsibility the code serves, then place it with that owner.
 - **Use `src/features/<name>/` for product capabilities.** Examples: Challenges,
