@@ -1,0 +1,171 @@
+# Day-sheet performance — October 10, 2026
+
+## Snapshot
+
+- **Status:** local implementation for Anthony's review; no Git publication.
+- **Scope:** Phase 07.4 Progress follow-up. Anthony initially requested an
+  investigation, then authorized the fix in a separate worktree while retaining
+  the original checkout for other work.
+- **Branch / baseline:** `codex/day-sheet-performance` from
+  `e146adc95dd67cf5efa0fb46c07cb24165711228`; local commits are retained for review.
+- **Worktree:** `/Users/anthonyyoo/.codex/worktrees/day-sheet-performance/justgo`.
+- **Dependencies:** [07.4 history and motion handoff](phase-07-4-progress-history.md),
+  [implemented app shell](../architecture/APP_SHELL.md) and
+  [testing guidance](../operations/TESTING.md).
+- **Environment:** installed Expo SDK 57 development client, React 19.2.3,
+  iPhone 17 / iOS 26.5 Simulator. Existing native binary reused without a rebuild.
+
+## Finding and change
+
+The 41-attempt day initially mounted every row, every hidden reflection form and
+every motion adapter. Opening an editor then rendered all 41 rows three times.
+The reflection controller subscription also invalidated the Progress owner on
+each input/dismissal change. Opening a two-attempt day did much less work.
+
+| Owner                                              | Change                                                                                                                                                                                                                                      |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `day-details/DayEntryList.tsx`                     | Mount eight initial rows and add batches ahead of scrolling. Finish rendering the loaded page before delegating backend pagination. Preserve visited rows until closure.                                                                    |
+| `DaySheet.tsx` / `ProgressEntryRow.tsx`            | Stable ID callbacks read current action handlers; memoized rows compare every display field, callbacks, selection and editor identity. Equivalent repository overlays do not force every row to render.                                     |
+| `SlidingEntryDetails.tsx`                          | Mount and measure only an opened panel; retain its outgoing animation, release it afterward and handle cancellation before the first layout. Preserve saved-to-Edit resizing and reduced motion.                                            |
+| `DayReflectionEditor.tsx` / `useDayReflection.tsx` | Subscribe within the connected editor. Session, accepted-input ownership, adoption, pinning, account fencing and focus remain above the list.                                                                                               |
+| Component tests / `e2e/progress-flow.spec.ts`      | Cover initial mounting, selected-row updates, current callbacks, draft retention, reopening, paging/retry and cancellation. Saved journeys scroll to later rows; a new 41-attempt journey keeps and saves a draft after full-day scrolling. |
+
+No dependencies, native configuration, API contracts, migrations or persistence
+policy changed. Editing and explicit saves continue through the existing
+reflection controller and account repository.
+
+An initial FlatList attempt reduced first mounting but expanding an animated row
+created gaps in its cached/estimated positions. The native list then mounted the
+remaining rows despite the small viewport. A temporary runtime probe confirmed
+the render range growing through all 41 rows at a stationary scroll offset.
+The chosen progressive list avoids that estimation problem and keeps the active
+input mounted. It bounds opening cost, but memory still grows with visited rows;
+it does not promise constant memory for arbitrarily large histories.
+
+The 41-attempt saved journey exposed a second boundary: a backend page can arrive
+while scrolling is already at the bottom, without another scroll event. The list
+now fills from the arriving page immediately when it was filling ahead, with
+component regressions for successful pagination and retry. Ordinary initial
+opening still mounts only eight rows.
+
+## Native measurements
+
+React DevTools backend profiling through the development client's Hermes
+inspector recorded component durations and render counts, without modifying app
+source or saving reflection text in profiles. The original two/41-attempt
+investigation profiles were copied into ignored local diagnostic storage.
+
+| Metric for the 41-attempt day                               |                                        Before |                    Final profile |
+| ----------------------------------------------------------- | --------------------------------------------: | -------------------------------: |
+| DaySheet first render                                       |                                    511.368 ms |                        47.703 ms |
+| DaySheet render work across Add activation                  |                            375.471–377.775 ms |                        35.319 ms |
+| Row renders across Add activation                           |                                  123 (41 × 3) |            2 (selected row only) |
+| Rows mounted on initial open / after Add                    |                                       41 / 41 |                            8 / 8 |
+| Sheet, row and calendar renders while typing the test draft | Broad owner subscription in the original code | 0; only connected editor updates |
+
+The final native profile ran after a fresh worktree bundle load with the mirror
+stopped. These are inclusive React render durations, not input-to-pixel latency,
+animation frame-rate measurements or release/physical-iPhone results. They are
+individual development captures and vary with host load. The small-day baseline
+was 28.032 ms on repeat opening. Earlier intermediate captures with the mirror
+and competing simulator activity were variable and are not the final comparison.
+
+## Verification
+
+Focused component suites cover the five affected owners; the final combined run
+passed all 87 cases. An earlier combined run hit one existing five-second test
+timeout under host load; the full 19-case ProgressScreen suite and final combined
+run passed with the unchanged timeout. A paging test consumes rendered local
+rows before requesting another backend page. Final coverage review strengthened
+the existing animation test to verify retention during close, cancelled-close
+fencing after reopening and release after successful completion. No assertions,
+timeouts or coverage thresholds were weakened.
+
+Interactive side-panel browser verification used a new disposable account on
+the worktree's loopback fixture server. Add, typing, Save, saved Edit, Cancel and
+dirty-close Keep editing passed. Native side-panel mirroring showed the final
+41-attempt sheet, scrolling through row 41 and back with the unsaved synthetic
+draft retained. Native typing focused the input and updated only its subtree;
+Keep editing retained the input. The synthetic native draft was discarded without
+submitting a reflection. The simulator was reconnected to the original Metro
+server after the checks, and scoped mirror helpers/temporary tabs were closed.
+
+Final automated evidence:
+
+- `npm run check`: passed fresh online Expo Doctor **21/21**, contracts build,
+  workspace/journey typechecking, lint, formatting and **744 tests** (architecture
+  180, API unit 45, mobile 499, contracts 20).
+- `npm run test:coverage`: passed **613 tests** (API 94 including database and
+  migration suites, mobile 499, contracts 20), with every all-source and critical
+  coverage floor intact. Mobile: **91.29% branches / 95.83% lines**; API:
+  **89.80% / 94.58%**; contracts: **100% / 100%**. The new progressive list has
+  full branch/line coverage. No standalone `test:db` was needed for this
+  mobile-only follow-up; database behavior still ran within coverage.
+- Saved Progress suite: **9/9 passed**, Chromium **390 × 844**, reduced motion,
+  real disposable API/database assertions. This includes the new 41-attempt
+  draft/save journey, Add/Edit/restart, offline cached paging, lost responses,
+  account recovery/revocation, memory-only recovery, rejection and older-day
+  Add/Edit after pruning. A prior focused four-case run also passed.
+
+The default journey ports were occupied by the original checkout, so a disposable
+copy of the saved Progress suite used changed loopback ports **3003/8083** and
+the existing guarded `justgo_test` fixtures. The final nine-case run enabled the
+existing web-only journal failure seam and let Playwright own and shut down both
+worktree services. The command was:
+
+```sh
+node --env-file-if-exists=apps/api/.env node_modules/@playwright/test/cli.js test \
+  --config .local/day-sheet-performance/journeys/playwright.config.ts
+```
+
+No original development server was stopped, no migration was run by that copied
+harness and cleanup authority stayed with accounts allocated by the worktree
+fixture server. The full cross-feature default `npm run test:journey` was not run;
+all saved cases in the affected Progress suite were run. Current-revision hosted
+CI remains unevidenced until separately authorized publication.
+
+The first new 41-attempt case assumed Save would automatically expand row 1
+after cancelling a pending selection of row 2. The existing selection behavior
+leaves row 1 collapsed in that sequence, so the case now explicitly activates
+View Reflection and verifies the saved text and database value. The later real
+page-arrival stall was fixed in the list and covered by successful final journeys.
+
+Ignored evidence is under `.local/day-sheet-performance/`: `final-focused.log`,
+`final-animation-test.log`, `final-check.log`, `final-coverage.log`,
+`final-progress-journeys.log`, `final-progressive-big-*.json`, simulator mirror
+screenshots and temporary profiling/harness scripts. None is committed visual
+evidence. Native profiles used the cached 41-attempt day; backend page-arrival
+regressions have component/browser evidence separately.
+
+## Remaining acceptance
+
+Anthony's review and separate permissions for push, PR and merge remain open.
+Existing Phase 09 physical-iPhone, software-keyboard layout, VoiceOver, large-text
+and release performance acceptance remain open. This scoped fix does not close
+those gates or advance the rest of Settings/privacy work.
+
+Preserve the draft controller above the list and the existing native reveal/focus
+handoff when changing this screen. Re-run the 41-attempt journey, focused Progress
+tests and native initial-open/Add/scroll checks for future list changes.
+
+## Owner testing setup — October 10
+
+At Anthony's request, the installed simulator app was reconnected to this
+worktree's Metro server on **8083**, using the already-running original fixture
+API on **3000**. The original Metro on 8081 remains running. No native rebuild or
+account reset was required. Progress loaded the existing 58 total reps and
+41-attempt October 10 day; Add opened and focused the empty reflection input,
+then Cancel returned to the sheet without saving. The app was left on that sheet
+and the worktree Metro was left running for owner testing.
+
+```sh
+EXPO_NO_TELEMETRY=1 EXPO_NO_DOTENV=1 \
+  EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 \
+  npm run start -w @justgo/mobile -- --localhost --port 8083 --max-workers 1
+```
+
+Ignored evidence: `user-testing-metro.log` and `user-testing-ready.png`. The
+simulator's inspector connection on 8083 confirmed it was running the worktree
+bundle. The initial MCP simulator discovery failed because the system's selected
+developer tools lack `simctl`; command-scoped `DEVELOPER_DIR` selected the existing
+Xcode without changing global configuration.

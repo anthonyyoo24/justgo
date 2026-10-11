@@ -1,5 +1,12 @@
 # Implementation handoffs
 
+**October 10 day-sheet performance:** The owner's 41-attempt simulator finding
+is addressed locally in a separate `codex/day-sheet-performance` worktree.
+The [performance handoff](day-sheet-performance.md) records the measured render
+cost, progressive row mounting, isolated editor updates and native/browser
+verification. Owner review and Git publication remain open; the existing
+physical-device and release acceptance gates stay with Phase 09.
+
 **October 10 Reduce Motion:** The first remaining Phase 08 slice implements a
 saved installation-level Settings switch and shared app motion behavior, with
 phone-level accessibility priority. The [motion handoff](phase-08-settings-privacy.md#october-10-reduce-motion-implementation)

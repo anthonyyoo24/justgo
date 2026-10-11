@@ -46,6 +46,56 @@ afterEach(() => {
   repository.dispose();
 });
 
+it('keeps typing and dirty-close state inside the editor without rendering its screen owner', () => {
+  const ownerRender = jest.fn();
+  const leave = jest.fn();
+  function Fixture() {
+    ownerRender();
+    const flow = useDayReflection(repository);
+    return (
+      <>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open"
+          onPress={() => flow.edit(attempt())}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Reveal"
+          onPress={flow.onEditorOpened}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Leave"
+          onPress={() => flow.beforeClose(leave)}
+        />
+        {flow.editor}
+      </>
+    );
+  }
+  const screen = render(<Fixture />);
+  fireEvent.press(screen.getByRole('button', { name: 'Open' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Reveal' }));
+  ownerRender.mockClear();
+  fireEvent.changeText(
+    screen.getByLabelText('Your day reflection'),
+    'Disposable draft',
+  );
+  expect(screen.getByLabelText('Your day reflection').props.value).toBe(
+    'Disposable draft',
+  );
+  fireEvent.press(screen.getByRole('button', { name: 'Leave' }));
+  expect(screen.getByText('Leave your reflection?')).toBeTruthy();
+  expect(ownerRender).not.toHaveBeenCalled();
+  expect(leave).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  expect(screen.getByLabelText('Your day reflection').props.value).toBe(
+    'Disposable draft',
+  );
+  expect(ownerRender).not.toHaveBeenCalled();
+  screen.unmount();
+});
+
 it.each(['android', 'web'] as const)(
   'retains the native placeholder on %s without a duplicate visible hint',
   (platform) => {

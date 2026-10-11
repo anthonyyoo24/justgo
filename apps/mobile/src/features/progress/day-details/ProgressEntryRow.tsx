@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { feelingChoices, type FeelingCode } from '@justgo/contracts';
@@ -92,7 +92,19 @@ function SavedReflection({
  * Only submitted content supplies saved feeling/text; expansion and explicit
  * editing share the row surface without creating a persistence operation here.
  */
-export function ProgressEntryRow({
+type EntryRowProps = {
+  entry: ProgressEntry;
+  index: number;
+  expanded: boolean;
+  onToggle: (id: string) => void;
+  reduceMotion: boolean;
+  onEdit?: ((id: string) => void) | undefined;
+  editor?: ReactNode;
+  editing?: boolean;
+  onEditorOpened?: (() => void) | undefined;
+};
+
+export const ProgressEntryRow = memo(function ProgressEntryRow({
   entry,
   index,
   expanded,
@@ -102,17 +114,7 @@ export function ProgressEntryRow({
   editor,
   editing = !!editor,
   onEditorOpened,
-}: {
-  entry: ProgressEntry;
-  index: number;
-  expanded: boolean;
-  onToggle: () => void;
-  reduceMotion: boolean;
-  onEdit?: (() => void) | undefined;
-  editor?: ReactNode;
-  editing?: boolean;
-  onEditorOpened?: (() => void) | undefined;
-}) {
+}: EntryRowProps) {
   const submitted = entry.reflectionStatus === 'submitted';
   const feeling = submitted ? entry.feeling : null;
   const reflection = submitted ? entry.reflectionText?.trim() : null;
@@ -136,7 +138,9 @@ export function ProgressEntryRow({
         accessibilityRole={actionable ? 'button' : undefined}
         accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}. ${time}. Feeling: ${feelingLabel(feeling)}${actionable ? `. ${action}` : ''}`}
         accessibilityState={actionable ? { expanded: opened } : undefined}
-        onPress={reflection || editing ? onToggle : onEdit}
+        onPress={() =>
+          (reflection || editing ? onToggle : onEdit)?.(entry.attemptId)
+        }
         hitSlop={actionable ? { top: 12, bottom: 12 } : undefined}
         style={styles.entryRow}
       >
@@ -234,13 +238,33 @@ export function ProgressEntryRow({
         >
           {editor ??
             (reflection ? (
-              <SavedReflection text={reflection} onEdit={onEdit} />
+              <SavedReflection
+                text={reflection}
+                onEdit={onEdit ? () => onEdit(entry.attemptId) : undefined}
+              />
             ) : (
               <DayReflectionPlaceholder />
             ))}
         </SlidingEntryDetails>
       )}
     </View>
+  );
+}, sameEntryRow);
+
+function sameEntryRow(previous: EntryRowProps, next: EntryRowProps) {
+  // Progress overlays can reconstruct equivalent display objects. Compare the
+  // complete small row value, while keeping callbacks and editor identity honest.
+  const fields = Object.keys(previous.entry) as Array<keyof ProgressEntry>;
+  return (
+    fields.every((field) => previous.entry[field] === next.entry[field]) &&
+    previous.index === next.index &&
+    previous.expanded === next.expanded &&
+    previous.editing === next.editing &&
+    previous.reduceMotion === next.reduceMotion &&
+    previous.editor === next.editor &&
+    previous.onToggle === next.onToggle &&
+    previous.onEdit === next.onEdit &&
+    previous.onEditorOpened === next.onEditorOpened
   );
 }
 

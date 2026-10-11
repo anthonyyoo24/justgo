@@ -944,6 +944,16 @@ staging/release gates. Deferral closes none of these.
 
 **Journey-harness extension:** extend the existing saved browser completion/reflection journeys and lower-level regressions through Progress and calendar editing; add relevant manual native verification, using real API/disposable-database assertions. Verify “10 + 1 = 11” through acknowledgement/refresh/restart, saved reflection visibility, today's cached paging, other-day/month offline restrictions, rollover, rejection corrections and retained memory-only entries. Keep lost-response/account recovery cases running against the integrated path.
 
+**October 10 day-sheet performance:** Anthony reported slower day-sheet opening
+and Add/View actions for 41 attempts than for two attempts in the iPhone
+Simulator development build, then authorized implementation in a separate
+worktree. The [performance handoff](handoffs/day-sheet-performance.md) records
+bounded initial rendering, memoized rows, lazy detail panels and editor-owned
+subscriptions, with native render profiles and regression/UI evidence. The
+change is local on `codex/day-sheet-performance`; publication and owner
+acceptance remain open. Existing Phase 09 physical-device, accessibility and
+release gates are unchanged.
+
 **October 7 motion diagnosis:** paired native recordings reproduced the owner's
 editor delay/jump. Saved text starts its animation effect after 182–228 ms; Add
 after 452–538 ms, with awaited pin/adoption work and late autofocus. The shared

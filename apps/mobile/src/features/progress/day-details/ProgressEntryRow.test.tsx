@@ -109,7 +109,7 @@ it('slides the editor from zero height using the saved-reflection motion and col
   }
 });
 
-it('premeasures a closed Add row without mounting an input, then starts its reveal immediately', () => {
+it('leaves closed Add rows unmounted and measures only the selected form before revealing', () => {
   const parallel = jest.spyOn(Animated, 'parallel').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
@@ -127,17 +127,16 @@ it('premeasures a closed Add row without mounting an input, then starts its reve
     expect(screen.queryByLabelText('Your day reflection')).toBeNull();
     expect(screen.queryByTestId('reflection-editor-measurement')).toBeNull();
     expect(
-      screen.getByTestId('reflection-editor-measurement', {
+      screen.queryByTestId('entry-details-content', {
         includeHiddenElements: true,
       }),
-    ).toBeTruthy();
-    fireEvent(
-      screen.getByTestId('entry-details-content', {
+    ).toBeNull();
+    expect(
+      screen.queryByTestId('reflection-editor-measurement', {
         includeHiddenElements: true,
       }),
-      'layout',
-      { nativeEvent: { layout: { height: 144 } } },
-    );
+    ).toBeNull();
+    expect(parallel).not.toHaveBeenCalled();
     parallel.mockClear();
     screen.rerender(
       <ProgressEntryRow
@@ -146,7 +145,7 @@ it('premeasures a closed Add row without mounting an input, then starts its reve
         editor={<TextInput accessibilityLabel="Your day reflection" />}
       />,
     );
-    expect(parallel).toHaveBeenCalledTimes(1);
+    expect(parallel).not.toHaveBeenCalled();
     expect(
       within(screen.getByTestId('reflection-action')).getByText('Cancel'),
     ).toBeTruthy();
@@ -155,10 +154,53 @@ it('premeasures a closed Add row without mounting an input, then starts its reve
       nativeEvent: { layout: { height: 144 } },
     });
     expect(parallel).toHaveBeenCalledTimes(1);
+    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+      nativeEvent: { layout: { height: 144 } },
+    });
+    expect(parallel).toHaveBeenCalledTimes(1);
     screen.unmount();
   } finally {
     parallel.mockRestore();
   }
+});
+
+it('releases a panel closed before its first layout and can reopen it', () => {
+  const onOpened = jest.fn();
+  const screen = render(
+    <SlidingEntryDetails
+      open
+      reduceMotion
+      contentKey="editor"
+      onOpened={onOpened}
+    >
+      <TextInput accessibilityLabel="Your day reflection" />
+    </SlidingEntryDetails>,
+  );
+  screen.rerender(
+    <SlidingEntryDetails open={false} reduceMotion contentKey="editor">
+      <TextInput accessibilityLabel="Your day reflection" />
+    </SlidingEntryDetails>,
+  );
+  expect(
+    screen.queryByTestId('entry-details-content', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
+  expect(onOpened).not.toHaveBeenCalled();
+  screen.rerender(
+    <SlidingEntryDetails
+      open
+      reduceMotion
+      contentKey="editor"
+      onOpened={onOpened}
+    >
+      <TextInput accessibilityLabel="Your day reflection" />
+    </SlidingEntryDetails>,
+  );
+  fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    nativeEvent: { layout: { height: 144 } },
+  });
+  expect(onOpened).toHaveBeenCalledTimes(1);
 });
 
 it('shows and closes the editor immediately with reduced motion', () => {
@@ -189,10 +231,10 @@ it('shows and closes the editor immediately with reduced motion', () => {
     screen.rerender(<ProgressEntryRow {...props} expanded={false} />);
     expect(screen.queryByLabelText('Your day reflection')).toBeNull();
     expect(
-      screen.getByTestId('sliding-entry-details', {
+      screen.queryByTestId('sliding-entry-details', {
         includeHiddenElements: true,
       }),
-    ).toHaveStyle({ opacity: 0, height: 0, pointerEvents: 'none' });
+    ).toBeNull();
     expect(timing).not.toHaveBeenCalled();
   } finally {
     timing.mockRestore();
@@ -395,6 +437,12 @@ it('notifies focus only after a completed reveal and fences cancelled or unmount
         <TextInput />
       </SlidingEntryDetails>,
     );
+    const cancelledClose = completions.at(-1)!;
+    expect(
+      screen.getByTestId('entry-details-content', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
     act(() => completions[0]!({ finished: true }));
     expect(onOpened).not.toHaveBeenCalled();
     expect(stop).toHaveBeenCalled();
@@ -403,12 +451,42 @@ it('notifies focus only after a completed reveal and fences cancelled or unmount
         <TextInput />
       </SlidingEntryDetails>,
     );
+    act(() => cancelledClose({ finished: true }));
+    expect(screen.getByTestId('entry-details-content')).toBeTruthy();
     act(() => completions.at(-1)!({ finished: true }));
     expect(onOpened).toHaveBeenCalledTimes(1);
+    screen.rerender(
+      <SlidingEntryDetails {...props} open={false}>
+        <TextInput />
+      </SlidingEntryDetails>,
+    );
+    const finishClose = completions.at(-1)!;
+    act(() => finishClose({ finished: false }));
+    expect(
+      screen.getByTestId('entry-details-content', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+    act(() => finishClose({ finished: true }));
+    expect(
+      screen.queryByTestId('entry-details-content', {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
+    screen.rerender(
+      <SlidingEntryDetails {...props}>
+        <TextInput />
+      </SlidingEntryDetails>,
+    );
+    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+      nativeEvent: { layout: { height: 144 } },
+    });
+    act(() => completions.at(-1)!({ finished: true }));
+    expect(onOpened).toHaveBeenCalledTimes(2);
     const late = completions.at(-1)!;
     screen.unmount();
     act(() => late({ finished: true }));
-    expect(onOpened).toHaveBeenCalledTimes(1);
+    expect(onOpened).toHaveBeenCalledTimes(2);
   } finally {
     parallel.mockRestore();
   }

@@ -1,6 +1,15 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { Animated, Modal, ScrollView, StyleSheet } from 'react-native';
+import {
+  Animated,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
+import * as calendar from '../calendar';
+import type { ProgressEntry } from '../types';
 import { DaySheet } from './DaySheet';
+import { DayEntryList } from './DayEntryList';
 
 let mockReduceMotion = true;
 jest.mock('../../../platform/motion', () => ({
@@ -10,6 +19,99 @@ beforeEach(() => {
   mockReduceMotion = true;
 });
 jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
+
+it('bounds initial mounting for 41 attempts and updates only the selected row with current callbacks', () => {
+  const entries: ProgressEntry[] = Array.from({ length: 41 }, (_, index) => ({
+    attemptId: `attempt-${index}`,
+    instruction: `Synthetic challenge ${index}`,
+    startedAt: '2026-10-10T16:00:00Z',
+    timeZone: 'America/Toronto',
+    reflectionStatus: 'none',
+    feeling: null,
+    reflectionText: null,
+  }));
+  const props = {
+    date: '2026-10-10',
+    day: { date: '2026-10-10', totalReps: 41, entries },
+    loading: false,
+    error: false,
+    loadMoreError: false,
+    hasMore: false,
+    loadingMore: false,
+    fetching: false,
+    onClose: jest.fn(),
+    onEditReflection: jest.fn(),
+  };
+  const format = jest.spyOn(calendar, 'activityTime');
+  try {
+    const screen = render(<DaySheet {...props} />);
+    expect(screen.UNSAFE_getByType(DayEntryList).props.entries).toHaveLength(
+      41,
+    );
+    expect(screen.getAllByRole('button', { name: /Rep \d+\./ })).toHaveLength(
+      8,
+    );
+    expect(
+      screen.queryByTestId('entry-details-content', {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
+    format.mockClear();
+    const latestEdit = jest.fn();
+    screen.rerender(
+      <DaySheet
+        {...props}
+        day={{ ...props.day, entries: entries.map((entry) => ({ ...entry })) }}
+        onEditReflection={latestEdit}
+      />,
+    );
+    expect(format).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByRole('button', { name: /Rep 1\./ }));
+    expect(latestEdit).toHaveBeenCalledWith('attempt-0');
+    expect(props.onEditReflection).not.toHaveBeenCalled();
+    const latestClose = jest.fn((work: () => void) => work());
+    screen.rerender(
+      <DaySheet
+        {...props}
+        editingId="attempt-0"
+        editor={<TextInput accessibilityLabel="Synthetic editor" />}
+        beforeClose={latestClose}
+      />,
+    );
+    expect(
+      format.mock.calls.every(([instant]) => instant === entries[0]!.startedAt),
+    ).toBe(true);
+    // Both the selection and editor handoff leave the other seven rows untouched.
+    expect(format).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryAllByTestId('entry-details-content', {
+        includeHiddenElements: true,
+      }),
+    ).toHaveLength(1);
+    fireEvent.press(screen.getByRole('button', { name: /Rep 1.*Cancel/ }));
+    expect(latestClose).toHaveBeenCalledTimes(1);
+    const input = screen.getByLabelText('Synthetic editor');
+    const nearEnd = {
+      nativeEvent: {
+        contentOffset: { y: 100 },
+        contentSize: { height: 700 },
+        layoutMeasurement: { height: 500 },
+      },
+    };
+    for (let page = 0; page < 5; page++)
+      fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
+    expect(screen.getByRole('button', { name: /Rep 41\./ })).toBeTruthy();
+    expect(screen.getByLabelText('Synthetic editor')).toBe(input);
+    screen.rerender(<DaySheet {...props} date={null} day={undefined} />);
+    screen.rerender(<DaySheet {...props} />);
+    expect(screen.getAllByRole('button', { name: /Rep \d+\./ })).toHaveLength(
+      8,
+    );
+    screen.unmount();
+  } finally {
+    format.mockRestore();
+  }
+});
 
 it.each([400, 900])(
   'centers the offline message below the header within a %s-point screen',
