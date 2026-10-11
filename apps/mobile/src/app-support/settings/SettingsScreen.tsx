@@ -12,6 +12,7 @@ import {
 import { SettingsInformationGroups } from './information/SettingsInformationGroups';
 import { SettingsIcon } from './SettingsIcon';
 import { SettingsMotionRow } from './SettingsMotionRow';
+import { SettingsExportRow } from './export/SettingsExportRow';
 import { useAccess } from '../providers/AppProvider';
 import {
   PendingSettingsRow,
@@ -67,19 +68,7 @@ export function SettingsScreen() {
                 />
               </Pressable>
             </Link>
-            <Link href="/export-data" asChild>
-              <Pressable
-                accessibilityRole="link"
-                accessibilityLabel="Export my data"
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <SettingsRowContent
-                  icon="export"
-                  label="Export my data"
-                  chevron
-                />
-              </Pressable>
-            </Link>
+            <SettingsExportRow />
             <PendingSettingsRow icon="delete" label="Delete account" />
           </SettingsGroup>
 

@@ -1,8 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link, useFocusEffect } from 'expo-router';
-import { StyleSheet, Text } from 'react-native';
-import { Screen } from '../../../components/Screen';
-import { PrimaryButton } from '../../../components/PrimaryButton';
+import { useFocusEffect, useRouter } from 'expo-router';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {
   useIdentity,
   useJournal,
@@ -14,8 +18,9 @@ import { ApiError } from '../../../lib/http';
 import { collectExport } from './data-export';
 import { colors, spacing, typography } from '../../../theme/tokens';
 import type { AccountRepository } from '../../../data/activity/repository';
+import { SettingsRowContent } from '../SettingsRows';
 
-export function ExportDataScreen() {
+export function SettingsExportRow() {
   const { account } = useIdentity();
   const repository = useJournal();
   return (
@@ -35,9 +40,13 @@ function ExportSession({
   repository: AccountRepository | null;
 }) {
   const { client } = useRuntime();
+  const router = useRouter();
   const { reduceMotion } = useMotionPreferences();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    kind: 'success' | 'error';
+  } | null>(null);
   const active = useRef<AbortController | null>(null);
   useFocusEffect(
     useCallback(
@@ -52,7 +61,11 @@ function ExportSession({
   );
 
   const start = async () => {
-    if (active.current || !repository || !accountId) return;
+    if (active.current) return;
+    if (!repository || !accountId) {
+      router.push('/recovery');
+      return;
+    }
     const controller = new AbortController();
     active.current = controller;
     setBusy(true);
@@ -74,10 +87,14 @@ function ExportSession({
       check();
       setMessage(
         result === 'cancelled'
-          ? 'Export cancelled. You can try again.'
-          : result === 'downloaded'
-            ? 'Your ZIP download has started.'
-            : 'Your export was shared.',
+          ? null
+          : {
+              kind: 'success',
+              text:
+                result === 'downloaded'
+                  ? 'Your ZIP download has started.'
+                  : 'Your export was shared.',
+            },
       );
     } catch (error) {
       if (
@@ -85,11 +102,13 @@ function ExportSession({
         !client.ownsAccount(repository.accountId)
       )
         return;
-      setMessage(
-        error instanceof ApiError && error.code === 'STORAGE'
-          ? 'Some saved data on this phone could not be read. Try reopening the app before exporting.'
-          : 'Your export could not be created. Check your connection and try again.',
-      );
+      setMessage({
+        kind: 'error',
+        text:
+          error instanceof ApiError && error.code === 'STORAGE'
+            ? 'Some saved data on this phone could not be read. Try reopening the app before exporting.'
+            : 'Couldn’t export your data. Please try again.',
+      });
     } finally {
       if (active.current === controller) {
         active.current = null;
@@ -98,56 +117,49 @@ function ExportSession({
     }
   };
   return (
-    <Screen title="Export my data">
-      <Text style={styles.copy}>
-        Get a ZIP with a CSV you can open in a spreadsheet and a JSON copy of
-        your saved data.
-      </Text>
-      <Text style={styles.copy}>
-        Includes completed challenges, feelings, reflections and changes waiting
-        to upload from this phone. An internet connection is needed to include
-        your full saved history.
-      </Text>
-      <Text style={styles.copy}>
-        This file contains your private reflections. Choose a safe place to save
-        it. Exporting keeps your data in JustGO.
-      </Text>
-      {accountId && repository ? (
-        <PrimaryButton
-          label={busy ? 'Preparing export…' : 'Export ZIP'}
-          busy={busy}
-          onPress={() => {
-            // This action owns failures and cancellation before updating its feedback.
-            void start();
-          }}
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={busy ? 'Creating export…' : 'Export my data'}
+        accessibilityHint={
+          accountId && repository
+            ? 'Create a ZIP with your saved challenges, feelings and reflections'
+            : 'Connect your account to export your data'
+        }
+        accessibilityState={{ disabled: busy, busy }}
+        disabled={busy}
+        style={({ pressed }) => pressed && styles.pressed}
+        onPress={() => {
+          // This action handles export failures before presenting feedback.
+          void start();
+        }}
+      >
+        <SettingsRowContent
+          icon="export"
+          label={busy ? 'Creating export…' : 'Export my data'}
+          accessory={
+            busy ? <ActivityIndicator color={colors.ink} /> : undefined
+          }
         />
-      ) : (
-        <Text style={styles.copy}>
-          Connect to your account to export your data.
-        </Text>
-      )}
+      </Pressable>
       {message && (
-        <Text accessibilityRole="alert" style={styles.copy}>
-          {message}
+        <Text
+          accessibilityRole="alert"
+          style={[styles.message, message.kind === 'error' && styles.error]}
+        >
+          {message.text}
         </Text>
       )}
-      <Link href="/settings" dismissTo style={styles.link}>
-        Back to Settings
-      </Link>
-      {!accountId && (
-        <Link href="/recovery" style={styles.link}>
-          Account & recovery
-        </Link>
-      )}
-    </Screen>
+    </View>
   );
 }
 const styles = StyleSheet.create({
-  copy: { ...typography.body, color: colors.ink },
-  link: {
-    ...typography.label,
+  pressed: { opacity: 0.65 },
+  message: {
+    ...typography.caption,
     color: colors.ink,
-    paddingVertical: spacing.md,
-    textDecorationLine: 'underline',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
+  error: { color: '#8B1E32' },
 });

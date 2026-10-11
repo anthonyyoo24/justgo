@@ -1,7 +1,7 @@
 # Phase 08 settings and privacy handoff
 
 **Date:** October 10, 2026\
-**Status:** Settings/contact and Reduce Motion slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
+**Status:** Settings/contact, Reduce Motion and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
 
 ## Current authorized work
@@ -253,13 +253,14 @@ panel-regression,check,coverage,coverage-gate}.log`, the earlier timeout log,
 
 ## October 10 data export implementation
 
-Anthony authorized step 2 and selected a ZIP with CSV and JSON. Settings now
-opens a separate Export my data screen, available without paid access. Export
-is explicit, blocks repeated taps while preparing/sharing and leaves existing
-data unchanged. The screen explains the private contents, internet requirement
-and user-selected save destination. Back navigation, account changes and route
-blur cancel preparation; retry, unreadable local storage, cancellation and
-successful delivery have distinct feedback.
+Anthony authorized step 2 and selected a ZIP with CSV and JSON. The initial
+slice opened a separate Export my data screen, available without paid access;
+the October 11 follow-up below replaces it with a direct Settings action.
+Export is explicit, blocks repeated taps while preparing/sharing and leaves
+existing data unchanged. The original screen explained the private contents,
+internet requirement and user-selected save destination. Back navigation,
+account changes and route blur cancel preparation; retry, unreadable local
+storage, cancellation and successful delivery have distinct feedback.
 
 `GET /v1/account/export` authenticates every page using the existing session
 transaction and owner policy. Strict shared contracts/OpenAPI reject unknown
@@ -509,3 +510,109 @@ build logged 2,196 modules without the previous graph error. Ignored diagnostic
 artifacts are under `.local/phase-08/phone-folder-restart*`. These are development
 server checks, not physical UI evidence. Anthony was asked to tap Reload/Retry;
 Anthony confirmed that the installed phone app opens normally after the restart. This closes the folder-move reload follow-up with owner-reported physical-device evidence; the other feature/device acceptance gates remain open.
+
+## October 11 direct export from Settings
+
+Anthony approved removing the separate export page and its explanatory copy.
+Settings now starts export on one tap: Export my data → Creating export… → the
+existing iOS share sheet or browser ZIP download. The later feedback refinement
+below makes share-sheet dismissal quiet. Inline feedback handles successful
+delivery, unreadable storage and retryable failures. The row is
+disabled until preparation/sharing ends. A disconnected account opens recovery;
+legacy `/export-data` links redirect to Settings.
+
+`SettingsExportRow` replaces `ExportDataScreen` within the existing export owner.
+Account-change, focus-loss, duplicate-tap and temporary-file protections are
+preserved. API contracts, archive contents, stored records and dependencies are
+unchanged. Account/recovery UX research was explicitly moved to a separate local
+project conversation; this slice does not redesign that screen. No native
+rebuild, installation, signing change, Git publication or merge occurred.
+
+Verification:
+
+- `npm run check`: passed, including fresh online Expo Doctor, typechecks, lint,
+  formatting and all workspace/architecture tests; mobile has **536 passing
+  tests in 67 suites**. Component regressions cover the direct action, busy state,
+  duplicate taps, results, failures/retry, account isolation, focus cancellation,
+  disconnected recovery and the compatibility redirect.
+- `npm run test:coverage`: passed all existing floors, including loopback
+  database integration tests. Mobile lines/branches **95.91% / 91.29%**, API
+  **95.01% / 90.61%**, contracts **100% / 100%**.
+- `npm run test:journey -- e2e/data-export.spec.ts`: **2/2 passed** against the
+  real app/API/disposable database. The first verifies 51 historical cloud rows,
+  a pending device reflection and ZIP/CSV correctness while remaining on
+  `/settings`; the second verifies explicit retry after a network failure.
+  The command's default Xcode tools path produced its existing `simctl` warning;
+  these are browser journeys, and both completed successfully.
+- Cold web and iOS exports passed with `--clear --max-workers 1` and ignored
+  output folders. Side-panel verification on localhost independently confirmed
+  disconnected export → recovery, disposable account creation, return to
+  Settings, and direct ZIP download without an export page. Archive inspection
+  found `README.txt`, `activity.csv` and `data.json`, the expected empty history
+  and no top-level credential/diagnostic fields. Proof and the disposable ZIP
+  are under `.local/phase-08/direct-export-browser*`.
+- Both owned live Metro previews were refreshed with cleared caches. The phone
+  retains port 8084, the same staging API and installed development binary. The
+  fresh iOS launch bundle returned HTTP 200 (11,086,020 bytes; 2,196 modules).
+  Anthony reloaded the app and **confirmed that tapping Settings → Export my
+  data opens the share sheet directly without a separate page**. This is
+  owner-reported physical UI evidence; Save to Files/email delivery, cancellation,
+  accessibility and native cleanup remain open Phase 09 checks.
+
+After implementation, the full contents of every changed directory were
+reviewed: Settings, its export owner, route wiring, e2e, and the touched docs
+directories. Settings retains six direct files and export four, with tests beside
+their owner. Routes remain navigation-only; the existing e2e/support and docs
+responsibility groups remain usable. No additional folder moves are needed.
+The `AGENTS.md` organization rule was preserved separately during implementation
+and saved in local commit `501e048` at Anthony's request.
+
+### Share sheet dismissal and error feedback
+
+Anthony reported that dismissing the share sheet unnecessarily showed an export
+cancellation message. Dismissal now resets the row quietly, with no message or
+toast, and permits another export. Actual preparation/sharing failures remain
+in red inline text as **“Couldn’t export your data. Please try again.”** until retry or leaving
+Settings; unreadable journal storage retains its specific recovery guidance.
+Starting again clears the previous feedback, so dismissing after a failed attempt
+does not bring the old error back. A persistent inline error was chosen so users
+can read it and retry by tapping Export my data.
+
+Verification:
+
+- Focused row/platform tests: **17/17 passed**. Regressions cover quiet dismissal,
+  re-exporting and clearing an earlier failure on dismissal.
+- Fresh `npm run check`: passed, including online Expo Doctor **21/21** and
+  **537 mobile tests / 67 suites**.
+- Fresh mobile coverage plus `npm run coverage:check`: passed all unchanged
+  floors; mobile lines/branches remain **95.91% / 91.29%**. The combined checker
+  reused the preceding unchanged API/contracts reports.
+- `npm run test:journey -- e2e/data-export.spec.ts`: **2/2 passed**, including the
+  updated error copy and explicit retry through the actual app/API/database.
+- Side-panel verification: briefly pausing only the owned localhost API with a
+  timed resume produced the real request-timeout error beneath the export row.
+  After resume, tapping the row cleared the error and downloaded the ZIP. The
+  phone's separate staging API was unaffected. Ignored proof:
+  `.local/phase-08/export-feedback-browser-error.png`.
+- Anthony repeated the flow on his iPhone and **confirmed that closing the
+  share sheet leaves no cancellation message**. This closes the quiet-dismissal
+  UI check; Save to Files/email delivery, accessibility and private native-file
+  cleanup remain open as recorded above.
+
+The owned browser Metro was restored after the saved journeys. The phone Metro
+served the changed row through Fast Refresh; the existing development build was
+reused. No new files or dependencies were needed. The full changed-directory
+inventories were reviewed again; the existing export, e2e/support and docs groups
+remain appropriate, with no additional folder moves.
+
+At Anthony's subsequent request, export errors use the app's existing dark red
+(`#8B1E32`); success messages retain navy. Feedback carries its severity so both
+generic failures and unreadable-data guidance receive the error color. Updated
+row tests pass **11/11**, fresh `npm run check` passes **537 mobile tests / 67
+suites** and online Doctor **21/21**, and fresh mobile coverage plus the combined
+floor check pass (unchanged API/contracts reports reused). Side-panel testing
+confirmed the real timeout error in `rgb(139, 30, 50)`, followed by a successful
+retry with navy `rgb(16, 44, 73)`. Ignored proof is
+`.local/phase-08/export-error-red-browser.png`. The changed directory inventories
+remain appropriate. Native color appearance was not separately observed; the
+previous phone confirmation of quiet dismissal and remaining device gates stand.

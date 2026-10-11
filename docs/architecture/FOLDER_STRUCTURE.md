@@ -123,7 +123,7 @@ iOS and `.web.*` file pairs retain the same names and platform resolution.
 ```text
 apps/mobile/src/
 ├── app-support/settings/             15 files total
-│   ├── export/                       4 files: export screen, ZIP collection and tests
+│   ├── export/                       4 files: export action, ZIP collection and tests
 │   ├── information/                  5 files: Support/About, legal/social links and tests
 │   └── remaining files               6 files: main screen, rows, icons and motion row/tests
 └── platform/                         17 files total

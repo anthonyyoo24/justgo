@@ -47,11 +47,15 @@ test('Settings exports every cloud page and a pending phone reflection as a usab
     .getByRole('button', { name: 'Save Reflection', exact: true })
     .click();
   await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
-  await page.getByRole('link', { name: 'Export my data', exact: true }).click();
-  await expect(page.getByText(/private reflections/)).toBeVisible();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export ZIP', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Export my data', exact: true })
+    .click();
   const download = await downloading;
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(
+    page.getByRole('heading', { name: 'Settings', exact: true }),
+  ).toBeVisible();
   const path = await download.path();
   expect(path).not.toBeNull();
   const files = unzipSync(await readFile(path!));
@@ -103,16 +107,21 @@ test('export shows a retryable network failure and downloads only after a fresh 
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Back to app', exact: true }).click();
   await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
-  await page.getByRole('link', { name: 'Export my data', exact: true }).click();
   const failures = '**/v1/account/export*';
   await page.route(failures, (route) => route.abort('internetdisconnected'));
-  await page.getByRole('button', { name: 'Export ZIP', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Export my data', exact: true })
+    .click();
   await expect(
-    page.getByText(/Check your connection and try again/),
+    page.getByText('Couldn’t export your data. Please try again.', {
+      exact: true,
+    }),
   ).toBeVisible();
   await page.unroute(failures);
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export ZIP', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Export my data', exact: true })
+    .click();
   await downloading;
   await expect(
     page.getByText('Your ZIP download has started.', { exact: true }),

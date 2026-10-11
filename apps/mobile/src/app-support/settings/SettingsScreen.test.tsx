@@ -7,6 +7,7 @@ import {
 import type { LinkProps } from 'expo-router';
 import { Linking } from 'react-native';
 import SettingsRoute from '../../app/settings';
+import ExportDataRoute from '../../app/export-data';
 import { SettingsScreen } from './SettingsScreen';
 import { SettingsGroup } from './SettingsRows';
 import { appleStandardTerms } from './information/legal-links';
@@ -19,6 +20,12 @@ import { showMessageToast } from '../../platform/toast/Toast';
 import { useAccess } from '../providers/AppProvider';
 
 jest.mock('../providers/AppProvider', () => ({ useAccess: jest.fn() }));
+jest.mock('./export/SettingsExportRow', () => ({
+  SettingsExportRow: () => {
+    const { Text } = require('react-native') as typeof import('react-native');
+    return <Text accessibilityRole="button">Export my data</Text>;
+  },
+}));
 
 jest.mock('../../platform/motion/motion', () => ({
   useMotionPreferences: () => ({
@@ -46,6 +53,7 @@ jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   return {
     useRouter: () => mockRouter,
+    Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
     Link: ({ href, asChild, children, ...props }: LinkProps) =>
       asChild ? (
         React.cloneElement(
@@ -257,10 +265,11 @@ it('keeps the existing account recovery action available', () => {
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
 });
 
-it('opens the data export screen without requiring paid access', () => {
+it('offers export directly as an action without navigating to another page', () => {
   const screen = render(<SettingsScreen />);
-  fireEvent.press(screen.getByRole('link', { name: 'Export my data' }));
-  expect(mockRouter.push).toHaveBeenCalledWith('/export-data');
+  expect(screen.getByRole('button', { name: 'Export my data' })).toBeTruthy();
+  expect(screen.queryByRole('link', { name: 'Export my data' })).toBeNull();
+  expect(mockRouter.push).not.toHaveBeenCalled();
 });
 
 it('returns to the originating screen, or safely goes home when opened directly', () => {
@@ -330,4 +339,10 @@ it('opens configured public legal pages', async () => {
     expect(openUrl).toHaveBeenCalledWith('https://example.com/terms'),
   );
   expect(screen.queryByText('Apple’s standard license agreement')).toBeNull();
+});
+
+it('redirects older export links to Settings without a separate export page', () => {
+  const screen = render(<ExportDataRoute />);
+  expect(screen.getByText('Redirect: /settings')).toBeTruthy();
+  expect(screen.queryByText('Export ZIP')).toBeNull();
 });
