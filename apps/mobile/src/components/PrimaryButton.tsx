@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ScaledText as Text } from './typography/ScaledText';
 import { colors, layout, radii, spacing, typography } from '../theme/tokens';
 
 export function PrimaryButton({
@@ -29,7 +30,9 @@ export function PrimaryButton({
           accessibilityLabel={`${label} in progress`}
         />
       )}
-      <Text style={styles.label}>{label}</Text>
+      <Text maxFontSizeMultiplier={2} style={styles.label}>
+        {label}
+      </Text>
     </Pressable>
   );
 }

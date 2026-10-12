@@ -1,3 +1,4 @@
+import { ScaledText as Text } from '../../components/typography/ScaledText';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
   ActivityIndicator,
@@ -5,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -44,7 +44,9 @@ function TextButton({
       style={({ pressed }) => [styles.textButton, pressed && { opacity: 0.65 }]}
     >
       <View style={styles.textButtonContent}>
-        <Text style={styles.link}>{label}</Text>
+        <Text maxFontSizeMultiplier={2} style={styles.link}>
+          {label}
+        </Text>
         {busy && (
           <ActivityIndicator
             color={colors.ink}
@@ -144,7 +146,9 @@ export function IdentityScreen({
     <>
       {!managed && (
         <View style={styles.header}>
-          <Text style={styles.wordmark}>JustGO</Text>
+          <Text maxFontSizeMultiplier={2} style={styles.wordmark}>
+            JustGO
+          </Text>
           <Text style={styles.eyebrow}>ACCOUNT & RECOVERY</Text>
         </View>
       )}
@@ -167,7 +171,11 @@ export function IdentityScreen({
               accessible={false}
             />
           </View>
-          <Text accessibilityRole="header" style={styles.heading}>
+          <Text
+            accessibilityRole="header"
+            maxFontSizeMultiplier={2}
+            style={styles.heading}
+          >
             {state.account
               ? 'A place for your progress.'
               : 'Your courage.\nYour account.'}
@@ -218,7 +226,9 @@ export function IdentityScreen({
       {state.account ? (
         !recoveryOnly && (
           <View style={styles.card}>
-            <Text style={styles.title}>Connected</Text>
+            <Text maxFontSizeMultiplier={2} style={styles.title}>
+              Connected
+            </Text>
             <Text style={styles.body}>
               Your private account is connected. No email or password.
             </Text>
@@ -320,7 +330,7 @@ export function IdentityScreen({
               onSubmitEditing={() =>
                 act(() => runAction('Recover with key', recoverWithKey))
               }
-              placeholder="Enter your private recovery key"
+              placeholder="Recovery key"
               placeholderTextColor={colors.ink}
               value={recoveryKey}
               onChangeText={setRecoveryKey}

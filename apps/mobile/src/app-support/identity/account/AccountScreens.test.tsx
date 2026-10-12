@@ -2,6 +2,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import {
   ActivityIndicator,
   AppState,
+  Dimensions,
   Linking,
   type AppStateStatus,
 } from 'react-native';
@@ -175,6 +176,28 @@ beforeEach(() => {
   jest
     .spyOn(AppState, 'addEventListener')
     .mockReturnValue({ remove: jest.fn() });
+});
+
+it('preserves transfer input when the system text size changes', async () => {
+  await connected();
+  mockTool = 'transfer';
+  const originalWindow = Dimensions.get('window');
+  const screen = render(<AccountToolRoute />);
+  await waitFor(() => expect(mockController.getSnapshot().busy).toBe(false));
+  const input = screen.getByLabelText('Transfer code');
+  fireEvent.changeText(input, 'TEST-CODE');
+  try {
+    act(() =>
+      Dimensions.set({ window: { ...originalWindow, fontScale: 3.57 } }),
+    );
+    expect(screen.getByLabelText('Transfer code') === input).toBe(true);
+    expect(input.props.value).toBe('TEST-CODE');
+    expect(
+      screen.getByRole('button', { name: 'Review transfer' }),
+    ).toBeEnabled();
+  } finally {
+    act(() => Dimensions.set({ window: originalWindow }));
+  }
 });
 
 it('uses grouped account sections, opens focused routes and returns to Settings', async () => {

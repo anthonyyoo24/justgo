@@ -154,6 +154,13 @@ the shared screen-action presentation hook `useIdentityAction.ts`.
 recovery. No additional subfolders were needed after reviewing the full touched
 directories. See the [account UI handoff](../handoffs/phase-08-settings-privacy.md#october-12-account-and-recovery-ui).
 
+The large-text follow-up adds `components/typography/` with `ScaledText.tsx` and
+its colocated regression tests. It owns live text metrics shared by Settings,
+account screens and reusable controls. Page/row layout remains in
+`components/settings/`; account forms and orchestration remain with identity.
+The reviewed directories remain cohesive without further moves. See the
+[large-text handoff](../handoffs/phase-08-settings-privacy.md#october-12-large-text-fixes).
+
 ## API, contracts and verification
 
 ```text

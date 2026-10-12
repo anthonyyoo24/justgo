@@ -1,5 +1,7 @@
 # Implementation handoffs
 
+**October 12 accessibility fixes:** Heading/status wrapping and stale spacing after live text-size changes are resolved. Settings/account screens pass normal/maximum native visual checks and live resizing in the side-panel simulator mirror; browser labels and keyboard order pass. The [follow-up](phase-08-settings-privacy.md#october-12-large-text-fixes) records regressions, native/browser evidence and the remaining physical-phone VoiceOver and Expo dependency gates.
+
 **October 12 account back-link removal:** Both Account & recovery variants omit the bottom Back to app shortcut and retain header navigation. The [follow-up](phase-08-settings-privacy.md#october-12-account-back-link-removal) records removal regressions, code checks and side-panel navigation evidence. Existing dependency and device acceptance gates remain open.
 
 **October 12 footer cleanup/local checkpoint:** Settings now ends after About; version/test-build labels and its preview shortcut are removed. Recover an account omits duplicate help, and identity pages omit the privacy tagline. The [cleanup](phase-08-settings-privacy.md#october-12-footer-cleanup-and-local-commits) records 46 focused tests, 561 mobile cases, side-panel evidence and three logical local commits. The existing Expo dependency and physical acceptance gates remain open.

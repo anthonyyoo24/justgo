@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { ScaledText as Text } from '../../../components/typography/ScaledText';
+import { View } from 'react-native';
 import {
   SettingsGroup,
   SettingsActionRow,

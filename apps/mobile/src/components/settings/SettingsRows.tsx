@@ -4,7 +4,7 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import {
@@ -16,6 +16,7 @@ import {
   typography,
 } from '../../theme/tokens';
 import { SettingsIcon, type SettingsIconName } from './SettingsIcon';
+import { ScaledText as Text } from '../typography/ScaledText';
 
 export function SettingsGroup({
   title,
@@ -23,7 +24,11 @@ export function SettingsGroup({
 }: PropsWithChildren<{ title: string }>) {
   return (
     <View style={styles.group}>
-      <Text accessibilityRole="header" style={styles.heading}>
+      <Text
+        accessibilityRole="header"
+        maxFontSizeMultiplier={2}
+        style={styles.heading}
+      >
         {title}
       </Text>
       <View style={styles.card}>
@@ -51,18 +56,38 @@ export function SettingsRowContent({
   chevron?: boolean;
   accessory?: ReactNode;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const expanded = fontScale > 1.3;
+  const firstLineHeight = typography.body.lineHeight * Math.min(fontScale, 2);
   return (
-    <View style={styles.row}>
-      <View style={styles.icon}>
+    <View style={[styles.row, expanded && styles.expandedRow]}>
+      <View style={[styles.icon, expanded && { height: firstLineHeight }]}>
         <SettingsIcon name={icon} />
       </View>
       <View style={styles.copy}>
-        <Text style={styles.label}>{label}</Text>
+        <Text maxFontSizeMultiplier={2} style={styles.label}>
+          {label}
+        </Text>
+        {status && expanded && (
+          <Text maxFontSizeMultiplier={2} style={styles.expandedStatus}>
+            {status}
+          </Text>
+        )}
       </View>
-      {status && <Text style={styles.status}>{status}</Text>}
-      {accessory}
+      {status && !expanded && (
+        <Text maxFontSizeMultiplier={2} style={styles.status}>
+          {status}
+        </Text>
+      )}
+      {accessory && (
+        <View
+          style={expanded && [styles.accessory, { minHeight: firstLineHeight }]}
+        >
+          {accessory}
+        </View>
+      )}
       {chevron && (
-        <View style={styles.chevron}>
+        <View style={[styles.chevron, expanded && { height: firstLineHeight }]}>
           <SettingsIcon name="chevron" />
         </View>
       )}
@@ -171,8 +196,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.lg,
   },
-  icon: { width: 24, height: 24, flexShrink: 0 },
-  copy: { flex: 1 },
+  expandedRow: { alignItems: 'flex-start' },
+  icon: { width: 24, height: 24, flexShrink: 0, justifyContent: 'center' },
+  copy: { flex: 1, gap: spacing.xs },
   label: { ...typography.body, color: colors.ink },
   status: {
     ...typography.caption,
@@ -181,5 +207,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     flexShrink: 1,
   },
-  chevron: { width: 24, flexShrink: 0 },
+  expandedStatus: { ...typography.caption, color: colors.ink },
+  accessory: {
+    justifyContent: 'center',
+    minHeight: layout.minTouchTarget,
+    flexShrink: 0,
+  },
+  chevron: { width: 24, flexShrink: 0, justifyContent: 'center' },
 });

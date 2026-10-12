@@ -26,6 +26,13 @@ Development screen fixtures and their tests live in `dev/previews/`. Only the
 guarded `app/preview.tsx` route loads them from production source; both route and
 fixture still check `__DEV__`. Shared `components/NavigationLink.tsx` owns text-link
 styling and the Settings variant. Shared `components/settings/` owns the Settings/account page layout, group cards, rows and outline icons. Account screens use those same components.
+Shared `components/typography/ScaledText` derives explicit font/line-height metrics
+from the live system text scale so native rendering and layout measurements stay
+aligned without remounting forms or pending actions. Its native text does not apply
+the same scale twice. Settings/account descriptions follow the full selected size;
+headings and action labels use a 2× bound. Enlarged headers give titles their own
+full-width line, and unavailable statuses move below row labels. Native inputs
+retain their platform text scaling. See the [large-text follow-up](../handoffs/phase-08-settings-privacy.md#october-12-large-text-fixes).
 The unused Foundation screen and Shell Home/Focused placeholders are removed;
 their historical implementation evidence remains in earlier handoffs. Route paths,
 access policy and foreground behavior are unchanged. The

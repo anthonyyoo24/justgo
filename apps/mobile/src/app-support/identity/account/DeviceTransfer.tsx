@@ -1,6 +1,7 @@
+import { ScaledText as Text } from '../../../components/typography/ScaledText';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { Text, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { SettingsGroup } from '../../../components/settings/SettingsRows';
 import { PrimaryButton } from '../../../components/PrimaryButton';
 import { colors } from '../../../theme/tokens';
@@ -81,7 +82,7 @@ export function DeviceTransfer({
               void review();
             }}
             returnKeyType="done"
-            placeholder="XXXX-XXXX-XXXX-XXXX"
+            placeholder="Transfer code"
             placeholderTextColor={colors.ink}
             autoCapitalize="characters"
             autoCorrect={false}
@@ -122,7 +123,7 @@ export function DeviceTransfer({
                 void approve();
               }}
               returnKeyType="done"
-              placeholder="Six digits from your new phone"
+              placeholder="Six digits"
               placeholderTextColor={colors.ink}
               keyboardType="number-pad"
               autoCorrect={false}

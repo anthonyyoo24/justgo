@@ -1,12 +1,7 @@
+import { ScaledText as Text } from '../../../components/typography/ScaledText';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import {
   useIdentity,
   useJournal,

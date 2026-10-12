@@ -1020,3 +1020,183 @@ Verification:
   additional folder split is needed. Anthony subsequently authorized a local
   commit for this refinement: `fix(account): remove bottom back-to-app shortcut`.
   No push, PR or merge is authorized; physical feature acceptance remains open.
+
+### October 12 accessibility audit
+
+Anthony reported that phone checklist items 1–4 (latest account UI, export,
+motion and support) work, and that recovery/transfer is fine. These are
+owner-reported results; the individual revocation/key/transfer scenarios were
+not enumerated. He then requested agent checks for larger text and control
+labels. This is a testing-only follow-up, with no product-code changes or new
+native build.
+
+**Evidence:**
+
+- `npm run test -w @justgo/mobile -- --runTestsByPath
+src/app-support/settings/SettingsScreen.test.tsx
+src/app-support/identity/account/AccountScreens.test.tsx
+src/app-support/identity/IdentityScreen.test.tsx`: **46 cases / 3 suites pass**.
+  Log: `.local/phase-08/accessibility-focused.log`. These are component/controller
+  tests, not native VoiceOver or large-text acceptance.
+- Only the Codex side panel was used for interactive checks. The current web
+  bundle exposes named links/buttons for the account hub, recovery-key controls,
+  transfer input/action, device revocation, Troubleshooting and explicit recovery.
+  Settings exposes a labeled Reduce motion switch and honest unavailable rows.
+  Keyboard focus progresses from Back through Reduce motion, Account & recovery,
+  Export my data, Get help, Suggest a feature and Terms of use, skipping unavailable
+  controls. The explicit recovery field is labeled Recovery key, uses a password
+  input and is reachable with Tab. No support email was sent and no recovery key
+  was revealed. Local evidence: `.local/phase-08/accessibility-browser-settings-labels.txt`.
+- The existing JustGO Phase 7.2 QA / iPhone 17 / iOS 26.5 simulator was booted and
+  mirrored through `serve-sim` in the side panel. XcodeBuildMCP discovery could not
+  find `simctl` under the machine's default tools path; command-scoped
+  `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` used the installed
+  Xcode without changing global configuration. The installed native app reused
+  the existing web Metro's iOS bundle and loopback fixture API. A separate empty
+  disposable QA account connected after the earlier credential was unavailable;
+  previous recovery credentials were retained. The phone server/staging account
+  and other running servers were not changed.
+- Native accessibility inspection confirms Settings headings, named account
+  navigation, export/support/legal buttons, the motion switch and unavailable
+  labels. Fresh transfer inspection confirms Back, page/group headings, Transfer
+  code as a text field and Review transfer as a button. Inspector results must
+  match the live frame: the helper briefly returned no data and an older Settings
+  tree before the fresh app launch. Only matching snapshots are evidence. Files:
+  `.local/phase-08/accessibility-native-settings-labels.txt` and
+  `.local/phase-08/accessibility-native-transfer-labels.txt`.
+- The native `accessibility-extra-extra-extra-large` category was confirmed with
+  `simctl ui ... content_size`. Settings and Recovery keys reflow and their lower
+  actions are reachable with scrolling. The transfer form was also inspected
+  at `accessibility-large` after a full native reload. These are real simulator
+  layouts, not CSS zoom or mock text sizes.
+
+**Audit findings — resolved by the subsequent large-text follow-up below:**
+
+1. At the maximum size, Settings and Recovery keys titles split within words,
+   and long section headings can leave a single letter on another line. The
+   header's reserved side columns reduce the available title width. Improve the
+   large-text layout and recheck before marking it accepted.
+2. The fixed-width Coming soon accessory becomes a narrow column with words
+   broken across several lines. Adapt unavailable-row layout for large text
+   while retaining the availability information.
+3. Changing text size live from the largest category to `accessibility-large`
+   left excess blank space in the transfer heading, explanatory card and button.
+   A full native reload at the same category produced the expected compact
+   measurements. Live font-size changes need investigation and retesting; no
+   cause or code fix is claimed by this audit.
+
+Screenshots: `.local/phase-08/accessibility-settings-largest.png`,
+`.local/phase-08/accessibility-keys-largest.png`,
+`.local/phase-08/accessibility-transfer-large.png` and
+`.local/phase-08/accessibility-transfer-large-fresh.png`.
+At this audit checkpoint, these findings kept the large-text gate open; the
+subsequent implementation below resolves all three. Actual iPhone VoiceOver speech, focus, gestures and
+full journeys remain a physical-device check. Browser keyboard checks and native
+label inspection do not replace that check. The prior Expo dependency requirement
+also remains open; no dependency-validation bypass was introduced.
+
+The simulator's original `large` text category and Shutdown state were restored,
+and the task-owned mirror/helper was stopped after testing. Routine evidence
+remains ignored under `.local/`. The full contents of touched docs/handoffs and
+docs directories remain cohesive with the existing phase index; no new files or
+folder moves were needed. This records results, not a phase closeout or Git
+publication.
+
+### October 12 large-text fixes
+
+Anthony authorized fixing the audit findings and repeating visual checks until
+the layouts work. All three findings above are resolved in this follow-up:
+
+- Enlarged Settings/account headers put Back above a full-width title instead
+  of reserving side columns. Serif headings and action labels grow up to 2×;
+  body descriptions retain the full selected system scale. Narrow-screen titles
+  use a smaller base size. No text is truncated to hide the wrapping problem.
+- Unavailable rows place Coming soon below their label at enlarged sizes, with
+  no fixed narrow status column. Icons, chevrons and switches align with the
+  first line; normal-size layout remains unchanged.
+- Shared `components/typography/ScaledText` updates explicit font size and line
+  height together from live `useWindowDimensions().fontScale`. Native Text does
+  not apply the scale a second time. Metrics are memoized by style/effective
+  scale; unrelated width changes reuse them. Account descriptions and shared
+  action controls use this boundary without remounting forms or pending work.
+  Native TextInputs retain their original platform scaling and styles; shorter
+  Recovery key, Transfer code and Six digits placeholders avoid tiny native
+  placeholder text at enlarged sizes.
+
+Interactive evidence:
+
+- Only the Codex side panel was used. The existing signed simulator client on
+  JustGO Phase 7.2 QA / iPhone 17 / iOS 26.5 loaded current source from the owned
+  Metro and disposable loopback API. No new binary, installation, signing or
+  owner-phone/staging change was needed. No recovery key was revealed, account
+  transfer/revocation submitted or support email sent during visual inspection.
+- `simctl ui ... content_size` confirmed the maximum
+  `accessibility-extra-extra-extra-large` setting. Settings, Account & recovery,
+  Troubleshooting, Recovery keys, Recover an account, Devices and Move to another
+  phone have readable headings, rows and descriptions; lower controls remain
+  reachable by scrolling. Troubleshooting fits as a whole word. Transfer fields
+  and buttons remain visible/reachable at maximum size.
+- In the same mounted native app, maximum → accessibility-large → maximum →
+  normal `large` changes reflow descriptions, cards and buttons immediately.
+  The previous leftover blank spacing is gone without reloading. Normal header
+  and row layouts return correctly. Native inspection corroborates control
+  labels/roles; actual VoiceOver speech and gestures are not claimed.
+- A fully reloaded web Settings screen also passes a 320 × 568 viewport check
+  and exposes the existing names, roles and unavailable states. Browser labels
+  and keyboard navigation from the audit remain separate from native evidence.
+  The temporary browser viewport was restored.
+- Ignored proof: `.local/phase-08/accessibility-fixed-settings-largest.png`,
+  `accessibility-fixed-settings-about-largest.png`,
+  `accessibility-fixed-account-largest.png`,
+  `accessibility-fixed-troubleshooting-largest.png`,
+  `accessibility-fixed-keys-largest.png`,
+  `accessibility-fixed-recovery-largest.png`,
+  `accessibility-fixed-devices-largest.png`,
+  `accessibility-fixed-transfer-live-largest.png`,
+  `accessibility-fixed-transfer-live-large.png`,
+  `accessibility-fixed-transfer-normal.png` and
+  `accessibility-fix-browser-320.png`, all under `.local/phase-08/`.
+
+Automated verification:
+
+- **67 focused cases / 6 suites** pass for shared typography/layout, Settings,
+  account screens, disconnected recovery, external links and export. Regressions
+  cover live font/line-height updates, the full-width header/status layout,
+  stable metrics during unrelated dimension changes and preservation of pending
+  buttons. The actual account-screen regression also retains typed transfer
+  input and its enabled action after changing system scale. This input-retention
+  assertion is component evidence, not a native typing/VoiceOver claim. Log:
+  `.local/phase-08/accessibility-fix-focused.log`.
+- Contract build, all typechecks (including saved journeys), lint and formatting
+  pass. Full tests pass: **180 architecture/tooling, 54 API unit, 567 mobile / 69
+  suites and 24 contract cases**. Logs:
+  `.local/phase-08/accessibility-fix-other-checks.log` and
+  `.local/phase-08/accessibility-fix-final-tests.log`. An unused test import and
+  formatting issue were corrected before final validation. Test assertions use
+  boolean identity checks instead of serializing cyclic renderer instances;
+  no heap setting, assertion, warning or quality threshold was weakened.
+- Fresh mobile coverage passes with **96.93% lines / 91.85% branches**. Unchanged
+  combined/critical floors pass, reusing API/contracts coverage reports for their
+  unchanged source. Logs: `.local/phase-08/accessibility-fix-coverage.log` and
+  `.local/phase-08/accessibility-fix-coverage-gate.log`. No database, migration or
+  hosted CI pass is claimed for this mobile-only slice.
+  Shared typography/page/rows have 100% line coverage. Remaining branches are
+  the private helper's unused default argument, a press-opacity style callback
+  and an existing action callback variant; live resizing, caps and status-layout
+  branches are exercised. No coverage exclusion was added.
+- Fresh `npm run check` still stops at **20/21 Expo Doctor** checks, recommending
+  six existing patch updates: Expo 57.0.28, crypto 57.0.4, dev-client 57.0.20,
+  router 57.0.26, splash-screen 57.0.10 and jest-expo 57.0.6. Dependency validation
+  remains enabled and no pins/exclusions were changed. The remaining constituent
+  commands were run explicitly as recorded above; the root check is not reported
+  as green. Log: `.local/phase-08/accessibility-fix-check.log`.
+
+Reviewed the full contents of every changed directory: shared components,
+settings/typography, identity/account, Settings/export and documentation. The
+two-file typography responsibility has its own subfolder and colocated tests;
+the existing groups remain navigable, so no additional moves are needed.
+Restored the simulator's original `large` category and Shutdown state, closed
+the temporary mirror tab and stopped only the task-owned helper. The existing
+web, phone and API servers remain running. Actual physical-iPhone VoiceOver and
+the existing dependency/native maintenance requirement remain open. This is an
+accessibility fix, not Phase 08 closeout or Git publication.

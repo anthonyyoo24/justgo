@@ -1,6 +1,12 @@
 import { useRouter, type Href } from 'expo-router';
 import type { PropsWithChildren } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   colors,
@@ -10,6 +16,7 @@ import {
   typography,
 } from '../../theme/tokens';
 import { SettingsIcon } from './SettingsIcon';
+import { ScaledText } from '../typography/ScaledText';
 
 export function SettingsPage({
   title,
@@ -17,6 +24,8 @@ export function SettingsPage({
   children,
 }: PropsWithChildren<{ title: string; backHref?: Href }>) {
   const router = useRouter();
+  const { fontScale, width } = useWindowDimensions();
+  const expanded = fontScale > 1.3;
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -25,7 +34,7 @@ export function SettingsPage({
         automaticallyAdjustKeyboardInsets
       >
         <View style={styles.content}>
-          <View style={styles.header}>
+          <View style={[styles.header, expanded && styles.expandedHeader]}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Back"
@@ -37,10 +46,18 @@ export function SettingsPage({
             >
               <SettingsIcon name="back" />
             </Pressable>
-            <Text accessibilityRole="header" style={styles.title}>
+            <ScaledText
+              accessibilityRole="header"
+              maxFontSizeMultiplier={2}
+              style={[
+                styles.title,
+                expanded && styles.expandedTitle,
+                expanded && width < 360 && styles.narrowTitle,
+              ]}
+            >
               {title}
-            </Text>
-            <View style={styles.headerSlot} />
+            </ScaledText>
+            {!expanded && <View style={styles.headerSlot} />}
           </View>
           {children}
         </View>
@@ -67,6 +84,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   headerSlot: { width: layout.minTouchTarget, flexShrink: 0 },
+  expandedHeader: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
   back: {
     width: layout.minTouchTarget,
     height: layout.minTouchTarget,
@@ -85,5 +107,13 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
+  expandedTitle: {
+    flex: 0,
+    width: '100%',
+    textAlign: 'left',
+    fontSize: 23,
+    lineHeight: 30,
+  },
+  narrowTitle: { fontSize: 20, lineHeight: 27 },
   pressed: { opacity: 0.65 },
 });

@@ -1,6 +1,7 @@
+import { ScaledText as Text } from '../../../components/typography/ScaledText';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import {
   SettingsActionRow,
   SettingsGroup,
