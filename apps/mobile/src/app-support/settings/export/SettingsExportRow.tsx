@@ -18,7 +18,7 @@ import { ApiError } from '../../../lib/http';
 import { collectExport } from './data-export';
 import { colors, spacing, typography } from '../../../theme/tokens';
 import type { AccountRepository } from '../../../data/activity/repository';
-import { SettingsRowContent } from '../SettingsRows';
+import { SettingsRowContent } from '../../../components/settings/SettingsRows';
 
 export function SettingsExportRow() {
   const { account } = useIdentity();

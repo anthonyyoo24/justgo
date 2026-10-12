@@ -10,7 +10,7 @@ import {
   typography,
 } from '../../theme/tokens';
 import { SettingsInformationGroups } from './information/SettingsInformationGroups';
-import { SettingsIcon } from './SettingsIcon';
+import { SettingsIcon } from '../../components/settings/SettingsIcon';
 import { SettingsMotionRow } from './SettingsMotionRow';
 import { SettingsExportRow } from './export/SettingsExportRow';
 import { useAccess } from '../providers/AppProvider';
@@ -18,7 +18,7 @@ import {
   PendingSettingsRow,
   SettingsGroup,
   SettingsRowContent,
-} from './SettingsRows';
+} from '../../components/settings/SettingsRows';
 
 export function SettingsScreen() {
   const router = useRouter();

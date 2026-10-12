@@ -9,7 +9,7 @@ import { Linking } from 'react-native';
 import SettingsRoute from '../../app/settings';
 import ExportDataRoute from '../../app/export-data';
 import { SettingsScreen } from './SettingsScreen';
-import { SettingsGroup } from './SettingsRows';
+import { SettingsGroup } from '../../components/settings/SettingsRows';
 import { appleStandardTerms } from './information/legal-links';
 import {
   supportContact,

@@ -437,3 +437,9 @@ justgo/
         ├── import-boundaries.test.mjs [moved]
         └── mobile-verification.test.mjs [new in 7.3, moved]
 ```
+
+## Shared Settings rows and icons
+
+Settings row and icon building blocks live in `apps/mobile/src/components/settings/`,
+with their existing callers importing the shared location. Their behavior and
+relative theme/asset references are preserved by this move.

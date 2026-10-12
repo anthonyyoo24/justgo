@@ -7,8 +7,11 @@ import {
 } from '../../contact';
 import { getCommunityLinks } from './community-links';
 import { getLegalLinks } from './legal-links';
-import type { SettingsIconName } from '../SettingsIcon';
-import { SettingsGroup, SettingsRowContent } from '../SettingsRows';
+import type { SettingsIconName } from '../../../components/settings/SettingsIcon';
+import {
+  SettingsGroup,
+  SettingsRowContent,
+} from '../../../components/settings/SettingsRows';
 
 type SettingsLinkAction = {
   label: string;
