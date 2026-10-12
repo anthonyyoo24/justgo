@@ -923,3 +923,59 @@ Verification:
   The phone Metro reload broadcast reported no connected app; the owner must
   reopen/reload the installed development app to review these indicators. The
   broadcast does not establish native UI acceptance.
+
+### October 12 footer cleanup and local commits
+
+Anthony requested appropriate local commits for the existing work and removal of
+redundant footer items. The explicit `/account/recover` form no longer offers Get
+help; main Settings Support remains the routine contact destination. Disconnected
+Account & recovery retains its existing direct help/retry for connection failures.
+The identity privacy tagline is removed. Settings ends after About, without the
+JustGO/version/free-test branding or Preview app screens link. Removing that
+footer also removes Settings' unused version/access subscriptions and styles;
+the actual build version and guarded developer preview route are unchanged.
+
+The previously verified source was saved before this cleanup:
+
+- `2f8c21c` — `refactor(settings): share row and icon components`: exact moves of
+  the two existing components, import-aware caller rewrites and folder guidance.
+  Behavior additions remain in the following commit.
+- `b42b999` — `feat(account): add focused recovery screens and action indicators`:
+  shared layout, account/recovery screens, quiet automatic checks, action spinners,
+  export's steady label, tests/journey wiring and actual verification/handoffs.
+- The footer refinement is a separate local commit,
+  `fix(settings): remove redundant recovery and settings footers`.
+
+All commits are on `codex/phase-08-settings-privacy`. Anthony authorized local
+commits; no push, PR, merge, native build or release submission is included.
+
+Verification:
+
+- Three removal regressions fail against the preceding UI, then **46 focused
+  cases / 3 suites** pass after the cleanup. They verify that the recovery help
+  and tagline are absent, Settings has no version/test/preview footer even with
+  development/free-test metadata available, and the original Support/contact and
+  recovery controls remain usable. Logs: `.local/phase-08/footer-cleanup-before.log`
+  and `.local/phase-08/footer-cleanup-focused.log`.
+- Typechecks, lint, formatting, **180 architecture/tooling cases**, **54 API unit
+  cases** and **24 contract cases** pass. Mobile coverage passes **561 cases / 68
+  suites**, **96.92% lines / 91.79% branches**. Unchanged combined/critical floors
+  pass; unchanged API/contracts coverage reports are retained from their preceding
+  run. Gate: `.local/phase-08/footer-cleanup-coverage-gate.log`.
+- Fresh `npm run check` still stops at the same **20/21 Expo Doctor** result and
+  six SDK patch recommendations. No pins, exclusions or validation rules changed;
+  the separate patch/native validation task remains open. Log:
+  `.local/phase-08/footer-cleanup-check.log`.
+- Only the Codex side panel was used for interactive verification. A fully
+  reloaded runtime and disposable loopback account open Settings → Account &
+  recovery → Recovery keys → Recover an existing account. The form ends after
+  recovery options, with no help/tagline; Back navigation works. Settings scrolls
+  to Terms of use, with no version/test/preview text below About, and its two
+  Support actions remain visible. Screenshots:
+  `.local/phase-08/recovery-footer-removed.png` and
+  `.local/phase-08/settings-footer-removed.png`. No new native/physical/VoiceOver
+  acceptance, saved browser journey or database acceptance is claimed.
+- Reviewed full contents of touched identity, account, Settings and documentation
+  directories. This slice adds no files; the established responsibility groups
+  remain navigable and no further subfolders are needed. Owned development servers
+  and phone data remain intact; routine screenshots are ignored local evidence.

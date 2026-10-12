@@ -44,6 +44,7 @@ it('offers private email support from account recovery and keeps it available af
     .mockRejectedValueOnce(new Error('native detail'))
     .mockResolvedValueOnce(undefined);
   const screen = render(<IdentityScreen controller={controller} managed />);
+  expect(screen.queryByText('JustGO · Your account, kept private')).toBeNull();
   const help = screen.getByRole('button', { name: 'Get help' });
   fireEvent.press(help);
   await waitFor(() =>

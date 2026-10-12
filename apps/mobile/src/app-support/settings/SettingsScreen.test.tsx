@@ -17,9 +17,12 @@ import {
   contactFailureMessage,
 } from '../contact';
 import { showMessageToast } from '../../platform/toast/Toast';
-import { useAccess } from '../providers/AppProvider';
 
-jest.mock('../providers/AppProvider', () => ({ useAccess: jest.fn() }));
+// Supply build metadata so a reintroduced footer also fails in a free test build.
+jest.mock('../providers/AppProvider', () => ({
+  useAccess: () => ({ data: { source: 'free_beta' } }),
+}));
+jest.mock('expo-constants', () => ({ expoConfig: { version: '0.1.0' } }));
 jest.mock('./export/SettingsExportRow', () => ({
   SettingsExportRow: () => {
     const { Text } = require('react-native') as typeof import('react-native');
@@ -47,7 +50,6 @@ const mockRouter = {
 jest.mock('../../platform/toast/Toast', () => ({
   showMessageToast: jest.fn(),
 }));
-jest.mock('expo-constants', () => ({ expoConfig: { version: '0.1.0' } }));
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   const React = require('react') as typeof import('react');
@@ -84,9 +86,6 @@ const originalLinks = Object.fromEntries(
 );
 const openUrl = jest.spyOn(Linking, 'openURL');
 beforeEach(() => {
-  jest
-    .mocked(useAccess)
-    .mockReturnValue({ data: undefined } as ReturnType<typeof useAccess>);
   for (const key of linkEnvironmentKeys) delete process.env[key];
   mockRouter.canGoBack.mockReturnValue(true);
   mockRouter.back.mockClear();
@@ -130,7 +129,6 @@ it('renders the actual route with scoped groups, honest pending controls and no 
   expect(screen.queryByText('Practice reminders')).toBeNull();
   expect(screen.queryByText('Reset progress')).toBeNull();
   expect(screen.queryAllByRole('tab')).toHaveLength(0);
-  expect(screen.getByText('JustGO · Version 0.1.0')).toBeTruthy();
   for (const description of [
     /Activity saves on this phone first/,
     /Optional analytics are off/,
@@ -142,19 +140,14 @@ it('renders the actual route with scoped groups, honest pending controls and no 
     expect(screen.queryByText(description)).toBeNull();
 });
 
-it('identifies free testing only when the account server reports beta access', () => {
+it('ends after About without version, test-build or developer-preview footer items', () => {
   const screen = render(<SettingsScreen />);
+  expect(screen.queryByText(/JustGO.*Version/)).toBeNull();
   expect(screen.queryByText(/Free test build/)).toBeNull();
-  jest.mocked(useAccess).mockReturnValue({
-    data: {
-      status: 'verified',
-      source: 'free_beta',
-      checkedAt: '2026-10-11T12:00:00.000Z',
-      expiresAt: '2026-11-01T12:00:00.000Z',
-    },
-  } as ReturnType<typeof useAccess>);
-  screen.rerender(<SettingsScreen />);
-  expect(screen.getByText(/Free test build/)).toBeTruthy();
+  expect(
+    screen.queryByRole('link', { name: 'Preview app screens' }),
+  ).toBeNull();
+  expect(screen.getByRole('button', { name: 'Terms of use' })).toBeTruthy();
 });
 
 it('groups the two contact actions under Support above About and keeps information links in About', () => {

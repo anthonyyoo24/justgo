@@ -378,13 +378,14 @@ export function IdentityScreen({
           disabled={state.busy}
         />
       )}
-      <ExternalLinkButton
-        label="Get help"
-        url={supportContact}
-        failureMessage={contactFailureMessage}
-        channel="activity"
-      />
-      <Text style={styles.footer}>JustGO · Your account, kept private</Text>
+      {!recoveryOnly && (
+        <ExternalLinkButton
+          label="Get help"
+          url={supportContact}
+          failureMessage={contactFailureMessage}
+          channel="activity"
+        />
+      )}
     </>
   );
   if (managed)
@@ -496,11 +497,5 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     color: colors.ink,
     textAlign: 'center',
-  },
-  footer: {
-    ...typography.caption,
-    color: colors.ink,
-    textAlign: 'center',
-    marginVertical: spacing.lg,
   },
 });

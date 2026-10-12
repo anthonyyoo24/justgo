@@ -1,12 +1,9 @@
 import { Link } from 'expo-router';
-import Constants from 'expo-constants';
-import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, layout, spacing, typography } from '../../theme/tokens';
+import { Pressable, StyleSheet } from 'react-native';
 import { SettingsInformationGroups } from './information/SettingsInformationGroups';
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import { SettingsMotionRow } from './SettingsMotionRow';
 import { SettingsExportRow } from './export/SettingsExportRow';
-import { useAccess } from '../providers/AppProvider';
 import {
   PendingSettingsRow,
   SettingsGroup,
@@ -14,8 +11,6 @@ import {
 } from '../../components/settings/SettingsRows';
 
 export function SettingsScreen() {
-  const access = useAccess();
-  const version = Constants.expoConfig?.version;
   return (
     <SettingsPage title="Settings">
       <SettingsGroup title="Preferences">
@@ -47,29 +42,10 @@ export function SettingsScreen() {
       </SettingsGroup>
 
       <SettingsInformationGroups />
-
-      <Text style={styles.footer}>
-        JustGO{version ? ` · Version ${version}` : ''}
-        {access.data?.source === 'free_beta' ? '\nFree test build' : ''}
-      </Text>
-      {__DEV__ && (
-        <Link href="/preview" style={styles.preview}>
-          Preview app screens
-        </Link>
-      )}
     </SettingsPage>
   );
 }
 
 const styles = StyleSheet.create({
   pressed: { opacity: 0.65 },
-  footer: { ...typography.caption, color: colors.ink, textAlign: 'center' },
-  preview: {
-    ...typography.caption,
-    color: colors.ink,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-    minHeight: layout.minTouchTarget,
-    paddingVertical: spacing.md,
-  },
 });

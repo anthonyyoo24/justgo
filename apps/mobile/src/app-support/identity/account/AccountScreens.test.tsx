@@ -542,6 +542,8 @@ it('offers explicit existing-account recovery and rejects unknown tool URLs', as
   );
   expect(screen.queryByRole('button', { name: 'Refresh account' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Recover with key' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Get help' })).toBeNull();
+  expect(screen.queryByText('JustGO · Your account, kept private')).toBeNull();
   mockTool = 'toString';
   screen.rerender(<AccountToolRoute />);
   expect(screen.getByText('Redirect: /recovery')).toBeTruthy();
