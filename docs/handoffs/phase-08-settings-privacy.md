@@ -1,7 +1,7 @@
 # Phase 08 settings and privacy handoff
 
-**Date:** October 10, 2026\
-**Status:** Settings/contact, Reduce Motion and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
+**Date:** October 12, 2026\
+**Status:** Settings/contact, account/recovery UI, Reduce Motion and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
 
 ## Current authorized work
@@ -616,3 +616,310 @@ retry with navy `rgb(16, 44, 73)`. Ignored proof is
 `.local/phase-08/export-error-red-browser.png`. The changed directory inventories
 remain appropriate. Native color appearance was not separately observed; the
 previous phone confirmation of quiet dismissal and remaining device gates stand.
+
+## October 12 account and recovery UI
+
+Anthony authorized implementing the account/recovery proposal from the separate
+Mobbin research conversation, with exactly the Settings page styling. The work
+remains local on `codex/phase-08-settings-privacy`; no Git publication, native
+signing/build, account reset or external deployment is included.
+
+- `/recovery` shows the connected-account hub with Account, Recovery, Devices and
+  Support sections, a private-account summary and the existing Back to app path.
+  Shared `components/settings/SettingsPage`, rows and icons supply the same cream
+  canvas, narrow serif headings, white cards, dividers, spacing and circular Back
+  control as Settings. Secondary screens have no bottom tabs.
+- Recovery keys, Move to another phone and Devices open focused `/account/[tool]`
+  screens using the existing controller/API. Manual Refresh account/Renew this
+  session and the account reference are under Troubleshooting. Existing automatic
+  foreground/session refresh is preserved rather than replaced.
+- Key/device revocation retains explicit confirmation and cancellation. This
+  phone is identified and self-revocation returns to recovery. Key revocation
+  preserves active device sessions. Key text is selectable and hidden when the
+  page loses focus or the app backgrounds; a late response cannot redisplay it
+  after leaving. Transfer code editing clears its reviewed state/verification;
+  only entered verification digits are sent, with pending/invalid/expired feedback
+  owned by the existing controller.
+- The disconnected creation/key/transfer entry and explicit recovery of another
+  existing account remain available. Recovery explains uploaded-history limits;
+  account switching never merges private history. Unavailable deletion/analytics,
+  billing boundaries and all earlier release/device gates remain unchanged.
+- The reusable row/icon files move from Settings into `components/settings/` and
+  both screens use the extracted page layout. New connected-account UI lives in
+  the cohesive identity/account group with its tests. All touched directories
+  were reviewed in full: Settings root is smaller, identity/account keeps UI apart
+  from the existing transport/vault/controller, and routes remain thin. Remaining
+  directories do not need more subdivision for this change.
+
+Verification and device review are recorded below. Full physical recovery,
+Keychain/iCloud behavior, two-phone transfer, native keyboard/VoiceOver/large text
+and real support-mail delivery remain release gates in Phase 09. Browser and
+component checks cannot close them. Other Phase 08 work remains open.
+
+### Verification for the account UI
+
+- `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer npm run check`: passed,
+  with fresh online Expo Doctor **21/21**, architecture checks, type/lint/format
+  checks, **544 mobile tests / 68 suites**, 54 API unit tests and 24 contract tests.
+  Final run has no lint warnings; `.local/phase-08/account-check.log`.
+- `npm run test:coverage`: passed all unchanged global/critical floors and the
+  dedicated loopback database/migration suites. Mobile **96.41% lines / 91.58%
+  branches**, API **95.01% / 90.61%**, contracts **100% / 100%**;
+  `.local/phase-08/account-coverage.log`.
+- Focused Settings/account checks: **29/29** passed. The final root check also
+  includes transfer-code edits clearing previously entered verification digits,
+  key hiding after a late response, key/device cancellation and revocation,
+  session renewal, route validation and network-error retry.
+- Retained actual-app/API/database journey suite: **25 passed**, with one
+  self-device recovery assertion initially finding both the visible route and a
+  hidden retained recovery screen. Scope the two text assertions to visible
+  elements (without dropping database/HTTP/ownership/history assertions). The
+  focused self-device recovery rerun **passed 1/1**, proving session refusal,
+  same-account recovery and retained reflection/Progress. Evidence is split across
+  `.local/phase-08/account-journeys.log` and `account-recovery-journey.log`; this
+  does not claim a fresh full 26-case green invocation or hosted CI. The first
+  startup attempt found the local database stopped; `npm run db:local` restored
+  the existing loopback test database and preserved ignored environment files.
+- Cleared-cache, one-worker web and iOS exports passed; logs and output remain
+  under ignored `.local/phase-08/account-{web,ios}-export*`. Bundling is separate
+  from native UI/device acceptance.
+- Codex side-panel browser, disposable local account/API on 3000 and live web
+  Metro on 8081: Settings → hub → each focused page, explicit account recovery,
+  nested Back navigation, transfer validation and device-removal cancellation
+  were observed. Reviewed at **393 × 852** and **320 × 740**; the narrow header/row
+  text wraps without horizontal overflow. No browser warning/error logs appeared.
+  No key was revealed, mail sent or private owner data used. Screenshot:
+  `.local/phase-08/account-recovery-browser.png`; temporary viewport override reset.
+- Only the owned phone Metro was restarted with `--clear`, one worker, the same
+  staging API and port **8084**. Its LAN address is now **10.0.0.200**. The fresh
+  iOS/Hermes bundle returns **HTTP 200 / 11,111,158 bytes**. The installed physical
+  build is reused; native layout, keyboard, key-background hiding and two-phone
+  transfer have not been newly observed in this slice. Owner can reload and open
+  Settings → Account & recovery to review. A reload broadcast found no connected
+  native app, so Anthony must reopen/connect the installed app; it was not remotely
+  verified. No reinstallation or account/data reset.
+
+The earlier phone confirmations for direct export/quiet dismissal remain valid;
+this change does not close the wider Phase 08/09 acceptance gates.
+
+### Owner phone connection follow-up
+
+Anthony reported that the new page does not appear on his phone. The current
+8084 server serves SDK 57 at `10.0.0.200:8084`, and its iOS bundle contains the new
+account hub, phone-transfer label and Troubleshooting. The server's last reload
+broadcast had no connected native app; CoreDevice also reports the paired iPhone
+as disconnected, so no remote phone launch or screen verification is available.
+The changed Mac address/stale development connection is a possible cause, not a
+confirmed phone diagnosis. A fresh Expo development-client QR was generated from
+the current connection URL and decoded successfully using Apple Vision. The
+owner must close/reopen the installed app with that connection on the same Wi-Fi
+and confirm the page. No app data, credentials, build or signing was changed.
+
+Anthony also asked whether Support duplicates the Settings contact flow. The
+recommendation is to remove that duplicate section/Get help from the connected
+hub and keep Troubleshooting under Account. This is advice only in this follow-up;
+the existing Support section has not yet been changed. Disconnected recovery help
+should remain reachable when needed.
+
+Anthony subsequently confirmed “it's working now” after the fresh-connection
+instructions. This is owner-reported evidence that the new Account & recovery
+page opens on the installed physical iPhone build. It does not establish recovery
+key hiding, keyboard/VoiceOver/large-text behavior, key/device revocation,
+two-phone transfer or full recovery acceptance. Support consolidation was subsequently implemented at the owner's request; see
+the refinement below.
+
+### October 12 account row alignment and support refinement
+
+Anthony requested left alignment/padding for Recover an existing account in
+Troubleshooting and removal of duplicate Get help from the connected account
+hub. The recovery link now uses the same icon/label/action row as Refresh account
+and Renew this session, retaining navigation and the busy guard. Troubleshooting
+moves into Account and the redundant Support group is removed. Settings support
+and disconnected recovery help remain available; no email/data/recovery policy
+is changed.
+
+The existing account screen tests cover the updated groups, recovery navigation
+and disconnected help. The retained identity/catalog journey compares actual
+rendered label positions to catch the original flush-left link. No new files or
+folder moves are needed; the full account/e2e/documentation directory inventories
+remain cohesive. Verification is recorded below.
+
+Verification for the refinement:
+
+- Focused Settings/account tests **29/29** pass. Typechecks, lint, formatting,
+  architecture tests, API unit tests and contracts pass on the unchanged installed
+  dependencies. Final mobile coverage run passes **544 tests / 68 suites**, with
+  **96.44% lines / 91.59% branches**; all unchanged coverage floors pass. The API
+  and contract coverage reports reused here are from the earlier unchanged-source
+  root coverage run, rather than claimed as new backend acceptance.
+- The saved actual-app/API/database identity/catalog journey passes **1/1**,
+  comparing all three visible label left edges within one pixel, opening recovery
+  with Enter, returning, renewing the same account and opening the real catalog.
+  It waits for the enabled link/real destination after focus refresh, preserving
+  the busy guard rather than racing its replacement. Log:
+  `.local/phase-08/account-polish-journey.log`.
+- Side-panel browser on the disposable loopback fixture: the three labels measure
+  **x = 73 px** at 393 × 852. Connected Account & recovery has no duplicate Get
+  help or Support header; Troubleshooting is under Account. Recovery navigation
+  and nested Back were observed. Screenshot:
+  `.local/phase-08/troubleshooting-aligned-browser.png`.
+  Anthony subsequently required browser testing only in the side panel. Final
+  verification used the Codex in-app browser, repeated the alignment/Enter/Back
+  checks and restored the temporary viewport. The saved journey above predates
+  this instruction; no outside-browser journey was rerun afterward.
+- Browser inspection caught the replacement Pressable-only link not responding
+  to Enter. Shared settings action rows now use Expo Link for destinations and
+  omit the destination while disabled. Native touch navigation and true web-anchor
+  semantics share one row; plain actions retain their existing button handler.
+  The unrelated motion unit suite uses a scoped router mock, as the account tests
+  already do; actual browser/journey navigation exercises the real router.
+- Full `npm run check` currently **fails at Expo Doctor (20/21)** because fresh
+  online metadata recommends six SDK 57 patches: Expo 57.0.28, Crypto 57.0.4,
+  dev-client 57.0.20, router 57.0.26, splash-screen 57.0.10 and jest-expo 57.0.6.
+  Installed versions/lockfile remain unchanged. The dependency gate was not
+  excluded, suppressed or called passing. Track SDK patch alignment and its native
+  build/device validation separately before Git publication; native signing/build
+  upgrades remain outside this UI refinement. Diagnostic log:
+  `.local/phase-08/account-polish-check.log`.
+- Full contents of the touched account, shared settings-component, motion-test,
+  journey and documentation directories were reviewed. No files were added and
+  the existing responsibility groups remain appropriate. The loopback browser
+  preview is restored; the separate physical-phone Metro and staging API remain
+  intact. The earlier owner confirmation covers opening the base page; this
+  refinement has not yet received separate physical-phone visual confirmation.
+
+### October 12 quiet account refresh
+
+Anthony requested that routine account checks stop showing “Connecting securely…”
+when opening account items. The controller now marks accepted automatic operations
+as background work while retaining the same mutual-exclusion guard, timeout,
+session verification and failure handling. Focus refreshes, connected-account
+foreground checks and request-driven session repair are quiet. Manual Refresh,
+Retry, renewal, key and transfer actions retain their progress feedback. Successful
+automatic session repair also avoids the connection-success message; failures
+remain visible. Initial/disconnected connection keeps its loading feedback.
+
+Account tools and explicit recovery distinguish background work from deliberate
+actions. The shared primary button can be disabled independently of its spinner,
+so transfer/recovery controls remain guarded during a quiet refresh. A focus
+refresh cannot relabel an already-running manual action as background work. Key
+hiding, account ownership, storage, network contracts and native dependencies are
+unchanged.
+
+Verification:
+
+- Before the fix, the four controlled slow-focus regressions failed with the
+  unwanted message visible. Afterward, **51 tests / 4 suites** pass across account
+  screens, identity presentation/controller and provider integration. They cover
+  all four tool pages, quiet disabled transfer controls, manual progress, an
+  overlapping focus event, retained failure/retry, background session repair and
+  progress-state reset. Logs: `.local/phase-08/account-quiet-before.log` and
+  `.local/phase-08/account-quiet-focused.log`.
+- Typechecks, lint, formatting, **180 architecture/tooling cases**, **54 API unit
+  cases** and **24 contract cases** pass. Mobile coverage passes **549 cases / 68
+  suites**, **96.48% lines / 91.65% branches**. The unchanged combined/critical
+  coverage floors pass; API/contract coverage reports are retained from the prior
+  unchanged-source coverage run. Gate log:
+  `.local/phase-08/account-quiet-coverage-gate.log`. No backend change or phase
+  closeout requires a new database acceptance run in this presentation slice.
+- Fresh `npm run check` stops at the same **20/21 Expo Doctor** dependency check
+  described above; none of the six package pins or validation rules were changed
+  or excluded. Log: `.local/phase-08/account-quiet-check.log`. Native SDK patch
+  alignment/build/device verification remains the separate pre-publication task.
+- All interactive testing used the Codex side panel and a disposable loopback
+  account. An ignored copy of the guarded fixture server delayed session checks
+  by five seconds: Troubleshooting, Recovery keys, Move to another phone and
+  Devices had no loading message while guarded actions were disabled. The
+  transfer action had no spinner. Manual Refresh and Retry showed progress; a
+  controlled 503 remained visible and retry restored the connected screen. One
+  default locator wait expired before the intentional five-second response;
+  subsequent inspection confirmed normal completion with no error. The standard
+  fixture server was restored, and a final manual refresh succeeded. Screenshot:
+  `.local/phase-08/account-quiet-browser.png`. No outside browser, saved browser
+  journey, simulator or physical-phone acceptance is claimed for this slice.
+- Reviewed the full contents of touched identity, account, provider, shared
+  component and documentation directories. Existing responsibility groups remain
+  cohesive; no new source files or additional subfolders are needed. Both Metro
+  servers remain available; no installation, signing or phone data reset occurred.
+  A full reload was broadcast to the owned phone Metro after the provider effect
+  change, but no native app was connected at that moment. Anthony must reopen and
+  fully reload the installed development app; this is not physical verification.
+
+### October 12 account action indicators
+
+Anthony requested an audit after Show recovery key still displayed “Connecting
+securely…”. All Account & recovery manual actions now show progress on the
+initiating control. A shared identity presentation hook tracks that control and
+guards late completion after unmount; the existing controller remains responsible
+for serialization, ownership, failure handling and deadlines. Shared Settings
+action rows accept a spinner accessory and expose busy/disabled accessibility
+state. Primary/text buttons retain their labels and show only their own spinner.
+Key/device revocation distinguishes full IDs even if display prefixes collide.
+Confirmation closes and progress remains on the originating row. Automatic
+checks remain quiet; readable errors/success guidance are retained.
+
+The audit covers:
+
+| Action                                              | Loading presentation                                                                              |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Show recovery key                                   | Spinner on the right of its row                                                                   |
+| Revoke recovery key / device                        | Spinner on the selected row after confirmation                                                    |
+| Refresh account / Renew this session                | Spinner on the selected row                                                                       |
+| Retry connection                                    | Its row/button remains visible with a spinner while earlier error text clears                     |
+| Review transfer / Approve this device               | Spinner inside only the selected primary button                                                   |
+| Transfer from another device / Start a new transfer | Spinner beside only the selected text action                                                      |
+| Check approval & finish                             | Spinner inside that primary button                                                                |
+| Create a private/separate account                   | Spinner inside the initiating button, which remains mounted while the request is pending          |
+| Create a separate empty account                     | Spinner beside that text action after confirmation                                                |
+| Recover with key / saved credential                 | Spinner on the initiating primary/text button; saved credentials use their full IDs for selection |
+| Initial account connection                          | Accessible indicator with no ellipsis text                                                        |
+| Export my data                                      | Existing right-hand spinner, with its label preserved rather than “Creating export…”              |
+
+Hide key, Cancel, navigation and showing recovery options are synchronous and have
+no network loader. Support/legal/social/rating controls have no ellipsis loading
+text to replace; their existing busy guard/failure feedback remains. Coming soon
+indicates unavailable functionality, not loading. Other feature screen-loading
+headings are outside this Settings/account action audit.
+
+Verification:
+
+- **40 focused cases / 3 suites** pass across account actions, disconnected/explicit
+  recovery and export. Controlled pending requests verify every asynchronous action
+  above, one correctly located indicator, steady labels, disabled duplicate actions,
+  completion, manual/focus overlap, quiet background work and retained failure/retry.
+  Initial test-fixture failures revealed a constant UUID collision and incomplete
+  transfer response; the fixtures now use the existing randomness seam and valid
+  public contracts. A missing async `act` import was repaired; final tests release
+  all pending requests and exit without unexpected warnings. Log:
+  `.local/phase-08/account-indicators-focused.log`.
+- Typechecks, lint, formatting, **180 architecture cases**, **54 API unit cases**
+  and **24 contract cases** pass. Mobile coverage passes **561 cases / 68 suites**,
+  **96.92% lines / 91.76% branches**. Combined/critical floors are unchanged and
+  pass; unchanged API/contracts coverage reports are retained from the preceding
+  run. Gate log: `.local/phase-08/account-indicators-coverage-gate.log`.
+- Fresh `npm run check` still stops at the same six online Expo patch mismatches,
+  **20/21 Doctor checks**. No dependency pins or validation exclusions changed.
+  Log: `.local/phase-08/account-indicators-check.log`. The pre-publication SDK
+  patch/native-build acceptance task remains open.
+- Interactive verification used only the Codex side panel with disposable loopback
+  accounts. An ignored copy of the guarded fixture delayed selected requests by
+  two/five seconds. Creation, Show key, key revocation, Refresh, Renew, Retry,
+  transfer start/restart/review/approval/completion, device revocation and export
+  each displayed one correctly labeled indicator. A controlled 503 cleared the
+  refresh indicator and showed a readable error; retry stayed mounted, spun and
+  restored the account. One tool wait ended before its intentional five-second
+  response; subsequent inspection confirmed completion. Transfer tests used two
+  in-panel tabs and masked synthetic inputs; the temporary tab was closed. Key
+  display was hidden before continuing; the saved image captures only its pending
+  request. Screenshot: `.local/phase-08/account-action-spinner.png`.
+- Restored the standard loopback fixture server and retained the owned web/phone
+  Metro servers. No native rebuild, installation, device reset, saved browser
+  journey or physical/VoiceOver acceptance is claimed in this slice.
+- Reviewed full contents of the changed identity (ten root files), account (eight),
+  export (four), shared UI/settings and documentation directories. The new hook
+  belongs with identity presentation; existing responsibility groups remain
+  navigable, so no further folder moves are needed. The folder/architecture guides
+  reflect its ownership and steady-label export behavior.
+  The phone Metro reload broadcast reported no connected app; the owner must
+  reopen/reload the installed development app to review these indicators. The
+  broadcast does not establish native UI acceptance.

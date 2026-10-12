@@ -5,22 +5,29 @@ export function PrimaryButton({
   label,
   onPress,
   busy = false,
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
   busy?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled: busy, busy }}
-      disabled={busy}
+      accessibilityState={{ disabled: disabled || busy, busy }}
+      disabled={disabled || busy}
       onPress={onPress}
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
       {busy && (
-        <ActivityIndicator color={colors.white} accessibilityLabel={label} />
+        <ActivityIndicator
+          color={colors.white}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={`${label} in progress`}
+        />
       )}
       <Text style={styles.label}>{label}</Text>
     </Pressable>

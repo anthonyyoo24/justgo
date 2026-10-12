@@ -70,6 +70,7 @@ function Navigation() {
       <Stack.Screen name="settings" />
       <Stack.Screen name="export-data" />
       <Stack.Screen name="recovery" />
+      <Stack.Screen name="account/[tool]" />
       <Stack.Protected guard={access.verified}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="challenge" options={{ gestureEnabled: false }} />

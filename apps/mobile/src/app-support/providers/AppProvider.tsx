@@ -104,7 +104,9 @@ export function AppProvider({ children }: PropsWithChildren) {
       focusManager.setFocused(active);
       if (next !== 'active') runtime.identity.hideKey();
       else {
-        void runtime.identity.retry();
+        void runtime.identity.retry({
+          background: !!runtime.identity.getSnapshot().account,
+        });
         void runtime.client.queries.invalidateQueries();
         void runtime.challenges.refresh();
         runtime.telemetry.track('app_foregrounded');

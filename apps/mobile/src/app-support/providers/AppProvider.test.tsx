@@ -301,6 +301,7 @@ it('hides recovery keys on background, refreshes on foreground and releases list
   await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
   expect(focusManager.isFocused()).toBe(true);
   expect(retry).toHaveBeenCalledTimes(1);
+  expect(retry).toHaveBeenCalledWith({ background: true });
   expect(invalidate).toHaveBeenCalled();
   expect(refresh).toHaveBeenCalledTimes(1);
   expect(track).toHaveBeenCalledWith('app_foregrounded');

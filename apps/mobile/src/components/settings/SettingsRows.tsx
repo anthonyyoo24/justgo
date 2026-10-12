@@ -1,5 +1,12 @@
 import { Children, type PropsWithChildren, type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Link, type Href } from 'expo-router';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {
   colors,
   fontFamilies,
@@ -78,6 +85,58 @@ export function PendingSettingsRow({
     >
       <SettingsRowContent icon={icon} label={label} status="Coming soon" />
     </View>
+  );
+}
+
+export function SettingsActionRow({
+  icon,
+  label,
+  onPress,
+  disabled = false,
+  busy = false,
+  chevron = false,
+  href,
+}: {
+  icon: SettingsIconName;
+  label: string;
+  disabled?: boolean;
+  busy?: boolean;
+  chevron?: boolean;
+} & ({ href: Href; onPress?: never } | { href?: never; onPress: () => void })) {
+  const control = (
+    <Pressable
+      accessibilityRole={href ? 'link' : 'button'}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: disabled || busy, busy }}
+      disabled={disabled || busy}
+      onPress={onPress}
+      style={({ pressed }) => pressed && { opacity: 0.65 }}
+    >
+      <SettingsRowContent
+        icon={icon}
+        label={label}
+        chevron={chevron && !busy}
+        accessory={
+          busy ? (
+            <ActivityIndicator
+              color={colors.ink}
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel={`${label} in progress`}
+            />
+          ) : undefined
+        }
+      />
+    </Pressable>
+  );
+  // Link supplies a real web anchor and native navigation; a disabled row has
+  // no destination so Enter cannot bypass its busy guard.
+  return href && !disabled && !busy ? (
+    <Link href={href} asChild>
+      {control}
+    </Link>
+  ) : (
+    control
   );
 }
 

@@ -18,7 +18,10 @@ export type SettingsIconName =
   | 'tiktok'
   | 'twitter'
   | 'privacy'
-  | 'terms';
+  | 'terms'
+  | 'key'
+  | 'transfer'
+  | 'devices';
 
 // Native outline icons reconstructed for the raster F1 reference's visual style.
 // They are decorative; each row supplies its own accessible name.
@@ -45,6 +48,9 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
     privacy:
       'M12 3L20 7V12C20 17 16 20 12 22C8 20 4 17 4 12V7L12 3ZM12 10V14M12 17V17.1',
     terms: 'M8 7H16M8 11H16M8 15H13',
+    key: 'M14 10L21 3M18 6L21 9M16 8L19 11M15 15A6 6 0 1 1 3 15A6 6 0 1 1 15 15Z',
+    transfer: 'M3 7H20M16 3L20 7L16 11M21 17H4M8 13L4 17L8 21',
+    devices: 'M7 3H17V21H7ZM11 18H13',
   };
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" aria-hidden>

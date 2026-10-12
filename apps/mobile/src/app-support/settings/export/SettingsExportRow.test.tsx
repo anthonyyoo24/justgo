@@ -107,9 +107,11 @@ it('quietly returns to Settings after dismissing sharing and allows another expo
   const screen = render(<SettingsExportRow />);
   fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole('button', { name: 'Export my data' })).toBeDisabled();
+  expect(screen.queryByText('Creating export…')).toBeNull();
   expect(
-    screen.getByRole('button', { name: 'Creating export…' }),
-  ).toBeDisabled();
+    screen.getByRole('progressbar', { name: 'Export my data in progress' }),
+  ).toBeTruthy();
   await act(async () => dismissed.resolve('cancelled'));
   expect(screen.queryByRole('alert')).toBeNull();
   expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
@@ -131,9 +133,7 @@ it('blocks duplicate taps until sharing finishes', async () => {
   fireEvent.press(button);
   fireEvent.press(button);
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-  expect(
-    screen.getByRole('button', { name: 'Creating export…' }),
-  ).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Export my data' })).toBeDisabled();
   await act(async () => pending.resolve('shared'));
   await screen.findByText('Your export was shared.');
 });

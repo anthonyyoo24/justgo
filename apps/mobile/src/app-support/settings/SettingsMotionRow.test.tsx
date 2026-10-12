@@ -12,6 +12,9 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import { SettingsMotionRow } from './SettingsMotionRow';
+jest.mock('expo-router', () => ({
+  Link: ({ children }: { children: React.ReactNode }) => children,
+}));
 import { useProgressShimmer } from '../../features/progress/calendar/ProgressSkeleton';
 import {
   MotionPreferencesProvider,

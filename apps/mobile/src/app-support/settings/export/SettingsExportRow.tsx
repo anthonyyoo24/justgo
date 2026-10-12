@@ -120,7 +120,7 @@ function ExportSession({
     <View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={busy ? 'Creating export…' : 'Export my data'}
+        accessibilityLabel="Export my data"
         accessibilityHint={
           accountId && repository
             ? 'Create a ZIP with your saved challenges, feelings and reflections'
@@ -136,9 +136,16 @@ function ExportSession({
       >
         <SettingsRowContent
           icon="export"
-          label={busy ? 'Creating export…' : 'Export my data'}
+          label="Export my data"
           accessory={
-            busy ? <ActivityIndicator color={colors.ink} /> : undefined
+            busy ? (
+              <ActivityIndicator
+                color={colors.ink}
+                accessible
+                accessibilityRole="progressbar"
+                accessibilityLabel="Export my data in progress"
+              />
+            ) : undefined
           }
         />
       </Pressable>

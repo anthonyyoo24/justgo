@@ -138,6 +138,22 @@ Routes, API contracts, dependencies, stored data and application behavior are
 unchanged. The [Phase 08 follow-up](../handoffs/phase-08-settings-privacy.md#october-11-folder-organization)
 records verification and remaining physical-device acceptance.
 
+### October 12 account and recovery screens
+
+Settings and connected-account pages now share `components/settings/` (three
+files: page, grouped rows and icons). The existing row/icon files moved there;
+Settings behavior and typography are preserved. `app-support/settings/` now has
+13 files: four at its root, four in export and five in information.
+
+`app-support/identity/account/` contains eight cohesive files: the account hub,
+focused-tool composition, recovery keys, device transfer, device management,
+confirmation, styles and their colocated screen tests. The ten identity root
+files retain controller/API/vault/storage ownership, disconnected recovery and
+the shared screen-action presentation hook `useIdentityAction.ts`.
+`app/account/[tool].tsx` only connects the focused routes; invalid tools return to
+recovery. No additional subfolders were needed after reviewing the full touched
+directories. See the [account UI handoff](../handoffs/phase-08-settings-privacy.md#october-12-account-and-recovery-ui).
+
 ## API, contracts and verification
 
 ```text
@@ -437,9 +453,3 @@ justgo/
         ├── import-boundaries.test.mjs [moved]
         └── mobile-verification.test.mjs [new in 7.3, moved]
 ```
-
-## Shared Settings rows and icons
-
-Settings row and icon building blocks live in `apps/mobile/src/components/settings/`,
-with their existing callers importing the shared location. Their behavior and
-relative theme/asset references are preserved by this move.

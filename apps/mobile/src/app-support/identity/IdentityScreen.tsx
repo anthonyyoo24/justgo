@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
+  ActivityIndicator,
   AppState,
   Pressable,
   ScrollView,
@@ -10,6 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Redirect } from 'expo-router';
+import { SettingsPage } from '../../components/settings/SettingsPage';
+import { SettingsGroup } from '../../components/settings/SettingsRows';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ExternalLinkButton } from '../../components/ExternalLinkButton';
 import { contactFailureMessage, supportContact } from '../contact';
@@ -17,35 +21,50 @@ import { colors, layout, radii, spacing, typography } from '../../theme/tokens';
 import { createIdentityApi } from './api';
 import { IdentityController } from './controller';
 import { createVault } from './vault';
+import { useIdentityAction } from './useIdentityAction';
 
 function TextButton({
   label,
   onPress,
   disabled = false,
+  busy = false,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  busy?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      disabled={disabled}
-      accessibilityState={{ disabled }}
+      disabled={disabled || busy}
+      accessibilityState={{ disabled: disabled || busy, busy }}
       onPress={onPress}
       style={({ pressed }) => [styles.textButton, pressed && { opacity: 0.65 }]}
     >
-      <Text style={styles.link}>{label}</Text>
+      <View style={styles.textButtonContent}>
+        <Text style={styles.link}>{label}</Text>
+        {busy && (
+          <ActivityIndicator
+            color={colors.ink}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel={`${label} in progress`}
+          />
+        )}
+      </View>
     </Pressable>
   );
 }
 export function IdentityScreen({
   controller: provided,
   managed = false,
+  recoveryOnly = false,
 }: {
   controller?: IdentityController;
   managed?: boolean;
+  recoveryOnly?: boolean;
 }) {
   const [controller] = useState(
     () =>
@@ -60,17 +79,20 @@ export function IdentityScreen({
     controller.getSnapshot,
     controller.getSnapshot,
   );
-  const [panel, setPanel] = useState<
-    'account' | 'keys' | 'transfer' | 'devices'
-  >('account');
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [initialSessionId] = useState(
+    () => controller.getSnapshot().account?.sessionId,
+  );
+  const [recoveryOpen, setRecoveryOpen] = useState(recoveryOnly);
   const [recoveryKey, setRecoveryKey] = useState('');
-  const [transferCode, setTransferCode] = useState('');
-  const [verification, setVerification] = useState('');
   const [confirmation, setConfirmation] = useState<{
     message: string;
     action: () => Promise<void>;
+    name: string;
   } | null>(null);
+  const { activeAction, runAction } = useIdentityAction(controller);
+  const creationLabel = state.credentials.length
+    ? 'Create a separate account'
+    : 'Create a private account';
   useEffect(() => {
     if (!managed) void controller.initialize();
   }, [controller, managed]);
@@ -80,7 +102,9 @@ export function IdentityScreen({
         controller.hideKey();
         setRecoveryKey('');
       } else if (!managed) {
-        void controller.retry();
+        void controller.retry({
+          background: !!controller.getSnapshot().account,
+        });
       }
     });
     return () => {
@@ -91,19 +115,11 @@ export function IdentityScreen({
   const act = (work: () => Promise<void>) => {
     void work();
   };
-  const confirm = (message: string, action: () => Promise<void>) =>
-    setConfirmation({ message, action });
-  const reviewTransfer = async () => {
-    if (state.busy) return;
-    setVerification('');
-    await controller.inspectTransfer(transferCode);
-  };
-  const approveTransfer = async () => {
-    if (state.busy) return;
-    await controller.approveTransfer(verification);
-    setVerification('');
-    if (!controller.getSnapshot().inspection) setTransferCode('');
-  };
+  const confirm = (
+    message: string,
+    name: string,
+    action: () => Promise<void>,
+  ) => setConfirmation({ message, name, action });
   const recoverWithKey = async () => {
     if (state.busy) return;
     const value = recoveryKey;
@@ -113,10 +129,273 @@ export function IdentityScreen({
   const button = (label: string, action: () => Promise<void>) => (
     <PrimaryButton
       label={label}
-      onPress={() => act(action)}
-      busy={state.busy}
+      onPress={() => act(() => runAction(label, action))}
+      busy={activeAction === label && state.busy}
+      disabled={state.busy}
     />
   );
+  if (
+    recoveryOnly &&
+    state.account &&
+    state.account.sessionId !== initialSessionId
+  )
+    return <Redirect href="/recovery" />;
+  const content = (
+    <>
+      {!managed && (
+        <View style={styles.header}>
+          <Text style={styles.wordmark}>JustGO</Text>
+          <Text style={styles.eyebrow}>ACCOUNT & RECOVERY</Text>
+        </View>
+      )}
+      {controller.vault.kind === 'memory' && (
+        <View style={styles.notice}>
+          <Text style={styles.small}>
+            Browser testing only. Credentials stay in this tab’s memory and
+            disappear when it closes or reloads. iPhone recovery is still
+            awaiting device validation.
+          </Text>
+        </View>
+      )}
+      {!managed && (
+        <View style={styles.hero}>
+          <View style={styles.art}>
+            <Image
+              source={require('../../../assets/illustrations/small-medal.png')}
+              style={styles.image}
+              contentFit="contain"
+              accessible={false}
+            />
+          </View>
+          <Text accessibilityRole="header" style={styles.heading}>
+            {state.account
+              ? 'A place for your progress.'
+              : 'Your courage.\nYour account.'}
+          </Text>
+          <Text style={styles.body}>
+            {state.account
+              ? 'Your private account is connected. No email, password or signup form needed.'
+              : 'Your progress belongs to you. Connect securely, or recover an account you already have.'}
+          </Text>
+        </View>
+      )}
+      {!!state.message && (
+        <View style={styles.notice}>
+          <Text accessibilityLiveRegion="polite" style={styles.body}>
+            {state.message}
+          </Text>
+        </View>
+      )}
+      {state.busy && !state.busyInBackground && !state.initialized && (
+        <ActivityIndicator
+          color={colors.ink}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel="Connecting account"
+        />
+      )}
+      {confirmation && (
+        <SettingsGroup title="Please confirm">
+          <View style={styles.form}>
+            <Text style={styles.body}>{confirmation.message}</Text>
+            <PrimaryButton
+              label="Confirm"
+              disabled={state.busy}
+              onPress={() => {
+                const { name, action } = confirmation;
+                setConfirmation(null);
+                act(() => runAction(name, action));
+              }}
+            />
+            <TextButton
+              label="Cancel"
+              onPress={() => setConfirmation(null)}
+              disabled={state.busy}
+            />
+          </View>
+        </SettingsGroup>
+      )}
+      {state.account ? (
+        !recoveryOnly && (
+          <View style={styles.card}>
+            <Text style={styles.title}>Connected</Text>
+            <Text style={styles.body}>
+              Your private account is connected. No email or password.
+            </Text>
+          </View>
+        )
+      ) : (
+        <>
+          {!state.transfer &&
+            (!state.hasPending || activeAction === creationLabel) &&
+            state.initialized &&
+            button(
+              creationLabel,
+              state.credentials.length
+                ? async () => {
+                    confirm(
+                      'Create a separate empty account? This will not merge or recover any existing progress.',
+                      creationLabel,
+                      controller.createAccount,
+                    );
+                  }
+                : controller.createAccount,
+            )}
+          {state.transfer && (
+            <SettingsGroup title="Connect from your other device">
+              <View style={styles.form}>
+                <Text style={styles.body}>
+                  Enter this code on your existing device:
+                </Text>
+                <Text selectable style={styles.verification}>
+                  {state.transfer.code.match(/.{1,4}/g)?.join('-')}
+                </Text>
+                <Text style={styles.body}>
+                  Then enter these six digits on your existing device:
+                </Text>
+                <Text selectable style={styles.verification}>
+                  {state.transfer.verification}
+                </Text>
+                <Text style={styles.small}>
+                  Expires at{' '}
+                  {new Date(state.transfer.expiresAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                  . Approval is required.
+                </Text>
+                {button('Check approval & finish', controller.redeemTransfer)}
+                <TextButton
+                  label="Start a new transfer"
+                  disabled={state.busy}
+                  busy={activeAction === 'Start a new transfer'}
+                  onPress={() =>
+                    act(() =>
+                      runAction(
+                        'Start a new transfer',
+                        controller.startTransfer,
+                      ),
+                    )
+                  }
+                />
+              </View>
+            </SettingsGroup>
+          )}
+          <TextButton
+            label="Transfer from another device"
+            busy={activeAction === 'Transfer from another device'}
+            onPress={() =>
+              act(() =>
+                runAction(
+                  'Transfer from another device',
+                  controller.startTransfer,
+                ),
+              )
+            }
+            disabled={state.busy}
+          />
+        </>
+      )}
+      {!recoveryOnly && (
+        <TextButton
+          label={
+            recoveryOpen
+              ? 'Close recovery options'
+              : 'Recover an existing account'
+          }
+          disabled={state.busy}
+          onPress={() => setRecoveryOpen(!recoveryOpen)}
+        />
+      )}
+      {recoveryOpen && (
+        <SettingsGroup title="Recover your account">
+          <View style={styles.form}>
+            <Text style={styles.body}>
+              Recovering another account switches this device to that account.
+              Your accounts stay separate.
+            </Text>
+            <TextInput
+              accessibilityLabel="Recovery key"
+              returnKeyType="done"
+              onSubmitEditing={() =>
+                act(() => runAction('Recover with key', recoverWithKey))
+              }
+              placeholder="Enter your private recovery key"
+              placeholderTextColor={colors.ink}
+              value={recoveryKey}
+              onChangeText={setRecoveryKey}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="none"
+              maxLength={80}
+              style={styles.input}
+            />
+            {button('Recover with key', recoverWithKey)}
+            {state.credentials.map((credential, index) => (
+              <TextButton
+                key={credential.id}
+                label={`Recover saved credential ${index + 1} (${credential.id.slice(0, 8)})`}
+                disabled={state.busy}
+                busy={activeAction === `recover-credential:${credential.id}`}
+                onPress={() =>
+                  confirm(
+                    'Switch to the account linked to this credential? No accounts or history will be merged.',
+                    `recover-credential:${credential.id}`,
+                    () => controller.recoverCredential(credential.id),
+                  )
+                }
+              />
+            ))}
+            <Text style={styles.small}>
+              If iCloud sync is delayed, wait and retry. A purchase receipt
+              cannot recover private history.
+            </Text>
+            {(state.hasPending || state.account) && (
+              <TextButton
+                label="Create a separate empty account"
+                disabled={state.busy}
+                busy={activeAction === 'Create a separate empty account'}
+                onPress={() =>
+                  confirm(
+                    'Create a separate empty account? Existing accounts and credentials will be kept separate. This does not recover or merge your previous progress.',
+                    'Create a separate empty account',
+                    controller.createAccount,
+                  )
+                }
+              />
+            )}
+          </View>
+        </SettingsGroup>
+      )}
+      {(!!state.message || activeAction === 'Retry connection') && (
+        <TextButton
+          label="Retry connection"
+          busy={activeAction === 'Retry connection'}
+          onPress={() =>
+            act(() => runAction('Retry connection', controller.retry))
+          }
+          disabled={state.busy}
+        />
+      )}
+      <ExternalLinkButton
+        label="Get help"
+        url={supportContact}
+        failureMessage={contactFailureMessage}
+        channel="activity"
+      />
+      <Text style={styles.footer}>JustGO · Your account, kept private</Text>
+    </>
+  );
+  if (managed)
+    return (
+      <SettingsPage
+        title={recoveryOnly ? 'Recover an account' : 'Account & recovery'}
+        backHref={recoveryOnly ? '/recovery' : '/settings'}
+      >
+        {content}
+      </SettingsPage>
+    );
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -124,384 +403,7 @@ export function IdentityScreen({
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scroll}
       >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.wordmark}>JustGO</Text>
-            <Text style={styles.eyebrow}>ACCOUNT & RECOVERY</Text>
-          </View>
-          {controller.vault.kind === 'memory' && (
-            <View style={styles.notice}>
-              <Text style={styles.small}>
-                Browser testing only. Credentials stay in this tab’s memory and
-                disappear when it closes or reloads. iPhone recovery is still
-                awaiting device validation.
-              </Text>
-            </View>
-          )}
-          {!managed && (
-            <View style={styles.hero}>
-              <View style={styles.art}>
-                <Image
-                  source={require('../../../assets/illustrations/small-medal.png')}
-                  style={styles.image}
-                  contentFit="contain"
-                  accessible={false}
-                />
-              </View>
-              <Text accessibilityRole="header" style={styles.heading}>
-                {state.account
-                  ? 'A place for your progress.'
-                  : 'Your courage.\nYour account.'}
-              </Text>
-              <Text style={styles.body}>
-                {state.account
-                  ? 'Your private account is connected. No email, password or signup form needed.'
-                  : 'Your progress belongs to you. Connect securely, or recover an account you already have.'}
-              </Text>
-            </View>
-          )}
-          {managed && state.account && (
-            <View style={styles.panels}>
-              {(
-                [
-                  ['account', 'Account'],
-                  ['keys', 'Recovery keys'],
-                  ['transfer', 'Device transfer'],
-                  ['devices', 'Manage devices'],
-                ] as const
-              ).map(([id, label]) => (
-                <TextButton
-                  key={id}
-                  label={label}
-                  onPress={() => {
-                    controller.hideKey();
-                    setPanel(id);
-                  }}
-                  disabled={state.busy}
-                />
-              ))}
-            </View>
-          )}
-          {!!state.message && (
-            <View style={styles.notice}>
-              <Text accessibilityLiveRegion="polite" style={styles.body}>
-                {state.message}
-              </Text>
-            </View>
-          )}
-          {state.busy && (
-            <Text accessibilityLiveRegion="polite" style={styles.small}>
-              Connecting securely…
-            </Text>
-          )}
-          {confirmation && (
-            <View style={styles.card}>
-              <Text accessibilityRole="header" style={styles.title}>
-                Please confirm
-              </Text>
-              <Text style={styles.body}>{confirmation.message}</Text>
-              {button('Confirm', async () => {
-                const action = confirmation.action;
-                setConfirmation(null);
-                await action();
-              })}
-              <TextButton
-                label="Cancel"
-                onPress={() => setConfirmation(null)}
-                disabled={state.busy}
-              />
-            </View>
-          )}
-          {state.account ? (
-            <>
-              {(!managed || panel === 'account') && (
-                <View style={styles.card}>
-                  <View style={styles.row}>
-                    <Text style={styles.title}>Connected</Text>
-                    <Text style={styles.badge}>PRIVATE ACCOUNT</Text>
-                  </View>
-                  <Text selectable style={styles.small}>
-                    Account {state.account.userId.slice(0, 8)}
-                  </Text>
-                  <Text style={styles.body}>
-                    Your account keeps your challenges and activity together.
-                  </Text>
-                  <TextButton
-                    label="Refresh account"
-                    onPress={() => act(controller.refresh)}
-                    disabled={state.busy}
-                  />
-                  <TextButton
-                    label="Renew this session"
-                    onPress={() => act(controller.renew)}
-                    disabled={state.busy}
-                  />
-                </View>
-              )}
-              {(!managed || panel === 'keys') && (
-                <View style={styles.card}>
-                  <Text accessibilityRole="header" style={styles.title}>
-                    Keep a way back.
-                  </Text>
-                  <Text style={styles.body}>
-                    iCloud Keychain recovery depends on your device settings. A
-                    private recovery key gives you another way back.
-                  </Text>
-                  {button('Show recovery key', controller.saveKey)}
-                  {state.key && (
-                    <View style={styles.keyBox}>
-                      <Text style={styles.small}>
-                        Save this somewhere private. Anyone with it can access
-                        your account.
-                      </Text>
-                      <Text selectable style={styles.secret}>
-                        {state.key.match(/.{1,8}/g)?.join(' ')}
-                      </Text>
-                      <TextButton
-                        label="Hide recovery key"
-                        onPress={controller.hideKey}
-                      />
-                    </View>
-                  )}
-                  {state.recoveryKeys
-                    .filter((k) => k.kind === 'key' && !k.revokedAt)
-                    .map((key) => (
-                      <TextButton
-                        key={key.id}
-                        label={`Revoke recovery key ${key.id.slice(0, 8)}`}
-                        disabled={state.busy}
-                        onPress={() =>
-                          confirm(
-                            'This key will stop recovering your account. Your active devices will remain signed in.',
-                            () => controller.revokeCredential(key.id),
-                          )
-                        }
-                      />
-                    ))}
-                </View>
-              )}
-              {(!managed || panel === 'transfer') && (
-                <View style={styles.card}>
-                  <Text accessibilityRole="header" style={styles.title}>
-                    Approve a new device.
-                  </Text>
-                  <Text style={styles.body}>
-                    On your new device, choose “Transfer from another device.”
-                    Enter the code shown there.
-                  </Text>
-                  <TextInput
-                    accessibilityLabel="Transfer code"
-                    returnKeyType="done"
-                    onSubmitEditing={() => act(reviewTransfer)}
-                    placeholder="XXXX-XXXX-XXXX-XXXX"
-                    placeholderTextColor={colors.ink}
-                    value={transferCode}
-                    onChangeText={setTransferCode}
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    maxLength={24}
-                    style={styles.input}
-                  />
-                  {button('Review transfer', reviewTransfer)}
-                  {state.inspection && (
-                    <View style={styles.keyBox}>
-                      <Text style={styles.body}>
-                        Enter the six verification digits shown on your new
-                        device. Only approve a device you are setting up.
-                      </Text>
-                      <TextInput
-                        accessibilityLabel="Verification digits"
-                        returnKeyType="done"
-                        onSubmitEditing={() => act(approveTransfer)}
-                        placeholder="Six digits from your new device"
-                        placeholderTextColor={colors.ink}
-                        value={verification}
-                        onChangeText={setVerification}
-                        keyboardType="number-pad"
-                        autoCorrect={false}
-                        maxLength={6}
-                        style={styles.input}
-                      />
-                      {button('Approve this device', approveTransfer)}
-                    </View>
-                  )}
-                </View>
-              )}
-              {(!managed || panel === 'devices') && (
-                <View style={styles.card}>
-                  <Text accessibilityRole="header" style={styles.title}>
-                    Your devices
-                  </Text>
-                  <TextButton
-                    label="Refresh devices"
-                    onPress={() => act(controller.refresh)}
-                    disabled={state.busy}
-                  />
-                  {state.devices.map((device) => (
-                    <View key={device.id} style={styles.device}>
-                      <Text style={styles.body}>
-                        {device.id === state.account!.deviceId
-                          ? 'This device'
-                          : 'Other device'}{' '}
-                        · {device.id.slice(0, 8)}
-                      </Text>
-                      {device.revokedAt ? (
-                        <Text style={styles.small}>Revoked</Text>
-                      ) : (
-                        <TextButton
-                          label={`Revoke device ${device.id.slice(0, 8)}`}
-                          disabled={state.busy}
-                          onPress={() =>
-                            confirm(
-                              'This device’s sessions will stop working. Recovery credentials remain valid until separately revoked.',
-                              () => controller.revokeDevice(device.id),
-                            )
-                          }
-                        />
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </>
-          ) : (
-            <>
-              {!state.transfer &&
-                !state.hasPending &&
-                state.initialized &&
-                button(
-                  state.credentials.length
-                    ? 'Create a separate account'
-                    : 'Create a private account',
-                  state.credentials.length
-                    ? async () => {
-                        confirm(
-                          'Create a separate empty account? This will not merge or recover any existing progress.',
-                          controller.createAccount,
-                        );
-                      }
-                    : controller.createAccount,
-                )}
-              {state.transfer && (
-                <View style={styles.card}>
-                  <Text accessibilityRole="header" style={styles.title}>
-                    Connect from your other device.
-                  </Text>
-                  <Text style={styles.body}>
-                    Enter this code on your existing device:
-                  </Text>
-                  <Text selectable style={styles.verification}>
-                    {state.transfer.code.match(/.{1,4}/g)?.join('-')}
-                  </Text>
-                  <Text style={styles.body}>
-                    Then enter these six digits on your existing device:
-                  </Text>
-                  <Text selectable style={styles.verification}>
-                    {state.transfer.verification}
-                  </Text>
-                  <Text style={styles.small}>
-                    Expires at{' '}
-                    {new Date(state.transfer.expiresAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                    . Approval is required.
-                  </Text>
-                  {button('Check approval & finish', controller.redeemTransfer)}
-                  <TextButton
-                    label="Start a new transfer"
-                    disabled={state.busy}
-                    onPress={() => act(controller.startTransfer)}
-                  />
-                </View>
-              )}
-              <TextButton
-                label="Transfer from another device"
-                onPress={() => act(controller.startTransfer)}
-                disabled={state.busy}
-              />
-            </>
-          )}
-          <TextButton
-            label={
-              recoveryOpen
-                ? 'Close recovery options'
-                : 'Recover an existing account'
-            }
-            disabled={state.busy}
-            onPress={() => setRecoveryOpen(!recoveryOpen)}
-          />
-          {recoveryOpen && (
-            <View style={styles.card}>
-              <Text accessibilityRole="header" style={styles.title}>
-                Welcome back.
-              </Text>
-              <Text style={styles.body}>
-                Recovering another account switches this device to that account.
-                Your accounts stay separate.
-              </Text>
-              <TextInput
-                accessibilityLabel="Recovery key"
-                returnKeyType="done"
-                onSubmitEditing={() => act(recoverWithKey)}
-                placeholder="Enter your private recovery key"
-                placeholderTextColor={colors.ink}
-                value={recoveryKey}
-                onChangeText={setRecoveryKey}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="none"
-                maxLength={80}
-                style={styles.input}
-              />
-              {button('Recover with key', recoverWithKey)}
-              {state.credentials.map((credential, index) => (
-                <TextButton
-                  key={credential.id}
-                  label={`Recover saved credential ${index + 1} (${credential.id.slice(0, 8)})`}
-                  disabled={state.busy}
-                  onPress={() =>
-                    confirm(
-                      'Switch to the account linked to this credential? No accounts or history will be merged.',
-                      () => controller.recoverCredential(credential.id),
-                    )
-                  }
-                />
-              ))}
-              <Text style={styles.small}>
-                If iCloud sync is delayed, wait and retry. A purchase receipt
-                cannot recover private history.
-              </Text>
-              {(state.hasPending || state.account) && (
-                <TextButton
-                  label="Create a separate empty account"
-                  disabled={state.busy}
-                  onPress={() =>
-                    confirm(
-                      'Create a separate empty account? Existing accounts and credentials will be kept separate. This does not recover or merge your previous progress.',
-                      controller.createAccount,
-                    )
-                  }
-                />
-              )}
-            </View>
-          )}
-          {!!state.message && (
-            <TextButton
-              label="Retry connection"
-              onPress={() => act(controller.retry)}
-              disabled={state.busy}
-            />
-          )}
-          <ExternalLinkButton
-            label="Get help"
-            url={supportContact}
-            failureMessage={contactFailureMessage}
-            channel="activity"
-          />
-          <Text style={styles.footer}>JustGO · Your account, kept private</Text>
-        </View>
+        <View style={styles.content}>{content}</View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -554,29 +456,29 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.lg,
   },
+  form: { padding: spacing.lg, gap: spacing.lg },
   notice: {
     padding: spacing.lg,
     backgroundColor: colors.peach,
     borderRadius: radii.small,
   },
-  row: { gap: spacing.sm },
-  panels: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: spacing.lg,
-    justifyContent: 'center',
-  },
-  badge: { ...typography.caption, color: colors.ink, letterSpacing: 1 },
   textButton: {
     minHeight: 44,
     justifyContent: 'center',
     paddingVertical: spacing.sm,
+  },
+  textButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   link: {
     ...typography.label,
     color: colors.ink,
     textDecorationLine: 'underline',
     textAlign: 'center',
+    flexShrink: 1,
   },
   input: {
     ...typography.body,
@@ -588,30 +490,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.small,
     backgroundColor: colors.white,
   },
-  keyBox: {
-    gap: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.cream,
-    borderRadius: radii.small,
-  },
-  secret: {
-    ...typography.caption,
-    color: colors.ink,
-    fontFamily: 'monospace',
-    lineHeight: 20,
-  },
   verification: {
     ...typography.heading,
     fontSize: 24,
     lineHeight: 32,
     color: colors.ink,
     textAlign: 'center',
-  },
-  device: {
-    gap: spacing.xs,
-    borderTopWidth: 1,
-    borderColor: colors.border,
-    paddingTop: spacing.md,
   },
   footer: {
     ...typography.caption,
