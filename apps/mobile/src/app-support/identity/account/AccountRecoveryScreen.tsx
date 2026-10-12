@@ -4,7 +4,6 @@ import {
   SettingsActionRow,
   SettingsGroup,
 } from '../../../components/settings/SettingsRows';
-import { NavigationLink } from '../../../components/NavigationLink';
 import { colors, spacing, typography } from '../../../theme/tokens';
 
 export function AccountRecoveryScreen() {
@@ -45,9 +44,6 @@ export function AccountRecoveryScreen() {
           href="/account/devices"
         />
       </SettingsGroup>
-      <NavigationLink href="/" replace style={styles.return}>
-        Back to app
-      </NavigationLink>
     </SettingsPage>
   );
 }
@@ -55,5 +51,4 @@ const styles = StyleSheet.create({
   summary: { padding: spacing.lg, gap: spacing.xs },
   label: { ...typography.body, color: colors.ink },
   caption: { ...typography.caption, color: colors.ink },
-  return: { textAlign: 'center' },
 });

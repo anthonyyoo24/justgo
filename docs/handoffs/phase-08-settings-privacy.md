@@ -979,3 +979,44 @@ Verification:
   directories. This slice adds no files; the established responsibility groups
   remain navigable and no further subfolders are needed. Owned development servers
   and phone data remain intact; routine screenshots are ignored local evidence.
+
+### October 12 account back-link removal
+
+Anthony requested removing the bottom Back to app link from Account & recovery.
+The connected hub and disconnected route now end after their existing controls.
+The shared header Back behavior is unchanged: use navigation history when
+available, otherwise return to Settings. The disconnected route no longer needs
+an extra footer/safe-area wrapper. Support and recovery actions remain available.
+
+Verification:
+
+- Both removal assertions fail against the preceding UI, then all **19 account
+  screen cases** pass. The existing connected Back/history test and disconnected
+  fallback assertion verify that header navigation remains available. Logs:
+  `.local/phase-08/account-back-link-before.log` and
+  `.local/phase-08/account-back-link-focused.log`.
+- Contract build, all typechecks (including saved journeys), lint and formatting
+  pass. Tests pass: **180 architecture/tooling, 54 API unit, 561 mobile and 24
+  contract cases**. Test log: `.local/phase-08/account-back-link-tests.log`.
+  Fresh mobile coverage passes **68 suites**, with **96.92% lines**; the unchanged
+  combined/critical coverage gate passes using the retained API/contracts reports
+  for their unchanged source. Logs: `.local/phase-08/account-back-link-coverage.log`
+  and `.local/phase-08/account-back-link-coverage-gate.log`.
+- Fresh `npm run check` still stops at the existing **20/21 Expo Doctor** result
+  for the same six SDK patch updates. Dependency validation stays enabled; native
+  dependency maintenance remains a separate task before publication. Log:
+  `.local/phase-08/account-back-link-check.log`.
+- Interactive verification used only the Codex side panel and disposable loopback
+  state. The connected page has no bottom link; header Back returns to Settings,
+  then Home. A fresh disconnected runtime also has no link and its header Back
+  returns to Settings. Screenshot: `.local/phase-08/account-back-link-removed.png`.
+  Saved journey callers now use header navigation rather than the removed link;
+  their source was typechecked, but those CLI journeys were not rerun under the
+  owner's side-panel-only preference. No new phone, native, VoiceOver or database
+  acceptance is claimed.
+- Reviewed full contents of the account, route, journey/support and documentation
+  directories touched by this slice. Account screens remain together, routes are
+  thin, and the four journey helpers remain a small cohesive support group. No
+  additional folder split is needed. Anthony subsequently authorized a local
+  commit for this refinement: `fix(account): remove bottom back-to-app shortcut`.
+  No push, PR or merge is authorized; physical feature acceptance remains open.

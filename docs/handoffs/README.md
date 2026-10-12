@@ -1,5 +1,7 @@
 # Implementation handoffs
 
+**October 12 account back-link removal:** Both Account & recovery variants omit the bottom Back to app shortcut and retain header navigation. The [follow-up](phase-08-settings-privacy.md#october-12-account-back-link-removal) records removal regressions, code checks and side-panel navigation evidence. Existing dependency and device acceptance gates remain open.
+
 **October 12 footer cleanup/local checkpoint:** Settings now ends after About; version/test-build labels and its preview shortcut are removed. Recover an account omits duplicate help, and identity pages omit the privacy tagline. The [cleanup](phase-08-settings-privacy.md#october-12-footer-cleanup-and-local-commits) records 46 focused tests, 561 mobile cases, side-panel evidence and three logical local commits. The existing Expo dependency and physical acceptance gates remain open.
 
 **October 12 account action indicators:** Account/recovery actions now use a single spinner on the initiating row/button, with steady labels, quiet automatic checks and retryable errors. Export also keeps its label while spinning. The [audit](phase-08-settings-privacy.md#october-12-account-action-indicators) records action-by-action coverage, 561 passing mobile cases, unchanged coverage gates and side-panel slow/failing-connection checks. Expo patch updates and native acceptance remain open.

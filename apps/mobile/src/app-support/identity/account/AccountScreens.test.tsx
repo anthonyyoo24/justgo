@@ -188,6 +188,7 @@ it('uses grouped account sections, opens focused routes and returns to Settings'
   ]);
   expect(screen.getByText('Private account')).toBeTruthy();
   expect(screen.getByText('No email or password.')).toBeTruthy();
+  expect(screen.queryByRole('link', { name: 'Back to app' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Get help' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Refresh account' })).toBeNull();
   expect(
@@ -220,6 +221,10 @@ it('keeps private support available from disconnected recovery with safe failure
     .mockRejectedValueOnce(new Error('private native detail'))
     .mockResolvedValueOnce(undefined);
   const screen = render(<RecoveryRoute />);
+  expect(screen.queryByRole('link', { name: 'Back to app' })).toBeNull();
+  mockRouter.canGoBack.mockReturnValue(false);
+  fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+  expect(mockRouter.replace).toHaveBeenLastCalledWith('/settings');
   fireEvent.press(screen.getByRole('button', { name: 'Get help' }));
   await waitFor(() =>
     expect(showMessageToast).toHaveBeenCalledWith(

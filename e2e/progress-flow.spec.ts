@@ -13,6 +13,7 @@ import {
 import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
+import { leaveAccountScreens } from './support/account-navigation';
 
 async function account(page: Page) {
   await page.goto('/recovery');
@@ -32,7 +33,7 @@ async function account(page: Page) {
     throw new Error('Expected synthetic bootstrap');
   const created = sessionResponseSchema.parse(await (await response).json());
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
@@ -115,7 +116,7 @@ async function recover(
     .getByRole('button', { name: 'Recover with key', exact: true })
     .click();
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
 }
 
 test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline Add/Edit reflection', async ({
@@ -416,7 +417,7 @@ test('self-device revocation rejects its session and explicit account recovery p
   await expect(
     page.getByText('Connected', { exact: true }).filter({ visible: true }),
   ).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   await progress(page, 1);
   await openToday(page, 1);
   await page.getByRole('button', { name: /Rep 1\..*View Reflection/ }).click();

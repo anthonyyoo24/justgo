@@ -1,6 +1,7 @@
 import { sessionResponseSchema } from '@justgo/contracts';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
+import { leaveAccountScreens } from './support/account-navigation';
 
 test('a real account renews and opens its challenge catalog', async ({
   page,
@@ -62,7 +63,7 @@ test('a real account renews and opens its challenge catalog', async ({
   expect(renewal.sessionId).not.toBe(account.sessionId);
 
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   await expect(
     page.getByText('Find a challenge', { exact: true }),
   ).toBeVisible();
