@@ -55,12 +55,16 @@ apps/mobile/src/
 │       │   └── ProgressSkeleton.tsx
 │       └── day-details/              day sheet and activity/reflection rows
 │           ├── DaySheet.tsx
-│           ├── ProgressEntryRow.tsx
-│           ├── DayReflectionEditor.tsx
-│           ├── useDayReflection.tsx
-│           ├── SlidingEntryDetails.tsx
-│           ├── useEntryMotion.ts
-│           └── useEntryMotion.native.ts
+│           ├── useDaySheetMotion.ts
+│           ├── entries/              progressive list, row details and their motion
+│           │   ├── DayEntryList.tsx
+│           │   ├── ProgressEntryRow.tsx
+│           │   ├── SlidingEntryDetails.tsx
+│           │   ├── useEntryMotion.ts
+│           │   └── useEntryMotion.native.ts
+│           └── reflection-editor/    inline form and editor-session coordination
+│               ├── DayReflectionEditor.tsx
+│               └── useDayReflection.tsx
 ├── data/activity/
 │   ├── accounts.ts                   account repository ownership
 │   ├── repository.ts                 activity storage/submission/sync orchestration
@@ -107,6 +111,14 @@ test, journey exports, asset paths and all consumers follow the new locations.
 The [07.4 handoff](../handoffs/phase-07-4-progress-history.md#october-8-owner-review--progress-and-activity-folders)
 records current verification. This overlap with the earlier mobile cleanup must
 be reconciled when integrating its branch, retaining the newer editor/read files.
+
+The owner-authorized October 10 performance follow-up keeps sheet orchestration
+at the `day-details/` root, groups the list/rows/entry-motion adapters in
+`entries/`, and groups the inline form/session hook in `reflection-editor/`.
+The ten moved files include their colocated tests; both motion implementations
+stay together. The [performance handoff](../handoffs/day-sheet-performance.md)
+records the separate performance and organization commits, checks and bundle
+verification. The historical cleanup inventory below retains its dated paths.
 
 Mobile assets keep application icons at `apps/mobile/assets/`; challenge artwork
 uses `assets/challenges/venues/` for six venue/color pairs and

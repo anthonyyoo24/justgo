@@ -18,6 +18,7 @@ import type {
   ProgressCalendar,
   ProgressDayResponse,
 } from '@justgo/contracts';
+import { DayEntryList } from './day-details/entries/DayEntryList';
 import { AccountRepository } from '../../data/activity/repository';
 import { ApiError } from '../../lib/http';
 import {
@@ -52,8 +53,8 @@ jest.mock('expo-router', () => ({
 jest.mock('../../platform/motion/motion', () => ({
   useReduceMotion: () => true,
 }));
-jest.mock('./day-details/useEntryMotion', () =>
-  jest.requireActual('./day-details/useEntryMotion.ts'),
+jest.mock('./day-details/entries/useEntryMotion', () =>
+  jest.requireActual('./day-details/entries/useEntryMotion.ts'),
 );
 jest.mock('expo-crypto', () => {
   let n = 100;
@@ -507,14 +508,22 @@ it('retries a failed initial page and later page without dropping already displa
   fireEvent.press(
     screen.getByRole('button', { name: 'Try loading attempts again' }),
   );
-  await waitFor(() => expect(screen.getByLabelText(/Rep 20\./)).toBeTruthy());
-  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), {
+  const retainedRows = () =>
+    screen.UNSAFE_getByType(DayEntryList).props.entries;
+  await waitFor(() => expect(retainedRows()).toHaveLength(20));
+  expect(screen.getByLabelText(/Rep 1\./)).toBeTruthy();
+  const nearEnd = {
     nativeEvent: {
       contentOffset: { y: 900 },
       contentSize: { height: 1600 },
       layoutMeasurement: { height: 700 },
     },
-  });
+  };
+  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
+  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
+  expect(count).toBe(2);
+  expect(screen.getByLabelText(/Rep 20\./)).toBeTruthy();
+  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
   await waitFor(() =>
     expect(screen.getByLabelText('Loading more attempts')).toBeTruthy(),
   );
@@ -522,11 +531,17 @@ it('retries a failed initial page and later page without dropping already displa
   await waitFor(() =>
     expect(screen.getByText('Couldn’t load more attempts')).toBeTruthy(),
   );
-  expect(screen.getByLabelText(/Rep 20\./)).toBeTruthy();
+  // The complete loaded page remains available after the next-page failure.
+  expect(
+    retainedRows().map((row: { attemptId: string }) => row.attemptId),
+  ).toEqual(first.entries.map((row) => row.id));
+  expect(screen.getByLabelText(/Rep 1\./)).toBeTruthy();
   fireEvent.press(
     screen.getByRole('button', { name: 'Try loading more attempts again' }),
   );
-  await waitFor(() => expect(screen.getByLabelText(/Rep 21\./)).toBeTruthy());
+  await waitFor(() => expect(retainedRows()).toHaveLength(21));
+  expect(retainedRows().at(-1).attemptId).toBe(attempt(30).id);
+  expect(screen.getByLabelText(/Rep 21\./)).toBeTruthy();
   expect(count).toBe(4);
 });
 it('fences account changes and clears old account progress while another account loads', async () => {

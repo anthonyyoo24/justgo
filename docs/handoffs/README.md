@@ -1,5 +1,11 @@
 # Implementation handoffs
 
+**October 12 day-sheet integration:** Anthony authorized merging the two day-sheet
+performance/organization commits into Phase 08 after accessibility testing.
+The [integration record](day-sheet-performance.md#phase-08-integration--october-12)
+records motion-path conflict resolution, combined checks and the retained Expo
+dependency/native acceptance gates. Phase 08 feature completion remains separate.
+
 **October 12 accessibility fixes:** Heading/status wrapping and stale spacing after live text-size changes are resolved. Settings/account screens pass normal/maximum native visual checks and live resizing in the side-panel simulator mirror; browser labels and keyboard order pass. The [follow-up](phase-08-settings-privacy.md#october-12-large-text-fixes) records regressions, native/browser evidence and the remaining physical-phone VoiceOver and Expo dependency gates.
 
 **October 12 account back-link removal:** Both Account & recovery variants omit the bottom Back to app shortcut and retain header navigation. The [follow-up](phase-08-settings-privacy.md#october-12-account-back-link-removal) records removal regressions, code checks and side-panel navigation evidence. Existing dependency and device acceptance gates remain open.
@@ -21,6 +27,15 @@
 **October 11 physical development build:** Anthony's iPhone is registered with Apple/Expo and the first signed physical development build succeeded and is installed. The [setup follow-up](phase-08-settings-privacy.md#physical-development-build-follow-up) records checks, build identity and the installation QR. The subsequent hosted API/tester-access work is recorded above; physical feature acceptance remains open. No Git publication occurred.
 
 **October 10 data export:** Phase 08 step 2 implements a Settings action producing a CSV + JSON ZIP with complete online history and labeled pending local changes. The [export handoff](phase-08-settings-privacy.md#october-10-data-export-implementation) records authenticated owner isolation, file delivery and verification. Deletion, analytics and legal publication remain open; this slice does not close Phase 08.
+
+**October 10 day-sheet performance:** The owner's 41-attempt simulator finding
+is addressed locally in a separate `codex/day-sheet-performance` worktree.
+The [performance handoff](day-sheet-performance.md) records the measured render
+cost, progressive row mounting, isolated editor updates and native/browser
+verification. Owner review and Git publication remain open; the existing
+physical-device and release acceptance gates stay with Phase 09.
+The owner-authorized `entries/` and `reflection-editor/` organization is retained
+in a separate local commit from the performance fix.
 
 **October 10 Reduce Motion:** The first remaining Phase 08 slice implements a
 saved installation-level Settings switch and shared app motion behavior, with

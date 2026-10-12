@@ -1,20 +1,40 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 import { EntryMotionView, useEntryMotion } from './useEntryMotion';
 
-export function SlidingEntryDetails({
-  open,
-  reduceMotion,
-  contentKey,
-  children,
-  onOpened,
-}: {
+type EntryDetailsProps = {
   open: boolean;
   reduceMotion: boolean;
   contentKey: 'editor' | 'saved';
   children: ReactNode;
   onOpened?: (() => void) | undefined;
-}) {
+};
+
+export function SlidingEntryDetails(props: EntryDetailsProps) {
+  const [retained, setRetained] = useState(props.open);
+  const release = useCallback(() => setRetained(false), []);
+  // Keep the outgoing panel until its closing animation finishes. Untouched
+  // rows never allocate native motion values or measure hidden forms.
+  if (props.open && !retained) setRetained(true);
+  return props.open || retained ? (
+    <MountedEntryDetails {...props} onClosed={release} />
+  ) : null;
+}
+
+function MountedEntryDetails({
+  open,
+  reduceMotion,
+  contentKey,
+  children,
+  onOpened,
+  onClosed,
+}: EntryDetailsProps & { onClosed: () => void }) {
   const [measurement, setMeasurement] = useState({
     key: contentKey,
     height: 0,
@@ -28,25 +48,42 @@ export function SlidingEntryDetails({
   }, [onOpened]);
 
   useEffect(() => {
+    // A rapid close can arrive before the first layout. Nothing has been
+    // revealed yet, so there is no outgoing animation to retain.
+    if (!open && contentHeight === 0) {
+      onClosed();
+      return;
+    }
     // A replacement must be measured before starting its reveal. Reusing the
     // saved text's height would start and then restart the textbox animation.
     if (contentHeight === 0 || (open && measuredKey !== contentKey)) return;
     if (reduceMotion) {
       motion.set(open, contentHeight);
       if (open) openedCallback.current?.();
+      else onClosed();
       return;
     }
     // Edit replaces visible saved text: retain opacity and position while
     // resizing. Resetting the reveal would flash the white sheet underneath.
     let cancelled = false;
     const stop = motion.animate(open, contentHeight, () => {
-      if (open && !cancelled) openedCallback.current?.();
+      if (cancelled) return;
+      if (open) openedCallback.current?.();
+      else onClosed();
     });
     return () => {
       cancelled = true;
       stop();
     };
-  }, [contentHeight, contentKey, measuredKey, motion, open, reduceMotion]);
+  }, [
+    contentHeight,
+    contentKey,
+    measuredKey,
+    motion,
+    open,
+    reduceMotion,
+    onClosed,
+  ]);
 
   return (
     <EntryMotionView

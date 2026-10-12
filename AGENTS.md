@@ -159,6 +159,11 @@ Reload the app to clear stale module/asset paths.
 - Preserve an outgoing animated component's identity through navigation focus
   loss. A focus-based key can remount its resting state before the destination
   covers it; protect that handoff with a regression and inspect native frames.
+- For large animated lists, bound initial row mounting and subscribe to draft
+  changes inside the active editor, with the controller owned above the rows.
+  Avoid measuring every collapsed panel. Compare callback identities honestly
+  when memoizing rows, and verify expanding heights and scrolling on the native
+  surface; inconsistent row estimates can defeat virtualization.
 
 ## Verification and handoff
 

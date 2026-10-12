@@ -19,8 +19,8 @@ jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../platform/motion/motion', () => ({
   useReduceMotion: () => false,
 }));
-jest.mock('./day-details/useEntryMotion', () =>
-  jest.requireActual('./day-details/useEntryMotion.ts'),
+jest.mock('./day-details/entries/useEntryMotion', () =>
+  jest.requireActual('./day-details/entries/useEntryMotion.ts'),
 );
 
 const month: ProgressResponse = {
@@ -906,6 +906,12 @@ it('animates the saved reflection both into and out of the row', () => {
         {...callbacks()}
       />,
     );
+    expect(
+      screen.queryByTestId('entry-details-content', {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: /View Reflection/ }));
     const content = screen.getByTestId('entry-details-content', {
       includeHiddenElements: true,
     });
@@ -917,12 +923,10 @@ it('animates the saved reflection both into and out of the row', () => {
       left: 0,
       right: 0,
     });
+    timing.mockClear();
     fireEvent(content, 'layout', {
       nativeEvent: { layout: { height: 72 } },
     });
-    timing.mockClear();
-
-    fireEvent.press(screen.getByRole('button', { name: /View Reflection/ }));
     expect(timing).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ toValue: 1, useNativeDriver: false }),
@@ -1254,6 +1258,9 @@ it('fetches once near the end of each page as the sheet scrolls', () => {
   scroll(900);
   expect(loadMore).toHaveBeenCalledTimes(1);
   screen.rerender(renderDay([...first, entry('attempt-20', 'none')]));
+  // New page content must appear even if the user is already at the boundary
+  // and native scrolling does not emit another event after the response.
+  expect(screen.getByLabelText(/Rep 21\./)).toBeTruthy();
   scroll(900);
   expect(loadMore).toHaveBeenCalledTimes(2);
   screen.rerender(
@@ -1265,6 +1272,9 @@ it('fetches once near the end of each page as the sheet scrolls', () => {
     />,
   );
   screen.rerender(renderDay(first));
+  scroll(900);
+  scroll(900);
+  expect(loadMore).toHaveBeenCalledTimes(2);
   scroll(900);
   expect(loadMore).toHaveBeenCalledTimes(3);
   expect(

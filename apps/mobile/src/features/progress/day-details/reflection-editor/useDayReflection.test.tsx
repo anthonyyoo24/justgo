@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react-native';
 import type { ReactElement, RefObject } from 'react';
 import { Platform, Pressable, type TextInput } from 'react-native';
-import { AccountRepository } from '../../../data/activity/repository';
+import { AccountRepository } from '../../../../data/activity/repository';
 import {
   MemoryStorage,
   backend,
@@ -16,15 +16,15 @@ import {
   zone,
   attempt,
   deferred,
-} from '../../../../test-support/journal';
+} from '../../../../../test-support/journal';
 import { useDayReflection } from './useDayReflection';
 import { DayReflectionEditor } from './DayReflectionEditor';
-import { ReflectionController } from '../../reflections/controller';
+import { ReflectionController } from '../../../reflections/controller';
 
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '30000000-0000-4000-8000-000000000001',
 }));
-jest.mock('../../../platform/motion/motion', () => ({
+jest.mock('../../../../platform/motion/motion', () => ({
   useReduceMotion: () => false,
 }));
 
@@ -46,6 +46,56 @@ beforeEach(async () => {
 afterEach(() => {
   storage.blocked?.resolve();
   repository.dispose();
+});
+
+it('keeps typing and dirty-close state inside the editor without rendering its screen owner', () => {
+  const ownerRender = jest.fn();
+  const leave = jest.fn();
+  function Fixture() {
+    ownerRender();
+    const flow = useDayReflection(repository);
+    return (
+      <>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open"
+          onPress={() => flow.edit(attempt())}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Reveal"
+          onPress={flow.onEditorOpened}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Leave"
+          onPress={() => flow.beforeClose(leave)}
+        />
+        {flow.editor}
+      </>
+    );
+  }
+  const screen = render(<Fixture />);
+  fireEvent.press(screen.getByRole('button', { name: 'Open' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Reveal' }));
+  ownerRender.mockClear();
+  fireEvent.changeText(
+    screen.getByLabelText('Your day reflection'),
+    'Disposable draft',
+  );
+  expect(screen.getByLabelText('Your day reflection').props.value).toBe(
+    'Disposable draft',
+  );
+  fireEvent.press(screen.getByRole('button', { name: 'Leave' }));
+  expect(screen.getByText('Leave your reflection?')).toBeTruthy();
+  expect(ownerRender).not.toHaveBeenCalled();
+  expect(leave).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  expect(screen.getByLabelText('Your day reflection').props.value).toBe(
+    'Disposable draft',
+  );
+  expect(ownerRender).not.toHaveBeenCalled();
+  screen.unmount();
 });
 
 it.each(['android', 'web'] as const)(

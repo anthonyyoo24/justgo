@@ -944,6 +944,27 @@ staging/release gates. Deferral closes none of these.
 
 **Journey-harness extension:** extend the existing saved browser completion/reflection journeys and lower-level regressions through Progress and calendar editing; add relevant manual native verification, using real API/disposable-database assertions. Verify “10 + 1 = 11” through acknowledgement/refresh/restart, saved reflection visibility, today's cached paging, other-day/month offline restrictions, rollover, rejection corrections and retained memory-only entries. Keep lost-response/account recovery cases running against the integrated path.
 
+**October 10 day-sheet performance:** Anthony reported slower day-sheet opening
+and Add/View actions for 41 attempts than for two attempts in the iPhone
+Simulator development build, then authorized implementation in a separate
+worktree. The [performance handoff](handoffs/day-sheet-performance.md) records
+bounded initial rendering, memoized rows, lazy detail panels and editor-owned
+subscriptions, with native render profiles and regression/UI evidence. The
+change is local on `codex/day-sheet-performance`; publication and owner
+acceptance remain open. Existing Phase 09 physical-device, accessibility and
+release gates are unchanged.
+
+Anthony also authorized grouping the implemented day-detail responsibilities
+into `entries/` and `reflection-editor/`, with tests and motion adapter pairs
+colocated. Keep this organization in a separate local commit from the measured
+performance fix; the same handoff records updated paths and verification.
+
+**October 12 integration:** Anthony authorized merging both local day-sheet
+commits into `codex/phase-08-settings-privacy` after its accessibility fixes were
+committed. The [integration evidence](handoffs/day-sheet-performance.md#phase-08-integration--october-12)
+records combined motion paths, preserved Settings behavior and checks. Existing
+dependency updates, physical-device and release acceptance remain open.
+
 **October 7 motion diagnosis:** paired native recordings reproduced the owner's
 editor delay/jump. Saved text starts its animation effect after 182–228 ms; Add
 after 452–538 ms, with awaited pin/adoption work and late autofocus. The shared

@@ -1200,3 +1200,12 @@ the temporary mirror tab and stopped only the task-owned helper. The existing
 web, phone and API servers remain running. Actual physical-iPhone VoiceOver and
 the existing dependency/native maintenance requirement remain open. This is an
 accessibility fix, not Phase 08 closeout or Git publication.
+
+### October 12 day-sheet performance integration
+
+Anthony authorized merging `codex/day-sheet-performance` into this Phase 08
+branch. The [integration record](day-sheet-performance.md#phase-08-integration--october-12)
+owns combined verification and the seven conflict resolutions. Both original
+performance/organization commits are retained, together with the current
+Settings/account accessibility fixes. This merge does not close Phase 08's
+remaining deletion, analytics, legal publication or physical acceptance work.
