@@ -4,20 +4,17 @@ import type { HapticAdapter } from '../haptics';
 import { defaultCompletionHaptic } from './completion-haptics';
 import type {
   CompletionHaptic,
-  CompletionHapticAdapter,
   CompletionHapticsTesting,
 } from './completion-haptics';
 
 /** Development overrides are session-only; release uses the approved default. */
 export function useCompletionHaptics(
-  current: HapticAdapter,
-  pulsar: CompletionHapticAdapter,
+  adapter: HapticAdapter,
   allowed: () => () => boolean,
 ) {
   const [selected, setSelected] = useState<CompletionHaptic>(
     defaultCompletionHaptic,
   );
-  const [pulsarAvailable] = useState(() => pulsar.isAvailable());
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const runtime = useRef({
@@ -29,11 +26,11 @@ export function useCompletionHaptics(
   const stop = useCallback(() => {
     runtime.current.generation++;
     try {
-      pulsar.stop();
+      adapter.stop();
     } catch {
       // Optional native feedback cannot prevent preference changes or cleanup.
     }
-  }, [pulsar]);
+  }, [adapter]);
   useEffect(() => {
     const state = runtime.current;
     state.alive = true;
@@ -48,23 +45,21 @@ export function useCompletionHaptics(
   }, [stop]);
 
   const play = useCallback(
-    async (stillAllowed: () => boolean, preview = false) => {
-      if (!stillAllowed()) return;
+    async (stillAllowed: () => boolean) => {
+      if (!stillAllowed() || !adapter.isAvailable()) return;
       stop();
       const state = runtime.current;
       const generation = state.generation;
       const fenced = () =>
         state.alive && generation === state.generation && stillAllowed();
       const preset = __DEV__ ? state.selected : defaultCompletionHaptic;
-      if (preset === 'current' || !pulsarAvailable) {
-        if (preview && preset !== 'current')
-          throw new Error('Pulsar module unavailable');
-        await current.play('completed', fenced);
+      if (preset === 'current') {
+        await adapter.play('completed', fenced);
       } else if (fenced()) {
-        pulsar.play(preset);
+        adapter.playPreset(preset);
       }
     },
-    [current, pulsar, pulsarAvailable, stop],
+    [adapter, stop],
   );
   const select = useCallback(
     (preset: CompletionHaptic) => {
@@ -79,12 +74,12 @@ export function useCompletionHaptics(
   const preview = useCallback(async () => {
     const state = runtime.current;
     const permitted = allowed();
-    if (!__DEV__ || state.previewing || !permitted() || !current.isAvailable())
+    if (!__DEV__ || state.previewing || !permitted() || !adapter.isAvailable())
       return;
     state.previewing = true;
     setPreviewing(true);
     setError(null);
-    const pending = play(permitted, true);
+    const pending = play(permitted);
     const generation = state.generation;
     try {
       await pending;
@@ -95,11 +90,10 @@ export function useCompletionHaptics(
       state.previewing = false;
       if (state.alive) setPreviewing(false);
     }
-  }, [allowed, current, play]);
+  }, [allowed, adapter, play]);
 
   const testing: CompletionHapticsTesting = {
     selected,
-    pulsarAvailable,
     previewing,
     error,
     select,

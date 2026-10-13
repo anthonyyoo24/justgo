@@ -182,8 +182,9 @@ and reflection owners invoke shared feedback at accepted user-action boundaries;
 the platform directory imports no product or account code.
 
 The completion group `platform/haptics/completion/` owns the approved Batter default,
-session-only development overrides, preview/cancellation and optional Pulsar
-native/web adapter family with their tests. `dev/haptics/` owns the three screen/test
+session-only development overrides and preview/cancellation with their tests.
+The single Pulsar native/web adapter family lives directly under
+`platform/haptics/`, alongside the saved preference provider and context. `dev/haptics/` owns the three screen/test
 files; the existing guarded preview route loads it using `mode=haptics`.
 No shared platform code imports developer screens. Existing haptics preference
 files remain at their owner, without unrelated folder moves.

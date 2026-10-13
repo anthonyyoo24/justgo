@@ -1,5 +1,13 @@
 # Implementation handoffs
 
+**October 13 Pulsar-only migration:** Anthony authorized replacing Expo Haptics
+with Pulsar for every action. Batter stays the completion default; simple actions
+use Pulsar system heavy taps, and Four heavy taps remains a development comparison.
+The [migration handoff](phase-08-settings-privacy.md#october-13-pulsar-only-migration)
+records the separate local commit, verification and physical-device follow-up.
+Expo Haptics is removed from the source dependency graph; the existing installed
+Pulsar-enabled binary can test the JavaScript migration.
+
 **October 13 Batter default:** Anthony selected Batter for completion and requested
 retaining Test haptics as a development-only tool. Production always uses Batter;
 development can override it in memory, with reload restoring Batter. The

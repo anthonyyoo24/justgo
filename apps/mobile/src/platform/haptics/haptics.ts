@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { PulsarPreset } from './completion/completion-haptics';
 
 export type HapticFeedback = 'accept' | 'completed' | 'selection';
 export type HapticAdapter = {
@@ -7,6 +8,8 @@ export type HapticAdapter = {
     feedback: HapticFeedback,
     stillAllowed: () => boolean,
   ) => Promise<void>;
+  playPreset: (preset: PulsarPreset) => void;
+  stop: () => void;
 };
 export type HapticPreferences = {
   enabled: boolean;

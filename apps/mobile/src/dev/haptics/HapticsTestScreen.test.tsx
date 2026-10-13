@@ -37,7 +37,6 @@ function setup(
   };
   const testing: CompletionHapticsTesting = {
     selected: 'batter',
-    pulsarAvailable: true,
     previewing: false,
     error: null,
     select: jest.fn(),
@@ -95,10 +94,8 @@ it.each([
   expect(screen.testing.preview).not.toHaveBeenCalled();
 });
 it('explains the missing native build and browser without promising vibration', () => {
-  const screen = setup({}, { selected: 'bloom', pulsarAvailable: false });
-  expect(
-    screen.getByText(/Pulsar needs the updated iPhone build/),
-  ).toBeTruthy();
+  const screen = setup({ available: false }, { selected: 'bloom' });
+  expect(screen.getByText(/Pulsar-enabled/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Preview Bloom' })).toBeDisabled();
   screen.preferences.available = false;
   screen.refresh();

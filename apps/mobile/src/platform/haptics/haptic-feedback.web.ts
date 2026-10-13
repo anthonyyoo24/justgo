@@ -4,4 +4,6 @@ import type { HapticAdapter } from './haptics';
 export const hapticAdapter: HapticAdapter = {
   isAvailable: () => false,
   play: async () => {},
+  playPreset: () => {},
+  stop: () => {},
 };

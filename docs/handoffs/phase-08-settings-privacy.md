@@ -1666,3 +1666,84 @@ or saved app/API/database journey pass is claimed for this mobile-only slice.
 Anthony's selection records his preferred effect; automatic-default confirmation
 and wider signed-production/device acceptance remain distinct open checks in
 Phase 08/09. No simulator/browser/mocked-call tactile pass is claimed.
+
+### October 13 Pulsar-only migration
+
+Anthony authorized replacing Expo Haptics with Pulsar for every action, and
+permitted saving the current work first. The existing 45-file haptics/default/tool
+slice was committed locally as **baf739f** (`feat(mobile): add saved haptics and
+Batter completion feedback`), keeping this migration separately reviewable.
+No push, pull request or merge is authorized or performed.
+
+- Removed `expo-haptics` from the mobile manifest and root lockfile; npm removed
+  that one package. `react-native-pulsar` remains pinned at **1.7.0**, with the
+  existing SDK 57 patch pins unchanged.
+- The single `haptic-feedback` native/web adapter family now owns Pulsar I/O for
+  both system heavy taps and named presets. Accept, changed/cleared feelings and
+  successful enabling use `Presets.System.impactHeavy()`; accepted completion
+  still defaults to **Batter**. Sound remains disabled.
+- Removed the duplicate completion-only native/web adapters and merged their
+  native guards/preset/production tests into the shared adapter regressions.
+  The provider and completion hook now use one controllable adapter.
+- Retained all ten developer comparison choices. The earlier **Original Expo
+  effect** is now **Four heavy taps**, recreated through Pulsar at the existing
+  four-tap/70 ms spacing. Production still ignores session overrides; reload
+  restores Batter. The tool remains guarded in Settings, route and screen.
+- Preserved saved-off behavior, quiet hydration/writes, duplicate completion
+  prevention, stop/background/unmount fencing, failure containment and export
+  inclusion of the boolean. Unsupported or older binaries stay usable and quiet;
+  there is no remaining Expo fallback. The testing screen explains that feedback
+  requires a physical iPhone and the Pulsar-enabled development build.
+- Existing signed development build **3c47aa67-e706-4361-8847-e38d61458e48**
+  already contains Pulsar and can run this JavaScript migration after a full
+  reload. It still contains the previously compiled, now-unused Expo native
+  module. A subsequent separately scheduled native build will omit that module;
+  this task does not perform signing/cloud builds or claim a new binary.
+
+Verification:
+
+- Final `npm run check` passes: fresh online Expo Doctor **21/21**, contracts
+  build, types/lint/format, **180 tooling, 54 API, 644 mobile / 75 suites and
+  24 contract cases**. Log: `.local/phase-08/pulsar-only-check.log`.
+- Fresh mobile coverage passes with **97.16% lines / 91.97% branches**, and the
+  unchanged combined all-source/critical floors pass. API/contracts coverage
+  reports are retained for their unchanged source. Logs: `pulsar-only-coverage.log`
+  and `pulsar-only-coverage-gate.log` under `.local/phase-08/`.
+- Regressions cover every named preset, native system heavy taps, the four-tap
+  comparison and cancellation, unsupported modules/hardware, production playback
+  and safe native failures. An integration regression mounts the actual provider
+  with its default Pulsar adapter, verifies every product action through the
+  mocked native SDK, and verifies saved-off, enable feedback and disable behavior.
+  Mocks establish JavaScript wiring, not tactile strength or feel.
+- Cold production Hermes iOS export passes with one worker; log:
+  `.local/phase-08/pulsar-only-ios-export.log`. This establishes bundling, not
+  signed native/release behavior.
+- Restarted only the owned web/phone Metro servers with `--clear`, preserving
+  loopback **8081**, LAN **8084** and the existing HTTPS staging API. File
+  watching remains enabled. The fresh iOS bundle contains Pulsar system heavy
+  taps, Batter default, Four heavy taps and the staging API, with no
+  `ExpoHaptics` module or `expo-haptics/` source. Audit:
+  `.local/phase-08/pulsar-only-phone-audit.json`. Both servers remain running.
+- In-app side-panel verification passes at the default **1165 × 1036** viewport:
+  Four heavy taps and Afterglow selection update the Preview label, reload
+  restores Batter, Back returns to Settings and Test haptics reopens the picker.
+  Haptics off survives browser reload; restored it to its prior on state. The
+  silent browser honestly disables native preview/stop controls. Screenshot
+  `.local/phase-08/pulsar-only-screen.jpg` was saved and visually inspected.
+  No outside browser, simulator or real account activity was used.
+- `npm ls expo-haptics --all` reports an empty dependency graph; the installed
+  Pulsar version remains **1.7.0**. No API/database boundary or phase closeout
+  changed, so no new database, saved journey or hosted CI acceptance is claimed.
+
+Directory review: inspected complete contents of the repository/mobile roots,
+Settings, developer haptics, platform haptics and its completion group, and the
+touched plan/architecture/handoff directories. Removing four duplicated adapter
+files leaves six direct platform haptics files, three completion files and three
+developer haptics files. Existing responsibility groups remain clear; no new
+subfolder or unrelated moves are needed.
+
+Physical follow-up remains in Phase 08: reload the existing Pulsar-enabled iPhone
+app, verify the enable tap, accepted challenge, changed/cleared feeling and Batter
+completion, then disable Haptics and repeat. Check the comparison tool's Preview,
+Stop, background interruption and reload-to-Batter behavior. No physical/native
+or release acceptance is inferred from browser, mocked SDK or bundle checks.

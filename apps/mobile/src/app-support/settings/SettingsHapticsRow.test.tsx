@@ -45,6 +45,8 @@ function memory(initial: string | null = null) {
 function setup(storage: HapticsStorage = memory(), available = true) {
   const adapter = {
     isAvailable: () => available,
+    playPreset: jest.fn(),
+    stop: jest.fn(),
     play: jest
       .fn<
         ReturnType<HapticAdapter['play']>,

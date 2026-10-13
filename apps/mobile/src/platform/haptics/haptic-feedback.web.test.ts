@@ -5,4 +5,6 @@ it('keeps web previews quiet without using browser vibration', async () => {
   await expect(
     hapticAdapter.play('completed', () => true),
   ).resolves.toBeUndefined();
+  expect(() => hapticAdapter.playPreset('batter')).not.toThrow();
+  expect(() => hapticAdapter.stop()).not.toThrow();
 });

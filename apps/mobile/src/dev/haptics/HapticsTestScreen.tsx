@@ -29,8 +29,7 @@ export function HapticsTestScreen() {
     preferences.available &&
     preferences.enabled &&
     !preferences.loading &&
-    !preferences.saving &&
-    (testing.selected === 'current' || testing.pulsarAvailable);
+    !preferences.saving;
   const label = completionHaptics.find(
     ({ id }) => id === testing.selected,
   )!.label;
@@ -47,12 +46,8 @@ export function HapticsTestScreen() {
         </Text>
         {!preferences.available ? (
           <Text style={styles.description}>
-            Feel these effects on a physical iPhone. This preview stays silent.
-          </Text>
-        ) : !testing.pulsarAvailable ? (
-          <Text style={styles.description}>
-            Pulsar needs the updated iPhone build. Until then, Completed uses
-            the original Expo effect.
+            Feel these effects on a physical iPhone with the Pulsar-enabled
+            development build. This preview stays silent when unsupported.
           </Text>
         ) : null}
         {!preferences.enabled && (

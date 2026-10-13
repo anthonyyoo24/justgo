@@ -8,12 +8,8 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { hapticAdapter } from './haptic-feedback';
-import { pulsarAdapter } from './completion/pulsar-feedback';
 import { useCompletionHaptics } from './completion/useCompletionHaptics';
-import {
-  CompletionHapticsContext,
-  type CompletionHapticAdapter,
-} from './completion/completion-haptics';
+import { CompletionHapticsContext } from './completion/completion-haptics';
 import {
   HapticsContext,
   type HapticAdapter,
@@ -27,16 +23,13 @@ export function HapticsPreferencesProvider({
   children,
   storage = AsyncStorage,
   adapter = hapticAdapter,
-  completionAdapter = pulsarAdapter,
 }: PropsWithChildren<{
   storage?: HapticsStorage;
   adapter?: HapticAdapter;
-  completionAdapter?: CompletionHapticAdapter;
 }>) {
   const [dependencies] = useState(() => ({
     storage,
     adapter,
-    completionAdapter,
   }));
   const [available] = useState(() => dependencies.adapter.isAvailable());
   const [enabled, setChoice] = useState(true);
@@ -64,11 +57,7 @@ export function HapticsPreferencesProvider({
     testing,
     play: playCompletion,
     stop,
-  } = useCompletionHaptics(
-    dependencies.adapter,
-    dependencies.completionAdapter,
-    allowed,
-  );
+  } = useCompletionHaptics(dependencies.adapter, allowed);
 
   useEffect(() => {
     const state = runtime.current;

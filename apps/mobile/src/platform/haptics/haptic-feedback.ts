@@ -1,17 +1,25 @@
-import { requireOptionalNativeModule } from 'expo';
-import * as Haptics from 'expo-haptics';
-import { AppState, Platform } from 'react-native';
+import { AppState, Platform, TurboModuleRegistry } from 'react-native';
 import type { HapticAdapter } from './haptics';
 
+function loadPulsar() {
+  if (Platform.OS !== 'ios' || !TurboModuleRegistry.get('RNPulsar'))
+    return null;
+  // Pulsar enforces its native module at import time. Older binaries must
+  // remain usable without loading that SDK or producing tactile feedback.
+  return require('react-native-pulsar') as typeof import('react-native-pulsar');
+}
+
 export const hapticAdapter: HapticAdapter = {
-  isAvailable: () =>
-    Platform.OS === 'ios' &&
-    requireOptionalNativeModule('ExpoHaptics') !== null,
+  isAvailable: () => {
+    try {
+      return (loadPulsar()?.Settings.getHapticsSupportLevel() ?? 0) > 0;
+    } catch {
+      return false;
+    }
+  },
   async play(feedback, stillAllowed) {
-    // SDK 57 uses an optional native import, so older development binaries can
-    // load the app safely. Only call its methods when the module is available.
-    // One firm tap for deliberate input; completion gets a short vibration-like
-    // burst. Recheck permission and foreground state before every native pulse.
+    // One system heavy tap for deliberate input. The four-tap development
+    // comparison uses the same Pulsar call; real completion defaults to Batter.
     const pulses = feedback === 'completed' ? 4 : 1;
     for (let pulse = 0; pulse < pulses; pulse++) {
       if (
@@ -20,9 +28,23 @@ export const hapticAdapter: HapticAdapter = {
         AppState.currentState !== 'active'
       )
         return;
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      const sdk = loadPulsar();
+      if (!sdk) return;
+      sdk.Settings.enableSound(false);
+      sdk.Presets.System.impactHeavy();
       if (pulse < pulses - 1)
         await new Promise<void>((resolve) => setTimeout(resolve, 70));
     }
+  },
+  playPreset: (preset) => {
+    if (AppState.currentState !== 'active') return;
+    const sdk = loadPulsar();
+    if (!sdk || !hapticAdapter.isAvailable())
+      throw new Error('Pulsar module unavailable');
+    sdk.Settings.enableSound(false);
+    sdk.Presets[preset]();
+  },
+  stop: () => {
+    loadPulsar()?.Settings.stopHaptics();
   },
 };

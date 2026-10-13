@@ -1,21 +1,54 @@
-import { AppState, Platform } from 'react-native';
-import { requireOptionalNativeModule } from 'expo';
-import * as Haptics from 'expo-haptics';
+import { AppState, Platform, TurboModuleRegistry } from 'react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { createElement, type PropsWithChildren } from 'react';
+import { HapticsPreferencesProvider } from './HapticsPreferencesProvider';
+import { useHapticPreferences } from './haptics';
+import { completionHaptics } from './completion/completion-haptics';
 import { hapticAdapter } from './haptic-feedback';
 
-jest.mock('expo', () => ({ requireOptionalNativeModule: jest.fn(() => ({})) }));
-jest.mock('expo-haptics', () => ({
-  impactAsync: jest.fn(async () => {}),
-  notificationAsync: jest.fn(async () => {}),
-  selectionAsync: jest.fn(async () => {}),
-  ImpactFeedbackStyle: { Heavy: 'heavy' },
+const mockLoaded = jest.fn();
+const mockImpact = jest.fn();
+const mockPreset = jest.fn();
+const mockSupport = jest.fn(() => 3);
+const mockSound = jest.fn();
+const mockStop = jest.fn();
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(async () => null),
+  setItem: jest.fn(async () => {}),
 }));
+jest.mock('react-native-pulsar', () => {
+  mockLoaded();
+  return {
+    Presets: {
+      System: { impactHeavy: () => mockImpact() },
+      ...Object.fromEntries(
+        [
+          'bloom',
+          'fanfare',
+          'fizz',
+          'flourish',
+          'trumpet',
+          'triumph',
+          'barrage',
+          'batter',
+          'afterglow',
+        ].map((name) => [name, () => mockPreset(name)]),
+      ),
+    },
+    Settings: {
+      enableSound: (value: boolean) => mockSound(value),
+      getHapticsSupportLevel: () => mockSupport(),
+      stopHaptics: () => mockStop(),
+    },
+  };
+});
 const originalState = AppState.currentState;
 beforeEach(() => {
   jest.clearAllMocks();
   jest.replaceProperty(Platform, 'OS', 'ios');
   AppState.currentState = 'active';
-  jest.mocked(requireOptionalNativeModule).mockReturnValue({});
+  jest.spyOn(TurboModuleRegistry, 'get').mockReturnValue({});
+  mockSupport.mockReturnValue(3);
 });
 afterEach(() => {
   jest.restoreAllMocks();
@@ -24,103 +57,176 @@ afterEach(() => {
 });
 
 it.each(['accept', 'selection'] as const)(
-  'gives %s one heavy impact',
+  'gives %s one Pulsar system heavy impact without audio',
   async (feedback) => {
     await hapticAdapter.play(feedback, () => true);
-    expect(Haptics.impactAsync).toHaveBeenCalledWith('heavy');
-    expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
-    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
-    expect(Haptics.selectionAsync).not.toHaveBeenCalled();
+    expect(mockImpact).toHaveBeenCalledTimes(1);
+    expect(mockSound).toHaveBeenCalledWith(false);
+    expect(mockPreset).not.toHaveBeenCalled();
   },
 );
-it('gives completion a longer burst of four heavy impacts', async () => {
+it('recreates the four-heavy-tap comparison entirely through Pulsar', async () => {
   jest.useFakeTimers();
   const pending = hapticAdapter.play('completed', () => true);
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+  expect(mockImpact).toHaveBeenCalledTimes(1);
   await jest.advanceTimersByTimeAsync(69);
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+  expect(mockImpact).toHaveBeenCalledTimes(1);
   await jest.advanceTimersByTimeAsync(1);
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(2);
+  expect(mockImpact).toHaveBeenCalledTimes(2);
   await jest.advanceTimersByTimeAsync(70);
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(3);
+  expect(mockImpact).toHaveBeenCalledTimes(3);
   await jest.advanceTimersByTimeAsync(70);
   await pending;
-  expect(jest.mocked(Haptics.impactAsync).mock.calls).toEqual([
-    ['heavy'],
-    ['heavy'],
-    ['heavy'],
-    ['heavy'],
-  ]);
-  expect(Haptics.notificationAsync).not.toHaveBeenCalled();
-  expect(Haptics.selectionAsync).not.toHaveBeenCalled();
+  expect(mockImpact).toHaveBeenCalledTimes(4);
+  expect(mockPreset).not.toHaveBeenCalled();
   expect(jest.getTimerCount()).toBe(0);
 });
-it('stops the remaining completion pulses after feedback is disabled or fenced', async () => {
+it('stops remaining comparison taps when disabled or fenced', async () => {
   jest.useFakeTimers();
   let allowed = true;
   const pending = hapticAdapter.play('completed', () => allowed);
   await jest.advanceTimersByTimeAsync(70);
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(2);
+  expect(mockImpact).toHaveBeenCalledTimes(2);
   allowed = false;
   await jest.advanceTimersByTimeAsync(70);
   await pending;
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(2);
+  expect(mockImpact).toHaveBeenCalledTimes(2);
   expect(jest.getTimerCount()).toBe(0);
 });
-it('stops a completion burst when the app leaves the foreground', async () => {
+it('stops a comparison burst when the app leaves the foreground', async () => {
   jest.useFakeTimers();
   const pending = hapticAdapter.play('completed', () => true);
   AppState.currentState = 'background';
   await jest.advanceTimersByTimeAsync(70);
   await pending;
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+  expect(mockImpact).toHaveBeenCalledTimes(1);
   expect(jest.getTimerCount()).toBe(0);
 });
-it('stops a completion burst after a native pulse fails', async () => {
+it('stops a comparison burst after a native tap fails', async () => {
   jest.useFakeTimers();
-  jest
-    .mocked(Haptics.impactAsync)
-    .mockResolvedValueOnce(undefined)
-    .mockRejectedValueOnce(new Error('unavailable'));
+  mockImpact
+    .mockImplementationOnce(() => {})
+    .mockImplementationOnce(() => {
+      throw new Error('unavailable');
+    });
   const result = expect(
     hapticAdapter.play('completed', () => true),
   ).rejects.toThrow('unavailable');
   await jest.advanceTimersByTimeAsync(70);
   await result;
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(2);
+  expect(mockImpact).toHaveBeenCalledTimes(2);
   expect(jest.getTimerCount()).toBe(0);
 });
-it('keeps a development binary without the native module usable', async () => {
-  jest.mocked(requireOptionalNativeModule).mockReturnValue(null);
+it('never loads the enforcing SDK on an older binary', async () => {
+  jest.mocked(TurboModuleRegistry.get).mockReturnValue(null);
   expect(hapticAdapter.isAvailable()).toBe(false);
-  await expect(
-    hapticAdapter.play('accept', () => true),
-  ).resolves.toBeUndefined();
-  expect(Haptics.impactAsync).not.toHaveBeenCalled();
+  await hapticAdapter.play('accept', () => true);
+  expect(() => hapticAdapter.playPreset('batter')).toThrow('unavailable');
+  hapticAdapter.stop();
+  expect(mockLoaded).not.toHaveBeenCalled();
+  expect(mockImpact).not.toHaveBeenCalled();
+  expect(mockStop).not.toHaveBeenCalled();
+});
+it('stays unavailable on unsupported hardware or a failed engine', async () => {
+  mockSupport.mockReturnValue(0);
+  expect(hapticAdapter.isAvailable()).toBe(false);
+  await hapticAdapter.play('selection', () => true);
+  expect(() => hapticAdapter.playPreset('batter')).toThrow('unavailable');
+  expect(mockImpact).not.toHaveBeenCalled();
+  expect(mockPreset).not.toHaveBeenCalled();
+  mockSupport.mockImplementationOnce(() => {
+    throw new Error('engine');
+  });
+  expect(hapticAdapter.isAvailable()).toBe(false);
 });
 it('does not produce iPhone feedback on other platforms', async () => {
   jest.replaceProperty(Platform, 'OS', 'android');
   expect(hapticAdapter.isAvailable()).toBe(false);
   await hapticAdapter.play('completed', () => true);
-  expect(Haptics.impactAsync).not.toHaveBeenCalled();
+  expect(() => hapticAdapter.playPreset('bloom')).toThrow('unavailable');
+  expect(mockImpact).not.toHaveBeenCalled();
+  expect(mockPreset).not.toHaveBeenCalled();
 });
-it('rechecks the preference before producing feedback', async () => {
+it('rechecks permission before producing a tap', async () => {
   await hapticAdapter.play('selection', () => false);
-  expect(Haptics.impactAsync).not.toHaveBeenCalled();
+  expect(mockImpact).not.toHaveBeenCalled();
 });
 it.each(['background', 'inactive'] as const)(
   'stays quiet in %s',
   async (state) => {
     AppState.currentState = state;
     await hapticAdapter.play('selection', () => true);
-    expect(Haptics.impactAsync).not.toHaveBeenCalled();
+    hapticAdapter.playPreset('batter');
+    expect(mockImpact).not.toHaveBeenCalled();
+    expect(mockPreset).not.toHaveBeenCalled();
   },
 );
-it('lets the provider contain native rejections', async () => {
-  jest
-    .mocked(Haptics.impactAsync)
-    .mockRejectedValueOnce(new Error('unavailable'));
+it('lets the provider contain native tap failures', async () => {
+  mockImpact.mockImplementationOnce(() => {
+    throw new Error('unavailable');
+  });
   await expect(hapticAdapter.play('selection', () => true)).rejects.toThrow(
     'unavailable',
   );
+});
+it.each(completionHaptics.filter(({ id }) => id !== 'current'))(
+  'plays $label through Pulsar with audio disabled',
+  ({ id }) => {
+    if (id === 'current') throw new Error('Expected a Pulsar preset');
+    hapticAdapter.playPreset(id);
+    expect(mockSound).toHaveBeenCalledWith(false);
+    expect(mockPreset).toHaveBeenCalledWith(id);
+    hapticAdapter.stop();
+    expect(mockStop).toHaveBeenCalledTimes(1);
+  },
+);
+it('supports taps, Batter and stop in production', async () => {
+  const development = globalThis as typeof globalThis & { __DEV__: boolean };
+  const original = development.__DEV__;
+  try {
+    development.__DEV__ = false;
+    await hapticAdapter.play('accept', () => true);
+    hapticAdapter.playPreset('batter');
+    hapticAdapter.stop();
+    expect(mockImpact).toHaveBeenCalledTimes(1);
+    expect(mockPreset).toHaveBeenCalledWith('batter');
+    expect(mockStop).toHaveBeenCalledTimes(1);
+  } finally {
+    development.__DEV__ = original;
+  }
+});
+
+it('wires the real provider to Pulsar for every product action and respects saved off', async () => {
+  const storage = {
+    getItem: async () => 'false',
+    setItem: jest
+      .fn<Promise<void>, [string, string]>()
+      .mockResolvedValue(undefined),
+  };
+  const wrapper = ({ children }: PropsWithChildren) =>
+    createElement(HapticsPreferencesProvider, { storage }, children);
+  const hook = renderHook(useHapticPreferences, { wrapper });
+  await waitFor(() => expect(hook.result.current.loading).toBe(false));
+  for (const kind of ['accept', 'selection', 'completed'] as const)
+    await act(async () => hook.result.current.feedback(kind));
+  expect(mockImpact).not.toHaveBeenCalled();
+  expect(mockPreset).not.toHaveBeenCalled();
+  await act(async () => hook.result.current.setEnabled(true));
+  expect(mockImpact).toHaveBeenCalledTimes(1);
+  await act(async () => hook.result.current.feedback('accept'));
+  await act(async () => hook.result.current.feedback('selection'));
+  await act(async () => hook.result.current.feedback('completed'));
+  expect(mockImpact).toHaveBeenCalledTimes(3);
+  expect(mockPreset.mock.calls).toEqual([['batter']]);
+  await act(async () => hook.result.current.setEnabled(false));
+  for (const kind of ['accept', 'selection', 'completed'] as const)
+    await act(async () => hook.result.current.feedback(kind));
+  expect(mockImpact).toHaveBeenCalledTimes(3);
+  expect(mockPreset).toHaveBeenCalledTimes(1);
+  expect(storage.setItem.mock.calls.map((args) => args[1])).toEqual([
+    'true',
+    'false',
+  ]);
+  hook.unmount();
+  expect(mockStop).toHaveBeenCalled();
 });
