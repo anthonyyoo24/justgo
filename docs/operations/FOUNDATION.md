@@ -12,8 +12,8 @@ Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versi
 | -------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                         |
 | TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                       |
-| Expo / React Native / React      | 57.0.27 / 0.86.3 / 19.2.3                                                                          |
-| Expo Router / development client | 57.0.25 / 57.0.19                                                                                  |
+| Expo / React Native / React      | 57.0.28 / 0.86.3 / 19.2.3                                                                          |
+| Expo Router / development client | 57.0.26 / 57.0.20                                                                                  |
 | Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                                          |
 | Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                                    |
 | Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                                           |
@@ -23,7 +23,7 @@ Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versi
 | iOS                              | 16.4 minimum, Hermes; original iPhone 17 / iOS 26.4 smoke, retained Phase 07 QA device on iOS 26.5 |
 | Fastify / Drizzle / pg           | 5.12.5 / 0.45.2 (kit 0.31.10) / 8.23.0                                                             |
 | PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                                        |
-| Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.5, React Native Testing Library 13.3.3                   |
+| Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.6, React Native Testing Library 13.3.3                   |
 
 The React family is overridden to the Expo-supported version to prevent a test renderer from pulling an incompatible React. Expo Doctor validates the installed native set. Recheck the [Expo 57 reference](https://docs.expo.dev/versions/v57.0.0/) and [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/) as a set when upgrading. Do not update Worklets independently.
 

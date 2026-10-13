@@ -25,6 +25,10 @@ const mockChallenges = {
   }),
 };
 const mockActivity = { getRepository: () => mockRepository };
+const mockFeedback = jest.fn();
+jest.mock('../../platform/haptics/haptics', () => ({
+  useHapticFeedback: () => mockFeedback,
+}));
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '20000000-0000-4000-8000-000000000002',
 }));
@@ -40,6 +44,7 @@ jest.mock('../../app-support/providers/AppProvider', () => ({
   useJournal: () => mockRepository,
 }));
 beforeEach(async () => {
+  mockFeedback.mockClear();
   storage = new MemoryStorage();
   mockRepository = new AccountRepository({
     accountId: owner,
@@ -60,6 +65,19 @@ beforeEach(async () => {
 afterEach(() => {
   mockRepository?.dispose();
   jest.useRealTimers();
+});
+it('plays selection feedback only for a user change, without sending feeling or reflection data', () => {
+  const screen = render(<ReflectionScreen />);
+  expect(mockFeedback).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('radio', { name: 'A little bit better' }));
+  expect(mockFeedback.mock.calls).toEqual([['selection']]);
+  fireEvent.press(screen.getByRole('radio', { name: 'A little bit better' }));
+  expect(mockFeedback.mock.calls).toEqual([['selection'], ['selection']]);
+  fireEvent.changeText(
+    screen.getByLabelText('Your reflection'),
+    'Disposable test note',
+  );
+  expect(mockFeedback).toHaveBeenCalledTimes(2);
 });
 it('replaces the missing-activity message with a working editor after a slow journal read', async () => {
   const raw = storage.values.get(`justgo:v1:${owner}:journal`)!;

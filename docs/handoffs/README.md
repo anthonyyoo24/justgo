@@ -1,5 +1,26 @@
 # Implementation handoffs
 
+**October 13 Batter default:** Anthony selected Batter for completion and requested
+retaining Test haptics as a development-only tool. Production always uses Batter;
+development can override it in memory, with reload restoring Batter. The
+[default-selection handoff](phase-08-settings-privacy.md#october-13-batter-default-and-retained-development-tool)
+records verification and the remaining native/release checks. This supersedes the
+earlier plan to remove the comparison screen before release.
+
+**October 13 haptics comparison:** Settings → Test haptics now compares nine
+Pulsar presets and the current Expo effect through a development-only screen.
+The session choice controls Preview and real accepted completion; release builds
+keep the existing effect. The [comparison handoff](phase-08-settings-privacy.md#october-13-development-haptics-comparison)
+records passing automated/browser checks and a successful signed internal iPhone
+build with Pulsar. Installation, physical comparison and final selection remain
+open; no final Pulsar effect or phase acceptance is claimed.
+
+**October 13 haptics strength:** Anthony reported barely perceptible feedback on his physical iPhone. Accept, feeling changes and the enable preview request one heavy impact; completion gives a short burst of four heavy impacts after the owner requested vibration-like success feedback. Each pulse respects disabling/background state, and a native failure stops the burst. The [strength correction](phase-08-settings-privacy.md#october-13-haptics-strength-correction) records the regression checks and leaves physical feel acceptance open for retesting. Reload the existing haptics-enabled development app; no new binary is needed.
+
+**October 12 updated iPhone build:** Anthony authorized the separate native build for haptics. SDK patch alignment now passes fresh Expo Doctor 21/21 and the full check/coverage gates. The [build follow-up](phase-08-settings-privacy.md#october-12-updated-physical-development-build) records reused signing, archive checks, the successful internal iPhone build, verified signed artifact/native modules and installation QR; physical-device acceptance remains open.
+
+**October 12 haptics:** Anthony moved implementation and physical testing together back to Phase 08. The saved switch, three deliberate action triggers, silent web/missing-module fallback and export preference are implemented. The [follow-up](phase-08-settings-privacy.md#october-12-haptics-implementation) records verification; an updated signed development build and physical-iPhone feel/disabled/persistence checks remain open.
+
 **October 12 day-sheet integration:** Anthony authorized merging the two day-sheet
 performance/organization commits into Phase 08 after accessibility testing.
 The [integration record](day-sheet-performance.md#phase-08-integration--october-12)

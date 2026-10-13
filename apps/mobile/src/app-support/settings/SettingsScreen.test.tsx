@@ -40,6 +40,16 @@ jest.mock('../../platform/motion/motion', () => ({
     setReduced: jest.fn(),
   }),
 }));
+jest.mock('../../platform/haptics/haptics', () => ({
+  useHapticPreferences: () => ({
+    enabled: true,
+    available: true,
+    loading: false,
+    saving: false,
+    error: null,
+    setEnabled: jest.fn(),
+  }),
+}));
 
 const mockRouter = {
   canGoBack: jest.fn(() => true),
@@ -116,7 +126,6 @@ it('renders the actual route with scoped groups, honest pending controls and no 
     'About',
   ]);
   for (const label of [
-    'Haptics',
     'Delete account',
     'General analytics',
     'Sensitive metadata',
@@ -126,6 +135,7 @@ it('renders the actual route with scoped groups, honest pending controls and no 
         .accessibilityState.disabled,
     ).toBe(true);
   expect(screen.getByRole('switch', { name: 'Reduce motion' })).toBeEnabled();
+  expect(screen.getByRole('switch', { name: 'Haptics' })).toBeEnabled();
   expect(screen.queryByText('Practice reminders')).toBeNull();
   expect(screen.queryByText('Reset progress')).toBeNull();
   expect(screen.queryAllByRole('tab')).toHaveLength(0);
@@ -148,6 +158,22 @@ it('ends after About without version, test-build or developer-preview footer ite
     screen.queryByRole('link', { name: 'Preview app screens' }),
   ).toBeNull();
   expect(screen.getByRole('button', { name: 'Terms of use' })).toBeTruthy();
+});
+
+it('offers Test haptics only in development', () => {
+  const development = globalThis as typeof globalThis & { __DEV__: boolean };
+  const original = development.__DEV__;
+  try {
+    development.__DEV__ = true;
+    const screen = render(<SettingsScreen />);
+    fireEvent.press(screen.getByRole('link', { name: 'Test haptics' }));
+    expect(mockRouter.push).toHaveBeenCalledWith('/preview?mode=haptics');
+    development.__DEV__ = false;
+    screen.rerender(<SettingsScreen />);
+    expect(screen.queryByRole('link', { name: 'Test haptics' })).toBeNull();
+  } finally {
+    development.__DEV__ = original;
+  }
 });
 
 it('groups the two contact actions under Support above About and keeps information links in About', () => {

@@ -20,7 +20,12 @@ const capture = {
   now: () => Date.parse(`${today}T23:59:00Z`),
   timeZone: () => zone,
 };
+const mockFeedback = jest.fn();
+jest.mock('../../platform/haptics/haptics', () => ({
+  useHapticFeedback: () => mockFeedback,
+}));
 beforeEach(async () => {
+  mockFeedback.mockClear();
   storage = new MemoryStorage();
   repository = new AccountRepository({
     accountId: owner,
@@ -54,6 +59,8 @@ it('captures one local start, freezes its card/duration, and gives up without a 
     turn: 0,
   });
   expect(screen.result.current.active).not.toHaveProperty('deadlineAt');
+  expect(mockFeedback).toHaveBeenCalledTimes(1);
+  expect(mockFeedback).toHaveBeenCalledWith('accept');
   expect(controller.getSnapshot()).not.toHaveProperty('active');
   await act(async () =>
     repository.cacheCatalog({
@@ -69,6 +76,7 @@ it('captures one local start, freezes its card/duration, and gives up without a 
     durationSeconds: 300,
   });
   await act(async () => screen.result.current.finish('given_up'));
+  expect(mockFeedback).toHaveBeenCalledTimes(1);
   expect(screen.result.current.active).toBeNull();
   expect(controller.getSnapshot().queues.streets?.turn).toBe(1);
   expect(repository.store.getState().journal.operations).toEqual([]);
@@ -77,6 +85,7 @@ it('captures one local start, freezes its card/duration, and gives up without a 
 it('ignores empty decks and skips locally before accepting', async () => {
   const screen = renderHook(() => useActiveChallenge(controller, capture));
   await act(async () => screen.result.current.onAction(-1));
+  expect(mockFeedback).not.toHaveBeenCalled();
   expect(controller.getSnapshot().queues.streets?.turn).toBe(1);
   await act(async () => screen.result.current.onAction(1));
   expect(screen.result.current.active?.turn).toBe(1);
@@ -97,6 +106,7 @@ it('preserves original start values through a slow completion, refuses give-up a
     first = screen.result.current.finish('completed');
     duplicate = screen.result.current.finish('completed');
   });
+  expect(mockFeedback.mock.calls).toEqual([['accept']]);
   await act(async () => screen.result.current.finish('given_up'));
   expect(screen.result.current.active).not.toBeNull();
   await act(async () => {
@@ -111,6 +121,9 @@ it('preserves original start values through a slow completion, refuses give-up a
     startTimeZone: zone,
     activityDate: today,
   });
+  expect(mockFeedback.mock.calls).toEqual([['accept'], ['completed']]);
+  await act(async () => screen.result.current.finish('completed'));
+  expect(mockFeedback).toHaveBeenCalledTimes(2);
   screen.unmount();
 });
 it('resets unfinished activity on remount and ignores callbacks retained after unmount', async () => {
@@ -120,8 +133,41 @@ it('resets unfinished activity on remount and ignores callbacks retained after u
   screen.unmount();
   await old.onAction(1);
   await old.finish('completed');
+  expect(mockFeedback.mock.calls).toEqual([['accept']]);
   const fresh = renderHook(() => useActiveChallenge(controller, capture));
   expect(fresh.result.current.active).toBeNull();
   expect(repository.store.getState().journal.operations).toEqual([]);
   fresh.unmount();
+});
+
+it('does not celebrate a failed local completion and celebrates its successful retry once', async () => {
+  const screen = renderHook(() => useActiveChallenge(controller, capture));
+  await act(async () => screen.result.current.onAction(1));
+  jest
+    .spyOn(repository, 'complete')
+    .mockRejectedValueOnce(new Error('completion unavailable'));
+  await act(async () => screen.result.current.finish('completed'));
+  expect(controller.getSnapshot().success).toBeNull();
+  expect(mockFeedback.mock.calls).toEqual([['accept']]);
+  await act(async () => screen.result.current.finish('completed'));
+  expect(controller.getSnapshot().success).not.toBeNull();
+  expect(mockFeedback.mock.calls).toEqual([['accept'], ['completed']]);
+  screen.unmount();
+});
+
+it('does not play late completion feedback after leaving the account flow', async () => {
+  const screen = renderHook(() => useActiveChallenge(controller, capture));
+  await act(async () => screen.result.current.onAction(1));
+  const block = deferred<void>();
+  storage.blocked = block;
+  let completion!: Promise<void>;
+  act(() => {
+    completion = screen.result.current.finish('completed');
+  });
+  screen.unmount();
+  await act(async () => {
+    block.resolve();
+    await completion;
+  });
+  expect(mockFeedback.mock.calls).toEqual([['accept']]);
 });

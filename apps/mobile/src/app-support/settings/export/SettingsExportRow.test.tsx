@@ -22,6 +22,15 @@ let mockOwner: string | null = owner;
 let mockRepo: AccountRepository | null;
 let mockClient: AccountClient;
 let mockBlur: (() => void) | undefined;
+let mockHapticsLoading = false;
+let mockHapticsSaving = false;
+jest.mock('../../../platform/haptics/haptics', () => ({
+  useHapticPreferences: () => ({
+    enabled: true,
+    loading: mockHapticsLoading,
+    saving: mockHapticsSaving,
+  }),
+}));
 const mockRouter = { push: jest.fn() };
 jest.mock('../../providers/AppProvider', () => ({
   useRuntime: () => ({ client: mockClient }),
@@ -52,6 +61,8 @@ jest.mock('expo-router', () => {
 const save = jest.mocked(saveExportFile);
 let fetcher: jest.Mock;
 beforeEach(async () => {
+  mockHapticsLoading = false;
+  mockHapticsSaving = false;
   mockOwner = owner;
   mockRouter.push.mockReset();
   mockRepo = new AccountRepository({
@@ -99,8 +110,28 @@ it('requires an explicit export action and creates the real archive with phone-o
   const archive = save.mock.calls[0]![0];
   const json = JSON.parse(strFromU8(unzipSync(archive.bytes)['data.json']!));
   expect(json.localChanges).toHaveLength(1);
+  expect(json.preferences).toEqual({ reduceMotion: false, haptics: true });
   expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
 });
+it.each(['hydrating', 'saving'])(
+  'waits for %s preferences instead of exporting a stale choice',
+  (phase) => {
+    mockHapticsLoading = phase === 'hydrating';
+    mockHapticsSaving = phase === 'saving';
+    const screen = render(<SettingsExportRow />);
+    const button = screen.getByRole('button', { name: 'Export my data' });
+    expect(button).toBeDisabled();
+    fireEvent.press(button);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    mockHapticsLoading = false;
+    mockHapticsSaving = false;
+    screen.rerender(<SettingsExportRow />);
+    expect(
+      screen.getByRole('button', { name: 'Export my data' }),
+    ).toBeEnabled();
+  },
+);
 it('quietly returns to Settings after dismissing sharing and allows another export', async () => {
   const dismissed = deferred<'cancelled'>();
   save.mockImplementationOnce(() => dismissed.promise);

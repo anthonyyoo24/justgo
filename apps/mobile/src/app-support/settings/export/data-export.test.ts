@@ -73,6 +73,7 @@ async function setup(
         client,
         repository: repo,
         reduceMotion: true,
+        haptics: false,
         signal: controller.signal,
       }),
     switchOwner: () => {
@@ -103,7 +104,7 @@ it('produces a valid complete empty ZIP with metadata and a CSV header', async (
   expect(result.json).toMatchObject({
     formatVersion: 1,
     account: { id: owner },
-    preferences: { reduceMotion: true },
+    preferences: { reduceMotion: true, haptics: false },
     attempts: [],
     localChanges: [],
   });

@@ -2,10 +2,17 @@ import { render } from '@testing-library/react-native';
 
 const mockPreviewModuleLoaded = jest.fn();
 const mockPreviewRendered = jest.fn();
+const mockHapticsLoaded = jest.fn();
 const mockPreviewParams = {
+  mode: '',
   progressState: 'loading',
   progressDayState: 'initial-error',
 };
+jest.mock('../dev/haptics/HapticsTestScreen', () => {
+  mockHapticsLoaded();
+  const { Text } = require('react-native') as typeof import('react-native');
+  return { HapticsTestScreen: () => <Text>Haptics testing</Text> };
+});
 jest.mock('../dev/previews/ScreenPreview', () => {
   mockPreviewModuleLoaded();
   const { Text } = require('react-native') as typeof import('react-native');
@@ -31,8 +38,21 @@ const development = globalThis as typeof globalThis & { __DEV__: boolean };
 const initialDevelopment = development.__DEV__;
 afterEach(() => {
   development.__DEV__ = initialDevelopment;
+  mockPreviewParams.mode = '';
   mockPreviewParams.progressDayState = 'initial-error';
   mockPreviewParams.progressState = 'loading';
+});
+
+it('loads the haptics screen only through the development guard', () => {
+  mockPreviewParams.mode = 'haptics';
+  development.__DEV__ = false;
+  const screen = render(<PreviewRoute />);
+  expect(screen.getByText('Redirect: /')).toBeTruthy();
+  expect(mockHapticsLoaded).not.toHaveBeenCalled();
+  development.__DEV__ = true;
+  screen.rerender(<PreviewRoute />);
+  expect(screen.getByText('Haptics testing')).toBeTruthy();
+  expect(mockHapticsLoaded).toHaveBeenCalledTimes(1);
 });
 
 it('does not load developer fixtures in production and preserves the development route', () => {

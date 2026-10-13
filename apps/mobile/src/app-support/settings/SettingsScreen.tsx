@@ -3,19 +3,29 @@ import { Pressable, StyleSheet } from 'react-native';
 import { SettingsInformationGroups } from './information/SettingsInformationGroups';
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import { SettingsMotionRow } from './SettingsMotionRow';
+import { SettingsHapticsRow } from './SettingsHapticsRow';
 import { SettingsExportRow } from './export/SettingsExportRow';
 import {
   PendingSettingsRow,
   SettingsGroup,
   SettingsRowContent,
+  SettingsActionRow,
 } from '../../components/settings/SettingsRows';
 
 export function SettingsScreen() {
   return (
     <SettingsPage title="Settings">
       <SettingsGroup title="Preferences">
-        <PendingSettingsRow icon="haptics" label="Haptics" />
+        <SettingsHapticsRow />
         <SettingsMotionRow />
+        {__DEV__ && (
+          <SettingsActionRow
+            icon="haptics"
+            label="Test haptics"
+            href="/preview?mode=haptics"
+            chevron
+          />
+        )}
       </SettingsGroup>
 
       <SettingsGroup title="Account & data">
