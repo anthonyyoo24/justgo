@@ -1742,8 +1742,19 @@ files leaves six direct platform haptics files, three completion files and three
 developer haptics files. Existing responsibility groups remain clear; no new
 subfolder or unrelated moves are needed.
 
-Physical follow-up remains in Phase 08: reload the existing Pulsar-enabled iPhone
-app, verify the enable tap, accepted challenge, changed/cleared feeling and Batter
-completion, then disable Haptics and repeat. Check the comparison tool's Preview,
-Stop, background interruption and reload-to-Batter behavior. No physical/native
-or release acceptance is inferred from browser, mocked SDK or bundle checks.
+The Pulsar-only migration was committed locally as **9e0b16c**
+(`refactor(mobile): use Pulsar for all haptic feedback`).
+
+**Owner physical-iPhone confirmation:** Anthony reloaded the app and answered
+“All actions work and Off silences them” to the check covering enabling Haptics,
+accepting a challenge, changing a feeling and Batter completion, followed by
+turning Haptics off and repeating. These product triggers and disabled feedback
+now have owner-reported physical evidence on the existing Pulsar-enabled build.
+This also confirms the completion default after a full reload; it is separate
+from automated/browser evidence and does not claim a new binary.
+
+Remaining native checks in Phase 08: preference persistence across native app
+relaunch, explicit feeling clearing, the comparison tool's Preview/Stop,
+background interruption and return behavior. A clean native build without Expo's
+unused module and broader signed release acceptance remain separately scheduled.
+The owner response does not establish those unreported checks or close Phase 08.
