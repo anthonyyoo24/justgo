@@ -77,7 +77,9 @@ it.each([
     await waitFor(() =>
       expect(screen.getByRole('switch', { name: 'Haptics' })).toBeEnabled(),
     );
-    expect(screen.getByRole('switch').props.value).toBe(enabled);
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      enabled,
+    );
     expect(storage.getItem).toHaveBeenCalledWith(hapticsPreferenceKey);
   },
 );
@@ -103,15 +105,19 @@ it('saves off and restores it after remount, without playing on hydration', asyn
   const { wrapper, adapter } = setup(storage);
   const screen = render(<SettingsHapticsRow />, { wrapper });
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  fireEvent(screen.getByRole('switch'), 'valueChange', false);
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
-    expect(screen.getByRole('switch').props.value).toBe(false),
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      false,
+    ),
   );
   expect(storage.setItem).toHaveBeenCalledWith(hapticsPreferenceKey, 'false');
   screen.unmount();
   const fresh = render(<SettingsHapticsRow />, { wrapper });
   await waitFor(() => expect(fresh.getByRole('switch')).toBeEnabled());
-  expect(fresh.getByRole('switch').props.value).toBe(false);
+  expect(fresh.getByRole('switch').props.accessibilityState.checked).toBe(
+    false,
+  );
   expect(adapter.play).not.toHaveBeenCalled();
 });
 it('plays a selection preview only after successfully enabling', async () => {
@@ -174,8 +180,10 @@ it('contains read/write failures and leaves retry usable with red feedback', asy
       'Your haptics preference couldn’t load. Try saving it again.',
     ),
   );
-  expect(screen.getByRole('switch').props.value).toBe(false);
-  fireEvent(screen.getByRole('switch'), 'valueChange', true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    false,
+  );
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Your haptics preference couldn’t save. Please try again.',
@@ -186,9 +194,11 @@ it('contains read/write failures and leaves retry usable with red feedback', asy
   });
   expect(screen.getByRole('switch')).toBeEnabled();
   expect(adapter.play).not.toHaveBeenCalled();
-  fireEvent(screen.getByRole('switch'), 'valueChange', true);
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
-    expect(screen.getByRole('switch').props.value).toBe(true),
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      true,
+    ),
   );
   expect(screen.queryByRole('alert')).toBeNull();
 });
@@ -197,9 +207,11 @@ it('keeps the preference usable without a native module and clearly explains ava
   const screen = render(<SettingsHapticsRow />, { wrapper });
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
   expect(screen.getByText(/Touch feedback needs an updated/)).toBeTruthy();
-  fireEvent(screen.getByRole('switch'), 'valueChange', false);
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
-    expect(screen.getByRole('switch').props.value).toBe(false),
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      false,
+    ),
   );
   expect(adapter.play).not.toHaveBeenCalled();
 });

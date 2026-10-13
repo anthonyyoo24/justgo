@@ -1,5 +1,18 @@
 # Implementation handoffs
 
+**October 13 toggle row flicker:** Removed whole-row fading on press and during
+preference saves. Icons and labels stay opaque; only a permanently disabled
+pill is dimmed. The [visual follow-up](phase-08-settings-privacy.md#october-13-toggle-row-opacity-correction)
+records regressions, side-panel verification and Anthony’s physical-iPhone
+confirmation that icons and text stay steady when toggling both preferences.
+
+**October 13 Settings toggle correction:** Anthony reported Reduce Motion still
+vibrating with Haptics off. Both preference rows now use a shared accessible
+app-controlled toggle; Reduce Motion feedback goes through the saved haptics
+gate. The [correction handoff](phase-08-settings-privacy.md#october-13-settings-toggle-haptics-gate)
+records regression/browser evidence and Anthony’s physical-iPhone confirmation:
+Reduce Motion is silent with Haptics off and gives one tap when on.
+
 **October 13 Pulsar-only migration:** Anthony authorized replacing Expo Haptics
 with Pulsar for every action. Batter stays the completion default; simple actions
 use Pulsar system heavy taps, and Four heavy taps remains a development comparison.

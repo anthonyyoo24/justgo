@@ -9,9 +9,12 @@ import {
   AccessibilityInfo,
   Animated,
   AppState,
+  Switch,
   type AppStateStatus,
 } from 'react-native';
 import { SettingsMotionRow } from './SettingsMotionRow';
+import { SettingsHapticsRow } from './SettingsHapticsRow';
+import { HapticsPreferencesProvider } from '../../platform/haptics/HapticsPreferencesProvider';
 jest.mock('expo-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -87,6 +90,64 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
+it('keeps Reduce Motion quiet while Haptics is off and uses only the controlled adapter when on', async () => {
+  const motionStorage = memoryStorage('false');
+  const hapticsStorage = memoryStorage('false');
+  const adapter = {
+    isAvailable: () => true,
+    play: jest.fn(async () => {}),
+    playPreset: jest.fn(),
+    stop: jest.fn(),
+  };
+  const screen = render(
+    <MotionPreferencesProvider storage={motionStorage}>
+      <HapticsPreferencesProvider storage={hapticsStorage} adapter={adapter}>
+        <SettingsHapticsRow />
+        <SettingsMotionRow />
+      </HapticsPreferencesProvider>
+    </MotionPreferencesProvider>,
+  );
+  await waitFor(() => {
+    expect(screen.getByRole('switch', { name: 'Haptics' })).toBeEnabled();
+    expect(screen.getByRole('switch', { name: 'Reduce motion' })).toBeEnabled();
+  });
+  // Neither setting may retain an interactive UIKit switch outside our gate.
+  expect(screen.UNSAFE_queryAllByType(Switch)).toHaveLength(0);
+  fireEvent.press(screen.getByRole('switch', { name: 'Reduce motion' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('switch', { name: 'Reduce motion' }).props
+        .accessibilityState.checked,
+    ).toBe(true),
+  );
+  expect(adapter.play).not.toHaveBeenCalled();
+  expect(adapter.playPreset).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('switch', { name: 'Haptics' }));
+  await waitFor(() => expect(adapter.play).toHaveBeenCalledTimes(1));
+  fireEvent.press(screen.getByRole('switch', { name: 'Reduce motion' }));
+  await waitFor(() => expect(adapter.play).toHaveBeenCalledTimes(2));
+  expect(
+    screen.getByRole('switch', { name: 'Reduce motion' }).props
+      .accessibilityState.checked,
+  ).toBe(false);
+  fireEvent.press(screen.getByRole('switch', { name: 'Haptics' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('switch', { name: 'Haptics' }).props.accessibilityState
+        .checked,
+    ).toBe(false),
+  );
+  fireEvent.press(screen.getByRole('switch', { name: 'Reduce motion' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('switch', { name: 'Reduce motion' }).props
+        .accessibilityState.checked,
+    ).toBe(true),
+  );
+  expect(adapter.play).toHaveBeenCalledTimes(2);
+  expect(adapter.playPreset).not.toHaveBeenCalled();
+});
+
 it('requires the app-level provider', () => {
   expect(() => renderHook(useMotionPreferences)).toThrow(
     'MotionPreferencesProvider is required',
@@ -103,7 +164,9 @@ it.each([
   async (saved, reduced) => {
     const screen = mount(memoryStorage(saved));
     await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-    expect(screen.getByRole('switch').props.value).toBe(reduced);
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      reduced,
+    );
   },
 );
 
@@ -115,34 +178,44 @@ it('keeps motion reduced and input disabled until slow hydration finishes', asyn
   await act(async () => {});
   const toggle = screen.getByRole('switch');
   expect(toggle).toBeDisabled();
-  expect(toggle.props.value).toBe(true);
-  fireEvent(toggle, 'valueChange', false);
+  expect(toggle.props.accessibilityState.checked).toBe(true);
+  fireEvent.press(toggle);
   expect(storage.setItem).not.toHaveBeenCalled();
   await act(async () => read.resolve('true'));
   expect(screen.getByRole('switch')).toBeEnabled();
-  expect(screen.getByRole('switch').props.value).toBe(true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
 });
 
 it('saves both choices and restores them after the provider remounts', async () => {
   const storage = memoryStorage();
   let screen = mount(storage);
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  fireEvent(screen.getByRole('switch'), 'valueChange', true);
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
-    expect(screen.getByRole('switch').props.value).toBe(true),
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      true,
+    ),
   );
   screen.unmount();
   screen = mount(storage);
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  expect(screen.getByRole('switch').props.value).toBe(true);
-  fireEvent(screen.getByRole('switch'), 'valueChange', false);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
-    expect(screen.getByRole('switch').props.value).toBe(false),
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      false,
+    ),
   );
   screen.unmount();
   screen = mount(storage);
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  expect(screen.getByRole('switch').props.value).toBe(false);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    false,
+  );
   expect(storage.setItem.mock.calls).toEqual([
     [motionPreferenceKey, 'true'],
     [motionPreferenceKey, 'false'],
@@ -155,15 +228,19 @@ it('honors live phone changes without replacing the saved app choice', async () 
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
   act(() => changeMotion(true));
   expect(screen.getByRole('switch')).toBeDisabled();
-  expect(screen.getByRole('switch').props.value).toBe(true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
   expect(
     screen.getByText('Enabled by your phone’s accessibility setting.'),
   ).toBeTruthy();
-  fireEvent(screen.getByRole('switch'), 'valueChange', false);
+  fireEvent.press(screen.getByRole('switch'));
   expect(storage.setItem).not.toHaveBeenCalled();
   act(() => changeMotion(false));
   expect(screen.getByRole('switch')).toBeEnabled();
-  expect(screen.getByRole('switch').props.value).toBe(true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
 });
 
 it('does not let a late initial phone read overwrite a newer accessibility event', async () => {
@@ -174,7 +251,9 @@ it('does not let a late initial phone read overwrite a newer accessibility event
   const screen = mount(memoryStorage());
   act(() => changeMotion(true));
   await act(async () => read.resolve(false));
-  expect(screen.getByRole('switch').props.value).toBe(true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
   expect(screen.getByRole('switch')).toBeDisabled();
 });
 
@@ -186,10 +265,14 @@ it('uses the phone preference on startup even when the saved app choice is off',
       screen.getByText('Enabled by your phone’s accessibility setting.'),
     ).toBeTruthy(),
   );
-  expect(screen.getByRole('switch').props.value).toBe(true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
   expect(screen.getByRole('switch')).toBeDisabled();
   act(() => changeMotion(false));
-  expect(screen.getByRole('switch').props.value).toBe(false);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    false,
+  );
 });
 
 it('refreshes on foreground and ignores stale overlapping phone reads', async () => {
@@ -206,7 +289,9 @@ it('refreshes on foreground and ignores stale overlapping phone reads', async ()
   });
   await act(async () => latest.resolve(true));
   await act(async () => older.resolve(false));
-  expect(screen.getByRole('switch').props.value).toBe(true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
   expect(read).toHaveBeenCalledTimes(3);
 });
 
@@ -218,9 +303,11 @@ it('shows safe read failure feedback and allows a successful replacement choice'
   expect(screen.getByRole('alert').props.children).toBe(
     'Your motion preference couldn’t load. Try saving it again.',
   );
-  fireEvent(screen.getByRole('switch'), 'valueChange', true);
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
-    expect(screen.getByRole('switch').props.value).toBe(true),
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      true,
+    ),
   );
   expect(screen.queryByRole('alert')).toBeNull();
 });
@@ -230,14 +317,18 @@ it('preserves the prior choice on failed save and supports retry', async () => {
   storage.setItem.mockRejectedValueOnce(new Error('private adapter detail'));
   const screen = mount(storage);
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  fireEvent(screen.getByRole('switch'), 'valueChange', true);
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-  expect(screen.getByRole('switch').props.value).toBe(false);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    false,
+  );
   expect(screen.getByRole('switch')).toBeEnabled();
   expect(screen.queryByText(/private adapter/)).toBeNull();
-  fireEvent(screen.getByRole('switch'), 'valueChange', true);
+  fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
-    expect(screen.getByRole('switch').props.value).toBe(true),
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      true,
+    ),
   );
   expect(screen.queryByRole('alert')).toBeNull();
 });
@@ -248,13 +339,15 @@ it('blocks duplicate writes while saving and keeps a newer phone preference', as
   storage.setItem.mockReturnValue(write.promise);
   const screen = mount(storage);
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  fireEvent(screen.getByRole('switch'), 'valueChange', true);
-  fireEvent(screen.getByRole('switch'), 'valueChange', false);
+  fireEvent.press(screen.getByRole('switch'));
+  fireEvent.press(screen.getByRole('switch'));
   expect(screen.getByRole('switch')).toBeDisabled();
   expect(storage.setItem).toHaveBeenCalledTimes(1);
   act(() => changeMotion(true));
   await act(async () => write.resolve());
-  expect(screen.getByRole('switch').props.value).toBe(true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
   expect(screen.getByRole('switch')).toBeDisabled();
 });
 
@@ -270,10 +363,14 @@ it('keeps motion reduced if the phone setting cannot be read, then recovers', as
       ),
     ).toBeTruthy(),
   );
-  expect(screen.getByRole('switch').props.value).toBe(true);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
   act(() => changeAppState('active'));
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  expect(screen.getByRole('switch').props.value).toBe(false);
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    false,
+  );
 });
 
 it('cleans up listeners and fences delayed reads and writes after unmount', async () => {
@@ -287,7 +384,7 @@ it('cleans up listeners and fences delayed reads and writes after unmount', asyn
   storage.setItem.mockReturnValueOnce(write.promise);
   const second = mount(storage);
   await waitFor(() => expect(second.getByRole('switch')).toBeEnabled());
-  fireEvent(second.getByRole('switch'), 'valueChange', true);
+  fireEvent.press(second.getByRole('switch'));
   second.unmount();
   await act(async () => write.reject(new Error('unmounted')));
   expect(removeMotion).toHaveBeenCalledTimes(2);

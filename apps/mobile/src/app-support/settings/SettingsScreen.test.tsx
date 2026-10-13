@@ -41,6 +41,7 @@ jest.mock('../../platform/motion/motion', () => ({
   }),
 }));
 jest.mock('../../platform/haptics/haptics', () => ({
+  useHapticFeedback: () => jest.fn(),
   useHapticPreferences: () => ({
     enabled: true,
     available: true,

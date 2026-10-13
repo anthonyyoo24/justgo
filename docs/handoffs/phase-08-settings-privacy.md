@@ -1758,3 +1758,127 @@ relaunch, explicit feeling clearing, the comparison tool's Preview/Stop,
 background interruption and return behavior. A clean native build without Expo's
 unused module and broader signed release acceptance remain separately scheduled.
 The owner response does not establish those unreported checks or close Phase 08.
+
+### October 13 Settings toggle haptics gate
+
+Anthony reported that toggling Reduce Motion still gave feedback with Haptics
+off, despite the four earlier product triggers respecting the preference.
+
+Inspection found no haptics request in the Reduce Motion row/provider. Both rows
+rendered React Native's interactive `Switch`; the installed RN 0.86 Fabric
+implementation creates a UIKit `UISwitch` and exposes no haptics suppression
+property. The reported remaining tap is therefore attributed to the native
+control, not an app event observed in a trace. No physical tap was reproduced by
+Codex; only Anthony's report establishes that tactile symptom.
+
+- Added shared `components/settings/SettingsToggleRow`: one accessible full-row
+  Pressable, with a decorative 51 × 31 pill. Neither preference renders an
+  interactive native Switch. Checked, disabled and busy state, hints, Enter and
+  Space are retained. The controls have no animation or implicit haptics.
+- Both rows use this control. Reduce Motion's input acknowledgement now requests
+  `selection` through the saved Pulsar haptics gate. Off/hydration/writes fence
+  it; storage errors remain owned by the motion provider. Haptics enabling still
+  previews only after a successful save, and disabling remains silent.
+- Preference values, system Reduce Motion priority, persistence, export schema,
+  challenge/feeling/Batter feedback and development guards are unchanged.
+- Updated existing row regressions to activate the accessible control through a
+  press and assert its checked state. Added a real-provider integration regression
+  that changes Reduce Motion with Haptics off, enables feedback, tests the input
+  tap, disables it and retests. It also asserts neither row retains a native
+  Switch outside the gate, protecting the source of the reported bypass.
+- Shared-control regressions cover controlled state, disabled/busy input,
+  native-switch absence and Space behavior, including a directly delivered
+  callback while disabled. No production dependency or native build change.
+
+Verification:
+
+- Focused Settings/control checks pass: **52 cases / 4 suites**. Log:
+  `.local/phase-08/toggle-haptics-focused.log`.
+- `npm run check` passes: online Expo Doctor **21/21**, all builds/types/lint/format,
+  **180 tooling, 54 API, 648 mobile / 76 suites and 24 contract cases**. Log:
+  `.local/phase-08/toggle-haptics-check.log`.
+- Fresh mobile coverage passes: **97.14% lines / 91.91% branches**; unchanged
+  all-source/critical floors pass with retained API/contracts reports for their
+  unchanged source. Logs: `.local/phase-08/toggle-haptics-coverage.log` and
+  `toggle-haptics-coverage-gate.log`.
+- The existing phone Metro serves both custom rows, the guarded motion input tap,
+  Pulsar and the unchanged HTTPS test API, with no Expo Haptics module. Live bundle
+  audit: `.local/phase-08/toggle-haptics-phone-audit.json`. The current signed
+  Pulsar-enabled development build can test this JavaScript-only correction
+  after a full reload; no new build is needed. Both existing servers remain
+  running with file watching enabled. No account, simulator or browser was reset.
+- Side-panel walkthrough passes at **1165 × 1036**: Haptics off → Reduce Motion
+  on → Space off → Enter on → reload retains both independent values. Restored
+  the prior browser values (Haptics on, Reduce Motion off). Both controls expose
+  checked state and measure **386 × 63** full-row targets. Visually inspected
+  the retained Settings typography/cards and 51 × 31 pills; no console errors.
+  Screenshot: `.local/phase-08/toggle-haptics-off-screen.jpg`.
+  Browser silence does not establish iPhone tactile behavior.
+
+Directory review: inspected all five files in shared Settings components, the
+six direct app-support Settings files plus existing export/information groups,
+and the touched plan/architecture/handoff directories. The shared control is a
+cohesive reusable Settings responsibility; no extra folders or moves are needed.
+
+**Owner physical-iPhone retest passed:** Anthony reloaded the existing
+Pulsar-enabled development app and answered “Off is silent; On gives one tap”
+to the check covering Reduce Motion in both directions with Haptics off, followed
+by re-enabling Haptics and checking the single input tap. This closes the reported
+Reduce Motion feedback bypass with owner-reported tactile evidence. No new
+binary was required. Native VoiceOver, relaunch/Stop/background and broader
+release acceptance remain their distinct existing gates; this focused phone
+result does not close all Phase 08 acceptance.
+
+### October 13 toggle row opacity correction
+
+Anthony noticed the row icon and label flickering when changing either
+preference. The shared toggle introduced a whole-row alpha of **0.8** while
+pressed and **0.5** while disabled. Both preference providers temporarily disable
+input during every storage write, so the entire row flashed between dimmed and
+normal states. These styles were introduced by the preceding toggle correction.
+
+Removed the row's pressed/disabled opacity styling. The row, label and icon stay
+fully opaque through input and saving; only the toggle value changes visually.
+A permanently disabled toggle still dims its pill, without dimming the label.
+Temporary saves retain their duplicate-input guard and accessible busy/disabled
+state while keeping their appearance stable. Haptics gating, saved values,
+keyboard behavior and system Reduce Motion priority are preserved.
+
+A regression checks the rendered switch row's opacity through normal, disabled
+saving and settled checked states, while preserving disabled-input behavior.
+The existing control/provider regressions retain the haptics-off protection and
+absence of interactive native switches.
+
+Verification:
+
+- Focused Settings/control checks pass: **35 cases / 3 suites**. Log:
+  `.local/phase-08/toggle-opacity-focused.log`.
+- `npm run check` passes: fresh Expo Doctor **21/21**, builds/types/lint/format,
+  **180 tooling, 54 API, 649 mobile / 76 suites and 24 contract cases**. Log:
+  `.local/phase-08/toggle-opacity-check.log`.
+- Fresh mobile coverage **97.14% lines / 91.97% branches** and unchanged combined
+  coverage floors pass. API/contracts reports are retained for unchanged source.
+  Logs: `toggle-opacity-coverage.log` and `toggle-opacity-coverage-gate.log` under
+  `.local/phase-08/`.
+- Fresh phone Metro bundle confirms no root pressed/opacity style and confines
+  dimming to a permanently disabled pill. Pulsar and the HTTPS test API remain
+  present. Audit: `.local/phase-08/toggle-opacity-phone-audit.json`. The existing
+  installed development build needs only a reload; no native build was started.
+
+Side-panel verification at **1165 × 1036**: toggled Reduce Motion with a held
+press, then held Haptics for 1.2 seconds and captured the screen during the hold.
+Icons/text remain fully visible, both states save correctly, and computed row
+opacity is **1** after both changes. Restored the original browser values
+(Haptics on, Reduce Motion off). Screenshot:
+`.local/phase-08/toggle-opacity-held-screen.jpg`.
+
+Directory review: all five shared Settings component files and the existing
+touched plan/architecture/handoff directory contents remain cohesive. No files,
+folders, dependencies or native modules were added by this correction. No
+publication, database/hosted CI or full phase acceptance is claimed.
+
+**Owner physical-iPhone visual confirmation passed:** Anthony reloaded JustGO
+and toggled Haptics and Reduce Motion, answering “Yes, the icons and text stay
+steady.” This closes the reported toggle-row flicker with owner-reported device
+evidence, separately from the earlier browser and automated checks. The existing
+native VoiceOver, relaunch/Stop/background and broader release gates remain open.

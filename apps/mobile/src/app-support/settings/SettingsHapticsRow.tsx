@@ -1,6 +1,6 @@
-import { Platform, StyleSheet, Switch, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { ScaledText as Text } from '../../components/typography/ScaledText';
-import { SettingsRowContent } from '../../components/settings/SettingsRows';
+import { SettingsToggleRow } from '../../components/settings/SettingsToggleRow';
 import { useHapticPreferences } from '../../platform/haptics/haptics';
 import { colors, spacing, typography } from '../../theme/tokens';
 
@@ -10,23 +10,16 @@ export function SettingsHapticsRow() {
   const disabled = loading || saving;
   return (
     <View>
-      <SettingsRowContent
+      <SettingsToggleRow
         icon="haptics"
         label="Haptics"
-        accessory={
-          <Switch
-            accessibilityLabel="Haptics"
-            accessibilityHint="Touch feedback for challenges and feeling selections."
-            accessibilityState={{ disabled, busy: disabled }}
-            disabled={disabled}
-            value={enabled}
-            onValueChange={(next) => {
-              void setEnabled(next);
-            }}
-            trackColor={{ false: colors.border, true: colors.ink }}
-            thumbColor={colors.white}
-          />
-        }
+        hint="Touch feedback for challenges and feeling selections."
+        disabled={disabled}
+        busy={disabled}
+        value={enabled}
+        onValueChange={(next) => {
+          void setEnabled(next);
+        }}
       />
       {!available && (
         <Text style={styles.notice}>
