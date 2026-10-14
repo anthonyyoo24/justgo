@@ -1447,3 +1447,58 @@ remain in review 4. Ongoing transfer/planning edits are excluded. Existing
 physical-device, VoiceOver, dependency-native acceptance, privacy and beta/paid
 release gates remain open. Local results do not establish hosted success or
 authorize merging.
+
+## October 14 PR #24 journey timing fix
+
+Anthony requested investigating and fixing the failed Foundation check on
+PR #24 at `e1b0c63`. The [pull-request run](https://github.com/anthonyyoo24/justgo/actions/runs/38645444025/job/116131020069)
+passed dependency validation, types/lint/format, units, database tests and
+coverage, then failed `identity-catalog.spec.ts` at its immediate non-null
+bounding-box assertion. The other 25 saved journeys passed. Both exports were
+skipped after the journey failure; the [same-head push run](https://github.com/anthonyyoo24/justgo/actions/runs/38645426588/job/116130960479)
+passed. The masked CI screenshot shows all three labels present and aligned
+after the failed measurement.
+
+The test read geometry immediately after entering Troubleshooting. Navigation
+and the automatic account refresh can change row visibility/identity between
+locating text and measuring it; the recovery row gains its real Link when the
+busy guard clears. A one-frame `null` measurement incorrectly failed the journey
+before checking whether the controls were usable. Local repetition reproduced
+the identical failure in **8 of 10** unmodified runs.
+
+The corrected journey first awaits the enabled recovery link and its actual
+destination, then polls fresh boxes for all three labels. Any missing box keeps
+the assertion failing. Once all exist, the maximum left-edge spread must remain
+below the original one-pixel limit. Recovery keyboard navigation, session renewal,
+catalog/Progress and zero-activity database assertions are retained. The existing
+test/expect timeouts, zero whole-test retries and coverage floors are unchanged.
+App/CI configuration is unchanged; the recurring layout-read lesson is recorded
+in `AGENTS.md`.
+
+Local verification uses an ignored runner on web port **8093** to preserve the
+existing preview on 8081. It temporarily aligns only the test-app URL, Metro
+port, fixture CORS and network probe; API port 3000, loopback/test-database/role
+guards and registry-owned cleanup remain enabled. Every temporary file change
+is restored byte-for-byte in `finally` before final checks. The initial full
+run passed 25 journeys but its network probe still targeted the existing 8081
+preview; the temporary port override was corrected to probe its own 8093
+fixture without disabling that assertion.
+
+The fixed focused journey passes **10/10 repeated runs**, and the final complete
+saved suite passes **26/26**, including network and cleanup isolation. Final
+`npm run check` **passes**, with fresh online Expo Doctor **21/21**, contracts
+build, TypeScript, lint, formatting, **186 tooling**, **54 API**, **567 mobile**
+and **24 contract** tests. The temporary fixture changes are absent from the
+final diff, and only the test and its guidance/evidence are retained. Existing
+CI database/coverage results remain as recorded above; no separate coverage,
+native or device rerun is claimed for this test-only fix. Logs, downloaded
+masked CI evidence and the temporary runner remain ignored under
+`.local/pr24-ci-fix/` in the original checkout. No product UI/native change,
+native build or new device acceptance is included in this test-only correction.
+Publication and hosted verification remain pending at this preparation checkpoint.
+
+Changed-directory review covers the root, `e2e`, `docs` and `docs/handoffs`.
+No files were added; existing fixture-support and documentation groups remain
+appropriate, so no folder moves were necessary. Task-owned API/Metro services
+were shut down, and the original preview and original checkout's working files
+were preserved. Final Markdown formatting and diff checks pass.

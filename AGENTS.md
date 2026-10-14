@@ -179,6 +179,10 @@ Reload the app to clear stale module/asset paths.
   Chrome window when side-panel-only testing was requested. Fix failures and
   repeat. Use disposable local fixtures only. A one-off browser walkthrough is
   not a saved end-to-end regression test or a CI gate; report each separately.
+- Browser layout checks must wait for usable controls after navigation/refresh
+  and retry fresh geometry reads. Missing or detached elements must keep the
+  assertion failing; preserve the alignment limit instead of adding sleeps or
+  weakening the assertion.
 - Before handoff run `npm run check` and, for backend/shared boundaries or a phase
   closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
   Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.

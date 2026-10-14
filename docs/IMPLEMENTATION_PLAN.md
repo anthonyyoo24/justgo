@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 75 · Updated October 14, 2026
+**Version:** 76 · Updated October 14, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -1174,6 +1174,13 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 <a id="phase-08"></a>
 
 ### Phase 08 — Settings, privacy & measurement
+
+**October 14 PR #24 journey timing fix:** The pull-request Foundation run failed
+one Troubleshooting layout measurement while the same-head push run passed.
+The [timing-fix handoff](handoffs/phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)
+records the reproduced transient missing box and the retrying layout assertion.
+All three labels must remain visible and aligned within the existing one-pixel
+limit. This is a test correction; app behavior and phase acceptance are unchanged.
 
 **October 14 third review preparation:** After Anthony merged PR #23 and
 requested the next review, local `main` was updated to `222d65b` and the completed

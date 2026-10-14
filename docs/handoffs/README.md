@@ -1,5 +1,12 @@
 # Implementation handoffs
 
+**October 14 PR #24 journey timing fix:** One Foundation run measured a
+Troubleshooting label while the page was opening/refreshing. The
+[fix handoff](phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)
+records failing-before repetition, usable-control readiness and retrying fresh
+geometry with the original alignment limit. App code is unchanged; publication
+and hosted acceptance remain separate from local evidence.
+
 **October 14 third review preparation:** PR #23 is merged, local `main` is
 updated and the export review worktree is archived. The
 [account/recovery review handoff](phase-08-settings-privacy.md#october-14-third-review-preparation)

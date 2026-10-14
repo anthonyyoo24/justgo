@@ -24,27 +24,36 @@ test('a real account renews and opens its challenge catalog', async ({
   await page
     .getByRole('link', { name: 'Troubleshooting', exact: true })
     .click();
-  const labels = await Promise.all(
-    [
-      'Refresh account',
-      'Renew this session',
-      'Recover an existing account',
-    ].map((name) =>
-      page
-        .getByText(name, { exact: true })
-        .filter({ visible: true })
-        .boundingBox(),
-    ),
-  );
-  for (const label of labels) expect(label).not.toBeNull();
-  expect(Math.abs(labels[2]!.x - labels[0]!.x)).toBeLessThan(1);
-  expect(Math.abs(labels[2]!.x - labels[1]!.x)).toBeLessThan(1);
   const recoveryLink = page.getByRole('link', {
     name: 'Recover an existing account',
     exact: true,
   });
   await expect(recoveryLink).toBeEnabled();
   await expect(recoveryLink).toHaveAttribute('href', '/account/recover');
+  // Background refresh can replace the disabled row during navigation. Wait for
+  // usable controls, then retry fresh measurements instead of asserting one frame.
+  await expect
+    .poll(
+      async () => {
+        const labels = await Promise.all(
+          [
+            'Refresh account',
+            'Renew this session',
+            'Recover an existing account',
+          ].map((name) =>
+            page
+              .getByText(name, { exact: true })
+              .filter({ visible: true })
+              .boundingBox(),
+          ),
+        );
+        if (!labels.every((label) => label !== null)) return Infinity;
+        const leftEdges = labels.map((label) => label.x);
+        return Math.max(...leftEdges) - Math.min(...leftEdges);
+      },
+      { message: 'All three troubleshooting labels are visible and aligned' },
+    )
+    .toBeLessThan(1);
   await recoveryLink.press('Enter');
   await expect(page.getByLabel('Recovery key', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
