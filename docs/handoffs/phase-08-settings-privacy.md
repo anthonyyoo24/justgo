@@ -1,5 +1,11 @@
 # Phase 08 settings and privacy handoff
 
+The October 14 [reflection keyboard correction](phase-08-reflection-keyboard.md)
+was developed in a separate Phase 08 worktree with its own development server.
+Anthony confirmed it works on his physical iPhone and authorized local integration
+into Phase 08. Its handoff owns the implementation and combined-verification
+evidence; the existing Settings work is preserved.
+
 **Date:** October 13, 2026\
 **Status:** Settings/contact, account/recovery UI, Reduce Motion, Haptics and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.

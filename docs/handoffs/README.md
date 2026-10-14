@@ -1,5 +1,12 @@
 # Implementation handoffs
 
+**October 14 reflection keyboard:** The separate Phase 08 keyboard worktree
+brings the focused reflection section into view and bounds the writing area above
+the retained Skip/Save footer. The [keyboard handoff](phase-08-reflection-keyboard.md)
+records regression evidence, independent-server setup and Anthony's October 14
+physical-iPhone confirmation that the fix works. Anthony authorized local
+integration into Phase 08 and combined verification; broader native/release gates stay open.
+
 **October 13 toggle row flicker:** Removed whole-row fading on press and during
 preference saves. Icons and labels stay opaque; only a permanently disabled
 pill is dimmed. The [visual follow-up](phase-08-settings-privacy.md#october-13-toggle-row-opacity-correction)

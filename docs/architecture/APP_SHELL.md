@@ -40,6 +40,14 @@ access policy and foreground behavior are unchanged. The
 
 ## Routes and access
 
+The full-screen reflection view keeps its Skip/Save footer outside the scroll
+viewport. `features/reflections/useReflectionKeyboard` measures the section and
+available viewport, provides trailing scroll room and brings the focused editor
+into view after keyboard/layout changes. A bounded, internally scrolling input
+fits typical keyboard-reduced layouts; focus scrolling honors effective Reduce
+Motion. This changes presentation only, with native timing/geometry acceptance
+recorded separately in the [Phase 08 keyboard handoff](../handoffs/phase-08-reflection-keyboard.md).
+
 - `/`: restore the real account, then check `/v1/access`. Loading, unavailable and unpaid have distinct UI. Only a fresh, unexpired server verification admits the paid routes.
 - `/(tabs)` and `/progress`: Home uses the downloaded catalog and local venue/start/countdown/completion state. Progress uses independent canonical summary/calendar/day reads and the shared repository's local activity overlay. Current-month counts and today's downloaded pages survive offline; other days and months require a connection.
 - `/challenge`: guarded iOS Active → Success flow with memory-only start context; Completed changes content in place. Give up returns Home and Continue opens Reflection. An empty direct/restarted route returns Home.
