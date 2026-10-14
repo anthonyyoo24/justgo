@@ -1,5 +1,13 @@
 # Implementation handoffs
 
+**October 14 fourth review preparation:** PR #24 is merged, and local `main`
+is updated to `6382aed`. The
+[final split-review handoff](phase-08-settings-privacy.md#october-14-fourth-review-preparation)
+records the 70-file haptics/toggle, day-sheet and reflection-keyboard checkpoint,
+merged dependency maintenance and fresh checks. Earlier dependency-blocker
+entries below describe their original checkpoints. Native/release acceptance
+and ongoing account/privacy/planning work remain separate.
+
 **October 14 PR #24 review correction:** Export busy-state descriptions now
 match the retained label and progress indicator. The
 [review follow-up](phase-08-settings-privacy.md#october-14-pr-24-review-correction)

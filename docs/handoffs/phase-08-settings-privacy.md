@@ -4,13 +4,98 @@ The October 14 [reflection keyboard correction](phase-08-reflection-keyboard.md)
 was developed in a separate Phase 08 worktree with its own development server.
 Anthony confirmed it works on his physical iPhone and authorized local integration
 into Phase 08. Its handoff owns implementation and combined-verification evidence;
-the existing Settings work is preserved. The combined code checks pass, while
-fresh Expo metadata flags four newer SDK patches and keeps the root dependency
-gate open for a separate maintenance task before publication.
+the existing Settings work is preserved. Its original dependency-check blocker
+is superseded by the fourth-review integration below, which retains merged main's
+reviewed Expo patches and passes fresh root checks. Native/release acceptance
+remains separate from those code checks.
 
 **Date:** October 14, 2026\
 **Status:** Settings/contact, account/recovery UI, Reduce Motion, Haptics and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
+
+## October 14 fourth review preparation
+
+Anthony merged PR #24 at `6382aed` and requested the final PR in the agreed split.
+The clean, attached review checkout was reused at
+`/Users/anthonyyoo/.codex/worktrees/phase8-pr3-review/justgo`; its directory name
+is retained, while its checked-out branch is now
+`phase8-04-haptics-performance-polish`. Local `main` was fast-forwarded from
+GitHub before integrating it into that existing branch in `2ece4c9`.
+The original checkout's unstaged account-transfer/planning work and the separate
+account-deletion worktree were not included or modified.
+
+The remaining diff has **70 files** relative to merged main:
+
+- Saved Pulsar-only feedback, Batter completion, development-only comparisons,
+  guarded action/lifecycle feedback and the exported preference.
+- Shared accessible custom switches, steady row content and the accepted
+  slide/fade animation, including both directions for Reduce Motion while the
+  phone accessibility preference retains priority.
+- Bounded initial day-sheet rendering, local editor subscriptions and the
+  existing entries/reflection-editor responsibility groups, with the large-day
+  regression journey.
+- The integrated reflection-keyboard correction, keeping the writing area and
+  Skip/Save footer usable in constrained layouts.
+
+The integration preserves the merged journey timing correction, export spinner
+documentation and earlier reviewed CI fixes. Documentation conflicts retain
+both sets of history. Dependency conflicts retain every merged main package
+pin while adding only `react-native-pulsar` 1.7.0. The regenerated lockfile's
+remaining change is that dependency, not a rollback of Expo patches. Fresh
+checks below supersede the keyboard checkpoint's dependency blocker; no native
+build or signing work is part of this publication.
+
+Fresh local verification:
+
+- Clean `npm ci`: **pass**.
+- `npm run check`: **pass**, fresh online Expo Doctor **21/21**, contracts build,
+  TypeScript, ESLint, Prettier, **186 tooling**, **54 API**, **662 mobile across
+  77 suites** and **24 contract** cases.
+- `npm run test:coverage`: **pass**, all existing workspace and critical-file
+  floors, including the real database suites and migration/restoration rehearsal.
+  Mobile **97.18% lines / 92.02% branches**, API **95.01% / 90.61%**, contracts
+  **100% / 100%**. Tests use a newly provisioned, task-owned loopback `justgo_test`
+  on **54332**, with restricted runtime/migrator roles; other databases are not
+  reused or modified.
+- Cold `npm run export:web -w @justgo/mobile -- --clear --max-workers 1` and
+  the equivalent iOS export: **pass**. These are bundle checks, not native builds.
+- Full saved actual-app/API/database journeys: **27/27 pass**, including the
+  new 41-attempt scrolling/draft/save case and the merged account-layout fix.
+  The existing ignored local runner temporarily moves only the fixture app,
+  CORS and network probe to **8093**, preserving the preview on 8081; all four
+  temporary source/configuration edits are restored byte-for-byte afterward.
+  API port 3000, loopback/test-database validation, isolated roles and registry
+  cleanup stay enabled. `git diff` confirms only the intended handoff/plan edits
+  remain after restoration.
+- Interactive Browser Use in the **in-app side panel**, **390 × 844**: **pass**
+  for Settings layout, Reduce Motion on/off and persistence after reload,
+  development Test haptics navigation, effect selection and reload restoring
+  Batter. The unsupported browser preview correctly disables playback; no native
+  haptic sensation is claimed. The smoke server on **8094** uses an unreachable
+  loopback API, so this walkthrough makes no product activity/account writes.
+  The original motion choice and viewport are restored, and the temporary tab
+  is closed. The existing web-start `simctl` discovery warning does not establish
+  a native failure or native acceptance.
+
+Task-owned fixture/Metro services and the isolated PostgreSQL cluster were
+stopped after verification. The existing preview and phone servers were left
+alone. Markdown formatting, added handoff links/anchors and diff checks pass.
+Standalone fresh online Expo Doctor passes **21/21** immediately before the
+authorized publication.
+Hosted checks for the published candidate remain separate from local evidence.
+
+Changed-directory review covers every directory in the remaining diff. Existing
+Settings/export, developer haptics, platform haptics/completion, Progress entries
+and reflection-editor groups keep tests and adapters with their owners. The
+Challenges change extends an existing hook without adding files there. No
+additional folder moves are needed for this review. Logs remain ignored under
+`.local/phase-08/pr4-*` in the original checkout.
+
+Prior owner-reported physical-iPhone haptics/toggle and keyboard evidence remains
+in the individual sections. Fresh browser bundles and component checks cannot
+establish native feel, VoiceOver, keyboard geometry or acceptance of updated SDK
+patches. Those wider release gates stay open, along with the remaining privacy
+features. This is the last PR in the review split, not Phase 08 completion.
 
 ## October 14 PR #24 review correction
 

@@ -1196,6 +1196,14 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 ### Phase 08 — Settings, privacy & measurement
 
+**October 14 fourth review preparation:** Anthony merged PR #24 and requested
+the final review in the agreed four-PR split. Local `main` is updated to `6382aed`;
+`phase8-04-haptics-performance-polish` incorporates that main and retains the
+70-file haptics, custom-toggle, day-sheet and reflection-keyboard checkpoint.
+The [fourth-review handoff](handoffs/phase-08-settings-privacy.md#october-14-fourth-review-preparation)
+owns exact-candidate verification and remaining native/release gates. Ongoing
+account-transfer, account-deletion and phase-planning work remains separate.
+
 **October 14 PR #24 journey timing fix:** The pull-request Foundation run failed
 one Troubleshooting layout measurement while the same-head push run passed.
 The [timing-fix handoff](handoffs/phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)
@@ -1235,11 +1243,12 @@ fits the editor above the retained Skip/Save footer. The
 [keyboard handoff](handoffs/phase-08-reflection-keyboard.md) owns passing checks and
 Anthony's October 14 physical-iPhone confirmation that the fix works. Broader
 native/release checks remain separate. Anthony subsequently authorized local
-integration of `0237152` into Phase 08 after `f837552`. Combined code checks pass;
-the full root gate remains open because fresh Expo metadata recommends four newer
-SDK 57 patches, recorded in the handoff. The phase stays open.
+integration of `0237152` into Phase 08 after `f837552`. At that checkpoint,
+combined code checks passed but fresh Expo metadata recommended four newer
+SDK 57 patches. The fourth review carries forward the reviewed maintenance
+from merged main and passes fresh root checks; native/release gates stay open.
 
-- [ ] **Dependency maintenance — owner: Anthony / implementation owner, before publication / Phase 09:** align `expo`, `expo-constants`, `expo-linking` and `expo-router` with the newly recommended SDK 57 patches in a separate owner-approved maintenance task; rerun fresh `npm run check` and retain the required native/build/device acceptance. The keyboard integration leaves versions and the installed binary unchanged.
+- [x] **Dependency alignment before publication:** The fourth review retains merged main's `expo` 57.0.29, `expo-constants` 57.0.22, `expo-linking` 57.0.13 and `expo-router` 57.0.27 pins with the matching lockfile. Fresh `npm ci` and `npm run check` pass. This closes the keyboard integration's dependency-check blocker; the installed binary is unchanged and native/build/device acceptance remains open with Anthony in Phase 09.
 
 **Status:** In progress — Settings/contact, account/recovery UI, Reduce Motion, Haptics and data export slices for owner review; haptics phone acceptance, legal drafts and remaining privacy controls are open\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
