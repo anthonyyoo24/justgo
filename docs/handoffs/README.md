@@ -1,5 +1,13 @@
 # Implementation handoffs
 
+**October 14 PR #22 CI repair:** Both Foundation runs stopped at outdated Expo
+SDK 57 patch pins and then attempted to upload nonexistent coverage reports.
+The [repair handoff](phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
+records the isolated exact-PR fix, producing-step-aware coverage uploads and
+regressions. Hosted verification awaits owner-authorized publication; native
+build/device acceptance remains separate. Verify each branch when splitting PRs
+and rerun fresh online Doctor immediately before pushing.
+
 **October 10 Reduce Motion:** The first remaining Phase 08 slice implements a
 saved installation-level Settings switch and shared app motion behavior, with
 phone-level accessibility priority. The [motion handoff](phase-08-settings-privacy.md#october-10-reduce-motion-implementation)

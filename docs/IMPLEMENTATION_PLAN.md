@@ -1174,6 +1174,14 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 ### Phase 08 — Settings, privacy & measurement
 
+**October 14 PR #22 CI repair:** The two Foundation runs for `e146adc`
+failed fresh Expo dependency validation; their coverage uploads then failed
+because coverage was skipped. The [CI repair handoff](handoffs/phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
+records aligned SDK 57 patch pins, conditional artifact upload, regression
+coverage and exact-branch publication checks. Fixes are prepared locally in
+`codex/pr22-ci-fixes`. Hosted verification awaits authorized publication;
+dependency changes retain native build/device acceptance in Phase 09.
+
 **Status:** In progress — Settings/contact and Reduce Motion slices for owner review; legal drafts and remaining privacy controls are open\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
 

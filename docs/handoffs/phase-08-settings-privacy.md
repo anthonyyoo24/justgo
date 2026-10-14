@@ -4,6 +4,111 @@
 **Status:** Settings/contact and Reduce Motion slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
 
+## October 14 PR #22 CI repair
+
+Anthony requested identifying and fixing [PR #22](https://github.com/anthonyyoo24/justgo/pull/22)'s
+failed checks and preventing recurrence. The isolated `codex/pr22-ci-fixes`
+worktree starts at the PR's exact `e146adc95dd67cf5efa0fb46c07cb24165711228`
+head; ongoing Phase 08 source edits and other PR checkouts are preserved.
+
+Both [push](https://github.com/anthonyyoo24/justgo/actions/runs/38616590568/job/116033131224)
+and [pull-request](https://github.com/anthonyyoo24/justgo/actions/runs/38616610799/job/116033196409)
+Foundation `checks` jobs failed for the same reasons:
+
+- `npm run check` stopped at Expo Doctor's SDK dependency validation (20/21).
+  Eight exact package pins were behind fresh online recommendations.
+- `Upload coverage reports` ran under unconditional `always()` despite coverage
+  being skipped and failed with no files under `coverage/`.
+- Database tests, coverage collection, saved journeys and both exports were
+  skipped; these logs do not establish failures in those checks. CodeRabbit was
+  still pending when first inspected and is not the reported Actions failure.
+
+| Package            | PR pin  | Updated pin |
+| ------------------ | ------- | ----------- |
+| expo               | 57.0.27 | 57.0.29     |
+| expo-constants     | 57.0.21 | 57.0.22     |
+| expo-crypto        | 57.0.3  | 57.0.4      |
+| expo-dev-client    | 57.0.19 | 57.0.20     |
+| expo-linking       | 57.0.12 | 57.0.13     |
+| expo-router        | 57.0.25 | 57.0.27     |
+| expo-splash-screen | 57.0.9  | 57.0.10     |
+| jest-expo          | 57.0.5  | 57.0.6      |
+
+The root lockfile is regenerated with these pins. Coverage collection now has
+an explicit step ID; upload runs after collection succeeds or fails, while
+skipped/unstarted/cancelled collection does not trigger upload. Missing reports
+after a completed collection still fail (`if-no-files-found: error`), and all
+coverage floors and dependency validation remain enabled.
+
+`scripts/quality/ci-artifacts.test.mjs` reads the workflow's actual condition
+and exercises success/failure/skipped/cancelled/unstarted outcomes. Against the
+original workflow, four of six cases failed, including the observed skipped
+coverage bug. After repair, all six pass. This local condition simulation and YAML
+parse do not establish hosted Actions acceptance.
+
+The clean-checkout check also exposed five-second timeouts in two existing
+Progress reflection journeys. Their repeated whole-calendar queries are now
+scoped to the open day sheet, and each already located Save control is reused
+within its editor. Both full add/save/edit/save and add/save/clear/save sequences
+and every assertion are retained, without increasing timeouts. The 19-case
+Progress file and subsequent full 496-case mobile run pass. This changes test
+query cost, not app behavior. Initial regex lint findings in the new tooling test
+were corrected with standard space quantifiers.
+
+Prevention: install and run `npm run check` in each exact split/stacked PR
+candidate, carry SDK maintenance through reviewed stack integration, and run
+`npm run doctor -w @justgo/mobile` with fresh online metadata immediately before
+an authorized push. A fixed lockfile controls installation; Expo can publish new
+SDK patch recommendations independently, so an old passing result can expire.
+No scheduled task or Git hook is installed by this repair.
+
+Verification:
+
+- Fresh `npm ci`: **pass** in the isolated PR checkout. The new workflow regression
+  uses only Node built-ins and tracked source; no ignored artifact is required.
+- `npm run check`: **pass**, fresh online Expo Doctor **21/21**, contracts build,
+  typechecks, lint, formatting, **186** tooling cases, **45** API unit cases,
+  **496** mobile cases across **63** suites and **20** contract cases.
+- `npm run db:migrate` and `npm run test:db`: **pass**, **48** integration cases
+  plus the migration/restoration rehearsal against loopback `justgo_test`.
+- `npm run test:coverage`: **pass**, all existing floors unchanged. Mobile
+  **95.76% lines / 91.24% branches**, API **94.58% / 89.80%**, contracts **100% / 100%**.
+  Includes **94** API unit/database/rehearsal cases, **496** mobile and **20** contract cases.
+- `npm run export:web -w @justgo/mobile` and
+  `npm run export:ios -w @justgo/mobile`: **pass**. Bundles do not establish native
+  runtime or device acceptance.
+- `npm run test:journey -- --grep 'self-device revocation'`: **pass**, one saved
+  actual-app/API/database Settings → revocation → recovery journey, preserving
+  reflection/Progress. The initially reused database on port 54329 stopped after
+  coverage completed, causing a connection-refused startup failure. The rerun
+  used an independently provisioned clean loopback `justgo_test` cluster on 54331
+  with the same isolated roles and clean migrations; fixture cleanup completed.
+  The complete journey suite was not rerun for this maintenance slice.
+- Interactive Browser Use in the **in-app side panel**: **pass** for Settings,
+  Reduce Motion on/off, preference persistence after reload, Account & recovery
+  navigation and browser Back. The fixture's original preference was restored;
+  no account was created. Browser warning/error logs were empty. Metro bound the
+  smoke server to IPv6 localhost, so the first IPv4 visit was refused; the
+  observed `localhost:8092` address worked. No security protection was bypassed.
+- The saved journey and manual Metro server reported unavailable `simctl` under
+  the existing Command Line Tools selection; browser checks passed. No native
+  build/signing change, device test or simulator pass is claimed.
+- Temporary Metro on 8092 and the separately created PostgreSQL instance on
+  54331 were stopped after verification. Other checkout services were preserved.
+
+Logs remain ignored under `.local/pr22-ci/`. Hosted Actions acceptance awaits
+Anthony's explicit permission to push these fixes into the existing PR branch
+and inspection of that published revision. CodeRabbit subsequently reports
+success on the original PR head. Native build/device acceptance for the SDK
+patch changes remains separate owner/Phase 09 work. No push, new PR, merge,
+deployment or native build was performed.
+
+Changed-directory review covers the root, `docs`, `.github/workflows`,
+`scripts/quality`, `docs/operations`, `docs/handoffs`, `apps/mobile` and
+`apps/mobile/src/features/progress`. Existing responsibility groups remain
+navigable; only one new quality regression file is added. No folder moves are
+needed for this repair.
+
 ## Current authorized work
 
 The owner accepted the legal sequence: data checklist, policy/terms drafts, review, then hosting. After that preparation, the owner explicitly authorized the Settings UI using the Paper F1 design and agreed Phase 08 scope, starting with layout and existing recovery/support actions. This handoff covers those local changes and the legal drafts. No public site, email delivery, App Store configuration or Git publication was performed.

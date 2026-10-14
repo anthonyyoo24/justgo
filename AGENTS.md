@@ -178,6 +178,8 @@ installed development app to clear stale Metro module/asset paths.
   related steps. Inspect hosted checks for the pushed commit before marking a new
   CI gate verified; a local pass does not establish a hosted pass. Record failures
   and their fixes in the handoff.
+  After splitting or stacking PRs, verify each actual publication candidate;
+  checks from the combined feature branch do not transfer to older PR branches.
 - Work in small reviewable changes. Update the phase handoff, plan and handoff
   index with actual commands/results, UI evidence and remaining work. Do not
   put secrets, real private reflections or credentials in logs or handoffs.
