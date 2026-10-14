@@ -46,8 +46,11 @@ includes the database suites and migration rehearsal plus unit tests, so it requ
 local database. Individual workspace `test:coverage` commands produce reports;
 run the root command for the combined gate. Reports are ignored generated output
 under `coverage/{mobile,api,contracts}/`: HTML, LCOV and count-based JSON summaries.
-CI runs the same gate after provisioning/migrations and uploads reports even on
-failure. The V8 provider is pinned to the existing Vitest version; Jest uses its
+CI runs the same gate after provisioning/migrations and uploads reports after
+coverage succeeds or fails. When an earlier check prevents coverage from running,
+the upload is skipped; missing reports still fail an upload after coverage ran.
+Tooling regressions exercise both paths against the workflow's actual condition.
+The V8 provider is pinned to the existing Vitest version; Jest uses its
 existing Istanbul support. No production dependency was changed.
 
 Both database tests and API coverage require `DATABASE_URL` for the restricted
@@ -66,6 +69,13 @@ command immediately after installation. Its first step is
 cache with `EXPO_NO_CACHE=1`. The doctor remains pinned in the root lockfile.
 A failed dependency check stops the command before build/test work begins.
 The command tests protect this early stop, fresh metadata and nonzero exits.
+
+For split or stacked PRs, perform this verification on each branch's exact
+publication candidate. A passing combined feature branch does not verify an
+earlier PR with older dependency pins. Carry SDK maintenance through the stack
+when integrating reviewed fixes, resolving each branch's package manifest and
+lockfile together. Keep the native/device acceptance for changed dependencies
+open until separately evidenced.
 
 Rerun the standalone doctor immediately before an authorized push after longer
 verification sessions. Review any recommended SDK patch changes, update the exact
@@ -320,8 +330,9 @@ The saved `e2e/data-export.spec.ts` cases use the real app/API/database to downl
 the result, and recover from an export network failure through explicit retry.
 Run `npm run test:journey -- e2e/data-export.spec.ts` for this slice or the normal
 command for the full suite; the existing fixture/port/cleanup safeguards apply.
-The Settings action starts the export directly, displays Creating export… while
-busy, quietly resets after sharing is dismissed and keeps failure feedback/retries in Settings. The saved journey verifies that
+The Settings action starts the export directly, keeps the Export my data label
+visible alongside a progress indicator while busy, quietly resets after sharing
+is dismissed and keeps failure feedback/retries in Settings. The saved journey verifies that
 the route stays `/settings` through download. Side-panel downloads and simulator
 share sheets are separate manual evidence.
 Physical-iPhone Save to Files, cancellation, accessibility and native cleanup

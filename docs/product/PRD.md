@@ -4,7 +4,7 @@
 
 **Status:** Revised draft aligned to the final core-app designs; unresolved product decisions are listed in section 13.  
 **Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.  
-**Updated:** October 8, 2026.
+**Updated:** October 14, 2026.
 
 **Implementation specification:** [TECH_STACK.md](../architecture/TECH_STACK.md).\
 **Implementation plan:** [Stages and handoffs](../IMPLEMENTATION_PLAN.md).\
@@ -327,7 +327,7 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 
 ## 12. Validation and implementation order
 
-1. Begin Apple Developer enrollment/account readiness, App Store Connect app setup, and RevenueCat product setup alongside development; record unresolved offer/design decisions with the phase they block.
+1. Begin Apple Developer enrollment/account readiness, App Store Connect app identifiers and Expo/EAS signing setup alongside development. RevenueCat/store-credential connection and subscription-product configuration wait until Phase 07A after the free beta; record unresolved offer/design decisions with the phase they block.
 2. Prove no-signup iPhone identity/recovery and its fallback, then build shared API/navigation boundaries; welcome/questionnaire onboarding is deferred.
 3. Build the six Level 1 venue decks, local unfinished challenge/countdown and phone-saved completion/Success flow.
 4. Add typed reflections and the full Progress summary/calendar/day sheet against real cloud data.
@@ -340,7 +340,7 @@ Include duplicate completion, phone-write failure and warned memory-only recover
 
 ## 13. Remaining decisions and design gaps
 
-The remaining rows are unresolved. The reflection save and dismissal rule was approved September 27; other proposed defaults are recommendations, not newly approved scope.
+The table records outstanding decisions and previously approved reflection rules. Other proposed defaults are recommendations, not newly approved scope. Reduce Motion's saved preference and system priority are implemented; remaining physical-device, VoiceOver and text-scaling acceptance belongs to Phase 09, separately from open design work.
 
 | Decision                             | Proposed default / work needed                                                                                                                                                                                         |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -348,4 +348,4 @@ The remaining rows are unresolved. The reflection save and dismissal rule was ap
 | Reflection optionality and dismissal | Approved September 27: optional overall step; feeling-only, text-only or both; Skip when empty, Save Reflection when either has input; empty Back/X skips, dirty Back/X offers save, keep editing or discard and skip. |
 | Reading saved reflection text        | Approved September 27: expand a day entry to read its submitted per-attempt reflection. Phase 07.4 adds explicit text-only Add/Edit while preserving feeling; deletion remains excluded. Do not use a day-level note.  |
 | Future levels — not a launch blocker | Decide thresholds, unlocking/skipping, partial/final-level behavior and treatment of prior Level 1 completions when scheduling levels. Preserve history now; do not implement hidden progression.                      |
-| Supporting UI and formatting         | Finalize Settings rows, haptic/motion preferences, missing/empty states, short-screen/text-scaling layouts, and reduced-motion behavior. Confirm the visual role of the three Home color variants.                     |
+| Supporting UI and formatting         | Finalize remaining Settings/privacy controls, Phase 09 haptic preferences and outstanding missing/empty or short-screen/text-scaling designs. Confirm the visual role of the three Home color variants.                |

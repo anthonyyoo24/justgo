@@ -1,5 +1,47 @@
 # Implementation handoffs
 
+**October 14 PR #24 review correction:** Export busy-state descriptions now
+match the retained label and progress indicator. The
+[review follow-up](phase-08-settings-privacy.md#october-14-pr-24-review-correction)
+preserves the earlier wording's history, records verification and reconciles
+the already-fixed journey finding. No app behavior or phase scope changes.
+
+**October 14 PR #24 journey timing fix:** One Foundation run measured a
+Troubleshooting label while the page was opening/refreshing. The
+[fix handoff](phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)
+records failing-before repetition, usable-control readiness and retrying fresh
+geometry with the original alignment limit. App code is unchanged; publication
+and hosted acceptance remain separate from local evidence.
+
+**October 14 third review preparation:** PR #23 is merged, local `main` is
+updated and the export review worktree is archived. The
+[account/recovery review handoff](phase-08-settings-privacy.md#october-14-third-review-preparation)
+records the separate 78-file checkpoint, passing code/coverage and cold web/iOS
+bundle checks, and the retained native/journey limits. Ongoing working files
+and the final haptics/performance review remain separate.
+
+**October 14 second review preparation:** After PR #22 merged, local `main`
+was updated and its review worktree archived. The
+[export/test-access review handoff](phase-08-settings-privacy.md#october-14-second-review-preparation)
+records integration of reviewed fixes, passing root/database/coverage checks,
+and the saved browser journey blocked by the existing preview on port 8081.
+The ongoing Phase 08 working files and later review branches remain separate.
+
+**October 14 PR #22 review corrections:** Early Apple/EAS distribution setup
+is separated from post-free-beta Phase 07A billing configuration, and implemented
+Reduce Motion behavior is removed from the open design lists. Native/device
+acceptance remains in Phase 09. The [review follow-up](phase-08-settings-privacy.md#october-14-pr-22-review-corrections)
+records the two addressed comments and documentation verification.
+
+**October 14 PR #22 CI repair:** Both Foundation runs stopped at outdated Expo
+SDK 57 patch pins and then attempted to upload nonexistent coverage reports.
+The [repair handoff](phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
+records the isolated exact-PR fix, producing-step-aware coverage uploads and
+regressions. Anthony authorized pushing `a522fe6` into PR #22 on October 14;
+both hosted Foundation runs pass, including all 24 saved journeys. Native
+build/device acceptance remains separate. Verify each branch when splitting PRs
+and rerun fresh online Doctor immediately before pushing.
+
 **October 14 reflection keyboard:** The separate Phase 08 keyboard worktree
 brings the focused reflection section into view and bounds the writing area above
 the retained Skip/Save footer. The [keyboard handoff](phase-08-reflection-keyboard.md)
