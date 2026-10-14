@@ -1,10 +1,17 @@
 # Implementation handoffs
 
+**October 14 PR #22 review corrections:** Early Apple/EAS distribution setup
+is separated from post-free-beta Phase 07A billing configuration, and implemented
+Reduce Motion behavior is removed from the open design lists. Native/device
+acceptance remains in Phase 09. The [review follow-up](phase-08-settings-privacy.md#october-14-pr-22-review-corrections)
+records the two addressed comments and documentation verification.
+
 **October 14 PR #22 CI repair:** Both Foundation runs stopped at outdated Expo
 SDK 57 patch pins and then attempted to upload nonexistent coverage reports.
 The [repair handoff](phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
 records the isolated exact-PR fix, producing-step-aware coverage uploads and
-regressions. Hosted verification awaits owner-authorized publication; native
+regressions. Anthony authorized pushing `a522fe6` into PR #22 on October 14;
+both hosted Foundation runs pass, including all 24 saved journeys. Native
 build/device acceptance remains separate. Verify each branch when splitting PRs
 and rerun fresh online Doctor immediately before pushing.
 

@@ -4,6 +4,47 @@
 **Status:** Settings/contact and Reduce Motion slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
 
+## October 14 PR #22 review corrections
+
+Anthony authorized fixing and pushing the two documentation findings assessed
+against `a522fe6`. The [billing schedule comment](https://github.com/anthonyyoo24/justgo/pull/22#discussion_r4274919498)
+and [remaining motion work comment](https://github.com/anthonyyoo24/justgo/pull/22#discussion_r4274919507)
+are addressed by the following corrections:
+
+- Keep early Apple enrollment, app identifiers, Expo/EAS project and signing
+  preparation available for the free beta. Schedule Apple purchase-key generation,
+  RevenueCat/store-credential connection, subscription-product creation and
+  offering/paywall mapping after the free beta checkpoint, during Phase 07A and
+  before its billing acceptance. Distinguish the Phase 09 free-beta build checks
+  from the return to Phase 09 for paid submission after accepted 07A.
+- Align the plan's decision table and PRD implementation order with that same
+  sequence. Local billing-code preparation remains preserved; this documentation
+  correction does not authorize external provider setup.
+- Remove implemented Reduce Motion behavior from open design rows. Keep remaining
+  Settings/privacy and haptics design work open, and distinguish Phase 09
+  physical-device/VoiceOver/text-scaling acceptance from design decisions.
+- Preserve the assessment's recommendation against a blanket 80% docstring target;
+  no code, test-coverage floor or CI policy changes are included.
+
+This follow-up also publishes the previously recorded hosted CI results for
+`a522fe6`. Verification is limited to Markdown consistency, relative links,
+formatting and diff checks; no code tests or UI checks are required for these
+documentation-only changes. The legacy `docs/checks/check-plan.mjs` targets the
+absent historical HTML companion rather than the authoritative Markdown plan,
+so it is not an applicable check for this correction.
+
+Verification: Prettier checks for all four changed Markdown files and
+`git diff --check` **pass**. The new relative review-handoff link and its
+heading anchor **pass** validation. Manual comparison of the plan and PRD
+confirms the billing and motion boundaries agree. Fresh online Expo Doctor
+passes **21/21** before the authorized push; its ignored log is
+`.local/pr22-ci/review-pre-push-doctor.log`.
+
+Changed-directory review covers `docs`, `docs/product` and `docs/handoffs`.
+Their existing responsibility groups remain navigable and no new files or
+folder moves are needed. The approved phase sequence and remaining native,
+privacy and billing acceptance gates remain open.
+
 ## October 14 PR #22 CI repair
 
 Anthony requested identifying and fixing [PR #22](https://github.com/anthonyyoo24/justgo/pull/22)'s
@@ -96,11 +137,21 @@ Verification:
 - Temporary Metro on 8092 and the separately created PostgreSQL instance on
   54331 were stopped after verification. Other checkout services were preserved.
 
-Logs remain ignored under `.local/pr22-ci/`. Hosted Actions acceptance awaits
-Anthony's explicit permission to push these fixes into the existing PR branch
-and inspection of that published revision. CodeRabbit subsequently reports
-success on the original PR head. Native build/device acceptance for the SDK
-patch changes remains separate owner/Phase 09 work. No push, new PR, merge,
+Logs remain ignored under `.local/pr22-ci/`. Anthony explicitly authorized
+pushing the fixes on October 14. The three commits (`9b76585`, `819a061`,
+`a522fe6`) were pushed to the existing `phase8-01-settings-foundation` branch
+after fresh online Expo Doctor passed **21/21** immediately before publication.
+The [push run](https://github.com/anthonyyoo24/justgo/actions/runs/38623306723)
+and [pull-request run](https://github.com/anthonyyoo24/justgo/actions/runs/38623313914)
+both completed with **success**, inspected on October 14 for exact head
+`a522fe64173835f75e0b7f859a83759e16b3c529`. Root checks (Doctor **21/21**, all
+**496** mobile tests), database tests, migration rehearsal, unchanged coverage
+floors, coverage upload, all **24 saved journeys**, journey upload and both
+exports passed. Safe summary evidence is in `.local/pr22-ci/hosted-summary.log`.
+CodeRabbit's current passing status explicitly says its review was skipped and
+manual review is required; no fresh automated code review is claimed.
+Native build/device acceptance for the SDK
+patch changes remains separate owner/Phase 09 work. No new PR, merge,
 deployment or native build was performed.
 
 Changed-directory review covers the root, `docs`, `.github/workflows`,
