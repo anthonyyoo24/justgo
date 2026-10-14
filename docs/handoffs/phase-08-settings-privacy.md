@@ -4,6 +4,43 @@
 **Status:** Settings/contact, account/recovery UI, Reduce Motion and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
 
+## October 14 PR #24 review correction
+
+Anthony authorized correcting the remaining valid review feedback and pushing
+to the existing PR #24 branch. The
+[export documentation finding](https://github.com/anthonyyoo24/justgo/pull/24#discussion_r4276869179)
+is addressed in the testing guide, implementation plan and direct-export
+handoff: Export my data keeps its label and shows a progress indicator while
+busy. The October 11 record identifies the October 12 refinement that replaced
+the earlier Creating export… wording, preserving the sequence of changes.
+This agrees with `SettingsExportRow` and its existing busy/cancellation test.
+
+The [journey timing finding](https://github.com/anthonyyoo24/justgo/pull/24#discussion_r4276869189)
+is already fixed in `106f783`; no further test changes are needed. Both exact-head
+[push](https://github.com/anthonyyoo24/justgo/actions/runs/38648084932)
+and [pull-request](https://github.com/anthonyyoo24/justgo/actions/runs/38648090602)
+Foundation runs passed before this documentation correction. This supersedes
+the publication/hosted-verification pending status at the earlier timing-fix
+preparation checkpoint below. CodeRabbit skipped its automatic re-review of
+that update; these are hosted CI results, not a fresh automated code review.
+The generic docstring warning remains an optional targeted-comment improvement,
+not a reason to add a blanket comment quota or change test-coverage requirements.
+
+Verification: `npm run check` **passes**, including fresh online Expo Doctor
+**21/21**, contracts build, TypeScript, lint, formatting and all tooling/workspace
+tests (**567 mobile**, **54 API** and **24 contract** cases). Markdown formatting,
+`git diff --check` and the added relative links/heading anchors **pass**.
+The ignored full-check log is `.local/pr24-ci-fix/review-docs-check.log` in the
+original checkout. No product UI, database or native behavior changed, so no
+additional browser/device walkthrough or database suite is claimed for this
+documentation correction. Hosted results for the new commit remain a separate
+publication check.
+
+Reviewed the complete contents of `docs`, `docs/operations` and `docs/handoffs`.
+No files were added; the existing responsibility groups and phase handoff index
+remain navigable, so no folder moves are needed. App code, dependency versions,
+native/device acceptance and the remaining privacy/release work are unchanged.
+
 ## October 14 PR #22 review corrections
 
 Anthony authorized fixing and pushing the two documentation findings assessed
@@ -670,8 +707,11 @@ Anthony confirmed that the installed phone app opens normally after the restart.
 ## October 11 direct export from Settings
 
 Anthony approved removing the separate export page and its explanatory copy.
-Settings now starts export on one tap: Export my data → Creating export… → the
-existing iOS share sheet or browser ZIP download. The later feedback refinement
+Settings now starts export on one tap and opens the existing iOS share sheet or
+browser ZIP download. The initial Creating export… wording was replaced by the
+[October 12 action-indicator refinement](#october-12-account-action-indicators):
+the Export my data label remains visible alongside a progress indicator while
+busy. The later feedback refinement
 below makes share-sheet dismissal quiet. Inline feedback handles successful
 delivery, unreadable storage and retryable failures. The row is
 disabled until preparation/sharing ends. A disconnected account opens recovery;

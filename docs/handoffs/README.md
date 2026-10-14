@@ -1,5 +1,11 @@
 # Implementation handoffs
 
+**October 14 PR #24 review correction:** Export busy-state descriptions now
+match the retained label and progress indicator. The
+[review follow-up](phase-08-settings-privacy.md#october-14-pr-24-review-correction)
+preserves the earlier wording's history, records verification and reconciles
+the already-fixed journey finding. No app behavior or phase scope changes.
+
 **October 14 PR #24 journey timing fix:** One Foundation run measured a
 Troubleshooting label while the page was opening/refreshing. The
 [fix handoff](phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)

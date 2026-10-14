@@ -330,8 +330,9 @@ The saved `e2e/data-export.spec.ts` cases use the real app/API/database to downl
 the result, and recover from an export network failure through explicit retry.
 Run `npm run test:journey -- e2e/data-export.spec.ts` for this slice or the normal
 command for the full suite; the existing fixture/port/cleanup safeguards apply.
-The Settings action starts the export directly, displays Creating export… while
-busy, quietly resets after sharing is dismissed and keeps failure feedback/retries in Settings. The saved journey verifies that
+The Settings action starts the export directly, keeps the Export my data label
+visible alongside a progress indicator while busy, quietly resets after sharing
+is dismissed and keeps failure feedback/retries in Settings. The saved journey verifies that
 the route stays `/settings` through download. Side-panel downloads and simulator
 share sheets are separate manual evidence.
 Physical-iPhone Save to Files, cancellation, accessibility and native cleanup
