@@ -98,6 +98,14 @@ async function mount() {
   return screen;
 }
 
+async function receiveAccess(value: AccessResponse) {
+  access = value;
+  await act(async () => {
+    runtime.client.queries.setQueryData(accountKey(userId, 'access'), value);
+    await jest.advanceTimersByTimeAsync(0);
+  });
+}
+
 beforeEach(async () => {
   // Control polling/freshness and flush scheduled notifications before restoring timers.
   jest.useFakeTimers({ doNotFake: ['performance'] });
@@ -326,6 +334,55 @@ it.each(['expiry', 'freshness'] as const)(
     expect(screen.getByText('access closed')).toBeTruthy();
   },
 );
+
+it.each([25, 5_000])(
+  'admits a fresh server check %s ms ahead of the phone without extending expiry',
+  async (ahead) => {
+    const screen = await mount();
+    const receivedAt = Date.now();
+    await receiveAccess({
+      status: 'verified',
+      source: 'free_beta',
+      checkedAt: new Date(receivedAt + ahead).toISOString(),
+      expiresAt: new Date(receivedAt + ahead + 1_000).toISOString(),
+    });
+    expect(screen.getByText('access verified')).toBeTruthy();
+    await act(async () =>
+      jest.advanceTimersByTimeAsync(receivedAt + 999 - Date.now()),
+    );
+    expect(screen.getByText('access verified')).toBeTruthy();
+    await act(async () => jest.advanceTimersByTimeAsync(2));
+    expect(screen.getByText('access closed')).toBeTruthy();
+  },
+);
+
+it('does not admit an implausibly future server check', async () => {
+  const screen = await mount();
+  await receiveAccess({
+    status: 'verified',
+    checkedAt: new Date(Date.now() + 5_001).toISOString(),
+    expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+  });
+  expect(screen.getByText('access closed')).toBeTruthy();
+});
+
+it('closes a clock-aligned check after sixty seconds when polling is paused', async () => {
+  const screen = await mount();
+  const receivedAt = Date.now();
+  await receiveAccess({
+    status: 'verified',
+    checkedAt: new Date(Date.now() + 25).toISOString(),
+    expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+  });
+  expect(screen.getByText('access verified')).toBeTruthy();
+  focusManager.setFocused(false);
+  await act(async () =>
+    jest.advanceTimersByTimeAsync(receivedAt + 59_999 - Date.now()),
+  );
+  expect(screen.getByText('access verified')).toBeTruthy();
+  await act(async () => jest.advanceTimersByTimeAsync(1));
+  expect(screen.getByText('access closed')).toBeTruthy();
+});
 
 it.each(['unpaid', 'unavailable'] as const)(
   'does not admit %s access and recovers after a verified retry',

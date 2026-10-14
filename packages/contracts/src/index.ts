@@ -1,6 +1,7 @@
 import { z } from 'zod';
 export * from './identity.ts';
 export * from './access.ts';
+export * from './data-export.ts';
 export * from './activity/challenges.ts';
 export * from './activity/attempts.ts';
 export * from './activity/reflections.ts';

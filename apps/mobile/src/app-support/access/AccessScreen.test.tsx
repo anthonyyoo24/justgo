@@ -49,6 +49,18 @@ it('distinguishes unpaid from unavailable without inventing a purchase action', 
   expect(screen.getByText(/Purchases aren’t available/)).toBeTruthy();
   expect(screen.queryByText('We can’t verify access yet.')).toBeNull();
 });
+it('explains approved free testing without asking for a subscription', () => {
+  access.mockReturnValue({
+    isPending: false,
+    verified: false,
+    data: { status: 'unpaid', source: 'free_beta' },
+    refetch: jest.fn(),
+  });
+  const screen = render(<AccessScreen />);
+  expect(screen.getByText(/This is a free test build/)).toBeTruthy();
+  expect(screen.queryByText(/active subscription/)).toBeNull();
+  expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
+});
 it('enters tabs only with verified access and returns to recovery when identity disappears', () => {
   access.mockReturnValue({ verified: true });
   const screen = render(<AccessScreen />);

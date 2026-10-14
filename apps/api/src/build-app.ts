@@ -8,6 +8,8 @@ import { ProgressResources } from './progress/resources.js';
 import { ChallengeService } from './challenges/service.js';
 import { challengeRoutes } from './challenges/routes.js';
 import { progressRoutes } from './progress/routes.js';
+import { ExportService } from './privacy/export.js';
+import { privacyRoutes } from './privacy/routes.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
@@ -68,6 +70,12 @@ export function buildApp(
       bearer(request),
     );
   });
+  if (options.identity)
+    app.register(
+      async (scope) =>
+        privacyRoutes(scope, new ExportService(options.identity!)),
+      { prefix: '/v1/account' },
+    );
   if (options.identity)
     app.register(
       async (scope) =>

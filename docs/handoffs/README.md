@@ -1,5 +1,12 @@
 # Implementation handoffs
 
+**October 14 second review preparation:** After PR #22 merged, local `main`
+was updated and its review worktree archived. The
+[export/test-access review handoff](phase-08-settings-privacy.md#october-14-second-review-preparation)
+records integration of reviewed fixes, passing root/database/coverage checks,
+and the saved browser journey blocked by the existing preview on port 8081.
+The ongoing Phase 08 working files and later review branches remain separate.
+
 **October 14 PR #22 review corrections:** Early Apple/EAS distribution setup
 is separated from post-free-beta Phase 07A billing configuration, and implemented
 Reduce Motion behavior is removed from the open design lists. Native/device
@@ -14,6 +21,12 @@ regressions. Anthony authorized pushing `a522fe6` into PR #22 on October 14;
 both hosted Foundation runs pass, including all 24 saved journeys. Native
 build/device acceptance remains separate. Verify each branch when splitting PRs
 and rerun fresh online Doctor immediately before pushing.
+
+**October 11 hosted phone prerequisite:** Anthony approved bringing forward the test-server update/free account admission. The [server handoff](phase-09-test-server.md) records backup/restoration, migration through 0013 with identity preservation, old-writer fencing, the reachable application-staging route and passing checks. A reproduced phone-clock difference initially blocked access; the corrected check preserves expiry/freshness bounds and passes regressions. Anthony confirmed real Home with challenge cards and Home → Settings → Back on his phone. Physical feature acceptance remains open. No Git publication or beta/release acceptance occurred.
+
+**October 11 physical development build:** Anthony's iPhone is registered with Apple/Expo and the first signed physical development build succeeded and is installed. The [setup follow-up](phase-08-settings-privacy.md#physical-development-build-follow-up) records checks, build identity and the installation QR. The subsequent hosted API/tester-access work is recorded above; physical feature acceptance remains open. No Git publication occurred.
+
+**October 10 data export:** Phase 08 step 2 implements a Settings action producing a CSV + JSON ZIP with complete online history and labeled pending local changes. The [export handoff](phase-08-settings-privacy.md#october-10-data-export-implementation) records authenticated owner isolation, file delivery and verification. Deletion, analytics and legal publication remain open; this slice does not close Phase 08.
 
 **October 10 Reduce Motion:** The first remaining Phase 08 slice implements a
 saved installation-level Settings switch and shared app motion behavior, with

@@ -30,7 +30,9 @@ export function AccessScreen() {
           {access.isPending
             ? 'Your private account is connected.'
             : access.data?.status === 'unpaid' && !access.isError
-              ? 'An active subscription is needed to start challenges. Purchases aren’t available in this build yet.'
+              ? access.data.source === 'free_beta'
+                ? 'This is a free test build. Your account needs current approval from the developer to start challenges. Contact support if you need access.'
+                : 'An active subscription is needed to start challenges. Purchases aren’t available in this build yet.'
               : 'Your account is connected. Please try again shortly. Your recovery options are always available.'}
         </Text>
         <PrimaryButton

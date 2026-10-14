@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 73 · Updated October 14, 2026
+**Version:** 74 · Updated October 14, 2026
 
 **Status:** Phase 01 complete. Phase 02 identity is implemented with passing browser/backend checks; native recovery smoke has passed and physical-device acceptance remains pending. See the [phase 02 handoff](handoffs/phase-02-identity.md).  
 Phase 04 implementation now passes local automated/browser checks and native button/relaunch checks; physical-device acceptance and deployment remain open. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md).
@@ -1175,6 +1175,14 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 ### Phase 08 — Settings, privacy & measurement
 
+**October 14 second review preparation:** Anthony confirmed PR #22 merged and
+authorized publishing the export/test-access review next. Local `main` is updated
+to `348671f`, the completed foundation review worktree is archived, and
+`phase8-02-data-export-test-access` incorporates the reviewed main fixes. The
+[second-review handoff](handoffs/phase-08-settings-privacy.md#october-14-second-review-preparation)
+records the exact candidate checks and the occupied-port browser limitation.
+The later review branches and ongoing uncommitted work remain separate.
+
 **October 14 PR #22 CI repair:** The two Foundation runs for `e146adc`
 failed fresh Expo dependency validation; their coverage uploads then failed
 because coverage was skipped. The [CI repair handoff](handoffs/phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
@@ -1183,7 +1191,7 @@ coverage and exact-branch publication checks. Anthony authorized publication,
 and `a522fe6` is pushed to PR #22's branch. Both hosted Foundation runs pass;
 dependency changes retain native build/device acceptance in Phase 09.
 
-**Status:** In progress — Settings/contact and Reduce Motion slices for owner review; legal drafts and remaining privacy controls are open\
+**Status:** In progress — Settings/contact, Reduce Motion and data export slices for owner review; legal drafts and remaining privacy controls are open\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
 
 **Acceptance references:** PRD AC-15–17 · Tech acceptance 3–4, 8–9, 17
@@ -1194,6 +1202,7 @@ dependency changes retain native build/device acceptance in Phase 09.
 
 - Finish Settings with recovery-key/transfer UI, restore/manage subscription links, scoped motion preferences and privacy/terms. Haptics implementation, its saved Settings switch and physical-iPhone acceptance belong together in Phase 09 before the free beta under the October 10 owner decision; the existing unavailable row may remain in Phase 08. Practice reminders are deferred beyond the first release by the October 9 owner decision; do not add notification permission requests or reminder scheduling in this phase.
 - Reduce Motion is an installation-level switch remembered on the phone, independent of account or paid access. The phone's accessibility setting always takes priority. Apply the effective choice to card movement, day-sheet slides, reflection-panel movement, loading shimmer and toast transitions, including live setting changes. Keep actions usable and save failures retryable; no server preference table or account synchronization is required.
+- Export my data opens a private ZIP export with a spreadsheet-friendly CSV, JSON and a README. Include all uploaded completed attempts with feelings/reflections, safe account/device metadata, the current device motion choice and a captured copy of pending or rejected local changes. Label online and local versions rather than dropping either. Authenticate every server page without requiring paid access; never export recovery keys, session tokens or request diagnostics. Internet is required for full history. Use the iOS share sheet or browser download, cancel preparation when leaving the screen or changing accounts, and clean up temporary export files. Concurrent changes on another device may appear between pages; this is not a cross-device atomic snapshot.
 - Use five groups: Preferences, Account & data, Privacy, Support, and About. Support sits directly above About and contains Get help and Suggest a feature as separate email-draft actions. About contains Rate on the App Store, Instagram, TikTok, Twitter/X, Privacy policy and Terms of use. Profiles and the public App Store listing are not ready; leave these rows unavailable until their destinations are configured and verified. The explicit rating action opens the store's Write a Review destination rather than requesting a discretionary in-app rating prompt.
 - Omit explanatory paragraphs below Account & data, Privacy and Support per the October 9 owner refinement. Account & recovery and Terms of use also show only their labels, without subtext. Keep each section heading, row action and availability indicator.
 - Add a Suggest a feature row under Support using the same private contact flow and configured destination as Get help, as clarified by the owner October 9. Distinguish feature suggestions with an email subject or form request type. Open a user-reviewed email draft or private form, with no automatic reflection/history/credential attachments. Configure and verify the destination before release; share support's link-opening failure feedback and keep the action available. The owner selected email to `anthonyyoo24@gmail.com` October 9; opening the draft on a physical phone remains a release check. Public boards/voting are outside this scope.
@@ -1228,6 +1237,10 @@ dependency changes retain native build/device acceptance in Phase 09.
 
 **October 10 Reduce Motion implementation:** Anthony authorized the first remaining Phase 08 slice. Settings now has a working saved switch, with system priority and one shared effective choice for the app's movement effects. Local automated, side-panel browser and iPhone simulator evidence is recorded in the [motion handoff](handoffs/phase-08-settings-privacy.md#october-10-reduce-motion-implementation). Physical-iPhone, VoiceOver and large-text acceptance remain Phase 09 release checks. This slice does not complete Phase 08 or activate analytics, export/deletion, haptics or billing.
 
+**October 10 data export implementation:** Anthony authorized step 2 and selected CSV + JSON in a ZIP. The [export handoff](handoffs/phase-08-settings-privacy.md#october-10-data-export-implementation) records the authenticated paged read, pending-local copies, file delivery and verification. Deletion, analytics, legal publication and the wider Phase 08 acceptance remain open; haptics stays in Phase 09 and native billing in Phase 07A.
+
+**October 11 physical-phone preparation:** At Anthony's request, the first registered iPhone and EAS signing were configured; the physical development build succeeded with this branch's export code and is installed. [Build/setup evidence](handoffs/phase-08-settings-privacy.md#physical-development-build-follow-up) distinguishes compilation from physical acceptance. Anthony subsequently approved the hosted prerequisite: the existing test backend now has the current API/schema and server-authorized access for his confirmed account, after backup/restoration and preservation checks. The [server handoff](handoffs/phase-09-test-server.md) records the cutover, the phone-clock access correction and Anthony's confirmation that real Home and Settings Back work. Export/support/motion and wider feature checks remain open; this does not complete either phase or close the remaining device gates.
+
 **October 10 haptics sequencing:** Anthony moved haptic feedback, its saved Settings switch, automated checks, physical-iPhone testing and resulting corrections together into Phase 09's pre-beta work. Haptics no longer blocks Phase 08; Reduce motion remains Phase 08. Mark haptics complete only after the physical-phone check and necessary retesting pass. This change schedules work without implementing haptics, granting native build/upload permission or changing the other phase acceptance gates.
 
 **October 9 typography review:** At Anthony's request, the Settings title and all section headings now reuse the narrower Bodoni 72 bold treatment already used on the other refined screens. Font sizes and line heights are preserved. Verification and remaining phase work are recorded in the [Phase 08 handoff](handoffs/phase-08-settings-privacy.md).
@@ -1255,7 +1268,8 @@ publication permissions remain unchanged.
 
 ### Phase 09 — Release validation & launch
 
-**Status:** Not started  
+**Status:** Hosted owner-device prerequisite ready; beta/release acceptance not started
+
 **Depends on:** 08 for the free beta checkpoint; 08 and accepted 07A for paid launch.
 
 **Acceptance references:** PRD AC-01–06, 08–11, 13–17 · applicable iOS tech acceptance
@@ -1304,7 +1318,7 @@ Complete real store/provider configuration, native purchase/restore and all 07A 
 
 **Handoff file to create:** `handoffs/phase-09-release.md`
 
-**Working notes / blocker:** None recorded.
+**Working notes / blocker:** October 11: Anthony approved bringing forward the existing hosted test API/schema and explicit free test-account admission to enable Phase 08 physical-phone testing. The [scoped server handoff](handoffs/phase-09-test-server.md) records backup/restoration, preserved identities, old-writer credential fencing, the application-staging HTTPS route, checks and open phone/beta gates. This authorization does not complete Phase 08/09, activate billing, publish Git changes or authorize TestFlight/App Store submission.
 
 ## Optional work after launch
 

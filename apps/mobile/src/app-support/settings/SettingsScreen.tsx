@@ -12,6 +12,7 @@ import {
 import { SettingsInformationGroups } from './SettingsInformationGroups';
 import { SettingsIcon } from './SettingsIcon';
 import { SettingsMotionRow } from './SettingsMotionRow';
+import { useAccess } from '../providers/AppProvider';
 import {
   PendingSettingsRow,
   SettingsGroup,
@@ -20,6 +21,7 @@ import {
 
 export function SettingsScreen() {
   const router = useRouter();
+  const access = useAccess();
   const version = Constants.expoConfig?.version;
   return (
     <SafeAreaView style={styles.safe}>
@@ -65,7 +67,19 @@ export function SettingsScreen() {
                 />
               </Pressable>
             </Link>
-            <PendingSettingsRow icon="export" label="Export my data" />
+            <Link href="/export-data" asChild>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Export my data"
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <SettingsRowContent
+                  icon="export"
+                  label="Export my data"
+                  chevron
+                />
+              </Pressable>
+            </Link>
             <PendingSettingsRow icon="delete" label="Delete account" />
           </SettingsGroup>
 
@@ -78,6 +92,7 @@ export function SettingsScreen() {
 
           <Text style={styles.footer}>
             JustGO{version ? ` · Version ${version}` : ''}
+            {access.data?.source === 'free_beta' ? '\nFree test build' : ''}
           </Text>
           {__DEV__ && (
             <Link href="/preview" style={styles.preview}>

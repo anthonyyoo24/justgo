@@ -74,7 +74,7 @@ Removing the app from your phone does not delete your cloud account. When paid s
 
 ## Your privacy choices and requests
 
-You can choose whether to submit a feeling or reflection and whether to enable optional analytics. [REVIEW: Verify the in-app export and deletion paths before listing them as available.]
+You can choose whether to submit a feeling or reflection. Settings → Export my data creates a ZIP with your saved activity and reflections, including changes waiting to upload from your current phone. Choose where to save or share this private file. Exporting does not delete your data. [REVIEW: Export is implemented locally; verify physical-iPhone delivery before publication. Optional analytics choices and in-app deletion remain unimplemented. Verify these paths before describing them as available.]
 
 Contact us with questions or requests to access, correct or delete personal information. We may need to verify that a request concerns your account, without asking you to email a recovery secret. Depending on the laws that apply, you may also have rights to portability, restriction or objection, to withdraw consent, and to complain to a privacy regulator. [REVIEW: Add applicable legal bases, regional rights, complaint contacts and response periods for worldwide distribution.]
 
