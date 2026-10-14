@@ -67,6 +67,20 @@ Settings as the fallback when the account page has no previous screen.
 
 `platform/haptics/` owns the installation preference, context and iPhone/web adapters. The root composes its provider outside account/access guards. Feedback stays quiet until hydration and during writes; a saved off choice survives relaunch and account changes. The default is on. `react-native-pulsar` 1.7.0 is the only haptics dependency. The native adapter checks its TurboModule before importing the enforcing SDK; old binaries remain usable with unavailable feedback. The adapter only runs in an active iPhone app and the provider contains native failures. One Pulsar system heavy impact follows accepted challenge state, changed feelings or successful enabling. Accepted completion uses Pulsar Batter by default, coalesced across repeated taps. Four heavy taps remain a development comparison, recreated through Pulsar. Unsupported binaries stay quiet rather than using another library. Playback observes preference/lifecycle/foreground guards and is stopped on disable/background/disposal; native failures stay contained. This replaces the original light/selection/success presets and the first medium-impact adjustment after Anthony reported weak feedback and requested vibration-like completion feedback on his physical phone. No private feeling/text payload is passed to the adapter. Callbacks remain stable across preference changes and are fenced after disabling/unmounting. Web does not use browser vibration. Export includes the saved haptics choice. Both preference rows use the shared `SettingsToggleRow` with a decorative pill and an accessible, full-row Pressable. There is no interactive native `UISwitch` to emit feedback outside the app gate. Reduce Motion requests one selection tap through the haptics provider; the Haptics row retains its success-only enable preview and silent disable. Checked, disabled/busy state and keyboard Enter/Space remain available. Pressing or saving never dims the row, icon or label; permanent-disable dimming is confined to the toggle pill. Anthony selected Batter; wider native/release acceptance remains open. See the [strength follow-up](../handoffs/phase-08-settings-privacy.md#october-13-haptics-strength-correction).
 
+The custom `SettingsToggleRow` animates its thumb translation and ink-track
+opacity from one `Animated.Value`, using a 200 ms cubic ease-out transition.
+Only accepted value changes start motion; initial rendering and saving-only
+updates do not. Haptics uses the effective Reduce Motion flag: enabling it stops
+any in-flight transition and applies the value immediately. The Reduce Motion
+row's own short status transition is exempt from the app preference, so it
+animates both on and off while the rest of the app responds immediately. Its
+movement remains suppressed during hydration and whenever the phone's Reduce
+Motion preference is enabled or unknown. Native uses the
+Animated native driver for transform/opacity; web uses its JavaScript driver.
+This visual animation adds no haptics and never changes row/icon/label opacity.
+The unsuccessful native-switch comparison was removed at Anthony's request;
+the developer haptics page retains only its preset testing tools.
+
 Completion policy and the retained development tool live in `platform/haptics/completion/`.
 They share the Batter default and cancellation; development can override the preset
 in memory for Preview and real completion. Reloading restores Batter. `dev/haptics/` presents the Settings-style picker through

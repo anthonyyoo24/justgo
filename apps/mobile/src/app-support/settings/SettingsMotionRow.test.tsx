@@ -10,6 +10,7 @@ import {
   Animated,
   AppState,
   Switch,
+  Text,
   type AppStateStatus,
 } from 'react-native';
 import { SettingsMotionRow } from './SettingsMotionRow';
@@ -89,6 +90,59 @@ beforeEach(() => {
     });
 });
 afterEach(() => jest.restoreAllMocks());
+
+it('animates both app-choice directions without delaying reduced motion elsewhere, while phone settings stop movement', async () => {
+  const stop = jest.fn();
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: jest.fn(),
+    stop,
+    reset: jest.fn(),
+  });
+  function MotionObserver() {
+    const reduced = useReduceMotion();
+    return <Text>{reduced ? 'App motion reduced' : 'App motion enabled'}</Text>;
+  }
+  const storage = memoryStorage('false');
+  const screen = render(
+    <MotionPreferencesProvider storage={storage}>
+      <SettingsMotionRow />
+      <MotionObserver />
+    </MotionPreferencesProvider>,
+  );
+  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
+  timing.mockClear();
+
+  fireEvent.press(screen.getByRole('switch'));
+  await waitFor(() =>
+    expect(screen.getByText('App motion reduced')).toBeTruthy(),
+  );
+  expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+    true,
+  );
+  expect(timing.mock.calls.map(([, config]) => config.toValue)).toEqual([1]);
+
+  // The app preference applies while this test keeps the local animation open.
+  // A phone-level preference must cancel even that small control animation.
+  stop.mockClear();
+  act(() => changeMotion(true));
+  expect(stop).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('switch')).toBeDisabled();
+  expect(screen.getByText('App motion reduced')).toBeTruthy();
+  expect(timing).toHaveBeenCalledTimes(1);
+
+  act(() => changeMotion(false));
+  expect(screen.getByRole('switch')).toBeEnabled();
+  expect(screen.getByText('App motion reduced')).toBeTruthy();
+  fireEvent.press(screen.getByRole('switch'));
+  await waitFor(() =>
+    expect(screen.getByText('App motion enabled')).toBeTruthy(),
+  );
+  expect(timing.mock.calls.map(([, config]) => config.toValue)).toEqual([1, 0]);
+  expect(storage.setItem.mock.calls).toEqual([
+    [motionPreferenceKey, 'true'],
+    [motionPreferenceKey, 'false'],
+  ]);
+});
 
 it('keeps Reduce Motion quiet while Haptics is off and uses only the controlled adapter when on', async () => {
   const motionStorage = memoryStorage('false');

@@ -1882,3 +1882,221 @@ and toggled Haptics and Reduce Motion, answering “Yes, the icons and text stay
 steady.” This closes the reported toggle-row flicker with owner-reported device
 evidence, separately from the earlier browser and automated checks. The existing
 native VoiceOver, relaunch/Stop/background and broader release gates remain open.
+
+### October 13 native-switch animation experiment
+
+**Historical experiment, subsequently removed:** Anthony later requested undoing
+this approach and animating the original custom switch. See the superseding
+[custom-switch task](#october-13-custom-switch-animation-and-experiment-removal).
+
+Anthony wants to preserve the distinctive native iPhone switch animation while
+keeping Haptics off silent. He authorized trying a native-switch workaround
+before changing the accepted Settings controls.
+
+Added `NativeSwitchExperiment` beside the existing developer haptics screen.
+Settings → Test haptics opens the comparison at the top of the existing guarded
+preview route. Both controls are actual React Native `Switch` views on iOS:
+
+- **Native reference:** direct native interaction with its own temporary value.
+- **Tap-controlled native switch:** an accessible switch row changes a second
+  temporary value. Its inner native switch receives no touch/accessibility input;
+  UIKit renders its updated value. The inner switch is not disabled or given a
+  custom thumb, preserving the native visual treatment for comparison.
+
+Neither test control invokes Pulsar, writes preferences, creates activity or
+persists its value. Remounting resets both. The reference may still generate
+Apple's own feedback. Test taps, holds and drags with app Haptics off, comparing
+the second control's animation and silence. Row-handled input can differ from
+native thumb dragging; no fidelity or tactile result is assumed. Native
+VoiceOver also needs checking before adopting this workaround in Settings.
+
+The experiment and existing preview route are guarded by `__DEV__`. Browser and
+Android show an honest iPhone requirement instead of a substitute animation or
+nested interactive HTML input. Production Settings remains unchanged, and no
+dependency, native build or signing change is needed to load the experiment.
+
+Verification:
+
+- Focused experiment/screen/navigation/production-guard tests pass: **18 cases /
+  4 suites**. Checks cover independent/resettable values, the native input and
+  accessibility barrier, unsupported platforms, production hiding, and use with
+  app Haptics off without preference writes or app-feedback requests. Log:
+  `.local/phase-08/native-switch-focused.log`.
+- `npm run check` passes: fresh Expo Doctor **21/21**, builds/types/lint/format,
+  **180 tooling, 54 API, 655 mobile / 77 suites and 24 contract cases**. Log:
+  `.local/phase-08/native-switch-check.log`.
+- Fresh mobile coverage **97.15% lines / 91.99% branches** and unchanged combined
+  coverage floors pass. The new experiment has full line/branch coverage;
+  retained API/contracts reports apply to unchanged source. Logs:
+  `native-switch-coverage.log` and `native-switch-coverage-gate.log` under
+  `.local/phase-08/`.
+- Side-panel walkthrough at **1165 × 1036**: Settings → Test haptics displays the
+  new comparison heading, explicit iPhone requirement and instructions. Existing
+  effect controls remain available below. No browser imitation of UIKit is
+  presented. Screenshot: `.local/phase-08/native-switch-browser.jpg`. Browser
+  Settings values remain Haptics on / Reduce Motion off.
+- A fresh development iOS bundle from the running phone server contains both
+  native switch controls, the touch/accessibility barrier and development guard;
+  the HTTPS staging API is retained. Audit:
+  `.local/phase-08/native-switch-phone-audit.json`. Anthony can reload the
+  existing Pulsar-enabled installed development app; no rebuild was started.
+
+Directory review: inspected all five developer haptics files, both direct Markdown
+files in `docs/` and the existing 23-file handoff directory/index. The experiment
+and its tests belong beside the existing haptics tool; the existing documentation
+groups remain navigable. No additional subfolders or moves are needed.
+
+**Owner physical-iPhone result:** Anthony answered “Silent, but the animation
+feels different.” This establishes owner-reported silence for the comparison,
+but the proposed workaround does not satisfy the desired native animation.
+Do not adopt it in Settings or treat the animation request as resolved. The
+existing accepted silent Settings controls remain unchanged; the comparison
+remains a development fixture. No separate gesture-by-gesture or VoiceOver
+acceptance was reported.
+
+Follow-up inspection of the installed UIKit public `UISwitch`/`UIControl` headers
+and the [React Native 0.86 Switch API](https://reactnative.dev/docs/0.86/switch)
+found no exposed setting for suppressing a normally interactive switch's own
+haptics. This does not establish that every alternative is impossible. The tested
+row-input workaround changes the normal touch path and cannot be presented as
+an equivalent native interaction after this device result. Any future proposal
+must preserve the agreed silence behavior or get an explicit product decision
+to change it; no native implementation/build is authorized by this test result.
+
+Only this evidence/documentation was updated after Anthony's response; no new
+code or UI change was made, so code tests and browser checks were not rerun.
+The existing native persistence/Stop/background and broader release gates
+remain separate. No Settings replacement, publication or phase closeout is
+implied by this comparison.
+
+### October 13 custom-switch animation and experiment removal
+
+Anthony requested using the original custom switch with a simple animation, then
+explicitly asked to undo the native-switch workaround. Removed the experimental
+component, its tests and the developer-screen import/render logic. The retained
+Test haptics page again contains only the existing preset preview/selection
+tools. A screen regression checks that no native `Switch` is rendered there.
+The earlier experiment result remains historical evidence, not current code.
+
+The shared `SettingsToggleRow` remains a custom accessible full-row Pressable
+with decorative track/thumb views. A single Animated value now drives the
+thumb's 20-point translation and the ink track's opacity over 200 ms with cubic
+ease-out. The native driver handles iOS transform/opacity; the browser uses its
+JavaScript driver. No native switch or implicit OS feedback is involved. This
+implements a simple slide/fade; it does not claim to reproduce UIKit's direct
+press/drag interaction.
+
+Both Settings owners supply the effective app/system Reduce Motion choice.
+When it is enabled, an in-flight transition is stopped and the accepted state
+is applied immediately. Value reversals and unmount stop the previous animation.
+Initial rendering and busy-only updates do not start/restart movement. Existing
+checked/disabled/busy state, Enter/Space behavior, storage success/error handling
+and haptics gating remain intact. Only the track and thumb animate; row icons
+and text retain full opacity, including through saves.
+
+Verification:
+
+- Focused Settings/control/preset/navigation checks pass: **69 cases / 6 suites**.
+  Tests exercise shared thumb/track progress, value reversals, cancellation,
+  Reduce Motion interruption, no animation restart for busy-only changes,
+  existing haptics-off gating, accessibility and keyboard input. Native frames
+  are not executed by the Jest renderer. Log:
+  `.local/phase-08/custom-toggle-motion-focused.log`.
+- `npm run check` passes: Expo Doctor **21/21**, build/types/lint/format,
+  **180 tooling, 54 API, 655 mobile / 76 suites and 24 contract cases**. The
+  initial type check caught removed RN `StyleSheet.absoluteFillObject`; using
+  the installed version's `StyleSheet.absoluteFill` resolved it before the
+  complete rerun. Log: `.local/phase-08/custom-toggle-motion-check.log`.
+- Fresh mobile coverage **97.15% lines / 91.99% branches** and all unchanged
+  combined floors pass. `SettingsToggleRow` has full lines/branches/functions;
+  API/contracts coverage is retained for unchanged source. Logs:
+  `custom-toggle-motion-coverage.log` and
+  `custom-toggle-motion-coverage-gate.log` under `.local/phase-08/`.
+- Side-panel walkthrough at **1174 × 1036** confirmed removal of the native
+  trial from Test haptics, then exercised both Settings controls and Space input.
+  Read-only computed-style samples captured intermediate thumb translations
+  from 0 to 20 and track opacity from 0 to 1; row opacity stayed 1 throughout.
+  With Reduce Motion on, the Haptics switch samples changed directly between
+  endpoints. These are browser observations, not native/tactile evidence or a
+  performance benchmark. Frame samples:
+  `.local/phase-08/custom-toggle-browser-frames.json` and
+  `custom-toggle-reduced-browser-frames.json`. Restored Haptics on / Reduce
+  Motion off. Screenshot:
+  `.local/phase-08/custom-toggle-motion-settings.jpg`.
+- Fresh phone Metro bundle confirms the native trial's module/labels are
+  absent, custom animated views/native-driver selection are served and the
+  HTTPS test API remains. Audit:
+  `.local/phase-08/custom-toggle-motion-phone-audit.json`. Reload the existing
+  installed development app to review; no new build/signing change was started.
+
+Directory review: inspected the five shared Settings files, the six direct
+app-support Settings files with their existing export/information groups, the
+three remaining developer haptics files, and the existing documentation groups
+in `docs/`, `docs/architecture/` and `docs/handoffs/`. The shared control remains
+one focused visual/input responsibility with tests beside it. Removing the
+experiment reduces developer fixture files; no new subfolders or moves are
+needed.
+
+**Owner physical-iPhone confirmation passed:** Anthony answered “Smooth; icons
+steady; Off stays silent” to the check covering the custom slide/fade with Reduce
+Motion off, steady row icons/text and Reduce Motion input with Haptics off. This
+records owner-reported visual and tactile acceptance of this focused correction.
+No code changed after the response, so tests and browser checks were not rerun.
+Existing native VoiceOver, persistence/Stop/background and broader release
+checks remain separate. This task does not close the phase or publish Git changes.
+
+### October 13 Reduce Motion toggle in both directions
+
+Anthony noticed that enabling the app's Reduce Motion preference suppressed the
+toggle's own movement, while disabling it animated normally. He explicitly
+requested smooth animation in both directions and side-panel verification.
+
+Changed only the Reduce Motion row's local animation flag to depend on hydration
+and the phone's preference, rather than the effective app-wide flag. Its custom
+200 ms slide/fade can now finish when changing either way. The accepted app
+preference still reaches all other consumers immediately; no global delay,
+additional storage, timer, native switch or haptics request was introduced.
+An enabled or unknown phone preference still stops movement and disables the
+row. The Haptics row continues to follow the effective app/system flag.
+
+Added an integration regression using the actual motion provider and row. It
+keeps the local animation pending while asserting that the rest of the app
+already observes reduced motion, verifies targets in both directions, and
+checks that a live phone preference cancels movement and preserves the saved
+app choice. Existing tests retain failed-save, hydration, duplicate-input,
+keyboard and haptics-off coverage.
+
+Verification:
+
+- Focused motion/shared-toggle/haptics tests pass: **42 cases / 3 suites**. Log:
+  `.local/phase-08/motion-toggle-both-directions-focused.log`.
+- `npm run check` passes: Expo Doctor **21/21**, build/types/lint/format,
+  **180 tooling, 54 API, 656 mobile / 76 suites and 24 contract cases**. Log:
+  `.local/phase-08/motion-toggle-both-directions-check.log`.
+- Fresh mobile coverage **97.15% lines / 91.99% branches** and unchanged combined
+  floors pass. Motion row lines/branches/functions remain fully covered;
+  API/contracts reports apply to unchanged source. Logs:
+  `motion-toggle-both-directions-coverage.log` and
+  `motion-toggle-both-directions-coverage-gate.log` under `.local/phase-08/`.
+- Side-panel verification at **1174 × 1036** captured intermediate thumb and
+  track states for both on and off, with row opacity always 1. With Reduce
+  Motion enabled, the Haptics control still changed directly between endpoints.
+  Space/Enter both work. Restored the original Haptics on / Reduce Motion off
+  browser values. Frame samples: `.local/phase-08/motion-toggle-on-browser-frames.json`,
+  `motion-toggle-off-browser-frames.json` and
+  `motion-toggle-other-control-browser-frames.json`. Screenshot:
+  `.local/phase-08/motion-toggle-both-directions-settings.jpg`.
+- A fresh phone development bundle includes the changed local motion rule and
+  custom toggle, retains the HTTPS test API and contains no native-switch trial.
+  Audit: `.local/phase-08/motion-toggle-both-directions-phone-audit.json`. The
+  existing installed development app needs only a reload; no new native build
+  or signing change was started.
+
+Directory review: the six direct app-support Settings files and their existing
+export/information groups remain cohesive; no files were added. Existing
+plan/architecture/handoff groups remain navigable. No subfolders or moves are
+needed for this focused adjustment.
+
+The requested automated and side-panel checks pass. This change was not
+retested on a physical iPhone, and the existing native accessibility and release
+gates remain separate. No phase closeout or Git publication is implied.

@@ -2,9 +2,11 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { ScaledText as Text } from '../../components/typography/ScaledText';
 import { SettingsToggleRow } from '../../components/settings/SettingsToggleRow';
 import { useHapticPreferences } from '../../platform/haptics/haptics';
+import { useReduceMotion } from '../../platform/motion/motion';
 import { colors, spacing, typography } from '../../theme/tokens';
 
 export function SettingsHapticsRow() {
+  const reduceMotion = useReduceMotion();
   const { enabled, available, loading, saving, error, setEnabled } =
     useHapticPreferences();
   const disabled = loading || saving;
@@ -17,6 +19,7 @@ export function SettingsHapticsRow() {
         disabled={disabled}
         busy={disabled}
         value={enabled}
+        reduceMotion={reduceMotion}
         onValueChange={(next) => {
           void setEnabled(next);
         }}

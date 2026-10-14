@@ -6,7 +6,9 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { type PropsWithChildren } from 'react';
+import { Animated } from 'react-native';
 import { SettingsHapticsRow } from './SettingsHapticsRow';
+import { MotionContext } from '../../platform/motion/motion';
 jest.mock('expo-router', () => ({
   Link: ({ children }: PropsWithChildren) => children,
 }));
@@ -42,7 +44,11 @@ function memory(initial: string | null = null) {
     }),
   };
 }
-function setup(storage: HapticsStorage = memory(), available = true) {
+function setup(
+  storage: HapticsStorage = memory(),
+  available = true,
+  reduceMotion = false,
+) {
   const adapter = {
     isAvailable: () => available,
     playPreset: jest.fn(),
@@ -57,7 +63,18 @@ function setup(storage: HapticsStorage = memory(), available = true) {
   function wrapper({ children }: PropsWithChildren) {
     return (
       <HapticsPreferencesProvider storage={storage} adapter={adapter}>
-        {children}
+        <MotionContext.Provider
+          value={{
+            reduceMotion,
+            systemReduced: false,
+            loading: false,
+            saving: false,
+            error: null,
+            setReduced: async () => {},
+          }}
+        >
+          {children}
+        </MotionContext.Provider>
       </HapticsPreferencesProvider>
     );
   }
@@ -119,6 +136,20 @@ it('saves off and restores it after remount, without playing on hydration', asyn
     false,
   );
   expect(adapter.play).not.toHaveBeenCalled();
+});
+
+it('keeps the haptics control static when the effective motion preference is reduced', async () => {
+  const timing = jest.spyOn(Animated, 'timing');
+  const { wrapper } = setup(memory('true'), true, true);
+  const screen = render(<SettingsHapticsRow />, { wrapper });
+  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
+  fireEvent.press(screen.getByRole('switch'));
+  await waitFor(() =>
+    expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
+      false,
+    ),
+  );
+  expect(timing).not.toHaveBeenCalled();
 });
 it('plays a selection preview only after successfully enabling', async () => {
   const { wrapper, adapter } = setup(memory('false'));

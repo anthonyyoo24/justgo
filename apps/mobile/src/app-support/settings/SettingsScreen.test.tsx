@@ -31,6 +31,7 @@ jest.mock('./export/SettingsExportRow', () => ({
 }));
 
 jest.mock('../../platform/motion/motion', () => ({
+  useReduceMotion: () => false,
   useMotionPreferences: () => ({
     reduceMotion: false,
     systemReduced: false,

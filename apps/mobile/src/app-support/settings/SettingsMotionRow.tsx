@@ -25,6 +25,9 @@ export function SettingsMotionRow() {
         disabled={disabled}
         busy={loading || saving}
         value={reduceMotion}
+        // Keep this status change animated in both directions. The phone's
+        // accessibility preference still suppresses the control's movement.
+        reduceMotion={loading || systemReduced !== false}
         onValueChange={(enabled) => {
           // Replace the native switch's implicit tap with preference-aware input
           // feedback. The motion provider owns storage failure feedback.

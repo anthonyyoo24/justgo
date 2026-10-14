@@ -1,4 +1,12 @@
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { colors } from '../../theme/tokens';
 import type { SettingsIconName } from './SettingsIcon';
 import { SettingsRowContent } from './SettingsRows';
@@ -11,6 +19,7 @@ export function SettingsToggleRow({
   value,
   disabled,
   busy,
+  reduceMotion,
   onValueChange,
 }: {
   icon: SettingsIconName;
@@ -19,8 +28,30 @@ export function SettingsToggleRow({
   value: boolean;
   disabled: boolean;
   busy: boolean;
+  reduceMotion: boolean;
   onValueChange: (value: boolean) => void;
 }) {
+  const [progress] = useState(() => new Animated.Value(value ? 1 : 0));
+  const previousValue = useRef(value);
+  useEffect(() => {
+    const changed = previousValue.current !== value;
+    previousValue.current = value;
+    if (reduceMotion) {
+      progress.setValue(value ? 1 : 0);
+      return;
+    }
+    if (!changed) return;
+    const animation = Animated.timing(progress, {
+      toValue: value ? 1 : 0,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+      isInteraction: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [progress, reduceMotion, value]);
+
   const toggle = () => {
     if (!disabled) onValueChange(!value);
   };
@@ -51,13 +82,28 @@ export function SettingsToggleRow({
         accessory={
           <View
             pointerEvents="none"
-            style={[
-              styles.track,
-              value && styles.on,
-              disabled && !busy && styles.disabled,
-            ]}
+            style={[styles.track, disabled && !busy && styles.disabled]}
           >
-            <View style={[styles.thumb, value && styles.thumbOn]} />
+            <Animated.View
+              testID="settings-toggle-fill"
+              style={[styles.fill, { opacity: progress }]}
+            />
+            <Animated.View
+              testID="settings-toggle-thumb"
+              style={[
+                styles.thumb,
+                {
+                  transform: [
+                    {
+                      translateX: progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, 20],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
           </View>
         }
       />
@@ -73,13 +119,16 @@ const styles = StyleSheet.create({
     padding: 2,
     backgroundColor: colors.border,
   },
-  on: { backgroundColor: colors.ink },
+  fill: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 16,
+    backgroundColor: colors.ink,
+  },
   thumb: {
     width: 27,
     height: 27,
     borderRadius: 14,
     backgroundColor: colors.white,
   },
-  thumbOn: { transform: [{ translateX: 20 }] },
   disabled: { opacity: 0.5 },
 });

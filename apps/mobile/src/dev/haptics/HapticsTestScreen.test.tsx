@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Platform } from 'react-native';
+import { Platform, Switch } from 'react-native';
 import { HapticsTestScreen } from './HapticsTestScreen';
 import {
   HapticsContext,
@@ -63,6 +63,7 @@ it('shows every requested choice and lets the user preview, stop and go back', a
   const screen = setup();
   expect(screen.getByText(/Reloading restores Batter/)).toBeTruthy();
   expect(screen.getAllByRole('radio')).toHaveLength(10);
+  expect(screen.UNSAFE_queryAllByType(Switch)).toHaveLength(0);
   for (const { id, label } of completionHaptics) {
     fireEvent.press(screen.getByRole('radio', { name: label }));
     expect(screen.testing.select).toHaveBeenLastCalledWith(id);

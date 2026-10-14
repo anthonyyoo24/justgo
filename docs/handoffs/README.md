@@ -1,5 +1,27 @@
 # Implementation handoffs
 
+**October 13 Reduce Motion toggle:** Its custom slide/fade now runs in both
+directions while the app preference takes effect immediately elsewhere. The
+phone's accessibility preference still takes priority. The [follow-up](phase-08-settings-privacy.md#october-13-reduce-motion-toggle-in-both-directions)
+records the regression and side-panel verification; no new native-phone
+acceptance is claimed for this adjustment.
+
+**October 13 custom switch animation:** Anthony requested animating the original
+custom toggle and removing the native-switch workaround. Both Settings controls
+now share a short thumb slide and track fade, honor Reduce Motion and retain
+the existing haptics gate and steady row appearance. The native comparison code
+is removed; the [custom-switch handoff](phase-08-settings-privacy.md#october-13-custom-switch-animation-and-experiment-removal)
+records verification and Anthony's physical-iPhone confirmation: “Smooth; icons
+steady; Off stays silent.” Wider native/release checks remain separate.
+
+**October 13 native-switch experiment (removed):** The developer haptics page
+temporarily compared a standard iPhone switch with a switch controlled by row taps.
+Anthony reported “Silent, but the animation feels different” on his physical
+iPhone, so the workaround was not adopted in Settings. Anthony subsequently
+requested the accepted custom animation above. The [experiment handoff](phase-08-settings-privacy.md#october-13-native-switch-animation-experiment)
+records the historical implementation, checks and owner result. The later
+custom-switch task removed the experiment entirely.
+
 **October 13 toggle row flicker:** Removed whole-row fading on press and during
 preference saves. Icons and labels stay opaque; only a permanently disabled
 pill is dimmed. The [visual follow-up](phase-08-settings-privacy.md#october-13-toggle-row-opacity-correction)
