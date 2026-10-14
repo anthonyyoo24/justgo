@@ -1195,6 +1195,19 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 ### Phase 08 — Settings, privacy & measurement
 
+**October 14 reflection keyboard correction:** Anthony authorized the fix in a
+separate Phase 08 worktree with its own development server while the original
+checkout retains ongoing work. Focus brings the reflection section into view and
+fits the editor above the retained Skip/Save footer. The
+[keyboard handoff](handoffs/phase-08-reflection-keyboard.md) owns passing checks and
+Anthony's October 14 physical-iPhone confirmation that the fix works. Broader
+native/release checks remain separate. Anthony subsequently authorized local
+integration of `0237152` into Phase 08 after `f837552`. Combined code checks pass;
+the full root gate remains open because fresh Expo metadata recommends four newer
+SDK 57 patches, recorded in the handoff. The phase stays open.
+
+- [ ] **Dependency maintenance — owner: Anthony / implementation owner, before publication / Phase 09:** align `expo`, `expo-constants`, `expo-linking` and `expo-router` with the newly recommended SDK 57 patches in a separate owner-approved maintenance task; rerun fresh `npm run check` and retain the required native/build/device acceptance. The keyboard integration leaves versions and the installed binary unchanged.
+
 **Status:** In progress — Settings/contact, account/recovery UI, Reduce Motion, Haptics and data export slices for owner review; haptics phone acceptance, legal drafts and remaining privacy controls are open\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
 

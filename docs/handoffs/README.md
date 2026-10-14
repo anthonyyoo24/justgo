@@ -1,5 +1,14 @@
 # Implementation handoffs
 
+**October 14 reflection keyboard:** The separate Phase 08 keyboard worktree
+brings the focused reflection section into view and bounds the writing area above
+the retained Skip/Save footer. The [keyboard handoff](phase-08-reflection-keyboard.md)
+records regression evidence, independent-server setup and Anthony's October 14
+physical-iPhone confirmation that the fix works. Owner-authorized local integration
+combines it with the latest Phase 08 Settings changes. Combined code checks pass;
+four new Expo SDK patch recommendations keep the root dependency gate open.
+Broader native/release gates stay open.
+
 **October 13 Reduce Motion toggle:** Its custom slide/fade now runs in both
 directions while the app preference takes effect immediately elsewhere. The
 phone's accessibility preference still takes priority. The [follow-up](phase-08-settings-privacy.md#october-13-reduce-motion-toggle-in-both-directions)
