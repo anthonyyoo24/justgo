@@ -1,5 +1,11 @@
 # Implementation handoffs
 
+**October 14 PR #25 review corrections:** Day-sheet batches now fill available
+space without requiring a scroll gesture, and the setup guide matches the
+installed Expo/Router pins. The
+[review-fix handoff](phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+records failing-before regressions, verification and retained release gates.
+
 **October 14 fourth review preparation:** PR #24 is merged, and local `main`
 is updated to `6382aed`. The
 [final split-review handoff](phase-08-settings-privacy.md#october-14-fourth-review-preparation)

@@ -13,6 +13,79 @@ remains separate from those code checks.
 **Status:** Settings/contact, account/recovery UI, Reduce Motion, Haptics and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
 
+## October 14 PR #25 review corrections
+
+Anthony authorized fixing and pushing the remaining valid PR #25 findings
+assessed against `a82d261`. The
+[day-list comment](https://github.com/anthonyyoo24/justgo/pull/25#discussion_r4277323497)
+identified a batch that could fit the viewport without creating the scroll
+gesture required to reveal the next rows. `DayEntryList` now observes viewport
+and content sizes and adds one batch when the measured rows fit. Each content
+measurement identifies the rendered batch, so an old height cannot repeatedly
+mount the remaining entries. Duplicate measurements do not cause updates.
+Zero/unknown sizes wait; shrinking the viewport preserves visited rows.
+
+New pages arriving after a scroll still fill ahead without another gesture.
+Existing row keys, active drafts, bounded initial mounting, footer visibility
+and the parent’s guarded server-pagination behavior are retained. Only loaded
+local rows are revealed by measurement; no artificial scroll event or server
+request is generated. The recurring measurement lesson is recorded in `AGENTS.md`.
+
+The [version-guide comment](https://github.com/anthonyyoo24/justgo/pull/25#discussion_r4277323534)
+is corrected to match the existing manifest/lockfile: Expo **57.0.29** and Router
+**57.0.27**. Development client **57.0.20**, React Native **0.86.3**, React
+**19.2.3** and jest-expo **57.0.6** are unchanged. No dependencies are upgraded.
+CodeRabbit’s separate ESLint download failed because of its network connection;
+both Foundation runs for `a82d261` ran lint successfully. No missing dependency,
+validation bypass or blanket docstring quota is introduced for those warnings.
+
+Verification:
+
+- The new focused regressions fail against the original list: **4 fail / 1 pass**,
+  reproducing the missing measurement-driven fill. After correction, all
+  **69 cases across four Progress suites pass**. Cases cover layout/content event
+  order, exact fit, stale/duplicate/zero measurements, viewport resize, appended
+  data, retained rows/footer and scroll-driven pagination. The final duplicate
+  measurement guard is included in the full root check below.
+- Fresh `npm run check`: **pass**, Expo Doctor **21/21**, contracts build,
+  TypeScript, lint, formatting, **186 tooling**, **54 API**, **667 mobile across
+  78 suites** and **24 contract** cases.
+- Full `npm run test:coverage`: **pass**, all unchanged workspace/critical-file
+  floors, including the real database and migration/restoration tests. Mobile
+  **97.19% lines / 92.05% branches**, API **95.01% / 90.61%**, contracts
+  **100% / 100%**, using the task-owned loopback `justgo_test` cluster on 54332.
+- Full saved app/API/database suite: **28/28 pass**. The new tall-view journey
+  seeds nine actual attempts, opens their day and verifies Rep 9 is in the
+  viewport with `scrollTop` still **0**. The retained 41-attempt scrolling/draft/
+  saving case and previous recovery/network/cleanup cases also pass. The ignored
+  runner moves only fixture web/CORS/network-probe configuration to 8093 to
+  preserve the existing preview; every temporary edit is restored afterward.
+- Interactive Browser Use in the **in-app side panel**: **pass**, with a temporary
+  nine-row developer fixture at **390 × 1600**. All nine rows render without a
+  scroll gesture; the measured list has `clientHeight = scrollHeight = 735`
+  and `scrollTop = 0`. Resizing to **390 × 844** retains the ninth row, with
+  `clientHeight = 518`, `scrollHeight = 735`, and a usable header/scroll region.
+  The tab closes normally, the viewport override is reset, and the fixture is
+  restored byte-for-byte before final bundle checks. This preview makes no
+  account/activity writes and is separate from the saved actual-API journey.
+- Cold web and iOS exports with `--clear --max-workers 1`: **pass**, after restoring
+  the temporary fixtures. The list's unit coverage is **100% lines/branches**;
+  existing global and critical-file floors are unchanged. Relative handoff links,
+  version-guide consistency, formatting and diff checks **pass**.
+- Standalone fresh online Expo Doctor immediately before the authorized push:
+  **21/21 pass**. Hosted checks for the new commits remain separate from local
+  evidence.
+
+The task-owned preview and database are stopped after verification; other
+workspace/phone services remain untouched. Browser/component checks do not
+establish a fresh native measurement or device acceptance for this correction.
+
+The added `DayEntryList.test.tsx` stays beside its owner in the existing entries
+group and brings the PR to **71 files**. Reviewed all changed directories: root, Progress entries, `e2e`, `docs`,
+`docs/operations` and `docs/handoffs`; no additional folders or moves are needed.
+Logs remain ignored under `.local/phase-08/pr25-review-*` in the original checkout.
+Other checkout work and broader native/release/privacy acceptance remain separate.
+
 ## October 14 fourth review preparation
 
 Anthony merged PR #24 at `6382aed` and requested the final PR in the agreed split.

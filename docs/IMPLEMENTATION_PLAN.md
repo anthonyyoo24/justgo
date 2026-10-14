@@ -1196,6 +1196,14 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 ### Phase 08 — Settings, privacy & measurement
 
+**October 14 PR #25 review corrections:** The day-sheet list now uses measured
+viewport/content sizes to reveal more local rows when its initial batch does not
+create scrolling. It waits for each new batch's measurements and retains the
+existing scroll-ahead, draft and pagination behavior. The current setup guide's
+Expo/Router pins match the manifest. The
+[review-fix handoff](handoffs/phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+owns regression and UI evidence; the broader phase/release gates remain open.
+
 **October 14 fourth review preparation:** Anthony merged PR #24 and requested
 the final review in the agreed four-PR split. Local `main` is updated to `6382aed`;
 `phase8-04-haptics-performance-polish` incorporates that main and retains the
