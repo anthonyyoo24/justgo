@@ -337,6 +337,165 @@ Migration order remains 0000–0012. Native binaries require both existing Async
 
 Rollback consists of reverting this local slice before publication; the 07.2 on-phone journal envelope and API contracts are unchanged. Keep retained submissions and account keys; do not reset activity storage as a repair step. Full API/client compatibility removal and production rollback rehearsal remain 07.5.
 
+## October 10 native completion handoff follow-up
+
+Anthony reported an intermittent page flash after Completed on the iPhone simulator.
+An initial window-overlay/native-transition candidate passed automated checks and
+showed clean captured samples, but **the owner retested and still saw the flicker**.
+That candidate is superseded. Anthony asked Codex to inspect/record it directly.
+Work remains local on `codex/phase-08-settings-privacy`; no commit, push, PR or
+merge was performed for this follow-up, and Phase 08/device acceptance stays open.
+
+### Findings and implemented change
+
+- Further overlay captures did not contain an intermediate page. Temporary
+  instrumentation confirmed that Success's missing-result fallback did not render
+  in the traced completion and its reported layout was 402 × 874. The instrumentation
+  was removed; it did not establish the owner's exact flashing content.
+- A diagnostic native-route replacement (Active → standalone Success, animation
+  `none`) captured blended Active/Success at **15.2167s** and **78.1083s** in
+  `native-route.mov`, followed by clean Success at **15.2250s** and **78.1167s**.
+  The installed screens code toggles destination alpha in a zero-duration native
+  animation. This establishes mixed frames in that candidate, without claiming
+  they were identical to every owner-reported flash.
+- An initial in-place switch removed native replacement but recorded a first
+  Success frame at **34.85s** with missing artwork/unmeasured safe-area positioning,
+  followed by settled content at **34.87s** (`in-place.mov`). Repeat was clean.
+- The final iOS implementation uses one `/challenge` route for Active and Success.
+  An account-keyed provider retains unfinished activity only in React memory.
+  Success prepares beneath the opaque active view with measured window insets and
+  hidden accessibility/pointer input. Completed reveals that mounted view without
+  a native navigation action. Continue replaces the route with Reflection; Give up
+  returns Home without a rep. Active disables native back; Success enables it.
+  Returning Home clears the activity/result without reopening Success. An empty
+  direct/restarted challenge route returns Home.
+- Standalone Success remains for restored results and Android/web completion.
+  Android/web retain the existing opaque modal. Shared active content preserves
+  measured iOS/web insets, Android modal insets, explicit outcomes and saving
+  feedback. No persistence, dependency, native build or signing change was made.
+
+### Final verification and limits
+
+- Focused challenge tests: **29 pass / 5 suites**. Regressions cover in-place
+  completion without push/replace, retained prepared Success and hidden Continue,
+  matching Reflection attempt, native gesture options, retryable failed completion,
+  Give up, empty restart, initial insets and account isolation. The earlier
+  native-route regression fails against the original Home implementation.
+- `npm run check`: **pass**, fresh online Doctor **21/21**, contracts build,
+  workspace/journey types, lint, formatting and tooling/API/mobile/contracts tests;
+  mobile **465 tests / 61 suites**. The initial check caught an unused mock argument;
+  its type moved to the Jest mock signature before the passing rerun.
+- `npm run test:coverage -w @justgo/mobile`: **pass**, **95.16% lines / 90.70%
+  branches**. `npm run coverage:check`: **pass** at unchanged global/critical floors,
+  using fresh mobile and previous API/contracts reports. Reviewed uncovered native
+  branches: covered-route focus/busy guards, hidden Continue before completion and
+  disconnected/missing-provider fallbacks; no normal completion branch is missing.
+- `npm run test:journey -- e2e/local-flow.spec.ts`: **9 pass** against the actual
+  browser app, isolated fixture API and loopback `justgo_test`. This covers normal/
+  slow saves, duplicate input, offline/reload, memory/cloud fallback, renewal,
+  deferred recovery and exclusive active navigation. Owned API/Metro processes
+  were stopped for the harness and restored afterward for review.
+- Native Computer Use on the retained iPhone 17 / iOS 26.5 QA simulator verified
+  fresh/repeated Completed → Success, Continue → Reflection → empty Skip and Give
+  up → Home. In `prepared-success.mov`, Active at **14.7750s** is followed by fully
+  laid-out Success at **15.0117s**; repeat Active at **65.0717s** is followed by
+  Success at **65.3550s**. All **106 recorded frames** were extracted; the completion
+  boundaries contain no observed Home, mixed view, missing artwork or inset jump.
+  Variable-rate capture cannot rule out an uncaptured compositor frame. Owner
+  acceptance of this final revision is still pending.
+- Interactive side-panel Browser Use remains blocked by its URL security policy;
+  no alternate browser or raw browser-control connection was used. Saved journeys
+  are separate automated evidence. Native back-gesture verification remains open:
+  Computer Use coordinate input failed to resolve the simulator window and the
+  dedicated gesture tool could not resolve Xcode from the global tools selection.
+  Component gesture/return tests do not establish actual iOS gesture behavior.
+- Commands use scoped `DEVELOPER_DIR` with installed Xcode; no global developer
+  selection, reinstall, keys/history reset or reflection text entry occurred.
+  VoiceOver, physical-iPhone, broader lifecycle/storage and owner gesture acceptance
+  remain assigned to Anthony / Phase 09. The macOS Screenshot selection overlay
+  was closed at the owner's request; all background recorders were stopped.
+- Ignored `.local/phase-08-completion-flicker/` contains diagnostic/final videos,
+  extracted timestamped frames and `prepared-success-*` verification logs. No visual
+  artifacts are committed. The dedicated backend suite was not rerun for this
+  mobile-only fix; saved journeys exercise the relevant real API/database boundary.
+
+## October 10 accept handoff follow-up
+
+Anthony then reported a flash after Accept and requested direct reproduction,
+repair and verification of both Accept and Completed on the iPhone simulator.
+This follow-up remains local on `codex/phase-08-settings-privacy`; the earlier
+completion change above is retained. No Git publication or native build occurred.
+
+### Reproduction and repair
+
+- `before.mov` captures the next Home card at frame 35, the accepted card snapping
+  back into Home at **19.2017s** (frame 36), then Active at **19.2417s** (frame 37).
+  Home's focus-based deck key remounted the resting deck as the native route opened.
+  A regression reproduced that remount and failed before the key was fixed.
+- Preserving the iOS deck identity removed that snapback, but `after.mov` still
+  captured a mixed Home/Active frame at **49.6217s**, followed by Active missing
+  artwork at **49.6300s**, then settled Active at **49.6333s**. Automated tests alone
+  had not established a clean native presentation.
+- `NativeChallengeHandoff` now prepares a temporary window cover using the same
+  Active content and measured root insets. It stays invisible until its layout,
+  venue image and paper texture settle, then opens `/challenge` exactly once.
+  The cover remains opaque until the destination reports the same readiness and
+  its opening native `transitionEnd` arrives. Decorative image errors also settle
+  readiness; outcome buttons stay disabled during the handoff. Account-owned
+  activity resets the cover with the account. No timing delay or new dependency
+  is used. Android/web retain their existing focus/modal behavior.
+- Simulator logs exposed two saving toast hosts while the cover and destination
+  overlapped. A new regression failed with two hosts before the correction.
+  The cover now mirrors the saving notice without registering/releasing a toast
+  channel or mounting a host; the destination owns the single sheet host. Removing
+  the cover leaves the destination channel intact. Recovery warning layout stays
+  present in both views.
+- Completed still reveals the already mounted Success view in place, without a
+  route replacement or modal dismissal. Continue, empty Skip, Give up, save retries
+  and account boundaries remain protected by the retained tests.
+
+### Final verification and limits
+
+- Focused challenge/saving checks: **76 tests / 8 suites pass**. Regressions cover
+  stable exiting-deck identity, single push, hidden/disabled cover input, both
+  native-entry/assets-ready orderings, ignored closing events, load/error readiness
+  through the actual image wiring, listener cleanup, and sole toast ownership.
+  The deck and toast regressions were observed failing before their fixes.
+- `npm run check`: **pass**, online Expo Doctor **21/21**, contract build, types,
+  lint, formatting, tooling/API/mobile/contracts tests. Mobile: **471 / 62 suites**.
+- `npm run test:coverage -w @justgo/mobile`: **pass**, **95.21% lines / 90.83%
+  branches**. `npm run coverage:check`: **pass**, unchanged global/critical floors
+  using fresh mobile and previous verified API/contracts reports. Cover readiness
+  and real asset callbacks have full branch coverage; remaining native-route gaps
+  are focus/busy guards and the hidden Continue guard, not the normal handoff.
+- `npm run test:journey -- e2e/local-flow.spec.ts`: **9 pass** on the actual
+  browser app, isolated fixture API and loopback `justgo_test`, covering normal/
+  slow saves, duplicate activation, offline/reload, renewal, memory/cloud fallback,
+  deferred recovery and exclusive active navigation. The harness cleaned up its
+  fixture accounts/services; owned API/Metro were restored afterward for review.
+  The dedicated backend suite was not rerun for this mobile-only change.
+- Native Computer Use on the retained iPhone 17 / iOS 26.5 QA simulator verified
+  first/repeated Accept → Active and Completed → Success after a fresh app launch.
+  `final.mov` contains **98 extracted frames**. First fully drawn Active appears
+  at **5.3350s**, Success at **13.9100s**; repeat Active at **26.9917s**, Success at
+  **33.8733s**. Reviewed transition boundaries show no accepted-card snapback,
+  intermediate Home, mixed destination, missing artwork or inset jump. The
+  separate developer Refreshing banner at **36.1800s** follows a check-triggered
+  Metro refresh after Success; it is not a completion boundary. Variable-rate
+  capture cannot rule out an uncaptured compositor frame.
+- Continue → Reflection → empty Skip returned Home twice. A further Park Accept
+  loaded its different artwork and enabled the outcome buttons; Give up returned
+  Home. Fresh Metro output contained no duplicate toast warning. All background
+  recorders are stopped; the macOS region-selection recorder was not reopened.
+- Interactive side-panel Browser Use remains blocked by the tool's URL security
+  policy; no alternate browser/raw control was used. Native swipes/back gestures,
+  VoiceOver and physical-iPhone acceptance remain open as recorded above. These
+  manual button/recording checks are distinct from saved journeys and device gates.
+- Scoped Xcode selection reused the installed simulator app without reinstalling,
+  resetting keys/history or entering reflection text. Evidence and logs remain
+  ignored under `.local/phase-08-accept-flicker/`. Owner acceptance and Phase 08/09
+  release gates remain open; this fix does not complete Settings or native billing.
+
 ## Remaining work and risks
 
 | Item                                                                                                                                                                    | Owner / required checkpoint                                                                                           |

@@ -1,14 +1,40 @@
+import { createContext } from 'react';
 import { act, fireEvent, render, within } from '@testing-library/react-native';
-import { Modal, Platform, StyleSheet } from 'react-native';
+import { Modal, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { colors } from '../../theme/tokens';
 import type { ChallengeSnapshot } from './controller';
 import { attempt, card } from '../../../test-support/journal';
 import { ChallengeScreen } from './ChallengeScreen';
 import { ChallengeDeck } from './ChallengeDeck';
+import {
+  ChallengeActivityProvider,
+  useChallengeActivity,
+} from './ChallengeActivityProvider';
+import { ChallengeFlowScreen } from './ChallengeFlowScreen';
 
 const mockMounted = jest.fn();
-const mockRouter = { push: jest.fn() };
+const mockScreen = jest.fn<null, [unknown]>(() => null);
+const mockRouter = {
+  push: jest.fn(),
+  replace: jest.fn(),
+  dismissTo: jest.fn(),
+};
+const mockFocusContext = createContext<boolean | null>(null);
+const mockTransitions = new Set<
+  (event: { data: { closing: boolean } }) => void
+>();
+const mockNavigation = {
+  addListener: jest.fn(
+    (
+      _event: string,
+      listener: (event: { data: { closing: boolean } }) => void,
+    ) => {
+      mockTransitions.add(listener);
+      return () => mockTransitions.delete(listener);
+    },
+  ),
+};
 let mockFocused = true;
 let mockAccount = { userId: 'deck-owner' };
 const mockCard = { ...card, venue: 'cafe' as const };
@@ -38,8 +64,11 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 jest.mock('expo-router', () => ({
-  useIsFocused: () => mockFocused,
+  Stack: { Screen: (props: unknown) => mockScreen(props) },
+  useIsFocused: () =>
+    require('react').useContext(mockFocusContext) ?? mockFocused,
   useRouter: () => mockRouter,
+  useNavigation: () => mockNavigation,
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
 jest.mock('../../app-support/providers/AppProvider', () => ({
@@ -47,11 +76,46 @@ jest.mock('../../app-support/providers/AppProvider', () => ({
   useIdentity: () => ({ account: mockAccount }),
 }));
 jest.mock('../../app-support/saving/SavingFeedback', () => ({
-  SavingSheetSurface: () => null,
+  SavingSheetSurface: ({
+    toastHostEnabled = true,
+  }: {
+    toastHostEnabled?: boolean;
+  }) => {
+    const { View } = require('react-native');
+    return toastHostEnabled ? <View testID="sheet-toast-host" /> : null;
+  },
+}));
+jest.mock('react-native-screens', () => ({
+  FullWindowOverlay: ({ children }: { children: React.ReactNode }) => {
+    const { View } = require('react-native');
+    return <View testID="window-overlay">{children}</View>;
+  },
 }));
 jest.mock('./VenueTabs', () => ({ VenueTabs: () => null }));
 jest.mock('./ChallengeDeck', () => ({
-  ChallengeCard: () => null,
+  ChallengeCard: ({
+    onArtworkSettled,
+    onTextureSettled,
+  }: {
+    onArtworkSettled?: () => void;
+    onTextureSettled?: () => void;
+  }) => {
+    const { View } = require('react-native');
+    return (
+      <View>
+        <View
+          testID="mock-artwork"
+          onLoad={onArtworkSettled}
+          onError={onArtworkSettled}
+        />
+        <View
+          testID="mock-texture"
+          onLoad={onTextureSettled}
+          onError={onTextureSettled}
+        />
+      </View>
+    );
+  },
   ChallengeDeck: ({
     onAction,
     disabled,
@@ -80,6 +144,8 @@ jest.mock('./ChallengeDeck', () => ({
 }));
 beforeEach(() => {
   jest.clearAllMocks();
+  mockTransitions.clear();
+  jest.replaceProperty(Platform, 'OS', 'web');
   mockFocused = true;
   mockAccount = { userId: 'deck-owner' };
   mockSnapshot = {
@@ -93,12 +159,85 @@ beforeEach(() => {
   };
   mockController.complete.mockResolvedValue(undefined);
 });
+afterEach(() => jest.restoreAllMocks());
+function Flow() {
+  return (
+    <ChallengeActivityProvider>
+      <ChallengeScreen />
+    </ChallengeActivityProvider>
+  );
+}
+function NativeFlow() {
+  return (
+    <ChallengeActivityProvider>
+      <mockFocusContext.Provider value={mockFocused}>
+        <ChallengeScreen />
+      </mockFocusContext.Provider>
+      {!mockFocused && (
+        <mockFocusContext.Provider value={true}>
+          <NativeRouteFixture />
+        </mockFocusContext.Provider>
+      )}
+    </ChallengeActivityProvider>
+  );
+}
+function NativeRouteFixture() {
+  const { active, presentedStart } = useChallengeActivity();
+  return (
+    <View
+      testID="native-route"
+      accessibilityElementsHidden={presentedStart !== active}
+    >
+      <ChallengeFlowScreen />
+    </View>
+  );
+}
+function settleSurface(
+  owner: Parameters<typeof within>[0],
+  outcome: 'load' | 'error' = 'load',
+) {
+  const content = within(owner);
+  fireEvent(
+    content.getByTestId('active-challenge-surface', {
+      includeHiddenElements: true,
+    }),
+    'layout',
+  );
+  fireEvent(
+    content.getByTestId('mock-artwork', { includeHiddenElements: true }),
+    outcome,
+  );
+  fireEvent(
+    content.getByTestId('mock-texture', { includeHiddenElements: true }),
+    outcome,
+  );
+}
+async function prepareNativeAccept(screen: ReturnType<typeof render>) {
+  await act(async () => accept(screen));
+  await act(async () =>
+    settleSurface(
+      screen.getByTestId('native-challenge-handoff', {
+        includeHiddenElements: true,
+      }),
+    ),
+  );
+}
+async function enterNativeRoute(screen: ReturnType<typeof render>) {
+  await act(async () => {
+    settleSurface(
+      screen.getByTestId('native-route', { includeHiddenElements: true }),
+    );
+    mockTransitions.forEach((listener) =>
+      listener({ data: { closing: false } }),
+    );
+  });
+}
 function accept(screen: ReturnType<typeof render>) {
   fireEvent.press(screen.getByRole('button', { name: 'Accept challenge' }));
 }
 
 it('keeps the deck mounted through queue updates, with Settings available while browsing', () => {
-  const screen = render(<ChallengeScreen />);
+  const screen = render(<Flow />);
   expect(mockMounted).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('link', { name: 'Open Settings' })).toBeTruthy();
   mockSnapshot = {
@@ -110,7 +249,7 @@ it('keeps the deck mounted through queue updates, with Settings available while 
       },
     },
   };
-  screen.rerender(<ChallengeScreen />);
+  screen.rerender(<Flow />);
   expect(mockMounted).toHaveBeenCalledTimes(1);
   expect(screen.queryByText('View your last completed challenge')).toBeNull();
 });
@@ -118,7 +257,7 @@ it('keeps navigation mounted behind an opaque full-screen active view and refuse
   const insets = { top: 62, bottom: 34, left: 3, right: 7 };
   const screen = render(
     <SafeAreaInsetsContext.Provider value={insets}>
-      <ChallengeScreen />
+      <Flow />
     </SafeAreaInsetsContext.Provider>,
   );
   accept(screen);
@@ -161,7 +300,7 @@ it('updates the active surface when the root safe area changes without restartin
     <SafeAreaInsetsContext.Provider
       value={{ top: 62, bottom: 34, left: 0, right: 0 }}
     >
-      <ChallengeScreen />
+      <Flow />
     </SafeAreaInsetsContext.Provider>,
   );
   accept(screen);
@@ -170,7 +309,7 @@ it('updates the active surface when the root safe area changes without restartin
     <SafeAreaInsetsContext.Provider
       value={{ top: 48, bottom: 20, left: 5, right: 9 }}
     >
-      <ChallengeScreen />
+      <Flow />
     </SafeAreaInsetsContext.Provider>,
   );
   expect(
@@ -192,7 +331,7 @@ it('keeps Android modal-owned safe areas when its bounds exclude system bars', (
     <SafeAreaInsetsContext.Provider
       value={{ top: 24, bottom: 34, left: 0, right: 0 }}
     >
-      <ChallengeScreen />
+      <Flow />
     </SafeAreaInsetsContext.Provider>,
   );
   try {
@@ -223,7 +362,7 @@ it('keeps Android modal-owned safe areas when its bounds exclude system bars', (
   }
 });
 it('keeps the active modal through local completion until Success takes focus, then returns to browsing', () => {
-  const screen = render(<ChallengeScreen />);
+  const screen = render(<Flow />);
   accept(screen);
   fireEvent.press(screen.getByRole('button', { name: 'Completed' }));
   act(() => {
@@ -232,7 +371,7 @@ it('keeps the active modal through local completion until Success takes focus, t
       success: finishedAttempt,
       completionStarted: true,
     };
-    screen.rerender(<ChallengeScreen />);
+    screen.rerender(<Flow />);
   });
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: '/success',
@@ -248,22 +387,22 @@ it('keeps the active modal through local completion until Success takes focus, t
     }),
   );
   mockFocused = false;
-  screen.rerender(<ChallengeScreen />);
+  screen.rerender(<Flow />);
   expect(screen.queryByTestId('active-challenge-modal')).toBeNull();
   mockFocused = true;
-  screen.rerender(<ChallengeScreen />);
+  screen.rerender(<Flow />);
   expect(mockController.dismissSuccess).toHaveBeenCalledTimes(1);
   expect(mockRouter.push).toHaveBeenCalledTimes(1);
 });
 it('uses local completion retry and keeps navigation inaccessible during an interrupted save', () => {
-  const screen = render(<ChallengeScreen />);
+  const screen = render(<Flow />);
   accept(screen);
   mockSnapshot = {
     ...mockSnapshot,
     completionStarted: true,
     error: 'Try Completed again',
   };
-  screen.rerender(<ChallengeScreen />);
+  screen.rerender(<Flow />);
   const modal = screen.UNSAFE_getByType(Modal);
   expect(
     within(modal).queryByRole('button', { name: 'Refresh challenges' }),
@@ -274,16 +413,264 @@ it('uses local completion retry and keeps navigation inaccessible during an inte
   expect(within(modal).getByRole('button', { name: 'Give up' })).toBeDisabled();
 });
 it('clears unfinished React state when the account changes', () => {
-  const screen = render(<ChallengeScreen />);
+  const screen = render(<Flow />);
   accept(screen);
   mockAccount = { userId: 'another-owner' };
-  screen.rerender(<ChallengeScreen />);
+  screen.rerender(<Flow />);
   expect(screen.queryByTestId('active-challenge-modal')).toBeNull();
   expect(mockController.complete).not.toHaveBeenCalled();
 });
 it('exposes catalog recovery only when no active challenge exists', () => {
   mockSnapshot = { ...mockSnapshot, queues: {}, error: 'Download failed' };
-  const screen = render(<ChallengeScreen />);
+  const screen = render(<Flow />);
   fireEvent.press(screen.getByRole('button', { name: 'Refresh challenges' }));
   expect(mockController.refresh).toHaveBeenCalled();
+});
+
+it('switches Active to Success in the same native route without a navigation transition', async () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
+  const screen = render(<NativeFlow />);
+  await prepareNativeAccept(screen);
+  expect(mockRouter.push).toHaveBeenCalledWith('/challenge');
+  expect(screen.UNSAFE_queryByType(Modal)).toBeNull();
+  mockFocused = false;
+  screen.rerender(<NativeFlow />);
+  await enterNativeRoute(screen);
+  const activeSurface = screen.getByTestId('active-challenge-surface');
+  const preparedSuccess = screen.getByTestId('success-content', {
+    includeHiddenElements: true,
+  });
+  expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  expect(
+    within(activeSurface).queryByRole('link', { name: 'Open Settings' }),
+  ).toBeNull();
+  expect(within(activeSurface).queryByRole('tab')).toBeNull();
+  expect(mockScreen).toHaveBeenLastCalledWith({
+    options: { gestureEnabled: false },
+  });
+  await act(async () =>
+    fireEvent.press(screen.getByRole('button', { name: 'Completed' })),
+  );
+  mockSnapshot = {
+    ...mockSnapshot,
+    success: finishedAttempt,
+    completionStarted: true,
+  };
+  screen.rerender(<NativeFlow />);
+  // Completed only changes content. Neither dismissing a native modal nor
+  // replacing a native stack screen may reveal the deck during this handoff.
+  expect(screen.queryByTestId('active-challenge-surface')).toBeNull();
+  const success = screen.getByTestId('success-content');
+  expect(success).toBe(preparedSuccess);
+  expect(screen.getByText('That’s a win!')).toBeTruthy();
+  expect(screen.UNSAFE_queryByType(Modal)).toBeNull();
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+  expect(mockRouter.push).toHaveBeenCalledTimes(1);
+  expect(mockScreen).toHaveBeenLastCalledWith({
+    options: { gestureEnabled: true },
+  });
+  screen.rerender(<NativeFlow />);
+  expect(screen.getByTestId('success-content')).toBe(success);
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(mockRouter.replace).toHaveBeenCalledTimes(1);
+  expect(mockRouter.replace).toHaveBeenCalledWith({
+    pathname: '/reflection',
+    params: { attemptId: finishedAttempt.id },
+  });
+  mockFocused = true;
+  screen.rerender(<NativeFlow />);
+  expect(screen.queryByTestId('active-challenge-surface')).toBeNull();
+  expect(mockController.dismissSuccess).toHaveBeenCalledTimes(1);
+  expect(mockRouter.push).toHaveBeenCalledTimes(1);
+});
+it('keeps the prepared cover until both native entry and destination assets are ready, tolerating decorative image failures', async () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
+  const screen = render(<NativeFlow />);
+  await act(async () => accept(screen));
+  const cover = screen.getByTestId('native-challenge-handoff', {
+    includeHiddenElements: true,
+  });
+  expect(StyleSheet.flatten(cover.props.style).opacity).toBe(0);
+  expect(mockRouter.push).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Completed' })).toBeNull();
+  const content = within(cover);
+  fireEvent(
+    content.getByTestId('active-challenge-surface', {
+      includeHiddenElements: true,
+    }),
+    'layout',
+  );
+  fireEvent(
+    content.getByTestId('mock-artwork', { includeHiddenElements: true }),
+    'load',
+  );
+  expect(mockRouter.push).not.toHaveBeenCalled();
+  await act(async () =>
+    fireEvent(
+      content.getByTestId('mock-texture', { includeHiddenElements: true }),
+      'error',
+    ),
+  );
+  expect(mockRouter.push).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('button', { name: 'Completed' })).toBeDisabled();
+  mockFocused = false;
+  screen.rerender(<NativeFlow />);
+  expect(
+    screen.getAllByTestId('sheet-toast-host', { includeHiddenElements: true }),
+  ).toHaveLength(1);
+  await act(async () => {
+    settleSurface(
+      screen.getByTestId('native-route', { includeHiddenElements: true }),
+    );
+    mockTransitions.forEach((listener) =>
+      listener({ data: { closing: true } }),
+    );
+  });
+  expect(screen.getByTestId('native-challenge-handoff')).toBeTruthy();
+  await act(async () =>
+    mockTransitions.forEach((listener) =>
+      listener({ data: { closing: false } }),
+    ),
+  );
+  expect(
+    screen.queryByTestId('native-challenge-handoff', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
+  expect(screen.getByRole('button', { name: 'Completed' })).toBeEnabled();
+});
+it('does not uncover an entered native destination before its layout and artwork are ready', async () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
+  const screen = render(<NativeFlow />);
+  await prepareNativeAccept(screen);
+  mockFocused = false;
+  screen.rerender(<NativeFlow />);
+  await act(async () =>
+    mockTransitions.forEach((listener) =>
+      listener({ data: { closing: false } }),
+    ),
+  );
+  expect(screen.getByTestId('native-challenge-handoff')).toBeTruthy();
+  await act(async () =>
+    settleSurface(
+      screen.getByTestId('native-route', { includeHiddenElements: true }),
+    ),
+  );
+  expect(
+    screen.queryByTestId('native-challenge-handoff', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
+  expect(mockRouter.push).toHaveBeenCalledTimes(1);
+  screen.unmount();
+  expect(mockTransitions.size).toBe(0);
+});
+it('keeps the departed iOS deck mounted through Active and Success instead of flashing the accepted card again', async () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
+  const screen = render(<NativeFlow />);
+  expect(mockMounted).toHaveBeenCalledTimes(1);
+  await prepareNativeAccept(screen);
+  expect(screen.UNSAFE_getByType(ChallengeDeck).props.covered).toBe(true);
+  mockFocused = false;
+  screen.rerender(<NativeFlow />);
+  await enterNativeRoute(screen);
+  expect(mockMounted).toHaveBeenCalledTimes(1);
+  mockSnapshot = {
+    ...mockSnapshot,
+    success: finishedAttempt,
+    completionStarted: true,
+  };
+  screen.rerender(<NativeFlow />);
+  expect(mockMounted).toHaveBeenCalledTimes(1);
+  mockFocused = true;
+  screen.rerender(<NativeFlow />);
+  expect(mockMounted).toHaveBeenCalledTimes(1);
+  expect(screen.UNSAFE_getByType(ChallengeDeck).props.covered).toBe(false);
+});
+it('keeps failed native saves retryable without abandoning the accepted completion', async () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
+  const screen = render(<NativeFlow />);
+  await prepareNativeAccept(screen);
+  mockFocused = false;
+  screen.rerender(<NativeFlow />);
+  await enterNativeRoute(screen);
+  mockSnapshot = {
+    ...mockSnapshot,
+    completionStarted: true,
+    error: 'Try Completed again',
+  };
+  screen.rerender(<NativeFlow />);
+  expect(screen.getByRole('button', { name: 'Give up' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Completed' })).toBeEnabled();
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+  await act(async () =>
+    fireEvent.press(screen.getByRole('button', { name: 'Completed' })),
+  );
+  expect(mockController.complete).toHaveBeenCalledTimes(1);
+  expect(mockController.skip).not.toHaveBeenCalled();
+  expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+});
+it('gives up a fresh native challenge through Home without saving a rep', async () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
+  const screen = render(<NativeFlow />);
+  await prepareNativeAccept(screen);
+  mockFocused = false;
+  screen.rerender(<NativeFlow />);
+  await enterNativeRoute(screen);
+  await act(async () =>
+    fireEvent.press(screen.getByRole('button', { name: 'Give up' })),
+  );
+  expect(mockController.skip).toHaveBeenCalledWith('cafe');
+  expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(tabs)');
+  expect(mockController.complete).not.toHaveBeenCalled();
+});
+it('returns an empty native challenge route to Home after a restart', () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
+  mockFocused = false;
+  const screen = render(<NativeFlow />);
+  expect(screen.queryByTestId('active-challenge-surface')).toBeNull();
+  expect(screen.queryByTestId('success-content')).toBeNull();
+  expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(tabs)');
+  expect(mockRouter.push).not.toHaveBeenCalled();
+});
+it('starts the native route with measured window insets and clears its old account activity', async () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
+  const insets = { top: 62, bottom: 34, left: 3, right: 7 };
+  const tree = () => (
+    <SafeAreaInsetsContext.Provider value={insets}>
+      <NativeFlow />
+    </SafeAreaInsetsContext.Provider>
+  );
+  const screen = render(tree());
+  await prepareNativeAccept(screen);
+  mockFocused = false;
+  screen.rerender(tree());
+  await enterNativeRoute(screen);
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('active-challenge-surface').props.style,
+    ),
+  ).toMatchObject({
+    paddingTop: 62,
+    paddingBottom: 34,
+    paddingLeft: 3,
+    paddingRight: 7,
+  });
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('success-surface', { includeHiddenElements: true })
+        .props.style,
+    ),
+  ).toMatchObject({
+    paddingTop: 62,
+    paddingBottom: 34,
+    paddingLeft: 3,
+    paddingRight: 7,
+  });
+  mockAccount = { userId: 'another-owner' };
+  screen.rerender(tree());
+  expect(screen.queryByTestId('active-challenge-surface')).toBeNull();
+  expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(tabs)');
+  expect(mockRouter.replace).not.toHaveBeenCalled();
 });

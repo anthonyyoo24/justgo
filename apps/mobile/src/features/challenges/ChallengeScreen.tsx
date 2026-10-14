@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useIsFocused, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useDelayedBusy } from '../../lib/useDelayedBusy';
 import { venues } from '@justgo/contracts';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -13,10 +13,11 @@ import { ChallengeLayout } from './ChallengeLayout';
 import { VenueTabs } from './VenueTabs';
 import { ChallengeDeck } from './ChallengeDeck';
 import { ActiveChallengeModal } from './ActiveChallengeModal';
-import { useActiveChallenge } from './useActiveChallenge';
+import { useChallengeActivity } from './ChallengeActivityProvider';
+import { NativeChallengeHandoff } from './NativeChallengeHandoff';
 /**
- * Scope unfinished React activity to the current identity.
- * Changing accounts remounts the flow rather than retaining the old active challenge.
+ * Reset Home's navigation bookkeeping when the account changes. The activity
+ * provider separately scopes the in-memory challenge to the same identity.
  */
 export function ChallengeScreen() {
   const { account } = useIdentity();
@@ -24,13 +25,14 @@ export function ChallengeScreen() {
 }
 /**
  * Compose the memory-owned deck and active surface with local-save navigation.
- * The active modal covers the accepted deck; each successful attempt opens Success
- * once, with focus changes handling return navigation without reopening it.
+ * iOS opens a native active route; Android/web cover the accepted deck. Returning
+ * from a completed flow clears its memory state without reopening Success.
  */
 function ChallengeFlow() {
   const { challenges } = useRuntime();
   const { account } = useIdentity();
-  const { active, onAction, finish, clear } = useActiveChallenge(challenges);
+  const { active, onAction, finish, clear, presentedStart } =
+    useChallengeActivity();
   const state = useSyncExternalStore(
     challenges.subscribe,
     challenges.getSnapshot,
@@ -48,11 +50,16 @@ function ChallengeFlow() {
   useEffect(() => {
     if (!focused) {
       wasFocused.current = false;
-      if (state.success) clear();
+      if (state.success && Platform.OS !== 'ios') clear();
       return;
     }
     const returnedToScreen = !wasFocused.current;
     wasFocused.current = true;
+    if (Platform.OS === 'ios' && returnedToScreen) {
+      clear();
+      if (state.success) void challenges.dismissSuccess();
+      return;
+    }
     if (!state.success) return;
     if (successRouteAttemptId.current === state.success.id) {
       // A native back gesture can return here without pressing Continue.
@@ -68,6 +75,9 @@ function ChallengeFlow() {
   }, [state.success, focused, router, challenges, clear]);
   const queue = state.queues[state.selected];
   const venue = venues.find((v) => v.id === state.selected)!;
+  // iOS keeps the departed card while its native active route opens. Changing
+  // the key on focus loss remounts a resting deck and flashes that card again.
+  const deckIdentity = `${account?.userId}:${venue.id}`;
   return (
     <>
       <ChallengeLayout title="Find a challenge" fillContent>
@@ -96,7 +106,11 @@ function ChallengeFlow() {
           </Text>
         ) : (
           <ChallengeDeck
-            key={`${account?.userId}:${venue.id}:${focused}`}
+            key={
+              Platform.OS === 'ios'
+                ? deckIdentity
+                : `${deckIdentity}:${focused}`
+            }
             cards={queue.cards}
             venue={venue.id}
             label={venue.label}
@@ -108,7 +122,10 @@ function ChallengeFlow() {
           />
         )}
       </ChallengeLayout>
-      {active && focused && (
+      {Platform.OS === 'ios' && active && presentedStart !== active && (
+        <NativeChallengeHandoff key={active.startedAt} start={active} />
+      )}
+      {Platform.OS !== 'ios' && active && focused && (
         <ActiveChallengeModal
           start={active}
           error={state.error}

@@ -3,7 +3,7 @@ import type { ChallengeController, ChallengeStart } from './controller';
 
 const currentTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-/** Screen-owned unfinished activity, with synchronous guards before React commits. */
+/** React-owned unfinished activity, with synchronous guards before React commits. */
 export function useActiveChallenge(
   controller: ChallengeController,
   { now = Date.now, timeZone = currentTimeZone } = {},

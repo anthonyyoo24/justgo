@@ -2,7 +2,6 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Easing,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -17,7 +16,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
+import { useDaySheetMotion } from './useDaySheetMotion';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import type { ProgressEntry } from '../types';
@@ -160,46 +159,18 @@ export function DaySheet({
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const lastRequestedCount = useRef<string | number | null>(null);
-  const [backdropVisible, setBackdropVisible] = useState(true);
-  const reduceMotion = useReducedMotion();
+  const finishClose = useCallback(() => {
+    setExpanded(null);
+    onClose();
+  }, [onClose]);
+  const {
+    offset: sheetOffset,
+    open,
+    close: animateClose,
+    backdropVisible,
+    reduceMotion,
+  } = useDaySheetMotion(date, finishClose);
   const { height } = useWindowDimensions();
-  const [sheetOffset] = useState(() => new Animated.Value(height));
-  const openingStarted = useRef(false);
-  const open = useCallback(() => {
-    // Layout/show may both fire; never reset a slide that's already started.
-    if (date === null || openingStarted.current) return;
-    openingStarted.current = true;
-    if (reduceMotion) {
-      sheetOffset.setValue(0);
-      return;
-    }
-    Animated.timing(sheetOffset, {
-      toValue: 0,
-      duration: 280,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-  }, [date, reduceMotion, sheetOffset]);
-  const animateClose = useCallback(() => {
-    setBackdropVisible(false);
-    if (reduceMotion) {
-      sheetOffset.setValue(height);
-      setExpanded(null);
-      onClose();
-      return;
-    }
-    Animated.timing(sheetOffset, {
-      toValue: height,
-      duration: 220,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: Platform.OS !== 'web',
-    }).start(({ finished }) => {
-      if (finished) {
-        setExpanded(null);
-        onClose();
-      }
-    });
-  }, [height, onClose, reduceMotion, sheetOffset]);
   const close = useCallback(
     () => (beforeClose ? beforeClose(animateClose) : animateClose()),
     [beforeClose, animateClose],

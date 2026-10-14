@@ -2,7 +2,13 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { Animated, Modal, ScrollView, StyleSheet } from 'react-native';
 import { DaySheet } from './DaySheet';
 
-jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => true }));
+let mockReduceMotion = true;
+jest.mock('../../../platform/motion', () => ({
+  useReduceMotion: () => mockReduceMotion,
+}));
+beforeEach(() => {
+  mockReduceMotion = true;
+});
 jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
 
 it.each([400, 900])(
@@ -104,6 +110,78 @@ it('opens and closes immediately with reduced motion, including repeated show/la
     fireEvent.press(screen.getByText('×'));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(timing).not.toHaveBeenCalled();
+  } finally {
+    timing.mockRestore();
+  }
+});
+
+it.each(['opening', 'closing'])(
+  'settles an in-flight %s when reduced motion becomes enabled',
+  (stage) => {
+    mockReduceMotion = false;
+    const onClose = jest.fn();
+    const props = {
+      date: '2026-09-18',
+      loading: false,
+      error: false,
+      loadMoreError: false,
+      hasMore: false,
+      loadingMore: false,
+      fetching: false,
+      onClose,
+    };
+    const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+      start: jest.fn(),
+      stop: jest.fn(),
+      reset: jest.fn(),
+    });
+    try {
+      const screen = render(<DaySheet {...props} />);
+      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      if (stage === 'closing') fireEvent.press(screen.getByText('×'));
+      mockReduceMotion = true;
+      screen.rerender(<DaySheet {...props} />);
+      expect(onClose).toHaveBeenCalledTimes(stage === 'closing' ? 1 : 0);
+      if (stage === 'opening')
+        expect(
+          StyleSheet.flatten(screen.getByTestId('day-sheet-panel').props.style)
+            .transform,
+        ).toEqual([{ translateY: 0 }]);
+      screen.unmount();
+    } finally {
+      timing.mockRestore();
+    }
+  },
+);
+
+it('ignores an exit callback delivered after its sheet unmounts', () => {
+  mockReduceMotion = false;
+  let finish!: (result: { finished: boolean }) => void;
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: (callback) => {
+      finish = callback!;
+    },
+    stop: jest.fn(),
+    reset: jest.fn(),
+  });
+  const onClose = jest.fn();
+  try {
+    const screen = render(
+      <DaySheet
+        date="2026-09-18"
+        loading={false}
+        error={false}
+        loadMoreError={false}
+        hasMore={false}
+        loadingMore={false}
+        fetching={false}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.press(screen.getByText('×'));
+    screen.unmount();
+    finish({ finished: true });
+    expect(onClose).not.toHaveBeenCalled();
   } finally {
     timing.mockRestore();
   }

@@ -11,6 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ExternalLinkButton } from '../../components/ExternalLinkButton';
+import { contactFailureMessage, supportContact } from '../contact';
 import { colors, layout, radii, spacing, typography } from '../../theme/tokens';
 import { createIdentityApi } from './api';
 import { IdentityController } from './controller';
@@ -492,6 +494,12 @@ export function IdentityScreen({
               disabled={state.busy}
             />
           )}
+          <ExternalLinkButton
+            label="Get help"
+            url={supportContact}
+            failureMessage={contactFailureMessage}
+            channel="activity"
+          />
           <Text style={styles.footer}>JustGO · Your account, kept private</Text>
         </View>
       </ScrollView>

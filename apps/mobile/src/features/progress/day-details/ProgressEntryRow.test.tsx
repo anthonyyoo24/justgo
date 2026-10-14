@@ -7,7 +7,7 @@ import { SlidingEntryDetails } from './SlidingEntryDetails';
 // Exercise measurement/orchestration with the browser driver; the paired native
 // adapter has its own tests and recorded simulator frame verification.
 jest.mock('./useEntryMotion', () => jest.requireActual('./useEntryMotion.ts'));
-jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => false }));
+jest.mock('../../../platform/motion', () => ({ useReduceMotion: () => false }));
 
 const savedEntry: ProgressEntry = {
   attemptId: '00000000-0000-4000-8000-000000000001',
@@ -100,8 +100,8 @@ it('slides the editor from zero height using the saved-reflection motion and col
     expect(
       screen.getByTestId('sliding-entry-details', {
         includeHiddenElements: true,
-      }).props.pointerEvents,
-    ).toBe('none');
+      }),
+    ).toHaveStyle({ pointerEvents: 'none' });
     screen.unmount();
     expect(stop).toHaveBeenCalledTimes(4);
   } finally {
@@ -184,6 +184,7 @@ it('shows and closes the editor immediately with reduced motion', () => {
     expect(screen.getByTestId('sliding-entry-details')).toHaveStyle({
       opacity: 1,
       height: 144,
+      pointerEvents: 'auto',
     });
     screen.rerender(<ProgressEntryRow {...props} expanded={false} />);
     expect(screen.queryByLabelText('Your day reflection')).toBeNull();
@@ -191,7 +192,7 @@ it('shows and closes the editor immediately with reduced motion', () => {
       screen.getByTestId('sliding-entry-details', {
         includeHiddenElements: true,
       }),
-    ).toHaveStyle({ opacity: 0, height: 0 });
+    ).toHaveStyle({ opacity: 0, height: 0, pointerEvents: 'none' });
     expect(timing).not.toHaveBeenCalled();
   } finally {
     timing.mockRestore();

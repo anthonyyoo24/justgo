@@ -41,10 +41,12 @@ export function VenueArt({
   venue,
   scale = 1,
   background = 'peach',
+  onSettled,
 }: {
   venue: string;
   scale?: number;
   background?: ChallengeCardTheme['artwork'];
+  onSettled?: (() => void) | undefined;
 }) {
   const artwork = background === 'cream' ? creamSources : sources;
   return (
@@ -64,6 +66,8 @@ export function VenueArt({
         source={artwork[venue] ?? artwork.cafe!}
         resizeMode="contain"
         accessible={false}
+        onLoad={onSettled}
+        onError={onSettled}
         style={{
           width: (venue === 'streets' ? 60 : 78) * scale,
           height: (venue === 'streets' ? 58 : 63) * scale,
@@ -75,7 +79,11 @@ export function VenueArt({
     </View>
   );
 }
-export function PaperTexture() {
+export function PaperTexture({
+  onSettled,
+}: {
+  onSettled?: (() => void) | undefined;
+}) {
   return (
     <View
       aria-hidden
@@ -85,9 +93,12 @@ export function PaperTexture() {
       ]}
     >
       <Image
+        testID="challenge-paper-texture"
         source={require('../../../assets/challenges/paper-texture.png')}
         aria-hidden
         accessible={false}
+        onLoad={onSettled}
+        onError={onSettled}
         resizeMode="stretch"
         style={[
           StyleSheet.absoluteFill,

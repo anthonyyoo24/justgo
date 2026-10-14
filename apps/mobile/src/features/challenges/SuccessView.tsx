@@ -7,17 +7,35 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, type EdgeInsets } from 'react-native-safe-area-context';
 import { colors, fontFamilies } from '../../theme/tokens';
 
-export function SuccessView({ onContinue }: { onContinue: () => void }) {
+export function SuccessView({
+  onContinue,
+  insets,
+}: {
+  onContinue: () => void;
+  insets?: EdgeInsets;
+}) {
+  const Surface = insets ? View : SafeAreaView;
   const { width, fontScale } = useWindowDimensions();
   const scale = Math.min(width, 420) / 320;
   const textScale = scale * Math.max(1, fontScale);
   return (
-    <SafeAreaView
-      style={styles.safe}
-      edges={['top', 'bottom', 'left', 'right']}
+    <Surface
+      testID="success-surface"
+      style={[
+        styles.safe,
+        insets && {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+      {...(!insets
+        ? { edges: ['top', 'bottom', 'left', 'right'] as const }
+        : {})}
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View
@@ -98,7 +116,7 @@ export function SuccessView({ onContinue }: { onContinue: () => void }) {
           </Pressable>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </Surface>
   );
 }
 

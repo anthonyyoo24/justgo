@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ExternalLinkButton } from '../../components/ExternalLinkButton';
+import { contactFailureMessage, supportContact } from '../contact';
 import { useActivityState } from '../providers/AppProvider';
 import { colors, typography } from '../../theme/tokens';
 import {
@@ -12,9 +14,11 @@ import {
 export function SavingNotice({
   onNavigate,
   navigationEnabled = true,
+  toastChannel = 'activity',
 }: {
   onNavigate?: (() => void) | undefined;
   navigationEnabled?: boolean;
+  toastChannel?: string;
 } = {}) {
   const { repository, state } = useActivityState();
   const [expandedFor, setExpandedFor] = useState<typeof repository>(null);
@@ -128,6 +132,12 @@ export function SavingNotice({
                   </View>
                 );
               })}
+              <ExternalLinkButton
+                label="Get help"
+                url={supportContact}
+                failureMessage={contactFailureMessage}
+                channel={toastChannel}
+              />
             </ScrollView>
           )}
         </>

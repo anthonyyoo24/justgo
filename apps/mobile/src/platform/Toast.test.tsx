@@ -1,13 +1,23 @@
+let mockReduceMotion = false;
+jest.mock('./motion', () => ({ useReduceMotion: () => mockReduceMotion }));
+beforeEach(() => {
+  mockReduceMotion = false;
+});
 import { render } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 import { Toaster, toast } from 'sonner-native';
-import { ToastHost, showRecoveryToast, dismissActivityToasts } from './Toast';
+import {
+  ToastHost,
+  showRecoveryToast,
+  dismissActivityToasts,
+  showMessageToast,
+} from './Toast';
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 24 }),
 }));
 jest.mock('sonner-native', () => ({
   Toaster: jest.fn(() => null),
-  toast: { success: jest.fn(), dismiss: jest.fn() },
+  toast: { success: jest.fn(), dismiss: jest.fn(), error: jest.fn() },
 }));
 it('uses safe areas, scalable text, the modal host and accessible native recovery announcement', () => {
   render(<ToastHost channel="activity-sheet" />);
@@ -30,4 +40,27 @@ it('uses safe areas, scalable text, the modal host and accessible native recover
   dismissActivityToasts();
   expect(toast.dismiss).toHaveBeenCalled();
   announce.mockRestore();
+});
+it('presents link failure on the requested host and announces the same safe message', () => {
+  const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+  showMessageToast('activity-sheet', 'Couldn’t open your email app.');
+  expect(toast.error).toHaveBeenCalledWith('Couldn’t open your email app.', {
+    toasterId: 'activity-sheet',
+  });
+  expect(announce).toHaveBeenCalledWith('Couldn’t open your email app.');
+  announce.mockRestore();
+});
+
+it('keeps native toast entry and exit stationary when motion is reduced', () => {
+  mockReduceMotion = true;
+  render(<ToastHost channel="activity-sheet" />);
+  const options = jest.mocked(Toaster).mock.calls.at(-1)![0];
+  const animation = options.animation!;
+  const enter = animation.enter as () => unknown;
+  const exit = animation.exit as () => unknown;
+  expect(enter()).toEqual({
+    initialValues: { opacity: 1 },
+    animations: { opacity: 1 },
+  });
+  expect(exit()).toEqual(enter());
 });

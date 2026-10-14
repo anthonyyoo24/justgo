@@ -1,9 +1,14 @@
 import { SavingNotice } from './SavingNotice';
-import { act, fireEvent, render } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Linking, Text } from 'react-native';
 import { SavingFeedbackShell, SavingSheetSurface } from './SavingFeedback';
 import { savingRiskCopy } from './presentation';
-import { dismissActivityToasts, showRecoveryToast } from '../../platform/Toast';
+import {
+  dismissActivityToasts,
+  showRecoveryToast,
+  showMessageToast,
+} from '../../platform/Toast';
+import { contactFailureMessage, supportContact } from '../contact';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
@@ -26,9 +31,13 @@ const mockActivity = {
 const mockRouter = { push: jest.fn() };
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
 jest.mock('../../platform/Toast', () => ({
-  ToastHost: () => null,
+  ToastHost: ({ channel }: { channel: string }) => {
+    const { View } = require('react-native');
+    return <View testID={`toast-host-${channel}`} />;
+  },
   showRecoveryToast: jest.fn(),
   dismissActivityToasts: jest.fn(),
+  showMessageToast: jest.fn(),
 }));
 jest.mock('../providers/AppProvider', () => ({
   useRuntime: () => ({ activity: mockActivity }),
@@ -47,6 +56,7 @@ beforeEach(async () => {
   mockRouter.push.mockReset();
   jest.mocked(showRecoveryToast).mockClear();
   jest.mocked(dismissActivityToasts).mockClear();
+  jest.mocked(showMessageToast).mockClear();
   mockRepository = new AccountRepository({
     accountId: owner,
     storage: new MemoryStorage(),
@@ -58,6 +68,35 @@ beforeEach(async () => {
   await mockRepository.complete(input(), card);
 });
 afterEach(() => mockRepository.dispose());
+it.each([false, true])(
+  'uses private support and the visible toast host in saving recovery (sheet=%s)',
+  async (sheet) => {
+    const open = jest
+      .spyOn(Linking, 'openURL')
+      .mockRejectedValueOnce(new Error('native detail'))
+      .mockResolvedValueOnce(undefined);
+    mockRepository.store.setState({ hydrationError: 'unreadable' });
+    const screen = render(sheet ? <SavingSheetSurface /> : <SavingNotice />);
+    fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Review activity that couldn’t upload',
+      }),
+    );
+    const help = screen.getByRole('button', { name: 'Get help' });
+    fireEvent.press(help);
+    await waitFor(() =>
+      expect(showMessageToast).toHaveBeenCalledWith(
+        sheet ? 'activity-sheet' : 'activity',
+        contactFailureMessage,
+      ),
+    );
+    expect(help.props.accessibilityState.disabled).toBe(false);
+    fireEvent.press(help);
+    await waitFor(() => expect(help.props.accessibilityState.busy).toBe(false));
+    expect(open).toHaveBeenNthCalledWith(2, supportContact);
+    open.mockRestore();
+  },
+);
 it('removes account presentation on disconnection and ignores recovery while the account is parked', () => {
   const screen = render(
     <SavingFeedbackShell>
@@ -189,6 +228,32 @@ it('presents notices within a covering sheet and routes the sole toast to that h
   );
   expect(mockActivity.toastChannel).toBe('activity');
   expect(showRecoveryToast).toHaveBeenCalledTimes(1);
+});
+it('mirrors a saving notice in a temporary native cover without duplicating or releasing the destination toast host', () => {
+  mockRepository.store.setState({
+    warning: {
+      visible: true,
+      dismissed: false,
+      episode: 1,
+      online: false,
+      storageFull: true,
+    },
+  });
+  const surfaces = (covered: boolean) => (
+    <>
+      {covered && <SavingSheetSurface key="cover" toastHostEnabled={false} />}
+      <SavingSheetSurface key="destination" />
+    </>
+  );
+  const screen = render(surfaces(true));
+  expect(screen.getAllByTestId('saving-risk-banner')).toHaveLength(2);
+  expect(screen.getAllByTestId('toast-host-activity-sheet')).toHaveLength(1);
+  expect(mockActivity.toastChannel).toBe('activity-sheet');
+  screen.rerender(surfaces(false));
+  expect(screen.getAllByTestId('saving-risk-banner')).toHaveLength(1);
+  expect(mockActivity.toastChannel).toBe('activity-sheet');
+  screen.unmount();
+  expect(mockActivity.toastChannel).toBe('activity');
 });
 it('clears stale account feedback without treating switching accounts as recovery', () => {
   const screen = render(

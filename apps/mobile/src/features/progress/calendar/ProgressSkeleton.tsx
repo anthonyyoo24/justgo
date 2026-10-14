@@ -8,12 +8,12 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
+import { useReduceMotion } from '../../../platform/motion';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 // One clock keeps the calendar and summary highlights moving together.
 export function useProgressShimmer(loading: boolean) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const [progress] = useState(() => new Animated.Value(0));
   useEffect(() => {
     if (!loading || reduceMotion) return;

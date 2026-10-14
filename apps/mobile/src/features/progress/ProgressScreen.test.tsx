@@ -7,6 +7,7 @@ import {
   fireEvent,
   render,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import {
   QueryClient,
@@ -49,7 +50,7 @@ jest.mock('expo-router', () => ({
   useIsFocused: () => true,
   Link: () => null,
 }));
-jest.mock('react-native-reanimated', () => ({ useReducedMotion: () => true }));
+jest.mock('../../platform/motion', () => ({ useReduceMotion: () => true }));
 jest.mock('./day-details/useEntryMotion', () =>
   jest.requireActual('./day-details/useEntryMotion.ts'),
 );
@@ -326,18 +327,18 @@ it('hydrates offline current-period data and restricts previously viewed other d
 });
 it('adds and edits a reflection inline while preserving its feeling and local saving behavior', async () => {
   await online();
-  const screen = mount();
+  const root = mount();
   await loaded();
-  openToday(screen);
+  openToday(root);
+  const screen = within(root.getByTestId('day-sheet-panel'));
   fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  expect(
-    screen.getByRole('button', { name: 'Save reflection' }),
-  ).toBeDisabled();
+  const addSave = screen.getByRole('button', { name: 'Save reflection' });
+  expect(addSave).toBeDisabled();
   expect(screen.getByRole('button', { name: /Rep 1.*Cancel/ })).toBeTruthy();
   expect(
     screen.getByTestId('cancel-reflection-icon', {
@@ -348,7 +349,7 @@ it('adds and edits a reflection inline while preserving its feeling and local sa
     screen.getByLabelText('Your day reflection'),
     'First day entry text.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
+  fireEvent.press(addSave);
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
@@ -749,23 +750,23 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
         : { ...page, entries: [transport.records.get(uuid(1))!] },
   );
   await online();
-  const screen = mount();
+  const root = mount();
   await loaded();
-  openToday(screen);
+  openToday(root);
+  const screen = within(root.getByTestId('day-sheet-panel'));
   fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  expect(
-    screen.getByRole('button', { name: 'Save reflection' }),
-  ).toBeDisabled();
+  const addSave = screen.getByRole('button', { name: 'Save reflection' });
+  expect(addSave).toBeDisabled();
   fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Writing after a feeling-only submission.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
+  fireEvent.press(addSave);
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
@@ -782,8 +783,9 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
   fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
-  expect(screen.getByRole('button', { name: 'Save reflection' })).toBeEnabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
+  const editSave = screen.getByRole('button', { name: 'Save reflection' });
+  expect(editSave).toBeEnabled();
+  fireEvent.press(editSave);
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );

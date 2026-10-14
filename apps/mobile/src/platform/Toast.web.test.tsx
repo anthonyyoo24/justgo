@@ -1,13 +1,19 @@
+let mockReduceMotion = false;
+jest.mock('./motion', () => ({ useReduceMotion: () => mockReduceMotion }));
+beforeEach(() => {
+  mockReduceMotion = false;
+});
 import { render } from '@testing-library/react-native';
 import { Toaster, toast } from 'sonner';
 import {
   ToastHost,
   showRecoveryToast,
   dismissActivityToasts,
+  showMessageToast,
 } from './Toast.web';
 jest.mock('sonner', () => ({
   Toaster: jest.fn(() => null),
-  toast: { success: jest.fn(), dismiss: jest.fn() },
+  toast: { success: jest.fn(), dismiss: jest.fn(), error: jest.fn() },
 }));
 it('uses the documented web host and account-scoped toast identity', () => {
   render(<ToastHost channel="activity" />);
@@ -22,4 +28,22 @@ it('uses the documented web host and account-scoped toast identity', () => {
   });
   dismissActivityToasts();
   expect(toast.dismiss).toHaveBeenCalled();
+});
+it('presents safe link failure copy on the matching web host', () => {
+  showMessageToast('activity', 'Couldn’t open the Privacy Policy.');
+  expect(toast.error).toHaveBeenCalledWith(
+    'Couldn’t open the Privacy Policy.',
+    { toasterId: 'activity' },
+  );
+});
+
+it('disables web toast transitions when motion is reduced', () => {
+  mockReduceMotion = true;
+  render(<ToastHost channel="activity" />);
+  expect(
+    jest.mocked(Toaster).mock.calls.at(-1)![0].toastOptions?.style,
+  ).toMatchObject({
+    transition: 'none',
+    animation: 'none',
+  });
 });

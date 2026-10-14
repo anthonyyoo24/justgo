@@ -3,8 +3,8 @@ import { Animated, StyleSheet } from 'react-native';
 import { ProgressSkeleton, useProgressShimmer } from './ProgressSkeleton';
 
 let mockReduceMotion = false;
-jest.mock('react-native-reanimated', () => ({
-  useReducedMotion: () => mockReduceMotion,
+jest.mock('../../../platform/motion', () => ({
+  useReduceMotion: () => mockReduceMotion,
 }));
 
 afterEach(() => {
