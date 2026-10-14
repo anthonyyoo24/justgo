@@ -1,5 +1,34 @@
 # Implementation handoffs
 
+**October 14 third review preparation:** PR #23 is merged, local `main` is
+updated and the export review worktree is archived. The
+[account/recovery review handoff](phase-08-settings-privacy.md#october-14-third-review-preparation)
+records the separate 78-file checkpoint, passing code/coverage and cold web/iOS
+bundle checks, and the retained native/journey limits. Ongoing working files
+and the final haptics/performance review remain separate.
+
+**October 14 second review preparation:** After PR #22 merged, local `main`
+was updated and its review worktree archived. The
+[export/test-access review handoff](phase-08-settings-privacy.md#october-14-second-review-preparation)
+records integration of reviewed fixes, passing root/database/coverage checks,
+and the saved browser journey blocked by the existing preview on port 8081.
+The ongoing Phase 08 working files and later review branches remain separate.
+
+**October 14 PR #22 review corrections:** Early Apple/EAS distribution setup
+is separated from post-free-beta Phase 07A billing configuration, and implemented
+Reduce Motion behavior is removed from the open design lists. Native/device
+acceptance remains in Phase 09. The [review follow-up](phase-08-settings-privacy.md#october-14-pr-22-review-corrections)
+records the two addressed comments and documentation verification.
+
+**October 14 PR #22 CI repair:** Both Foundation runs stopped at outdated Expo
+SDK 57 patch pins and then attempted to upload nonexistent coverage reports.
+The [repair handoff](phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
+records the isolated exact-PR fix, producing-step-aware coverage uploads and
+regressions. Anthony authorized pushing `a522fe6` into PR #22 on October 14;
+both hosted Foundation runs pass, including all 24 saved journeys. Native
+build/device acceptance remains separate. Verify each branch when splitting PRs
+and rerun fresh online Doctor immediately before pushing.
+
 **October 12 accessibility fixes:** Heading/status wrapping and stale spacing after live text-size changes are resolved. Settings/account screens pass normal/maximum native visual checks and live resizing in the side-panel simulator mirror; browser labels and keyboard order pass. The [follow-up](phase-08-settings-privacy.md#october-12-large-text-fixes) records regressions, native/browser evidence and the remaining physical-phone VoiceOver and Expo dependency gates.
 
 **October 12 account back-link removal:** Both Account & recovery variants omit the bottom Back to app shortcut and retain header navigation. The [follow-up](phase-08-settings-privacy.md#october-12-account-back-link-removal) records removal regressions, code checks and side-panel navigation evidence. Existing dependency and device acceptance gates remain open.
