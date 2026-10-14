@@ -4,6 +4,162 @@
 **Status:** Settings/contact and Reduce Motion slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
 
+## October 14 PR #22 review corrections
+
+Anthony authorized fixing and pushing the two documentation findings assessed
+against `a522fe6`. The [billing schedule comment](https://github.com/anthonyyoo24/justgo/pull/22#discussion_r4274919498)
+and [remaining motion work comment](https://github.com/anthonyyoo24/justgo/pull/22#discussion_r4274919507)
+are addressed by the following corrections:
+
+- Keep early Apple enrollment, app identifiers, Expo/EAS project and signing
+  preparation available for the free beta. Schedule Apple purchase-key generation,
+  RevenueCat/store-credential connection, subscription-product creation and
+  offering/paywall mapping after the free beta checkpoint, during Phase 07A and
+  before its billing acceptance. Distinguish the Phase 09 free-beta build checks
+  from the return to Phase 09 for paid submission after accepted 07A.
+- Align the plan's decision table and PRD implementation order with that same
+  sequence. Local billing-code preparation remains preserved; this documentation
+  correction does not authorize external provider setup.
+- Remove implemented Reduce Motion behavior from open design rows. Keep remaining
+  Settings/privacy and haptics design work open, and distinguish Phase 09
+  physical-device/VoiceOver/text-scaling acceptance from design decisions.
+- Preserve the assessment's recommendation against a blanket 80% docstring target;
+  no code, test-coverage floor or CI policy changes are included.
+
+This follow-up also publishes the previously recorded hosted CI results for
+`a522fe6`. Verification is limited to Markdown consistency, relative links,
+formatting and diff checks; no code tests or UI checks are required for these
+documentation-only changes. The legacy `docs/checks/check-plan.mjs` targets the
+absent historical HTML companion rather than the authoritative Markdown plan,
+so it is not an applicable check for this correction.
+
+Verification: Prettier checks for all four changed Markdown files and
+`git diff --check` **pass**. The new relative review-handoff link and its
+heading anchor **pass** validation. Manual comparison of the plan and PRD
+confirms the billing and motion boundaries agree. Fresh online Expo Doctor
+passes **21/21** before the authorized push; its ignored log is
+`.local/pr22-ci/review-pre-push-doctor.log`.
+
+Changed-directory review covers `docs`, `docs/product` and `docs/handoffs`.
+Their existing responsibility groups remain navigable and no new files or
+folder moves are needed. The approved phase sequence and remaining native,
+privacy and billing acceptance gates remain open.
+
+## October 14 PR #22 CI repair
+
+Anthony requested identifying and fixing [PR #22](https://github.com/anthonyyoo24/justgo/pull/22)'s
+failed checks and preventing recurrence. The isolated `codex/pr22-ci-fixes`
+worktree starts at the PR's exact `e146adc95dd67cf5efa0fb46c07cb24165711228`
+head; ongoing Phase 08 source edits and other PR checkouts are preserved.
+
+Both [push](https://github.com/anthonyyoo24/justgo/actions/runs/38616590568/job/116033131224)
+and [pull-request](https://github.com/anthonyyoo24/justgo/actions/runs/38616610799/job/116033196409)
+Foundation `checks` jobs failed for the same reasons:
+
+- `npm run check` stopped at Expo Doctor's SDK dependency validation (20/21).
+  Eight exact package pins were behind fresh online recommendations.
+- `Upload coverage reports` ran under unconditional `always()` despite coverage
+  being skipped and failed with no files under `coverage/`.
+- Database tests, coverage collection, saved journeys and both exports were
+  skipped; these logs do not establish failures in those checks. CodeRabbit was
+  still pending when first inspected and is not the reported Actions failure.
+
+| Package            | PR pin  | Updated pin |
+| ------------------ | ------- | ----------- |
+| expo               | 57.0.27 | 57.0.29     |
+| expo-constants     | 57.0.21 | 57.0.22     |
+| expo-crypto        | 57.0.3  | 57.0.4      |
+| expo-dev-client    | 57.0.19 | 57.0.20     |
+| expo-linking       | 57.0.12 | 57.0.13     |
+| expo-router        | 57.0.25 | 57.0.27     |
+| expo-splash-screen | 57.0.9  | 57.0.10     |
+| jest-expo          | 57.0.5  | 57.0.6      |
+
+The root lockfile is regenerated with these pins. Coverage collection now has
+an explicit step ID; upload runs after collection succeeds or fails, while
+skipped/unstarted/cancelled collection does not trigger upload. Missing reports
+after a completed collection still fail (`if-no-files-found: error`), and all
+coverage floors and dependency validation remain enabled.
+
+`scripts/quality/ci-artifacts.test.mjs` reads the workflow's actual condition
+and exercises success/failure/skipped/cancelled/unstarted outcomes. Against the
+original workflow, four of six cases failed, including the observed skipped
+coverage bug. After repair, all six pass. This local condition simulation and YAML
+parse do not establish hosted Actions acceptance.
+
+The clean-checkout check also exposed five-second timeouts in two existing
+Progress reflection journeys. Their repeated whole-calendar queries are now
+scoped to the open day sheet, and each already located Save control is reused
+within its editor. Both full add/save/edit/save and add/save/clear/save sequences
+and every assertion are retained, without increasing timeouts. The 19-case
+Progress file and subsequent full 496-case mobile run pass. This changes test
+query cost, not app behavior. Initial regex lint findings in the new tooling test
+were corrected with standard space quantifiers.
+
+Prevention: install and run `npm run check` in each exact split/stacked PR
+candidate, carry SDK maintenance through reviewed stack integration, and run
+`npm run doctor -w @justgo/mobile` with fresh online metadata immediately before
+an authorized push. A fixed lockfile controls installation; Expo can publish new
+SDK patch recommendations independently, so an old passing result can expire.
+No scheduled task or Git hook is installed by this repair.
+
+Verification:
+
+- Fresh `npm ci`: **pass** in the isolated PR checkout. The new workflow regression
+  uses only Node built-ins and tracked source; no ignored artifact is required.
+- `npm run check`: **pass**, fresh online Expo Doctor **21/21**, contracts build,
+  typechecks, lint, formatting, **186** tooling cases, **45** API unit cases,
+  **496** mobile cases across **63** suites and **20** contract cases.
+- `npm run db:migrate` and `npm run test:db`: **pass**, **48** integration cases
+  plus the migration/restoration rehearsal against loopback `justgo_test`.
+- `npm run test:coverage`: **pass**, all existing floors unchanged. Mobile
+  **95.76% lines / 91.24% branches**, API **94.58% / 89.80%**, contracts **100% / 100%**.
+  Includes **94** API unit/database/rehearsal cases, **496** mobile and **20** contract cases.
+- `npm run export:web -w @justgo/mobile` and
+  `npm run export:ios -w @justgo/mobile`: **pass**. Bundles do not establish native
+  runtime or device acceptance.
+- `npm run test:journey -- --grep 'self-device revocation'`: **pass**, one saved
+  actual-app/API/database Settings → revocation → recovery journey, preserving
+  reflection/Progress. The initially reused database on port 54329 stopped after
+  coverage completed, causing a connection-refused startup failure. The rerun
+  used an independently provisioned clean loopback `justgo_test` cluster on 54331
+  with the same isolated roles and clean migrations; fixture cleanup completed.
+  The complete journey suite was not rerun for this maintenance slice.
+- Interactive Browser Use in the **in-app side panel**: **pass** for Settings,
+  Reduce Motion on/off, preference persistence after reload, Account & recovery
+  navigation and browser Back. The fixture's original preference was restored;
+  no account was created. Browser warning/error logs were empty. Metro bound the
+  smoke server to IPv6 localhost, so the first IPv4 visit was refused; the
+  observed `localhost:8092` address worked. No security protection was bypassed.
+- The saved journey and manual Metro server reported unavailable `simctl` under
+  the existing Command Line Tools selection; browser checks passed. No native
+  build/signing change, device test or simulator pass is claimed.
+- Temporary Metro on 8092 and the separately created PostgreSQL instance on
+  54331 were stopped after verification. Other checkout services were preserved.
+
+Logs remain ignored under `.local/pr22-ci/`. Anthony explicitly authorized
+pushing the fixes on October 14. The three commits (`9b76585`, `819a061`,
+`a522fe6`) were pushed to the existing `phase8-01-settings-foundation` branch
+after fresh online Expo Doctor passed **21/21** immediately before publication.
+The [push run](https://github.com/anthonyyoo24/justgo/actions/runs/38623306723)
+and [pull-request run](https://github.com/anthonyyoo24/justgo/actions/runs/38623313914)
+both completed with **success**, inspected on October 14 for exact head
+`a522fe64173835f75e0b7f859a83759e16b3c529`. Root checks (Doctor **21/21**, all
+**496** mobile tests), database tests, migration rehearsal, unchanged coverage
+floors, coverage upload, all **24 saved journeys**, journey upload and both
+exports passed. Safe summary evidence is in `.local/pr22-ci/hosted-summary.log`.
+CodeRabbit's current passing status explicitly says its review was skipped and
+manual review is required; no fresh automated code review is claimed.
+Native build/device acceptance for the SDK
+patch changes remains separate owner/Phase 09 work. No new PR, merge,
+deployment or native build was performed.
+
+Changed-directory review covers the root, `docs`, `.github/workflows`,
+`scripts/quality`, `docs/operations`, `docs/handoffs`, `apps/mobile` and
+`apps/mobile/src/features/progress`. Existing responsibility groups remain
+navigable; only one new quality regression file is added. No folder moves are
+needed for this repair.
+
 ## Current authorized work
 
 The owner accepted the legal sequence: data checklist, policy/terms drafts, review, then hosting. After that preparation, the owner explicitly authorized the Settings UI using the Paper F1 design and agreed Phase 08 scope, starting with layout and existing recovery/support actions. This handoff covers those local changes and the legal drafts. No public site, email delivery, App Store configuration or Git publication was performed.
@@ -436,3 +592,45 @@ The phone's separate Metro session on 8084 now supplies the current API URL. A r
 All combined phase acceptance boxes remain open. Reduce Motion and authenticated export implementation/local verification are recorded above; physical-device accessibility and file delivery checks remain Phase 09 work. Confirmed deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Haptics implementation and acceptance are explicitly scheduled together in Phase 09 before the free beta. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
 
 Before publication, resolve retention and backup behavior, provider configuration, operator/contact and regional requirements, individual-versus-legal-entity App Review eligibility, age treatment and final Terms/EULA compatibility. Review the concrete policy before creating and publishing the public site. Resume commercial activation after the free beta and reconcile the policy for the paid build.
+
+## October 14 second review preparation
+
+Anthony confirmed that PR #22 was merged and authorized updating local main,
+archiving the foundation review checkout, and publishing review 2. Local `main`
+now matches `348671f`. The completed foundation worktree was archived with its
+merged review history preserved. Work continues in the separate
+`phase8-pr2-review` worktree on `phase8-02-data-export-test-access`; the original
+Phase 08 checkout, its uncommitted work and the later review branches were not
+changed.
+
+The second checkpoint incorporates current main, preserving PR #22's Expo patch
+alignment, Progress test correction, CI artifact guard and reviewed guidance.
+Manifest/lockfile conflicts retain the reviewed versions plus this slice's
+`expo-file-system` and `fflate` dependencies. Documentation conflicts retain
+both reviews' scope and evidence. No export, access or other product behavior
+was changed while preparing this review. No source files were added or moved
+during preparation, so no additional folder reorganization was needed.
+
+Fresh local validation of the integrated candidate:
+
+- `npm ci`: **pass**, including manifest/lockfile consistency.
+- `npm run check`: **pass**, online Expo Doctor **21/21**, contracts build,
+  TypeScript, ESLint, Prettier, **186 tooling**, **54 API**, **535 mobile** and
+  **24 contract** tests.
+- `npm run test:db`: **pass**, **55 tests across seven suites** against the
+  dedicated loopback `justgo_test` database, plus the migration/restoration
+  rehearsal. Only disposable local configuration was copied to the worktree;
+  no hosted database or account was changed.
+- `npm run test:coverage`: **pass**, all unchanged workspace and critical-file
+  floors. This includes the authenticated export, beta-access and clock bounds.
+- `npm run test:journey -- e2e/data-export.spec.ts`: **blocked**, the existing
+  preview occupies port 8081. The command completed the guarded local migration
+  but Playwright refused to reuse the existing preview. That server was left
+  running; no saved journey pass or fresh interactive/browser/native acceptance
+  is claimed. The authorized PR's hosted CI must run the clean fixture suite.
+
+This review contains the initial export screen; the later direct Settings share
+action and account/recovery refinements remain in review 3, with haptics and
+subsequent polish in review 4. Existing native build/device acceptance, broader
+beta/paid-launch gates, deletion, analytics and legal publication remain open.
+Local passing checks do not establish hosted success or authorize merging.
