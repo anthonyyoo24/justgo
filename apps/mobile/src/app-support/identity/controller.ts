@@ -22,6 +22,7 @@ import { Deadline } from '../../lib/deadline';
 
 type Snapshot = {
   busy: boolean;
+  busyInBackground: boolean;
   initialized: boolean;
   hasPending: boolean;
   account: SessionResponse | null;
@@ -34,6 +35,7 @@ type Snapshot = {
   recoveryKeys: z.infer<typeof credentialsResponseSchema>['credentials'];
 };
 type Random = { id: () => string; secret: () => string };
+type OperationOptions = { background?: boolean };
 const secureRandom: Random = {
   id: randomUUID,
   secret: () =>
@@ -75,6 +77,7 @@ export class IdentityController {
   private listeners = new Set<() => void>();
   private snapshot: Snapshot = {
     busy: false,
+    busyInBackground: false,
     initialized: false,
     hasPending: false,
     account: null,
@@ -135,7 +138,7 @@ export class IdentityController {
       if (this.snapshot.account?.userId !== userId)
         throw new IdentityClientError('ACCOUNT_CHANGED');
       if (this.currentSession()?.token === failedToken || this.data?.pending)
-        await deadline.wait(() => this.retry());
+        await deadline.wait(() => this.retry({ background: true }));
       deadline.check();
       if (this.lastError) throw this.lastError;
       const session = this.currentSession();
@@ -208,12 +211,17 @@ export class IdentityController {
       sessionToken: this.random.secret(),
     };
   }
-  private async run(work: () => Promise<void>) {
+  private async run(work: () => Promise<void>, options: OperationOptions = {}) {
     if (this.snapshot.busy) return;
     const operation = new Deadline();
     this.operation = operation;
     this.lastError = null;
-    this.update({ busy: true, message: '', key: null });
+    this.update({
+      busy: true,
+      busyInBackground: options.background === true,
+      message: '',
+      key: null,
+    });
     try {
       await work();
     } catch (error) {
@@ -238,7 +246,7 @@ export class IdentityController {
     } finally {
       operation.dispose();
       this.operation = null;
-      this.update({ busy: false, initialized: true });
+      this.update({ busy: false, busyInBackground: false, initialized: true });
     }
   }
   private async ensureData() {
@@ -334,7 +342,9 @@ export class IdentityController {
     this.update({
       account: info,
       transfer: null,
-      message: 'Your account is connected.',
+      message: this.snapshot.busyInBackground
+        ? ''
+        : 'Your account is connected.',
     });
     await this.loadLists();
   }
@@ -399,7 +409,7 @@ export class IdentityController {
     );
     await this.finish(info, pending.proposal, credential.id);
   }
-  retry = () =>
+  retry = (options: OperationOptions = {}) =>
     this.run(async () => {
       await this.ensureData();
       if (this.data!.pending) await this.resume();
@@ -409,7 +419,7 @@ export class IdentityController {
           credentials: (await this.credentials()).map((c) => ({ id: c.id })),
           message: 'Choose a recovery method to continue.',
         });
-    });
+    }, options);
   private async verify() {
     const session = this.data!.session!;
     try {
@@ -551,10 +561,10 @@ export class IdentityController {
       credentials: (await this.credentials()).map((c) => ({ id: c.id })),
     });
   }
-  refresh = () =>
+  refresh = (options: OperationOptions = {}) =>
     this.run(async () => {
       await this.verify();
-    });
+    }, options);
   renew = () =>
     this.run(async () => {
       if (!this.data?.session) throw new IdentityClientError('UNAUTHORIZED');

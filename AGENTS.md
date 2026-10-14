@@ -76,9 +76,19 @@ paths, upload allowlists, fixture resolution, asset extraction and documentation
 links together; organizing retained code does not authorize its removal.
 
 Use import-aware rewrites rather than replacing arbitrary quoted fragments in
-SQL or data. Verify large moves with cold bundles, then reload the existing
-installed development app to clear stale Metro module/asset paths.
+SQL or data. Verify large moves with cold bundles. Restart the owned running Metro server
+with `--clear` before reloading the existing installed development app: a
+successful separate export does not rebuild that server's live dependency graph.
+Reload the app to clear stale module/asset paths.
 
+- **Review changed directories after the task.** Complete the requested
+  implementation normally, then before handoff identify every directory where
+  the task added or modified files. Review each directory's full contents to
+  see whether it has become too large after the changes. If sensible groups
+  would improve navigation, reorganize them into responsibility-based
+  subfolders without waiting for Anthony to ask. Use judgment rather than a
+  fixed file-count threshold; follow the move/verification rules above and keep
+  functional changes separately reviewable. Record any necessary deferral.
 - **Choose the owner before creating files.** Identify the product capability or
   supporting responsibility the code serves, then place it with that owner.
 - **Use `src/features/<name>/` for product capabilities.** Examples: Challenges,
@@ -169,6 +179,10 @@ installed development app to clear stale Metro module/asset paths.
   Chrome window when side-panel-only testing was requested. Fix failures and
   repeat. Use disposable local fixtures only. A one-off browser walkthrough is
   not a saved end-to-end regression test or a CI gate; report each separately.
+- Browser layout checks must wait for usable controls after navigation/refresh
+  and retry fresh geometry reads. Missing or detached elements must keep the
+  assertion failing; preserve the alignment limit instead of adding sleeps or
+  weakening the assertion.
 - Before handoff run `npm run check` and, for backend/shared boundaries or a phase
   closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
   Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.

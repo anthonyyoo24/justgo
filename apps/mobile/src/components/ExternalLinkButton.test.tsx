@@ -1,9 +1,9 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Linking, Text } from 'react-native';
 import { ExternalLinkButton } from './ExternalLinkButton';
-import { showMessageToast } from '../platform/Toast';
+import { showMessageToast } from '../platform/toast/Toast';
 
-jest.mock('../platform/Toast', () => ({ showMessageToast: jest.fn() }));
+jest.mock('../platform/toast/Toast', () => ({ showMessageToast: jest.fn() }));
 const props = {
   label: 'Get help',
   url: 'mailto:help@example.com?subject=Help',

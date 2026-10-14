@@ -1,6 +1,6 @@
 import { Toaster, toast } from 'sonner';
-import { colors } from '../theme/tokens';
-import { useReduceMotion } from './motion';
+import { colors } from '../../theme/tokens';
+import { useReduceMotion } from '../motion/motion';
 
 export function ToastHost({ channel }: { channel: string }) {
   const reduceMotion = useReduceMotion();

@@ -1,22 +1,40 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { IdentityScreen } from './IdentityScreen';
+import { AccountToolsScreen } from './account/AccountToolsScreen';
 import { IdentityController } from './controller';
 import { createMemoryVault } from './storage';
 import { Linking } from 'react-native';
 import { supportContact, contactFailureMessage } from '../contact';
-import { showMessageToast } from '../../platform/Toast';
+import { showMessageToast } from '../../platform/toast/Toast';
 import {
   createIdentityApi,
   IdentityClientError,
   type IdentityApi,
 } from './api';
 
+jest.mock('expo-router', () => {
+  const React = require('react') as typeof import('react');
+  const { Text } = require('react-native') as typeof import('react-native');
+  return {
+    useRouter: () => ({
+      canGoBack: () => false,
+      replace: jest.fn(),
+      back: jest.fn(),
+    }),
+    useFocusEffect: (callback: () => void | (() => void)) =>
+      React.useEffect(callback, [callback]),
+    Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
+    Link: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 jest.mock('expo-crypto', () => ({
   getRandomValues: () => new Uint8Array(32).fill(1),
   randomUUID: () => '00000000-0000-4000-8000-000000000001',
 }));
 jest.mock('./vault', () => ({ createVault: jest.fn() }));
-jest.mock('../../platform/Toast', () => ({ showMessageToast: jest.fn() }));
+jest.mock('../../platform/toast/Toast', () => ({
+  showMessageToast: jest.fn(),
+}));
 it('offers private email support from account recovery and keeps it available after failure', async () => {
   const controller = new IdentityController(createMemoryVault(), {
     request: jest.fn(),
@@ -26,6 +44,7 @@ it('offers private email support from account recovery and keeps it available af
     .mockRejectedValueOnce(new Error('native detail'))
     .mockResolvedValueOnce(undefined);
   const screen = render(<IdentityScreen controller={controller} managed />);
+  expect(screen.queryByText('JustGO · Your account, kept private')).toBeNull();
   const help = screen.getByRole('button', { name: 'Get help' });
   fireEvent.press(help);
   await waitFor(() =>
@@ -77,22 +96,28 @@ it('asks for verification from the new device and submits the entered digits onl
       fetcher as unknown as typeof fetch,
     ),
   );
-  const screen = render(<IdentityScreen controller={controller} />);
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Create a private account' }),
-    ).toBeTruthy(),
+  await controller.initialize();
+  await controller.createAccount();
+  const screen = render(
+    <AccountToolsScreen controller={controller} tool="transfer" />,
   );
-  fireEvent.press(
-    screen.getByRole('button', { name: 'Create a private account' }),
-  );
-  await waitFor(() =>
-    expect(screen.getByLabelText('Transfer code')).toBeTruthy(),
-  );
+  await waitFor(() => expect(controller.getSnapshot().busy).toBe(false));
+  expect(screen.getByLabelText('Transfer code')).toBeTruthy();
   fireEvent.changeText(
     screen.getByLabelText('Transfer code'),
     'ABCD-EF01-2345-6789',
   );
+  fireEvent.press(screen.getByRole('button', { name: 'Review transfer' }));
+  await waitFor(() =>
+    expect(screen.getByLabelText('Verification digits')).toBeTruthy(),
+  );
+  expect(screen.getByLabelText('Verification digits').props.value).toBe('');
+  fireEvent.changeText(screen.getByLabelText('Verification digits'), '012345');
+  fireEvent.changeText(
+    screen.getByLabelText('Transfer code'),
+    'ABCD-EF01-2345-6789',
+  );
+  expect(screen.queryByLabelText('Verification digits')).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Review transfer' }));
   await waitFor(() =>
     expect(screen.getByLabelText('Verification digits')).toBeTruthy(),
@@ -164,6 +189,13 @@ it('shows the browser limitation, recovery inputs, busy state and recoverable fa
   );
   await waitFor(() => expect(rejectRequest).toBeDefined());
   expect(
+    screen.getByRole('progressbar', {
+      name: 'Create a private account in progress',
+    }),
+  ).toBeTruthy();
+  expect(screen.getAllByRole('progressbar')).toHaveLength(1);
+  expect(screen.queryByText('Connecting securely…')).toBeNull();
+  expect(
     screen.getByRole('button', { name: 'Recover an existing account' }).props
       .accessibilityState.disabled,
   ).toBe(true);
@@ -171,6 +203,7 @@ it('shows the browser limitation, recovery inputs, busy state and recoverable fa
   await waitFor(() =>
     expect(screen.getByText(/Couldn’t connect/)).toBeTruthy(),
   );
+  expect(screen.queryByRole('progressbar')).toBeNull();
   expect(
     screen.queryByRole('button', { name: 'Create a private account' }),
   ).toBeNull();
@@ -191,39 +224,120 @@ it('shows the browser limitation, recovery inputs, busy state and recoverable fa
   expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
 });
 
-it('shares the app account and makes device tools reachable without a long recovery page', async () => {
-  const controller = new IdentityController(
-    createMemoryVault(),
-    createIdentityApi(
-      'http://localhost:3000',
-      jest.fn(async (_url, init) => {
-        const body = init?.body ? JSON.parse(init.body as string) : {};
-        return {
-          ok: true,
-          json: async () =>
-            _url.toString().endsWith('/sessions')
-              ? {
-                  userId: '00000000-0000-4000-8000-000000000003',
-                  deviceId: body.deviceId,
-                  sessionId: body.sessionId,
-                  expiresAt: new Date(Date.now() + 86400000).toISOString(),
-                }
-              : _url.toString().endsWith('/devices')
-                ? { devices: [] }
-                : { credentials: [] },
-        } as Response;
+it.each([
+  'key',
+  'credential',
+  'empty-account',
+  'start-transfer',
+  'new-transfer',
+  'finish-transfer',
+] as const)(
+  'keeps only the %s control loading until the request finishes',
+  async (action) => {
+    const vault = createMemoryVault();
+    let session: {
+      userId: string;
+      deviceId: string;
+      sessionId: string;
+      expiresAt: string;
+    };
+    let hold: { suffix: string; gate: Promise<void> } | null = null;
+    const fetcher = jest.fn(async (url: string, init: RequestInit) => {
+      if (hold && url.endsWith(hold.suffix)) await hold.gate;
+      const body = init.body ? JSON.parse(init.body as string) : {};
+      let result: object;
+      if (url.endsWith('/sessions')) {
+        const pending = (await vault.read())!.pending;
+        const proposal =
+          body.kind === 'transfer' && pending?.kind === 'transfer'
+            ? pending.input
+            : body;
+        session = {
+          userId: '30000000-0000-4000-8000-000000000003',
+          deviceId: proposal.deviceId,
+          sessionId: proposal.sessionId,
+          expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+        };
+        result = session;
+      } else if (url.endsWith('/sessions/current')) result = session;
+      else if (url.endsWith('/devices')) result = { devices: [] };
+      else if (url.endsWith('/credentials'))
+        result = init.method === 'GET' ? { credentials: [] } : { ok: true };
+      else if (url.endsWith('/transfers'))
+        result = {
+          id: body.id,
+          status: 'waiting',
+          verification: '012345',
+          expiresAt: new Date(Date.now() + 600000).toISOString(),
+        };
+      else throw new Error('Unexpected synthetic identity action');
+      return { ok: true, json: async () => result };
+    });
+    let sequence = 10;
+    const controller = new IdentityController(
+      vault,
+      createIdentityApi(
+        'http://localhost:3000',
+        fetcher as unknown as typeof fetch,
+      ),
+      {
+        id: () =>
+          `10000000-0000-4000-8000-${String(sequence++).padStart(12, '0')}`,
+        secret: () => (sequence++).toString(16).padStart(64, '0'),
+      },
+    );
+    await controller.initialize();
+    const transferAction = action.includes('transfer');
+    if (!transferAction) await controller.createAccount();
+    if (action === 'new-transfer' || action === 'finish-transfer')
+      await controller.startTransfer();
+    const screen = render(
+      <IdentityScreen
+        controller={controller}
+        managed
+        recoveryOnly={!transferAction}
+      />,
+    );
+    const label = {
+      key: 'Recover with key',
+      credential: `Recover saved credential 1 (${controller.getSnapshot().credentials[0]?.id.slice(0, 8)})`,
+      'empty-account': 'Create a separate empty account',
+      'start-transfer': 'Transfer from another device',
+      'new-transfer': 'Start a new transfer',
+      'finish-transfer': 'Check approval & finish',
+    }[action];
+    let finish!: () => void;
+    hold = {
+      suffix:
+        action === 'start-transfer' || action === 'new-transfer'
+          ? '/transfers'
+          : '/sessions',
+      gate: new Promise((resolve) => {
+        finish = resolve;
       }),
-    ),
-  );
-  await controller.initialize();
-  await controller.createAccount();
-  const screen = render(<IdentityScreen controller={controller} managed />);
-  expect(screen.getByText('Connected')).toBeTruthy();
-  expect(screen.queryByText('Your courage.\nYour account.')).toBeNull();
-  expect(screen.queryByLabelText('Transfer code')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Device transfer' }));
-  expect(screen.getByLabelText('Transfer code')).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Manage devices' }));
-  expect(screen.getByText('Your devices')).toBeTruthy();
-  expect(screen.queryByLabelText('Transfer code')).toBeNull();
-});
+    };
+    try {
+      if (action === 'key')
+        fireEvent.changeText(
+          screen.getByLabelText('Recovery key'),
+          'a'.repeat(64),
+        );
+      fireEvent.press(screen.getByRole('button', { name: label }));
+      if (action === 'credential' || action === 'empty-account')
+        fireEvent.press(screen.getByRole('button', { name: 'Confirm' }));
+      await waitFor(() => expect(controller.getSnapshot().busy).toBe(true));
+      expect(
+        screen.getByRole('progressbar', { name: `${label} in progress` }),
+      ).toBeTruthy();
+      expect(screen.getAllByRole('progressbar')).toHaveLength(1);
+      expect(screen.getByRole('button', { name: label })).toBeDisabled();
+      expect(screen.queryByText('Connecting securely…')).toBeNull();
+      fireEvent.press(screen.getByRole('button', { name: label }));
+    } finally {
+      await act(async () => finish());
+      await waitFor(() => expect(controller.getSnapshot().busy).toBe(false));
+      expect(screen.queryByRole('progressbar')).toBeNull();
+      screen.unmount();
+    }
+  },
+);

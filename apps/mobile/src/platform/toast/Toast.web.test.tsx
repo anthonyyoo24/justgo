@@ -1,5 +1,7 @@
 let mockReduceMotion = false;
-jest.mock('./motion', () => ({ useReduceMotion: () => mockReduceMotion }));
+jest.mock('../motion/motion', () => ({
+  useReduceMotion: () => mockReduceMotion,
+}));
 beforeEach(() => {
   mockReduceMotion = false;
 });

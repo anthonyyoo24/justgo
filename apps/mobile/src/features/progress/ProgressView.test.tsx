@@ -16,7 +16,9 @@ import { colors } from '../../theme/tokens';
 import { ProgressView } from './ProgressView';
 
 jest.mock('expo-router', () => ({ Link: () => null }));
-jest.mock('../../platform/motion', () => ({ useReduceMotion: () => false }));
+jest.mock('../../platform/motion/motion', () => ({
+  useReduceMotion: () => false,
+}));
 jest.mock('./day-details/useEntryMotion', () =>
   jest.requireActual('./day-details/useEntryMotion.ts'),
 );

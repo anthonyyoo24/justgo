@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, useWindowDimensions } from 'react-native';
-import { useReduceMotion } from '../../../platform/motion';
+import { useReduceMotion } from '../../../platform/motion/motion';
 
 // Own modal entry/exit and interruption separately from paging and reflection UI.
 export function useDaySheetMotion(date: string | null, onClose: () => void) {

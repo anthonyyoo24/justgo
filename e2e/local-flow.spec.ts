@@ -3,6 +3,7 @@ import { sessionResponseSchema, sessionCreateSchema } from '@justgo/contracts';
 import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
+import { leaveAccountScreens } from './support/account-navigation';
 
 async function openAccount(page: Page, catalogReady = true) {
   await page.goto('/recovery');
@@ -27,7 +28,7 @@ async function openAccount(page: Page, catalogReady = true) {
   }
   const account = sessionResponseSchema.parse(body);
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   if (catalogReady)
     await expect(
       page.getByRole('button', { name: 'Accept challenge', exact: true }),
@@ -253,7 +254,7 @@ test('offline completion and empty Skip survive reload and synchronize through t
     .getByRole('button', { name: 'Recover with key', exact: true })
     .click();
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
@@ -615,7 +616,7 @@ test('active challenges hide all page navigation, preserve browsing continuity, 
     .getByRole('button', { name: 'Recover with key', exact: true })
     .click();
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();

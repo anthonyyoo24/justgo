@@ -3,11 +3,11 @@ import {
   Linking,
   Pressable,
   StyleSheet,
-  Text,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { showMessageToast } from '../platform/Toast';
+import { ScaledText as Text } from './typography/ScaledText';
+import { showMessageToast } from '../platform/toast/Toast';
 import { colors, layout, spacing, typography } from '../theme/tokens';
 
 /** Open a user-reviewed destination; never attach app state or private content. */
@@ -65,7 +65,11 @@ export function ExternalLinkButton({
         (pressed || !url || busy) && styles.dimmed,
       ]}
     >
-      {children ?? <Text style={styles.label}>{label}</Text>}
+      {children ?? (
+        <Text maxFontSizeMultiplier={2} style={styles.label}>
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }

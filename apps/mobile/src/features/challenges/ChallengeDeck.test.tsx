@@ -81,7 +81,7 @@ jest.mock('react-native-worklets', () => ({
   ) => callback(...args),
 }));
 let mockReduceMotion = false;
-jest.mock('../../platform/motion', () => ({
+jest.mock('../../platform/motion/motion', () => ({
   useReduceMotion: () => mockReduceMotion,
 }));
 beforeEach(() => {

@@ -13,6 +13,7 @@ import {
 import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
+import { leaveAccountScreens } from './support/account-navigation';
 
 async function account(page: Page) {
   await page.goto('/recovery');
@@ -32,7 +33,7 @@ async function account(page: Page) {
     throw new Error('Expected synthetic bootstrap');
   const created = sessionResponseSchema.parse(await (await response).json());
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
@@ -115,7 +116,7 @@ async function recover(
     .getByRole('button', { name: 'Recover with key', exact: true })
     .click();
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
 }
 
 test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline Add/Edit reflection', async ({
@@ -361,9 +362,7 @@ test('self-device revocation rejects its session and explicit account recovery p
   await page
     .getByRole('link', { name: 'Account & recovery', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Manage devices', exact: true })
-    .click();
+  await page.getByRole('link', { name: 'Devices', exact: true }).click();
   await page
     .getByRole('button', {
       name: `Revoke device ${current.deviceId.slice(0, 8)}`,
@@ -378,7 +377,9 @@ test('self-device revocation rejects its session and explicit account recovery p
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   expect((await revokedResponse).ok()).toBe(true);
   await expect(
-    page.getByText('This device has been revoked.', { exact: true }),
+    page
+      .getByText('This device has been revoked.', { exact: true })
+      .filter({ visible: true }),
   ).toBeVisible();
   await expect(page.getByText('Connected', { exact: true })).toHaveCount(0);
   const refused = await page.request.get(
@@ -413,9 +414,10 @@ test('self-device revocation rejects its session and explicit account recovery p
   );
   expect(recovery.userId).toBe(current.userId);
   expect(recovery.deviceId).not.toBe(current.deviceId);
-  await page.getByRole('button', { name: 'Account', exact: true }).click();
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
+  await leaveAccountScreens(page);
   await progress(page, 1);
   await openToday(page, 1);
   await page.getByRole('button', { name: /Rep 1\..*View Reflection/ }).click();

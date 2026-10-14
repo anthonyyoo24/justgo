@@ -8,7 +8,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { useReduceMotion } from '../../../platform/motion';
+import { useReduceMotion } from '../../../platform/motion/motion';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 // One clock keeps the calendar and summary highlights moving together.

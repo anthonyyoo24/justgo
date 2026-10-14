@@ -113,6 +113,54 @@ uses `assets/challenges/venues/` for six venue/color pairs and
 `assets/challenges/decoration/` for the paper texture and lower flourish. The
 native Keychain module remains under `apps/mobile/modules/justgo-keychain/`.
 
+## Phase 08 Settings and platform organization
+
+The October 11 owner-approved follow-up groups 19 existing files into five
+folders on `codex/phase-08-settings-privacy`. This is implemented independently
+of the broader mobile cleanup diagram above. Tests stay beside their owner;
+iOS and `.web.*` file pairs retain the same names and platform resolution.
+
+```text
+apps/mobile/src/
+├── app-support/settings/             15 files total
+│   ├── export/                       4 files: export action, ZIP collection and tests
+│   ├── information/                  5 files: Support/About, legal/social links and tests
+│   └── remaining files               6 files: main screen, rows, icons and motion row/tests
+└── platform/                         17 files total
+    ├── export/                       4 files: native/web file delivery and tests
+    ├── toast/                        4 files: native/web notices and tests
+    ├── motion/                       2 files: preferences provider and context/hooks
+    └── remaining files               7 files: connectivity and modal isolation adapters/tests
+```
+
+`remaining files` describes files directly in their parent, not another folder.
+Routes, API contracts, dependencies, stored data and application behavior are
+unchanged. The [Phase 08 follow-up](../handoffs/phase-08-settings-privacy.md#october-11-folder-organization)
+records verification and remaining physical-device acceptance.
+
+### October 12 account and recovery screens
+
+Settings and connected-account pages now share `components/settings/` (three
+files: page, grouped rows and icons). The existing row/icon files moved there;
+Settings behavior and typography are preserved. `app-support/settings/` now has
+13 files: four at its root, four in export and five in information.
+
+`app-support/identity/account/` contains eight cohesive files: the account hub,
+focused-tool composition, recovery keys, device transfer, device management,
+confirmation, styles and their colocated screen tests. The ten identity root
+files retain controller/API/vault/storage ownership, disconnected recovery and
+the shared screen-action presentation hook `useIdentityAction.ts`.
+`app/account/[tool].tsx` only connects the focused routes; invalid tools return to
+recovery. No additional subfolders were needed after reviewing the full touched
+directories. See the [account UI handoff](../handoffs/phase-08-settings-privacy.md#october-12-account-and-recovery-ui).
+
+The large-text follow-up adds `components/typography/` with `ScaledText.tsx` and
+its colocated regression tests. It owns live text metrics shared by Settings,
+account screens and reusable controls. Page/row layout remains in
+`components/settings/`; account forms and orchestration remain with identity.
+The reviewed directories remain cohesive without further moves. See the
+[large-text handoff](../handoffs/phase-08-settings-privacy.md#october-12-large-text-fixes).
+
 ## API, contracts and verification
 
 ```text

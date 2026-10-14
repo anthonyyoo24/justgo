@@ -1,7 +1,9 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { Animated } from 'react-native';
 import { ScreenPreview } from './ScreenPreview';
-jest.mock('../../platform/motion', () => ({ useReduceMotion: () => false }));
+jest.mock('../../platform/motion/motion', () => ({
+  useReduceMotion: () => false,
+}));
 jest.mock('../../features/progress/day-details/useEntryMotion', () =>
   jest.requireActual('../../features/progress/day-details/useEntryMotion.ts'),
 );

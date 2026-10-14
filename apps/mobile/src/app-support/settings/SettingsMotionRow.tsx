@@ -1,7 +1,8 @@
-import { StyleSheet, Switch, Text, View } from 'react-native';
-import { useMotionPreferences } from '../../platform/motion';
+import { StyleSheet, Switch, View } from 'react-native';
+import { ScaledText as Text } from '../../components/typography/ScaledText';
+import { useMotionPreferences } from '../../platform/motion/motion';
 import { colors, spacing, typography } from '../../theme/tokens';
-import { SettingsRowContent } from './SettingsRows';
+import { SettingsRowContent } from '../../components/settings/SettingsRows';
 
 export function SettingsMotionRow() {
   const { reduceMotion, systemReduced, loading, saving, error, setReduced } =

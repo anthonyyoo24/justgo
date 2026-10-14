@@ -18,7 +18,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { useReduceMotion } from '../../platform/motion';
+import { useReduceMotion } from '../../platform/motion/motion';
 import Svg, { Path } from 'react-native-svg';
 import {
   colors,

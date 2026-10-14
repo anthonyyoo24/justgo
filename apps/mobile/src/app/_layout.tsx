@@ -10,7 +10,7 @@ import { AppProvider, useAccess } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
 import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
-import { MotionPreferencesProvider } from '../platform/MotionPreferencesProvider';
+import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -70,6 +70,7 @@ function Navigation() {
       <Stack.Screen name="settings" />
       <Stack.Screen name="export-data" />
       <Stack.Screen name="recovery" />
+      <Stack.Screen name="account/[tool]" />
       <Stack.Protected guard={access.verified}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="challenge" options={{ gestureEnabled: false }} />

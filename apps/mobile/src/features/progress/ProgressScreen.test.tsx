@@ -50,7 +50,9 @@ jest.mock('expo-router', () => ({
   useIsFocused: () => true,
   Link: () => null,
 }));
-jest.mock('../../platform/motion', () => ({ useReduceMotion: () => true }));
+jest.mock('../../platform/motion/motion', () => ({
+  useReduceMotion: () => true,
+}));
 jest.mock('./day-details/useEntryMotion', () =>
   jest.requireActual('./day-details/useEntryMotion.ts'),
 );

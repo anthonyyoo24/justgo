@@ -3,7 +3,7 @@ import { Animated, Modal, ScrollView, StyleSheet } from 'react-native';
 import { DaySheet } from './DaySheet';
 
 let mockReduceMotion = true;
-jest.mock('../../../platform/motion', () => ({
+jest.mock('../../../platform/motion/motion', () => ({
   useReduceMotion: () => mockReduceMotion,
 }));
 beforeEach(() => {

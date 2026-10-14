@@ -4,13 +4,13 @@ import {
   type Attempt,
 } from '@justgo/contracts';
 import { strToU8, zipSync } from 'fflate';
-import type { AccountClient } from '../../lib/account-client';
-import { ApiError } from '../../lib/http';
+import type { AccountClient } from '../../../lib/account-client';
+import { ApiError } from '../../../lib/http';
 import {
   captureLocalExport,
   type LocalExportChange,
-} from '../../data/activity/export';
-import type { AccountRepository } from '../../data/activity/repository';
+} from '../../../data/activity/export';
+import type { AccountRepository } from '../../../data/activity/repository';
 
 export type ExportArchive = { name: string; bytes: Uint8Array };
 type ExportData = {

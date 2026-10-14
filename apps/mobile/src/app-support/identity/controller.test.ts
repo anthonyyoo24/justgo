@@ -358,9 +358,12 @@ it('coordinates request-driven recovery for an expired session without clearing 
   const current = controller.currentSession()!;
   expired = true;
   const accounts: (string | null)[] = [];
-  const unsubscribe = controller.subscribe(() =>
-    accounts.push(controller.getSnapshot().account?.userId ?? null),
-  );
+  const backgroundWork: boolean[] = [];
+  const unsubscribe = controller.subscribe(() => {
+    const state = controller.getSnapshot();
+    accounts.push(state.account?.userId ?? null);
+    if (state.busy) backgroundWork.push(state.busyInBackground);
+  });
   const [a, b] = await Promise.all([
     controller.refreshSession(current.token),
     controller.refreshSession(current.token),
@@ -370,6 +373,13 @@ it('coordinates request-driven recovery for an expired session without clearing 
   expect(a.userId).toBe(current.userId);
   expect(a.token).not.toBe(current.token);
   expect(accounts).not.toContain(null);
+  expect(backgroundWork.length).toBeGreaterThan(0);
+  expect(backgroundWork.every(Boolean)).toBe(true);
+  expect(controller.getSnapshot()).toMatchObject({
+    busy: false,
+    busyInBackground: false,
+    message: '',
+  });
   expect(
     server.calls.mock.calls.filter(
       (c) => c[0] === '/sessions' && c[1]?.kind === 'recovery',

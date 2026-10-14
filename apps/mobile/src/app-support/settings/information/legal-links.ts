@@ -1,4 +1,4 @@
-import { publicHttpsUrl } from '../../lib/public-url';
+import { publicHttpsUrl } from '../../../lib/public-url';
 
 export const appleStandardTerms =
   'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';

@@ -1,5 +1,25 @@
 # Implementation handoffs
 
+**October 14 PR #24 review correction:** Export busy-state descriptions now
+match the retained label and progress indicator. The
+[review follow-up](phase-08-settings-privacy.md#october-14-pr-24-review-correction)
+preserves the earlier wording's history, records verification and reconciles
+the already-fixed journey finding. No app behavior or phase scope changes.
+
+**October 14 PR #24 journey timing fix:** One Foundation run measured a
+Troubleshooting label while the page was opening/refreshing. The
+[fix handoff](phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)
+records failing-before repetition, usable-control readiness and retrying fresh
+geometry with the original alignment limit. App code is unchanged; publication
+and hosted acceptance remain separate from local evidence.
+
+**October 14 third review preparation:** PR #23 is merged, local `main` is
+updated and the export review worktree is archived. The
+[account/recovery review handoff](phase-08-settings-privacy.md#october-14-third-review-preparation)
+records the separate 78-file checkpoint, passing code/coverage and cold web/iOS
+bundle checks, and the retained native/journey limits. Ongoing working files
+and the final haptics/performance review remain separate.
+
 **October 14 second review preparation:** After PR #22 merged, local `main`
 was updated and its review worktree archived. The
 [export/test-access review handoff](phase-08-settings-privacy.md#october-14-second-review-preparation)
@@ -21,6 +41,22 @@ regressions. Anthony authorized pushing `a522fe6` into PR #22 on October 14;
 both hosted Foundation runs pass, including all 24 saved journeys. Native
 build/device acceptance remains separate. Verify each branch when splitting PRs
 and rerun fresh online Doctor immediately before pushing.
+
+**October 12 accessibility fixes:** Heading/status wrapping and stale spacing after live text-size changes are resolved. Settings/account screens pass normal/maximum native visual checks and live resizing in the side-panel simulator mirror; browser labels and keyboard order pass. The [follow-up](phase-08-settings-privacy.md#october-12-large-text-fixes) records regressions, native/browser evidence and the remaining physical-phone VoiceOver and Expo dependency gates.
+
+**October 12 account back-link removal:** Both Account & recovery variants omit the bottom Back to app shortcut and retain header navigation. The [follow-up](phase-08-settings-privacy.md#october-12-account-back-link-removal) records removal regressions, code checks and side-panel navigation evidence. Existing dependency and device acceptance gates remain open.
+
+**October 12 footer cleanup/local checkpoint:** Settings now ends after About; version/test-build labels and its preview shortcut are removed. Recover an account omits duplicate help, and identity pages omit the privacy tagline. The [cleanup](phase-08-settings-privacy.md#october-12-footer-cleanup-and-local-commits) records 46 focused tests, 561 mobile cases, side-panel evidence and three logical local commits. The existing Expo dependency and physical acceptance gates remain open.
+
+**October 12 account action indicators:** Account/recovery actions now use a single spinner on the initiating row/button, with steady labels, quiet automatic checks and retryable errors. Export also keeps its label while spinning. The [audit](phase-08-settings-privacy.md#october-12-account-action-indicators) records action-by-action coverage, 561 passing mobile cases, unchanged coverage gates and side-panel slow/failing-connection checks. Expo patch updates and native acceptance remain open.
+
+**October 12 quiet account refresh:** Automatic account checks now run without the generic loading message or transfer-button spinner; user-triggered work retains progress feedback and errors remain retryable. The [follow-up](phase-08-settings-privacy.md#october-12-quiet-account-refresh) records 51 focused tests, 549 mobile cases with unchanged coverage gates, and slow/failing connection verification in the side panel. The existing Expo patch requirement and native acceptance remain open.
+
+**October 12 account UI:** The owner-authorized Account & recovery hub reuses Settings styling, with focused recovery-key, transfer and device screens. Connection maintenance moves under Troubleshooting in Account; its recovery action shares the other rows’ padding and the connected hub omits duplicate Get help. Explicit/disconnected recovery remains available. The [follow-up](phase-08-settings-privacy.md#october-12-account-and-recovery-ui) records local checks, browser review and remaining physical-device/two-phone acceptance. Anthony confirmed the new page opens on his iPhone after reconnecting to the current server. Deletion, analytics and legal publication remain open.
+
+**October 11 direct export:** Export my data now creates the ZIP directly from Settings, with progress, inline feedback/retry and the existing native share sheet or browser download. The [follow-up](phase-08-settings-privacy.md#october-11-direct-export-from-settings) records passing checks, two saved export journeys, side-panel download verification and a fresh phone Metro bundle. Anthony confirmed that the share sheet opens directly on his iPhone. The subsequent feedback refinement makes dismissal quiet and keeps actual errors in red inline text for retry; Anthony confirmed the quiet return on his iPhone. Save to Files/email delivery and remaining device checks stay open. Account/recovery UX research is in a separate conversation, with no redesign in this slice.
+
+**October 11 Settings/platform folders:** Existing export, test-access, clock-fix and handoff changes were saved in four local commits before moving 19 files into the five owner-approved responsibility folders. The [organization follow-up](phase-08-settings-privacy.md#october-11-folder-organization) records checks and remaining device gates. No Git publication occurred. The subsequent phone reload follow-up records the stale live Metro graph, its cache-cleared restart and successful repeated bundle responses; Anthony confirmed that the phone app opens normally after the restart.
 
 **October 11 hosted phone prerequisite:** Anthony approved bringing forward the test-server update/free account admission. The [server handoff](phase-09-test-server.md) records backup/restoration, migration through 0013 with identity preservation, old-writer fencing, the reachable application-staging route and passing checks. A reproduced phone-clock difference initially blocked access; the corrected check preserves expiry/freshness bounds and passes regressions. Anthony confirmed real Home with challenge cards and Home → Settings → Back on his phone. Physical feature acceptance remains open. No Git publication or beta/release acceptance occurred.
 

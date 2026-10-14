@@ -4,6 +4,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import { sessionResponseSchema } from '@justgo/contracts';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
+import { leaveAccountScreens } from './support/account-navigation';
 
 test('Settings exports every cloud page and a pending phone reflection as a usable private ZIP', async ({
   page,
@@ -29,7 +30,7 @@ test('Settings exports every cloud page and a pending phone reflection as a usab
       from justgo.venue_cards v join justgo.challenges c on c.id=v.challenge_id order by v.position limit 1`,
       [account.userId, id, 'Disposable old cloud reflection 🌱'],
     );
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   await page
     .getByRole('button', { name: 'Accept challenge', exact: true })
     .click();
@@ -47,11 +48,15 @@ test('Settings exports every cloud page and a pending phone reflection as a usab
     .getByRole('button', { name: 'Save Reflection', exact: true })
     .click();
   await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
-  await page.getByRole('link', { name: 'Export my data', exact: true }).click();
-  await expect(page.getByText(/private reflections/)).toBeVisible();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export ZIP', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Export my data', exact: true })
+    .click();
   const download = await downloading;
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(
+    page.getByRole('heading', { name: 'Settings', exact: true }),
+  ).toBeVisible();
   const path = await download.path();
   expect(path).not.toBeNull();
   const files = unzipSync(await readFile(path!));
@@ -101,18 +106,23 @@ test('export shows a retryable network failure and downloads only after a fresh 
     .getByRole('button', { name: 'Create a private account', exact: true })
     .click();
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to app', exact: true }).click();
+  await leaveAccountScreens(page);
   await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
-  await page.getByRole('link', { name: 'Export my data', exact: true }).click();
   const failures = '**/v1/account/export*';
   await page.route(failures, (route) => route.abort('internetdisconnected'));
-  await page.getByRole('button', { name: 'Export ZIP', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Export my data', exact: true })
+    .click();
   await expect(
-    page.getByText(/Check your connection and try again/),
+    page.getByText('Couldn’t export your data. Please try again.', {
+      exact: true,
+    }),
   ).toBeVisible();
   await page.unroute(failures);
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export ZIP', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Export my data', exact: true })
+    .click();
   await downloading;
   await expect(
     page.getByText('Your ZIP download has started.', { exact: true }),

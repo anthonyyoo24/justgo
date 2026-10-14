@@ -12,13 +12,19 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import { SettingsMotionRow } from './SettingsMotionRow';
+jest.mock('expo-router', () => ({
+  Link: ({ children }: { children: React.ReactNode }) => children,
+}));
 import { useProgressShimmer } from '../../features/progress/calendar/ProgressSkeleton';
 import {
   MotionPreferencesProvider,
   motionPreferenceKey,
   type MotionStorage,
-} from '../../platform/MotionPreferencesProvider';
-import { useMotionPreferences, useReduceMotion } from '../../platform/motion';
+} from '../../platform/motion/MotionPreferencesProvider';
+import {
+  useMotionPreferences,
+  useReduceMotion,
+} from '../../platform/motion/motion';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(async () => null),
