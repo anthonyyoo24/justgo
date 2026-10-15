@@ -10,6 +10,11 @@ import {
 export const credentialSchema = z
   .object({ id: z.uuid(), secret: secretSchema })
   .strict();
+const transferIntentSchema = z.object({
+  kind: z.literal('transfer'),
+  credentialId: z.uuid(),
+  input: transferStartSchema,
+});
 export const deviceStateSchema = z
   .object({
     deviceId: z.uuid(),
@@ -36,13 +41,12 @@ export const deviceStateSchema = z
           userId: z.uuid(),
           receipt: accountDeletionResponseSchema.nullable(),
         }),
-        z.object({
-          kind: z.literal('transfer'),
-          credentialId: z.uuid(),
-          input: transferStartSchema,
-        }),
+        transferIntentSchema,
       ])
       .nullable(),
+    // Preserve metadata written by the newer receiving-transfer implementation.
+    cancelledTransfers: z.array(transferIntentSchema).optional(),
+    ignoredCredentialIds: z.array(z.uuid()).optional(),
     savedKey: z
       .object({ id: z.uuid(), secret: secretSchema, registered: z.boolean() })
       .nullable(),

@@ -367,3 +367,248 @@ hosted rollout, retention/backup and dependency gates remain open.
 The subsequent OAuth/guest-account recovery and centered confirmation-alert
 discussions are design proposals, not implemented changes in this checkpoint.
 The post-deletion Back navigation finding above remains open.
+
+## October 14 centered deletion confirmation
+
+After the local commit checkpoint, Anthony authorized implementing the centered
+confirmation discussed from the Commons reference. Continue to deletion now opens
+an overlay titled **Delete your account?** with the approved account/progress/
+feelings/reflections warning, **Cancel**, and a red **Delete account** action.
+Subscription cancellation, retention and export information stay on the preceding
+page. The old inline second-stage button is removed.
+
+`DeleteAccountConfirmation` owns presentation, measured root-window safe-area
+padding, scrollable copy and larger-text action stacking. The existing web modal
+isolation helper excludes the covered page; React Native Web's modal owns keyboard
+focus trapping and restoration. Cancel is the first focusable action. The screen closes confirmation
+on navigation blur, account changes or a non-active app state. Accepting consumes
+the confirmation before starting deletion and rechecks the controller's current
+account, busy state and deletion status. Queued duplicate or stale callbacks cannot
+delete a replacement account. Each opening has its own in-memory confirmation
+identity, so callbacks from a canceled opening also cannot confirm or cancel a
+newer opening for the same account. The durable deletion workflow is unchanged.
+
+Verification:
+
+- All **14** focused screen/modal regressions pass, covering cancellation,
+  request-close, duplicate acceptance, account changes and late callbacks,
+  canceled/reopened confirmation callbacks, retained failure feedback with
+  account isolation, busy/pending guards, navigation blur, backgrounding and
+  listener cleanup. The canceled/reopened regression first failed with an
+  unexpected deletion call; it passes with the per-opening guard.
+- Fresh contract build, full workspace/journey typechecking, lint, formatting
+  and all **182** architecture/tooling cases pass.
+- Full mobile coverage passes **694 tests / 81 suites**: **96.90% lines /
+  91.76% branches**, with unchanged global/critical floors. The combined coverage
+  gate passes with the fresh mobile report and unchanged API/contracts reports
+  from the local commit checkpoint. No backend/shared contract changed in this slice.
+- The saved actual-app/API/database deletion journey passes on loopback
+  **3007/8093**, including Cancel, focus restoration, keyboard Escape, a fresh
+  confirmation after returning, actual deletion and lost-response retry. The
+  first attempt sent Escape before the modal had acquired focus; the test now
+  awaits the observable Cancel focus before keyboard input, without arbitrary waits.
+- In-app Browser Use passes at **390 × 844** and **320 × 568** for first/repeated
+  opening, copy, Cancel, Tab wrapping, Escape and background-page isolation.
+  At 320 px, the dialog measures **272 × 255** at **(24, 156.5)**, both actions
+  are 70 px high, and document/scroll widths remain 320 px. Only the existing
+  `props.pointerEvents` deprecation was observed; no application exception occurred.
+- Fresh `npm run check` still stops at the same four Expo patch recommendations
+  (20/21 Doctor checks). No dependency versions or validation gates were changed.
+
+Ignored logs: `.local/phase-08-delete-account/modal-{check,journey,final-checks}.log`;
+`modal-final-coverage.log` captures the final 694-case run and combined gate.
+Screenshots: `delete-confirmation-modal-390.jpg` and
+`delete-confirmation-modal-320.jpg` in the same ignored directory.
+
+The guarded fixture API/browser preview remain on **3002/8083** with a fresh,
+empty disposable account and the modal retained in the side panel. Manual Metro
+uses development mode; setting its `NODE_ENV=test` tripped the development-tools
+test assertion before serving and was corrected before verification. The browser
+preview currently disables watching, so restart it before treating later edits
+as served evidence. Phone Metro is restarted on **8082** with a clear cache and
+one worker; it retains the existing HTTPS API configuration and native deletion
+capability guard.
+
+Physical-iPhone modal layout, larger text and VoiceOver are not established by
+browser/component evidence. Existing native cleanup, hosted rollout, retention,
+dependency and post-deletion Back/navigation gates remain open. OAuth/guest-login
+changes remain proposals. The deletion, journey and documentation directories
+were reviewed again; their existing responsibility groups need no reorganization.
+
+## October 14 phone storage compatibility
+
+After reconnecting to 8082, Anthony reported that Settings Back returned to
+Account & recovery, with Create a new account and “Secure storage is unavailable.
+Unlock your iPhone and retry.” The newer Settings/receiving-transfer worktree
+writes optional `cancelledTransfers` and `ignoredCredentialIds` fields. This
+branch's strict persisted-state schema did not recognize them, so reading a
+valid newer state failed before account verification. The disconnected root
+gate then routed back to recovery. No phone credential payload was inspected
+or logged; a synthetic native-adapter fixture reproduces the schema rejection.
+
+The schema now validates and retains both known fields, while continuing to
+reject malformed values and unknown fields. Credential selection excludes
+ignored IDs. Retained cancellation metadata cannot silently bootstrap a new
+account when no usable credential remains. Normal renewal and deletion cleanup
+preserve this metadata instead of discarding it. This is a compatibility bridge;
+the newer receiving-transfer cancellation UI/server reconciliation is not copied
+into the deletion branch or represented as implemented here. No saved account,
+progress or credential is reset, and no access guard is bypassed.
+
+The 8082 phone Metro was restarted with `--clear`, one worker, normal native
+environment resolution and the existing HTTPS test API. Anthony was asked to
+fully close/reopen the installed app using the same QR and check Settings Back.
+Physical-phone restoration confirmation is pending; browser/component results
+cannot establish access to the actual phone Keychain.
+
+Verification is recorded in ignored
+`.local/phase-08-delete-account/storage-compat-*` logs:
+
+- The initial regression failed with unrecognized persisted keys. All **38
+  focused vault/controller/deletion cases** now pass, including restoration of
+  the same account, renewal, ignored-credential exclusion, malformed metadata
+  and no automatic replacement.
+- Contracts build, workspace/journey typechecks, lint, formatting, **182
+  architecture/tooling cases**, **700 mobile cases**, **54 API unit cases** and
+  **25 contracts cases** pass.
+- Fresh mobile coverage passes at **96.88% lines / 91.80% branches**. Combined
+  all-source/critical floors pass using that report and the retained unchanged
+  API/contracts reports. This slice changes no backend/shared contract.
+- Fresh `npm run check` still stops at the same four Expo patch recommendations
+  recorded above; validation remains enabled. No dependency upgrade is included.
+- `JUSTGO_JOURNEY_API_PORT=3007 JUSTGO_JOURNEY_APP_PORT=8093
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer npm run test:journey --
+--grep 'a real account renews|Settings permanently deletes'`: **2 pass**.
+  The actual-app/API/database cases cover renewal and entry to the catalog plus
+  permanent deletion/lost-response retry. Their owned fixture servers stopped.
+- Restarted the non-watching 8083 preview before side-panel verification. A
+  disposable local account connects, Account & recovery Back opens Settings,
+  and Settings Back reaches the real challenge catalog. Repeating Home →
+  Settings → Account & recovery → Back → Back also returns Home. Screenshot:
+  `storage-compat-home.jpg` in the same ignored evidence directory. This is
+  browser navigation evidence, separate from the native Keychain regression
+  fixture and pending physical-phone confirmation.
+
+Reviewed the full touched root, identity/deletion and documentation directories.
+Their existing responsibility groups remain navigable; no folder move is needed.
+Root `AGENTS.md` records the shared-Keychain/schema-compatibility lesson.
+
+## October 15 loading, error and retry screenshots
+
+The owner-requested modal feedback refinement below supersedes this earlier UI;
+these screenshots remain historical evidence of the layout Anthony reviewed.
+
+Anthony asked to run the implemented flow and screenshot each visible state.
+This is a side-panel browser walkthrough at **390 × 844**, not a new product-code
+change, saved regression test or physical-iPhone acceptance result. The phone
+Metro remains on **8082**. A temporary browser Metro on **8083** used the guarded
+journey environment and a loopback-only fault proxy on **3003**, forwarding only
+to the disposable **3002** fixture API and dedicated `justgo_test` database.
+Two fresh, empty accounts were allocated by that fixture server; a scoped query
+of its own registry confirmed both have deletion timestamps. No existing account
+or phone credential was used.
+
+The first dropped response was automatically replayed by the browser and safely
+completed. For the visible failure capture, the proxy then withheld deletion
+replies until the app showed its retryable service-unavailable message. Retrying
+Finish deletion recovered the existing server receipt and completed local cleanup.
+The proxy briefly held that retry response to capture its spinner, then released
+the real response. The account was not recreated.
+
+Actual screenshots are ignored under `.local/phase-08-delete-account/`:
+
+| File                          | Observed state                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| `states-00-before.jpg`        | Delete page with Continue to deletion and Cancel subscription                   |
+| `states-01-confirmation.jpg`  | Centered confirmation with Cancel and Delete account                            |
+| `states-02-loading.jpg`       | Modal closed; Finish account deletion, disabled button and spinner              |
+| `states-03-network-error.jpg` | Service-unavailable error in red, Finish deletion available                     |
+| `states-04-retrying.jpg`      | Error cleared; Finish deletion disabled with spinner during retry               |
+| `states-05-deleted.jpg`       | Account deleted and Return to Settings                                          |
+| `states-06-settings.jpg`      | Settings reached by Return to Settings                                          |
+| `states-07-account-entry.jpg` | Account & recovery opened from Settings, deleted message and new-account action |
+
+The initial in-progress copy currently already says “Finish account deletion”
+and describes retrying; the screenshots preserve that wording. The modal itself
+has no loading spinner or error message. After success, the implemented flow
+still opens Settings before account entry; a welcome-only replacement has not
+been implemented by this walkthrough. Native cleanup, hosted rollout, physical
+restoration confirmation and the existing Expo dependency gate remain open.
+
+The temporary browser tab and fault-injection services are closed after capture;
+the phone server remains running. Documentation and evidence directories retain
+their existing organization. No dependency, native binary or product UI is changed.
+
+## October 15 loading and errors inside the modal
+
+Anthony requested keeping all deletion loading/error feedback in the confirmation
+modal, replacing the Delete account text with a loading circle and displaying
+errors in red below its main explanation. The modal now remains mounted through
+request, failure and retry, then closes when durable cleanup reaches deleted.
+The underlying deletion page renders neither a spinner nor an inline error.
+
+`useAccountDeletionDialog` owns presentation, focus/foreground handling and retry
+selection; the existing identity controller still owns persisted deletion intent,
+proofs, request idempotency and account cleanup. It subscribes to identity changes
+and reconciles immediately after connecting, including slow hydration and the
+construction/subscription gap. A restored unfinished deletion opens in the modal
+without submitting another destructive request. Cancel/escape are disabled while
+working. Dismissing an idle failed attempt preserves the pending proof; Finish
+deletion reopens its error in the modal. A request retry clears the displayed
+error and shows only the spinner in the destructive button. Cleanup failures use
+copy that accurately says the server account is already deleted.
+
+Separate visit and attempt revisions fence duplicate/queued actions, old
+completions, navigation blur and account changes. Before submission, backgrounding
+still cancels consent; a submitted operation keeps its dialog state when the app
+backgrounds. No ownership/access/native-capability guard is bypassed. The guarded
+old-native-build message is now shown in the modal too.
+
+Verification:
+
+- **24 screen/presentation cases** and **5 durable deletion cases** pass. They
+  cover spinner-only loading, modal-only feedback, retry, preflight failures,
+  restoration, stale callbacks/completions, hydration gaps and disposal.
+- Contracts build, workspace/journey typechecks, lint, formatting, **182
+  architecture/tooling cases**, **54 API unit cases** and **25 contracts cases**
+  pass. Full mobile coverage runs **710 cases in 81 suites**, all passing, at
+  **96.83% lines / 91.82% branches**. All-source and critical floors pass, with
+  retained unchanged API/contracts reports. The new hook is **96.25% lines /
+  94.18% branches**; remaining branches are defensive admission/late-result
+  guards, reviewed without weakening thresholds.
+- `npm run check` still stops at fresh Expo Doctor **20/21**, with the same four
+  SDK patch recommendations recorded above. The remaining check commands were
+  run explicitly and pass; dependency validation remains enabled.
+- `JUSTGO_JOURNEY_API_PORT=3007 JUSTGO_JOURNEY_APP_PORT=8093
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer npm run test:journey --
+--grep 'Settings permanently deletes'`: **1 pass**. The saved actual-app/API/
+  database case holds request responses and verifies a spinner with no button
+  text, disabled dismissal, modal-only red feedback below the main copy,
+  cancel/reopen, retry and successful cleanup. Its fixture services stopped.
+- Side-panel browser verification passes at **390 × 844** and **320 × 568**.
+  The error is below the main copy, colored `rgb(179, 38, 30)`, and occurs only
+  once in the document. The dialog and both buttons fit the small viewport.
+  Canceling an idle error leaves zero page alerts/spinners; reopening restores
+  its modal feedback. Retry clears the error and shows the spinner; success
+  closes the modal. A scoped query of the live fixture server's allocated IDs
+  confirms one test account, deleted once; no account was recreated.
+- Phone Metro **8082** was restarted with `--clear`, one worker and the normal
+  existing HTTPS API configuration. Its fresh iOS bundle returns **HTTP 200**.
+  This is bundling evidence, not physical-device modal/Keychain acceptance.
+
+Screenshots are ignored under `.local/phase-08-delete-account/`:
+`modal-feedback-01-confirmation.jpg`, `modal-feedback-02-loading.jpg`,
+`modal-feedback-03-error.jpg`, `modal-feedback-04-retrying.jpg`,
+`modal-feedback-05-deleted.jpg` and `modal-feedback-error-320.jpg`.
+The live walkthrough used the isolated 3002 fixture API and a loopback 3003
+response-control proxy, behind a fresh 8083 web bundle. The first deletion reply
+was held then failed as 503; retry recovered the real server receipt. These
+temporary services/tab are closed after capture, leaving the phone server running.
+Logs use the same `modal-feedback-*` prefix. No fixture proofs or private account
+data are included in screenshots or handoff output.
+
+Reviewed the touched deletion, journey and documentation directories: modal UI,
+its controller hook, subscription row, durable workflow and colocated tests
+remain one cohesive capability. No folder move is needed. Existing
+native-build/device, hosted rollout, retention,
+physical-phone restoration and Expo dependency gates remain open.

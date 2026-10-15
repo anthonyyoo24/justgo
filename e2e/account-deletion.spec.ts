@@ -42,56 +42,142 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
     .toBeGreaterThan(0);
   await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
   await page.getByRole('link', { name: 'Delete account', exact: true }).click();
-  await expect(
-    page.getByRole('button', {
-      name: 'Delete account permanently',
-      exact: true,
-    }),
-  ).toHaveCount(0);
-  await page
-    .getByRole('button', { name: 'Continue to deletion', exact: true })
-    .click();
+  const confirmation = page.getByRole('alertdialog', {
+    name: 'Delete your account?',
+    exact: true,
+  });
+  const continueButton = page.getByRole('button', {
+    name: 'Continue to deletion',
+    exact: true,
+  });
+  await expect(confirmation).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Cancel subscription', exact: true }),
   ).toBeVisible();
+  await continueButton.click();
+  await expect(confirmation).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Cancel', exact: true }),
+    confirmation.getByText(
+      'Your account, progress, feelings and reflections will be permanently deleted. You won’t be able to recover this account.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  const cancel = confirmation.getByRole('button', {
+    name: 'Cancel',
+    exact: true,
+  });
+  await expect(cancel).toBeFocused();
+  // The covered page stays out of keyboard and accessibility navigation.
+  await expect(
+    page.getByRole('button', { name: 'Back', exact: true }),
   ).toHaveCount(0);
+  await cancel.click();
+  await expect(confirmation).toHaveCount(0);
+  await expect(continueButton).toBeFocused();
+  await continueButton.click();
+  await expect(confirmation).toBeVisible();
+  await expect(cancel).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toHaveCount(0);
+  await expect(continueButton).toBeFocused();
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select deleted_at from justgo.users where id=$1',
+        [account.userId],
+      )
+    ).rows[0].deleted_at,
+  ).toBeNull();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('link', { name: 'Delete account', exact: true }).click();
-  await expect(
-    page.getByRole('button', {
-      name: 'Delete account permanently',
-      exact: true,
-    }),
-  ).toHaveCount(0);
-  await page
-    .getByRole('button', { name: 'Continue to deletion', exact: true })
-    .click();
+  await expect(confirmation).toHaveCount(0);
+  await continueButton.click();
   let lost = true;
+  let releaseFirst!: () => void, releaseRetry!: () => void;
+  const firstResponse = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+  });
+  const retryResponse = new Promise<void>((resolve) => {
+    releaseRetry = resolve;
+  });
   await page.route(`${journeyApiUrl}/v1/account`, async (route) => {
     if (lost) {
       lost = false;
       const response = await route.fetch();
       expect(response.status()).toBe(200);
+      await firstResponse;
       await route.abort('failed');
-    } else await route.continue();
+    } else {
+      await retryResponse;
+      await route.continue();
+    }
   });
-  await page
-    .getByRole('button', { name: 'Delete account permanently', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Finish account deletion', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Finish deletion', exact: true }),
-  ).toBeEnabled();
-  await page
-    .getByRole('button', { name: 'Finish deletion', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Account deleted', exact: true }),
-  ).toBeVisible();
+  try {
+    await confirmation
+      .getByRole('button', { name: 'Delete account', exact: true })
+      .click();
+    const deleteButton = confirmation.getByRole('button', {
+      name: 'Delete account',
+      exact: true,
+    });
+    const spinner = confirmation.getByRole('progressbar', {
+      name: 'Deleting account',
+      exact: true,
+    });
+    await expect(confirmation).toBeVisible();
+    await expect(spinner).toBeVisible();
+    await expect(deleteButton).toBeDisabled();
+    await expect(
+      deleteButton.getByText('Delete account', { exact: true }),
+    ).toHaveCount(0);
+    await expect(cancel).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(confirmation).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Back', exact: true }),
+    ).toHaveCount(0);
+    releaseFirst();
+    await expect(confirmation.getByRole('alert')).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(1);
+    await expect(confirmation.getByRole('alert')).toHaveCSS(
+      'color',
+      'rgb(179, 38, 30)',
+    );
+    await expect
+      .poll(async () => {
+        const copy = await confirmation
+          .getByText(
+            'Your account, progress, feelings and reflections will be permanently deleted. You won’t be able to recover this account.',
+            { exact: true },
+          )
+          .boundingBox();
+        const error = await confirmation.getByRole('alert').boundingBox();
+        if (!copy || !error)
+          throw new Error('Modal copy and error must stay mounted');
+        return error.y >= copy.y + copy.height;
+      })
+      .toBe(true);
+    await expect(spinner).toHaveCount(0);
+    await expect(deleteButton).toBeEnabled();
+    await cancel.click();
+    await expect(confirmation).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page
+      .getByRole('button', { name: 'Finish deletion', exact: true })
+      .click();
+    await expect(confirmation.getByRole('alert')).toBeVisible();
+    await deleteButton.click();
+    await expect(spinner).toBeVisible();
+    await expect(confirmation.getByRole('alert')).toHaveCount(0);
+    releaseRetry();
+    await expect(
+      page.getByRole('heading', { name: 'Account deleted', exact: true }),
+    ).toBeVisible();
+    await expect(confirmation).toHaveCount(0);
+  } finally {
+    releaseFirst();
+    releaseRetry();
+  }
   expect(
     (
       await fixtureDatabase.query(

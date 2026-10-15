@@ -201,7 +201,11 @@ export class IdentityController {
   }
   private async credentials() {
     try {
-      return await this.storage(() => this.vault.credentials());
+      const credentials = await this.storage(() => this.vault.credentials());
+      return credentials.filter(
+        (credential) =>
+          !this.data?.ignoredCredentialIds?.includes(credential.id),
+      );
     } catch {
       throw new IdentityClientError('STORAGE');
     }
@@ -316,6 +320,15 @@ export class IdentityController {
             message:
               'More than one recovery credential is available. Choose the account to recover; accounts will stay separate.',
           });
+          return;
+        }
+        if (
+          this.data!.cancelledTransfers?.length ||
+          this.data!.ignoredCredentialIds?.length
+        ) {
+          // Retained cancellation metadata is not a new installation. Never
+          // replace its account just because abandoned credentials are excluded.
+          this.update({ message: 'Choose a recovery method to continue.' });
           return;
         }
         if (this.vault.kind === 'keychain') await this.newAccount();

@@ -58,6 +58,42 @@ it.each(['not json', '{}', JSON.stringify({ ...state, unexpected: true })])(
   },
 );
 
+it('preserves recovery metadata written by the newer phone-transfer worktree', async () => {
+  const stored = {
+    ...state,
+    ignoredCredentialIds: [credential.id],
+    cancelledTransfers: [
+      {
+        kind: 'transfer',
+        credentialId: credential.id,
+        input: {
+          id: credential.id,
+          deviceId: state.deviceId,
+          sessionId: credential.id,
+          sessionToken: credential.secret,
+          credential: credential.secret,
+          code: 'ABCDEF0123456789',
+          claimSecret: credential.secret,
+        },
+      },
+    ],
+  };
+  native.readState.mockResolvedValue(JSON.stringify(stored));
+  const vault = createVault();
+  const restored = await vault.read();
+  expect(restored).toEqual(stored);
+  await vault.write(restored!);
+  expect(JSON.parse(native.writeState.mock.calls[0]![0])).toEqual(stored);
+});
+
+it.each([
+  { ignoredCredentialIds: ['invalid'] },
+  { cancelledTransfers: [{ kind: 'transfer', credentialId: credential.id }] },
+])('rejects malformed recovery metadata %p', async (metadata) => {
+  native.readState.mockResolvedValue(JSON.stringify({ ...state, ...metadata }));
+  await expect(createVault().read()).rejects.toThrow();
+});
+
 it('rejects invalid writes and credential payloads before calling native code', async () => {
   const vault = createVault();
   await expect(

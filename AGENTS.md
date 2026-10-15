@@ -148,6 +148,11 @@ Reload the app to clear stale module/asset paths.
   recovery/iCloud credentials must never recreate a deleted identity. Follow the
   [identity boundary](docs/architecture/IDENTITY.md) and keep native cleanup
   capability checks ahead of destructive requests.
+- Native development worktrees share the installed app's Keychain namespace.
+  Compare persisted schemas when switching worktrees and preserve known newer
+  recovery/deletion safety metadata. A schema rejection can appear as a generic
+  secure-storage error; do not reset Keychain or loosen validation to hide it.
+  Cover format compatibility and account preservation with synthetic fixtures.
 - Provider-owned refresh observers must receive runtime dependencies without
   importing their composing provider back. Share context-free subscriptions to
   avoid module cycles. When a preview disables file watching, restart it before

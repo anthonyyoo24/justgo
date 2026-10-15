@@ -80,6 +80,14 @@ it('confirms once, clears only matching credentials and prevents automatic accou
   await s.controller.initialize();
   const other = { id: id(), secret: secret() };
   await s.vault.add(other);
+  const recoveryMetadata = {
+    ignoredCredentialIds: [other.id],
+    cancelledTransfers: [],
+  };
+  await s.vault.write({ ...(await s.vault.read())!, ...recoveryMetadata });
+  s.controller = new IdentityController(s.vault, s.api, { id, secret });
+  s.controller.setAccountDataRemover(s.remove);
+  await s.controller.initialize();
   await Promise.all([
     s.controller.deleteAccount(),
     s.controller.deleteAccount(),
@@ -88,6 +96,7 @@ it('confirms once, clears only matching credentials and prevents automatic accou
   expect(s.remove).toHaveBeenCalledWith(s.userId);
   expect(await s.vault.credentials()).toEqual([other]);
   expect(await s.vault.read()).toMatchObject({
+    ...recoveryMetadata,
     accountDeleted: true,
     session: null,
     pending: null,

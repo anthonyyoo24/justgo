@@ -50,7 +50,7 @@ export async function resumeAccountDeletion(context: DeletionWorkflow) {
   await context.clearData(pending.userId);
   await context.clearCredentials(pending.receipt!.credentialDigests);
   await context.save({
-    deviceId: context.read().deviceId,
+    ...context.read(),
     selectedId: null,
     session: null,
     pending: null,

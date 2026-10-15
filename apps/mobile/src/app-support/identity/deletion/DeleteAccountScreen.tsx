@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
@@ -8,36 +7,18 @@ import {
   SettingsGroup,
 } from '../../../components/settings/SettingsRows';
 import { PrimaryButton } from '../../../components/PrimaryButton';
-import { useIdentity, useRuntime } from '../../providers/AppProvider';
 import { colors, spacing, typography } from '../../../theme/tokens';
 import { CancelSubscriptionRow } from './CancelSubscriptionRow';
+import { DeleteAccountConfirmation } from './DeleteAccountConfirmation';
+import { useAccountDeletionDialog } from './useAccountDeletionDialog';
 
 export function DeleteAccountScreen() {
-  const { identity } = useRuntime();
-  const state = useIdentity();
+  const { state, pending, open, dialog } = useAccountDeletionDialog();
   const router = useRouter();
-  const [confirmedAccountId, setConfirmedAccountId] = useState<string | null>(
-    null,
-  );
-  const [attemptedAccountId, setAttemptedAccountId] = useState<string | null>(
-    null,
-  );
-  const confirmed =
-    !!state.account && confirmedAccountId === state.account.userId;
-  const pending =
-    state.deletionStatus === 'pending' || state.deletionStatus === 'cleanup';
   const deleted = state.deletionStatus === 'deleted';
   return (
     <SettingsPage title="Delete account" backHref="/settings">
-      <SettingsGroup
-        title={
-          deleted
-            ? 'Account deleted'
-            : pending
-              ? 'Finish account deletion'
-              : 'Before you delete'
-        }
-      >
+      <SettingsGroup title={deleted ? 'Account deleted' : 'Before you delete'}>
         <View style={styles.copy}>
           {deleted ? (
             <Text style={styles.body}>
@@ -45,22 +26,7 @@ export function DeleteAccountScreen() {
               keys and phone transfers can no longer restore this account. This
               phone’s account data has been cleared.
             </Text>
-          ) : pending ? (
-            <>
-              <Text style={styles.body}>
-                {state.deletionStatus === 'cleanup'
-                  ? 'Your account has been deleted. Finish clearing this phone’s account data and recovery keys.'
-                  : 'Your deletion request is saved. Retry to confirm its result and finish cleanup. Your account stays disconnected while this is pending.'}
-              </Text>
-              <PrimaryButton
-                label="Finish deletion"
-                busy={state.busy}
-                onPress={() => {
-                  void identity.retry();
-                }}
-              />
-            </>
-          ) : state.account ? (
+          ) : state.account || pending ? (
             <>
               <Text style={styles.body}>
                 Permanently delete your JustGO account, completed challenges,
@@ -83,27 +49,15 @@ export function DeleteAccountScreen() {
                 can cancel your subscription separately and delete your account
                 immediately.
               </Text>
-              {confirmed ? (
-                <>
-                  <Text accessibilityRole="alert" style={styles.warning}>
-                    Delete this account permanently?
-                  </Text>
-                  <PrimaryButton
-                    label="Delete account permanently"
-                    busy={state.busy}
-                    onPress={() => {
-                      setAttemptedAccountId(state.account!.userId);
-                      void identity.deleteAccount();
-                    }}
-                  />
-                </>
-              ) : (
-                <PrimaryButton
-                  label="Continue to deletion"
-                  disabled={state.busy}
-                  onPress={() => setConfirmedAccountId(state.account!.userId)}
-                />
-              )}
+              <PrimaryButton
+                label={
+                  pending && !dialog
+                    ? 'Finish deletion'
+                    : 'Continue to deletion'
+                }
+                disabled={state.busy}
+                onPress={open}
+              />
             </>
           ) : (
             <>
@@ -116,16 +70,6 @@ export function DeleteAccountScreen() {
               />
             </>
           )}
-          {!deleted &&
-          state.message &&
-          (pending ||
-            (attemptedAccountId !== null &&
-              (!state.account ||
-                attemptedAccountId === state.account.userId))) ? (
-            <Text accessibilityRole="alert" style={styles.warning}>
-              {state.message}
-            </Text>
-          ) : null}
         </View>
         {!deleted && <CancelSubscriptionRow />}
         {deleted && (
@@ -136,11 +80,11 @@ export function DeleteAccountScreen() {
           />
         )}
       </SettingsGroup>
+      {dialog && <DeleteAccountConfirmation {...dialog} />}
     </SettingsPage>
   );
 }
 const styles = StyleSheet.create({
   copy: { padding: spacing.lg, gap: spacing.lg },
   body: { ...typography.body, color: colors.ink },
-  warning: { ...typography.body, color: '#8B1E32' },
 });

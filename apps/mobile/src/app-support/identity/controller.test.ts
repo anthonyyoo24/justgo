@@ -62,6 +62,102 @@ const nativeVault = (): CredentialVault => ({
   kind: 'keychain',
 });
 
+it('restores the saved account and preserves newer recovery metadata through renewal', async () => {
+  const vault = nativeVault();
+  const server = connected((path) =>
+    path === '/sessions/current' ? info : undefined,
+  );
+  const first = new IdentityController(vault, server, random);
+  await first.initialize();
+  const info = first.getSnapshot().account;
+  const abandoned = { id: id(), secret: secret() };
+  await vault.add(abandoned);
+  const metadata = {
+    ignoredCredentialIds: [abandoned.id],
+    cancelledTransfers: [
+      {
+        kind: 'transfer' as const,
+        credentialId: abandoned.id,
+        input: {
+          id: id(),
+          deviceId: info!.deviceId,
+          sessionId: id(),
+          sessionToken: secret(),
+          credential: abandoned.secret,
+          code: 'ABCDEF0123456789',
+          claimSecret: secret(),
+        },
+      },
+    ],
+  };
+  await vault.write({ ...(await vault.read())!, ...metadata });
+  server.calls.mockClear();
+
+  const reopened = new IdentityController(vault, server, random);
+  await reopened.initialize();
+  expect(reopened.getSnapshot().account).toEqual(info);
+  expect(reopened.getSnapshot().credentials).not.toContainEqual({
+    id: abandoned.id,
+  });
+  expect(server.calls.mock.calls.some((call) => call[0] === '/sessions')).toBe(
+    false,
+  );
+  await reopened.renew();
+  expect(reopened.getSnapshot().account?.userId).toBe(info!.userId);
+  expect(await vault.read()).toMatchObject(metadata);
+  const before = server.calls.mock.calls.length;
+  await reopened.recoverCredential(abandoned.id);
+  expect(server.calls).toHaveBeenCalledTimes(before);
+  expect(reopened.getSnapshot().account?.userId).toBe(info!.userId);
+});
+
+it.each(['ignored', 'cancelled'])(
+  'does not silently create an account when only %s transfer metadata remains',
+  async (kind) => {
+    const vault = nativeVault();
+    const abandoned = { id: id(), secret: secret() };
+    if (kind === 'ignored') await vault.add(abandoned);
+    await vault.write({
+      deviceId: id(),
+      selectedId: null,
+      session: null,
+      pending: null,
+      savedKey: null,
+      registration: null,
+      ignoredCredentialIds: kind === 'ignored' ? [abandoned.id] : [],
+      cancelledTransfers:
+        kind === 'cancelled'
+          ? [
+              {
+                kind: 'transfer',
+                credentialId: abandoned.id,
+                input: {
+                  id: id(),
+                  deviceId: id(),
+                  sessionId: id(),
+                  sessionToken: secret(),
+                  credential: abandoned.secret,
+                  code: 'ABCDEF0123456789',
+                  claimSecret: secret(),
+                },
+              },
+            ]
+          : [],
+    });
+    const server = connected();
+    const controller = new IdentityController(vault, server, random);
+    await controller.initialize();
+    expect(controller.getSnapshot()).toMatchObject({
+      account: null,
+      credentials: [],
+    });
+    expect(server.calls).not.toHaveBeenCalled();
+    expect(await vault.credentials()).toEqual(
+      kind === 'ignored' ? [abandoned] : [],
+    );
+  },
+);
+
 it('requires user-entered verification, preserves a rejected inspection and clears it after approval', async () => {
   const inspection = { id: id(), expiresAt: expiry(), status: 'waiting' };
   const code = 'ABCDEF0123456789';

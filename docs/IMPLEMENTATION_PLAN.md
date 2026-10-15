@@ -1280,6 +1280,35 @@ coverage and the saved deletion journey pass; root `check` still stops at the
 known Expo patch recommendations. The [checkpoint](handoffs/phase-08-account-deletion.md#october-14-local-commit-checkpoint)
 preserves open native, retention, hosted rollout and post-deletion navigation work.
 
+**October 14 confirmation modal:** Anthony subsequently authorized the centered
+Commons-style confirmation. Continue to deletion now opens Cancel and a red Delete
+account action with the approved permanent-deletion copy. The [modal follow-up](handoffs/phase-08-account-deletion.md#october-14-centered-deletion-confirmation)
+records lifecycle/account guards, passing component/coverage/journey/browser checks
+and the remaining physical-device and release gates.
+
+**October 14 phone account restoration:** After switching worktrees, Anthony
+reported a secure-storage error and a Settings/account-entry loop. The deletion
+branch now validates and preserves the newer transfer-cancellation metadata,
+excludes abandoned credentials and retains the saved account. The
+[compatibility follow-up](handoffs/phase-08-account-deletion.md#october-14-phone-storage-compatibility)
+records the regression and fresh-phone verification; no account reset or native
+rebuild is required for this JavaScript format correction.
+
+**October 15 deletion-state screenshots:** At Anthony's request, the
+[browser walkthrough](handoffs/phase-08-account-deletion.md#october-15-loading-error-and-retry-screenshots)
+captures the current confirmation, loading, failed response, retry, completion,
+Settings and disconnected account-entry screens. Loading/error feedback remains
+on the page after the confirmation modal closes. This is verification of the
+existing UI, without a product-code change or native acceptance claim.
+
+**October 15 modal feedback refinement:** Anthony then requested that deletion
+loading and errors stay inside the confirmation modal. The Delete account label
+is replaced by a spinner while working; red errors appear below the explanation.
+The [modal feedback follow-up](handoffs/phase-08-account-deletion.md#october-15-loading-and-errors-inside-the-modal)
+owns retry/restoration guards, verification and updated screenshots. This
+supersedes the earlier page-level feedback layout without changing server deletion
+or the remaining native/hosted release gates.
+
 **Carry forward:** Settings scope, recovery/data-control flows, motion preferences, the Phase 08 haptics implementation/testing task, private feature-request destination, reminder deferral, consent and event schemas, retention/deletion runbook and redaction evidence.
 
 **Handoff:** [phase-08-settings-privacy.md](handoffs/phase-08-settings-privacy.md)

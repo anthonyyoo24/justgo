@@ -16,6 +16,19 @@ uses Create a new account, omits post-deletion footer help and supplies an updat
 The [local commit checkpoint](phase-08-account-deletion.md#october-14-local-commit-checkpoint)
 records fresh code, database/restoration, combined coverage and saved deletion-journey
 results; the known Expo, native, retention and hosted-rollout gates remain open.
+The later [centered confirmation modal](phase-08-account-deletion.md#october-14-centered-deletion-confirmation)
+replaces the inline final confirmation, with cancellation, lifecycle/account guards
+and passing saved journey/browser checks; physical-device acceptance remains open.
+The [phone-storage compatibility fix](phase-08-account-deletion.md#october-14-phone-storage-compatibility)
+accepts newer transfer metadata without discarding it or recovering abandoned
+credentials, addressing the reported storage-error/account-entry loop.
+The October 15 [state screenshots](phase-08-account-deletion.md#october-15-loading-error-and-retry-screenshots)
+show the existing loading/error/retry flow and the screens after completion,
+using disposable local accounts and deliberate response interruption.
+The subsequent [modal feedback refinement](phase-08-account-deletion.md#october-15-loading-and-errors-inside-the-modal)
+keeps the dialog open for loading/error/retry, with a spinner replacing its Delete
+account label and red feedback below the explanation; its updated evidence
+supersedes those earlier page-level screenshots.
 
 **October 14 reflection keyboard:** The separate Phase 08 keyboard worktree
 brings the focused reflection section into view and bounds the writing area above
