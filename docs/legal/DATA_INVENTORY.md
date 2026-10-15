@@ -1,6 +1,6 @@
 # JustGO data inventory
 
-Prepared October 9, 2026 for the Privacy Policy, Terms of Use and App Store privacy disclosures. This inventory separates implemented behavior from proposed release behavior. The [implementation plan](../IMPLEMENTATION_PLAN.md#phase-08) continues to own feature scope.
+Prepared October 9, 2026 for the Privacy Policy, Terms of Use and App Store privacy disclosures. This inventory separates implemented behavior from proposed release behavior. Under the October 14 split, the implementation plan assigns data controls/retention mechanics to [Phase 08](../IMPLEMENTATION_PLAN.md#phase-08), analytics/consent to [Phase 09](../IMPLEMENTATION_PLAN.md#phase-09), legal documents/disclosure preparation to [Phase 10](../IMPLEMENTATION_PLAN.md#phase-10), and final signed-build/release verification to [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11). This planning update does not change collection behavior.
 
 ## Operator and intended audience
 

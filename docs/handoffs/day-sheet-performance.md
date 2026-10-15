@@ -143,7 +143,7 @@ regressions have component/browser evidence separately.
 
 Anthony authorized the local merge into Phase 08 on October 12. Owner review and
 separate permissions for push, PR and any subsequent merge remain open.
-Existing Phase 09 physical-iPhone, software-keyboard layout, VoiceOver, large-text
+Existing Phase 11 physical-iPhone, software-keyboard layout, VoiceOver, large-text
 and release performance acceptance remain open. This scoped fix does not close
 those gates or advance the rest of Settings/privacy work.
 
@@ -269,7 +269,7 @@ native performance capture. Saved Progress journey source was retained and
 typechecked; its CLI run was not repeated under the owner's side-panel-only
 testing preference. The existing simulator was shut down at task start and was
 not changed. October 10 native measurements remain historical evidence; new
-physical-phone/VoiceOver/release acceptance stays open in Phase 09.
+physical-phone/VoiceOver/release acceptance stays open in Phase 11.
 
 The temporary test account was cleaned up only through its server-owned registry,
 and both temporary services exited successfully. The original loopback API was

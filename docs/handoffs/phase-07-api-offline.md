@@ -238,7 +238,7 @@ No external deployment was made in this task.
 - [ ] Preserve inactive historical challenge/placement references; use an
       owner/date/start-time/UUID history index, appropriate FKs and runtime-role RLS.
 - [ ] Prove clean and representative existing database migrations plus rollback/
-      forward-repair procedure. Keep final release deployment in Phase 09.
+      forward-repair procedure. Keep final release deployment in Phase 11.
 
 ## Dependency compatibility preflight
 

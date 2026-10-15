@@ -9,7 +9,7 @@ owns API/offline changes and Phase 07A owns billing.
 
 Anthony stopped unfinished [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) on October 7 and approved 07.4/07.5 using retained browser/lower-level checks plus relevant manual native verification. The checkpoint `c7c67b2`, [resume handoff](../handoffs/phase-07-3a-testing-checkpoint.md) and [file inventory](../checks/phase-07-3a-browser-testing-assessment.md) remain available; native journeys/hosted CI are not accepted.
 
-Keep the Playwright/Chromium browser suite, web adapters, fixture safeguards and unchanged coverage floors. A future native replacement must prove equivalent actual-app/API/database journeys and inspect the authorized commit's hosted gate before retiring browser support. Retain the Maestro launch smoke and relevant manual simulator checks meanwhile. Mocks, browser storage and exports cannot establish native Keychain/AsyncStorage persistence, OS lifecycle, software keyboard, VoiceOver, radio/backup or physical-device behavior. Carry those release gates to 09 with their recorded evidence/limits.
+Keep the Playwright/Chromium browser suite, web adapters, fixture safeguards and unchanged coverage floors. A future native replacement must prove equivalent actual-app/API/database journeys and inspect the authorized commit's hosted gate before retiring browser support. Retain the Maestro launch smoke and relevant manual simulator checks meanwhile. Mocks, browser storage and exports cannot establish native Keychain/AsyncStorage persistence, OS lifecycle, software keyboard, VoiceOver, radio/backup or physical-device behavior. Carry those release gates to 11 with their recorded evidence/limits.
 
 ## Commands
 
@@ -325,4 +325,4 @@ busy, quietly resets after sharing is dismissed and keeps failure feedback/retri
 the route stays `/settings` through download. Side-panel downloads and simulator
 share sheets are separate manual evidence.
 Physical-iPhone Save to Files, cancellation, accessibility and native cleanup
-remain release checks in Phase 09 until evidenced in the phase handoff.
+remain release checks in Phase 11 until evidenced in the phase handoff.

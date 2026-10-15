@@ -161,7 +161,7 @@ does not claim physical-device or staging acceptance.
 1. Read the completed [Phase 06A quality handoff](phase-06a-code-quality.md) and the latest [Phase 07 plan](../IMPLEMENTATION_PLAN.md#phase-07) before the API/offline implementation. Native billing follows separately in Phase 07A. The component boundaries and tests protect current behavior until those planned changes are implemented together.
 2. Preserve the owner-scoped aggregate/paged history contract, frozen completion dates, original revision/Level 1 context, draft-versus-submitted distinction, read-only reflections and omission of elapsed-duration fields.
 3. Preserve account/time-zone cache isolation, skeleton/reduced-motion behavior, active-date actions, automatic paging, both Retry states and opening/closing/reflection animations. Rerun relevant tests, full workspace/database checks and affected browser UI checks after changing these boundaries.
-4. Keep private reflection text out of analytics and unauthenticated responses. Phase 07 owns API/persistence redesign; carry device/staging gates to Phase 09.
+4. Keep private reflection text out of analytics and unauthenticated responses. Phase 07 owns API/persistence redesign; carry device/staging gates to Phase 11.
 
 ## Record updates
 

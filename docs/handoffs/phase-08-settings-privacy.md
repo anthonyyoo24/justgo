@@ -9,8 +9,25 @@ fresh Expo metadata flags four newer SDK patches and keeps the root dependency
 gate open for a separate maintenance task before publication.
 
 **Date:** October 14, 2026\
-**Status:** Settings/contact, account/recovery UI, Reduce Motion, Haptics and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
+**Status:** Most Settings/contact, recovery, preference and direct-export slices implemented; Anthony is working on deletion; remaining Phase 08 acceptance and diagnostics stay open. Analytics and legal scope now have separate phases.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
+
+## October 14 scope split and phase renumbering
+
+Anthony requested moving analytics and legal work into separate whole-number phases and confirmed shifting later phases by two numbers:
+
+- Phase 08 keeps Settings/recovery, export/deletion, preferences, retention/backup mechanics, diagnostic redaction and operational service-health dashboards. The owner reports most work completed and deletion in progress; no new acceptance result is inferred from that report.
+- [Phase 09 — Analytics & consent](../IMPLEMENTATION_PLAN.md#phase-09) owns both analytics choices, account-owned persistence/client/server enforcement, PostHog configuration/event delivery, product dashboards and measurement verification. The existing exporter remains disabled until that implementation passes.
+- [Phase 10 — Legal documents & release disclosures](../IMPLEMENTATION_PLAN.md#phase-10) owns the existing inventory/Privacy Policy/Terms drafts, legal/eligibility review, approved final wording, public hosting/link verification and disclosure preparation. Phase 08 supplies actual retention/deletion behavior and Phase 09 supplies actual analytics facts.
+- Former release Phase 09 is [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11); lock-screen, optional US checkout and future coach phases move from 10–12 to 12–14. Billing stays 07A with activation after the free beta. Existing native/VoiceOver/two-phone/Keychain/staging/dependency and release gates remain open under the new owner phases.
+- The existing hosted prerequisite is now [phase-11-test-server.md](phase-11-test-server.md). Its implementation and recorded evidence are retained. Historical branch names, `.local/` artifacts and build identifiers stay unchanged; earlier combined-scope notes below are historical for phase ownership.
+
+Verification for this documentation-only edit:
+
+- Prettier `--check` passes for all **25 changed Markdown files**; `git diff --check` passes.
+- The Markdown consistency check passes: **16 canonical phase IDs**, including **13 release stages**, unique explicit phase anchors, matching plan/index rows, moved scope, updated release dependencies and reserved handoff names. It checks **534 local Markdown references** and finds **no introduced missing files/anchors**. Six pre-existing archived-file/anchor observations remain outside this sequencing task; no absent HTML tracker or historic screenshot is represented as newly verified. Report: `.local/phase-resequence/validation.json`; formatting log: `.local/phase-resequence/format-check.log`.
+- Reviewed the full inventories of the repository root and touched `docs/`, architecture, checks, handoffs, legal, operations and product directories. Existing responsibility groups remain navigable; the phase-oriented handoff index supports the existing records, and the single handoff rename adds no files. No further folder grouping is needed.
+- Application/database/UI behavior is unchanged, so code tests, database checks and browser/device walkthroughs were not run. The owner's existing implementation changes remain intact; this edit performs no provider activation, commit or Git publication.
 
 ## Current authorized work
 
@@ -20,7 +37,7 @@ Youngshin Yoo is the confirmed personal operator in Canada. The owner's proposed
 
 The owner subsequently accepted separate email-draft contact actions and added App Store rating plus Instagram, TikTok and Twitter/X rows. After reviewing the combined Help & about group, the owner requested Support directly above About: Support contains Get help and Suggest a feature, while About contains rating, socials and legal links. The owner confirmed the profiles and public App Store listing are not ready; those rows remain unavailable until public destinations are configured.
 
-On October 10 Anthony authorized implementing the first remaining slice, Reduce Motion, while keeping implementation and focused verification together within Phase 08. The October 10 haptics move to Phase 09 is historical; Anthony moved implementation and physical testing back to Phase 08 on October 12, as recorded in the follow-up below.
+On October 10 Anthony authorized implementing the first remaining slice, Reduce Motion, while keeping implementation and focused verification together within Phase 08. The October 10 haptics move to Phase 11 is historical; Anthony moved implementation and physical testing back to Phase 08 on October 12, as recorded in the follow-up below.
 
 ## Documents prepared
 
@@ -59,7 +76,7 @@ Verification for this slice is recorded below. Earlier local app edits are inclu
 - Interactive Browser Use in the side panel: **pass** at **390 × 844** and **320 × 568** for upper/lower grouped layout, narrow-width wrapping/scrolling, unavailable controls, opening existing recovery, and the preview → Settings → Back return path. No browser console errors/warnings were observed. A separate attempt to open the feature-request draft was **blocked by the side-panel browser security policy**; no bypass or native alternative for that blocked mail action was attempted. Exact mail destinations, approved failure copy and retry/unmount behavior have automated evidence; actual mail opening remains a physical-phone check.
 - Cold native bundle: Metro's iOS/Hermes entry returned **HTTP 200 / 10,874,469 bytes** after its cache was prepared. This proves bundling, not native UI behavior.
 - Native simulator **visual evidence passes** for Settings rendering on the existing iPhone 17 / iOS 26.5 QA device: safe-area header, first groups, connected-account copy, grouped native rows and no bottom tabs were observed through the live side-panel mirror. The first client connection failed while a cold iOS bundle took about 218 seconds. Preparing the exact bundle, restarting the same simulator without erasing data and reopening the existing client produced the current Settings screen. A subsequent native screen capture confirms the Account & recovery tap reached the existing connected-account tools (Account / Recovery keys / Device transfer / Manage devices). The mirror lagged behind the actual screen and its input/device discovery was intermittent; a window-level Computer Use capture also reported no available window after the simulator restart. This limited rendering/recovery-entry evidence does not establish full native recovery, Keychain persistence, mail opening, large text or VoiceOver acceptance.
-- XcodeBuildMCP could not locate `simctl` through the machine default tools path. Command-scoped `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` uses the installed Xcode without changing global configuration. No native rebuild, signing upgrade, app reinstall, data or Keychain erase was performed. Full native recovery flows, large text/VoiceOver and physical-device mail behavior remain open in Phase 08/09.
+- XcodeBuildMCP could not locate `simctl` through the machine default tools path. Command-scoped `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` uses the installed Xcode without changing global configuration. No native rebuild, signing upgrade, app reinstall, data or Keychain erase was performed. Full native recovery flows, large text/VoiceOver and physical-device mail behavior remain open in Phase 08/11.
 - Ignored evidence: `.local/phase-08/{check,coverage,recovery-journey}.log`, `settings-web.png`, `settings-ios.png`, `settings-recovery-ios.png` and native bundle; routine screenshots remain uncommitted.
 - Manual review allocated **zero** new fixture accounts. It reused the existing nonproduction QA simulator/vault; no activity or recovery-key generation was performed. API/Metro and the scoped simulator mirror are retained for owner review; stop the mirror terminal so its UDID-scoped cleanup trap runs when review ends. These local fixture services are not the free TestFlight beta environment.
 - Physical iPhone mail-draft opening, VoiceOver and large text remain release checks. Component/browser results do not establish native behavior.
@@ -86,7 +103,7 @@ Rating/social destinations come from `EXPO_PUBLIC_APP_STORE_ID`, `EXPO_PUBLIC_IN
 - Browser Use in the side panel: **pass**, upper/lower layout at **390 × 844** and **320 × 568**, eight combined rows, disabled destinations, readable two-line rating label at the narrow width, scrolling/footer and no browser console warnings/errors. Temporary viewport overrides were reset and the Settings page retained for review.
 - Native Computer Use on the existing iPhone 17 / iOS 26.5 QA simulator: **visual pass**, combined heading, all eight rows, outline icons, named controls and disabled states. The Simulator window was accessible during this check, after the earlier slice's intermittent failures. No native rebuild/signing/reinstall or data erase was required. Real mail, App Store/social destination opening and physical-iPhone/VoiceOver/large-text release checks remain open.
 - Ignored evidence: `.local/phase-08/help-about-{check,coverage}.log`, `help-about-web.png` and `help-about-ios.png`.
-- **Owner / Phase 09 setup:** Supply public profile URLs and the listing's numeric Apple ID once ready, then verify the actual destinations on a physical iPhone. These unavailable links do not establish release acceptance; this slice does not complete the other Phase 08 controls or legal publication.
+- **Owner / Phase 11 setup:** Supply public profile URLs and the listing's numeric Apple ID once ready, then verify the actual destinations on a physical iPhone. These unavailable links do not establish release acceptance; this slice does not complete the other Phase 08 controls or legal publication.
 
 ### October 9 separate Support and About
 
@@ -145,13 +162,13 @@ the root check and unchanged coverage gate pass. The [Accept follow-up](phase-07
 records failing-before regressions, final frame timestamps and verification limits.
 This remains a local mobile fix, with owner acceptance and wider device gates open.
 
-## October 10 haptics moved to Phase 09
+## October 10 haptics moved to Phase 11
 
 Anthony requested keeping haptics implementation and its testing together in
-Phase 09. Feedback, the saved Settings toggle, automated checks, physical-iPhone
-acceptance and any corrections/retests are now one pre-beta Phase 09 task. Haptics
+Phase 11. Feedback, the saved Settings toggle, automated checks, physical-iPhone
+acceptance and any corrections/retests are now one pre-beta Phase 11 task. Haptics
 does not block Phase 08; the existing unavailable row remains unchanged. Reduce
-motion remains Phase 08. The [plan](../IMPLEMENTATION_PLAN.md#phase-09) owns the
+motion remains Phase 08. The [plan](../IMPLEMENTATION_PLAN.md#phase-11) owns the
 implementation scope and acceptance gate; Anthony owns physical-phone acceptance.
 This is a documentation-only scheduling change, with no haptics implementation,
 dependency/build change or Git publication.
@@ -248,7 +265,7 @@ behavior is preserved; fade-only dialogs and native loading controls remain.
   new fixture accounts or recovery secrets. Backend, public contracts and
   database behavior are unchanged; database and saved journey suites are not
   rerun for this mobile-only slice. Physical-iPhone, VoiceOver and large-text
-  checks remain owned by Anthony in Phase 09 before the beta. All wider prior
+  checks remain owned by Anthony in Phase 11 before the beta. All wider prior
   recovery/device/release gates remain open. No Git publication was performed.
 - Ignored evidence: `.local/phase-08/motion-{focused,progress-regression,
 panel-regression,check,coverage,coverage-gate}.log`, the earlier timeout log,
@@ -355,7 +372,7 @@ e2e/data-export.spec.ts` **passes both cases**. The downloaded archive contains
   visible, and its Metro/API processes were left alone. This observation did
   not verify its server connection; the reconnection follow-up below corrects
   that gap. No physical-iPhone pass is claimed.
-  Phase 09 still owns physical file delivery, VoiceOver and large-text checks
+  Phase 11 still owns physical file delivery, VoiceOver and large-text checks
   before beta, alongside the wider recovery/storage/staging gates.
 - The one manually created browser account contained only disposable test text;
   its exact UUID was read from this task's ZIP and removed from loopback
@@ -416,7 +433,7 @@ At Anthony's request, the agent inspected Apple Developer and the existing Expo 
 
 The Mac detected Anthony's iPhone 15 Pro / iOS 26.6.2, initially unpaired. Anthony explicitly authorized submitting the phone's device name and UDID to Apple/Expo for JustGO testing. The Apple side-panel registration reached **Registration Complete**. The UDID stays out of committed documentation; ignored discovery data and `phone-registration-complete.png` record local evidence. EAS has only simulator builds and no Apple team/device registration for this Expo account yet. `eas device:create` reached Apple's password prompt; it was cancelled without requesting a password in chat. Anthony must authenticate privately in his terminal and import the already registered phone using Developer Portal.
 
-Physical signing/build, Developer Mode, phone installation and the HTTPS test API are still open. There is no `EXPO_PUBLIC_API_URL` in the EAS development environment. The current loopback fixture cannot be exposed as a phone backend; a reviewed test API and tester-access path are necessary. No signing credential, API deployment, build upload, Git publication or physical-phone acceptance occurred. This is setup evidence, not a change to the previously recorded Phase 08/09 feature sequencing.
+Physical signing/build, Developer Mode, phone installation and the HTTPS test API are still open. There is no `EXPO_PUBLIC_API_URL` in the EAS development environment. The current loopback fixture cannot be exposed as a phone backend; a reviewed test API and tester-access path are necessary. No signing credential, API deployment, build upload, Git publication or physical-phone acceptance occurred. This is setup evidence, not a change to the previously recorded Phase 08/11 feature sequencing.
 
 ### Physical development build follow-up
 
@@ -436,13 +453,13 @@ After Anthony enabled Developer Mode and restarted, a fresh `devicectl device in
 
 ### Connected phone and approved server preparation
 
-Anthony enabled/retried Local Network on the same Wi-Fi; Metro received a real iOS bundle request and he confirmed Settings opened. The exact cause of the earlier offline error was not isolated. He explicitly approved bringing the hosted test API/schema and approved-account free access forward from Phase 09. The [server handoff](phase-09-test-server.md) records its implementation, protected backup/restoration, unchanged migrations through 0013, preserved identity history, old-writer credential fencing, stable HTTPS application-staging address and passing checks. Preview protection was preserved; no loopback fixture or public bypass was deployed.
+Anthony enabled/retried Local Network on the same Wi-Fi; Metro received a real iOS bundle request and he confirmed Settings opened. The exact cause of the earlier offline error was not isolated. He explicitly approved bringing the hosted test API/schema and approved-account free access forward from Phase 11. The [server handoff](phase-11-test-server.md) records its implementation, protected backup/restoration, unchanged migrations through 0013, preserved identity history, old-writer credential fencing, stable HTTPS application-staging address and passing checks. Preview protection was preserved; no loopback fixture or public bypass was deployed.
 
-The phone's separate Metro session on 8084 now supplies the current API URL. A real account connected, and Anthony confirmed its displayed reference before a private 30-day grant was added. The access check initially rejected a verified response because its server timestamp was 25–46 ms ahead of the phone clock. The [clock follow-up](phase-09-test-server.md#phone-clock-and-real-home-follow-up) records bounded clock alignment, expiry/freshness regressions, fresh root checks and browser verification. Anthony then confirmed that real Home shows challenge cards and Home → Settings → Back returns to Home. The original deep-linked Settings history and developer preview are separate from this confirmed normal route. The existing physical development binary was reused; no additional signing/build or Git publication occurred. Phase 08 export/support/motion and the wider physical acceptance gates remain open.
+The phone's separate Metro session on 8084 now supplies the current API URL. A real account connected, and Anthony confirmed its displayed reference before a private 30-day grant was added. The access check initially rejected a verified response because its server timestamp was 25–46 ms ahead of the phone clock. The [clock follow-up](phase-11-test-server.md#phone-clock-and-real-home-follow-up) records bounded clock alignment, expiry/freshness regressions, fresh root checks and browser verification. Anthony then confirmed that real Home shows challenge cards and Home → Settings → Back returns to Home. The original deep-linked Settings history and developer preview are separate from this confirmed normal route. The existing physical development binary was reused; no additional signing/build or Git publication occurred. Phase 08 export/support/motion and the wider physical acceptance gates remain open.
 
 ## Open Phase 08 work
 
-All combined phase acceptance boxes remain open. Reduce Motion and authenticated export implementation/local verification are recorded above; physical-device accessibility and file delivery checks remain Phase 09 work. Confirmed deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Haptics implementation and acceptance were scheduled together in Phase 09 at that checkpoint, superseded by the October 12 move back to Phase 08. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
+Under the October 14 split, Phase 08 retains confirmed deletion and credential/cache/vendor cleanup, verified retention/backup behavior, diagnostic redaction/operational dashboards, the remaining focused haptics acceptance and phase closeout. Anthony is implementing deletion. The October 12 accessibility audit and October 13 haptics notes record later phone confirmations; do not treat the earlier implementation-only checkpoints as current failures. Broader physical-device/recovery/accessibility and release checks remain Phase 11 work. Both analytics choices/event forwarding and product measurement now belong to Phase 09; final legal review/notices/publication belong to Phase 10. None of those moved requirements is dropped or marked complete. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
 
 Before publication, resolve retention and backup behavior, provider configuration, operator/contact and regional requirements, individual-versus-legal-entity App Review eligibility, age treatment and final Terms/EULA compatibility. Review the concrete policy before creating and publishing the public site. Resume commercial activation after the free beta and reconcile the policy for the paid build.
 
@@ -493,7 +510,7 @@ Verification:
 
 Physical export delivery, support drafts, motion/system accessibility, transition
 frames and wider native/beta gates remain open as recorded above. This cleanup
-neither closes Phase 08 nor accepts Phase 09.
+neither closes Phase 08 nor accepts Phase 11.
 
 ### Phone reload follow-up after folder moves
 
@@ -565,7 +582,7 @@ Verification:
   Anthony reloaded the app and **confirmed that tapping Settings → Export my
   data opens the share sheet directly without a separate page**. This is
   owner-reported physical UI evidence; Save to Files/email delivery, cancellation,
-  accessibility and native cleanup remain open Phase 09 checks.
+  accessibility and native cleanup remain open Phase 11 checks.
 
 After implementation, the full contents of every changed directory were
 reviewed: Settings, its export owner, route wiring, e2e, and the touched docs
@@ -661,7 +678,7 @@ signing/build, account reset or external deployment is included.
 
 Verification and device review are recorded below. Full physical recovery,
 Keychain/iCloud behavior, two-phone transfer, native keyboard/VoiceOver/large text
-and real support-mail delivery remain release gates in Phase 09. Browser and
+and real support-mail delivery remain release gates in Phase 11. Browser and
 component checks cannot close them. Other Phase 08 work remains open.
 
 ### Verification for the account UI
@@ -708,7 +725,7 @@ component checks cannot close them. Other Phase 08 work remains open.
   verified. No reinstallation or account/data reset.
 
 The earlier phone confirmations for direct export/quiet dismissal remain valid;
-this change does not close the wider Phase 08/09 acceptance gates.
+this change does not close the wider Phase 08/11 acceptance gates.
 
 ### Owner phone connection follow-up
 
@@ -1221,9 +1238,9 @@ remaining deletion, analytics, legal publication or physical acceptance work.
 ### October 12 haptics implementation
 
 Anthony requested moving haptics implementation and its phone testing back from
-Phase 09 to Phase 08, then implementing it. The earlier October 10 scheduling
+Phase 11 to Phase 08, then implementing it. The earlier October 10 scheduling
 note is historical and superseded. Phase 08 keeps physical acceptance open until
-actual feedback is tested and any corrections are retested; Phase 09 only
+actual feedback is tested and any corrections are retested; Phase 11 only
 rechecks the accepted behavior on its beta/release build.
 
 Implemented:
@@ -1673,7 +1690,7 @@ or saved app/API/database journey pass is claimed for this mobile-only slice.
 
 Anthony's selection records his preferred effect; automatic-default confirmation
 and wider signed-production/device acceptance remain distinct open checks in
-Phase 08/09. No simulator/browser/mocked-call tactile pass is claimed.
+Phase 08/11. No simulator/browser/mocked-call tactile pass is claimed.
 
 ### October 13 Pulsar-only migration
 

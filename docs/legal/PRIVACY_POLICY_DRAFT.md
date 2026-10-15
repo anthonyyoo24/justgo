@@ -32,7 +32,7 @@ Your Reduce Motion and Haptics choices are saved locally on this phone. We also 
 
 ## Optional analytics
 
-[REVIEW: The following wording applies only after Phase 08 implements and verifies both choices. If analytics remains disabled, replace this section with the actual disabled behavior.]
+[REVIEW: The following wording applies only after Phase 09 implements and verifies both choices. Phase 10 owns review/finalization/publication of this policy. If analytics remains disabled, replace this section with the actual disabled behavior.]
 
 General usage analytics is off unless you enable it. If you enable it, we share limited events with PostHog to understand use of features such as challenge completion and Progress. These events can use a pseudonymous identifier linked to your account.
 
