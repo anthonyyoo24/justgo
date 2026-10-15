@@ -2354,3 +2354,129 @@ Ignored deployment evidence: `transfer-cancel-deploy-{dry,before,after}.json`,
 `transfer-cancel-upload-verified.json`, `transfer-cancel-hosted-smoke.json` and
 `transfer-cancel-deploy{,-check}.log` under `.local/phase-08/`. No recovery secrets
 or bearer values are retained in those summaries.
+
+## October 14 receiving-confirm button loading
+
+The centered-primary-button follow-up below supersedes the spinner placement in
+this earlier refinement; its retained-page and cancellation behavior remains.
+
+Anthony reported Confirm replacing the recovery page with text and successive
+loading states. The receiving confirmation now remains visible throughout its
+request. Its existing recovery form stays mounted, alternate actions stay disabled,
+and only the Confirm button shows a spinner, immediately after its label. Transfer
+codes and success/failure feedback appear after the action settles. Cancellation
+on Back/background/unmount and the current-account connection are preserved.
+
+`PrimaryButton` accepts an explicit trailing spinner position for this Confirm
+control; existing button callers retain their previous placement. Confirmation
+completion is fenced after unmount, and a failed request removes its loading state
+and leaves a usable retry. No backend/shared protocol or native dependency changed;
+the already deployed cancellation API remains in place.
+
+Regression coverage first reproduced three failures in the original UI. Updated
+component checks retain the same recovery input instance, find exactly one spinner
+inside Confirm, block duplicate requests and cover failure/Back while starting.
+The saved two-phone journey holds its transport request, verifies the spinner is
+inside Confirm and geometrically to the right of the text, preserves the form,
+then releases the request into its existing failure/retry/success path.
+
+Verification:
+
+- Focused identity/recovery components: **39 tests / 2 suites pass**, including
+  request failure and Back/unmount while Confirm is loading. The original UI
+  fails the three new/updated loading assertions before the fix.
+- Contracts build, workspace/journey TypeScript, ESLint and formatting pass;
+  **180 architecture/tooling, 54 API unit and 25 contract cases pass**.
+- Full mobile coverage: **686 tests / 78 suites pass**, **97.16% lines /
+  91.97% branches**. The combined coverage checker passes all unchanged floors,
+  using the fresh mobile report and retained API/contracts coverage (their source
+  did not change). No backend/database behavior changed in this refinement.
+- Saved actual-app/API/database identity journeys: **3 pass**. The two-phone case
+  holds the start request and asserts one spinner inside Confirm, its right-of-text
+  position from rendered bounds, the retained recovery form and the existing
+  network-failure/retry/approval/history-isolation path. Local fixture services
+  stopped and their owned accounts/proposals were cleaned up.
+- Side-panel Browser Use: **pass at 390 × 844**, against a cleared loopback-only
+  bundle whose API assignment was verified before account creation. A disposable
+  request gate holds the real start request while the screenshot shows Confirm's
+  trailing spinner with the confirmation and recovery form intact. Releasing the
+  gate moves directly to the code screen with no spinner; Back cancels it and
+  returns to the connected hub. No browser console errors/warnings. The exact
+  unbound proposal and one registry-owned account were cleaned up; services were
+  stopped and the viewport reset. This timing gate exists only in an ignored
+  loopback fixture; no hosted server change was made.
+- Screenshots: `.local/phase-08/transfer-confirm-{before,loading,ready}.jpg`.
+  Saved logs: `transfer-confirm-{before,focused,journey,check}.log` under that
+  directory. The phone Metro server is restarted with `--clear` on **8081** and
+  retains the deployed HTTPS API. The cleared iOS launch bundle returns **200 /
+  11,448,487 characters** with the new confirmation/spinner code and hosted API
+  assignment. This proves bundling; native UI/gesture/Keychain acceptance remains
+  a physical-phone check.
+- Fresh `npm run check` still stops at the same four online Expo SDK patch
+  recommendations. Dependency versions, validation, assertions and coverage
+  thresholds are unchanged; the separate code gates above pass.
+
+Directory review: changes stay with identity presentation and its account tests,
+the existing shared button and saved identity journey. These directories already
+have clear responsibility groups; no new production file or folder move is needed.
+
+## October 14 centered primary-button loading
+
+Anthony requested the reflection-saving/challenge-completion approach for all
+matching primary buttons. The shared `PrimaryButton` now replaces its visible
+label with one small white centered `ActivityIndicator` while busy, then restores
+the label when loading ends. Confirm uses that same behavior; the prior
+trailing-spinner option is removed. Accessible button names, busy/disabled state
+and duplicate-press protection remain. Settings rows and underlined actions keep
+their existing presentation. The receiving confirmation and recovery form still
+stay mounted until the request settles, including failure and cancellation.
+No API, storage, protocol or native dependency changed.
+
+Verification:
+
+- The new shared-button regression fails against the former label-plus-spinner
+  rendering. Focused button, account, identity, access, challenge and reflection
+  suites pass: **63 tests / 6 suites**. The existing live text-size test now
+  verifies the pending spinner survives resizing and the label returns with the
+  latest metrics afterward.
+- Contracts build, workspace/journey TypeScript, ESLint, formatting and
+  **180 architecture/tooling, 54 API unit and 25 contract cases pass**. Final
+  mobile TypeScript and affected-file ESLint also pass after the typography-test
+  update.
+- Full mobile coverage: **688 tests / 79 suites pass**, **97.16% lines /
+  91.96% branches**. The combined coverage checker passes unchanged floors using
+  fresh mobile coverage and retained API/contracts reports; their source did not
+  change in this refinement. No separate database suite is needed for this UI
+  change; saved journeys still use the real disposable loopback database.
+- Saved identity journeys: **3 pass**. The two-phone case holds both Confirm and
+  Review transfer requests and checks each spinner's horizontal/vertical center
+  within **1.5 px**, absence of visible label text and disabled button. It retains
+  the existing failed-request/retry/approval/history-isolation checks.
+- Side-panel Browser Use: **pass at 390 × 844**, with the cleared bundle's
+  loopback API assignment verified first. The held Confirm request shows only
+  its centered spinner with the confirmation/recovery form intact. Releasing it
+  opens the transfer-code screen; Back returns to the connected hub and the exact
+  proposal is confirmed cancelled in the database. No console warnings/errors.
+  The exact disposable transfer/device association identifies the one test
+  account for cleanup; that account and the unbound cancelled proposal were
+  removed. Fixture services stopped and the temporary viewport was reset.
+- Screenshot: `.local/phase-08/centered-buttons-confirm.jpg`; checks and cleanup
+  evidence: `centered-buttons-*.log` / `centered-buttons-cleanup.json` in that
+  ignored directory. No visual evidence is committed.
+- The owned phone Metro server is restarted with `--clear` on **8081**; no
+  other listener remains on 8082–8085. Its iOS manifest and fresh launch bundle
+  both return **200**, with **11,448,334 characters**, the deployed HTTPS API and
+  the removed spinner-position override verified. This establishes bundling;
+  the owner still needs to reload and inspect the physical phone. The existing
+  development-client QR remains valid at `10.0.0.200:8081`.
+- Fresh `npm run check` stops at the existing four online Expo patch
+  recommendations (Expo, Constants, Linking and Router). Dependency validation,
+  assertions and coverage floors remain unchanged; separate code gates above
+  pass. Native UI/device acceptance remains open.
+
+Directory review: inspected the shared components, colocated typography,
+identity, journey, architecture, handoff and parent docs directories. The new
+shared-button regression stays beside its owner; existing responsibility groups
+remain clear and no folder move improves this small refinement. Earlier phase
+renumbering and unrelated local changes are preserved. No Git publication or
+native build is included.

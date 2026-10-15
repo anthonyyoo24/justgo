@@ -1,8 +1,38 @@
+import type { Locator } from '@playwright/test';
 import { sessionResponseSchema } from '@justgo/contracts';
 import { randomUUID } from 'node:crypto';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
+
+async function expectCenteredSpinner(button: Locator, label: string) {
+  const spinner = button.getByRole('progressbar', {
+    name: `${label} in progress`,
+  });
+  await expect(spinner).toBeVisible();
+  await expect(button).toBeDisabled();
+  await expect(button.getByText(label, { exact: true })).toHaveCount(0);
+  const [buttonBox, spinnerBox] = await Promise.all([
+    button.boundingBox(),
+    spinner.boundingBox(),
+  ]);
+  expect(buttonBox).not.toBeNull();
+  expect(spinnerBox).not.toBeNull();
+  expect(
+    Math.abs(
+      spinnerBox!.x +
+        spinnerBox!.width / 2 -
+        (buttonBox!.x + buttonBox!.width / 2),
+    ),
+  ).toBeLessThan(1.5);
+  expect(
+    Math.abs(
+      spinnerBox!.y +
+        spinnerBox!.height / 2 -
+        (buttonBox!.y + buttonBox!.height / 2),
+    ),
+  ).toBeLessThan(1.5);
+}
 
 test('a real account renews and opens its challenge catalog', async ({
   page,
@@ -192,10 +222,7 @@ test('a connected receiving phone confirms transfer, waits for approval and keep
         name: 'Confirm',
         exact: true,
       });
-      await expect(
-        confirm.getByRole('progressbar', { name: 'Confirm in progress' }),
-      ).toBeVisible();
-      await expect(confirm).toBeDisabled();
+      await expectCenteredSpinner(confirm, 'Confirm');
       await expect(
         receiver.getByLabel('Recovery key', { exact: true }),
       ).toBeVisible();
@@ -232,9 +259,43 @@ test('a connected receiving phone confirms transfer, waits for approval and keep
     await page
       .getByLabel('Transfer code', { exact: true })
       .fill(await code.innerText());
-    await page
-      .getByRole('button', { name: 'Review transfer', exact: true })
-      .click();
+    let releaseInspection!: () => void,
+      enteredInspection!: () => void,
+      handledInspection!: () => void;
+    const inspectionGate = new Promise<void>((resolve) => {
+      releaseInspection = resolve;
+    });
+    const inspectionSeen = new Promise<void>((resolve) => {
+      enteredInspection = resolve;
+    });
+    const inspectionHandled = new Promise<void>((resolve) => {
+      handledInspection = resolve;
+    });
+    await page.route(
+      `${journeyApiUrl}/v1/transfer-inspections`,
+      async (route) => {
+        enteredInspection();
+        await inspectionGate;
+        try {
+          await route.continue();
+        } finally {
+          handledInspection();
+        }
+      },
+    );
+    const reviewButton = page.getByRole('button', {
+      name: 'Review transfer',
+      exact: true,
+    });
+    await reviewButton.click();
+    try {
+      await inspectionSeen;
+      await expectCenteredSpinner(reviewButton, 'Review transfer');
+    } finally {
+      releaseInspection();
+      await inspectionHandled;
+    }
+
     await page
       .getByLabel('Verification digits', { exact: true })
       .fill(await digits.innerText());
