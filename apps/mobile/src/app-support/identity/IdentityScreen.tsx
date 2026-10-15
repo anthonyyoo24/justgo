@@ -374,29 +374,31 @@ export function IdentityScreen({
                 </View>
               </SettingsGroup>
             )}
-          <TextButton
-            label="Transfer from another device"
-            busy={
-              !confirming && activeAction === 'Transfer from another device'
-            }
-            onPress={() => {
-              if (state.account) {
-                confirm(
-                  'Transfer an account from another device? This phone will switch accounts after approval. Leaving this screen or closing JustGO cancels the unfinished transfer. Your accounts and saved history will stay separate.',
-                  'Transfer from another device',
-                  controller.startTransfer,
-                );
-                return;
+          {confirmation?.name !== 'Transfer from another device' && (
+            <TextButton
+              label="Transfer from another device"
+              busy={
+                !confirming && activeAction === 'Transfer from another device'
               }
-              act(() =>
-                runAction(
-                  'Transfer from another device',
-                  controller.startTransfer,
-                ),
-              );
-            }}
-            disabled={state.busy}
-          />
+              onPress={() => {
+                if (state.account) {
+                  confirm(
+                    'Transfer an account from another device? This phone will switch accounts after approval. Leaving this screen or closing JustGO cancels the unfinished transfer. Your accounts and saved history will stay separate.',
+                    'Transfer from another device',
+                    controller.startTransfer,
+                  );
+                  return;
+                }
+                act(() =>
+                  runAction(
+                    'Transfer from another device',
+                    controller.startTransfer,
+                  ),
+                );
+              }}
+              disabled={state.busy}
+            />
+          )}
         </>
       )}
       {!recoveryOnly &&

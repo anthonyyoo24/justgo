@@ -621,9 +621,11 @@ it('confirms receiving a transfer from a connected account, preserves Cancel and
   expect(
     screen.getByText(/Transfer an account from another device/),
   ).toBeTruthy();
+  expect(screen.queryByText('Transfer from another device')).toBeNull();
   expect(mockController.getSnapshot().account).toEqual(original);
   expect(transferRequests()).toHaveLength(0);
   fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+  expect(transfer()).toBeEnabled();
   expect(mockController.getSnapshot().account).toEqual(original);
   expect(transferRequests()).toHaveLength(0);
 
@@ -640,7 +642,7 @@ it('confirms receiving a transfer from a connected account, preserves Cancel and
     fireEvent.press(transfer());
     fireEvent.press(screen.getByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(transferRequests()).toHaveLength(1));
-    expect(transfer()).toBeDisabled();
+    expect(screen.queryByText('Transfer from another device')).toBeNull();
     expect(screen.getByLabelText('Recovery key')).toBe(recoveryInput);
     expect(
       screen.getByText(/Transfer an account from another device/),
@@ -755,6 +757,9 @@ it.each(['failure', 'back'] as const)(
         );
         expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
         expect(screen.queryByRole('progressbar')).toBeNull();
+        expect(
+          screen.getByRole('button', { name: 'Transfer from another device' }),
+        ).toBeEnabled();
         expect(
           screen.getByRole('button', { name: 'Retry connection' }),
         ).toBeEnabled();

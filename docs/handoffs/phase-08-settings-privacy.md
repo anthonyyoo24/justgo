@@ -2480,3 +2480,32 @@ shared-button regression stays beside its owner; existing responsibility groups
 remain clear and no folder move improves this small refinement. Earlier phase
 renumbering and unrelated local changes are preserved. No Git publication or
 native build is included.
+
+## October 14 transfer confirmation link
+
+Anthony requested hiding the originating Transfer from another device text when
+its confirmation box opens on Recover an account. The link is now absent while
+that confirmation is open, including Confirm loading, and returns on Cancel or
+request failure. Other recovery controls and the centered spinner are unchanged.
+
+- The updated regression fails against the original visible-link behavior.
+  Focused account/identity tests: **39 pass**. Full mobile coverage: **688 tests /
+  79 suites pass**, **97.16% lines / 91.97% branches**; combined unchanged coverage
+  floors pass with retained API/contracts reports (their source is unchanged).
+- Mobile TypeScript, affected-file ESLint and formatting pass. Fresh
+  `npm run check` still stops at the same four online Expo patch mismatches;
+  validation and dependency pins remain unchanged. No backend/database behavior
+  changed in this presentation refinement.
+- Side-panel Browser Use **passes at 390 × 844** against a verified loopback API
+  bundle: open confirmation → originating link absent → Cancel → link restored.
+  No console warnings/errors or transfer-start requests occurred. The single
+  registry-owned disposable account was cleaned up before fixture services
+  stopped; the temporary tab closed and viewport reset.
+- Screenshot: `.local/phase-08/transfer-link-hidden.jpg`. Checks and cleanup
+  evidence remain ignored under `.local/phase-08/transfer-link-*`. Phone Metro
+  remains on **8081**; actual native presentation/VoiceOver is not claimed by the
+  browser check.
+
+Directory review: identity presentation, its colocated account tests, the plan
+and handoff directories retain their existing responsibility groups. No new
+production files or folder moves are needed.
