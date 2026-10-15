@@ -116,6 +116,9 @@ export function IdentityScreen({
   const confirmationGeneration = useRef(0);
   const { activeAction, runAction } = useIdentityAction(controller);
   const confirming = !!confirmation && activeAction === confirmation.name;
+  const transferVisible =
+    !confirming &&
+    (!!state.transfer || activeAction === 'Start a new transfer');
   const recoveryVisible =
     confirmation?.recoveryVisible ?? (recoveryOpen && !receivingTransfer);
   useEffect(
@@ -332,83 +335,83 @@ export function IdentityScreen({
       )}
       {(!state.account || recoveryOnly) && (
         <>
-          {!confirming &&
-            (state.transfer || activeAction === 'Start a new transfer') && (
-              <SettingsGroup title="Connect from your other device">
-                <View style={styles.form}>
-                  {state.transfer && (
-                    <>
-                      <Text style={styles.body}>
-                        Enter this code on your existing device:
-                      </Text>
-                      <Text selectable style={styles.verification}>
-                        {state.transfer.code.match(/.{1,4}/g)?.join('-')}
-                      </Text>
-                      <Text style={styles.body}>
-                        Then enter these six digits on your existing device:
-                      </Text>
-                      <Text selectable style={styles.verification}>
-                        {state.transfer.verification}
-                      </Text>
-                      <Text style={styles.small}>
-                        Expires at{' '}
-                        {new Date(state.transfer.expiresAt).toLocaleTimeString(
-                          [],
-                          {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          },
-                        )}
-                        . Approval is required.
-                      </Text>
-                      <Text style={styles.small}>
-                        Leaving this screen or closing JustGO cancels this
-                        transfer.
-                      </Text>
-                      {button('Check approval & finish', finishTransfer)}
-                    </>
-                  )}
-                  <TextButton
-                    label="Start a new transfer"
-                    disabled={disabled}
-                    busy={activeAction === 'Start a new transfer'}
-                    onPress={() =>
-                      act(() =>
-                        runAction(
-                          'Start a new transfer',
-                          controller.startTransfer,
-                        ),
-                      )
-                    }
-                  />
-                </View>
-              </SettingsGroup>
-            )}
-          {confirmation?.name !== 'Transfer from another device' && (
-            <TextButton
-              label="Transfer from another device"
-              busy={
-                !confirming && activeAction === 'Transfer from another device'
-              }
-              onPress={() => {
-                if (state.account) {
-                  confirm(
-                    'Transfer an account from another device? This phone will switch accounts after approval. Leaving this screen or closing JustGO cancels the unfinished transfer. Your accounts and saved history will stay separate.',
-                    'Transfer from another device',
-                    controller.startTransfer,
-                  );
-                  return;
-                }
-                act(() =>
-                  runAction(
-                    'Transfer from another device',
-                    controller.startTransfer,
-                  ),
-                );
-              }}
-              disabled={disabled}
-            />
+          {transferVisible && (
+            <SettingsGroup title="Connect from your other device">
+              <View style={styles.form}>
+                {state.transfer && (
+                  <>
+                    <Text style={styles.body}>
+                      Enter this code on your existing device:
+                    </Text>
+                    <Text selectable style={styles.verification}>
+                      {state.transfer.code.match(/.{1,4}/g)?.join('-')}
+                    </Text>
+                    <Text style={styles.body}>
+                      Then enter these six digits on your existing device:
+                    </Text>
+                    <Text selectable style={styles.verification}>
+                      {state.transfer.verification}
+                    </Text>
+                    <Text style={styles.small}>
+                      Expires at{' '}
+                      {new Date(state.transfer.expiresAt).toLocaleTimeString(
+                        [],
+                        {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        },
+                      )}
+                      . Approval is required.
+                    </Text>
+                    <Text style={styles.small}>
+                      Leaving this screen or closing JustGO cancels this
+                      transfer.
+                    </Text>
+                    {button('Check approval & finish', finishTransfer)}
+                  </>
+                )}
+                <TextButton
+                  label="Start a new transfer"
+                  disabled={disabled}
+                  busy={activeAction === 'Start a new transfer'}
+                  onPress={() =>
+                    act(() =>
+                      runAction(
+                        'Start a new transfer',
+                        controller.startTransfer,
+                      ),
+                    )
+                  }
+                />
+              </View>
+            </SettingsGroup>
           )}
+          {!transferVisible &&
+            confirmation?.name !== 'Transfer from another device' && (
+              <TextButton
+                label="Transfer from another device"
+                busy={
+                  !confirming && activeAction === 'Transfer from another device'
+                }
+                onPress={() => {
+                  if (state.account) {
+                    confirm(
+                      'Transfer an account from another device? This phone will switch accounts after approval. Leaving this screen or closing JustGO cancels the unfinished transfer. Your accounts and saved history will stay separate.',
+                      'Transfer from another device',
+                      controller.startTransfer,
+                    );
+                    return;
+                  }
+                  act(() =>
+                    runAction(
+                      'Transfer from another device',
+                      controller.startTransfer,
+                    ),
+                  );
+                }}
+                disabled={disabled}
+              />
+            )}
         </>
       )}
       {!recoveryOnly && (recoveryVisible || !receivingTransfer) && (
@@ -490,6 +493,7 @@ export function IdentityScreen({
         </SettingsGroup>
       )}
       {!confirming &&
+        !transferVisible &&
         (!!state.message || activeAction === 'Retry connection') && (
           <TextButton
             label="Retry connection"

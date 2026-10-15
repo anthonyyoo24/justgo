@@ -2557,3 +2557,51 @@ pending/failure notice appears below Account, Recovery and Devices.
 Directory review: identity presentation/account tests, navigation routes, saved
 journeys, the plan and handoff directories keep their existing responsibility
 groups. No new production file or folder move is needed.
+
+## October 14 receiving-code actions
+
+Anthony authorized committing the return-stability fix; it is local commit
+`fb1911c`. He then requested removing the duplicate Transfer from another device
+link below the receiving code and asked whether the other transfer actions belong
+there.
+
+The active code panel now omits both the originating transfer link and Retry
+connection. Check approval & finish remains the primary action and retries the
+approval/session request after waiting or connection errors. Start a new transfer
+remains secondary so users can replace an expired or unwanted proposal. Retry
+connection remains available when creation fails before a code appears. This
+changes presentation only; controller, protocol, cancellation and storage
+behavior are unchanged.
+
+- The former UI fails four regression cases: healthy code presentation plus
+  pending approval, network failure and expiry. The updated tests verify that
+  approval can be retried and an expired proposal can be replaced; existing
+  creation-failure coverage retains Retry connection. Focused account/identity
+  checks: **46 pass**.
+- Mobile TypeScript and affected-file ESLint pass. Full mobile coverage:
+  **695 tests / 79 suites pass**, **97.17% lines / 92.04% branches**. Combined
+  unchanged global and critical coverage floors pass with retained API/contracts
+  reports; their source is unchanged. No database/backend test rerun is required
+  for this presentation-only change.
+- Side-panel Browser Use **passes at 390 × 844** against a verified loopback API
+  bundle: open receiving confirmation → Confirm → code panel with exactly the
+  approval and replacement actions → Back to the normal account hub. No console
+  warnings/errors. The exact proposal's cancellation and fixture-account
+  ownership were verified before both were removed; temporary services and tab
+  were closed and the viewport reset.
+- Screenshot: `.local/phase-08/transfer-actions-code.jpg`. Regression, bundle,
+  observation and cleanup evidence stays ignored under
+  `.local/phase-08/transfer-actions-*`. The phone Metro server remains on **8081**;
+  its iOS manifest and current bundle return **200 / 11,448,963 characters**, with
+  the new visibility condition and deployed HTTPS API verified. Anthony needs to
+  reload the physical iPhone; browser evidence does not establish native UI or
+  VoiceOver acceptance. Existing unowned servers on 8082/8083 are untouched.
+- Fresh `npm run check` still stops at the same four online Expo SDK patch
+  mismatches. Dependency pins/validation and coverage floors are unchanged; the
+  separate maintenance/release task remains open. Formatting and
+  `git diff --check` pass. This refinement remains uncommitted for owner review;
+  no Git publication, deployment or native build is included.
+
+Directory review: the full identity and account directories, parent docs and
+handoff directories retain clear existing responsibility groups. Tests remain
+beside their owner; no new file or folder move is needed for these conditionals.

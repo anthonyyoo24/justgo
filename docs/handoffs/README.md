@@ -2,6 +2,8 @@
 
 **October 14 phase split:** Anthony reports most Phase 08 work completed and is implementing deletion. Settings/data controls and existing feature acceptance remain in [Phase 08](../IMPLEMENTATION_PLAN.md#phase-08); analytics/consent moves to [Phase 09](../IMPLEMENTATION_PLAN.md#phase-09), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation move to [Phase 10](../IMPLEMENTATION_PLAN.md#phase-10). Release validation is now [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11); former post-launch phases 10–12 become 12–14. The existing [test-server prerequisite handoff](phase-11-test-server.md) is renamed with its evidence preserved. Historical branch/log/artifact names remain unchanged; this planning edit closes no implementation, device or release gate.
 
+**October 14 receiving-code actions:** The code screen keeps Check approval & finish and the secondary Start a new transfer action, hiding the duplicate transfer entry and Retry connection links. The [receiving-code follow-up](phase-08-settings-privacy.md#october-14-receiving-code-actions) records retry/failure coverage and verification.
+
 **October 14 transfer return:** The [return-stability follow-up](phase-08-settings-privacy.md#october-14-transfer-return-stability) preserves the outgoing code screen while leaving and keeps the account sections fixed during cancellation cleanup.
 
 **October 14 transfer confirmation:** The originating transfer link is hidden while its confirmation box is open and returns on Cancel or request failure. See the [confirmation-link follow-up](phase-08-settings-privacy.md#october-14-transfer-confirmation-link).

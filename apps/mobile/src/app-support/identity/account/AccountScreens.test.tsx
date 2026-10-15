@@ -16,7 +16,7 @@ import type { LinkProps } from 'expo-router';
 import RecoveryRoute from '../../../app/recovery';
 import AccountToolRoute from '../../../app/account/[tool]';
 import { IdentityController } from '../controller';
-import { createIdentityApi } from '../api';
+import { createIdentityApi, IdentityClientError } from '../api';
 import { createMemoryVault } from '../storage';
 import { showMessageToast } from '../../../platform/toast/Toast';
 import { supportContact, contactFailureMessage } from '../../contact';
@@ -671,6 +671,13 @@ it('confirms receiving a transfer from a connected account, preserves Cancel and
   }
   expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
   expect(screen.getByText('012345')).toBeTruthy();
+  expect(
+    screen.queryByRole('button', { name: 'Transfer from another device' }),
+  ).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Retry connection' })).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Start a new transfer' }),
+  ).toBeEnabled();
   expect(screen.queryByLabelText('Recovery key')).toBeNull();
   expect(
     screen.queryByRole('button', { name: 'Create a separate empty account' }),
@@ -713,6 +720,69 @@ it('confirms receiving a transfer from a connected account, preserves Cancel and
   );
   expect(mockRouter.replace).toHaveBeenCalledWith('/recovery');
 });
+
+it.each(['TRANSFER_PENDING', 'NETWORK', 'TRANSFER_EXPIRED'] as const)(
+  'keeps recovery actions usable after %s without duplicate transfer controls',
+  async (code) => {
+    const { fetcher } = await connected();
+    await mockController.startTransfer();
+    mockTool = 'recover';
+    const screen = render(<AccountToolRoute />);
+    try {
+      fetcher.mockRejectedValueOnce(new IdentityClientError(code));
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Check approval & finish' }),
+      );
+      await waitFor(() =>
+        expect(mockController.getSnapshot().busy).toBe(false),
+      );
+      expect(screen.getByText('012345')).toBeTruthy();
+      expect(
+        screen.getByText(
+          code === 'TRANSFER_PENDING'
+            ? /Waiting for approval/
+            : code === 'NETWORK'
+              ? /Couldn’t connect/
+              : /This transfer expired/,
+        ),
+      ).toBeTruthy();
+      expect(
+        screen.queryByRole('button', { name: 'Transfer from another device' }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: 'Retry connection' }),
+      ).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Start a new transfer' }),
+      ).toBeEnabled();
+      const finishing = screen.getByRole('button', {
+        name: 'Check approval & finish',
+      });
+      expect(finishing).toBeEnabled();
+      if (code !== 'TRANSFER_EXPIRED') {
+        fireEvent.press(finishing);
+        await waitFor(() =>
+          expect(mockRouter.replace).toHaveBeenCalledWith('/recovery'),
+        );
+      } else {
+        const previousTransferId = mockController.getSnapshot().transfer!.id;
+        fireEvent.press(
+          screen.getByRole('button', { name: 'Start a new transfer' }),
+        );
+        await waitFor(() =>
+          expect(mockController.getSnapshot().busy).toBe(false),
+        );
+        expect(mockController.getSnapshot().transfer!.id).not.toBe(
+          previousTransferId,
+        );
+        expect(screen.queryByText(/This transfer expired/)).toBeNull();
+      }
+    } finally {
+      await act(async () => mockController.cancelTransfer());
+      screen.unmount();
+    }
+  },
+);
 
 it.each(['failure', 'back'] as const)(
   'clears Confirm loading safely after %s during transfer start',
