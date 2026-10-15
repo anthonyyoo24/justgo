@@ -44,10 +44,11 @@ jobs:
           DATABASE_SSL: disable
           JUSTGO_PG_BIN: /usr/lib/postgresql/17/bin
       - name: Collect and enforce all-source coverage (includes PostgreSQL services)
+        id: coverage
         run: npm run test:coverage
         env: *database-test-env
       - name: Upload coverage reports
-        if: always()
+        if: always() && (steps.coverage.outcome == 'success' || steps.coverage.outcome == 'failure')
         uses: actions/upload-artifact@v4
         with:
           name: coverage

@@ -1,5 +1,12 @@
 # Implementation handoffs
 
+**October 14 local main integration:** GitHub main at `8fdfd2c` is integrated
+into the completed Settings/privacy working branch, retaining receiving-transfer
+changes, the approved phase split and PRs #22–25's reviewed fixes. The
+[local integration handoff](phase-08-settings-privacy.md#october-14-local-main-integration)
+owns conflict decisions and combined verification. No push or new PR is authorized;
+account deletion remains a separate worktree and acceptance task.
+
 **October 14 phase split:** Anthony reports most Phase 08 work completed and is implementing deletion. Settings/data controls and existing feature acceptance remain in [Phase 08](../IMPLEMENTATION_PLAN.md#phase-08); analytics/consent moves to [Phase 09](../IMPLEMENTATION_PLAN.md#phase-09), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation move to [Phase 10](../IMPLEMENTATION_PLAN.md#phase-10). Release validation is now [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11); former post-launch phases 10–12 become 12–14. The existing [test-server prerequisite handoff](phase-11-test-server.md) is renamed with its evidence preserved. Historical branch/log/artifact names remain unchanged; this planning edit closes no implementation, device or release gate.
 
 **October 14 receiving-code actions:** The code screen keeps Check approval & finish and the secondary Start a new transfer action, hiding the duplicate transfer entry and Retry connection links. The [receiving-code follow-up](phase-08-settings-privacy.md#october-14-receiving-code-actions) records retry/failure coverage and verification.
@@ -9,6 +16,62 @@
 **October 14 transfer confirmation:** The originating transfer link is hidden while its confirmation box is open and returns on Cancel or request failure. See the [confirmation-link follow-up](phase-08-settings-privacy.md#october-14-transfer-confirmation-link).
 
 **October 14 receiving-phone transfer:** The existing-account recovery page now offers the receiving transfer action even when a new private account is connected. Confirmation protects the current account, old-phone instructions give the exact path, and completion returns to the account hub without late navigation after leaving. The cancellation follow-up retains the old session, cancels unfinished transfers on exit/background/relaunch and durably retries server invalidation; the owner-approved hosted API update is live and its cancellation/replay probes pass, while native validation remains open. The [transfer follow-up](phase-08-settings-privacy.md#october-14-receiving-phone-transfer) records checks and remaining Expo/native gates. The latest [centered-button refinement](phase-08-settings-privacy.md#october-14-centered-primary-button-loading) retains the page and replaces primary-button text with one centered spinner, including Confirm, matching reflection saving and challenge completion. No Git publication or native build is included.
+
+**October 14 PR #25 review corrections:** Day-sheet batches now fill available
+space without requiring a scroll gesture, and the setup guide matches the
+installed Expo/Router pins. The
+[review-fix handoff](phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+records failing-before regressions, verification and retained release gates.
+
+**October 14 fourth review preparation:** PR #24 is merged, and local `main`
+is updated to `6382aed`. The
+[final split-review handoff](phase-08-settings-privacy.md#october-14-fourth-review-preparation)
+records the 70-file haptics/toggle, day-sheet and reflection-keyboard checkpoint,
+merged dependency maintenance and fresh checks. Earlier dependency-blocker
+entries below describe their original checkpoints. Native/release acceptance
+and ongoing account/privacy/planning work remain separate.
+
+**October 14 PR #24 review correction:** Export busy-state descriptions now
+match the retained label and progress indicator. The
+[review follow-up](phase-08-settings-privacy.md#october-14-pr-24-review-correction)
+preserves the earlier wording's history, records verification and reconciles
+the already-fixed journey finding. No app behavior or phase scope changes.
+
+**October 14 PR #24 journey timing fix:** One Foundation run measured a
+Troubleshooting label while the page was opening/refreshing. The
+[fix handoff](phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)
+records failing-before repetition, usable-control readiness and retrying fresh
+geometry with the original alignment limit. App code is unchanged; publication
+and hosted acceptance remain separate from local evidence.
+
+**October 14 third review preparation:** PR #23 is merged, local `main` is
+updated and the export review worktree is archived. The
+[account/recovery review handoff](phase-08-settings-privacy.md#october-14-third-review-preparation)
+records the separate 78-file checkpoint, passing code/coverage and cold web/iOS
+bundle checks, and the retained native/journey limits. Ongoing working files
+and the final haptics/performance review remain separate.
+
+**October 14 second review preparation:** After PR #22 merged, local `main`
+was updated and its review worktree archived. The
+[export/test-access review handoff](phase-08-settings-privacy.md#october-14-second-review-preparation)
+records integration of reviewed fixes, passing root/database/coverage checks,
+and the saved browser journey blocked by the existing preview on port 8081.
+The ongoing Phase 08 working files and later review branches remain separate.
+
+**October 14 PR #22 review corrections:** Early Apple/EAS distribution setup
+is separated from post-free-beta Phase 07A billing configuration, and implemented
+Reduce Motion behavior is removed from the open design lists. Native/device
+acceptance remains in Phase 11. The [review follow-up](phase-08-settings-privacy.md#october-14-pr-22-review-corrections)
+records the two addressed comments and documentation verification.
+
+**October 14 PR #22 CI repair:** Both Foundation runs stopped at outdated Expo
+SDK 57 patch pins and then attempted to upload nonexistent coverage reports.
+The [repair handoff](phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
+records the isolated exact-PR fix, producing-step-aware coverage uploads and
+regressions. Anthony authorized pushing `a522fe6` into PR #22 on October 14;
+both hosted Foundation runs pass, including all 24 saved journeys. Native
+build/device acceptance remains separate. Verify each branch when splitting PRs
+and rerun fresh online Doctor immediately before pushing.
 
 **October 14 reflection keyboard:** The separate Phase 08 keyboard worktree
 brings the focused reflection section into view and bounds the writing area above

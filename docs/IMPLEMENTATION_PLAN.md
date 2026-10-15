@@ -1,6 +1,6 @@
 # JustGO — Implementation Plan
 
-**Version:** 74 · Updated October 14, 2026
+**Version:** 77 · Updated October 14, 2026
 
 **October 14 owner-approved phase split:** Anthony reports that most Phase 08 work is complete and account deletion is being implemented. Keep Settings, recovery, export/deletion, retention/backup mechanics, preferences and their existing acceptance checks in Phase 08. Move analytics consent, PostHog event delivery and product measurement to new Phase 09; move Privacy Policy, Terms, legal review, public hosting and release-disclosure preparation to new Phase 10. Former Phase 09 release validation is now Phase 11; former post-launch phases 10–12 are now 12–14. This inserts two whole-number phases rather than 08A/08B. Earlier phase IDs and recorded implementation evidence are preserved; branch names, log/artifact paths and historical numbering records are not renamed. This planning change does not mark deletion, analytics, legal review or any open acceptance gate complete.
 
@@ -141,27 +141,28 @@ Release order: 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07
 
 These remain open in PRD §13. Resolve each with the product owner and update the PRD and relevant handoff. Foundation and identity work can proceed while later content decisions are being made.
 
-| Decision                        | Before phase                | What needs an answer                                                                                                                                       |
-| ------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Onboarding content              | Deferred                    | Welcome/questionnaire flow deferred by Anthony; revisit scope and designs separately. No phase 03 gate.                                                    |
-| Launch catalog                  | 04                          | Settled: CHALLENGES.md supplies 61 placements in six venues; five minutes, no displayed subtext. Seeded by phase 04. CURRICULUM.md remains a future draft. |
-| Deck counter                    | 04                          | Settled: omit level progress; each venue cycles. New accounts start in Streets. Empty venues offer another venue; see PHASE_04_SCOPE.md.                   |
-| Future levels                   | Later; not a launch blocker | Thresholds, unlocking/skipping, historical-credit policy and later taxonomy; retain Level 1 history now without implementing progression.                  |
-| Reflection save & dismissal     | Approved September 27       | Feeling-only/text-only/both; empty bottom action and empty Back/X skip; dirty Back/X offers save, keep editing or discard and skip.                        |
-| Reading saved reflections       | 06                          | Per-attempt detail/expansion and whether editing/deletion is offered there.                                                                                |
-| Apple account & offer           | Start in 01; ready for 07A  | Enrollment status, bundle ID/app record, subscription product IDs/pricing/trials and RevenueCat mapping. Finalize paywall and expiry behavior before 07A.  |
-| Supporting designs & formatting | Relevant phase              | Home color variants, Settings rows, haptic/motion preferences, duration rounding and small-screen/accessibility states.                                    |
+| Decision                        | Before phase                                  | What needs an answer                                                                                                                                                                                    |
+| ------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Onboarding content              | Deferred                                      | Welcome/questionnaire flow deferred by Anthony; revisit scope and designs separately. No phase 03 gate.                                                                                                 |
+| Launch catalog                  | 04                                            | Settled: CHALLENGES.md supplies 61 placements in six venues; five minutes, no displayed subtext. Seeded by phase 04. CURRICULUM.md remains a future draft.                                              |
+| Deck counter                    | 04                                            | Settled: omit level progress; each venue cycles. New accounts start in Streets. Empty venues offer another venue; see PHASE_04_SCOPE.md.                                                                |
+| Future levels                   | Later; not a launch blocker                   | Thresholds, unlocking/skipping, historical-credit policy and later taxonomy; retain Level 1 history now without implementing progression.                                                               |
+| Reflection save & dismissal     | Approved September 27                         | Feeling-only/text-only/both; empty bottom action and empty Back/X skip; dirty Back/X offers save, keep editing or discard and skip.                                                                     |
+| Reading saved reflections       | 06                                            | Per-attempt detail/expansion and whether editing/deletion is offered there.                                                                                                                             |
+| Apple account & offer           | Apple setup from 01; billing in post-beta 07A | Enrollment, bundle ID/app record and signing start early. Configure subscription products and RevenueCat mapping after the free beta, during 07A; settle offer/paywall rules before billing validation. |
+| Supporting designs & formatting | Relevant phase                                | Home color variants, remaining Settings controls, Phase 08 haptic preferences, duration rounding and outstanding small-screen/accessibility design states.                                              |
 
 ## App Store setup — start alongside development
 
-| When                                | Work                                                                                                                                                                                                                                                                                                                                                                            | Finish line                                                                                                                                                 |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 01, in parallel               | Choose individual or organization enrollment; begin/confirm Apple Developer membership and account access. Owner completes required identity/business verification, paid-app agreement, banking and tax details.                                                                                                                                                                | Record status and outstanding items; Apple verification does not prevent local development. Membership and agreements must be ready for distribution/sales. |
-| Phase 01 onward; ready for 07A      | Reserve a stable bundle identifier, create the App Store Connect app record and Expo/EAS project, configure signing access. In the existing JustGO RevenueCat project, connect the iOS app/store credentials, create the agreed App Store subscription group/products, and map product → entitlement → offering/paywall. Keep secret credentials out of docs and mobile source. | Matching identifiers and configured sandbox purchase path; final offer decisions settled before billing validation.                                         |
-| Phase 10                            | Review and publish Privacy Policy and Terms, connect verified public links, and prepare App Privacy and eligibility/disclosure answers from the actual data inventory.                                                                                                                                                                                                          | Approved public notices and a disclosure worksheet are ready for final signed-build verification in Phase 11.                                               |
-| After the full app build, during 11 | Use physical iPhones for release acceptance. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight.                                                                                                                                                                                                                              | Purchase/restore, recovery, challenge loop and Progress pass on the actual binary. External testers may need beta review.                                   |
-| Phase 11                            | Complete App Store metadata, current screenshots, icon, privacy disclosures/policy, support URL, age/content declarations, subscription information and review notes explaining no-signup access. Give reviewers the access needed to inspect the paid app. Submit the first subscription with the app version when required.                                                   | Select the tested build and explicitly submit in App Store Connect for App Review; choose the intended release control and address review feedback.         |
-| After approval/release              | Verify the public listing and purchase/restore flow. Complete the separate hackathon submission using its current rules and required demo/assets.                                                                                                                                                                                                                               | Record the submitted entry and released build. Do not assume later app updates will be included in judging without checking the event rules.                |
+| When                                       | Work                                                                                                                                                                                                                                                                                                                          | Finish line                                                                                                                                                                                                |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 01, in parallel                      | Choose individual or organization enrollment; begin/confirm Apple Developer membership and account access. Owner completes required identity/business verification, paid-app agreement, banking and tax details.                                                                                                              | Record status and outstanding items; Apple verification does not prevent local development. Membership and agreements must be ready for distribution/sales.                                                |
+| Phase 01 onward; ready for free beta       | Reserve a stable bundle identifier, create the App Store Connect app record and Expo/EAS project, and configure signing access. RevenueCat/store-credential connection, purchase-key generation, subscription-product creation and offering/paywall mapping wait for the post-beta 07A row below.                             | Matching app identifiers and signing access for the free beta build.                                                                                                                                       |
+| Phase 10                                   | Review and publish Privacy Policy and Terms, connect verified public links, and prepare App Privacy and eligibility/disclosure answers from the actual data inventory.                                                                                                                                                        | Approved public notices and a disclosure worksheet are ready for final signed-build verification in Phase 11.                                                                                              |
+| Phase 11 free beta, before 07A             | Use physical iPhones for core-app acceptance. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight with explicit server-authorized free tester access.                                                                                                                        | Recovery, challenge loop, Progress and Settings pass on the signed free-beta binary. External testers may need beta review; purchase/restore acceptance follows in 07A.                                    |
+| After the free beta checkpoint, during 07A | Generate the Apple purchase key, connect the iOS app/store credentials in the existing JustGO RevenueCat project, create the agreed App Store subscription group/products, and map product → entitlement → offering/paywall. Keep secret credentials out of docs and mobile source.                                           | Matching billing identifiers and configured sandbox purchase path; final offer decisions settled before billing validation. Earlier local billing-code preparation does not authorize this external setup. |
+| Phase 11 paid launch, after accepted 07A   | Complete App Store metadata, current screenshots, icon, privacy disclosures/policy, support URL, age/content declarations, subscription information and review notes explaining no-signup access. Give reviewers the access needed to inspect the paid app. Submit the first subscription with the app version when required. | Select the tested build and explicitly submit in App Store Connect for App Review; choose the intended release control and address review feedback.                                                        |
+| After approval/release                     | Verify the public listing and purchase/restore flow. Complete the separate hackathon submission using its current rules and required demo/assets.                                                                                                                                                                             | Record the submitted entry and released build. Do not assume later app updates will be included in judging without checking the event rules.                                                               |
 
 EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does not replace Apple membership or automatically complete listing/review submission. Recheck current requirements during setup; build queues, account verification and review times vary. References: [Expo iOS submission](https://docs.expo.dev/submit/ios/), [Apple enrollment](https://developer.apple.com/programs/enroll/), [first in-app purchase submission](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase).
 
@@ -1200,6 +1201,62 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 ### Phase 08 — Settings & privacy controls
 
+**October 14 local main integration:** Anthony authorized integrating fetched
+main `8fdfd2c` into `codex/phase-08-settings-privacy` without a push or PR.
+Preserve this branch's receiving-transfer changes and phase split together with
+the reviewed fixes from merged PRs #22–25. The
+[integration handoff](handoffs/phase-08-settings-privacy.md#october-14-local-main-integration)
+records conflict decisions and combined verification; separate account-deletion
+work and existing native/release gates remain open.
+
+**October 14 PR #25 review corrections:** The day-sheet list now uses measured
+viewport/content sizes to reveal more local rows when its initial batch does not
+create scrolling. It waits for each new batch's measurements and retains the
+existing scroll-ahead, draft and pagination behavior. The current setup guide's
+Expo/Router pins match the manifest. The
+[review-fix handoff](handoffs/phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+owns regression and UI evidence; the broader phase/release gates remain open.
+
+**October 14 fourth review preparation:** Anthony merged PR #24 and requested
+the final review in the agreed four-PR split. Local `main` is updated to `6382aed`;
+`phase8-04-haptics-performance-polish` incorporates that main and retains the
+70-file haptics, custom-toggle, day-sheet and reflection-keyboard checkpoint.
+The [fourth-review handoff](handoffs/phase-08-settings-privacy.md#october-14-fourth-review-preparation)
+owns exact-candidate verification and remaining native/release gates. Ongoing
+account-transfer, account-deletion and phase-planning work remains separate.
+
+**October 14 PR #24 journey timing fix:** The pull-request Foundation run failed
+one Troubleshooting layout measurement while the same-head push run passed.
+The [timing-fix handoff](handoffs/phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)
+records the reproduced transient missing box and the retrying layout assertion.
+All three labels must remain visible and aligned within the existing one-pixel
+limit. This is a test correction; app behavior and phase acceptance are unchanged.
+
+**October 14 third review preparation:** After Anthony merged PR #23 and
+requested the next review, local `main` was updated to `222d65b` and the completed
+export review worktree archived. `phase8-03-account-recovery-accessibility`
+incorporates current main and retains the 78-file account/recovery, direct export,
+folder organization and large-text checkpoint. The
+[third-review handoff](handoffs/phase-08-settings-privacy.md#october-14-third-review-preparation)
+records fresh code/coverage and cold-bundle checks. Ongoing working files and
+the haptics/performance review remain separate; phase acceptance is still open.
+
+**October 14 second review preparation:** Anthony confirmed PR #22 merged and
+authorized publishing the export/test-access review next. Local `main` is updated
+to `348671f`, the completed foundation review worktree is archived, and
+`phase8-02-data-export-test-access` incorporates the reviewed main fixes. The
+[second-review handoff](handoffs/phase-08-settings-privacy.md#october-14-second-review-preparation)
+records the exact candidate checks and the occupied-port browser limitation.
+The later review branches and ongoing uncommitted work remain separate.
+
+**October 14 PR #22 CI repair:** The two Foundation runs for `e146adc`
+failed fresh Expo dependency validation; their coverage uploads then failed
+because coverage was skipped. The [CI repair handoff](handoffs/phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
+records aligned SDK 57 patch pins, conditional artifact upload, regression
+coverage and exact-branch publication checks. Anthony authorized publication,
+and `a522fe6` is pushed to PR #22's branch. Both hosted Foundation runs pass;
+dependency changes retain native build/device acceptance in Phase 11.
+
 **October 14 reflection keyboard correction:** Anthony authorized the fix in a
 separate Phase 08 worktree with its own development server while the original
 checkout retains ongoing work. Focus brings the reflection section into view and
@@ -1207,11 +1264,12 @@ fits the editor above the retained Skip/Save footer. The
 [keyboard handoff](handoffs/phase-08-reflection-keyboard.md) owns passing checks and
 Anthony's October 14 physical-iPhone confirmation that the fix works. Broader
 native/release checks remain separate. Anthony subsequently authorized local
-integration of `0237152` into Phase 08 after `f837552`. Combined code checks pass;
-the full root gate remains open because fresh Expo metadata recommends four newer
-SDK 57 patches, recorded in the handoff. The phase stays open.
+integration of `0237152` into Phase 08 after `f837552`. At that checkpoint,
+combined code checks passed but fresh Expo metadata recommended four newer
+SDK 57 patches. The fourth review carries forward the reviewed maintenance
+from merged main and passes fresh root checks; native/release gates stay open.
 
-- [ ] **Dependency maintenance — owner: Anthony / implementation owner, before publication / Phase 11:** align `expo`, `expo-constants`, `expo-linking` and `expo-router` with the newly recommended SDK 57 patches in a separate owner-approved maintenance task; rerun fresh `npm run check` and retain the required native/build/device acceptance. The keyboard integration leaves versions and the installed binary unchanged.
+- [x] **Dependency alignment before publication:** The fourth review retains merged main's `expo` 57.0.29, `expo-constants` 57.0.22, `expo-linking` 57.0.13 and `expo-router` 57.0.27 pins with the matching lockfile. Fresh `npm ci` and `npm run check` pass. This closes the keyboard integration's dependency-check blocker; the installed binary is unchanged and native/build/device acceptance remains open with Anthony in Phase 11.
 
 **Status:** In progress — most Settings/contact, account/recovery, preference and export slices implemented; Anthony is working on deletion; remaining feature acceptance and diagnostics are open\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
@@ -1289,7 +1347,7 @@ SDK 57 patches, recorded in the handoff. The phase stays open.
 
 **October 10 data export implementation:** Anthony authorized step 2 and selected CSV + JSON in a ZIP. The [export handoff](handoffs/phase-08-settings-privacy.md#october-10-data-export-implementation) records the authenticated paged read, pending-local copies, file delivery and verification. Deletion, analytics, legal publication and the wider Phase 08 acceptance remain open; haptics stays in Phase 11 and native billing in Phase 07A.
 
-**October 11 direct export action:** At Anthony's request, Export my data now starts directly from Settings, shows Creating export… and opens the existing share sheet/download, with inline feedback and retry. Older `/export-data` links redirect to Settings. The [direct-export follow-up](handoffs/phase-08-settings-privacy.md#october-11-direct-export-from-settings) records tests, browser evidence and the cache-cleared phone-server refresh. Physical file delivery and accessibility acceptance remain open; no account/recovery redesign or additional native build is included.
+**October 11 direct export action:** At Anthony's request, Export my data now starts directly from Settings and opens the existing share sheet/download, with inline feedback and retry. The October 12 action-indicator refinement keeps the Export my data label visible alongside a progress indicator while busy. Older `/export-data` links redirect to Settings. The [direct-export follow-up](handoffs/phase-08-settings-privacy.md#october-11-direct-export-from-settings) records tests, browser evidence and the cache-cleared phone-server refresh. Physical file delivery and accessibility acceptance remain open; no account/recovery redesign or additional native build is included.
 
 **October 11 folder organization:** Anthony approved saving the existing work before grouping Settings export/information and platform export/toast/motion files. The [organization handoff](handoffs/phase-08-settings-privacy.md#october-11-folder-organization) records the separate local commits, unchanged behavior and verification; the [folder guide](architecture/FOLDER_STRUCTURE.md#phase-08-settings-and-platform-organization) shows the implemented groups. Phase acceptance and Git publication permissions remain unchanged. A subsequent phone reload reproduced a stale live Metro dependency graph; restarting only the phone server with `--clear` restored successful first/repeated iOS bundle responses. Anthony confirmed that the installed phone app opens normally after the restart; the same handoff records this owner-reported device evidence.
 

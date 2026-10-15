@@ -2,6 +2,13 @@
 
 ## Scope and isolation
 
+**Publication follow-up, October 14:** The
+[fourth split-review preparation](phase-08-settings-privacy.md#october-14-fourth-review-preparation)
+integrates this accepted correction with merged main's reviewed Expo patches.
+Fresh candidate checks supersede the dependency blocker recorded at the local
+integration checkpoint below. The original physical-phone evidence and wider
+native/release limits are unchanged.
+
 Anthony requested the reflection keyboard correction in a separate worktree and
 its own development server on October 14, 2026. Branch
 `codex/phase-08-reflection-keyboard` starts from Phase 08 commit `79aaf39`.

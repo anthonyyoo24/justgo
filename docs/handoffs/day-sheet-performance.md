@@ -19,6 +19,13 @@
 
 ## Finding and change
 
+**October 14 PR #25 follow-up:** The
+[review correction](phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+also fills a viewport when eight initial rows do not create scrolling. It uses
+fresh measurements for each batch and preserves the existing draft/scroll-ahead
+behavior. Earlier native timings below describe the original optimization;
+they are not new measurements of this visibility correction.
+
 The 41-attempt day initially mounted every row, every hidden reflection form and
 every motion adapter. Opening an editor then rendered all 41 rows three times.
 The reflection controller subscription also invalidated the Progress owner on

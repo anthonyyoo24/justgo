@@ -239,6 +239,22 @@ test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline 
   }
 });
 
+test('a tall day sheet reveals all nine entries without scrolling', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 1600 });
+  const current = await account(page);
+  await seed(page, current.proof, 9, current.timeZone);
+  await progress(page, 9);
+  await openToday(page, 9);
+  await expect(page.getByRole('button', { name: /Rep 9\./ })).toBeInViewport();
+  expect(
+    await page
+      .getByTestId('day-sheet-entry-list')
+      .evaluate((element) => element.scrollTop),
+  ).toBe(0);
+});
+
 test('41 attempts keep an unfinished inline reflection while scrolling and saving', async ({
   page,
   fixtureDatabase,
