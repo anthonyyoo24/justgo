@@ -2509,3 +2509,51 @@ request failure. Other recovery controls and the centered spinner are unchanged.
 Directory review: identity presentation, its colocated account tests, the plan
 and handoff directories retain their existing responsibility groups. No new
 production files or folder moves are needed.
+
+## October 14 transfer return stability
+
+Anthony authorized committing the confirmation-link refinement; it is local
+commit `fdf3e3b`. He then reported shifting content when Back returns from the
+receiving code screen to Account & recovery.
+
+Two presentation changes caused the movement: cancellation immediately removed
+the outgoing code card and reintroduced the recovery form during navigation;
+persisting its cleanup queue inserted a temporary pending notice above the hub's
+sections, then removed it after the server replied. The receiving screen now
+retains its current presentation while leaving, with its actions disabled.
+Controller cancellation and server invalidation still begin immediately. Focus
+restores live presentation, and background/inactive clears the retained view so
+codes do not remain visible there. The hub stays quiet during cleanup; a settled
+pending/failure notice appears below Account, Recovery and Devices.
+
+- The original UI fails three regressions: outgoing Back, focus-loss replacement
+  and the premature pending alert. A fourth regression protects background code
+  hiding during departure. Focused account/identity checks: **43 pass**.
+- Mobile/journey TypeScript, affected-file ESLint and formatting pass. Full mobile
+  coverage: **692 tests / 79 suites pass**, **97.17% lines / 92.03% branches**.
+  Combined unchanged coverage floors pass with retained API/contracts reports;
+  backend/protocol/storage behavior is unchanged.
+- Saved actual-app/API/database identity journeys: **3 pass**. The cancellation
+  case holds DELETE and compares rendered bounds for all three section headings
+  before transfer, while cleanup is pending and after success; bounds remain
+  identical and no pending alert flashes during the held request.
+- Side-panel Browser Use **passes at 390 × 844**, with the loopback API assignment
+  verified before fixture creation. Heading positions remain **84 / 303 / 478 px**
+  before transfer, after Back with DELETE held and after release. No console
+  warnings/errors. Exact cancelled-proposal ownership/status and the one fixture
+  account were verified before cleanup; both were removed, fixture services
+  stopped, the temporary tab closed and viewport reset.
+- Evidence stays ignored under `.local/phase-08/transfer-return-*`, including
+  `transfer-return-{pending,ready}.jpg`. The owned phone Metro server is restored
+  on **8081** with `--clear` and the deployed HTTPS API. Its fresh iOS manifest
+  and launch bundle return **200 / 11,448,878 characters**, with the new departure
+  presentation and hosted API assignment verified. Browser/component checks
+  do not establish native transition-frame, gesture or VoiceOver acceptance;
+  Anthony still needs to reload and inspect the physical iPhone.
+- Fresh `npm run check` stops at the same four Expo patch mismatches. Dependency
+  validation/pins and coverage floors are unchanged. This fix remains local;
+  no additional Git publication or native build is included.
+
+Directory review: identity presentation/account tests, navigation routes, saved
+journeys, the plan and handoff directories keep their existing responsibility
+groups. No new production file or folder move is needed.

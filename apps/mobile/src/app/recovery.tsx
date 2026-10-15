@@ -6,7 +6,9 @@ export default function RecoveryRoute() {
   const state = useIdentity();
   if (state.account)
     return (
-      <AccountRecoveryScreen cancellationPending={state.cancellationPending} />
+      <AccountRecoveryScreen
+        cancellationPending={state.cancellationPending && !state.busy}
+      />
     );
   return <IdentityScreen controller={identity} managed />;
 }

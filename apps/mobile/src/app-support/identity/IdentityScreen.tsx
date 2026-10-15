@@ -87,11 +87,18 @@ export function IdentityScreen({
         createIdentityApi(process.env.EXPO_PUBLIC_API_URL),
       ),
   );
-  const state = useSyncExternalStore(
+  const liveState = useSyncExternalStore(
     controller.subscribe,
     controller.getSnapshot,
     controller.getSnapshot,
   );
+  const [departure, setDeparture] = useState<ReturnType<
+    IdentityController['getSnapshot']
+  > | null>(null);
+  const state = departure ?? liveState;
+  const disabled = state.busy || departure !== null;
+  const receivingTransfer =
+    departure !== null || controller.hasReceivingTransfer();
   const [initialSessionId] = useState(
     () => controller.getSnapshot().account?.sessionId,
   );
@@ -110,8 +117,7 @@ export function IdentityScreen({
   const { activeAction, runAction } = useIdentityAction(controller);
   const confirming = !!confirmation && activeAction === confirmation.name;
   const recoveryVisible =
-    confirmation?.recoveryVisible ??
-    (recoveryOpen && !controller.hasReceivingTransfer());
+    confirmation?.recoveryVisible ?? (recoveryOpen && !receivingTransfer);
   useEffect(
     () => () => {
       confirmationGeneration.current++;
@@ -124,19 +130,23 @@ export function IdentityScreen({
   useEffect(() => {
     if (!managed) void controller.initialize();
   }, [controller, managed]);
+  const leaveReceivingTransfer = useCallback(() => {
+    const current = controller.getSnapshot();
+    // Keep the outgoing code card mounted until navigation covers it. The
+    // controller still invalidates the transfer immediately and owns cleanup.
+    if (current.transfer) setDeparture((previous) => previous ?? current);
+    void controller.cancelTransfer();
+  }, [controller]);
   useFocusEffect(
-    useCallback(
-      () => () => {
-        // Navigation gestures and links also leave this receiving visit. The
-        // controller owns cancellation, persistence and any server retry.
-        void controller.cancelTransfer();
-      },
-      [controller],
-    ),
+    useCallback(() => {
+      setDeparture(null);
+      return leaveReceivingTransfer;
+    }, [leaveReceivingTransfer]),
   );
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
       if (next !== 'active') {
+        setDeparture(null);
         controller.hideKey();
         setRecoveryKey('');
         void controller.cancelTransfer();
@@ -163,7 +173,7 @@ export function IdentityScreen({
       message,
       name,
       action,
-      recoveryVisible: recoveryOpen && !controller.hasReceivingTransfer(),
+      recoveryVisible: recoveryOpen && !receivingTransfer,
     });
   const runConfirmation = async () => {
     const selected = confirmation;
@@ -198,7 +208,7 @@ export function IdentityScreen({
       label={label}
       onPress={() => act(() => runAction(label, action))}
       busy={!confirming && activeAction === label && state.busy}
-      disabled={state.busy}
+      disabled={disabled}
     />
   );
   if (
@@ -279,13 +289,13 @@ export function IdentityScreen({
             <PrimaryButton
               label="Confirm"
               busy={confirming}
-              disabled={state.busy}
+              disabled={disabled}
               onPress={() => act(runConfirmation)}
             />
             <TextButton
               label="Cancel"
               onPress={() => setConfirmation(null)}
-              disabled={state.busy}
+              disabled={disabled}
             />
           </View>
         </SettingsGroup>
@@ -360,7 +370,7 @@ export function IdentityScreen({
                   )}
                   <TextButton
                     label="Start a new transfer"
-                    disabled={state.busy}
+                    disabled={disabled}
                     busy={activeAction === 'Start a new transfer'}
                     onPress={() =>
                       act(() =>
@@ -396,23 +406,22 @@ export function IdentityScreen({
                   ),
                 );
               }}
-              disabled={state.busy}
+              disabled={disabled}
             />
           )}
         </>
       )}
-      {!recoveryOnly &&
-        (recoveryVisible || !controller.hasReceivingTransfer()) && (
-          <TextButton
-            label={
-              recoveryOpen
-                ? 'Close recovery options'
-                : 'Recover an existing account'
-            }
-            disabled={state.busy}
-            onPress={() => setRecoveryOpen(!recoveryOpen)}
-          />
-        )}
+      {!recoveryOnly && (recoveryVisible || !receivingTransfer) && (
+        <TextButton
+          label={
+            recoveryOpen
+              ? 'Close recovery options'
+              : 'Recover an existing account'
+          }
+          disabled={disabled}
+          onPress={() => setRecoveryOpen(!recoveryOpen)}
+        />
+      )}
       {recoveryVisible && (
         <SettingsGroup title="Recover your account">
           <View style={styles.form}>
@@ -442,7 +451,7 @@ export function IdentityScreen({
               <TextButton
                 key={credential.id}
                 label={`Recover saved credential ${index + 1} (${credential.id.slice(0, 8)})`}
-                disabled={state.busy}
+                disabled={disabled}
                 busy={
                   !confirming &&
                   activeAction === `recover-credential:${credential.id}`
@@ -463,7 +472,7 @@ export function IdentityScreen({
             {(state.hasPending || state.account) && (
               <TextButton
                 label="Create a separate empty account"
-                disabled={state.busy}
+                disabled={disabled}
                 busy={
                   !confirming &&
                   activeAction === 'Create a separate empty account'
@@ -488,7 +497,7 @@ export function IdentityScreen({
             onPress={() =>
               act(() => runAction('Retry connection', controller.retry))
             }
-            disabled={state.busy}
+            disabled={disabled}
           />
         )}
       {!recoveryOnly && (
@@ -507,9 +516,9 @@ export function IdentityScreen({
         title={recoveryOnly ? 'Recover an account' : 'Account & recovery'}
         backHref={recoveryOnly ? '/recovery' : '/settings'}
         onBack={
-          controller.hasReceivingTransfer()
+          receivingTransfer
             ? () => {
-                void controller.cancelTransfer();
+                leaveReceivingTransfer();
                 router.dismissTo(recoveryOnly ? '/recovery' : '/settings');
               }
             : undefined

@@ -812,6 +812,121 @@ it('does not navigate for a late transfer result after leaving the recovery scre
   expect((await vault.read())!.pending).toBeNull();
 });
 
+it.each(['back', 'focus loss'] as const)(
+  'keeps the outgoing transfer screen stable after %s while cancellation finishes',
+  async (exit) => {
+    const { controls } = await connected();
+    await mockController.startTransfer();
+    let release!: () => void;
+    controls.holdRequest = {
+      path: `/transfers/${mockController.getSnapshot().transfer!.id}`,
+      method: 'DELETE',
+      gate: new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    };
+    mockTool = 'recover';
+    const screen = render(<AccountToolRoute />);
+    try {
+      const code = screen.getByText('012345');
+      if (exit === 'back')
+        fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+      else {
+        mockFocused = false;
+        screen.rerender(<AccountToolRoute />);
+      }
+      await waitFor(() =>
+        expect(mockController.getSnapshot().cancellationPending).toBe(true),
+      );
+      expect(screen.getByText('012345')).toBe(code);
+      expect(
+        screen.getByRole('button', { name: 'Check approval & finish' }),
+      ).toBeDisabled();
+      expect(screen.queryByLabelText('Recovery key')).toBeNull();
+      expect(mockController.getSnapshot().transfer).toBeNull();
+      await act(async () => {
+        release();
+        await mockController.cancelTransfer();
+      });
+      expect(screen.getByText('012345')).toBe(code);
+    } finally {
+      await act(async () => {
+        release();
+        await mockController.cancelTransfer();
+      });
+      screen.unmount();
+    }
+  },
+);
+
+it('hides outgoing transfer codes if the app backgrounds during navigation', async () => {
+  await connected();
+  let onState!: (state: AppStateStatus) => void;
+  jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_event, listener) => {
+      onState = listener;
+      return { remove: jest.fn() };
+    });
+  await mockController.startTransfer();
+  mockTool = 'recover';
+  const screen = render(<AccountToolRoute />);
+  try {
+    fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByText('012345')).toBeTruthy();
+    act(() => onState('inactive'));
+    expect(screen.queryByText('012345')).toBeNull();
+  } finally {
+    await act(async () => mockController.cancelTransfer());
+    screen.unmount();
+  }
+});
+
+it('keeps the account hub quiet during cancellation and reports a settled cleanup failure', async () => {
+  const { controls } = await connected();
+  const screen = render(<RecoveryRoute />);
+  const account = screen.getByText('Account');
+  const recovery = screen.getByText('Recovery');
+  const devices = screen.getByRole('header', { name: 'Devices' });
+  await act(async () => mockController.startTransfer());
+  let release!: () => void, reject!: (error: Error) => void;
+  controls.holdRequest = {
+    path: `/transfers/${mockController.getSnapshot().transfer!.id}`,
+    method: 'DELETE',
+    gate: new Promise<void>((resolve, fail) => {
+      release = resolve;
+      reject = fail;
+    }),
+  };
+  try {
+    act(() => {
+      void mockController.cancelTransfer();
+    });
+    await waitFor(() =>
+      expect(mockController.getSnapshot().cancellationPending).toBe(true),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    await act(async () => {
+      reject(new Error('Synthetic cancellation outage'));
+      await mockController.cancelTransfer();
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /Server confirmation is pending/,
+    );
+    expect(screen.getByText('Account')).toBe(account);
+    expect(screen.getByText('Recovery')).toBe(recovery);
+    expect(screen.getByRole('header', { name: 'Devices' })).toBe(devices);
+  } finally {
+    controls.holdRequest = null;
+    await act(async () => {
+      release();
+      await mockController.cancelTransfer();
+      await mockController.retry();
+    });
+    screen.unmount();
+  }
+});
+
 it.each(['back', 'focus loss', 'inactive', 'background', 'unmount'] as const)(
   'cancels an unfinished receiving transfer on %s and reopens the normal account hub',
   async (exit) => {

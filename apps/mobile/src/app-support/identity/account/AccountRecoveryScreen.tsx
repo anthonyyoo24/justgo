@@ -14,12 +14,6 @@ export function AccountRecoveryScreen({
 }) {
   return (
     <SettingsPage title="Account & recovery" backHref="/settings">
-      {cancellationPending && (
-        <Text accessibilityRole="alert" style={styles.caption}>
-          Transfer cancelled on this phone. Server confirmation is pending.
-          Retry when connected.
-        </Text>
-      )}
       <SettingsGroup title="Account">
         <View style={styles.summary}>
           <Text style={styles.label}>Private account</Text>
@@ -55,6 +49,12 @@ export function AccountRecoveryScreen({
           href="/account/devices"
         />
       </SettingsGroup>
+      {cancellationPending && (
+        <Text accessibilityRole="alert" style={styles.caption}>
+          Transfer cancelled on this phone. Server confirmation is pending.
+          Retry when connected.
+        </Text>
+      )}
     </SettingsPage>
   );
 }

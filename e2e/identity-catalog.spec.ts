@@ -354,6 +354,28 @@ test('leaving receiving transfer cancels its code and returns to the normal conn
       .click();
     const original = sessionResponseSchema.parse(await (await creating).json());
     await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+    const sectionBounds = () =>
+      Promise.all(
+        ['Account', 'Recovery', 'Devices'].map((name) =>
+          page.getByRole('heading', { name, exact: true }).boundingBox(),
+        ),
+      );
+    const originalBounds = await sectionBounds();
+    for (const bounds of originalBounds) expect(bounds).not.toBeNull();
+    const expectStableHub = async () => {
+      await expect(page).toHaveURL(/\/recovery$/);
+      await expect(
+        page.getByRole('heading', { name: 'Account', exact: true }),
+      ).toBeVisible();
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
+      expect(await sectionBounds()).toEqual(originalBounds);
+      await expect(page.getByRole('alert')).toHaveCount(0);
+    };
     const openReceiver = async () => {
       await page
         .getByRole('link', { name: 'Recovery keys', exact: true })
@@ -384,15 +406,38 @@ test('leaving receiving transfer cancels its code and returns to the normal conn
     };
     await openReceiver();
     const abandonedId = await start();
+    let releaseCancellation!: () => void, cancellationEntered!: () => void;
+    const cancellationGate = new Promise<void>((resolve) => {
+      releaseCancellation = resolve;
+    });
+    const cancellationSeen = new Promise<void>((resolve) => {
+      cancellationEntered = resolve;
+    });
+    await page.route(
+      `${journeyApiUrl}/v1/transfers/${abandonedId}`,
+      async (route) => {
+        cancellationEntered();
+        await cancellationGate;
+        await route.continue();
+      },
+    );
     const cancelling = page.waitForResponse(
       (r) =>
         r.url() === `${journeyApiUrl}/v1/transfers/${abandonedId}` &&
         r.request().method() === 'DELETE',
     );
     await page.getByRole('button', { name: 'Back', exact: true }).click();
+    try {
+      await cancellationSeen;
+      await expectStableHub();
+    } finally {
+      releaseCancellation();
+      await cancelling;
+    }
     const cancelled = await cancelling;
     expect(cancelled.status()).toBe(200);
     expect(await cancelled.json()).toEqual({ status: 'cancelled' });
+    await expectStableHub();
     await expect(page).toHaveURL(/\/recovery$/);
     await expect(
       page.getByRole('link', { name: 'Move to another phone', exact: true }),
