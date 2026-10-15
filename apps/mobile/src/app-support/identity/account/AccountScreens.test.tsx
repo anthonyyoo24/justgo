@@ -1,4 +1,10 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import {
   ActivityIndicator,
   AppState,
@@ -22,6 +28,7 @@ const mockRouter = {
   canGoBack: jest.fn(() => true),
   back: jest.fn(),
   replace: jest.fn(),
+  dismissTo: jest.fn(),
   push: jest.fn(),
 };
 jest.mock('expo-router', () => {
@@ -29,6 +36,11 @@ jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   return {
     useRouter: () => mockRouter,
+    useNavigationContainerRef: () => ({
+      getCurrentRoute: () => ({
+        key: mockFocused ? 'recovery' : 'other-screen',
+      }),
+    }),
     useLocalSearchParams: () => ({ tool: mockTool }),
     useFocusEffect: (callback: () => void | (() => void)) => {
       const focused = mockFocused;
@@ -75,6 +87,7 @@ const otherDeviceId = '20000000-0000-4000-8000-000000000002';
 const userId = '30000000-0000-4000-8000-000000000003';
 async function connected() {
   let sequence = 10;
+  const vault = createMemoryVault();
   const keys: {
     id: string;
     kind: 'key';
@@ -104,10 +117,18 @@ async function connected() {
         await controls.holdRequest.gate;
       let result: object;
       if (path === '/sessions' && init?.method === 'POST') {
+        const pending = (await vault.read())?.pending;
+        const proposal =
+          body.kind === 'transfer' && pending?.kind === 'transfer'
+            ? pending.input
+            : body;
         session = {
-          userId,
-          deviceId: body.deviceId ?? session.deviceId,
-          sessionId: body.sessionId,
+          userId:
+            body.kind === 'transfer'
+              ? '30000000-0000-4000-8000-000000000004'
+              : userId,
+          deviceId: proposal.deviceId ?? session.deviceId,
+          sessionId: proposal.sessionId,
           expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
         };
         result = session;
@@ -144,7 +165,16 @@ async function connected() {
       } else if (path.startsWith('/devices/')) {
         removed.add(path.split('/').at(-1)!);
         result = { ok: true };
-      } else if (path === '/transfer-inspections')
+      } else if (path === '/transfers')
+        result = {
+          id: body.id,
+          status: 'waiting',
+          verification: '012345',
+          expiresAt: new Date(Date.now() + 600000).toISOString(),
+        };
+      else if (path.startsWith('/transfers/') && init?.method === 'DELETE')
+        result = { status: 'cancelled' };
+      else if (path === '/transfer-inspections')
         result = {
           id: otherDeviceId,
           status: 'waiting',
@@ -156,7 +186,7 @@ async function connected() {
     },
   );
   mockController = new IdentityController(
-    createMemoryVault(),
+    vault,
     createIdentityApi('http://localhost:3000', fetcher as typeof fetch),
     {
       id: () =>
@@ -166,7 +196,7 @@ async function connected() {
   );
   await mockController.initialize();
   await mockController.createAccount();
-  return { fetcher, controls };
+  return { fetcher, controls, vault };
 }
 beforeEach(() => {
   mockTool = 'keys';
@@ -576,6 +606,257 @@ it('offers explicit existing-account recovery and rejects unknown tool URLs', as
   screen.rerender(<AccountToolRoute />);
   expect(screen.getByText('Redirect: /recovery')).toBeTruthy();
 });
+
+it('confirms receiving a transfer from a connected account, preserves Cancel and finishes recovery', async () => {
+  const { fetcher, controls, vault } = await connected();
+  const original = mockController.getSnapshot().account;
+  const originalCredentials = await vault.credentials();
+  mockTool = 'recover';
+  const screen = render(<AccountToolRoute />);
+  const transfer = () =>
+    screen.getByRole('button', { name: 'Transfer from another device' });
+  const transferRequests = () =>
+    fetcher.mock.calls.filter(([url]) => url.toString().endsWith('/transfers'));
+  fireEvent.press(transfer());
+  expect(
+    screen.getByText(/Transfer an account from another device/),
+  ).toBeTruthy();
+  expect(mockController.getSnapshot().account).toEqual(original);
+  expect(transferRequests()).toHaveLength(0);
+  fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+  expect(mockController.getSnapshot().account).toEqual(original);
+  expect(transferRequests()).toHaveLength(0);
+
+  const recoveryInput = screen.getByLabelText('Recovery key');
+  let release!: () => void;
+  controls.holdRequest = {
+    path: '/transfers',
+    method: 'POST',
+    gate: new Promise<void>((resolve) => {
+      release = resolve;
+    }),
+  };
+  try {
+    fireEvent.press(transfer());
+    fireEvent.press(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(transferRequests()).toHaveLength(1));
+    expect(transfer()).toBeDisabled();
+    expect(screen.getByLabelText('Recovery key')).toBe(recoveryInput);
+    expect(
+      screen.getByText(/Transfer an account from another device/),
+    ).toBeTruthy();
+    const confirm = screen.getByRole('button', { name: 'Confirm' });
+    expect(confirm).toBeDisabled();
+    expect(confirm.props.accessibilityState.busy).toBe(true);
+    expect(
+      screen.getByRole('progressbar', { name: 'Confirm in progress' }),
+    ).toBeTruthy();
+    expect(
+      within(confirm).getByRole('progressbar', { name: 'Confirm in progress' }),
+    ).toBeTruthy();
+    expect(screen.getAllByRole('progressbar')).toHaveLength(1);
+    expect(
+      screen.queryByRole('progressbar', {
+        name: 'Transfer from another device in progress',
+      }),
+    ).toBeNull();
+    expect(screen.queryByText(/Enter this transfer code/)).toBeNull();
+    fireEvent.press(confirm);
+    expect(transferRequests()).toHaveLength(1);
+  } finally {
+    await act(async () => release());
+    await waitFor(() => expect(mockController.getSnapshot().busy).toBe(false));
+  }
+  expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
+  expect(screen.getByText('012345')).toBeTruthy();
+  expect(screen.queryByLabelText('Recovery key')).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Create a separate empty account' }),
+  ).toBeNull();
+  expect(await vault.credentials()).toEqual(
+    expect.arrayContaining(originalCredentials),
+  );
+  let finishLists!: () => void;
+  controls.holdRequest = {
+    path: '/devices',
+    method: 'GET',
+    gate: new Promise<void>((resolve) => {
+      finishLists = resolve;
+    }),
+  };
+  try {
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Check approval & finish' }),
+    );
+    await waitFor(() =>
+      expect(mockController.getSnapshot().account?.userId).toBe(
+        '30000000-0000-4000-8000-000000000004',
+      ),
+    );
+    expect(mockController.getSnapshot().busy).toBe(true);
+    expect(screen.queryByText('Redirect: /recovery')).toBeNull();
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => finishLists());
+    await waitFor(() => expect(mockController.getSnapshot().busy).toBe(false));
+  }
+  await waitFor(() =>
+    expect(mockRouter.replace).toHaveBeenCalledWith('/recovery'),
+  );
+  expect(mockController.getSnapshot().account?.userId).toBe(
+    '30000000-0000-4000-8000-000000000004',
+  );
+  expect(await vault.credentials()).toEqual(
+    expect.arrayContaining(originalCredentials),
+  );
+  expect(mockRouter.replace).toHaveBeenCalledWith('/recovery');
+});
+
+it.each(['failure', 'back'] as const)(
+  'clears Confirm loading safely after %s during transfer start',
+  async (outcome) => {
+    const { controls, vault, fetcher } = await connected();
+    const original = mockController.getSnapshot().account;
+    let release!: () => void, reject!: (error: Error) => void;
+    controls.holdRequest = {
+      path: '/transfers',
+      method: 'POST',
+      gate: new Promise<void>((resolve, fail) => {
+        release = resolve;
+        reject = fail;
+      }),
+    };
+    mockTool = 'recover';
+    const screen = render(<AccountToolRoute />);
+    try {
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Transfer from another device' }),
+      );
+      fireEvent.press(screen.getByRole('button', { name: 'Confirm' }));
+      await waitFor(() =>
+        expect(
+          fetcher.mock.calls.some(([url]) =>
+            url.toString().endsWith('/transfers'),
+          ),
+        ).toBe(true),
+      );
+      expect(
+        within(screen.getByRole('button', { name: 'Confirm' })).getByRole(
+          'progressbar',
+          { name: 'Confirm in progress' },
+        ),
+      ).toBeTruthy();
+      if (outcome === 'failure') {
+        await act(async () =>
+          reject(new Error('Synthetic transfer start failure')),
+        );
+        await waitFor(() =>
+          expect(screen.getByText(/Couldn’t connect/)).toBeTruthy(),
+        );
+        expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
+        expect(screen.queryByRole('progressbar')).toBeNull();
+        expect(
+          screen.getByRole('button', { name: 'Retry connection' }),
+        ).toBeEnabled();
+      } else {
+        fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+        expect(mockRouter.dismissTo).toHaveBeenCalledWith('/recovery');
+        screen.unmount();
+        await mockController.cancelTransfer();
+        await act(async () => release());
+        expect((await vault.read())!.pending).toBeNull();
+        expect(mockController.getSnapshot().transfer).toBeNull();
+      }
+      expect(mockController.getSnapshot().account).toEqual(original);
+    } finally {
+      await act(async () => release());
+      if (outcome === 'failure') screen.unmount();
+      await mockController.cancelTransfer();
+    }
+  },
+);
+
+it('does not navigate for a late transfer result after leaving the recovery screen', async () => {
+  const { controls, vault } = await connected();
+  const original = mockController.getSnapshot().account;
+  await mockController.startTransfer();
+  mockTool = 'recover';
+  const screen = render(<AccountToolRoute />);
+  let release!: () => void;
+  controls.holdRequest = {
+    path: '/sessions',
+    method: 'POST',
+    gate: new Promise<void>((resolve) => {
+      release = resolve;
+    }),
+  };
+  try {
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Check approval & finish' }),
+    );
+    await waitFor(() => expect(mockController.getSnapshot().busy).toBe(true));
+    mockFocused = false;
+    screen.rerender(<AccountToolRoute />);
+  } finally {
+    await act(async () => release());
+    await waitFor(() => expect(mockController.getSnapshot().busy).toBe(false));
+  }
+  await mockController.cancelTransfer();
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+  expect(mockController.getSnapshot().account).toEqual(original);
+  expect((await vault.read())!.pending).toBeNull();
+});
+
+it.each(['back', 'focus loss', 'inactive', 'background', 'unmount'] as const)(
+  'cancels an unfinished receiving transfer on %s and reopens the normal account hub',
+  async (exit) => {
+    const { vault, fetcher } = await connected();
+    const original = mockController.getSnapshot().account;
+    let appState: ((state: AppStateStatus) => void) | undefined;
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_event, listener) => {
+        appState = listener;
+        return { remove: jest.fn() };
+      });
+    await mockController.startTransfer();
+    const pending = (await vault.read())!.pending;
+    if (pending?.kind !== 'transfer')
+      throw new Error('Missing transfer fixture');
+    mockTool = 'recover';
+    const screen = render(<AccountToolRoute />);
+    expect(screen.getByText('012345')).toBeTruthy();
+    if (exit === 'back') {
+      fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+      expect(mockRouter.dismissTo).toHaveBeenCalledWith('/recovery');
+    } else if (exit === 'focus loss') {
+      mockFocused = false;
+      screen.rerender(<AccountToolRoute />);
+    } else if (exit === 'unmount') screen.unmount();
+    else act(() => appState!(exit));
+    await act(async () => {
+      await mockController.cancelTransfer();
+    });
+    expect((await vault.read())!.pending).toBeNull();
+    expect(mockController.getSnapshot().transfer).toBeNull();
+    expect(mockController.getSnapshot().account).toEqual(original);
+    expect(
+      fetcher.mock.calls.filter(
+        ([url, init]) =>
+          url.toString().endsWith(`/transfers/${pending.input.id}`) &&
+          init?.method === 'DELETE',
+      ),
+    ).toHaveLength(1);
+    if (exit !== 'unmount') screen.unmount();
+    mockFocused = true;
+    const reopened = render(<RecoveryRoute />);
+    expect(
+      reopened.getByRole('link', { name: 'Move to another phone' }),
+    ).toBeTruthy();
+    expect(reopened.queryByText('012345')).toBeNull();
+    reopened.unmount();
+  },
+);
 
 it('keeps the connected account after a network error and retries its connection', async () => {
   const { fetcher } = await connected();

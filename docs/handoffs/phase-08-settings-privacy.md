@@ -2125,3 +2125,232 @@ needed for this focused adjustment.
 The requested automated and side-panel checks pass. This change was not
 retested on a physical iPhone, and the existing native accessibility and release
 gates remain separate. No phase closeout or Git publication is implied.
+
+## October 14 receiving-phone transfer
+
+Anthony authorized the fix after finding that Move to another phone instructed
+users to choose a receiving action that disappeared once the new phone had
+created its own private account.
+
+- Recover an existing account now exposes Transfer from another device while
+  connected, as well as the existing disconnected receiving entry. Starting from
+  a connected account requires confirmation; Cancel leaves the account and its
+  session intact. The later cancellation follow-up below replaces temporary
+  disconnection with retaining the old account until redemption; accounts and
+  saved history remain separate.
+- Move to another phone gives the complete receiving path: Settings → Account &
+  recovery → Recovery keys → Recover an existing account → Transfer from another
+  device. Code review and entered verification digits remain on the old phone.
+- The receiving code/verification/expiry and finish controls remain visible
+  after starting. Transfer completion waits for the existing controller to finish
+  storing the new session and loading account lists before returning to the hub.
+  Navigation is tied to the selected route key rather than the lifetime of a
+  child screen, so account-driven recreation is allowed but a late response
+  cannot navigate after leaving that route. The controller/API, approval,
+  expiration, retry identity and data partitions are unchanged.
+- Component regression first failed because the connected recovery page had no
+  receiving button. It now checks confirmation/Cancel, one request during repeated
+  taps, loading indicators, retained original credentials, delayed list loading,
+  successful completion and leaving before a late result.
+- The saved two-phone journey uses two actual browser accounts, including an
+  already-connected receiver. It follows the Settings path, cancels safely,
+  retries a failed transfer start with the same request ID, rejects finishing
+  before approval, approves from the other phone, returns to the connected hub
+  and checks that both uploaded histories retain their original owner/content.
+  Fixtures are restricted to loopback justgo_test and registry-owned cleanup.
+
+Verification:
+
+- Focused identity screens/controller: **50 tests / 3 suites pass**.
+- `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer npm run test:journey -- e2e/identity-catalog.spec.ts`: **2 saved journeys pass**, including the new two-phone recovery/approval/history-isolation case. Services stopped and registry-owned fixture accounts were cleaned up.
+- Separate contracts build, TypeScript, ESLint, formatting and architecture/unit
+  gates pass: **180 tooling, 54 API unit, 664 mobile / 77 suites and 24 contract
+  cases**. The first normal mobile run and its focused Progress rerun timed out
+  in two unchanged Progress tests; the subsequent full coverage run and a fresh
+  normal mobile run both pass all 664 cases. No timeouts, assertions or thresholds
+  were changed. Logs: `transfer-code-checks.log`,
+  `transfer-progress-timeout-rerun.log` and `transfer-mobile-check-rerun.log` under
+  `.local/phase-08/`.
+- `npm run test:coverage` passes the unchanged combined/critical-file floors:
+  mobile **97.19% lines / 92.05% branches**, API **95.01% / 90.61%**
+  (**110 unit/database cases**, including the migration rehearsal), contracts
+  **100% / 100%**. The added receiving/confirmation/completion paths have coverage;
+  remaining screen misses are existing unmanaged lifecycle, separate-account,
+  keyboard-submit and retry handlers. Log: `.local/phase-08/transfer-coverage.log`.
+- Final side-panel walkthrough at **1280 × 720**, using a fresh cleared Metro
+  bundle and two disposable accounts, follows the complete Settings path, checks
+  connected-account confirmation/Cancel, displays receiving codes, rejects
+  finishing before approval, approves from the other tab and returns to the
+  connected account hub. The saved journeys run at **390 × 844**. Screenshots:
+  `.local/phase-08/transfer-receiving-browser.jpg`,
+  `transfer-confirmation-browser.jpg` and `transfer-completed-browser.jpg`.
+  Neither tab reports console errors; visiting Settings emits the existing
+  `pointerEvents` prop deprecation from the unchanged toggle row. Task-owned API
+  and Metro services stopped; both registry-owned browser accounts were removed.
+- Fresh `npm run check` stops at the existing Expo Doctor patch recommendations:
+  expo 57.0.28 → 57.0.29; expo-constants 57.0.21 → 57.0.22;
+  expo-linking 57.0.12 → 57.0.13; expo-router 57.0.26 → 57.0.27.
+  Pins, native binaries and the validation gate are unchanged. This remains the
+  separately recorded dependency maintenance task before publication.
+
+The first saved run could not migrate because the dedicated local database was
+stopped; `npm run db:local` restarted that cluster and preserved existing .env
+files. Subsequent test adjustments await the quiet account check before measuring
+labels and scope assertions to visible screens retained by navigation. The first
+completion check exposed an early navigation/focus-lifetime mismatch; completion
+now uses the active navigation route and a delayed-list regression. A cleared
+owned Metro bundle was inspected to confirm it included the edited receiving UI.
+Temporary diagnostics contain only navigation/connection booleans and were
+removed from source. One subsequent run timed out during its first cold page load;
+the warmed-cache rerun passed both cases without increasing timeouts or removing
+assertions.
+
+Directory review: identity keeps startup/controller/vault concerns beside its
+existing account UI group; the eight account files stay cohesive with their screen
+regressions. The E2E root remains grouped by product journeys with common helpers
+under support. Existing docs/architecture/operations and phase handoff groups stay
+navigable. No new files or responsibility groups require moves.
+
+Physical two-iPhone transfer, reinstall/iCloud Keychain and broader native release
+acceptance remain open. This task does not perform a native build, operate a phone
+or simulator, deploy, close Phase 08, commit, push or create a PR. Logs and routine
+screenshots remain ignored under `.local/phase-08/transfer-*`.
+
+## October 14 cancel receiving transfers on exit
+
+Anthony requested immediate cancellation whenever a receiving user leaves the
+screen, presses Back, backgrounds or closes the app without completing transfer.
+
+The current account/session, recovery-key state and credential selection remain
+connected until successful redemption. Back dismisses the receiving flow to the
+normal account hub. Navigation focus loss/unmount and non-active AppState cancel
+through the shared controller. In-flight requests are fenced and serialized native
+writes are drained before cleanup; relaunch cancels persisted transfer proposals
+rather than resuming them. A completed server redemption is reconciled to the exact
+saved session instead of rolled back.
+
+The API's existing DELETE transfer resource additionally accepts the full original
+receiver proposal as proof without a bearer. It locks against approval/redemption
+and serializes creation; cancellation arriving before POST inserts a cancelled
+tombstone, preventing delayed creation from resurrecting a code. The legacy
+approving-account bearer/code body remains compatible. No migration, signing or
+native bridge change is required.
+
+Cancellation is saved in device-only secure state before delivery. Offline,
+background suspension and force termination cannot guarantee immediate network
+cleanup. Startup, foreground and reconnection retry it, with a pending-confirmation
+notice. Abandoned credentials from legacy flows are excluded from automatic
+account selection, and starting a new transfer first resolves prior cancellation.
+The existing ten-minute expiry still bounds an undelivered server code.
+
+Verification:
+
+- Real API integration: **28 identity cases pass** for receiver/approver proof,
+  cancellation before creation/approval, idempotency, rate limiting, exact proof
+  rejection, approval/redemption races and completed-session reconciliation after
+  code expiry. `npm run test:db` passes **60 integration cases plus the isolated
+  migration/restoration rehearsal**.
+- Saved browser/app/API/database journeys: **3 pass** in
+  `e2e/identity-catalog.spec.ts`, covering ordinary renewal, completed two-phone
+  transfer with separate histories, and Back cancelling the code, reopening the
+  normal connected hub and creating a fresh transfer. Unbound cancelled proposals
+  are explicitly cleaned by their own test-created IDs; account cleanup keeps the
+  fixture-owned registry safeguard.
+- TypeScript, ESLint, formatting and **180 architecture/tooling cases pass**.
+  API coverage includes **115 unit/database cases**, contracts **25 cases**;
+  final mobile coverage passes **684 cases / 78 suites**, **97.15% lines /
+  91.92% branches**. API coverage is **95.20% lines / 90.90% branches**;
+  contracts **100% / 100%**. The root coverage run and the final mobile refresh
+  plus `npm run coverage:check` pass every unchanged global/critical floor.
+  Final TypeScript, lint and whole-repository formatting checks also pass.
+- `npm run check` remains blocked at fresh online Expo Doctor by the same four
+  SDK 57 patch recommendations (`expo`, `expo-constants`, `expo-linking`,
+  `expo-router`). Versions, lockfile, validation and coverage floors are unchanged.
+  An initial full coverage run timed out in the unchanged Progress calendar test;
+  the following full reruns pass without changing its timeout or assertions.
+- Side-panel Browser Use passes at **390 × 844** against a fresh cleared web
+  bundle with its API assignment verified as loopback-only. A disposable account
+  follows Recovery keys → Recover an existing account → Transfer from another
+  device → Confirm → Back, returns directly to the connected hub, then Settings
+  → Account & recovery reopens that normal hub. Database inspection confirms its
+  unbound code is cancelled and unredeemed. The one registry-owned account and
+  that exact test-created unbound proposal were cleaned up; temporary services
+  were stopped and the viewport reset. No browser errors; the existing
+  `props.pointerEvents` deprecation warning remains unchanged.
+  Screenshots: `transfer-cancel-entry.jpg`, `transfer-cancel-waiting.jpg`,
+  `transfer-cancel-after-back.jpg` and `transfer-cancel-reopened.jpg` under
+  `.local/phase-08/`. The phone Metro server is restarted with `--clear` on
+  **8081**, retaining its HTTPS test API and LAN QR address. The cleared iOS
+  launch bundle returns **200 / 11,447,551 characters** and contains the new
+  receiving-cancellation code with the hosted API assignment. Apple Vision
+  revalidates the existing QR as
+  `exp+justgo://expo-development-client/?url=http%3A%2F%2F10.0.0.200%3A8081`.
+  This is bundle/server evidence; no device operation, native build or new
+  native acceptance is claimed.
+- The initial read-only hosted OpenAPI inspection found that the test API did
+  **not** yet accept receiver cancellation. This caused the owner-reported
+  pending-confirmation message. The subsequently owner-approved rollout below
+  resolves that server/client mismatch; physical-phone behavior remains open.
+
+Routine evidence is ignored under `.local/phase-08/transfer-cancel-*`.
+
+Directory review: identity keeps API/vault/controller responsibilities together,
+receiving cancellation regressions have their own colocated test file, and account
+presentation remains in its existing `account/` group. The API identity, contract,
+provider, shared Settings, route and journey directories retain cohesive owners;
+no additional folder move improves navigation for this change. Documentation
+phase renumbering elsewhere in this checkout is preserved.
+
+Remaining acceptance: verify Back, native swipe-back, lock/background, force
+termination/relaunch and offline recovery on physical phones against the deployed
+API. JavaScript/browser checks and hosted HTTP probes do not establish
+Keychain/iCloud or OS termination delivery. No Git publication or native build
+is included.
+
+### Owner-approved hosted API rollout
+
+Anthony explicitly approved deploying the tested API update after reporting the
+pending-confirmation message. On October 14 at 23:39 UTC, Vercel deployment
+`dpl_4BBEqxZmmrv5tJV2CoUwjrqPtHCw` became Ready on
+<https://justgo-two.vercel.app>, replacing `dpl_ENi6zgHhmQwRLuYvBRWHq2csLyuw`.
+This is the existing application-staging service in its documented production
+slot, with runtime region `yul1`; no release environment or Git publication was
+created.
+
+- Cached Vercel CLI 59.22.0 refreshed its existing operator login. Dry upload
+  verification allowed exactly **41 files / 705,487 bytes** of API/contract and
+  workspace metadata. Every post-deployment source SHA matches that manifest;
+  secrets, fixtures, migrations, docs, generated artifacts and mobile source were
+  excluded. The public-contract upload regression passes.
+- Project identity/root directory, the exact documented previous deployment,
+  protected-deployment policy and all production environment configuration
+  IDs/timestamps were checked. Sensitive values are provider-redacted; their
+  configuration was unchanged since the documented staging deployment and remains
+  unchanged afterward. No grants, credentials, database schema or runtime settings
+  were edited.
+- Live readiness **200**, unauthenticated devices/access **401**, retired identity
+  route **404**, and OpenAPI includes the full receiver cancellation proof. The
+  generated deployment remains protected by a **302** redirect to Vercel SSO;
+  the existing public phone alias retains its normal HTTPS access. The initial
+  probe expected 401, then verified the observed SSO redirect without changing
+  protection.
+- Live API probes pass: start → receiver cancellation; cancelled start replay
+  rejected; cancellation before creation → delayed start rejected; repeated
+  cancellation returns the same status. Two probe-only unbound transfer records
+  remain cancelled protocol tombstones. **Zero accounts/sessions were created;
+  no activity or owner-phone data was written/read.** No local fixture harness or
+  admission bypass was deployed.
+- Fresh `npm run check` again stops at the same four Expo patch recommendations.
+  The already passing local API/mobile/contracts, database, coverage and saved
+  journeys above remain the code evidence. Hosted build/deployment succeeded;
+  the existing dependency/audit release follow-ups remain open without forced
+  upgrades or suppression.
+- The existing phone Metro server remains on **8081**. The owner can tap Retry
+  connection, then Transfer from another device → Confirm; the queued cancellation
+  is now accepted before a new proposal starts. Actual owner-phone confirmation
+  is still pending.
+
+Ignored deployment evidence: `transfer-cancel-deploy-{dry,before,after}.json`,
+`transfer-cancel-upload-verified.json`, `transfer-cancel-hosted-smoke.json` and
+`transfer-cancel-deploy{,-check}.log` under `.local/phase-08/`. No recovery secrets
+or bearer values are retained in those summaries.

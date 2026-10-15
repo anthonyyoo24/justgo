@@ -7,9 +7,19 @@ import {
 } from '../../../components/settings/SettingsRows';
 import { colors, spacing, typography } from '../../../theme/tokens';
 
-export function AccountRecoveryScreen() {
+export function AccountRecoveryScreen({
+  cancellationPending = false,
+}: {
+  cancellationPending?: boolean;
+}) {
   return (
     <SettingsPage title="Account & recovery" backHref="/settings">
+      {cancellationPending && (
+        <Text accessibilityRole="alert" style={styles.caption}>
+          Transfer cancelled on this phone. Server confirmation is pending.
+          Retry when connected.
+        </Text>
+      )}
       <SettingsGroup title="Account">
         <View style={styles.summary}>
           <Text style={styles.label}>Private account</Text>

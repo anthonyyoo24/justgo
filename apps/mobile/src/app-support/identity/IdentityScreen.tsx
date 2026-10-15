@@ -1,5 +1,11 @@
 import { ScaledText as Text } from '../../components/typography/ScaledText';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -11,7 +17,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Redirect } from 'expo-router';
+import {
+  Redirect,
+  useFocusEffect,
+  useNavigationContainerRef,
+  useRouter,
+} from 'expo-router';
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import { SettingsGroup } from '../../components/settings/SettingsRows';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -86,23 +97,49 @@ export function IdentityScreen({
   );
   const [recoveryOpen, setRecoveryOpen] = useState(recoveryOnly);
   const [recoveryKey, setRecoveryKey] = useState('');
+  const router = useRouter();
+  const navigation: { getCurrentRoute(): { key: string } | undefined } =
+    useNavigationContainerRef();
   const [confirmation, setConfirmation] = useState<{
     message: string;
     action: () => Promise<void>;
     name: string;
+    recoveryVisible: boolean;
   } | null>(null);
+  const confirmationGeneration = useRef(0);
   const { activeAction, runAction } = useIdentityAction(controller);
+  const confirming = !!confirmation && activeAction === confirmation.name;
+  const recoveryVisible =
+    confirmation?.recoveryVisible ??
+    (recoveryOpen && !controller.hasReceivingTransfer());
+  useEffect(
+    () => () => {
+      confirmationGeneration.current++;
+    },
+    [],
+  );
   const creationLabel = state.credentials.length
     ? 'Create a separate account'
     : 'Create a private account';
   useEffect(() => {
     if (!managed) void controller.initialize();
   }, [controller, managed]);
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        // Navigation gestures and links also leave this receiving visit. The
+        // controller owns cancellation, persistence and any server retry.
+        void controller.cancelTransfer();
+      },
+      [controller],
+    ),
+  );
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
       if (next !== 'active') {
         controller.hideKey();
         setRecoveryKey('');
+        void controller.cancelTransfer();
       } else if (!managed) {
         void controller.retry({
           background: !!controller.getSnapshot().account,
@@ -121,23 +158,53 @@ export function IdentityScreen({
     message: string,
     name: string,
     action: () => Promise<void>,
-  ) => setConfirmation({ message, name, action });
+  ) =>
+    setConfirmation({
+      message,
+      name,
+      action,
+      recoveryVisible: recoveryOpen && !controller.hasReceivingTransfer(),
+    });
+  const runConfirmation = async () => {
+    const selected = confirmation;
+    if (!selected || controller.getSnapshot().busy) return;
+    const generation = ++confirmationGeneration.current;
+    await runAction(selected.name, selected.action);
+    if (generation === confirmationGeneration.current)
+      setConfirmation((current) => (current === selected ? null : current));
+  };
   const recoverWithKey = async () => {
     if (state.busy) return;
     const value = recoveryKey;
     setRecoveryKey('');
     await controller.recoverKey(value);
   };
+  const finishTransfer = async () => {
+    const routeKey = navigation.getCurrentRoute()?.key;
+    await controller.redeemTransfer();
+    // Finish the account transition before navigating, and keep a late result
+    // from navigating after the user leaves. The controller owns failures.
+    if (
+      recoveryOnly &&
+      routeKey &&
+      navigation.getCurrentRoute()?.key === routeKey &&
+      controller.getSnapshot().account &&
+      !controller.getSnapshot().transfer
+    )
+      router.replace('/recovery');
+  };
   const button = (label: string, action: () => Promise<void>) => (
     <PrimaryButton
       label={label}
       onPress={() => act(() => runAction(label, action))}
-      busy={activeAction === label && state.busy}
+      busy={!confirming && activeAction === label && state.busy}
       disabled={state.busy}
     />
   );
   if (
     recoveryOnly &&
+    !confirming &&
+    activeAction !== 'Check approval & finish' &&
     state.account &&
     state.account.sessionId !== initialSessionId
   )
@@ -187,33 +254,33 @@ export function IdentityScreen({
           </Text>
         </View>
       )}
-      {!!state.message && (
+      {!!state.message && !confirming && (
         <View style={styles.notice}>
           <Text accessibilityLiveRegion="polite" style={styles.body}>
             {state.message}
           </Text>
         </View>
       )}
-      {state.busy && !state.busyInBackground && !state.initialized && (
-        <ActivityIndicator
-          color={colors.ink}
-          accessible
-          accessibilityRole="progressbar"
-          accessibilityLabel="Connecting account"
-        />
-      )}
+      {state.busy &&
+        !confirming &&
+        !state.busyInBackground &&
+        !state.initialized && (
+          <ActivityIndicator
+            color={colors.ink}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Connecting account"
+          />
+        )}
       {confirmation && (
         <SettingsGroup title="Please confirm">
           <View style={styles.form}>
             <Text style={styles.body}>{confirmation.message}</Text>
             <PrimaryButton
               label="Confirm"
+              busy={confirming}
               disabled={state.busy}
-              onPress={() => {
-                const { name, action } = confirmation;
-                setConfirmation(null);
-                act(() => runAction(name, action));
-              }}
+              onPress={() => act(runConfirmation)}
             />
             <TextButton
               label="Cancel"
@@ -251,73 +318,100 @@ export function IdentityScreen({
                   }
                 : controller.createAccount,
             )}
-          {state.transfer && (
-            <SettingsGroup title="Connect from your other device">
-              <View style={styles.form}>
-                <Text style={styles.body}>
-                  Enter this code on your existing device:
-                </Text>
-                <Text selectable style={styles.verification}>
-                  {state.transfer.code.match(/.{1,4}/g)?.join('-')}
-                </Text>
-                <Text style={styles.body}>
-                  Then enter these six digits on your existing device:
-                </Text>
-                <Text selectable style={styles.verification}>
-                  {state.transfer.verification}
-                </Text>
-                <Text style={styles.small}>
-                  Expires at{' '}
-                  {new Date(state.transfer.expiresAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  . Approval is required.
-                </Text>
-                {button('Check approval & finish', controller.redeemTransfer)}
-                <TextButton
-                  label="Start a new transfer"
-                  disabled={state.busy}
-                  busy={activeAction === 'Start a new transfer'}
-                  onPress={() =>
-                    act(() =>
-                      runAction(
-                        'Start a new transfer',
-                        controller.startTransfer,
-                      ),
-                    )
-                  }
-                />
-              </View>
-            </SettingsGroup>
-          )}
+        </>
+      )}
+      {(!state.account || recoveryOnly) && (
+        <>
+          {!confirming &&
+            (state.transfer || activeAction === 'Start a new transfer') && (
+              <SettingsGroup title="Connect from your other device">
+                <View style={styles.form}>
+                  {state.transfer && (
+                    <>
+                      <Text style={styles.body}>
+                        Enter this code on your existing device:
+                      </Text>
+                      <Text selectable style={styles.verification}>
+                        {state.transfer.code.match(/.{1,4}/g)?.join('-')}
+                      </Text>
+                      <Text style={styles.body}>
+                        Then enter these six digits on your existing device:
+                      </Text>
+                      <Text selectable style={styles.verification}>
+                        {state.transfer.verification}
+                      </Text>
+                      <Text style={styles.small}>
+                        Expires at{' '}
+                        {new Date(state.transfer.expiresAt).toLocaleTimeString(
+                          [],
+                          {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          },
+                        )}
+                        . Approval is required.
+                      </Text>
+                      <Text style={styles.small}>
+                        Leaving this screen or closing JustGO cancels this
+                        transfer.
+                      </Text>
+                      {button('Check approval & finish', finishTransfer)}
+                    </>
+                  )}
+                  <TextButton
+                    label="Start a new transfer"
+                    disabled={state.busy}
+                    busy={activeAction === 'Start a new transfer'}
+                    onPress={() =>
+                      act(() =>
+                        runAction(
+                          'Start a new transfer',
+                          controller.startTransfer,
+                        ),
+                      )
+                    }
+                  />
+                </View>
+              </SettingsGroup>
+            )}
           <TextButton
             label="Transfer from another device"
-            busy={activeAction === 'Transfer from another device'}
-            onPress={() =>
+            busy={
+              !confirming && activeAction === 'Transfer from another device'
+            }
+            onPress={() => {
+              if (state.account) {
+                confirm(
+                  'Transfer an account from another device? This phone will switch accounts after approval. Leaving this screen or closing JustGO cancels the unfinished transfer. Your accounts and saved history will stay separate.',
+                  'Transfer from another device',
+                  controller.startTransfer,
+                );
+                return;
+              }
               act(() =>
                 runAction(
                   'Transfer from another device',
                   controller.startTransfer,
                 ),
-              )
-            }
+              );
+            }}
             disabled={state.busy}
           />
         </>
       )}
-      {!recoveryOnly && (
-        <TextButton
-          label={
-            recoveryOpen
-              ? 'Close recovery options'
-              : 'Recover an existing account'
-          }
-          disabled={state.busy}
-          onPress={() => setRecoveryOpen(!recoveryOpen)}
-        />
-      )}
-      {recoveryOpen && (
+      {!recoveryOnly &&
+        (recoveryVisible || !controller.hasReceivingTransfer()) && (
+          <TextButton
+            label={
+              recoveryOpen
+                ? 'Close recovery options'
+                : 'Recover an existing account'
+            }
+            disabled={state.busy}
+            onPress={() => setRecoveryOpen(!recoveryOpen)}
+          />
+        )}
+      {recoveryVisible && (
         <SettingsGroup title="Recover your account">
           <View style={styles.form}>
             <Text style={styles.body}>
@@ -347,7 +441,10 @@ export function IdentityScreen({
                 key={credential.id}
                 label={`Recover saved credential ${index + 1} (${credential.id.slice(0, 8)})`}
                 disabled={state.busy}
-                busy={activeAction === `recover-credential:${credential.id}`}
+                busy={
+                  !confirming &&
+                  activeAction === `recover-credential:${credential.id}`
+                }
                 onPress={() =>
                   confirm(
                     'Switch to the account linked to this credential? No accounts or history will be merged.',
@@ -365,7 +462,10 @@ export function IdentityScreen({
               <TextButton
                 label="Create a separate empty account"
                 disabled={state.busy}
-                busy={activeAction === 'Create a separate empty account'}
+                busy={
+                  !confirming &&
+                  activeAction === 'Create a separate empty account'
+                }
                 onPress={() =>
                   confirm(
                     'Create a separate empty account? Existing accounts and credentials will be kept separate. This does not recover or merge your previous progress.',
@@ -378,16 +478,17 @@ export function IdentityScreen({
           </View>
         </SettingsGroup>
       )}
-      {(!!state.message || activeAction === 'Retry connection') && (
-        <TextButton
-          label="Retry connection"
-          busy={activeAction === 'Retry connection'}
-          onPress={() =>
-            act(() => runAction('Retry connection', controller.retry))
-          }
-          disabled={state.busy}
-        />
-      )}
+      {!confirming &&
+        (!!state.message || activeAction === 'Retry connection') && (
+          <TextButton
+            label="Retry connection"
+            busy={activeAction === 'Retry connection'}
+            onPress={() =>
+              act(() => runAction('Retry connection', controller.retry))
+            }
+            disabled={state.busy}
+          />
+        )}
       {!recoveryOnly && (
         <ExternalLinkButton
           label="Get help"
@@ -403,6 +504,14 @@ export function IdentityScreen({
       <SettingsPage
         title={recoveryOnly ? 'Recover an account' : 'Account & recovery'}
         backHref={recoveryOnly ? '/recovery' : '/settings'}
+        onBack={
+          controller.hasReceivingTransfer()
+            ? () => {
+                void controller.cancelTransfer();
+                router.dismissTo(recoveryOnly ? '/recovery' : '/settings');
+              }
+            : undefined
+        }
       >
         {content}
       </SettingsPage>

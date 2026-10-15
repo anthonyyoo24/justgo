@@ -54,3 +54,22 @@ Anthony reported Settings Back showing “We can’t verify access yet” even t
 Focused provider tests **16/16**, the fresh root check and root coverage gate pass. At 15:47 UTC the existing physical app was reopened with the updated live bundle. **Anthony confirmed that real Home shows challenge cards and Home → Settings → Back returns to Home.** This is owner-reported physical evidence on the installed iPhone build, separate from the browser walkthrough; no native screenshot/recording was captured. The development connection remains on port 8084 for feature testing. The hosted prerequisite is ready for this owner-device workflow; it does not accept the full free beta.
 
 Keep export Save to Files/open/email-draft/cancel/retry, support/feature drafts, Reduce Motion/relaunch/system override, transition frames, large text and VoiceOver acceptance open until actual phone evidence is recorded. Keychain/reinstall/two-device recovery, broader staged account/device/security journeys, durable offline beta admission, haptics, backup ownership/disaster recovery, TestFlight and paid release remain later gates. Purchases remain inactive.
+
+## October 14 receiving-transfer cancellation API update
+
+Anthony explicitly approved updating this existing hosted test API after the
+mobile cancellation implementation encountered its older server contract.
+Deployment **`dpl_4BBEqxZmmrv5tJV2CoUwjrqPtHCw`** is Ready on
+<https://justgo-two.vercel.app>, runtime region `yul1`. The existing Vercel project,
+application-staging slot, protected generated URLs and all environment
+configuration IDs/timestamps remain unchanged. No migration, database reset,
+account/grant change, native build or Git publication was performed.
+
+The [Phase 08 rollout evidence](phase-08-settings-privacy.md#owner-approved-hosted-api-rollout)
+records the 41-file allowlisted upload, exact source hashes, live readiness and
+authorization checks, receiver cancellation/replay probes and retained native
+acceptance. Two unbound probe proposals were cancelled; no accounts, sessions or
+activity were created. The phone development server remains on port **8081**;
+Retry connection resolves queued cancellation against the new API before starting
+a fresh transfer. Physical-phone cancellation/relaunch/offline acceptance and the
+existing Expo/dependency release gates remain open.

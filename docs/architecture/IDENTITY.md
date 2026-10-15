@@ -33,26 +33,54 @@ Session responses contain IDs and expiry, not bearer tokens. Responses use
 `Cache-Control: no-store`; diagnostics omit URLs, headers, bodies, database errors
 and credential values.
 
-| Resource                            | Proof / behavior                                                                                                   |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `POST /sessions`, `kind: bootstrap` | Recovery credential plus persisted device/session proposal; create once or recover the same account.               |
-| `POST /sessions`, `kind: recovery`  | Same proposal shape; only existing active credentials can recover. No fallback to account creation.                |
-| `POST /sessions`, `kind: renewal`   | Bearer session plus persisted next session ID/token; exact retry after rotation.                                   |
-| `POST /sessions`, `kind: transfer`  | Code and claimant secret redeem approval for exactly the saved new-device proposal.                                |
-| `GET /sessions/current`             | Active verified session; authenticated account/device/session IDs and expiry.                                      |
-| `GET /devices`                      | Owner-scoped device metadata.                                                                                      |
-| `DELETE /devices/:id`               | Authenticated owner; soft revocation invalidates that device's sessions. No request body required.                 |
-| `GET /credentials`                  | Owner-scoped IDs, kinds and revocation timestamps; never secrets or digests.                                       |
-| `POST /credentials`                 | Authenticated owner adds a sync credential or recovery key; stable ID permits exact retry.                         |
-| `DELETE /credentials/:id`           | Authenticated owner soft-revokes a recovery credential. No request body required.                                  |
-| `POST /transfers`                   | New device persists code, claimant secret, recovery credential and session proposal.                               |
-| `POST /transfer-inspections`        | Existing authenticated device inspects transfer status; no verification digits returned.                           |
-| `POST /transfer-approvals`          | Existing authenticated device submits the six digits from the new device. No supplied owner ID.                    |
-| `DELETE /transfers/:id`             | Approving account cancels an approved, unredeemed transfer; code stays in the body and must match the resource ID. |
+| Resource                            | Proof / behavior                                                                                                                                                                 |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /sessions`, `kind: bootstrap` | Recovery credential plus persisted device/session proposal; create once or recover the same account.                                                                             |
+| `POST /sessions`, `kind: recovery`  | Same proposal shape; only existing active credentials can recover. No fallback to account creation.                                                                              |
+| `POST /sessions`, `kind: renewal`   | Bearer session plus persisted next session ID/token; exact retry after rotation.                                                                                                 |
+| `POST /sessions`, `kind: transfer`  | Code and claimant secret redeem approval for exactly the saved new-device proposal.                                                                                              |
+| `GET /sessions/current`             | Active verified session; authenticated account/device/session IDs and expiry.                                                                                                    |
+| `GET /devices`                      | Owner-scoped device metadata.                                                                                                                                                    |
+| `DELETE /devices/:id`               | Authenticated owner; soft revocation invalidates that device's sessions. No request body required.                                                                               |
+| `GET /credentials`                  | Owner-scoped IDs, kinds and revocation timestamps; never secrets or digests.                                                                                                     |
+| `POST /credentials`                 | Authenticated owner adds a sync credential or recovery key; stable ID permits exact retry.                                                                                       |
+| `DELETE /credentials/:id`           | Authenticated owner soft-revokes a recovery credential. No request body required.                                                                                                |
+| `POST /transfers`                   | New device persists code, claimant secret, recovery credential and session proposal.                                                                                             |
+| `POST /transfer-inspections`        | Existing authenticated device inspects transfer status; no verification digits returned.                                                                                         |
+| `POST /transfer-approvals`          | Existing authenticated device submits the six digits from the new device. No supplied owner ID.                                                                                  |
+| `DELETE /transfers/:id`             | Receiver supplies its complete persisted proposal without a bearer; approving account may still cancel with bearer plus code. Returns receiver status `cancelled` or `redeemed`. |
 
 Transfer codes have 64 random bits (16 hexadecimal characters, displayed in four groups). A separate 256-bit claimant secret is never displayed to the approving device. The new device alone receives six verification digits; the user enters them on the existing device to approve. Inspection never returns the digits. The server derives them with a transfer-specific HMAC domain under `IDENTITY_RATE_LIMIT_KEY` and stores only a second, independently domain-separated HMAC verifier bound to the transfer ID. Five incorrect submissions cancel the transfer; this counter persists across accounts, addresses and API instances. Transfers expire **10 minutes after creation** and do not reset their deadline on retry. The new device receives no session until approval and proof verification. Exact claimant retries return the same session; they cannot attach a different device or token. Expired/cancelled transfers require a new transfer. Once approved, another account cannot replace the owner, and previously redeemed approval is rejected. The protocol relies on keeping both the transfer code and verification digits private; possession of both permits an authenticated account to approve the pending transfer.
 
-Failures return a typed code and a server-generated request ID. Oversized bodies return `413 REQUEST_TOO_LARGE`; unsupported content types return `415 UNSUPPORTED_MEDIA_TYPE`. Neither is retried unchanged as a temporary outage. Authentication, expiry, revocation, conflict, pending transfer, rate limiting and temporary failures have distinct client states. Invalid JSON/contract inputs never echo supplied values. Client requests have a 10-second deadline and no automatic write retry loop. The controller serializes identity operations and clears the visible account when explicitly switching identities. A persisted uncertain write remains available for retry after relaunch.
+Failures return a typed code and a server-generated request ID. Oversized bodies return `413 REQUEST_TOO_LARGE`; unsupported content types return `415 UNSUPPORTED_MEDIA_TYPE`. Neither is retried unchanged as a temporary outage. Authentication, expiry, revocation, conflict, pending transfer, rate limiting and temporary failures have distinct client states. Invalid JSON/contract inputs never echo supplied values. Client requests have a 10-second deadline and no automatic write retry loop. The controller serializes identity operations. A receiving transfer keeps the current account and session until successful redemption; other explicit recovery actions clear the visible account while switching. Uncertain non-transfer writes remain available for retry after relaunch. An unfinished receiving transfer is cancelled on navigation blur, Back, unmount or any non-active app state. A fresh process cancels a persisted transfer rather than resuming it.
+
+## Receiving-transfer cancellation
+
+The receiving screen owns one transfer visit. Leaving immediately hides its codes,
+fences in-flight results, and moves its full proposal into a durable cancellation
+queue in the device-only secure state. The previous session, recovery key and
+credential selection stay intact until a transfer actually completes. Returning to
+Account & recovery opens the normal hub. Starting again cancels the old proposal
+first and generates a fresh code. Credentials for the new account enter the
+synchronizing vault only after redemption succeeds; abandoned legacy items are
+excluded from automatic account selection.
+
+Receiver cancellation proves every original field: resource ID, code, claimant
+secret, device/session IDs, token and recovery credential. It uses the same code
+advisory lock as creation and a row lock shared with approval/redemption. If DELETE
+arrives before POST, it creates an already-cancelled tombstone so the delayed POST
+cannot revive the code. An already-redeemed result reconciles that exact committed
+session rather than undoing a completed account switch. The approving-account
+bearer-plus-code cancellation remains compatible and now locks the row too.
+
+Background/Back cancellation attempts server cleanup immediately. Force termination
+and loss of connectivity cannot guarantee delivery: startup, foreground and network
+reconnection retry the saved cleanup. The UI shows pending server confirmation;
+it never resumes the abandoned receiving screen. The existing ten-minute server
+expiry remains a final bound. No native bridge change or database migration is
+required. Deploy the API update before testing this behavior with a phone connected
+to the hosted test server; an older API rejects the receiver proof and leaves
+cleanup pending.
 
 ## Database boundary
 

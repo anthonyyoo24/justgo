@@ -3,6 +3,7 @@ import {
   credentialsResponseSchema,
   devicesResponseSchema,
   okSchema,
+  receivingTransferCancelResponseSchema,
   secretSchema,
   sessionResponseSchema,
   transferCodeSchema,
@@ -16,8 +17,13 @@ import {
 } from '@justgo/contracts';
 import type { z } from 'zod';
 import { IdentityClientError, type IdentityApi } from './api';
-import type { CredentialVault, DeviceState, StoredCredential } from './storage';
-import type { HttpMethod } from '../../lib/http';
+import type {
+  CredentialVault,
+  DeviceState,
+  StoredCredential,
+  TransferIntent,
+} from './storage';
+import { ApiError, type HttpMethod } from '../../lib/http';
 import { Deadline } from '../../lib/deadline';
 
 type Snapshot = {
@@ -25,6 +31,7 @@ type Snapshot = {
   busyInBackground: boolean;
   initialized: boolean;
   hasPending: boolean;
+  cancellationPending: boolean;
   account: SessionResponse | null;
   message: string;
   credentials: { id: string }[];
@@ -70,6 +77,9 @@ const messages: Record<string, string> = {
 export class IdentityController {
   private operation: Deadline | null = null;
   private storageTail: Promise<unknown> = Promise.resolve();
+  private running: Promise<void> | null = null;
+  private cancellation: Promise<void> | null = null;
+  private transferActive = false;
   private lastError: IdentityClientError | null = null;
   private sessionRefresh: Promise<{ userId: string; token: string }> | null =
     null;
@@ -80,6 +90,7 @@ export class IdentityController {
     busyInBackground: false,
     initialized: false,
     hasPending: false,
+    cancellationPending: false,
     account: null,
     message: '',
     credentials: [],
@@ -183,7 +194,10 @@ export class IdentityController {
     try {
       await this.storage(() => this.vault.write(value));
       this.data = value;
-      this.update({ hasPending: value.pending !== null });
+      this.update({
+        hasPending: value.pending !== null,
+        cancellationPending: !!value.cancelledTransfers?.length,
+      });
     } catch {
       // A timed-out native write may still finish; reread it before any later action.
       this.data = null;
@@ -192,7 +206,10 @@ export class IdentityController {
   }
   private async credentials() {
     try {
-      return await this.storage(() => this.vault.credentials());
+      const values = await this.storage(() => this.vault.credentials());
+      return values.filter(
+        (value) => !this.data?.ignoredCredentialIds?.includes(value.id),
+      );
     } catch {
       throw new IdentityClientError('STORAGE');
     }
@@ -211,49 +228,74 @@ export class IdentityController {
       sessionToken: this.random.secret(),
     };
   }
-  private async run(work: () => Promise<void>, options: OperationOptions = {}) {
-    if (this.snapshot.busy) return;
+  private run(
+    work: () => Promise<void>,
+    options: OperationOptions = {},
+    cancelling = false,
+  ): Promise<void> {
+    if (this.snapshot.busy || (this.cancellation && !cancelling))
+      return Promise.resolve();
     const operation = new Deadline();
     this.operation = operation;
     this.lastError = null;
+    const task = Promise.resolve().then(async () => {
+      try {
+        operation.check();
+        await work();
+      } catch (error) {
+        // Leaving a transfer preempts transport/storage waiters. Its dedicated
+        // cancellation owns the outcome and any durable cleanup retry.
+        if (error instanceof ApiError && error.code === 'ACCOUNT_CHANGED')
+          return;
+        const code =
+          error instanceof IdentityClientError ? error.code : 'STORAGE';
+        this.lastError = new IdentityClientError(code);
+        if (
+          [
+            'SESSION_REVOKED',
+            'SESSION_EXPIRED',
+            'UNAUTHORIZED',
+            'CREDENTIAL_REJECTED',
+          ].includes(code) &&
+          !(
+            code === 'CREDENTIAL_REJECTED' &&
+            this.data?.pending?.kind === 'transfer'
+          )
+        )
+          this.update({ account: null, devices: [], recoveryKeys: [] });
+        this.update({ message: messages[code] ?? messages.UNAVAILABLE! });
+        if (code === 'NETWORK' && !this.data?.pending)
+          this.update({
+            message: 'Couldn’t connect. Check your connection and retry.',
+          });
+      } finally {
+        operation.dispose();
+        if (this.operation === operation) this.operation = null;
+        if (this.running === task) this.running = null;
+        this.update({
+          busy: false,
+          busyInBackground: false,
+          initialized: true,
+        });
+      }
+    });
+    this.running = task;
     this.update({
       busy: true,
       busyInBackground: options.background === true,
       message: '',
       key: null,
     });
-    try {
-      await work();
-    } catch (error) {
-      const code =
-        error instanceof IdentityClientError ? error.code : 'STORAGE';
-      this.lastError = new IdentityClientError(code);
-      // Never silently mint another account after a revoked session or storage failure.
-      if (
-        [
-          'SESSION_REVOKED',
-          'SESSION_EXPIRED',
-          'UNAUTHORIZED',
-          'CREDENTIAL_REJECTED',
-        ].includes(code)
-      )
-        this.update({ account: null, devices: [], recoveryKeys: [] });
-      this.update({ message: messages[code] ?? messages.UNAVAILABLE! });
-      if (code === 'NETWORK' && !this.data?.pending)
-        this.update({
-          message: 'Couldn’t connect. Check your connection and retry.',
-        });
-    } finally {
-      operation.dispose();
-      this.operation = null;
-      this.update({ busy: false, busyInBackground: false, initialized: true });
-    }
+    return task;
   }
   private async ensureData() {
     if (this.data) return;
     try {
       this.data = await this.storage(() => this.vault.read());
-      this.update({ hasPending: this.data?.pending != null });
+      this.update({
+        hasPending: this.data?.pending != null,
+        cancellationPending: !!this.data?.cancelledTransfers?.length,
+      });
     } catch {
       throw new IdentityClientError('STORAGE');
     }
@@ -270,6 +312,11 @@ export class IdentityController {
   initialize = () =>
     this.run(async () => {
       await this.ensureData();
+      // A receiving transfer belongs to one visible app visit. A process restart
+      // must cancel a saved proposal, including a force-quit with no lifecycle event.
+      const abandoned = this.data!.pending?.kind === 'transfer';
+      if (abandoned) await this.abandonTransfer();
+      if ((await this.flushCancelledTransfers()) === 'redeemed') return;
       const credentials = await this.credentials();
       this.update({ credentials: credentials.map((c) => ({ id: c.id })) });
       if (this.data!.pending) {
@@ -291,7 +338,7 @@ export class IdentityController {
         });
         return;
       }
-      if (this.vault.kind === 'keychain') await this.newAccount();
+      if (this.vault.kind === 'keychain' && !abandoned) await this.newAccount();
     });
   private async newAccount() {
     const credential = { id: this.random.id(), secret: this.random.secret() };
@@ -333,14 +380,23 @@ export class IdentityController {
       info.sessionId !== proposal.sessionId
     )
       throw new IdentityClientError('UNAVAILABLE');
+    const changingAccount = this.data!.session?.info.userId !== info.userId;
     await this.save({
       ...this.data!,
       selectedId: credentialId,
       session: { token: proposal.sessionToken, info },
       pending: null,
+      savedKey: changingAccount ? null : this.data!.savedKey,
+      registration: changingAccount ? null : this.data!.registration,
+      ignoredCredentialIds: this.data!.ignoredCredentialIds?.filter(
+        (id) => id !== credentialId,
+      ),
     });
+    this.transferActive = false;
     this.update({
       account: info,
+      devices: [],
+      recoveryKeys: [],
       transfer: null,
       message: this.snapshot.busyInBackground
         ? ''
@@ -352,13 +408,11 @@ export class IdentityController {
     const pending = this.data!.pending;
     if (!pending) return;
     if (pending.kind === 'transfer') {
-      await this.add({
-        id: pending.credentialId,
-        secret: pending.input.credential,
-      });
-      this.update({
-        credentials: (await this.credentials()).map((c) => ({ id: c.id })),
-      });
+      if (!this.transferActive) {
+        await this.abandonTransfer();
+        await this.flushCancelledTransfers();
+        return;
+      }
       const transfer = await this.request(
         'POST',
         '/transfers',
@@ -412,6 +466,7 @@ export class IdentityController {
   retry = (options: OperationOptions = {}) =>
     this.run(async () => {
       await this.ensureData();
+      if ((await this.flushCancelledTransfers()) === 'redeemed') return;
       if (this.data!.pending) await this.resume();
       else if (this.data!.session) await this.verify();
       else
@@ -644,9 +699,157 @@ export class IdentityController {
         });
       } else await this.loadLists();
     });
-  startTransfer = () =>
-    this.run(async () => {
+  hasReceivingTransfer = () =>
+    this.transferActive || this.data?.pending?.kind === 'transfer';
+  private async abandonTransfer() {
+    const pending = this.data!.pending;
+    if (pending?.kind !== 'transfer') return;
+    const stored = await this.storage(() => this.vault.credentials());
+    const ignored = new Set(this.data!.ignoredCredentialIds);
+    if (stored.some((value) => value.id === pending.credentialId))
+      ignored.add(pending.credentialId);
+    await this.save({
+      ...this.data!,
+      pending: null,
+      selectedId:
+        this.data!.selectedId === pending.credentialId
+          ? null
+          : this.data!.selectedId,
+      cancelledTransfers: [...(this.data!.cancelledTransfers ?? []), pending],
+      ignoredCredentialIds: [...ignored].filter((id) =>
+        stored.some((value) => value.id === id),
+      ),
+    });
+    this.update({ transfer: null });
+  }
+  private async flushCancelledTransfers(): Promise<
+    'clear' | 'blocked' | 'redeemed'
+  > {
+    let completed = false;
+    for (const pending of this.data!.cancelledTransfers ?? []) {
+      try {
+        const result = await this.request(
+          'DELETE',
+          `/transfers/${pending.input.id}`,
+          receivingTransferCancelResponseSchema,
+          pending.input,
+        );
+        if (result.status === 'redeemed') {
+          // Completion already committed. Reconcile that exact session instead
+          // of rolling back a transfer the server has actually finished.
+          await this.add({
+            id: pending.credentialId,
+            secret: pending.input.credential,
+          });
+          try {
+            // The ten-minute code may have expired while the app was closed;
+            // verify the issued session directly rather than redeeming again.
+            const info = await this.request(
+              'GET',
+              '/sessions/current',
+              sessionResponseSchema,
+              undefined,
+              pending.input.sessionToken,
+            );
+            await this.finish(info, pending.input, pending.credentialId);
+            completed = true;
+          } catch (error) {
+            if (
+              !(error instanceof IdentityClientError) ||
+              !['SESSION_EXPIRED', 'SESSION_REVOKED', 'UNAUTHORIZED'].includes(
+                error.code,
+              )
+            )
+              throw error;
+            // A completed but subsequently expired/revoked session is not a
+            // pending transfer. Retain its credential for explicit recovery.
+            this.update({
+              message:
+                'That transfer completed, but its session is no longer active. Use a recovery method to reconnect.',
+            });
+          }
+        }
+        await this.save({
+          ...this.data!,
+          ignoredCredentialIds:
+            result.status === 'redeemed'
+              ? this.data!.ignoredCredentialIds?.filter(
+                  (id) => id !== pending.credentialId,
+                )
+              : this.data!.ignoredCredentialIds,
+          cancelledTransfers: this.data!.cancelledTransfers?.filter(
+            (value) => value.input.id !== pending.input.id,
+          ),
+        });
+      } catch (error) {
+        this.operation!.check();
+        this.update({
+          message:
+            'Transfer cancelled on this phone. Server confirmation is pending. Please retry when connected.',
+        });
+        if (error instanceof IdentityClientError && error.code === 'STORAGE')
+          throw error;
+        return 'blocked';
+      }
+    }
+    return completed ? 'redeemed' : 'clear';
+  }
+  cancelTransfer = (): Promise<void> => {
+    if (this.cancellation) return this.cancellation;
+    if (!this.hasReceivingTransfer()) return Promise.resolve();
+    this.transferActive = false;
+    const pending: TransferIntent | null =
+      this.data?.pending?.kind === 'transfer' ? this.data.pending : null;
+    this.update({ transfer: null });
+    this.operation?.cancel('ACCOUNT_CHANGED');
+    const running = this.running;
+    const task = Promise.resolve().then(async () => {
+      await running;
+      // A cancelled native write can still complete. Read its final state only
+      // after the shared storage queue drains.
+      await this.storageTail;
+      await this.run(
+        async () => {
+          await this.ensureData();
+          await this.abandonTransfer();
+          if (
+            pending &&
+            this.data!.session?.info.sessionId === pending.input.sessionId &&
+            this.data!.selectedId === pending.credentialId
+          ) {
+            this.update({
+              account: this.data!.session.info,
+              devices: [],
+              recoveryKeys: [],
+            });
+            await this.loadLists();
+          }
+          await this.flushCancelledTransfers();
+          this.update({
+            credentials: (await this.credentials()).map((value) => ({
+              id: value.id,
+            })),
+          });
+        },
+        { background: true },
+        true,
+      );
+    });
+    this.cancellation = task.finally(() => {
+      this.cancellation = null;
+    });
+    return this.cancellation;
+  };
+  startTransfer = () => {
+    if (this.snapshot.busy || this.cancellation) return Promise.resolve();
+    this.transferActive = true;
+    return this.run(async () => {
       await this.ensureData();
+      await this.abandonTransfer();
+      if ((await this.flushCancelledTransfers()) !== 'clear') {
+        this.transferActive = false;
+        return;
+      }
       const credential = { id: this.random.id(), secret: this.random.secret() };
       const input = {
         ...this.proposal(),
@@ -657,15 +860,11 @@ export class IdentityController {
       };
       await this.save({
         ...this.data!,
-        session: null,
-        selectedId: credential.id,
-        savedKey: null,
-        registration: null,
         pending: { kind: 'transfer', credentialId: credential.id, input },
       });
-      this.update({ account: null, devices: [], recoveryKeys: [] });
       await this.resume();
     });
+  };
   redeemTransfer = () =>
     this.run(async () => {
       const pending = this.data?.pending;
@@ -681,6 +880,13 @@ export class IdentityController {
           claimSecret: pending.input.claimSecret,
         },
       );
+      // The full proof is already durable on this phone. Publish its sync
+      // credential only once redemption succeeds, avoiding unregistered items
+      // when approval is still pending or the user cancels an in-flight claim.
+      await this.add({
+        id: pending.credentialId,
+        secret: pending.input.credential,
+      });
       await this.finish(info, pending.input, pending.credentialId);
     });
   inspectTransfer = (value: string) =>

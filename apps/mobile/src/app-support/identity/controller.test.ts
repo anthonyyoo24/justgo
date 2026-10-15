@@ -523,7 +523,7 @@ it('serializes a late native write and rereads its saved intent before retry', a
   }
 });
 
-it('resumes a persisted transfer intent through resource requests without changing claimant proof', async () => {
+it('retries a transfer during its visible visit without changing claimant proof', async () => {
   const vault = nativeVault();
   let failures = 1;
   const userId = id();
@@ -557,15 +557,14 @@ it('resumes a persisted transfer intent through resource requests without changi
   await first.startTransfer();
   const saved = (await vault.read())!.pending;
   expect(saved?.kind).toBe('transfer');
-  const resumed = new IdentityController(vault, server, random);
-  await resumed.initialize();
+  await first.retry();
   const starts = server.calls.mock.calls.filter(
     ([path]) => path === '/transfers',
   );
   expect(starts).toHaveLength(2);
   expect(starts[0]).toEqual(starts[1]);
   expect(starts[0]![3]).toBe('POST');
-  await resumed.redeemTransfer();
+  await first.redeemTransfer();
   expect(
     server.calls.mock.calls.find(
       ([path, body]) => path === '/sessions' && body?.kind === 'transfer',
@@ -581,7 +580,7 @@ it('resumes a persisted transfer intent through resource requests without changi
     undefined,
     'POST',
   ]);
-  expect(resumed.getSnapshot().account?.userId).toBe(userId);
+  expect(first.getSnapshot().account?.userId).toBe(userId);
   expect((await vault.read())!.pending).toBeNull();
 });
 

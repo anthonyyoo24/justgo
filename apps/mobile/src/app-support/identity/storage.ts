@@ -9,6 +9,12 @@ import {
 export const credentialSchema = z
   .object({ id: z.uuid(), secret: secretSchema })
   .strict();
+export const transferIntentSchema = z.object({
+  kind: z.literal('transfer'),
+  credentialId: z.uuid(),
+  input: transferStartSchema,
+});
+export type TransferIntent = z.infer<typeof transferIntentSchema>;
 export const deviceStateSchema = z
   .object({
     deviceId: z.uuid(),
@@ -30,13 +36,13 @@ export const deviceStateSchema = z
           proposal: sessionProposalSchema,
         }),
         z.object({ kind: z.literal('renew'), proposal: sessionProposalSchema }),
-        z.object({
-          kind: z.literal('transfer'),
-          credentialId: z.uuid(),
-          input: transferStartSchema,
-        }),
+        transferIntentSchema,
       ])
       .nullable(),
+    cancelledTransfers: z.array(transferIntentSchema).optional(),
+    // Existing native builds cannot remove synchronizing credentials. Exclude
+    // abandoned proposals that were stored before redemption was attempted.
+    ignoredCredentialIds: z.array(z.uuid()).optional(),
     savedKey: z
       .object({ id: z.uuid(), secret: secretSchema, registered: z.boolean() })
       .nullable(),

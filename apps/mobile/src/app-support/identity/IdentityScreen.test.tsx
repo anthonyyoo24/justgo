@@ -16,9 +16,13 @@ jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   const { Text } = require('react-native') as typeof import('react-native');
   return {
+    useNavigationContainerRef: () => ({
+      getCurrentRoute: () => ({ key: 'recovery' }),
+    }),
     useRouter: () => ({
       canGoBack: () => false,
       replace: jest.fn(),
+      dismissTo: jest.fn(),
       back: jest.fn(),
     }),
     useFocusEffect: (callback: () => void | (() => void)) =>
@@ -270,6 +274,8 @@ it.each([
           verification: '012345',
           expiresAt: new Date(Date.now() + 600000).toISOString(),
         };
+      else if (url.includes('/transfers/') && init.method === 'DELETE')
+        result = { status: 'cancelled' };
       else throw new Error('Unexpected synthetic identity action');
       return { ok: true, json: async () => result };
     });
@@ -326,8 +332,14 @@ it.each([
       if (action === 'credential' || action === 'empty-account')
         fireEvent.press(screen.getByRole('button', { name: 'Confirm' }));
       await waitFor(() => expect(controller.getSnapshot().busy).toBe(true));
+      const loadingLabel =
+        action === 'credential' || action === 'empty-account'
+          ? 'Confirm'
+          : label;
       expect(
-        screen.getByRole('progressbar', { name: `${label} in progress` }),
+        screen.getByRole('progressbar', {
+          name: `${loadingLabel} in progress`,
+        }),
       ).toBeTruthy();
       expect(screen.getAllByRole('progressbar')).toHaveLength(1);
       expect(screen.getByRole('button', { name: label })).toBeDisabled();
@@ -338,6 +350,7 @@ it.each([
       await waitFor(() => expect(controller.getSnapshot().busy).toBe(false));
       expect(screen.queryByRole('progressbar')).toBeNull();
       screen.unmount();
+      await controller.cancelTransfer();
     }
   },
 );

@@ -4,6 +4,9 @@ import { AccountRecoveryScreen } from '../app-support/identity/account/AccountRe
 export default function RecoveryRoute() {
   const { identity } = useRuntime();
   const state = useIdentity();
-  if (state.account) return <AccountRecoveryScreen />;
+  if (state.account)
+    return (
+      <AccountRecoveryScreen cancellationPending={state.cancellationPending} />
+    );
   return <IdentityScreen controller={identity} managed />;
 }
