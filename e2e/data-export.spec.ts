@@ -17,7 +17,7 @@ test('Settings exports every cloud page and a pending phone reflection as a usab
       r.request().method() === 'POST',
   );
   await page
-    .getByRole('button', { name: 'Create a private account', exact: true })
+    .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
   const account = sessionResponseSchema.parse(await (await created).json());
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
@@ -103,7 +103,7 @@ test('export shows a retryable network failure and downloads only after a fresh 
 }) => {
   await page.goto('/recovery');
   await page
-    .getByRole('button', { name: 'Create a private account', exact: true })
+    .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
   await expect(page.getByText('Connected', { exact: true })).toBeVisible();
   await leaveAccountScreens(page);

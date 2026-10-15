@@ -72,6 +72,7 @@ function Navigation() {
       <Stack.Screen name="index" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="export-data" />
+      <Stack.Screen name="delete-account" />
       <Stack.Screen name="recovery" />
       <Stack.Screen name="account/[tool]" />
       <Stack.Protected guard={access.verified}>

@@ -94,7 +94,7 @@ export function IdentityScreen({
   const { activeAction, runAction } = useIdentityAction(controller);
   const creationLabel = state.credentials.length
     ? 'Create a separate account'
-    : 'Create a private account';
+    : 'Create a new account';
   useEffect(() => {
     if (!managed) void controller.initialize();
   }, [controller, managed]);
@@ -136,6 +136,8 @@ export function IdentityScreen({
       disabled={state.busy}
     />
   );
+  if (state.deletionStatus === 'pending' || state.deletionStatus === 'cleanup')
+    return <Redirect href="/delete-account" />;
   if (
     recoveryOnly &&
     state.account &&
@@ -388,7 +390,7 @@ export function IdentityScreen({
           disabled={state.busy}
         />
       )}
-      {!recoveryOnly && (
+      {!recoveryOnly && state.deletionStatus !== 'deleted' && (
         <ExternalLinkButton
           label="Get help"
           url={supportContact}

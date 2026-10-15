@@ -14,7 +14,7 @@ test('a real account renews and opens its challenge catalog', async ({
       response.request().method() === 'POST',
   );
   await page
-    .getByRole('button', { name: 'Create a private account', exact: true })
+    .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
   const created = await createdResponse;
   expect(created.ok()).toBe(true);

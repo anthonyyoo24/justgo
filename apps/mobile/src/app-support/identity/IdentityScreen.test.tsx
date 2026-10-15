@@ -35,6 +35,41 @@ jest.mock('./vault', () => ({ createVault: jest.fn() }));
 jest.mock('../../platform/toast/Toast', () => ({
   showMessageToast: jest.fn(),
 }));
+it.each(['pending', 'cleanup'] as const)(
+  'routes %s deletion back to cleanup instead of offering account replacement',
+  (status) => {
+    const controller = new IdentityController(createMemoryVault(), {
+      request: jest.fn(),
+    });
+    const snapshot = { ...controller.getSnapshot(), deletionStatus: status };
+    jest.spyOn(controller, 'getSnapshot').mockReturnValue(snapshot);
+    const screen = render(<IdentityScreen controller={controller} managed />);
+    expect(screen.getByText('Redirect: /delete-account')).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: 'Create a new account' }),
+    ).toBeNull();
+  },
+);
+it('offers a new account after deletion without the bottom help option', () => {
+  const controller = new IdentityController(createMemoryVault(), {
+    request: jest.fn(),
+  });
+  jest.spyOn(controller, 'getSnapshot').mockReturnValue({
+    ...controller.getSnapshot(),
+    initialized: true,
+    deletionStatus: 'deleted',
+    message: 'Your account has been deleted.',
+  });
+  const screen = render(<IdentityScreen controller={controller} managed />);
+  expect(
+    screen.getByRole('button', { name: 'Create a new account' }),
+  ).toBeEnabled();
+  expect(
+    screen.queryByRole('button', { name: 'Create a private account' }),
+  ).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Get help' })).toBeNull();
+  expect(screen.getByText('Your account has been deleted.')).toBeTruthy();
+});
 it('offers private email support from account recovery and keeps it available after failure', async () => {
   const controller = new IdentityController(createMemoryVault(), {
     request: jest.fn(),
@@ -180,17 +215,15 @@ it('shows the browser limitation, recovery inputs, busy state and recoverable fa
   const screen = render(<IdentityScreen controller={controller} />);
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: 'Create a private account' }),
+      screen.getByRole('button', { name: 'Create a new account' }),
     ).toBeTruthy(),
   );
   expect(screen.getByText(/Browser testing only/)).toBeTruthy();
-  fireEvent.press(
-    screen.getByRole('button', { name: 'Create a private account' }),
-  );
+  fireEvent.press(screen.getByRole('button', { name: 'Create a new account' }));
   await waitFor(() => expect(rejectRequest).toBeDefined());
   expect(
     screen.getByRole('progressbar', {
-      name: 'Create a private account in progress',
+      name: 'Create a new account in progress',
     }),
   ).toBeTruthy();
   expect(screen.getAllByRole('progressbar')).toHaveLength(1);
@@ -205,7 +238,7 @@ it('shows the browser limitation, recovery inputs, busy state and recoverable fa
   );
   expect(screen.queryByRole('progressbar')).toBeNull();
   expect(
-    screen.queryByRole('button', { name: 'Create a private account' }),
+    screen.queryByRole('button', { name: 'Create a new account' }),
   ).toBeNull();
   fireEvent.press(
     screen.getByRole('button', { name: 'Recover an existing account' }),
