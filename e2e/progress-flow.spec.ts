@@ -103,6 +103,23 @@ async function openToday(page: Page, count: number) {
     .getByRole('button', { name: new RegExp(`today, ${count} reps?`) })
     .click();
 }
+async function scrollToRep(page: Page, number: number) {
+  const row = page.getByRole('button', {
+    name: new RegExp(`Rep ${number}\\.`),
+  });
+  await expect
+    .poll(async () => {
+      if (await row.count()) {
+        await row.scrollIntoViewIfNeeded();
+        return row.isVisible();
+      }
+      await page.getByTestId('day-sheet-entry-list').evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      return false;
+    })
+    .toBe(true);
+}
 async function recover(
   page: Page,
   proof: Extract<SessionCreate, { kind: 'bootstrap' }>,
@@ -139,6 +156,7 @@ test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline 
     await complete(page);
     await progress(page, 11);
     await openToday(page, 11);
+    await scrollToRep(page, 11);
     await page
       .getByRole('button', { name: /Rep 11\..*Add reflection/ })
       .click();
@@ -207,6 +225,7 @@ test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline 
     await recover(page, current.proof);
     await progress(page, 11);
     await openToday(page, 11);
+    await scrollToRep(page, 11);
     await page
       .getByRole('button', { name: /Rep 11\..*View Reflection/ })
       .click();
@@ -218,6 +237,62 @@ test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline 
   } finally {
     release();
   }
+});
+
+test('a tall day sheet reveals all nine entries without scrolling', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 1600 });
+  const current = await account(page);
+  await seed(page, current.proof, 9, current.timeZone);
+  await progress(page, 9);
+  await openToday(page, 9);
+  await expect(page.getByRole('button', { name: /Rep 9\./ })).toBeInViewport();
+  expect(
+    await page
+      .getByTestId('day-sheet-entry-list')
+      .evaluate((element) => element.scrollTop),
+  ).toBe(0);
+});
+
+test('41 attempts keep an unfinished inline reflection while scrolling and saving', async ({
+  page,
+  fixtureDatabase,
+}) => {
+  const current = await account(page);
+  await seed(page, current.proof, 41, current.timeZone);
+  await progress(page, 41);
+  await openToday(page, 41);
+  await page.getByRole('button', { name: /Rep 1\..*Add reflection/ }).click();
+  const input = page.getByLabel('Your day reflection', { exact: true });
+  await input.fill('Disposable 41-attempt draft.');
+  await scrollToRep(page, 41);
+  await expect(input).toHaveValue('Disposable 41-attempt draft.');
+  await scrollToRep(page, 1);
+  await page.getByRole('button', { name: /Rep 2\..*Add reflection/ }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Leave your reflection?' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+  await expect(input).toHaveValue('Disposable 41-attempt draft.');
+  await page
+    .getByRole('button', { name: 'Save reflection', exact: true })
+    .click();
+  await page.getByRole('button', { name: /Rep 1\..*View Reflection/ }).click();
+  await expect(
+    page.getByText('Disposable 41-attempt draft.', { exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        (
+          await fixtureDatabase.query(
+            'select reflection_text from justgo.attempts where user_id=$1 and reflection_text is not null',
+            [current.userId],
+          )
+        ).rows,
+    )
+    .toEqual([{ reflection_text: 'Disposable 41-attempt draft.' }]);
 });
 
 test('lost completion and reflection acknowledgements replay once and preserve the full Progress journey after recovery', async ({
@@ -444,11 +519,9 @@ test('today cached paging survives offline and other days/months require a conne
   await seed(page, current.proof, 1, current.timeZone, 1);
   await progress(page, 22);
   await openToday(page, 21);
+  await scrollToRep(page, 20);
   await expect(page.getByRole('button', { name: /Rep 20\./ })).toBeVisible();
-  const list = page.getByTestId('day-sheet-entry-list');
-  await list.evaluate((el) => {
-    el.scrollTop = el.scrollHeight;
-  });
+  await scrollToRep(page, 21);
   await expect(page.getByRole('button', { name: /Rep 21\./ })).toBeVisible();
   await context.setOffline(true);
   await expect(page.getByRole('button', { name: /Rep 21\./ })).toBeVisible();
@@ -508,9 +581,7 @@ test('ten memory-only rounds appear once and recover through an inline local sav
   ).toBeVisible();
   await openToday(page, 10);
   const list = page.getByTestId('day-sheet-entry-list');
-  await list.evaluate((el) => {
-    el.scrollTop = el.scrollHeight;
-  });
+  await scrollToRep(page, 10);
   await expect(page.getByRole('button', { name: /Rep 10\./ })).toBeVisible();
   await list.evaluate((el) => {
     el.scrollTop = 0;

@@ -19,6 +19,7 @@ import {
   challengeScale,
 } from '../challenges/challenge-design';
 import { FeelingFace } from './FeelingFace';
+import { useReflectionKeyboard } from './useReflectionKeyboard';
 
 // Keep input choices and history labels on the same versioned feeling scale.
 export const feelingOptions = feelingChoices;
@@ -59,6 +60,17 @@ export function ReflectionView({
   const inactive = busy;
   const buttonLabel = hasInput ? 'Save Reflection' : 'Skip';
   const size = 60 * scale;
+  const {
+    scrollRef,
+    inputHeight,
+    paddingBottom,
+    onFocus,
+    onBlur,
+    onViewportLayout,
+    onSectionLayout,
+    onInputLayout,
+    onContentSizeChange,
+  } = useReflectionKeyboard(228 * scale);
   return (
     <SafeAreaView
       style={styles.safe}
@@ -69,10 +81,17 @@ export function ReflectionView({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          style={styles.flex}
+          ref={scrollRef}
+          testID="reflection-scroll"
+          style={styles.viewport}
+          onLayout={onViewportLayout}
+          onContentSizeChange={onContentSizeChange}
           contentContainerStyle={[
             styles.scroll,
-            { paddingHorizontal: 20 * scale },
+            {
+              paddingHorizontal: 20 * scale,
+              paddingBottom,
+            },
           ]}
           keyboardShouldPersistTaps="handled"
         >
@@ -172,7 +191,11 @@ export function ReflectionView({
               );
             })}
           </View>
-          <View style={[styles.reflectionSection, { marginTop: 38 * scale }]}>
+          <View
+            testID="reflection-section"
+            onLayout={onSectionLayout}
+            style={[styles.reflectionSection, { marginTop: 38 * scale }]}
+          >
             <View style={styles.reflectionHeadingRow}>
               <Text accessibilityRole="header" style={styles.reflectionHeading}>
                 Your reflection
@@ -192,9 +215,18 @@ export function ReflectionView({
               placeholderTextColor="#526B80"
               value={text}
               onChangeText={onTextChange}
+              onFocus={onFocus}
+              onBlur={onBlur}
+              onLayout={onInputLayout}
               editable
               maxLength={10000}
-              style={[styles.input, { minHeight: 228 * scale }]}
+              style={[
+                styles.input,
+                {
+                  height: inputHeight,
+                  minHeight: inputHeight,
+                },
+              ]}
             />
           </View>
           {!!error && (
@@ -287,6 +319,7 @@ export function ReflectionView({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
+  viewport: { flex: 1, minHeight: 0 },
   scroll: { flexGrow: 1, width: '100%', maxWidth: 420, alignSelf: 'center' },
   header: {
     minHeight: 44,
@@ -399,6 +432,7 @@ const styles = StyleSheet.create({
     color: '#8B1E32',
   },
   footer: {
+    flexShrink: 0,
     width: '100%',
     maxWidth: 420,
     alignSelf: 'center',

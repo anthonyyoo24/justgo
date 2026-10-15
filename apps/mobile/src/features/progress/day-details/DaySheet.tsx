@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -22,7 +29,8 @@ import Svg, { Path } from 'react-native-svg';
 import type { ProgressEntry } from '../types';
 import { colors, fontFamilies, typography } from '../../../theme/tokens';
 import { dayLabel } from '../calendar';
-import { ProgressEntryRow } from './ProgressEntryRow';
+import { ProgressEntryRow } from './entries/ProgressEntryRow';
+import { DayEntryList } from './entries/DayEntryList';
 export type ProgressDay = {
   date: string;
   totalReps: number;
@@ -158,6 +166,19 @@ export function DaySheet({
   paginationKey?: string | null | undefined;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const actions = useRef({ beforeClose, onEditReflection });
+  useLayoutEffect(() => {
+    actions.current = { beforeClose, onEditReflection };
+  }, [beforeClose, onEditReflection]);
+  const toggleEntry = useCallback((id: string) => {
+    const toggle = () => setExpanded((current) => (current === id ? null : id));
+    if (actions.current.beforeClose) actions.current.beforeClose(toggle);
+    else toggle();
+  }, []);
+  const editEntry = useCallback((id: string) => {
+    setExpanded(id);
+    actions.current.onEditReflection?.(id);
+  }, []);
   const lastRequestedCount = useRef<string | number | null>(null);
   const finishClose = useCallback(() => {
     setExpanded(null);
@@ -200,6 +221,34 @@ export function DaySheet({
     lastRequestedCount.current = paginationKey ?? day.entries.length;
     onLoadMore();
   };
+  const canEdit = !!onEditReflection;
+  const renderEntry = useCallback(
+    ({ item: entry, index }: { item: ProgressEntry; index: number }) => (
+      <ProgressEntryRow
+        entry={entry}
+        index={index}
+        expanded={expanded === entry.attemptId || editingId === entry.attemptId}
+        reduceMotion={reduceMotion}
+        onEdit={canEdit ? editEntry : undefined}
+        editor={editingId === entry.attemptId ? editor : undefined}
+        editing={editingId === entry.attemptId}
+        onEditorOpened={
+          editingId === entry.attemptId ? onEditorOpened : undefined
+        }
+        onToggle={toggleEntry}
+      />
+    ),
+    [
+      expanded,
+      editingId,
+      reduceMotion,
+      canEdit,
+      editEntry,
+      editor,
+      onEditorOpened,
+      toggleEntry,
+    ],
+  );
   return (
     <Modal
       visible={date !== null}
@@ -301,84 +350,49 @@ export function DaySheet({
               </View>
             ) : day ? (
               <>
-                <ScrollView
-                  testID="day-sheet-entry-list"
-                  style={styles.entriesScroll}
-                  contentContainerStyle={styles.entries}
+                <DayEntryList
+                  key={date}
+                  entries={day.entries}
+                  renderEntry={renderEntry}
                   onScroll={loadNearEnd}
-                  scrollEventThrottle={16}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {day.entries.map((entry, index) => (
-                    <ProgressEntryRow
-                      key={entry.attemptId}
-                      entry={entry}
-                      index={index}
-                      expanded={
-                        expanded === entry.attemptId ||
-                        editingId === entry.attemptId
-                      }
-                      reduceMotion={reduceMotion}
-                      onEdit={
-                        onEditReflection
-                          ? () => {
-                              setExpanded(entry.attemptId);
-                              onEditReflection(entry.attemptId);
-                            }
-                          : undefined
-                      }
-                      editor={
-                        editingId === entry.attemptId ? editor : undefined
-                      }
-                      editing={editingId === entry.attemptId}
-                      onEditorOpened={onEditorOpened}
-                      onToggle={() =>
-                        beforeClose
-                          ? beforeClose(() =>
-                              setExpanded(
-                                expanded === entry.attemptId
-                                  ? null
-                                  : entry.attemptId,
-                              ),
-                            )
-                          : setExpanded(
-                              expanded === entry.attemptId
-                                ? null
-                                : entry.attemptId,
-                            )
-                      }
-                    />
-                  ))}
-                  {loadMoreError ? (
-                    <View
-                      testID="day-load-more-error"
-                      style={styles.moreErrorState}
-                    >
-                      <Text accessibilityRole="alert" style={styles.moreError}>
-                        Couldn’t load more attempts
-                      </Text>
-                      {onRetry && (
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Try loading more attempts again"
-                          onPress={onRetry}
-                          style={styles.moreRetry}
+                  footer={
+                    loadMoreError ? (
+                      <View
+                        testID="day-load-more-error"
+                        style={styles.moreErrorState}
+                      >
+                        <Text
+                          accessibilityRole="alert"
+                          style={styles.moreError}
                         >
-                          <RetryArrow color={colors.ink} />
-                          <Text style={styles.moreRetryText}>Try again</Text>
-                        </Pressable>
-                      )}
-                    </View>
-                  ) : loadingMore ? (
-                    <View testID="day-loading-more" style={styles.moreLoading}>
-                      <ActivityIndicator
-                        accessibilityLabel="Loading more attempts"
-                        color={colors.ink}
-                        size="small"
-                      />
-                    </View>
-                  ) : null}
-                </ScrollView>
+                          Couldn’t load more attempts
+                        </Text>
+                        {onRetry && (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Try loading more attempts again"
+                            onPress={onRetry}
+                            style={styles.moreRetry}
+                          >
+                            <RetryArrow color={colors.ink} />
+                            <Text style={styles.moreRetryText}>Try again</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    ) : loadingMore ? (
+                      <View
+                        testID="day-loading-more"
+                        style={styles.moreLoading}
+                      >
+                        <ActivityIndicator
+                          accessibilityLabel="Loading more attempts"
+                          color={colors.ink}
+                          size="small"
+                        />
+                      </View>
+                    ) : null
+                  }
+                />
               </>
             ) : null}
           </AnimatedSafeAreaView>
@@ -503,8 +517,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.white,
   },
-  entriesScroll: { marginTop: 12 },
-  entries: { paddingRight: 12, paddingBottom: 24 },
   moreErrorState: {
     minHeight: 88,
     alignItems: 'center',

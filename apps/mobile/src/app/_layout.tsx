@@ -11,6 +11,7 @@ import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
 import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
 import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
+import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -45,13 +46,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <MotionPreferencesProvider>
-        <AppProvider>
-          <SavingFeedbackShell>
-            <ChallengeActivityProvider>
-              <Navigation />
-            </ChallengeActivityProvider>
-          </SavingFeedbackShell>
-        </AppProvider>
+        <HapticsPreferencesProvider>
+          <AppProvider>
+            <SavingFeedbackShell>
+              <ChallengeActivityProvider>
+                <Navigation />
+              </ChallengeActivityProvider>
+            </SavingFeedbackShell>
+          </AppProvider>
+        </HapticsPreferencesProvider>
       </MotionPreferencesProvider>
     </GestureHandlerRootView>
   );

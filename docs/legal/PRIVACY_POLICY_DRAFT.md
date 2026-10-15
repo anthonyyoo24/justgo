@@ -28,7 +28,7 @@ Submitted activity is saved on your phone and uploaded to your account so it can
 
 We process your saved content to provide the journal, display Progress and synchronize accepted changes. Other app users cannot view your journal through their accounts. The cloud journal is not end-to-end encrypted: the service and its authorized providers process stored content to operate it.
 
-Your Reduce Motion choice is saved locally on this phone. We also read the phone's accessibility setting so the app can respect it. This preference is not sent to our servers or analytics services.
+Your Reduce Motion and Haptics choices are saved locally on this phone. We also read the phone's accessibility setting so the app can respect it. These preferences are not sent to our servers or analytics services.
 
 ## Optional analytics
 

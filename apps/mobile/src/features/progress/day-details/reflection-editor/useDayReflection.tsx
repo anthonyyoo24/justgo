@@ -1,15 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
 import type { Attempt } from '@justgo/contracts';
-import type { AccountRepository } from '../../../data/activity/repository';
-import { ReflectionController } from '../../reflections/controller';
-import { DayReflectionEditor } from './DayReflectionEditor';
+import type { AccountRepository } from '../../../../data/activity/repository';
+import { ReflectionController } from '../../../reflections/controller';
+import { ConnectedDayReflectionEditor } from './DayReflectionEditor';
 
 export function useDayReflection(repository: AccountRepository) {
   const [session, setSession] = useState<{
@@ -56,13 +50,8 @@ export function useDayReflection(repository: AccountRepository) {
         void repository.setFlowAttempt(null).catch(() => {});
     };
   }, [controller, repository, editingId]);
-  const state = useSyncExternalStore(
-    controller?.subscribe ?? (() => () => {}),
-    controller?.getSnapshot ?? (() => null),
-    controller?.getSnapshot ?? (() => null),
-  );
   const beforeClose = (work: () => void) => {
-    if (opening.current || state?.submitting) return;
+    if (opening.current || controller?.getSnapshot().submitting) return;
     if (!controller) {
       work();
       return;
@@ -151,25 +140,29 @@ export function useDayReflection(repository: AccountRepository) {
     focusedController.current = controller;
     inputRef.current.focus();
   }, [controller, repository, revealedController]);
+  const onKeepEditing = useCallback(() => {
+    afterClose.current = null;
+    controller?.keepEditing();
+    inputRef.current?.focus();
+  }, [controller]);
+  const editor = useMemo(
+    () =>
+      controller ? (
+        <ConnectedDayReflectionEditor
+          controller={controller}
+          inputRef={inputRef}
+          inputReady={revealedController === controller}
+          onKeepEditing={onKeepEditing}
+        />
+      ) : null,
+    [controller, revealedController, onKeepEditing],
+  );
   return {
     editingId,
     error,
     edit,
     beforeClose,
     onEditorOpened,
-    editor:
-      controller && state ? (
-        <DayReflectionEditor
-          controller={controller}
-          state={state}
-          inputRef={inputRef}
-          inputReady={revealedController === controller}
-          onKeepEditing={() => {
-            afterClose.current = null;
-            controller.keepEditing();
-            inputRef.current?.focus();
-          }}
-        />
-      ) : null,
+    editor,
   };
 }

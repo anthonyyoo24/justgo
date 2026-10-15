@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChallengeController, ChallengeStart } from './controller';
+import { useHapticFeedback } from '../../platform/haptics/haptics';
 
 const currentTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -8,9 +9,11 @@ export function useActiveChallenge(
   controller: ChallengeController,
   { now = Date.now, timeZone = currentTimeZone } = {},
 ) {
+  const feedback = useHapticFeedback();
   const [active, setActive] = useState<ChallengeStart | null>(null);
   const current = useRef<ChallengeStart | null>(null);
   const alive = useRef(true);
+  const completedFeedback = useRef<ChallengeStart | null>(null);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -44,10 +47,11 @@ export function useActiveChallenge(
         };
         current.current = start;
         setActive(start);
+        feedback('accept');
       }
       return controller.getSnapshot().queues[state.selected]?.turn;
     },
-    [controller, now, timeZone],
+    [controller, now, timeZone, feedback],
   );
   const finish = useCallback(
     async (outcome: 'completed' | 'given_up') => {
@@ -60,9 +64,18 @@ export function useActiveChallenge(
       } else {
         // The controller/repository retain accepted submissions and own failures.
         await controller.complete(start);
+        if (
+          alive.current &&
+          current.current === start &&
+          controller.getSnapshot().success &&
+          completedFeedback.current !== start
+        ) {
+          completedFeedback.current = start;
+          feedback('completed');
+        }
       }
     },
-    [controller, clear],
+    [controller, clear, feedback],
   );
   return { active, onAction, finish, clear };
 }

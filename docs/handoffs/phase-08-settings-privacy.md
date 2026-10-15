@@ -1,8 +1,174 @@
 # Phase 08 settings and privacy handoff
 
-**Date:** October 12, 2026\
-**Status:** Settings/contact, account/recovery UI, Reduce Motion and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
+The October 14 [reflection keyboard correction](phase-08-reflection-keyboard.md)
+was developed in a separate Phase 08 worktree with its own development server.
+Anthony confirmed it works on his physical iPhone and authorized local integration
+into Phase 08. Its handoff owns implementation and combined-verification evidence;
+the existing Settings work is preserved. Its original dependency-check blocker
+is superseded by the fourth-review integration below, which retains merged main's
+reviewed Expo patches and passes fresh root checks. Native/release acceptance
+remains separate from those code checks.
+
+**Date:** October 14, 2026\
+**Status:** Settings/contact, account/recovery UI, Reduce Motion, Haptics and direct data export slices for owner review; legal drafts prepared and remaining Phase 08 controls open.\
 **Branch:** codex/phase-08-settings-privacy, based on the merged Phase 07.5 baseline. Native billing remains preserved on codex/phase-07a-native-billing at 4d5c9f2.
+
+## October 14 PR #25 review corrections
+
+Anthony authorized fixing and pushing the remaining valid PR #25 findings
+assessed against `a82d261`. The
+[day-list comment](https://github.com/anthonyyoo24/justgo/pull/25#discussion_r4277323497)
+identified a batch that could fit the viewport without creating the scroll
+gesture required to reveal the next rows. `DayEntryList` now observes viewport
+and content sizes and adds one batch when the measured rows fit. Each content
+measurement identifies the rendered batch, so an old height cannot repeatedly
+mount the remaining entries. Duplicate measurements do not cause updates.
+Zero/unknown sizes wait; shrinking the viewport preserves visited rows.
+
+New pages arriving after a scroll still fill ahead without another gesture.
+Existing row keys, active drafts, bounded initial mounting, footer visibility
+and the parent’s guarded server-pagination behavior are retained. Only loaded
+local rows are revealed by measurement; no artificial scroll event or server
+request is generated. The recurring measurement lesson is recorded in `AGENTS.md`.
+
+The [version-guide comment](https://github.com/anthonyyoo24/justgo/pull/25#discussion_r4277323534)
+is corrected to match the existing manifest/lockfile: Expo **57.0.29** and Router
+**57.0.27**. Development client **57.0.20**, React Native **0.86.3**, React
+**19.2.3** and jest-expo **57.0.6** are unchanged. No dependencies are upgraded.
+CodeRabbit’s separate ESLint download failed because of its network connection;
+both Foundation runs for `a82d261` ran lint successfully. No missing dependency,
+validation bypass or blanket docstring quota is introduced for those warnings.
+
+Verification:
+
+- The new focused regressions fail against the original list: **4 fail / 1 pass**,
+  reproducing the missing measurement-driven fill. After correction, all
+  **69 cases across four Progress suites pass**. Cases cover layout/content event
+  order, exact fit, stale/duplicate/zero measurements, viewport resize, appended
+  data, retained rows/footer and scroll-driven pagination. The final duplicate
+  measurement guard is included in the full root check below.
+- Fresh `npm run check`: **pass**, Expo Doctor **21/21**, contracts build,
+  TypeScript, lint, formatting, **186 tooling**, **54 API**, **667 mobile across
+  78 suites** and **24 contract** cases.
+- Full `npm run test:coverage`: **pass**, all unchanged workspace/critical-file
+  floors, including the real database and migration/restoration tests. Mobile
+  **97.19% lines / 92.05% branches**, API **95.01% / 90.61%**, contracts
+  **100% / 100%**, using the task-owned loopback `justgo_test` cluster on 54332.
+- Full saved app/API/database suite: **28/28 pass**. The new tall-view journey
+  seeds nine actual attempts, opens their day and verifies Rep 9 is in the
+  viewport with `scrollTop` still **0**. The retained 41-attempt scrolling/draft/
+  saving case and previous recovery/network/cleanup cases also pass. The ignored
+  runner moves only fixture web/CORS/network-probe configuration to 8093 to
+  preserve the existing preview; every temporary edit is restored afterward.
+- Interactive Browser Use in the **in-app side panel**: **pass**, with a temporary
+  nine-row developer fixture at **390 × 1600**. All nine rows render without a
+  scroll gesture; the measured list has `clientHeight = scrollHeight = 735`
+  and `scrollTop = 0`. Resizing to **390 × 844** retains the ninth row, with
+  `clientHeight = 518`, `scrollHeight = 735`, and a usable header/scroll region.
+  The tab closes normally, the viewport override is reset, and the fixture is
+  restored byte-for-byte before final bundle checks. This preview makes no
+  account/activity writes and is separate from the saved actual-API journey.
+- Cold web and iOS exports with `--clear --max-workers 1`: **pass**, after restoring
+  the temporary fixtures. The list's unit coverage is **100% lines/branches**;
+  existing global and critical-file floors are unchanged. Relative handoff links,
+  version-guide consistency, formatting and diff checks **pass**.
+- Standalone fresh online Expo Doctor immediately before the authorized push:
+  **21/21 pass**. Hosted checks for the new commits remain separate from local
+  evidence.
+
+The task-owned preview and database are stopped after verification; other
+workspace/phone services remain untouched. Browser/component checks do not
+establish a fresh native measurement or device acceptance for this correction.
+
+The added `DayEntryList.test.tsx` stays beside its owner in the existing entries
+group and brings the PR to **71 files**. Reviewed all changed directories: root, Progress entries, `e2e`, `docs`,
+`docs/operations` and `docs/handoffs`; no additional folders or moves are needed.
+Logs remain ignored under `.local/phase-08/pr25-review-*` in the original checkout.
+Other checkout work and broader native/release/privacy acceptance remain separate.
+
+## October 14 fourth review preparation
+
+Anthony merged PR #24 at `6382aed` and requested the final PR in the agreed split.
+The clean, attached review checkout was reused at
+`/Users/anthonyyoo/.codex/worktrees/phase8-pr3-review/justgo`; its directory name
+is retained, while its checked-out branch is now
+`phase8-04-haptics-performance-polish`. Local `main` was fast-forwarded from
+GitHub before integrating it into that existing branch in `2ece4c9`.
+The original checkout's unstaged account-transfer/planning work and the separate
+account-deletion worktree were not included or modified.
+
+The remaining diff has **70 files** relative to merged main:
+
+- Saved Pulsar-only feedback, Batter completion, development-only comparisons,
+  guarded action/lifecycle feedback and the exported preference.
+- Shared accessible custom switches, steady row content and the accepted
+  slide/fade animation, including both directions for Reduce Motion while the
+  phone accessibility preference retains priority.
+- Bounded initial day-sheet rendering, local editor subscriptions and the
+  existing entries/reflection-editor responsibility groups, with the large-day
+  regression journey.
+- The integrated reflection-keyboard correction, keeping the writing area and
+  Skip/Save footer usable in constrained layouts.
+
+The integration preserves the merged journey timing correction, export spinner
+documentation and earlier reviewed CI fixes. Documentation conflicts retain
+both sets of history. Dependency conflicts retain every merged main package
+pin while adding only `react-native-pulsar` 1.7.0. The regenerated lockfile's
+remaining change is that dependency, not a rollback of Expo patches. Fresh
+checks below supersede the keyboard checkpoint's dependency blocker; no native
+build or signing work is part of this publication.
+
+Fresh local verification:
+
+- Clean `npm ci`: **pass**.
+- `npm run check`: **pass**, fresh online Expo Doctor **21/21**, contracts build,
+  TypeScript, ESLint, Prettier, **186 tooling**, **54 API**, **662 mobile across
+  77 suites** and **24 contract** cases.
+- `npm run test:coverage`: **pass**, all existing workspace and critical-file
+  floors, including the real database suites and migration/restoration rehearsal.
+  Mobile **97.18% lines / 92.02% branches**, API **95.01% / 90.61%**, contracts
+  **100% / 100%**. Tests use a newly provisioned, task-owned loopback `justgo_test`
+  on **54332**, with restricted runtime/migrator roles; other databases are not
+  reused or modified.
+- Cold `npm run export:web -w @justgo/mobile -- --clear --max-workers 1` and
+  the equivalent iOS export: **pass**. These are bundle checks, not native builds.
+- Full saved actual-app/API/database journeys: **27/27 pass**, including the
+  new 41-attempt scrolling/draft/save case and the merged account-layout fix.
+  The existing ignored local runner temporarily moves only the fixture app,
+  CORS and network probe to **8093**, preserving the preview on 8081; all four
+  temporary source/configuration edits are restored byte-for-byte afterward.
+  API port 3000, loopback/test-database validation, isolated roles and registry
+  cleanup stay enabled. `git diff` confirms only the intended handoff/plan edits
+  remain after restoration.
+- Interactive Browser Use in the **in-app side panel**, **390 × 844**: **pass**
+  for Settings layout, Reduce Motion on/off and persistence after reload,
+  development Test haptics navigation, effect selection and reload restoring
+  Batter. The unsupported browser preview correctly disables playback; no native
+  haptic sensation is claimed. The smoke server on **8094** uses an unreachable
+  loopback API, so this walkthrough makes no product activity/account writes.
+  The original motion choice and viewport are restored, and the temporary tab
+  is closed. The existing web-start `simctl` discovery warning does not establish
+  a native failure or native acceptance.
+
+Task-owned fixture/Metro services and the isolated PostgreSQL cluster were
+stopped after verification. The existing preview and phone servers were left
+alone. Markdown formatting, added handoff links/anchors and diff checks pass.
+Standalone fresh online Expo Doctor passes **21/21** immediately before the
+authorized publication.
+Hosted checks for the published candidate remain separate from local evidence.
+
+Changed-directory review covers every directory in the remaining diff. Existing
+Settings/export, developer haptics, platform haptics/completion, Progress entries
+and reflection-editor groups keep tests and adapters with their owners. The
+Challenges change extends an existing hook without adding files there. No
+additional folder moves are needed for this review. Logs remain ignored under
+`.local/phase-08/pr4-*` in the original checkout.
+
+Prior owner-reported physical-iPhone haptics/toggle and keyboard evidence remains
+in the individual sections. Fresh browser bundles and component checks cannot
+establish native feel, VoiceOver, keyboard geometry or acceptance of updated SDK
+patches. Those wider release gates stay open, along with the remaining privacy
+features. This is the last PR in the review split, not Phase 08 completion.
 
 ## October 14 PR #24 review correction
 
@@ -205,7 +371,7 @@ Youngshin Yoo is the confirmed personal operator in Canada. The owner's proposed
 
 The owner subsequently accepted separate email-draft contact actions and added App Store rating plus Instagram, TikTok and Twitter/X rows. After reviewing the combined Help & about group, the owner requested Support directly above About: Support contains Get help and Suggest a feature, while About contains rating, socials and legal links. The owner confirmed the profiles and public App Store listing are not ready; those rows remain unavailable until public destinations are configured.
 
-On October 10 Anthony authorized implementing the first remaining slice, Reduce Motion, while keeping implementation and focused verification together within Phase 08. Haptics remains a separate, explicitly open Phase 09 implementation/device-testing task.
+On October 10 Anthony authorized implementing the first remaining slice, Reduce Motion, while keeping implementation and focused verification together within Phase 08. The October 10 haptics move to Phase 09 is historical; Anthony moved implementation and physical testing back to Phase 08 on October 12, as recorded in the follow-up below.
 
 ## Documents prepared
 
@@ -627,7 +793,7 @@ The phone's separate Metro session on 8084 now supplies the current API URL. A r
 
 ## Open Phase 08 work
 
-All combined phase acceptance boxes remain open. Reduce Motion and authenticated export implementation/local verification are recorded above; physical-device accessibility and file delivery checks remain Phase 09 work. Confirmed deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Haptics implementation and acceptance are explicitly scheduled together in Phase 09 before the free beta. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
+All combined phase acceptance boxes remain open. Reduce Motion and authenticated export implementation/local verification are recorded above; physical-device accessibility and file delivery checks remain Phase 09 work. Confirmed deletion, credential/cache/vendor cleanup, both analytics choices and event forwarding, redaction/dashboards, verified contact/legal links and relevant device evidence still need implementation or verification. Haptics implementation and acceptance were scheduled together in Phase 09 at that checkpoint, superseded by the October 12 move back to Phase 08. Reminders remain deferred beyond the first release; Tminus/Lance remain excluded. Feature suggestions reuse Support's private email destination with a distinct subject and no automatic private attachments.
 
 Before publication, resolve retention and backup behavior, provider configuration, operator/contact and regional requirements, individual-versus-legal-entity App Review eligibility, age treatment and final Terms/EULA compatibility. Review the concrete policy before creating and publishing the public site. Resume commercial activation after the free beta and reconcile the policy for the paid build.
 
@@ -1542,3 +1708,903 @@ No files were added; existing fixture-support and documentation groups remain
 appropriate, so no folder moves were necessary. Task-owned API/Metro services
 were shut down, and the original preview and original checkout's working files
 were preserved. Final Markdown formatting and diff checks pass.
+
+### October 12 day-sheet performance integration
+
+Anthony authorized merging `codex/day-sheet-performance` into this Phase 08
+branch. The [integration record](day-sheet-performance.md#phase-08-integration--october-12)
+owns combined verification and the seven conflict resolutions. Both original
+performance/organization commits are retained, together with the current
+Settings/account accessibility fixes. This merge does not close Phase 08's
+remaining deletion, analytics, legal publication or physical acceptance work.
+
+### October 12 haptics implementation
+
+Anthony requested moving haptics implementation and its phone testing back from
+Phase 09 to Phase 08, then implementing it. The earlier October 10 scheduling
+note is historical and superseded. Phase 08 keeps physical acceptance open until
+actual feedback is tested and any corrections are retested; Phase 09 only
+rechecks the accepted behavior on its beta/release build.
+
+Implemented:
+
+- Pinned `expo-haptics` 57.0.3, the SDK 57 recommended version, in the mobile
+  package and root lockfile. Its SDK/native module uses an optional import;
+  current development binaries without ExpoHaptics can still load the app.
+  Availability checks prevent method calls on a missing module. Web uses a
+  quiet adapter, without browser vibration or permissions.
+- `platform/haptics/` owns the preference/provider/context and adapters. The
+  root provider sits outside account/access guards. The installation-level
+  `justgo:haptics:v1` boolean defaults on, persists independently of accounts
+  and paid access, and stays quiet while hydrating or saving. Invalid/unreadable
+  values fail quiet with retryable inline feedback. A failed write preserves
+  the previous choice. Duplicate writes are guarded synchronously.
+- Settings replaces Coming soon with a labeled Haptics switch. Successful
+  enabling gives a selection preview; disabling is quiet. Missing native
+  capability is explained honestly. Storage failures use the existing red
+  inline error color. Reduce Motion remains a separate preference.
+- Accepted challenge state gives one light impact; an accepted completion gives
+  one success notification, coalesced across concurrent/repeated Completed taps.
+  Failed completion does not celebrate and a later accepted retry does. Feeling
+  selection/clearing gives a selection tick only after the controller accepts a
+  changed value. No feeling code, reflection text or account data reaches the
+  adapter. There is no startup, navigation, synchronization or automatic retry
+  feedback. The native adapter only plays in an active iPhone app; iOS can
+  suppress feedback for system settings/Low Power Mode/camera/dictation.
+- Optional feedback runs independently of product work. Both synchronous and
+  asynchronous native failures are contained. A generation/preference check
+  fences events after disabling, starting a preference write or unmounting;
+  callbacks stay stable across preference changes. Challenge lifecycle guards
+  prevent late feedback after leaving the account flow.
+- ZIP JSON includes the current saved Haptics choice alongside Reduce Motion.
+  Export waits for preference hydration/writes before capturing it. CSV/history,
+  owner isolation, cancellation and private-file handling are unchanged. The
+  data inventory and policy draft reflect local-only storage; no server schema,
+  analytics event, vendor configuration or billing activation was introduced.
+
+Interactive verification used only the Codex side panel and disposable loopback
+state. A fully reloaded Settings screen exposes a usable labeled switch. Turned
+it off, fully reloaded, confirmed it remains off, then restored on. Keyboard
+Space also toggles the focused switch; the restored choice survives another full
+reload. Export is enabled after preference hydration. No error or layout issue
+appeared. Browser feedback remains quiet. Ignored proof:
+`.local/phase-08/haptics-settings-browser.png`. These checks establish browser
+UI/persistence, not iPhone vibration or native build acceptance.
+
+Automated verification:
+
+- **77 focused cases / 8 suites** pass for native/web adapters, preference/row,
+  actual Settings, accepted challenge actions, reflection selections and ZIP
+  collection/delivery. Tests exercise saved off/on/default/corrupt values, slow
+  hydration, read/write failures and retry, duplicate writes/taps, suppressed
+  feedback, synchronous/asynchronous SDK failure, missing native capability,
+  background/inactive app state and delayed callbacks after unmount. The controller
+  completion failure test uses its repository seam; existing storage fallback
+  behavior is preserved. Log: `.local/phase-08/haptics-focused.log`.
+- Two subsequent export regressions keep export disabled through preference
+  hydration/writes and confirm the real ZIP contains the current Haptics value.
+  Final mobile coverage passes **596 cases / 72 suites**, **97.07% lines / 91.87%
+  branches**. Haptics adapters, provider, context and row have 100% line coverage;
+  adapter branches are 100%, provider branches 90.56%. Remaining provider branches
+  include default dependencies (exercised in the real browser) and additional
+  lifecycle-fence combinations; no coverage exclusion or threshold change was
+  added. Existing combined/critical floors pass using retained API/contracts
+  reports for unchanged source. Logs: `.local/phase-08/haptics-final-coverage.log`
+  and `.local/phase-08/haptics-final-coverage-gate.log`.
+- Contract build, workspace/journey types, lint and formatting pass. The full
+  workspace test run before the final two export regressions passes **180
+  architecture/tooling, 54 API unit, 594 mobile and 24 contract cases**; final
+  mobile coverage includes those two new cases. Logs:
+  `.local/phase-08/haptics-other-checks.log` and
+  `.local/phase-08/haptics-final-checks.log`. No database, migration, saved browser
+  journey or hosted CI pass is claimed for this mobile-only slice.
+- Cold web and Hermes iOS exports pass with `--clear --max-workers 1`, producing
+  ignored `.local/phase-08/haptics-web` and `haptics-ios` output. Logs:
+  `.local/phase-08/haptics-web-export.log` and `haptics-ios-export.log`.
+  An iOS JavaScript bundle is not a new signed binary or tactile evidence.
+- Fresh `npm run check` remains blocked by **20/21 Expo Doctor**, recommending
+  the same six pre-existing SDK patch updates. The newly pinned haptics version
+  passes dependency compatibility; no version exclusion or validation bypass was
+  added. The other constituent commands were run separately as recorded above.
+  Log: `.local/phase-08/haptics-check.log`. Native dependency alignment/build and
+  device acceptance remain the next separate native-build workflow.
+
+Reference: [Expo SDK 57 Haptics](https://docs.expo.dev/versions/v57.0.0/sdk/haptics/)
+and the installed pinned module's optional-import implementation. The initial
+test harness needed the existing router stub/property replacement conventions;
+using the SDK's verified optional import also avoids a needless dynamic-import
+Jest/runtime setup. No warning, assertion, heap setting or test configuration was
+weakened to pass these checks.
+
+Native/physical acceptance is still open:
+
+- The installed phone development binary predates this native dependency.
+  Prepare an updated signed development build through the separate authorized
+  native-build/signing workflow, preserve the account and reconnect to current
+  Metro. JavaScript reload alone cannot add ExpoHaptics to that binary.
+- On Anthony's physical iPhone, verify light Accept, success Completed, feeling
+  selection/clearing and the enable preview. Check first/repeated actions, the
+  timing/strength/feel, off through relaunch, restoring on, account changes and
+  independence from Reduce Motion. Check normal mode first; missing vibration
+  during Low Power Mode or disabled system haptics is allowed system behavior.
+  Product actions/saving must still work. Correct issues and repeat before
+  marking this Phase 08 item accepted.
+- A mock or simulator cannot establish tactile feel. No new EAS build/upload,
+  signing change, installation, phone test or Git publication is claimed here.
+
+Reviewed the full contents of all changed directories, including root/mobile
+manifests, routes, Settings/export, Challenges, Reflections, the new haptics
+family and documentation groups. Settings has six direct files and existing
+export/information groups; haptics adapters/tests already form their own folder.
+No challenge files were added; the existing 35-file feature's broader split
+remains the previously documented separate mobile cleanup work, avoiding
+conflicting duplicate moves. Other reviewed groups remain cohesive. Existing
+phone/web/API servers and phone account data are preserved.
+
+### October 12 updated physical development build
+
+Anthony explicitly authorized preparing the updated iPhone development build
+for native haptics. This is the separate native-build step requested after the
+implementation checkpoint; it authorizes the internal development build, not
+Git publication, TestFlight distribution or store submission.
+
+Build preparation:
+
+- Fresh Expo Doctor initially repeated the six SDK patch recommendations.
+  Updated exact pins to Expo 57.0.28, crypto 57.0.4, dev-client 57.0.20, router
+  57.0.26, splash-screen 57.0.10 and jest-expo 57.0.6, retaining haptics 57.0.3.
+  Root lockfile includes the resulting Expo/router transitive updates. No SDK
+  major, React Native, app identifier, iOS minimum or Keychain code change.
+- Fresh `npm run check` now **passes**, including **21/21 Expo Doctor**, contract
+  build, all workspace/journey types, lint/format and **180 tooling, 54 API unit,
+  596 mobile and 24 contract cases**. Fresh mobile coverage passes **72 suites**,
+  **97.07% lines / 91.87% branches**, and unchanged combined/critical floors pass
+  using retained API/contracts reports for their unchanged source. Logs:
+  `.local/phase-08/haptics-build-check.log`, `haptics-build-coverage.log` and
+  `haptics-build-coverage-gate.log`. Fresh pre-dispatch Doctor also passes:
+  `haptics-build-doctor-dispatch.log`. The earlier Doctor blocker is resolved
+  for these pinned packages; hosted CI and physical acceptance remain separate.
+- Reused the linked Expo project, `development` internal distribution profile,
+  bundle `com.anthonyyoo.justgo`, Apple team `NPDYTJS425`, existing certificate
+  and active ad hoc profile containing Anthony's already registered iPhone.
+  `--freeze-credentials --non-interactive` prevents signing changes; no device
+  registration or Apple account/password input was needed.
+- The project's development environment already had the correct bundle ID but
+  lacked an API URL. Added the public `EXPO_PUBLIC_API_URL` pointing to the
+  existing healthy application-staging route `https://justgo-two.vercel.app`.
+  No hosting/database/protection or account/test-grant configuration changed.
+- Inspected the EAS archive before upload: current haptics/provider/action source,
+  SDK pins, contracts and native Keychain module present; local env/credential
+  files, caches and generated iOS output absent. EAS's generated shallow Git
+  metadata has no credential-bearing remote. Selected source/lockfile hashes
+  match the working tree. Audit: `haptics-build-source-audit.json` in ignored
+  `.local/phase-08/`. The displayed Git base is `a7770a0` with uncommitted work;
+  the cloud build includes the inspected working-tree haptics/pin changes.
+- Submitted EAS build **e48faabd-d7e2-4b6e-ac34-e08d9087fce9**, iOS internal
+  development, version 0.1.0 (1), fingerprint `9e8a73ea057b1ed3d2bc4568baa6975cadd199a2`.
+  [Build page](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/e48faabd-d7e2-4b6e-ac34-e08d9087fce9)
+  is open in the Codex side panel. Compilation succeeded; signed artifact
+  verification is recorded below. Installation/physical acceptance remain open.
+- Restarted only the owned phone/web Metro services with cleared caches and the
+  patched dependencies. Phone remains on LAN 10.0.0.200:8084 with the existing
+  HTTPS staging API; web remains on loopback 8081 with the unchanged local API.
+  Side-panel Settings renders, toggles Haptics and retains the saved choice after
+  full reload. Existing API service and native account/history remain intact.
+
+Build result and delivery:
+
+- EAS reports **FINISHED / Succeeded** for `e48faabd-d7e2-4b6e-ac34-e08d9087fce9`;
+  the side-panel build page also shows success and its iPhone installation modal.
+  The build took 6m 15s total. Downloaded its 29,979,101-byte IPA and validated
+  archive paths before extraction. Ignored metadata/artifact evidence:
+  `haptics-device-build-complete.json`, `haptics-device-build.ipa` and
+  `haptics-device-artifact-audit.json` under `.local/phase-08/`.
+- `codesign --verify --deep --strict` passes for the full extracted app bundle;
+  its signature/designated requirement is valid. Displayed XML entitlements and
+  decoded provisioning confirm the existing team/application identifier,
+  unexpired profile and Anthony's already registered iPhone. Bundle remains
+  `com.anthonyyoo.justgo`, version 0.1.0 (1), minimum iOS 16.4. The compiled
+  executable contains both ExpoHaptics and JustGoKeychain native modules.
+  Signature log: `haptics-device-signature.log`. No private key or device identifier
+  is copied into the handoff.
+- Cold web and Hermes iOS exports after SDK alignment pass with cleared caches
+  and one worker. Logs: `haptics-build-web-export.log` and
+  `haptics-build-ios-export.log`; ignored output is in the matching folders.
+  Real side-panel Settings after the restart renders correctly, remembers off
+  through reload and restores on. These are browser checks, not tactile evidence.
+- The successful build's **Install** modal is open in the side panel with a QR
+  code and the verified device installation URL. Proof:
+  `.local/phase-08/haptics-phone-install-qr.png`. Install over the existing app,
+  open JustGO and reconnect to the running phone Metro at 10.0.0.200:8084.
+  The API is the existing healthy HTTPS staging service. Physical installation,
+  retained-account smoke and haptic timing/strength/feel remain Anthony's next
+  checks; no phone completion is claimed from artifact verification.
+  The restarted phone server also serves a freshly compiled iOS bundle containing
+  the haptics preference/adapter and the correct HTTPS staging API; saved audit:
+  `.local/phase-08/haptics-build-phone-bundle-audit.json`.
+- The native-build task changes the existing manifest/lockfile and version/setup
+  guidance, with no new tracked directory or further folder moves needed. The
+  reviewed directories keep the responsibility groups recorded above. No Git
+  push/PR/merge, TestFlight submission, production release or account reset.
+
+### October 13 haptics strength correction
+
+Anthony reported that the original feedback on his physical iPhone was barely
+perceptible and requested stronger haptics. The first medium-impact adjustment
+also felt too weak. A subsequent heavy-impact preview was still a little weak;
+Anthony clarified that Accept should stay one tap while completion should feel
+more like a vibration. These are owner-reported physical observations, not
+simulator evidence. Anthony then confirmed the three-pulse burst had the right
+strength and requested a little more duration. Completion is extended to four
+pulses with the same strength/spacing; other actions stay single taps.
+
+Final mapping:
+
+- Accept, feeling changes and the Settings enable preview each give one heavy
+  impact, the strongest standard impact preset exposed by the installed module.
+- Accepted completion gives one burst of four heavy impacts with 70 ms gaps.
+  Repeated Completed taps still cannot restart the accepted completion effect.
+- Every pulse rechecks the enabled/lifecycle fence, native availability and
+  foreground state. Disabling feedback, unmounting or backgrounding stops the
+  remaining pulses; a native rejection stops the burst and remains contained
+  by the provider. The interval is bounded and tests await/consume its timers.
+
+Only the native adapter's mapping/pattern changes. Product actions never wait
+for haptics. Hydration, persisted off, failure containment and the quiet web
+adapter remain intact. No new native module/dependency is added; reload the
+existing haptics-enabled development build. A further EAS/signing build is
+unnecessary. A more intense single tap beyond these standard presets would
+require a separately scoped native implementation/build; no such change is
+claimed here. See [Expo SDK 57 Haptics](https://docs.expo.dev/versions/v57.0.0/sdk/haptics/).
+
+Regression checks protect single impacts, completion cadence, permission changes
+between pulses, backgrounding during a burst, native failure and drained timers,
+plus existing unavailable-module/platform/preference/action tests. Final command
+results are recorded below.
+
+- Focused final run: **40 cases / five suites pass**, including the four-pulse
+  cadence and interrupted-burst regressions. Log:
+  `.local/phase-08/haptics-strength-focused.log`.
+- Final `npm run check`: **pass**, fresh online Expo Doctor **21/21**, contract
+  build, workspace/journey types, lint/format, **180 tooling, 54 API unit,
+  601 mobile / 72 suites and 24 contract cases**. Log:
+  `.local/phase-08/haptics-strength-final-check.log`.
+- Fresh mobile coverage: **601 cases / 72 suites pass**, **97.07% lines / 91.87%
+  branches**. `npm run coverage:check` passes all unchanged global/critical
+  floors using retained API/contracts reports for their unchanged source.
+  Logs: `.local/phase-08/haptics-strength-coverage.log` and
+  `haptics-strength-coverage-gate.log`. No database, saved browser journey,
+  hosted CI or final four-pulse phone acceptance pass is claimed.
+
+The phone Metro stays on port 8084 with the existing staging API. A fresh iOS
+bundle audit uses the manifest's actual router-root configuration; its ignored
+bundle and audit live under `.local/phase-08/haptics-strength-phone*`.
+An initial audit omitted `transform.routerRoot` and therefore did not contain
+app routes; that request was corrected before claiming delivery.
+
+Reviewed all six files in `platform/haptics/` and the complete touched docs
+folders (`docs/`, `docs/architecture/`, `docs/handoffs/`). No files or independent
+responsibilities were added; existing groups remain navigable, so no folder
+moves are needed. There is no layout/visual change; browser/simulator checks
+cannot establish tactile strength. Final burst feel, timing and disabled/persisted
+behavior still require Anthony's physical acceptance within Phase 08. No Git
+publication, new native build or phase completion is claimed.
+
+### October 13 development haptics comparison
+
+Anthony authorized a temporary in-app screen to compare completion effects before
+choosing a final Pulsar implementation. Settings → Test haptics is visible only
+in development and opens `/preview?mode=haptics`, using the existing guarded
+developer loader and the same Settings layout, headings and row cards.
+
+- Choices: current four-heavy-impact Expo effect; Pulsar Bloom, Fanfare, Fizz,
+  Flourish, Trumpet, Triumph, Barrage, Batter and Afterglow.
+- Selecting a row is quiet. Preview plays the selected effect; the same session
+  choice controls the existing accepted Completed action, including its duplicate
+  prevention. Accept, feeling changes and the enable preview keep their single
+  heavy Expo impact. No extra completion is written by the test screen.
+- Selection is memory-only and resets on full reload. It is not exported, synced,
+  logged or sent to analytics. The existing persisted Haptics boolean still applies.
+- Stop, selection changes, leaving the test screen, preference writes, backgrounding
+  and provider disposal stop the Pulsar engine/fence remaining Expo pulses. New
+  playback stops the previous effect. Preview errors are red and retryable;
+  optional native failures cannot fail a completion or preference write.
+- Production ignores test selection and always uses the existing effect; neither
+  the Settings row nor developer screen is available. The screen/module loading
+  guards have regressions. Final effect selection and removal of the temporary
+  experiment remain open before release.
+
+Pinned `react-native-pulsar` **1.7.0** without changing the existing Expo/RN/React/
+Worklets versions. Inspected its published package and official
+[React Native documentation](https://docs.swmansion.com/pulsar/sdk/react-native/):
+New Architecture is required, preset functions are present, stop is supported and
+the bridge uses the published PulsarHaptics 1.4.0 iOS pod. The native adapter checks
+`RNPulsar` before loading the enforcing SDK, so the current phone binary stays
+usable. Missing-module completion falls back to the existing effect; the screen
+explains the update and disables unavailable Pulsar previews. Web uses a quiet
+adapter. Preset audio is explicitly disabled.
+
+Native compilation and physical feel are separate evidence: adding this module
+requires an updated signed development build under the repository's separate
+native-build workflow. No signing change, cloud build, final effect selection,
+TestFlight submission or Git publication has been performed in this UI slice.
+The existing development app and account must be preserved during installation.
+
+Verification:
+
+- Final `npm run check`: passes, fresh online Expo Doctor **21/21**, contract
+  build, all types/lint/format and **180 tooling, 54 API unit, 643 mobile / 77
+  suites and 24 contract cases**. Log: `.local/phase-08/pulsar-test-screen-final-check.log`.
+- Fresh mobile coverage passes **643 cases / 77 suites**, **97.16% lines / 92.01%
+  branches**. `npm run coverage:check` passes unchanged global/critical floors,
+  using retained API/contracts reports for unchanged source. Logs:
+  `pulsar-test-screen-final-coverage.log` and `pulsar-test-screen-coverage-gate.log`.
+- Regressions cover all preset mappings, audio disabled, older/unsupported
+  modules, production guards, enabled/off/loading/writing behavior, completion
+  and preview wiring, stop/background/unmount, stale failures and retry. The
+  actual Expo Router/Stack test follows Settings → Test haptics → Back, using
+  real navigation without API writes. Jest resolves the workspace renderer for
+  hoisted Expo Router and transforms its ESM `standard-navigation` dependency;
+  no assertions, coverage floors or production boundaries are weakened.
+- Side-panel walkthrough at **393 × 852**: real Settings link, every choice,
+  checked-state/Selected display, scrolling through Afterglow, Back, off message,
+  preference restored on, full reload resetting the experiment and Space
+  keyboard selection pass. The first walkthrough caught the reserved `screen`
+  parameter opening the general preview; changed it to `mode` and added the
+  actual-navigation regression. Also corrected the web checked label and Space
+  activation, then retested. Screenshots stay ignored at
+  `.local/phase-08/pulsar-test-screen.png`. Viewport override is reset afterward.
+- Cold Hermes iOS export passed; this proves bundling, not native compilation or
+  tactile feel. The later phone-server audit records the current development
+  route/SDK bundle after the navigation/keyboard corrections. No database,
+  hosted CI, saved app/API/database journey or physical effect acceptance is
+  claimed for this slice.
+
+Directory review: read the full direct inventories for `apps/mobile/`, `src/app/`,
+`src/app-support/`, `src/app-support/settings/`, `src/platform/haptics/`,
+`src/platform/haptics/completion/`, `src/dev/haptics/`, the repository root and
+the touched plan/architecture/handoff folders. The seven completion files form
+their own responsibility group, with native/web adapters and tests together;
+the developer screen and its two tests form the three-file `dev/haptics/` group.
+Settings retains its six direct screen/preference files and existing subgroups.
+No unrelated files were moved. The existing groups remain navigable; no further
+subfolders or folder-move checks are necessary.
+
+Separate native-build follow-up under the approved testing plan:
+
+- Inspected the exact EAS archive before submission: **252 files**, new screen,
+  guarded route/provider/adapters, Pulsar 1.7.0, lockfile and existing native
+  Keychain module match working source; no private env, credentials, local data
+  or dependency caches. Audit: `.local/phase-08/pulsar-build-source-audit.json`.
+- Submitted internal iPhone development build **3c47aa67-e706-4361-8847-e38d61458e48**,
+  version 0.1.0 (1), using the existing Expo project, app identifier and frozen
+  signing credentials. No device registration, signing changes, store submission
+  or paid Studio license. The inspected working tree is included despite the
+  older Git base. [Build page](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3c47aa67-e706-4361-8847-e38d61458e48).
+- EAS reports **FINISHED / Succeeded**. Downloaded the **30,380,086-byte** IPA,
+  validated archive paths and verified the full app with
+  `codesign --verify --deep --strict`. The executable contains **RNPulsar,
+  PulsarHaptics, ExpoHaptics and JustGoKeychain**. App identifier, version 0.1.0
+  (1), minimum iOS 16.4, Apple team and registered-device set match the existing
+  app/profile. Audit: `.local/phase-08/pulsar-device-artifact-audit.json`;
+  signature log: `pulsar-device-signature.log`. No identifiers or private profile
+  contents are copied into the handoff.
+- Restarted only the owned phone Metro with `--clear`, keeping port **8084**,
+  LAN **10.0.0.200** and the existing staging API. Its fresh iOS bundle contains
+  the final `mode=haptics` route, screen, presets/native adapter and HTTPS API.
+  Audit: `.local/phase-08/pulsar-test-screen-phone-audit.json`. The side-panel
+  web server remains on loopback 8081. Existing account/storage were not reset.
+- The successful build's Install modal/QR is open in the side panel. Screenshot:
+  `.local/phase-08/pulsar-phone-install-qr.png`. Install over the existing app,
+  reconnect to the phone server and open Settings → Test haptics with Haptics on.
+  Compare previews and real Completed feedback; test Stop, off and backgrounding.
+  Physical installation/runtime/feel and the final choice remain owner checks
+  within Phase 08. Compilation and a valid signature do not establish tactile
+  behavior; no physical pass or release acceptance is claimed.
+- A read-only EAS status command run from the repository root generated an empty
+  `app.json` stub. It was not in the inspected/uploaded archive. Preserved a local
+  diagnostic copy and removed only that generated stub; reran formatting and
+  diff checks. Subsequent EAS commands ran in `apps/mobile/` with its existing
+  project configuration. No replacement project or tracked app config change.
+
+The temporary experiment remains an explicit pre-release cleanup/selection task.
+No Git commit, push, pull request, merge, TestFlight/store submission or final
+Pulsar production mapping is included in this follow-up.
+
+### October 13 Batter default and retained development tool
+
+Anthony selected **Batter** for completion and requested retaining **Test haptics**
+as a development feature. This supersedes the earlier temporary-screen cleanup
+requirement and the original Expo completion default; it does not authorize
+removing Expo Haptics or changing acceptance/feeling feedback.
+
+- `defaultCompletionHaptic` is the single configured completion default. Batter
+  is selected on a fresh development session and is always used by production
+  completion when Pulsar is supported. The native Pulsar adapter now supports
+  release playback/stop as well as development, with audio disabled and the same
+  foreground/optional-module guards.
+- Development selection overrides Preview and accepted completion only for that
+  session; reloading restores Batter. Production ignores selection/preview
+  controls even if a stale development choice exists. Both the Settings row and
+  developer route/screen remain guarded by `__DEV__`.
+- The original four-impact Expo burst remains available as **Original Expo effect**
+  in the development picker and as a safe missing-Pulsar fallback. Single taps
+  for acceptance, feeling changes and successful enabling continue using Expo.
+- The saved Haptics boolean still controls both SDKs; stop, background/disposal,
+  stale-result fencing and failure isolation remain intact. No preset choice is
+  persisted, exported, synchronized or sent to analytics.
+- Existing Pulsar-enabled build **3c47aa67-e706-4361-8847-e38d61458e48** contains
+  every required native module. This is a JavaScript change: fully reload the
+  development app from the running phone Metro. No additional dependency,
+  signing change, native/cloud build, Git publication or account reset.
+
+Verification:
+
+- Final `npm run check` passes: fresh online Expo Doctor **21/21**, contracts
+  build, all types/lint/format, **180 tooling, 54 API unit, 647 mobile / 77 suites
+  and 24 contract cases**. Log: `.local/phase-08/batter-default-final-check.log`.
+- Fresh mobile coverage passes: **97.17% lines / 91.99% branches**. Unchanged
+  global/critical floors pass using retained API/contracts reports for unchanged
+  source. Logs: `batter-default-final-coverage.log` and
+  `batter-default-final-coverage-gate.log` under `.local/phase-08/`.
+- Regressions prove default playback without selecting a pattern, remount reset,
+  ignored production overrides/previews, release SDK playback/stop, saved-off
+  behavior, missing-module fallback and the retained loading/failure/cancellation
+  and route guards. The development screen's reset copy derives from the same
+  configured default.
+- Side-panel verification at **393 × 852** passes: fresh reload selects Batter,
+  Preview reflects Batter, Afterglow selection temporarily overrides it, reload
+  restores Batter, and Back → Settings → Test haptics works. Original Expo effect
+  remains available for comparison. Saved proof:
+  `.local/phase-08/batter-default-screen.jpg`; viewport override reset afterward.
+  Browser previews remain deliberately silent.
+- Cold production Hermes iOS export passes with one worker; this establishes
+  bundling, not signed production/native playback. Log:
+  `.local/phase-08/batter-default-ios-export.log`. The current phone Metro serves
+  the Batter default, final comparison copy/route and the existing HTTPS staging
+  API; audit: `.local/phase-08/batter-default-phone-audit.json`. Full phone reload
+  is the next owner check; no new build is required for this JavaScript change.
+
+Directory review: all seven files in `platform/haptics/completion/`, the six
+parent haptics files, the three files in `dev/haptics/`, and full touched
+plan/architecture/handoff directory inventories remain cohesive. No new files,
+independent responsibilities or folder moves were added. No database, hosted CI
+or saved app/API/database journey pass is claimed for this mobile-only slice.
+
+Anthony's selection records his preferred effect; automatic-default confirmation
+and wider signed-production/device acceptance remain distinct open checks in
+Phase 08/09. No simulator/browser/mocked-call tactile pass is claimed.
+
+### October 13 Pulsar-only migration
+
+Anthony authorized replacing Expo Haptics with Pulsar for every action, and
+permitted saving the current work first. The existing 45-file haptics/default/tool
+slice was committed locally as **baf739f** (`feat(mobile): add saved haptics and
+Batter completion feedback`), keeping this migration separately reviewable.
+No push, pull request or merge is authorized or performed.
+
+- Removed `expo-haptics` from the mobile manifest and root lockfile; npm removed
+  that one package. `react-native-pulsar` remains pinned at **1.7.0**, with the
+  existing SDK 57 patch pins unchanged.
+- The single `haptic-feedback` native/web adapter family now owns Pulsar I/O for
+  both system heavy taps and named presets. Accept, changed/cleared feelings and
+  successful enabling use `Presets.System.impactHeavy()`; accepted completion
+  still defaults to **Batter**. Sound remains disabled.
+- Removed the duplicate completion-only native/web adapters and merged their
+  native guards/preset/production tests into the shared adapter regressions.
+  The provider and completion hook now use one controllable adapter.
+- Retained all ten developer comparison choices. The earlier **Original Expo
+  effect** is now **Four heavy taps**, recreated through Pulsar at the existing
+  four-tap/70 ms spacing. Production still ignores session overrides; reload
+  restores Batter. The tool remains guarded in Settings, route and screen.
+- Preserved saved-off behavior, quiet hydration/writes, duplicate completion
+  prevention, stop/background/unmount fencing, failure containment and export
+  inclusion of the boolean. Unsupported or older binaries stay usable and quiet;
+  there is no remaining Expo fallback. The testing screen explains that feedback
+  requires a physical iPhone and the Pulsar-enabled development build.
+- Existing signed development build **3c47aa67-e706-4361-8847-e38d61458e48**
+  already contains Pulsar and can run this JavaScript migration after a full
+  reload. It still contains the previously compiled, now-unused Expo native
+  module. A subsequent separately scheduled native build will omit that module;
+  this task does not perform signing/cloud builds or claim a new binary.
+
+Verification:
+
+- Final `npm run check` passes: fresh online Expo Doctor **21/21**, contracts
+  build, types/lint/format, **180 tooling, 54 API, 644 mobile / 75 suites and
+  24 contract cases**. Log: `.local/phase-08/pulsar-only-check.log`.
+- Fresh mobile coverage passes with **97.16% lines / 91.97% branches**, and the
+  unchanged combined all-source/critical floors pass. API/contracts coverage
+  reports are retained for their unchanged source. Logs: `pulsar-only-coverage.log`
+  and `pulsar-only-coverage-gate.log` under `.local/phase-08/`.
+- Regressions cover every named preset, native system heavy taps, the four-tap
+  comparison and cancellation, unsupported modules/hardware, production playback
+  and safe native failures. An integration regression mounts the actual provider
+  with its default Pulsar adapter, verifies every product action through the
+  mocked native SDK, and verifies saved-off, enable feedback and disable behavior.
+  Mocks establish JavaScript wiring, not tactile strength or feel.
+- Cold production Hermes iOS export passes with one worker; log:
+  `.local/phase-08/pulsar-only-ios-export.log`. This establishes bundling, not
+  signed native/release behavior.
+- Restarted only the owned web/phone Metro servers with `--clear`, preserving
+  loopback **8081**, LAN **8084** and the existing HTTPS staging API. File
+  watching remains enabled. The fresh iOS bundle contains Pulsar system heavy
+  taps, Batter default, Four heavy taps and the staging API, with no
+  `ExpoHaptics` module or `expo-haptics/` source. Audit:
+  `.local/phase-08/pulsar-only-phone-audit.json`. Both servers remain running.
+- In-app side-panel verification passes at the default **1165 × 1036** viewport:
+  Four heavy taps and Afterglow selection update the Preview label, reload
+  restores Batter, Back returns to Settings and Test haptics reopens the picker.
+  Haptics off survives browser reload; restored it to its prior on state. The
+  silent browser honestly disables native preview/stop controls. Screenshot
+  `.local/phase-08/pulsar-only-screen.jpg` was saved and visually inspected.
+  No outside browser, simulator or real account activity was used.
+- `npm ls expo-haptics --all` reports an empty dependency graph; the installed
+  Pulsar version remains **1.7.0**. No API/database boundary or phase closeout
+  changed, so no new database, saved journey or hosted CI acceptance is claimed.
+
+Directory review: inspected complete contents of the repository/mobile roots,
+Settings, developer haptics, platform haptics and its completion group, and the
+touched plan/architecture/handoff directories. Removing four duplicated adapter
+files leaves six direct platform haptics files, three completion files and three
+developer haptics files. Existing responsibility groups remain clear; no new
+subfolder or unrelated moves are needed.
+
+The Pulsar-only migration was committed locally as **9e0b16c**
+(`refactor(mobile): use Pulsar for all haptic feedback`).
+
+**Owner physical-iPhone confirmation:** Anthony reloaded the app and answered
+“All actions work and Off silences them” to the check covering enabling Haptics,
+accepting a challenge, changing a feeling and Batter completion, followed by
+turning Haptics off and repeating. These product triggers and disabled feedback
+now have owner-reported physical evidence on the existing Pulsar-enabled build.
+This also confirms the completion default after a full reload; it is separate
+from automated/browser evidence and does not claim a new binary.
+
+Remaining native checks in Phase 08: preference persistence across native app
+relaunch, explicit feeling clearing, the comparison tool's Preview/Stop,
+background interruption and return behavior. A clean native build without Expo's
+unused module and broader signed release acceptance remain separately scheduled.
+The owner response does not establish those unreported checks or close Phase 08.
+
+### October 13 Settings toggle haptics gate
+
+Anthony reported that toggling Reduce Motion still gave feedback with Haptics
+off, despite the four earlier product triggers respecting the preference.
+
+Inspection found no haptics request in the Reduce Motion row/provider. Both rows
+rendered React Native's interactive `Switch`; the installed RN 0.86 Fabric
+implementation creates a UIKit `UISwitch` and exposes no haptics suppression
+property. The reported remaining tap is therefore attributed to the native
+control, not an app event observed in a trace. No physical tap was reproduced by
+Codex; only Anthony's report establishes that tactile symptom.
+
+- Added shared `components/settings/SettingsToggleRow`: one accessible full-row
+  Pressable, with a decorative 51 × 31 pill. Neither preference renders an
+  interactive native Switch. Checked, disabled and busy state, hints, Enter and
+  Space are retained. The controls have no animation or implicit haptics.
+- Both rows use this control. Reduce Motion's input acknowledgement now requests
+  `selection` through the saved Pulsar haptics gate. Off/hydration/writes fence
+  it; storage errors remain owned by the motion provider. Haptics enabling still
+  previews only after a successful save, and disabling remains silent.
+- Preference values, system Reduce Motion priority, persistence, export schema,
+  challenge/feeling/Batter feedback and development guards are unchanged.
+- Updated existing row regressions to activate the accessible control through a
+  press and assert its checked state. Added a real-provider integration regression
+  that changes Reduce Motion with Haptics off, enables feedback, tests the input
+  tap, disables it and retests. It also asserts neither row retains a native
+  Switch outside the gate, protecting the source of the reported bypass.
+- Shared-control regressions cover controlled state, disabled/busy input,
+  native-switch absence and Space behavior, including a directly delivered
+  callback while disabled. No production dependency or native build change.
+
+Verification:
+
+- Focused Settings/control checks pass: **52 cases / 4 suites**. Log:
+  `.local/phase-08/toggle-haptics-focused.log`.
+- `npm run check` passes: online Expo Doctor **21/21**, all builds/types/lint/format,
+  **180 tooling, 54 API, 648 mobile / 76 suites and 24 contract cases**. Log:
+  `.local/phase-08/toggle-haptics-check.log`.
+- Fresh mobile coverage passes: **97.14% lines / 91.91% branches**; unchanged
+  all-source/critical floors pass with retained API/contracts reports for their
+  unchanged source. Logs: `.local/phase-08/toggle-haptics-coverage.log` and
+  `toggle-haptics-coverage-gate.log`.
+- The existing phone Metro serves both custom rows, the guarded motion input tap,
+  Pulsar and the unchanged HTTPS test API, with no Expo Haptics module. Live bundle
+  audit: `.local/phase-08/toggle-haptics-phone-audit.json`. The current signed
+  Pulsar-enabled development build can test this JavaScript-only correction
+  after a full reload; no new build is needed. Both existing servers remain
+  running with file watching enabled. No account, simulator or browser was reset.
+- Side-panel walkthrough passes at **1165 × 1036**: Haptics off → Reduce Motion
+  on → Space off → Enter on → reload retains both independent values. Restored
+  the prior browser values (Haptics on, Reduce Motion off). Both controls expose
+  checked state and measure **386 × 63** full-row targets. Visually inspected
+  the retained Settings typography/cards and 51 × 31 pills; no console errors.
+  Screenshot: `.local/phase-08/toggle-haptics-off-screen.jpg`.
+  Browser silence does not establish iPhone tactile behavior.
+
+Directory review: inspected all five files in shared Settings components, the
+six direct app-support Settings files plus existing export/information groups,
+and the touched plan/architecture/handoff directories. The shared control is a
+cohesive reusable Settings responsibility; no extra folders or moves are needed.
+
+**Owner physical-iPhone retest passed:** Anthony reloaded the existing
+Pulsar-enabled development app and answered “Off is silent; On gives one tap”
+to the check covering Reduce Motion in both directions with Haptics off, followed
+by re-enabling Haptics and checking the single input tap. This closes the reported
+Reduce Motion feedback bypass with owner-reported tactile evidence. No new
+binary was required. Native VoiceOver, relaunch/Stop/background and broader
+release acceptance remain their distinct existing gates; this focused phone
+result does not close all Phase 08 acceptance.
+
+### October 13 toggle row opacity correction
+
+Anthony noticed the row icon and label flickering when changing either
+preference. The shared toggle introduced a whole-row alpha of **0.8** while
+pressed and **0.5** while disabled. Both preference providers temporarily disable
+input during every storage write, so the entire row flashed between dimmed and
+normal states. These styles were introduced by the preceding toggle correction.
+
+Removed the row's pressed/disabled opacity styling. The row, label and icon stay
+fully opaque through input and saving; only the toggle value changes visually.
+A permanently disabled toggle still dims its pill, without dimming the label.
+Temporary saves retain their duplicate-input guard and accessible busy/disabled
+state while keeping their appearance stable. Haptics gating, saved values,
+keyboard behavior and system Reduce Motion priority are preserved.
+
+A regression checks the rendered switch row's opacity through normal, disabled
+saving and settled checked states, while preserving disabled-input behavior.
+The existing control/provider regressions retain the haptics-off protection and
+absence of interactive native switches.
+
+Verification:
+
+- Focused Settings/control checks pass: **35 cases / 3 suites**. Log:
+  `.local/phase-08/toggle-opacity-focused.log`.
+- `npm run check` passes: fresh Expo Doctor **21/21**, builds/types/lint/format,
+  **180 tooling, 54 API, 649 mobile / 76 suites and 24 contract cases**. Log:
+  `.local/phase-08/toggle-opacity-check.log`.
+- Fresh mobile coverage **97.14% lines / 91.97% branches** and unchanged combined
+  coverage floors pass. API/contracts reports are retained for unchanged source.
+  Logs: `toggle-opacity-coverage.log` and `toggle-opacity-coverage-gate.log` under
+  `.local/phase-08/`.
+- Fresh phone Metro bundle confirms no root pressed/opacity style and confines
+  dimming to a permanently disabled pill. Pulsar and the HTTPS test API remain
+  present. Audit: `.local/phase-08/toggle-opacity-phone-audit.json`. The existing
+  installed development build needs only a reload; no native build was started.
+
+Side-panel verification at **1165 × 1036**: toggled Reduce Motion with a held
+press, then held Haptics for 1.2 seconds and captured the screen during the hold.
+Icons/text remain fully visible, both states save correctly, and computed row
+opacity is **1** after both changes. Restored the original browser values
+(Haptics on, Reduce Motion off). Screenshot:
+`.local/phase-08/toggle-opacity-held-screen.jpg`.
+
+Directory review: all five shared Settings component files and the existing
+touched plan/architecture/handoff directory contents remain cohesive. No files,
+folders, dependencies or native modules were added by this correction. No
+publication, database/hosted CI or full phase acceptance is claimed.
+
+**Owner physical-iPhone visual confirmation passed:** Anthony reloaded JustGO
+and toggled Haptics and Reduce Motion, answering “Yes, the icons and text stay
+steady.” This closes the reported toggle-row flicker with owner-reported device
+evidence, separately from the earlier browser and automated checks. The existing
+native VoiceOver, relaunch/Stop/background and broader release gates remain open.
+
+### October 13 native-switch animation experiment
+
+**Historical experiment, subsequently removed:** Anthony later requested undoing
+this approach and animating the original custom switch. See the superseding
+[custom-switch task](#october-13-custom-switch-animation-and-experiment-removal).
+
+Anthony wants to preserve the distinctive native iPhone switch animation while
+keeping Haptics off silent. He authorized trying a native-switch workaround
+before changing the accepted Settings controls.
+
+Added `NativeSwitchExperiment` beside the existing developer haptics screen.
+Settings → Test haptics opens the comparison at the top of the existing guarded
+preview route. Both controls are actual React Native `Switch` views on iOS:
+
+- **Native reference:** direct native interaction with its own temporary value.
+- **Tap-controlled native switch:** an accessible switch row changes a second
+  temporary value. Its inner native switch receives no touch/accessibility input;
+  UIKit renders its updated value. The inner switch is not disabled or given a
+  custom thumb, preserving the native visual treatment for comparison.
+
+Neither test control invokes Pulsar, writes preferences, creates activity or
+persists its value. Remounting resets both. The reference may still generate
+Apple's own feedback. Test taps, holds and drags with app Haptics off, comparing
+the second control's animation and silence. Row-handled input can differ from
+native thumb dragging; no fidelity or tactile result is assumed. Native
+VoiceOver also needs checking before adopting this workaround in Settings.
+
+The experiment and existing preview route are guarded by `__DEV__`. Browser and
+Android show an honest iPhone requirement instead of a substitute animation or
+nested interactive HTML input. Production Settings remains unchanged, and no
+dependency, native build or signing change is needed to load the experiment.
+
+Verification:
+
+- Focused experiment/screen/navigation/production-guard tests pass: **18 cases /
+  4 suites**. Checks cover independent/resettable values, the native input and
+  accessibility barrier, unsupported platforms, production hiding, and use with
+  app Haptics off without preference writes or app-feedback requests. Log:
+  `.local/phase-08/native-switch-focused.log`.
+- `npm run check` passes: fresh Expo Doctor **21/21**, builds/types/lint/format,
+  **180 tooling, 54 API, 655 mobile / 77 suites and 24 contract cases**. Log:
+  `.local/phase-08/native-switch-check.log`.
+- Fresh mobile coverage **97.15% lines / 91.99% branches** and unchanged combined
+  coverage floors pass. The new experiment has full line/branch coverage;
+  retained API/contracts reports apply to unchanged source. Logs:
+  `native-switch-coverage.log` and `native-switch-coverage-gate.log` under
+  `.local/phase-08/`.
+- Side-panel walkthrough at **1165 × 1036**: Settings → Test haptics displays the
+  new comparison heading, explicit iPhone requirement and instructions. Existing
+  effect controls remain available below. No browser imitation of UIKit is
+  presented. Screenshot: `.local/phase-08/native-switch-browser.jpg`. Browser
+  Settings values remain Haptics on / Reduce Motion off.
+- A fresh development iOS bundle from the running phone server contains both
+  native switch controls, the touch/accessibility barrier and development guard;
+  the HTTPS staging API is retained. Audit:
+  `.local/phase-08/native-switch-phone-audit.json`. Anthony can reload the
+  existing Pulsar-enabled installed development app; no rebuild was started.
+
+Directory review: inspected all five developer haptics files, both direct Markdown
+files in `docs/` and the existing 23-file handoff directory/index. The experiment
+and its tests belong beside the existing haptics tool; the existing documentation
+groups remain navigable. No additional subfolders or moves are needed.
+
+**Owner physical-iPhone result:** Anthony answered “Silent, but the animation
+feels different.” This establishes owner-reported silence for the comparison,
+but the proposed workaround does not satisfy the desired native animation.
+Do not adopt it in Settings or treat the animation request as resolved. The
+existing accepted silent Settings controls remain unchanged; the comparison
+remains a development fixture. No separate gesture-by-gesture or VoiceOver
+acceptance was reported.
+
+Follow-up inspection of the installed UIKit public `UISwitch`/`UIControl` headers
+and the [React Native 0.86 Switch API](https://reactnative.dev/docs/0.86/switch)
+found no exposed setting for suppressing a normally interactive switch's own
+haptics. This does not establish that every alternative is impossible. The tested
+row-input workaround changes the normal touch path and cannot be presented as
+an equivalent native interaction after this device result. Any future proposal
+must preserve the agreed silence behavior or get an explicit product decision
+to change it; no native implementation/build is authorized by this test result.
+
+Only this evidence/documentation was updated after Anthony's response; no new
+code or UI change was made, so code tests and browser checks were not rerun.
+The existing native persistence/Stop/background and broader release gates
+remain separate. No Settings replacement, publication or phase closeout is
+implied by this comparison.
+
+### October 13 custom-switch animation and experiment removal
+
+Anthony requested using the original custom switch with a simple animation, then
+explicitly asked to undo the native-switch workaround. Removed the experimental
+component, its tests and the developer-screen import/render logic. The retained
+Test haptics page again contains only the existing preset preview/selection
+tools. A screen regression checks that no native `Switch` is rendered there.
+The earlier experiment result remains historical evidence, not current code.
+
+The shared `SettingsToggleRow` remains a custom accessible full-row Pressable
+with decorative track/thumb views. A single Animated value now drives the
+thumb's 20-point translation and the ink track's opacity over 200 ms with cubic
+ease-out. The native driver handles iOS transform/opacity; the browser uses its
+JavaScript driver. No native switch or implicit OS feedback is involved. This
+implements a simple slide/fade; it does not claim to reproduce UIKit's direct
+press/drag interaction.
+
+Both Settings owners supply the effective app/system Reduce Motion choice.
+When it is enabled, an in-flight transition is stopped and the accepted state
+is applied immediately. Value reversals and unmount stop the previous animation.
+Initial rendering and busy-only updates do not start/restart movement. Existing
+checked/disabled/busy state, Enter/Space behavior, storage success/error handling
+and haptics gating remain intact. Only the track and thumb animate; row icons
+and text retain full opacity, including through saves.
+
+Verification:
+
+- Focused Settings/control/preset/navigation checks pass: **69 cases / 6 suites**.
+  Tests exercise shared thumb/track progress, value reversals, cancellation,
+  Reduce Motion interruption, no animation restart for busy-only changes,
+  existing haptics-off gating, accessibility and keyboard input. Native frames
+  are not executed by the Jest renderer. Log:
+  `.local/phase-08/custom-toggle-motion-focused.log`.
+- `npm run check` passes: Expo Doctor **21/21**, build/types/lint/format,
+  **180 tooling, 54 API, 655 mobile / 76 suites and 24 contract cases**. The
+  initial type check caught removed RN `StyleSheet.absoluteFillObject`; using
+  the installed version's `StyleSheet.absoluteFill` resolved it before the
+  complete rerun. Log: `.local/phase-08/custom-toggle-motion-check.log`.
+- Fresh mobile coverage **97.15% lines / 91.99% branches** and all unchanged
+  combined floors pass. `SettingsToggleRow` has full lines/branches/functions;
+  API/contracts coverage is retained for unchanged source. Logs:
+  `custom-toggle-motion-coverage.log` and
+  `custom-toggle-motion-coverage-gate.log` under `.local/phase-08/`.
+- Side-panel walkthrough at **1174 × 1036** confirmed removal of the native
+  trial from Test haptics, then exercised both Settings controls and Space input.
+  Read-only computed-style samples captured intermediate thumb translations
+  from 0 to 20 and track opacity from 0 to 1; row opacity stayed 1 throughout.
+  With Reduce Motion on, the Haptics switch samples changed directly between
+  endpoints. These are browser observations, not native/tactile evidence or a
+  performance benchmark. Frame samples:
+  `.local/phase-08/custom-toggle-browser-frames.json` and
+  `custom-toggle-reduced-browser-frames.json`. Restored Haptics on / Reduce
+  Motion off. Screenshot:
+  `.local/phase-08/custom-toggle-motion-settings.jpg`.
+- Fresh phone Metro bundle confirms the native trial's module/labels are
+  absent, custom animated views/native-driver selection are served and the
+  HTTPS test API remains. Audit:
+  `.local/phase-08/custom-toggle-motion-phone-audit.json`. Reload the existing
+  installed development app to review; no new build/signing change was started.
+
+Directory review: inspected the five shared Settings files, the six direct
+app-support Settings files with their existing export/information groups, the
+three remaining developer haptics files, and the existing documentation groups
+in `docs/`, `docs/architecture/` and `docs/handoffs/`. The shared control remains
+one focused visual/input responsibility with tests beside it. Removing the
+experiment reduces developer fixture files; no new subfolders or moves are
+needed.
+
+**Owner physical-iPhone confirmation passed:** Anthony answered “Smooth; icons
+steady; Off stays silent” to the check covering the custom slide/fade with Reduce
+Motion off, steady row icons/text and Reduce Motion input with Haptics off. This
+records owner-reported visual and tactile acceptance of this focused correction.
+No code changed after the response, so tests and browser checks were not rerun.
+Existing native VoiceOver, persistence/Stop/background and broader release
+checks remain separate. This task does not close the phase or publish Git changes.
+
+### October 13 Reduce Motion toggle in both directions
+
+Anthony noticed that enabling the app's Reduce Motion preference suppressed the
+toggle's own movement, while disabling it animated normally. He explicitly
+requested smooth animation in both directions and side-panel verification.
+
+Changed only the Reduce Motion row's local animation flag to depend on hydration
+and the phone's preference, rather than the effective app-wide flag. Its custom
+200 ms slide/fade can now finish when changing either way. The accepted app
+preference still reaches all other consumers immediately; no global delay,
+additional storage, timer, native switch or haptics request was introduced.
+An enabled or unknown phone preference still stops movement and disables the
+row. The Haptics row continues to follow the effective app/system flag.
+
+Added an integration regression using the actual motion provider and row. It
+keeps the local animation pending while asserting that the rest of the app
+already observes reduced motion, verifies targets in both directions, and
+checks that a live phone preference cancels movement and preserves the saved
+app choice. Existing tests retain failed-save, hydration, duplicate-input,
+keyboard and haptics-off coverage.
+
+Verification:
+
+- Focused motion/shared-toggle/haptics tests pass: **42 cases / 3 suites**. Log:
+  `.local/phase-08/motion-toggle-both-directions-focused.log`.
+- `npm run check` passes: Expo Doctor **21/21**, build/types/lint/format,
+  **180 tooling, 54 API, 656 mobile / 76 suites and 24 contract cases**. Log:
+  `.local/phase-08/motion-toggle-both-directions-check.log`.
+- Fresh mobile coverage **97.15% lines / 91.99% branches** and unchanged combined
+  floors pass. Motion row lines/branches/functions remain fully covered;
+  API/contracts reports apply to unchanged source. Logs:
+  `motion-toggle-both-directions-coverage.log` and
+  `motion-toggle-both-directions-coverage-gate.log` under `.local/phase-08/`.
+- Side-panel verification at **1174 × 1036** captured intermediate thumb and
+  track states for both on and off, with row opacity always 1. With Reduce
+  Motion enabled, the Haptics control still changed directly between endpoints.
+  Space/Enter both work. Restored the original Haptics on / Reduce Motion off
+  browser values. Frame samples: `.local/phase-08/motion-toggle-on-browser-frames.json`,
+  `motion-toggle-off-browser-frames.json` and
+  `motion-toggle-other-control-browser-frames.json`. Screenshot:
+  `.local/phase-08/motion-toggle-both-directions-settings.jpg`.
+- A fresh phone development bundle includes the changed local motion rule and
+  custom toggle, retains the HTTPS test API and contains no native-switch trial.
+  Audit: `.local/phase-08/motion-toggle-both-directions-phone-audit.json`. The
+  existing installed development app needs only a reload; no new native build
+  or signing change was started.
+
+Directory review: the six direct app-support Settings files and their existing
+export/information groups remain cohesive; no files were added. Existing
+plan/architecture/handoff groups remain navigable. No subfolders or moves are
+needed for this focused adjustment.
+
+The requested automated and side-panel checks pass. This change was not
+retested on a physical iPhone, and the existing native accessibility and release
+gates remain separate. No phase closeout or Git publication is implied.

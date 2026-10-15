@@ -38,8 +38,8 @@ part of the repository files.
   and refreshes after upload settlement and reconnection. It receives runtime
   dependencies directly. `activity-hooks.ts` shares context-free subscriptions.
 - `features/progress/ProgressScreen.tsx` owns selected month/day and editing.
-  Its `day-details/DayReflectionEditor.tsx` renders the textbox/actions;
-  `day-details/useDayReflection.tsx`
+  Its `day-details/reflection-editor/DayReflectionEditor.tsx` renders the textbox/actions;
+  `day-details/reflection-editor/useDayReflection.tsx`
   uses the existing `ReflectionController`, repository, sender and saving host.
   No second upload queue or automatic draft submission was added.
 - Add/Edit saves text explicitly, preserves the original feeling, guards dirty

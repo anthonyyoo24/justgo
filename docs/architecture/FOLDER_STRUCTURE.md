@@ -55,12 +55,16 @@ apps/mobile/src/
 │       │   └── ProgressSkeleton.tsx
 │       └── day-details/              day sheet and activity/reflection rows
 │           ├── DaySheet.tsx
-│           ├── ProgressEntryRow.tsx
-│           ├── DayReflectionEditor.tsx
-│           ├── useDayReflection.tsx
-│           ├── SlidingEntryDetails.tsx
-│           ├── useEntryMotion.ts
-│           └── useEntryMotion.native.ts
+│           ├── useDaySheetMotion.ts
+│           ├── entries/              progressive list, row details and their motion
+│           │   ├── DayEntryList.tsx
+│           │   ├── ProgressEntryRow.tsx
+│           │   ├── SlidingEntryDetails.tsx
+│           │   ├── useEntryMotion.ts
+│           │   └── useEntryMotion.native.ts
+│           └── reflection-editor/    inline form and editor-session coordination
+│               ├── DayReflectionEditor.tsx
+│               └── useDayReflection.tsx
 ├── data/activity/
 │   ├── accounts.ts                   account repository ownership
 │   ├── repository.ts                 activity storage/submission/sync orchestration
@@ -107,6 +111,14 @@ test, journey exports, asset paths and all consumers follow the new locations.
 The [07.4 handoff](../handoffs/phase-07-4-progress-history.md#october-8-owner-review--progress-and-activity-folders)
 records current verification. This overlap with the earlier mobile cleanup must
 be reconciled when integrating its branch, retaining the newer editor/read files.
+
+The owner-authorized October 10 performance follow-up keeps sheet orchestration
+at the `day-details/` root, groups the list/rows/entry-motion adapters in
+`entries/`, and groups the inline form/session hook in `reflection-editor/`.
+The ten moved files include their colocated tests; both motion implementations
+stay together. The [performance handoff](../handoffs/day-sheet-performance.md)
+records the separate performance and organization commits, checks and bundle
+verification. The historical cleanup inventory below retains its dated paths.
 
 Mobile assets keep application icons at `apps/mobile/assets/`; challenge artwork
 uses `assets/challenges/venues/` for six venue/color pairs and
@@ -160,6 +172,29 @@ account screens and reusable controls. Page/row layout remains in
 `components/settings/`; account forms and orchestration remain with identity.
 The reviewed directories remain cohesive without further moves. See the
 [large-text handoff](../handoffs/phase-08-settings-privacy.md#october-12-large-text-fixes).
+
+### Phase 08 haptics
+
+`platform/haptics/` contains the installation preference provider/context and
+native/web feedback adapters, with colocated adapter tests. Settings keeps its
+Haptics row and preference regressions beside the existing motion row. Challenge
+and reflection owners invoke shared feedback at accepted user-action boundaries;
+the platform directory imports no product or account code.
+
+The completion group `platform/haptics/completion/` owns the approved Batter default,
+session-only development overrides and preview/cancellation with their tests.
+The single Pulsar native/web adapter family lives directly under
+`platform/haptics/`, alongside the saved preference provider and context. `dev/haptics/` owns the three screen/test
+files; the existing guarded preview route loads it using `mode=haptics`.
+No shared platform code imports developer screens. Existing haptics preference
+files remain at their owner, without unrelated folder moves.
+
+The reviewed Settings directory has six direct files (main screen and the two
+preference rows with their tests), plus export/information groups. The haptics
+adapter family is already in its own responsibility folder. This slice adds no
+files to the 35-file Challenges directory; its existing broader deck/active/success
+organization remains the separately documented mobile cleanup work, rather than
+duplicating those pending moves here.
 
 ## API, contracts and verification
 

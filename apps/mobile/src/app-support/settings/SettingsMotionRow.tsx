@@ -1,10 +1,12 @@
-import { StyleSheet, Switch, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ScaledText as Text } from '../../components/typography/ScaledText';
 import { useMotionPreferences } from '../../platform/motion/motion';
 import { colors, spacing, typography } from '../../theme/tokens';
-import { SettingsRowContent } from '../../components/settings/SettingsRows';
+import { SettingsToggleRow } from '../../components/settings/SettingsToggleRow';
+import { useHapticFeedback } from '../../platform/haptics/haptics';
 
 export function SettingsMotionRow() {
+  const feedback = useHapticFeedback();
   const { reduceMotion, systemReduced, loading, saving, error, setReduced } =
     useMotionPreferences();
   const disabled = loading || saving || systemReduced !== false;
@@ -16,26 +18,22 @@ export function SettingsMotionRow() {
         : null;
   return (
     <View>
-      <SettingsRowContent
+      <SettingsToggleRow
         icon="motion"
         label="Reduce motion"
-        accessory={
-          <Switch
-            accessibilityLabel="Reduce motion"
-            accessibilityHint={
-              phoneNotice ?? 'Reduce animated movement in JustGO.'
-            }
-            accessibilityState={{ disabled, busy: loading || saving }}
-            disabled={disabled}
-            value={reduceMotion}
-            onValueChange={(enabled) => {
-              // The preference provider owns storage failure feedback.
-              void setReduced(enabled);
-            }}
-            trackColor={{ false: colors.border, true: colors.ink }}
-            thumbColor={colors.white}
-          />
-        }
+        hint={phoneNotice ?? 'Reduce animated movement in JustGO.'}
+        disabled={disabled}
+        busy={loading || saving}
+        value={reduceMotion}
+        // Keep this status change animated in both directions. The phone's
+        // accessibility preference still suppresses the control's movement.
+        reduceMotion={loading || systemReduced !== false}
+        onValueChange={(enabled) => {
+          // Replace the native switch's implicit tap with preference-aware input
+          // feedback. The motion provider owns storage failure feedback.
+          feedback('selection');
+          void setReduced(enabled);
+        }}
       />
       {phoneNotice && <Text style={styles.notice}>{phoneNotice}</Text>}
       {error && (

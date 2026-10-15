@@ -19,7 +19,7 @@ type ExportData = {
   exportedAt: string;
   account: ExportPage['account'];
   devices: ExportPage['devices'];
-  preferences: { reduceMotion: boolean };
+  preferences: { reduceMotion: boolean; haptics: boolean };
   attempts: Attempt[];
   localChanges: LocalExportChange[];
 };
@@ -72,7 +72,7 @@ export function createExportArchive(data: ExportData): ExportArchive {
       ...data.localChanges.map((change) => row(change.attempt, change.status)),
     ].join('\r\n') +
     '\r\n';
-  const readme = `JustGO data export\n\nThis ZIP contains private feelings and reflection text. Keep it somewhere safe.\n\nactivity.csv: completed challenges and saved reflections. source=cloud means saved online. pending_upload and needs_attention are local copies captured when export began. An edited challenge can have a cloud row and a local row with the same attempt_id; neither version is discarded.\n\ndata.json: account creation date, registered devices, this installation's Reduce motion preference, online attempts and local changes.\n\nOnline history is read in pages between startedAt and exportedAt; another device's changes during this period may appear between pages. Local changes are captured at startedAt and may finish uploading while the file is created. Export does not change or delete any data.\n\nCSV protects cells that could be treated as spreadsheet formulas with a leading apostrophe. JSON preserves the original text exactly, including Unicode and newlines. Recovery keys, session tokens, internal request diagnostics and unsaved input are excluded.\n`;
+  const readme = `JustGO data export\n\nThis ZIP contains private feelings and reflection text. Keep it somewhere safe.\n\nactivity.csv: completed challenges and saved reflections. source=cloud means saved online. pending_upload and needs_attention are local copies captured when export began. An edited challenge can have a cloud row and a local row with the same attempt_id; neither version is discarded.\n\ndata.json: account creation date, registered devices, this installation's Reduce motion and Haptics preferences, online attempts and local changes.\n\nOnline history is read in pages between startedAt and exportedAt; another device's changes during this period may appear between pages. Local changes are captured at startedAt and may finish uploading while the file is created. Export does not change or delete any data.\n\nCSV protects cells that could be treated as spreadsheet formulas with a leading apostrophe. JSON preserves the original text exactly, including Unicode and newlines. Recovery keys, session tokens, internal request diagnostics and unsaved input are excluded.\n`;
   return {
     name: `JustGO-data-${data.exportedAt.replace(/[:.]/g, '-')}.zip`,
     // Stored ZIP entries avoid heavy compression and work without native modules/workers.
@@ -91,11 +91,13 @@ export async function collectExport({
   client,
   repository,
   reduceMotion,
+  haptics,
   signal,
 }: {
   client: Pick<AccountClient, 'request' | 'ownsAccount'>;
   repository: Pick<AccountRepository, 'accountId' | 'hydrate' | 'store'>;
   reduceMotion: boolean;
+  haptics: boolean;
   signal: AbortSignal;
 }): Promise<ExportArchive> {
   const check = () => {
@@ -143,7 +145,7 @@ export async function collectExport({
     exportedAt: new Date().toISOString(),
     account: first!.account,
     devices: first!.devices,
-    preferences: { reduceMotion },
+    preferences: { reduceMotion, haptics },
     attempts: attempts.sort(
       (a, b) =>
         a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id),

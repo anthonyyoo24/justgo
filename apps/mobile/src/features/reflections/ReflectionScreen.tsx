@@ -10,8 +10,10 @@ import {
 import { useDelayedBusy } from '../../lib/useDelayedBusy';
 import { ReflectionController } from './controller';
 import { ReflectionView } from './ReflectionView';
+import { useHapticFeedback } from '../../platform/haptics/haptics';
 
 export function ReflectionScreen() {
+  const feedback = useHapticFeedback();
   const { attemptId, source } = useLocalSearchParams<{
     attemptId?: string;
     source?: string;
@@ -66,7 +68,12 @@ export function ReflectionScreen() {
       feeling={state.feeling}
       text={state.text}
       editing={state.editing}
-      onFeelingChange={controller.setFeeling}
+      onFeelingChange={(feeling) => {
+        const previous = controller.getSnapshot().feeling;
+        controller.setFeeling(feeling);
+        if (controller.getSnapshot().feeling !== previous)
+          feedback('selection');
+      }}
       onTextChange={controller.setText}
       onSubmit={() => void controller.submit()}
       onClose={controller.close}

@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useSyncExternalStore, type RefObject } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -9,19 +9,35 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useReduceMotion } from '../../../platform/motion/motion';
+import { useReduceMotion } from '../../../../platform/motion/motion';
 import type {
   ReflectionController,
   ReflectionSnapshot,
-} from '../../reflections/controller';
-import { useDelayedBusy } from '../../../lib/useDelayedBusy';
-import { colors, fontFamilies } from '../../../theme/tokens';
+} from '../../../reflections/controller';
+import { useDelayedBusy } from '../../../../lib/useDelayedBusy';
+import { colors, fontFamilies } from '../../../../theme/tokens';
 
 const reflectionHint = 'What stood out to you?';
 const inputPadding = 14;
 
-// Closed Add rows measure this lightweight layout instead of mounting native
-// inputs/controllers. It shares the real empty form's typography and geometry.
+export function ConnectedDayReflectionEditor({
+  controller,
+  ...props
+}: Omit<Parameters<typeof DayReflectionEditor>[0], 'state'>) {
+  // Text and save/dismiss state belong to the active editor, so keystrokes do
+  // not invalidate the calendar, list or unrelated attempt rows.
+  const state = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+    controller.getSnapshot,
+  );
+  return (
+    <DayReflectionEditor {...props} controller={controller} state={state} />
+  );
+}
+
+// An opening Add row measures this lightweight layout before mounting its native
+// input. It shares the real empty form's typography and geometry.
 export function DayReflectionPlaceholder({ text = '' }: { text?: string }) {
   return (
     <View testID="reflection-editor-measurement">

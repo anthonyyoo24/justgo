@@ -1,5 +1,19 @@
 # Implementation handoffs
 
+**October 14 PR #25 review corrections:** Day-sheet batches now fill available
+space without requiring a scroll gesture, and the setup guide matches the
+installed Expo/Router pins. The
+[review-fix handoff](phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+records failing-before regressions, verification and retained release gates.
+
+**October 14 fourth review preparation:** PR #24 is merged, and local `main`
+is updated to `6382aed`. The
+[final split-review handoff](phase-08-settings-privacy.md#october-14-fourth-review-preparation)
+records the 70-file haptics/toggle, day-sheet and reflection-keyboard checkpoint,
+merged dependency maintenance and fresh checks. Earlier dependency-blocker
+entries below describe their original checkpoints. Native/release acceptance
+and ongoing account/privacy/planning work remain separate.
+
 **October 14 PR #24 review correction:** Export busy-state descriptions now
 match the retained label and progress indicator. The
 [review follow-up](phase-08-settings-privacy.md#october-14-pr-24-review-correction)
@@ -42,6 +56,87 @@ both hosted Foundation runs pass, including all 24 saved journeys. Native
 build/device acceptance remains separate. Verify each branch when splitting PRs
 and rerun fresh online Doctor immediately before pushing.
 
+**October 14 reflection keyboard:** The separate Phase 08 keyboard worktree
+brings the focused reflection section into view and bounds the writing area above
+the retained Skip/Save footer. The [keyboard handoff](phase-08-reflection-keyboard.md)
+records regression evidence, independent-server setup and Anthony's October 14
+physical-iPhone confirmation that the fix works. Owner-authorized local integration
+combines it with the latest Phase 08 Settings changes. Combined code checks pass;
+four new Expo SDK patch recommendations keep the root dependency gate open.
+Broader native/release gates stay open.
+
+**October 13 Reduce Motion toggle:** Its custom slide/fade now runs in both
+directions while the app preference takes effect immediately elsewhere. The
+phone's accessibility preference still takes priority. The [follow-up](phase-08-settings-privacy.md#october-13-reduce-motion-toggle-in-both-directions)
+records the regression and side-panel verification; no new native-phone
+acceptance is claimed for this adjustment.
+
+**October 13 custom switch animation:** Anthony requested animating the original
+custom toggle and removing the native-switch workaround. Both Settings controls
+now share a short thumb slide and track fade, honor Reduce Motion and retain
+the existing haptics gate and steady row appearance. The native comparison code
+is removed; the [custom-switch handoff](phase-08-settings-privacy.md#october-13-custom-switch-animation-and-experiment-removal)
+records verification and Anthony's physical-iPhone confirmation: “Smooth; icons
+steady; Off stays silent.” Wider native/release checks remain separate.
+
+**October 13 native-switch experiment (removed):** The developer haptics page
+temporarily compared a standard iPhone switch with a switch controlled by row taps.
+Anthony reported “Silent, but the animation feels different” on his physical
+iPhone, so the workaround was not adopted in Settings. Anthony subsequently
+requested the accepted custom animation above. The [experiment handoff](phase-08-settings-privacy.md#october-13-native-switch-animation-experiment)
+records the historical implementation, checks and owner result. The later
+custom-switch task removed the experiment entirely.
+
+**October 13 toggle row flicker:** Removed whole-row fading on press and during
+preference saves. Icons and labels stay opaque; only a permanently disabled
+pill is dimmed. The [visual follow-up](phase-08-settings-privacy.md#october-13-toggle-row-opacity-correction)
+records regressions, side-panel verification and Anthony’s physical-iPhone
+confirmation that icons and text stay steady when toggling both preferences.
+
+**October 13 Settings toggle correction:** Anthony reported Reduce Motion still
+vibrating with Haptics off. Both preference rows now use a shared accessible
+app-controlled toggle; Reduce Motion feedback goes through the saved haptics
+gate. The [correction handoff](phase-08-settings-privacy.md#october-13-settings-toggle-haptics-gate)
+records regression/browser evidence and Anthony’s physical-iPhone confirmation:
+Reduce Motion is silent with Haptics off and gives one tap when on.
+
+**October 13 Pulsar-only migration:** Anthony authorized replacing Expo Haptics
+with Pulsar for every action. Batter stays the completion default; simple actions
+use Pulsar system heavy taps, and Four heavy taps remains a development comparison.
+The [migration handoff](phase-08-settings-privacy.md#october-13-pulsar-only-migration)
+records the separate local commit and verification. Anthony confirmed on his
+physical iPhone after reloading that all four product triggers work and Off
+silences them. Native relaunch/Stop/background and release checks remain open.
+Expo Haptics is removed from the source dependency graph; the existing installed
+Pulsar-enabled binary runs the JavaScript migration.
+
+**October 13 Batter default:** Anthony selected Batter for completion and requested
+retaining Test haptics as a development-only tool. Production always uses Batter;
+development can override it in memory, with reload restoring Batter. The
+[default-selection handoff](phase-08-settings-privacy.md#october-13-batter-default-and-retained-development-tool)
+records verification and the remaining native/release checks. This supersedes the
+earlier plan to remove the comparison screen before release.
+
+**October 13 haptics comparison:** Settings → Test haptics now compares nine
+Pulsar presets and the current Expo effect through a development-only screen.
+The session choice controls Preview and real accepted completion; release builds
+keep the existing effect. The [comparison handoff](phase-08-settings-privacy.md#october-13-development-haptics-comparison)
+records passing automated/browser checks and a successful signed internal iPhone
+build with Pulsar. Installation, physical comparison and final selection remain
+open; no final Pulsar effect or phase acceptance is claimed.
+
+**October 13 haptics strength:** Anthony reported barely perceptible feedback on his physical iPhone. Accept, feeling changes and the enable preview request one heavy impact; completion gives a short burst of four heavy impacts after the owner requested vibration-like success feedback. Each pulse respects disabling/background state, and a native failure stops the burst. The [strength correction](phase-08-settings-privacy.md#october-13-haptics-strength-correction) records the regression checks and leaves physical feel acceptance open for retesting. Reload the existing haptics-enabled development app; no new binary is needed.
+
+**October 12 updated iPhone build:** Anthony authorized the separate native build for haptics. SDK patch alignment now passes fresh Expo Doctor 21/21 and the full check/coverage gates. The [build follow-up](phase-08-settings-privacy.md#october-12-updated-physical-development-build) records reused signing, archive checks, the successful internal iPhone build, verified signed artifact/native modules and installation QR; physical-device acceptance remains open.
+
+**October 12 haptics:** Anthony moved implementation and physical testing together back to Phase 08. The saved switch, three deliberate action triggers, silent web/missing-module fallback and export preference are implemented. The [follow-up](phase-08-settings-privacy.md#october-12-haptics-implementation) records verification; an updated signed development build and physical-iPhone feel/disabled/persistence checks remain open.
+
+**October 12 day-sheet integration:** Anthony authorized merging the two day-sheet
+performance/organization commits into Phase 08 after accessibility testing.
+The [integration record](day-sheet-performance.md#phase-08-integration--october-12)
+records motion-path conflict resolution, combined checks and the retained Expo
+dependency/native acceptance gates. Phase 08 feature completion remains separate.
+
 **October 12 accessibility fixes:** Heading/status wrapping and stale spacing after live text-size changes are resolved. Settings/account screens pass normal/maximum native visual checks and live resizing in the side-panel simulator mirror; browser labels and keyboard order pass. The [follow-up](phase-08-settings-privacy.md#october-12-large-text-fixes) records regressions, native/browser evidence and the remaining physical-phone VoiceOver and Expo dependency gates.
 
 **October 12 account back-link removal:** Both Account & recovery variants omit the bottom Back to app shortcut and retain header navigation. The [follow-up](phase-08-settings-privacy.md#october-12-account-back-link-removal) records removal regressions, code checks and side-panel navigation evidence. Existing dependency and device acceptance gates remain open.
@@ -63,6 +158,15 @@ and rerun fresh online Doctor immediately before pushing.
 **October 11 physical development build:** Anthony's iPhone is registered with Apple/Expo and the first signed physical development build succeeded and is installed. The [setup follow-up](phase-08-settings-privacy.md#physical-development-build-follow-up) records checks, build identity and the installation QR. The subsequent hosted API/tester-access work is recorded above; physical feature acceptance remains open. No Git publication occurred.
 
 **October 10 data export:** Phase 08 step 2 implements a Settings action producing a CSV + JSON ZIP with complete online history and labeled pending local changes. The [export handoff](phase-08-settings-privacy.md#october-10-data-export-implementation) records authenticated owner isolation, file delivery and verification. Deletion, analytics and legal publication remain open; this slice does not close Phase 08.
+
+**October 10 day-sheet performance:** The owner's 41-attempt simulator finding
+is addressed locally in a separate `codex/day-sheet-performance` worktree.
+The [performance handoff](day-sheet-performance.md) records the measured render
+cost, progressive row mounting, isolated editor updates and native/browser
+verification. Owner review and Git publication remain open; the existing
+physical-device and release acceptance gates stay with Phase 09.
+The owner-authorized `entries/` and `reflection-editor/` organization is retained
+in a separate local commit from the performance fix.
 
 **October 10 Reduce Motion:** The first remaining Phase 08 slice implements a
 saved installation-level Settings switch and shared app motion behavior, with

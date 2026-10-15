@@ -8,6 +8,7 @@ import {
   useRuntime,
 } from '../../providers/AppProvider';
 import { useMotionPreferences } from '../../../platform/motion/motion';
+import { useHapticPreferences } from '../../../platform/haptics/haptics';
 import { saveExportFile } from '../../../platform/export/export-file';
 import { ApiError } from '../../../lib/http';
 import { collectExport } from './data-export';
@@ -37,6 +38,12 @@ function ExportSession({
   const { client } = useRuntime();
   const router = useRouter();
   const { reduceMotion } = useMotionPreferences();
+  const {
+    enabled: haptics,
+    loading: hapticsLoading,
+    saving: hapticsSaving,
+  } = useHapticPreferences();
+  const preferencesPending = hapticsLoading || hapticsSaving;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
@@ -56,7 +63,7 @@ function ExportSession({
   );
 
   const start = async () => {
-    if (active.current) return;
+    if (active.current || preferencesPending) return;
     if (!repository || !accountId) {
       router.push('/recovery');
       return;
@@ -75,6 +82,7 @@ function ExportSession({
         client,
         repository,
         reduceMotion,
+        haptics,
         signal: controller.signal,
       });
       check();
@@ -121,8 +129,11 @@ function ExportSession({
             ? 'Create a ZIP with your saved challenges, feelings and reflections'
             : 'Connect your account to export your data'
         }
-        accessibilityState={{ disabled: busy, busy }}
-        disabled={busy}
+        accessibilityState={{
+          disabled: busy || preferencesPending,
+          busy: busy || preferencesPending,
+        }}
+        disabled={busy || preferencesPending}
         style={({ pressed }) => pressed && styles.pressed}
         onPress={() => {
           // This action handles export failures before presenting feedback.

@@ -40,6 +40,14 @@ access policy and foreground behavior are unchanged. The
 
 ## Routes and access
 
+The full-screen reflection view keeps its Skip/Save footer outside the scroll
+viewport. `features/reflections/useReflectionKeyboard` measures the section and
+available viewport, provides trailing scroll room and brings the focused editor
+into view after keyboard/layout changes. A bounded, internally scrolling input
+fits typical keyboard-reduced layouts; focus scrolling honors effective Reduce
+Motion. This changes presentation only, with native timing/geometry acceptance
+recorded separately in the [Phase 08 keyboard handoff](../handoffs/phase-08-reflection-keyboard.md).
+
 - `/`: restore the real account, then check `/v1/access`. Loading, unavailable and unpaid have distinct UI. Only a fresh, unexpired server verification admits the paid routes.
 - `/(tabs)` and `/progress`: Home uses the downloaded catalog and local venue/start/countdown/completion state. Progress uses independent canonical summary/calendar/day reads and the shared repository's local activity overlay. Current-month counts and today's downloaded pages survive offline; other days and months require a connection.
 - `/challenge`: guarded iOS Active → Success flow with memory-only start context; Completed changes content in place. Give up returns Home and Continue opens Reflection. An empty direct/restarted route returns Home.
@@ -49,13 +57,13 @@ access policy and foreground behavior are unchanged. The
 
 `AccessService` calls `IdentityService.withSession` and passes the same verified owner transaction into an entitlement reader. The default production reader returns **unavailable** until phase 07A implements a verified billing projection. Explicit application staging can compose operator-approved free beta grants through the same owner transaction; no client request can grant access. The private configuration records start, expiry and optional revocation, preserving earlier-start upload coverage. An optional `free_beta` source identifies this mode in access/Settings copy. See the [test-server handoff](../handoffs/phase-09-test-server.md). Mobile still accepts a verification for at most 60 seconds and never past its expiry; checks repeat every 30 seconds and on foreground. A server check up to five seconds ahead of the phone’s receipt time uses the same bounded clock alignment for admission and its closure timer; stale or more distant future checks remain closed. A failed recheck closes access. Durable offline beta admission remains open; this prerequisite does not implement 07A's nine saved paid-access rules. Attempt uploads authenticate ownership and use the earlier-coverage interface; 07A connects the provider-backed implementation. A navigation guard is not authorization.
 
-Settings is a secondary route without bottom tabs, with Preferences, Account & data, Privacy, Support and About groups. Existing recovery tools and private support/feature-request email drafts are connected. Reduce Motion and Export my data are implemented; deletion and both analytics choices remain unavailable, with analytics still off. Legal/social/rating rows use configured public destinations or honest unavailable states. Billing activation remains Phase 07A, haptics implementation/testing Phase 09, and reminders are deferred beyond the first release.
+Settings is a secondary route without bottom tabs, with Preferences, Account & data, Privacy, Support and About groups. Existing recovery tools and private support/feature-request email drafts are connected. Reduce Motion and Export my data are implemented; deletion and both analytics choices remain unavailable, with analytics still off. Legal/social/rating rows use configured public destinations or honest unavailable states. Billing activation remains Phase 07A, haptics implementation/testing Phase 08, and reminders are deferred beyond the first release.
 
 Settings ends after About, without version/free-test branding or a developer
 preview shortcut. The explicit Recover an account form has no duplicate Get help
 action or privacy tagline; disconnected account entry retains direct help for
-connection failures. The guarded preview route remains available for development
-tools without appearing in Settings.
+connection failures. The retained development-only Test haptics row opens the
+guarded preview route's haptics mode; the general screen-preview footer stays removed.
 
 Connected and disconnected Account & recovery pages omit the bottom Back to app
 shortcut. The shared header Back button returns through navigation history, with
@@ -64,6 +72,31 @@ Settings as the fallback when the account page has no previous screen.
 `app-support/settings/export` owns the direct Settings export action, authenticated page collection and CSV/JSON ZIP formatting. Tapping Export my data keeps its label and shows an inline spinner, then presents the native share sheet or browser download. Dismissing the share sheet resets the row quietly. Actual failures display red inline feedback until retry or leaving Settings; duplicate taps, focus loss and account changes retain cancellation protection. A disconnected account opens recovery instead. `data/activity/export` captures accepted local changes independently of cache pruning or uploading. `platform/export/export-file` owns the iOS cache-file/share-sheet and web Blob/download adapters, with private temporary-file cleanup and an owner/cancellation check immediately before presentation. `/export-data` redirects older links to Settings; there is no separate export screen. The Settings action remains available outside the paid-access guard. `/v1/account/export` uses the existing verified-session owner transaction and primary-key paging, never an entitlement or client-selected account. Each page returns at most 50 attempts and safe account/device metadata; every page is owner-scoped. Online/local versions are labeled separately, and the README explains the read interval and spreadsheet formula escaping. See the [export handoff](../handoffs/phase-08-settings-privacy.md#october-10-data-export-implementation).
 
 `platform/motion/MotionPreferencesProvider` wraps the root app and toast hosts. It owns one installation-level AsyncStorage boolean and combines it with React Native's live accessibility setting and foreground refresh. System Reduce Motion always wins; motion stays reduced while either initial read is unresolved. The Settings switch saves before applying a new choice and exposes read/write failures for retry. Cards, Progress loading, day-sheet/reflection motion and toast adapters consume the same effective flag. It contains no account, journal or network state and does not synchronize across devices. See the [motion handoff](../handoffs/phase-08-settings-privacy.md#october-10-reduce-motion-implementation) for evidence and open device checks.
+
+`platform/haptics/` owns the installation preference, context and iPhone/web adapters. The root composes its provider outside account/access guards. Feedback stays quiet until hydration and during writes; a saved off choice survives relaunch and account changes. The default is on. `react-native-pulsar` 1.7.0 is the only haptics dependency. The native adapter checks its TurboModule before importing the enforcing SDK; old binaries remain usable with unavailable feedback. The adapter only runs in an active iPhone app and the provider contains native failures. One Pulsar system heavy impact follows accepted challenge state, changed feelings or successful enabling. Accepted completion uses Pulsar Batter by default, coalesced across repeated taps. Four heavy taps remain a development comparison, recreated through Pulsar. Unsupported binaries stay quiet rather than using another library. Playback observes preference/lifecycle/foreground guards and is stopped on disable/background/disposal; native failures stay contained. This replaces the original light/selection/success presets and the first medium-impact adjustment after Anthony reported weak feedback and requested vibration-like completion feedback on his physical phone. No private feeling/text payload is passed to the adapter. Callbacks remain stable across preference changes and are fenced after disabling/unmounting. Web does not use browser vibration. Export includes the saved haptics choice. Both preference rows use the shared `SettingsToggleRow` with a decorative pill and an accessible, full-row Pressable. There is no interactive native `UISwitch` to emit feedback outside the app gate. Reduce Motion requests one selection tap through the haptics provider; the Haptics row retains its success-only enable preview and silent disable. Checked, disabled/busy state and keyboard Enter/Space remain available. Pressing or saving never dims the row, icon or label; permanent-disable dimming is confined to the toggle pill. Anthony selected Batter; wider native/release acceptance remains open. See the [strength follow-up](../handoffs/phase-08-settings-privacy.md#october-13-haptics-strength-correction).
+
+The custom `SettingsToggleRow` animates its thumb translation and ink-track
+opacity from one `Animated.Value`, using a 200 ms cubic ease-out transition.
+Only accepted value changes start motion; initial rendering and saving-only
+updates do not. Haptics uses the effective Reduce Motion flag: enabling it stops
+any in-flight transition and applies the value immediately. The Reduce Motion
+row's own short status transition is exempt from the app preference, so it
+animates both on and off while the rest of the app responds immediately. Its
+movement remains suppressed during hydration and whenever the phone's Reduce
+Motion preference is enabled or unknown. Native uses the
+Animated native driver for transform/opacity; web uses its JavaScript driver.
+This visual animation adds no haptics and never changes row/icon/label opacity.
+The unsuccessful native-switch comparison was removed at Anthony's request;
+the developer haptics page retains only its preset testing tools.
+
+Completion policy and the retained development tool live in `platform/haptics/completion/`.
+They share the Batter default and cancellation; development can override the preset
+in memory for Preview and real completion. Reloading restores Batter. `dev/haptics/` presents the Settings-style picker through
+`/preview?mode=haptics`. Pulsar is loaded lazily only when its iPhone TurboModule
+exists; older binaries stay quiet and explain the required Pulsar-enabled
+build for native feedback. Production always uses Batter and ignores
+development choices. The guarded Settings row/page remain development-only.
+No selected preset enters exports, account storage, telemetry or server calls.
 
 ## Request and state rules
 
@@ -98,6 +131,16 @@ owns independent queries and repository acceptance. `ProgressView` composes
 `ProgressEntryRow` (metadata/reflection expansion). Each owns its related styles.
 `DayReflectionEditor` renders the Paper textbox/actions and `useDayReflection`
 reuses the existing reflection controller for explicit saves and guarded closes.
+Within `day-details/`, the sheet and its motion hook remain at the root.
+`entries/` owns the list, rows, expanding details and native/browser motion pair;
+`reflection-editor/` owns the form and editor-session hook. Tests stay beside
+their implementations, and consumers import these owners directly.
+`DayEntryList` mounts eight rows initially and fills ahead of scrolling before
+requesting the next backend page. Visited rows stay mounted until the day closes,
+preserving animated layout and active drafts. Rows compare their complete display
+values and callback identities; collapsed detail panels have no mounted content
+or motion adapter. `ConnectedDayReflectionEditor` owns the controller subscription
+so typing and dismissal updates stay inside the active editor.
 `ChallengeScreen` owns deck orchestration; `ActiveChallenge` owns the countdown and
 outcome controls; `SuccessScreen` owns the local completed-result route. The shared
 feeling choices come from the versioned contracts. The Phase 06A refactor preserved behavior; Phase 07 separately replaces its server-backed persistence policy with the journal flow below. App-provider and vault adapter tests cover their real

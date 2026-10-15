@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { ChallengeLayout } from '../challenges/ChallengeLayout';
 import { ReflectionView } from './ReflectionView';
@@ -70,6 +70,30 @@ it('has native multiline entry and an accessible dismissal choice without a Dict
   );
   expect(screen.getByRole('button', { name: 'Discard and skip' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Keep editing' })).toBeTruthy();
+});
+
+it('fits the focused editor above the footer and keeps Skip/Save outside the scroll area', () => {
+  const base = props();
+  const screen = render(<ReflectionView {...base} />);
+  const viewport = screen.getByTestId('reflection-scroll');
+  const input = screen.getByLabelText('Your reflection');
+  const measure = (node: typeof input, y: number, height: number) =>
+    fireEvent(node, 'layout', {
+      nativeEvent: { layout: { x: 0, y, width: 390, height } },
+    });
+  measure(viewport, 0, 700);
+  measure(screen.getByTestId('reflection-section'), 350, 320);
+  measure(input, 92, 228);
+  fireEvent(input, 'focus');
+  measure(viewport, 0, 260);
+  expect(StyleSheet.flatten(input.props.style).height).toBe(140);
+  expect(input.props.scrollEnabled).toBe(true);
+  expect(within(viewport).queryByRole('button', { name: 'Skip' })).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
+  expect(base.onSubmit).toHaveBeenCalledTimes(1);
+  screen.rerender(<ReflectionView {...base} text="Disposable reflection" />);
+  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
+  expect(base.onSubmit).toHaveBeenCalledTimes(2);
 });
 
 it('matches the challenge screens’ top header typography', () => {
