@@ -39,6 +39,7 @@ export function createAppRuntime(
   });
   const telemetry = createTelemetry();
   const activity = new ActivityRuntime(client, storage);
+  identity.setAccountDataRemover(activity.deleteAccount);
   const challenges = new ChallengeController(client, {
     repository: activity.getRepository,
   });

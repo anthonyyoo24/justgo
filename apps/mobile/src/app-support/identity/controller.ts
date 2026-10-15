@@ -1,6 +1,7 @@
 import { getRandomValues, randomUUID } from 'expo-crypto';
 import {
   credentialsResponseSchema,
+  accountDeletionResponseSchema,
   devicesResponseSchema,
   okSchema,
   secretSchema,
@@ -19,6 +20,8 @@ import { IdentityClientError, type IdentityApi } from './api';
 import type { CredentialVault, DeviceState, StoredCredential } from './storage';
 import type { HttpMethod } from '../../lib/http';
 import { Deadline } from '../../lib/deadline';
+import { removeDeletedCredentials } from './deletion/cleanup';
+import { resumeAccountDeletion } from './deletion/workflow';
 
 type Snapshot = {
   busy: boolean;
@@ -33,9 +36,10 @@ type Snapshot = {
   inspection: (TransferInspectionResponse & { code: string }) | null;
   devices: z.infer<typeof devicesResponseSchema>['devices'];
   recoveryKeys: z.infer<typeof credentialsResponseSchema>['credentials'];
+  deletionStatus: 'pending' | 'cleanup' | 'deleted' | null;
 };
 type Random = { id: () => string; secret: () => string };
-type OperationOptions = { background?: boolean };
+type OperationOptions = { background?: boolean; resumeDeletion?: boolean };
 const secureRandom: Random = {
   id: randomUUID,
   secret: () =>
@@ -74,6 +78,10 @@ export class IdentityController {
   private sessionRefresh: Promise<{ userId: string; token: string }> | null =
     null;
   private data: DeviceState | null = null;
+  private removeAccountData: ((userId: string) => Promise<void>) | null = null;
+  setAccountDataRemover(remover: (userId: string) => Promise<void>) {
+    this.removeAccountData = remover;
+  }
   private listeners = new Set<() => void>();
   private snapshot: Snapshot = {
     busy: false,
@@ -88,6 +96,7 @@ export class IdentityController {
     inspection: null,
     devices: [],
     recoveryKeys: [],
+    deletionStatus: null,
   };
   constructor(
     readonly vault: CredentialVault,
@@ -223,6 +232,9 @@ export class IdentityController {
       key: null,
     });
     try {
+      await this.ensureData();
+      if (this.data?.pending?.kind === 'delete' && !options.resumeDeletion)
+        throw new IdentityClientError('CONFLICT');
       await work();
     } catch (error) {
       const code =
@@ -253,7 +265,17 @@ export class IdentityController {
     if (this.data) return;
     try {
       this.data = await this.storage(() => this.vault.read());
-      this.update({ hasPending: this.data?.pending != null });
+      this.update({
+        hasPending: this.data?.pending != null,
+        deletionStatus:
+          this.data?.pending?.kind === 'delete'
+            ? this.data.pending.receipt
+              ? 'cleanup'
+              : 'pending'
+            : this.data?.accountDeleted
+              ? 'deleted'
+              : null,
+      });
     } catch {
       throw new IdentityClientError('STORAGE');
     }
@@ -268,31 +290,38 @@ export class IdentityController {
       });
   }
   initialize = () =>
-    this.run(async () => {
-      await this.ensureData();
-      const credentials = await this.credentials();
-      this.update({ credentials: credentials.map((c) => ({ id: c.id })) });
-      if (this.data!.pending) {
-        await this.resume();
-        return;
-      }
-      if (this.data!.session) {
-        await this.verify();
-        return;
-      }
-      if (credentials.length === 1) {
-        await this.prepareRecovery(credentials[0]!);
-        return;
-      }
-      if (credentials.length > 1) {
-        this.update({
-          message:
-            'More than one recovery credential is available. Choose the account to recover; accounts will stay separate.',
-        });
-        return;
-      }
-      if (this.vault.kind === 'keychain') await this.newAccount();
-    });
+    this.run(
+      async () => {
+        await this.ensureData();
+        const credentials = await this.credentials();
+        this.update({ credentials: credentials.map((c) => ({ id: c.id })) });
+        if (this.data!.pending) {
+          await this.resume();
+          return;
+        }
+        if (this.data!.accountDeleted) {
+          this.update({ message: 'Your account has been deleted.' });
+          return;
+        }
+        if (this.data!.session) {
+          await this.verify();
+          return;
+        }
+        if (credentials.length === 1) {
+          await this.prepareRecovery(credentials[0]!);
+          return;
+        }
+        if (credentials.length > 1) {
+          this.update({
+            message:
+              'More than one recovery credential is available. Choose the account to recover; accounts will stay separate.',
+          });
+          return;
+        }
+        if (this.vault.kind === 'keychain') await this.newAccount();
+      },
+      { resumeDeletion: true },
+    );
   private async newAccount() {
     const credential = { id: this.random.id(), secret: this.random.secret() };
     // Persist the complete pending intent first, then the synchronizing item, then call the API.
@@ -302,6 +331,7 @@ export class IdentityController {
       session: null,
       savedKey: null,
       registration: null,
+      accountDeleted: false,
       pending: {
         kind: 'bootstrap',
         credentialId: credential.id,
@@ -311,6 +341,7 @@ export class IdentityController {
     });
     this.update({
       account: null,
+      deletionStatus: null,
       devices: [],
       recoveryKeys: [],
       transfer: null,
@@ -338,9 +369,11 @@ export class IdentityController {
       selectedId: credentialId,
       session: { token: proposal.sessionToken, info },
       pending: null,
+      accountDeleted: false,
     });
     this.update({
       account: info,
+      deletionStatus: null,
       transfer: null,
       message: this.snapshot.busyInBackground
         ? ''
@@ -351,6 +384,10 @@ export class IdentityController {
   private async resume() {
     const pending = this.data!.pending;
     if (!pending) return;
+    if (pending.kind === 'delete') {
+      await this.resumeDeletion();
+      return;
+    }
     if (pending.kind === 'transfer') {
       await this.add({
         id: pending.credentialId,
@@ -410,16 +447,87 @@ export class IdentityController {
     await this.finish(info, pending.proposal, credential.id);
   }
   retry = (options: OperationOptions = {}) =>
-    this.run(async () => {
-      await this.ensureData();
-      if (this.data!.pending) await this.resume();
-      else if (this.data!.session) await this.verify();
-      else
-        this.update({
-          credentials: (await this.credentials()).map((c) => ({ id: c.id })),
-          message: 'Choose a recovery method to continue.',
+    this.run(
+      async () => {
+        await this.ensureData();
+        if (this.data!.pending) await this.resume();
+        else if (this.data!.session) await this.verify();
+        else
+          this.update({
+            credentials: (await this.credentials()).map((c) => ({ id: c.id })),
+            message: 'Choose a recovery method to continue.',
+          });
+      },
+      { ...options, resumeDeletion: true },
+    );
+  deleteAccount = () =>
+    this.run(
+      async () => {
+        await this.ensureData();
+        if (this.data!.pending?.kind === 'delete') return this.resumeDeletion();
+        if (!this.data!.session || !this.snapshot.account)
+          throw new IdentityClientError('UNAUTHORIZED');
+        if (!this.vault.remove || !this.removeAccountData) {
+          this.update({
+            message: 'Update JustGO to delete your account securely.',
+          });
+          return;
+        }
+        // Refresh an expiring session before freezing the deletion proof.
+        await this.verify();
+        const session = this.data!.session!;
+        await this.save({
+          ...this.data!,
+          pending: {
+            kind: 'delete',
+            userId: session.info.userId,
+            receipt: null,
+          },
         });
-    }, options);
+        this.update({
+          account: null,
+          devices: [],
+          recoveryKeys: [],
+          transfer: null,
+          inspection: null,
+          deletionStatus: 'pending',
+        });
+        await this.resumeDeletion();
+      },
+      { resumeDeletion: true },
+    );
+  private async resumeDeletion() {
+    await resumeAccountDeletion({
+      read: () => this.data!,
+      save: (value) => this.save(value),
+      publish: (deletionStatus) =>
+        this.update({
+          account: null,
+          devices: [],
+          recoveryKeys: [],
+          key: null,
+          deletionStatus,
+        }),
+      request: (token) =>
+        this.request(
+          'DELETE',
+          '/account',
+          accountDeletionResponseSchema,
+          { confirmation: 'delete-account' },
+          token,
+        ),
+      clearData: (userId) => {
+        if (!this.removeAccountData) throw new IdentityClientError('STORAGE');
+        return this.storage(() => this.removeAccountData!(userId));
+      },
+      clearCredentials: (digests) =>
+        this.storage(() => removeDeletedCredentials(this.vault, digests)),
+    });
+    this.update({
+      credentials: (await this.credentials()).map((c) => ({ id: c.id })),
+      message: 'Your account has been deleted.',
+    });
+  }
   private async verify() {
     const session = this.data!.session!;
     try {

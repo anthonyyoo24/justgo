@@ -18,6 +18,7 @@ const native = {
   writeState: jest.fn(),
   listCredentials: jest.fn(),
   addCredential: jest.fn(),
+  removeCredential: jest.fn(),
 };
 const originalPlatform = Platform.OS;
 beforeEach(() => {
@@ -26,6 +27,7 @@ beforeEach(() => {
   jest.mocked(requireOptionalNativeModule).mockReturnValue(native);
   native.readState.mockResolvedValue(JSON.stringify(state));
   native.listCredentials.mockResolvedValue([credential]);
+  native.removeCredential.mockResolvedValue(undefined);
 });
 afterEach(() => {
   Object.defineProperty(Platform, 'OS', { value: originalPlatform });
@@ -81,6 +83,18 @@ it('fails explicitly when a native build lacks the module', async () => {
   ]) {
     await expect(action()).rejects.toThrow('updated iOS development build');
   }
+});
+it('removes only a validated credential and detects older binaries before deletion', async () => {
+  const vault = createVault();
+  await vault.remove!(credential.id);
+  expect(native.removeCredential).toHaveBeenCalledWith(credential.id);
+  await expect(vault.remove!('invalid')).rejects.toThrow();
+  native.removeCredential.mockRejectedValueOnce(new Error('Keychain locked'));
+  await expect(vault.remove!(credential.id)).rejects.toThrow('Keychain locked');
+  jest
+    .mocked(requireOptionalNativeModule)
+    .mockReturnValue({ ...native, removeCredential: undefined });
+  expect(createVault().remove).toBeUndefined();
 });
 
 it('propagates native read/write/list/add failures to the identity recovery boundary', async () => {
