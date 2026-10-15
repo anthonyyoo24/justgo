@@ -6,6 +6,10 @@ import { buildApp } from '../src/build-app.js';
 import { createDatabase, checkDatabase } from '../src/db/client.js';
 import { readConfig } from '../src/config.js';
 import { IdentityService } from '../src/identity/service.js';
+import {
+  journeyApiUrl,
+  journeyAppUrl,
+} from '../../../e2e/support/environment.js';
 const config = readConfig();
 const url = localTestDatabaseUrl(config.DATABASE_URL);
 if (
@@ -29,7 +33,7 @@ const app = buildApp({
       return id;
     },
   }),
-  origins: ['http://localhost:8081', 'http://127.0.0.1:8081'],
+  origins: [journeyAppUrl, journeyAppUrl.replace('127.0.0.1', 'localhost')],
   checkDatabase: () => checkDatabase(database.pool),
   uploadEligibilityReader: async () => 'eligible',
   entitlementReader: async () => ({
@@ -44,8 +48,13 @@ app.get('/__fixtures/accounts', async () => ({
 app.addHook('onClose', () => database.pool.end());
 const shutdown = installFixtureShutdown(() => app.close());
 try {
-  await app.listen({ host: '127.0.0.1', port: 3000 });
-  console.info('Disposable challenge test server listening on 127.0.0.1:3000');
+  await app.listen({
+    host: '127.0.0.1',
+    port: Number(new URL(journeyApiUrl).port),
+  });
+  console.info(
+    `Disposable challenge test server listening on ${journeyApiUrl}`,
+  );
 } catch {
   console.error('Disposable challenge test server startup failed');
   process.exitCode = 1;

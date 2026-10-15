@@ -35,6 +35,13 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
   page: async ({ page, fixtureDatabase }, use, testInfo) => {
     // Keep the database fixture alive until screenshot/page teardown completes.
     void fixtureDatabase;
+    await page.route('**/v1/**', async (route) => {
+      if (new URL(route.request().url()).origin !== journeyApiUrl) {
+        await route.abort('blockedbyclient');
+        throw new Error('Journey blocked a request to a non-fixture API');
+      }
+      await route.continue();
+    });
     try {
       await use(page);
     } finally {

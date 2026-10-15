@@ -45,6 +45,7 @@ test('isolated web provider resolves the fault adapter; native and other callers
       MIGRATION_DATABASE_URL:
         'postgresql://justgo_migrator:fixture@127.0.0.1:54329/justgo_test',
       DATABASE_SSL: 'disable',
+      EXPO_PUBLIC_API_URL: 'http://127.0.0.1:3000',
     },
     `
  const origin=new URL(${JSON.stringify(new URL('../../apps/mobile/src/app-support/providers/AppProvider.tsx', import.meta.url).href)}).pathname;
@@ -52,7 +53,26 @@ test('isolated web provider resolves the fault adapter; native and other callers
  console.log(config.resolver.resolveRequest(context,'../../data/activity/persistence/storage','web').filePath.endsWith('test-support/journey-storage.ts'));
  console.log(config.resolver.resolveRequest(context,'../../data/activity/persistence/storage','ios').filePath);
  console.log(config.resolver.resolveRequest({...context,originModulePath:'another'},'../../data/activity/persistence/storage','web').filePath);
+ console.log(config.resolver.resolveRequest(context,'expo/virtual/env','web').filePath.endsWith('test-support/journey-environment.ts'));
+ console.log(config.resolver.resolveRequest(context,'expo/virtual/env','ios').filePath);
  `,
   );
-  assert.equal(output.trim(), 'true\nnormal\nnormal');
+  assert.equal(output.trim(), 'true\nnormal\nnormal\ntrue\nnormal');
+});
+test('journey Metro rejects a hosted API despite otherwise valid local database guards', () => {
+  assert.throws(() =>
+    load(
+      {
+        JUSTGO_JOURNEY_FIXTURES: '1',
+        NODE_ENV: 'test',
+        DATABASE_URL:
+          'postgresql://justgo_runtime:fixture@127.0.0.1:54329/justgo_test',
+        MIGRATION_DATABASE_URL:
+          'postgresql://justgo_migrator:fixture@127.0.0.1:54329/justgo_test',
+        DATABASE_SSL: 'disable',
+        EXPO_PUBLIC_API_URL: 'https://hosted.example',
+      },
+      '',
+    ),
+  );
 });
