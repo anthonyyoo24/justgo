@@ -61,6 +61,16 @@ export const openApiDocument = {
     },
   },
   paths: {
+    '/v1/account': {
+      delete: {
+        ...operation(
+          identity.accountDeletionResponseSchema,
+          identity.accountDeletionRequestSchema,
+        ),
+        description:
+          'Permanently removes owned activity, devices, sessions and transfers without paid access. Retains revoked credential fingerprints and a minimal deletion receipt to prevent resurrection. Retry a lost response with the same bearer token; only the session that initiated deletion can retrieve its receipt. Does not cancel an Apple subscription.',
+      },
+    },
     '/v1/account/export': {
       get: {
         ...operation(exportPageSchema),

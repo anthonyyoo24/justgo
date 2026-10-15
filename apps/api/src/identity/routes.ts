@@ -14,7 +14,10 @@ import {
   transferInspectionResponseSchema,
   transferResponseSchema,
   transferStartSchema,
+  accountDeletionRequestSchema,
+  accountDeletionResponseSchema,
 } from '@justgo/contracts';
+import { DeleteAccountService } from '../privacy/delete-account.js';
 import { IdentityError, type IdentityService } from './service.js';
 import { rateAddress } from './address.js';
 
@@ -49,6 +52,13 @@ export function identityRoutes(
       rateAddress(request.ip, request.headers, onVercel),
       'recovery',
     );
+  app.delete('/account', async (request) => {
+    const token = bearer(request);
+    parse(accountDeletionRequestSchema, request.body);
+    return accountDeletionResponseSchema.parse(
+      await new DeleteAccountService(service).delete(token),
+    );
+  });
   app.post(
     '/sessions',
     {

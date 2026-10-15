@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { sessionCreateSchema } from './identity.js';
+import {
+  sessionCreateSchema,
+  accountDeletionRequestSchema,
+  accountDeletionResponseSchema,
+} from './identity.js';
 import { openApiDocument } from './openapi.js';
 
 const proposal = {
@@ -7,6 +11,35 @@ const proposal = {
   sessionId: '00000000-0000-4000-8000-000000000002',
   sessionToken: 'a'.repeat(64),
 };
+it('requires explicit owner-independent deletion confirmation and a bounded private receipt shape', () => {
+  expect(
+    accountDeletionRequestSchema.parse({ confirmation: 'delete-account' }),
+  ).toEqual({ confirmation: 'delete-account' });
+  expect(
+    accountDeletionRequestSchema.safeParse({
+      confirmation: 'delete-account',
+      userId: proposal.deviceId,
+    }).success,
+  ).toBe(false);
+  expect(
+    accountDeletionResponseSchema.safeParse({
+      userId: proposal.deviceId,
+      deletedAt: '2026-10-14T10:00:00Z',
+      credentialDigests: ['a'.repeat(64)],
+    }).success,
+  ).toBe(true);
+  expect(
+    accountDeletionResponseSchema.safeParse({
+      userId: proposal.deviceId,
+      deletedAt: '2026-10-14T10:00:00Z',
+      credentialDigests: [],
+      sessionToken: proposal.sessionToken,
+    }).success,
+  ).toBe(false);
+  expect(openApiDocument.paths['/v1/account'].delete.security).toEqual([
+    { deviceSession: [] },
+  ]);
+});
 const requests = [
   { kind: 'bootstrap', ...proposal, credential: 'b'.repeat(64) },
   { kind: 'recovery', ...proposal, credential: 'b'.repeat(64) },

@@ -95,6 +95,20 @@ export const transferResponseSchema = transferInspectionResponseSchema
   .extend({ verification: transferVerificationSchema })
   .strict();
 export const okSchema = z.object({ ok: z.literal(true) }).strict();
+export const accountDeletionRequestSchema = z
+  .object({ confirmation: z.literal('delete-account') })
+  .strict();
+export const accountDeletionResponseSchema = z
+  .object({
+    userId: z.uuid(),
+    deletedAt: z.iso.datetime(),
+    // Fingerprints let this installation remove only this account's Keychain items.
+    credentialDigests: z.array(secretSchema),
+  })
+  .strict();
+export type AccountDeletionResponse = z.infer<
+  typeof accountDeletionResponseSchema
+>;
 export const identityErrorCodeSchema = z.enum([
   'INVALID_REQUEST',
   'REQUEST_TOO_LARGE',

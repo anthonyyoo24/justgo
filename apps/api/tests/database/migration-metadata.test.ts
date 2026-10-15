@@ -9,7 +9,7 @@ describe('reviewed migration history', () => {
   it('keeps the current declarative schema equal to its latest Drizzle snapshot', async () => {
     const generated = generateDrizzleJson(schema, undefined, ['justgo']);
     const saved = JSON.parse(
-      await readFile(new URL('meta/0013_snapshot.json', root), 'utf8'),
+      await readFile(new URL('meta/0014_snapshot.json', root), 'utf8'),
     );
     expect({ ...generated, id: saved.id, prevId: saved.prevId }).toEqual(saved);
   });
@@ -29,7 +29,8 @@ describe('reviewed migration history', () => {
     const journal = JSON.parse(
       await readFile(new URL('meta/_journal.json', root), 'utf8'),
     ) as { entries: { tag: string }[] };
-    expect(journal.entries.at(-1)?.tag).toBe('0013_attempt_resources_contract');
+    expect(journal.entries.at(-1)?.tag).toBe('0014_account_deletion');
+    expect(journal.entries.at(-2)?.tag).toBe('0013_attempt_resources_contract');
     expect(
       journal.entries.filter((entry) => /contract/i.test(entry.tag)),
     ).toHaveLength(1);

@@ -11,5 +11,6 @@
   "0009_drop_attempt_elapsed_seconds.sql": "54baf2771f02af68122da39648a8a3a4c3096e0ab8d510606624236d7f20c7fc",
   "0010_attempt_resources_expand.sql": "edfef9ab25cc553510209a5a2545300bd7d051142c622ed64b8c9d7341eccf2f",
   "0011_compatibility_history_index.sql": "5bdafd3512ad747e6f53cf53190ad0345f5c46c16a0c6bca8f10256745331b68",
-  "0012_normalize_reflection_whitespace.sql": "5aa3c19bc38a755b72e3dbd98ffbfd71e1e7e9fd66e11ed1e982e50815f297e1"
+  "0012_normalize_reflection_whitespace.sql": "5aa3c19bc38a755b72e3dbd98ffbfd71e1e7e9fd66e11ed1e982e50815f297e1",
+  "0013_attempt_resources_contract.sql": "18baf2df6785044635b84284a62fe88555cc065b23ee67f4f6935fc4bc05ddd7"
 }

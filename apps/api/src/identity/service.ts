@@ -161,6 +161,43 @@ export class IdentityService {
       return work(tx, response(row));
     });
   }
+  /** A deleted account exposes only its receipt to the original deletion proof. */
+  async withAccountDeletion<T>(
+    token: string,
+    work: (tx: Tx, userId: string, deletedAt: Date | null) => Promise<T>,
+  ): Promise<T> {
+    return this.db.transaction(async (tx) => {
+      const hash = digest(token);
+      await context(tx, 'app.session_digest', hash);
+      const receipt = await one<{ id: string; deleted_at: Date }>(
+        tx,
+        sql`select id, deleted_at from justgo.users where deletion_session_digest=${hash} and deleted_at is not null`,
+      );
+      if (receipt) {
+        await context(tx, 'app.user_id', receipt.id);
+        return work(tx, receipt.id, receipt.deleted_at);
+      }
+      try {
+        const row = await this.findSession(tx, token);
+        await this.active(tx, row);
+        return await work(tx, row.user_id, null);
+      } catch (error) {
+        // A concurrent identical delete may have committed while owner() waited.
+        if (
+          !(error instanceof IdentityError) ||
+          !['CREDENTIAL_REJECTED', 'UNAUTHORIZED'].includes(error.code)
+        )
+          throw error;
+        const committed = await one<{ id: string; deleted_at: Date }>(
+          tx,
+          sql`select id, deleted_at from justgo.users where deletion_session_digest=${hash} and deleted_at is not null`,
+        );
+        if (!committed) throw error;
+        await context(tx, 'app.user_id', committed.id);
+        return work(tx, committed.id, committed.deleted_at);
+      }
+    });
+  }
   private async issue(
     tx: Tx,
     userId: string,
