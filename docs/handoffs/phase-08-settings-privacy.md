@@ -67,6 +67,61 @@ Combined-candidate verification:
 Logs and the changed-directory inventory remain ignored under
 `.local/phase-08-main-merge/`.
 
+### Journey allowance isolation follow-up
+
+The main integration is committed locally as `dc5b6e2`. Its combined saved suite
+exposed a fixture-isolation problem: the new transfer journeys and existing
+recovery cases share one loopback identity budget across the whole run. This
+follow-up is kept separately reviewable from the merge.
+
+The existing loopback-only fixture server's read-only account registry now also
+identifies its two hashed identity/recovery buckets. Before each database-backed
+case, the privileged fixture resets only those run-owned buckets. It validates the
+strict registry shape and retains the existing loopback/database/role guards,
+account-allocation registry, failure-closed cleanup and all request limits.
+Production routing, rate-limit code and thresholds are unchanged; the server's
+HMAC secret is never returned. The deployable API still has no fixture registry.
+
+Two saved regressions verify the unchanged 120-request general limit, its 429
+response and Retry-After value, a fresh subsequent allowance and preservation of
+an unrelated bucket. The existing outsider-account cleanup cases remain intact.
+With just the reset removed temporarily, the new case fails early with 429
+instead of 401, reproducing the cross-case leak; the correction is restored
+byte-for-byte afterward. With isolation enabled, all **four focused cases pass**.
+The testing guide records these boundaries.
+
+Fresh `npm run check` **passes** after the fixture correction, with online Expo
+Doctor **21/21** and the same **186 tooling**, **54 API unit**, **700 mobile**
+and **25 contract** tests. The complete saved app/API/database suite now passes
+**32/32** in one run, including the two new isolation regressions, both transfer
+journeys and the retained day-list/large-day regressions. No selectors, existing
+assertions, retries or production limits were relaxed. The original shared-limit
+failure, failing-before probe and passing runs are retained in the ignored logs.
+
+Cold `npm run export:web -w @justgo/mobile -- --clear --max-workers 1` and the
+equivalent iOS export both **pass**. These are JavaScript bundle checks, not native
+builds. The database/coverage results above cover the merged production source;
+the follow-up changes only the local fixture, saved tests and documentation.
+
+Interactive verification stays entirely in the **in-app side panel**, using one
+registry-owned disposable account at **390 × 844**. The connected hub and
+Troubleshooting layouts are visually correct; Refresh account, Renew this session
+and Recover an existing account each have a measured left edge of **73 px**.
+The receiving-transfer confirmation retains the recovery form and hides the
+originating action; Cancel restores it. The preview uses the same guarded database
+environment and IPv4-first DNS setting as the saved suite after correcting its
+initial launcher configuration. No product source is changed for this walkthrough.
+The temporary tab is closed, the viewport override reset, its one fixture account
+removed and task-owned API/Metro/database stopped. Existing deletion-worktree
+servers and its database remain running and untouched. No new native/phone or
+hosted-CI acceptance is claimed.
+
+The combined diff against fetched main is **52 files**, including the separately
+reviewable fixture correction. Reviewed full directory inventories for the merge's
+changed paths and the added fixture changes, including `apps/api/scripts` and
+`e2e/support`. Existing responsibility groups remain navigable and no folder moves
+are needed. The main merge and this correction stay local; no push or PR is made.
+
 ## October 14 scope split and phase renumbering
 
 Anthony requested moving analytics and legal work into separate whole-number phases and confirmed shifting later phases by two numbers:

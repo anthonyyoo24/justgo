@@ -1208,6 +1208,10 @@ the reviewed fixes from merged PRs #22–25. The
 [integration handoff](handoffs/phase-08-settings-privacy.md#october-14-local-main-integration)
 records conflict decisions and combined verification; separate account-deletion
 work and existing native/release gates remain open.
+The combined saved suite exposed a shared fixture request allowance; a separate
+local correction isolates run-owned test buckets without changing production
+limits. Its failing-before regression and **32/32** passing journeys are recorded
+in the same handoff. Nothing is pushed and no new PR is created.
 
 **October 14 PR #25 review corrections:** The day-sheet list now uses measured
 viewport/content sizes to reveal more local rows when its initial batch does not

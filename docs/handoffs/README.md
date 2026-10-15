@@ -6,6 +6,9 @@ changes, the approved phase split and PRs #22–25's reviewed fixes. The
 [local integration handoff](phase-08-settings-privacy.md#october-14-local-main-integration)
 owns conflict decisions and combined verification. No push or new PR is authorized;
 account deletion remains a separate worktree and acceptance task.
+The separately reviewable fixture follow-up fixes cross-case request-budget
+leakage and passes all **32 saved journeys**, retaining production limits and
+unrelated buckets. Publication and hosted checks remain pending.
 
 **October 14 phase split:** Anthony reports most Phase 08 work completed and is implementing deletion. Settings/data controls and existing feature acceptance remain in [Phase 08](../IMPLEMENTATION_PLAN.md#phase-08); analytics/consent moves to [Phase 09](../IMPLEMENTATION_PLAN.md#phase-09), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation move to [Phase 10](../IMPLEMENTATION_PLAN.md#phase-10). Release validation is now [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11); former post-launch phases 10–12 become 12–14. The existing [test-server prerequisite handoff](phase-11-test-server.md) is renamed with its evidence preserved. Historical branch/log/artifact names remain unchanged; this planning edit closes no implementation, device or release gate.
 

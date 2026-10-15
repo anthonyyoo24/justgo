@@ -7,7 +7,12 @@ import {
   journeyEnvironment,
 } from './environment';
 
-const allocatedAccounts = z.object({ userIds: z.array(z.uuid()) }).strict();
+const fixtureRegistry = z
+  .object({
+    userIds: z.array(z.uuid()),
+    rateBucketKeys: z.array(z.string().regex(/^[a-f0-9]{64}$/)).length(2),
+  })
+  .strict();
 
 export const test = base.extend<{ fixtureDatabase: Pool }>({
   fixtureDatabase: async ({ baseURL }, use) => {
@@ -23,6 +28,13 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
         'select current_user',
       );
       expect(role.rows[0]?.current_user).toBe('justgo_migrator');
+      // Cases share one loopback address. Give each its existing full allowance
+      // without changing limits or deleting any other server's rate buckets.
+      const { rateBucketKeys } = await readFixtureRegistry();
+      await database.query(
+        'delete from justgo.identity_rate_buckets where key=any($1::text[])',
+        [rateBucketKeys],
+      );
       await use(database);
     } finally {
       try {
@@ -58,14 +70,18 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
   },
 });
 
-async function removeFixtureAccounts(database: Pool) {
+async function readFixtureRegistry() {
   // The per-run fixture server owns this registry, independently of browser requests
   // or response delivery. Existing-account recovery cannot add cleanup authority.
   const registry = await fetch(`${journeyApiUrl}/__fixtures/accounts`, {
     signal: AbortSignal.timeout(10_000),
   });
   if (!registry.ok) throw new Error('Fixture account registry unavailable');
-  const { userIds } = allocatedAccounts.parse(await registry.json());
+  return fixtureRegistry.parse(await registry.json());
+}
+
+async function removeFixtureAccounts(database: Pool) {
+  const { userIds } = await readFixtureRegistry();
   for (const owner of userIds) {
     await database.query('begin');
     try {

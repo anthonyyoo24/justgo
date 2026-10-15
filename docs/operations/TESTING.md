@@ -194,6 +194,14 @@ no-op. Registry failures fail teardown instead of falling back to browser IDs. T
 fixture server grants isolated test access and upload eligibility; deployed API
 startup has no such provider. Browser identity credentials remain memory-only; the activity adapter persists catalog/journal independently and reload tests explicitly recover the same synthetic account.
 
+Cases share a loopback address but receive independent rate-limit allowances.
+Before each database-backed case, the fixture resets only the two hashed buckets
+owned by that run's server, obtained from its strict read-only registry. Existing
+limits stay enabled within the case; unrelated buckets are preserved. Saved
+regressions exhaust the real 120-request identity limit, require the next case to
+start fresh, and retain an unrelated bucket throughout. No production endpoint,
+limit or account-cleanup authority is changed.
+
 This automated browser runs headlessly. Interactive walkthroughs use the Codex
 side panel, under the same fixture API/Expo configuration. These are separate
 evidence types; neither proves native Keychain behavior. No external browser window is required. The suite uses local activity storage, controlled failures and completed-attempt/reflection/Progress assertions; test controls are excluded from native/production resolution.
