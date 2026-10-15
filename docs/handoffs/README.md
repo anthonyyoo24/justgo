@@ -1,5 +1,22 @@
 # Implementation handoffs
 
+**October 14 account deletion:** A separate Phase 08 worktree implements confirmed
+owner-only deletion, retry receipts, credential tombstones and account-scoped
+phone cleanup. The [deletion handoff](phase-08-account-deletion.md) records local
+verification and open native-build, retention and hosted-rollout gates. Existing
+phone binaries need the new Keychain removal capability before deleting.
+The [subscription/navigation follow-up](phase-08-account-deletion.md#october-14-subscription-cancellation-and-navigation-refinement)
+renames cancellation, uses a billing icon, removes bottom Cancel and adds native
+Apple group-specific presentation with fallback; signed-build/device checks stay open.
+The [owner-requested screen walkthrough](phase-08-account-deletion.md#october-14-owner-requested-deletion-screen-walkthrough)
+captures six actual browser states and verifies deletion of a new disposable local
+account, its synthetic activity and active access records.
+The latest [account-entry refinement](phase-08-account-deletion.md#october-14-account-entry-wording-and-post-deletion-footer)
+uses Create a new account, omits post-deletion footer help and supplies an updated screenshot.
+The [local commit checkpoint](phase-08-account-deletion.md#october-14-local-commit-checkpoint)
+records fresh code, database/restoration, combined coverage and saved deletion-journey
+results; the known Expo, native, retention and hosted-rollout gates remain open.
+
 **October 14 reflection keyboard:** The separate Phase 08 keyboard worktree
 brings the focused reflection section into view and bounds the writing area above
 the retained Skip/Save footer. The [keyboard handoff](phase-08-reflection-keyboard.md)

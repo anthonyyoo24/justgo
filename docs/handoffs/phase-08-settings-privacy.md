@@ -1,5 +1,11 @@
 # Phase 08 settings and privacy handoff
 
+The October 14 [account-deletion implementation](phase-08-account-deletion.md)
+is developed in a separate worktree from the combined Phase 08 checkpoint. It
+adds confirmation, atomic server removal/revocation and resumable phone cleanup.
+Its local evidence and outstanding native-build/retention/rollout gates are owned
+by that handoff; wider Phase 08 acceptance remains open.
+
 The October 14 [reflection keyboard correction](phase-08-reflection-keyboard.md)
 was developed in a separate Phase 08 worktree with its own development server.
 Anthony confirmed it works on his physical iPhone and authorized local integration

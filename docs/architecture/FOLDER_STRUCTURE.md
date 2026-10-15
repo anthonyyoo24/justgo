@@ -173,6 +173,17 @@ account screens and reusable controls. Page/row layout remains in
 The reviewed directories remain cohesive without further moves. See the
 [large-text handoff](../handoffs/phase-08-settings-privacy.md#october-12-large-text-fixes).
 
+### Phase 08 account deletion
+
+The [account-deletion slice](../handoffs/phase-08-account-deletion.md) adds
+`app-support/identity/deletion/` for its screen, durable workflow, credential
+cleanup and colocated regressions. Its route remains in `app/`; API deletion
+and database tests stay beside export under their existing privacy owners.
+The cancellation row/test remain beside the deletion screen. Its reusable native
+presentation adapter/test live under `platform/subscriptions/`; the independent
+StoreKit Expo module lives under `modules/justgo-subscriptions/`, separate from
+credential storage.
+
 ### Phase 08 haptics
 
 `platform/haptics/` contains the installation preference provider/context and

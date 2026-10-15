@@ -62,9 +62,9 @@ Information may be processed outside your country, including in Canada and count
 
 ## Retention and deletion
 
-[REVIEW: This section is proposed release behavior. Account deletion, cleanup and backup handling are not complete in the current implementation.]
+[REVIEW: This section is proposed release behavior. Account deletion and local cleanup are implemented locally; native acceptance, hosted rollout, final retention periods and backup handling remain unaccepted. See the Phase 08 account-deletion handoff.]
 
-We retain your personal journal while your account exists. You can request deletion directly in the app through [verified Settings path]. Deletion revokes account access and removes associated journal records and account data, subject to the limited retention described below.
+We retain your personal journal while your account exists. You can request deletion directly in the app through Settings → Delete account. Deletion revokes account access and removes associated journal records and account data, subject to the limited retention described below.
 
 Some data may remain temporarily in restricted backups until they expire. We may retain limited security records to prevent revoked credentials from recreating an account, and records necessary to satisfy legal obligations. These exceptions do not permit continued ordinary use of deleted journal content.
 
@@ -74,7 +74,7 @@ Removing the app from your phone does not delete your cloud account. When paid s
 
 ## Your privacy choices and requests
 
-You can choose whether to submit a feeling or reflection. Settings → Export my data creates a ZIP with your saved activity and reflections, including changes waiting to upload from your current phone. Choose where to save or share this private file. Exporting does not delete your data. [REVIEW: Export is implemented locally; verify physical-iPhone delivery before publication. Optional analytics choices and in-app deletion remain unimplemented. Verify these paths before describing them as available.]
+You can choose whether to submit a feeling or reflection. Settings → Export my data creates a ZIP with your saved activity and reflections, including changes waiting to upload from your current phone. Choose where to save or share this private file. Exporting does not delete your data. [REVIEW: Export is implemented locally; verify physical-iPhone delivery before publication. Optional analytics choices remain unimplemented. In-app deletion requires native-build/device acceptance and hosted rollout before publication. Verify these paths before describing them as available.]
 
 Contact us with questions or requests to access, correct or delete personal information. We may need to verify that a request concerns your account, without asking you to email a recovery secret. Depending on the laws that apply, you may also have rights to portability, restriction or objection, to withdraw consent, and to complain to a privacy regulator. [REVIEW: Add applicable legal bases, regional rights, complaint contacts and response periods for worldwide distribution.]
 

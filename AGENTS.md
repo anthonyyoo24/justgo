@@ -142,6 +142,12 @@ Reload the app to clear stale module/asset paths.
   hydration and the construction-to-subscription gap, preserving newer input.
   Runtime date/time-zone coordination must refresh on account activation,
   foreground and day boundaries, and cancel/fence callbacks on lifecycle changes.
+- Account deletion must persist its intent and confirmed receipt before cleanup,
+  stop uploads, drain accepted storage writes and remove only the selected account's
+  data. Preserve credential tombstones and same-proof retry behavior; delayed
+  recovery/iCloud credentials must never recreate a deleted identity. Follow the
+  [identity boundary](docs/architecture/IDENTITY.md) and keep native cleanup
+  capability checks ahead of destructive requests.
 - Provider-owned refresh observers must receive runtime dependencies without
   importing their composing provider back. Share context-free subscriptions to
   avoid module cycles. When a preview disables file watching, restart it before
@@ -184,6 +190,10 @@ Reload the app to clear stale module/asset paths.
   Chrome window when side-panel-only testing was requested. Fix failures and
   repeat. Use disposable local fixtures only. A one-off browser walkthrough is
   not a saved end-to-end regression test or a CI gate; report each separately.
+  Browser journeys must validate their resolved API origin as well as the local
+  database: Expo's virtual environment can still prefer `.env.local` despite CLI
+  overrides. Preserve the guarded public-environment adapter and request fence;
+  never let fixture account proofs reach a hosted API.
 - Before handoff run `npm run check` and, for backend/shared boundaries or a phase
   closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
   Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.

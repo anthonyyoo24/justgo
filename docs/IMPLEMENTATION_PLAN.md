@@ -1247,8 +1247,38 @@ SDK 57 patches, recorded in the handoff. The phase stays open.
 - [ ] Feature requests reuses the configured support contact flow/destination with a feature-request subject/type, remains usable without a purchase, sends no automatic private attachments and handles link-opening failure honestly.
 - [ ] Rating and social rows open their verified public destinations when configured, remain honestly unavailable otherwise, and retain a usable retry with plain feedback if opening fails. Actual App Store/profile opening remains a Phase 09 device check once these destinations exist.
 - [ ] Export/deletion isolate the owner, revoke credentials and document any pending cleanup; deleted identities cannot resurrect accounts.
+
 - [ ] Declining analytics blocks client/server forwarding while the app still works; telemetry/diagnostics contain no sensitive payloads.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
+
+**October 14 deletion implementation:** The separate `codex/phase-08-delete-account`
+worktree adds explicit Settings confirmation, owner-locked permanent deletion,
+revoked credential tombstones, same-proof retry receipts and resumable account
+storage/Keychain cleanup. The [deletion handoff](handoffs/phase-08-account-deletion.md)
+owns current verification. Updated native-build/device evidence, retention/backup
+decisions, hosted rollout and the existing Expo dependency gate remain open;
+this does not close the combined phase acceptance boxes.
+
+**October 14 deletion UI refinement:** Anthony requested Cancel subscription with
+a billing icon, direct Apple subscription controls and removal of bottom Cancel.
+Header Back remains the exit. The local native presenter selects a verified
+JustGO subscription group on iOS 17+ with general-management fallback otherwise;
+the [deletion follow-up](handoffs/phase-08-account-deletion.md#october-14-subscription-cancellation-and-navigation-refinement)
+owns implementation/evidence. Updated signed-build and real Apple cancellation
+acceptance remain open; this does not activate billing or authorize a native build.
+The [owner-requested browser walkthrough](handoffs/phase-08-account-deletion.md#october-14-owner-requested-deletion-screen-walkthrough)
+subsequently captured confirmation, successful deletion, Settings and disconnected
+account screens and verified removal of one fresh local test account's activity
+and active access records. Native acceptance remains open.
+Anthony's subsequent [account-entry refinement](handoffs/phase-08-account-deletion.md#october-14-account-entry-wording-and-post-deletion-footer)
+renames initial creation to Create a new account and removes bottom Get help from
+the post-deletion account screen, with an updated screenshot and regression coverage.
+
+**October 14 local commit checkpoint:** Anthony authorized local commits of the
+existing deletion worktree. Fresh code checks, database/restoration tests, combined
+coverage and the saved deletion journey pass; root `check` still stops at the
+known Expo patch recommendations. The [checkpoint](handoffs/phase-08-account-deletion.md#october-14-local-commit-checkpoint)
+preserves open native, retention, hosted rollout and post-deletion navigation work.
 
 **Carry forward:** Settings scope, recovery/data-control flows, motion preferences, the Phase 08 haptics implementation/testing task, private feature-request destination, reminder deferral, consent and event schemas, retention/deletion runbook and redaction evidence.
 
