@@ -36,3 +36,23 @@ describe('permanent request error contracts', () => {
     },
   );
 });
+
+describe('versioned failure contract', () => {
+  it('documents unlisted 4xx statuses as client errors and 503 as transient', () => {
+    const fallback =
+      openApiDocument.paths['/v1/attempts'].post.responses.default;
+    expect(fallback.description).toContain(
+      'an unlisted 4xx uses INVALID_REQUEST',
+    );
+    expect(fallback.description).toContain(
+      '503 UNAVAILABLE is a transient service failure',
+    );
+    expect(fallback.content['application/json'].schema).toMatchObject({
+      properties: {
+        code: {
+          enum: expect.arrayContaining(['INVALID_REQUEST', 'UNAVAILABLE']),
+        },
+      },
+    });
+  });
+});

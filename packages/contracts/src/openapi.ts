@@ -42,7 +42,8 @@ function operation(
           }
         : {}),
       default: {
-        description: 'Typed failure; never includes secrets or supplied values',
+        description:
+          'Typed failure; never includes secrets or supplied values. 4xx statuses are client errors identified by code, and an unlisted 4xx uses INVALID_REQUEST. 503 UNAVAILABLE is a transient service failure.',
         content: json(identity.identityErrorSchema),
       },
     },

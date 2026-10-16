@@ -139,6 +139,24 @@ describe('versioned API request errors', () => {
       code: 'RATE_LIMITED',
     },
     {
+      name: 'unlisted client status',
+      error: Object.assign(new Error(privateValue), { statusCode: 422 }),
+      status: 422,
+      code: 'INVALID_REQUEST',
+    },
+    {
+      name: 'plugin not-found status',
+      error: Object.assign(new Error(privateValue), { statusCode: 404 }),
+      status: 404,
+      code: 'INVALID_REQUEST',
+    },
+    {
+      name: 'server status',
+      error: Object.assign(new Error(privateValue), { statusCode: 500 }),
+      status: 503,
+      code: 'UNAVAILABLE',
+    },
+    {
       name: 'genuine service failure',
       error: new Error(privateValue),
       status: 503,
