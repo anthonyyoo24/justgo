@@ -21,8 +21,13 @@ import { ScaledText } from '../typography/ScaledText';
 export function SettingsPage({
   title,
   backHref = '/',
+  onBack,
   children,
-}: PropsWithChildren<{ title: string; backHref?: Href }>) {
+}: PropsWithChildren<{
+  title: string;
+  backHref?: Href;
+  onBack?: (() => void) | undefined;
+}>) {
   const router = useRouter();
   const { fontScale, width } = useWindowDimensions();
   const expanded = fontScale > 1.3;
@@ -39,8 +44,10 @@ export function SettingsPage({
               accessibilityRole="button"
               accessibilityLabel="Back"
               accessibilityHint="Return to the previous screen"
-              onPress={() =>
-                router.canGoBack() ? router.back() : router.replace(backHref)
+              onPress={
+                onBack ??
+                (() =>
+                  router.canGoBack() ? router.back() : router.replace(backHref))
               }
               style={({ pressed }) => [styles.back, pressed && styles.pressed]}
             >

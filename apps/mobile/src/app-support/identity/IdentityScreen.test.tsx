@@ -16,9 +16,13 @@ jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   const { Text } = require('react-native') as typeof import('react-native');
   return {
+    useNavigationContainerRef: () => ({
+      getCurrentRoute: () => ({ key: 'recovery' }),
+    }),
     useRouter: () => ({
       canGoBack: () => false,
       replace: jest.fn(),
+      dismissTo: jest.fn(),
       back: jest.fn(),
     }),
     useFocusEffect: (callback: () => void | (() => void)) =>
@@ -35,6 +39,39 @@ jest.mock('./vault', () => ({ createVault: jest.fn() }));
 jest.mock('../../platform/toast/Toast', () => ({
   showMessageToast: jest.fn(),
 }));
+it.each(['pending', 'cleanup'] as const)(
+  'routes %s deletion back to cleanup instead of offering account replacement',
+  (status) => {
+    const controller = new IdentityController(createMemoryVault(), {
+      request: jest.fn(),
+    });
+    const snapshot = { ...controller.getSnapshot(), deletionStatus: status };
+    jest.spyOn(controller, 'getSnapshot').mockReturnValue(snapshot);
+    const screen = render(<IdentityScreen controller={controller} managed />);
+    expect(screen.getByText('Redirect: /delete-account')).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: 'Create a new account' }),
+    ).toBeNull();
+  },
+);
+it('routes a deleted account to welcome without exposing recovery or settings', () => {
+  const controller = new IdentityController(createMemoryVault(), {
+    request: jest.fn(),
+  });
+  jest.spyOn(controller, 'getSnapshot').mockReturnValue({
+    ...controller.getSnapshot(),
+    initialized: true,
+    deletionStatus: 'deleted',
+    message: 'Your account has been deleted.',
+  });
+  const screen = render(<IdentityScreen controller={controller} managed />);
+  expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
+  expect(
+    screen.queryByRole('button', { name: 'Create a new account' }),
+  ).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Get help' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+});
 it('offers private email support from account recovery and keeps it available after failure', async () => {
   const controller = new IdentityController(createMemoryVault(), {
     request: jest.fn(),
@@ -180,17 +217,15 @@ it('shows the browser limitation, recovery inputs, busy state and recoverable fa
   const screen = render(<IdentityScreen controller={controller} />);
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: 'Create a private account' }),
+      screen.getByRole('button', { name: 'Create a new account' }),
     ).toBeTruthy(),
   );
   expect(screen.getByText(/Browser testing only/)).toBeTruthy();
-  fireEvent.press(
-    screen.getByRole('button', { name: 'Create a private account' }),
-  );
+  fireEvent.press(screen.getByRole('button', { name: 'Create a new account' }));
   await waitFor(() => expect(rejectRequest).toBeDefined());
   expect(
     screen.getByRole('progressbar', {
-      name: 'Create a private account in progress',
+      name: 'Create a new account in progress',
     }),
   ).toBeTruthy();
   expect(screen.getAllByRole('progressbar')).toHaveLength(1);
@@ -205,7 +240,7 @@ it('shows the browser limitation, recovery inputs, busy state and recoverable fa
   );
   expect(screen.queryByRole('progressbar')).toBeNull();
   expect(
-    screen.queryByRole('button', { name: 'Create a private account' }),
+    screen.queryByRole('button', { name: 'Create a new account' }),
   ).toBeNull();
   fireEvent.press(
     screen.getByRole('button', { name: 'Recover an existing account' }),
@@ -270,6 +305,8 @@ it.each([
           verification: '012345',
           expiresAt: new Date(Date.now() + 600000).toISOString(),
         };
+      else if (url.includes('/transfers/') && init.method === 'DELETE')
+        result = { status: 'cancelled' };
       else throw new Error('Unexpected synthetic identity action');
       return { ok: true, json: async () => result };
     });
@@ -326,8 +363,14 @@ it.each([
       if (action === 'credential' || action === 'empty-account')
         fireEvent.press(screen.getByRole('button', { name: 'Confirm' }));
       await waitFor(() => expect(controller.getSnapshot().busy).toBe(true));
+      const loadingLabel =
+        action === 'credential' || action === 'empty-account'
+          ? 'Confirm'
+          : label;
       expect(
-        screen.getByRole('progressbar', { name: `${label} in progress` }),
+        screen.getByRole('progressbar', {
+          name: `${loadingLabel} in progress`,
+        }),
       ).toBeTruthy();
       expect(screen.getAllByRole('progressbar')).toHaveLength(1);
       expect(screen.getByRole('button', { name: label })).toBeDisabled();
@@ -338,6 +381,7 @@ it.each([
       await waitFor(() => expect(controller.getSnapshot().busy).toBe(false));
       expect(screen.queryByRole('progressbar')).toBeNull();
       screen.unmount();
+      await controller.cancelTransfer();
     }
   },
 );
