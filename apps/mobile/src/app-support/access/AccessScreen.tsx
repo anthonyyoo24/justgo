@@ -8,6 +8,13 @@ import { colors, spacing, typography } from '../../theme/tokens';
 export function AccessScreen() {
   const identity = useIdentity();
   const access = useAccess();
+  if (identity.deletionStatus === 'deleted')
+    return <Redirect href="/welcome" />;
+  if (
+    identity.deletionStatus === 'pending' ||
+    identity.deletionStatus === 'cleanup'
+  )
+    return <Redirect href="/delete-account" />;
   if (!identity.initialized || (identity.busy && !identity.account))
     return (
       <Screen title="JustGO">

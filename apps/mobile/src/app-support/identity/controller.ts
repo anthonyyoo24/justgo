@@ -344,7 +344,6 @@ export class IdentityController {
       session: null,
       savedKey: null,
       registration: null,
-      accountDeleted: false,
       pending: {
         kind: 'bootstrap',
         credentialId: credential.id,
@@ -354,7 +353,6 @@ export class IdentityController {
     });
     this.update({
       account: null,
-      deletionStatus: null,
       devices: [],
       recoveryKeys: [],
       transfer: null,

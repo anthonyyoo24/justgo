@@ -6,7 +6,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { AppProvider, useAccess } from '../app-support/providers/AppProvider';
+import {
+  AppProvider,
+  useAccess,
+  useIdentity,
+} from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
 import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
@@ -61,6 +65,8 @@ export default function RootLayout() {
 }
 function Navigation() {
   const access = useAccess();
+  const identity = useIdentity();
+  const deleted = identity.deletionStatus === 'deleted';
   return (
     <Stack
       screenOptions={{
@@ -70,18 +76,24 @@ function Navigation() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="settings" />
-      <Stack.Screen name="export-data" />
-      <Stack.Screen name="delete-account" />
-      <Stack.Screen name="recovery" />
-      <Stack.Screen name="account/[tool]" />
-      <Stack.Protected guard={access.verified}>
+      <Stack.Protected guard={deleted}>
+        <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
+      </Stack.Protected>
+      {/* Removing these routes also removes the deleted account's Back history. */}
+      <Stack.Protected guard={!deleted}>
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="export-data" />
+        <Stack.Screen name="delete-account" />
+        <Stack.Screen name="recovery" />
+        <Stack.Screen name="account/[tool]" />
+      </Stack.Protected>
+      <Stack.Protected guard={!identity.deletionStatus && access.verified}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="challenge" options={{ gestureEnabled: false }} />
         <Stack.Screen name="success" />
         <Stack.Screen name="reflection" options={{ gestureEnabled: false }} />
       </Stack.Protected>
-      <Stack.Protected guard={__DEV__}>
+      <Stack.Protected guard={!deleted && __DEV__}>
         <Stack.Screen name="preview" />
       </Stack.Protected>
     </Stack>

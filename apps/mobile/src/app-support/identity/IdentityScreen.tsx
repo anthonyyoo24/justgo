@@ -136,6 +136,7 @@ export function IdentityScreen({
       disabled={state.busy}
     />
   );
+  if (state.deletionStatus === 'deleted') return <Redirect href="/welcome" />;
   if (state.deletionStatus === 'pending' || state.deletionStatus === 'cleanup')
     return <Redirect href="/delete-account" />;
   if (
@@ -390,7 +391,7 @@ export function IdentityScreen({
           disabled={state.busy}
         />
       )}
-      {!recoveryOnly && state.deletionStatus !== 'deleted' && (
+      {!recoveryOnly && (
         <ExternalLinkButton
           label="Get help"
           url={supportContact}

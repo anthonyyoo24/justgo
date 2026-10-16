@@ -50,7 +50,7 @@ it.each(['pending', 'cleanup'] as const)(
     ).toBeNull();
   },
 );
-it('offers a new account after deletion without the bottom help option', () => {
+it('routes a deleted account to welcome without exposing recovery or settings', () => {
   const controller = new IdentityController(createMemoryVault(), {
     request: jest.fn(),
   });
@@ -61,14 +61,12 @@ it('offers a new account after deletion without the bottom help option', () => {
     message: 'Your account has been deleted.',
   });
   const screen = render(<IdentityScreen controller={controller} managed />);
+  expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
   expect(
-    screen.getByRole('button', { name: 'Create a new account' }),
-  ).toBeEnabled();
-  expect(
-    screen.queryByRole('button', { name: 'Create a private account' }),
+    screen.queryByRole('button', { name: 'Create a new account' }),
   ).toBeNull();
   expect(screen.queryByRole('button', { name: 'Get help' })).toBeNull();
-  expect(screen.getByText('Your account has been deleted.')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
 });
 it('offers private email support from account recovery and keeps it available after failure', async () => {
   const controller = new IdentityController(createMemoryVault(), {

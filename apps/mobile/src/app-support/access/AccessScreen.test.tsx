@@ -70,6 +70,40 @@ it('enters tabs only with verified access and returns to recovery when identity 
   expect(screen.getByText('Redirect: /recovery')).toBeTruthy();
 });
 
+it.each([false, true])(
+  'routes a restored deleted account to welcome while busy=%s, even with stale access',
+  (busy) => {
+    identity.mockReturnValue({
+      initialized: true,
+      account: null,
+      busy,
+      deletionStatus: 'deleted',
+    });
+    access.mockReturnValue({ verified: true });
+    const screen = render(<AccessScreen />);
+    expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
+    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
+    expect(screen.queryByText('Redirect: /recovery')).toBeNull();
+  },
+);
+
+it.each(['pending', 'cleanup'])(
+  'resumes %s deletion before presenting access or account creation',
+  (deletionStatus) => {
+    identity.mockReturnValue({
+      initialized: true,
+      account: null,
+      busy: true,
+      deletionStatus,
+    });
+    access.mockReturnValue({ verified: true });
+    const screen = render(<AccessScreen />);
+    expect(screen.getByText('Redirect: /delete-account')).toBeTruthy();
+    expect(screen.queryByText('Redirect: /welcome')).toBeNull();
+    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
+  },
+);
+
 it.each([
   { initialized: false, busy: false, account: null },
   { initialized: true, busy: true, account: null },

@@ -1,11 +1,8 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
 import { SettingsPage } from '../../../components/settings/SettingsPage';
-import {
-  SettingsActionRow,
-  SettingsGroup,
-} from '../../../components/settings/SettingsRows';
+import { SettingsGroup } from '../../../components/settings/SettingsRows';
 import { PrimaryButton } from '../../../components/PrimaryButton';
 import { colors, spacing, typography } from '../../../theme/tokens';
 import { CancelSubscriptionRow } from './CancelSubscriptionRow';
@@ -15,18 +12,12 @@ import { useAccountDeletionDialog } from './useAccountDeletionDialog';
 export function DeleteAccountScreen() {
   const { state, pending, open, dialog } = useAccountDeletionDialog();
   const router = useRouter();
-  const deleted = state.deletionStatus === 'deleted';
+  if (state.deletionStatus === 'deleted') return <Redirect href="/welcome" />;
   return (
     <SettingsPage title="Delete account" backHref="/settings">
-      <SettingsGroup title={deleted ? 'Account deleted' : 'Before you delete'}>
+      <SettingsGroup title="Before you delete">
         <View style={styles.copy}>
-          {deleted ? (
-            <Text style={styles.body}>
-              Your account and uploaded activity have been deleted. Recovery
-              keys and phone transfers can no longer restore this account. This
-              phone’s account data has been cleared.
-            </Text>
-          ) : state.account || pending ? (
+          {state.account || pending ? (
             <>
               <Text style={styles.body}>
                 Permanently delete your JustGO account, completed challenges,
@@ -71,14 +62,7 @@ export function DeleteAccountScreen() {
             </>
           )}
         </View>
-        {!deleted && <CancelSubscriptionRow />}
-        {deleted && (
-          <SettingsActionRow
-            icon="back"
-            label="Return to Settings"
-            onPress={() => router.replace('/settings')}
-          />
-        )}
+        <CancelSubscriptionRow />
       </SettingsGroup>
       {dialog && <DeleteAccountConfirmation {...dialog} />}
     </SettingsPage>

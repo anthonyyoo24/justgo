@@ -171,8 +171,9 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
     await expect(confirmation.getByRole('alert')).toHaveCount(0);
     releaseRetry();
     await expect(
-      page.getByRole('heading', { name: 'Account deleted', exact: true }),
+      page.getByRole('button', { name: 'Continue', exact: true }),
     ).toBeVisible();
+    await expect(page).toHaveURL(/\/welcome$/);
     await expect(confirmation).toHaveCount(0);
   } finally {
     releaseFirst();
@@ -211,19 +212,53 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
       })
     ).status(),
   ).toBe(401);
-  await page
-    .getByRole('button', { name: 'Return to Settings', exact: true })
-    .click();
-  await page
-    .getByRole('link', { name: 'Account & recovery', exact: true })
-    .click();
   await expect(
-    page.getByText('Your account has been deleted.', { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Create a new account', exact: true }),
-  ).toBeEnabled();
-  await expect(
-    page.getByRole('button', { name: 'Get help', exact: true }),
+    page.getByRole('button', { name: 'Back', exact: true }),
   ).toHaveCount(0);
+  await expect(page.getByRole('link')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/welcome$/);
+
+  let releaseCreation!: () => void;
+  const creationResponse = new Promise<void>((resolve) => {
+    releaseCreation = resolve;
+  });
+  let firstCreation = true;
+  let replacementAccount:
+    ReturnType<typeof sessionResponseSchema.parse> | undefined;
+  const replacementProofs: unknown[] = [];
+  await page.route(`${journeyApiUrl}/v1/sessions`, async (route) => {
+    replacementProofs.push(route.request().postDataJSON());
+    if (firstCreation) {
+      firstCreation = false;
+      const response = await route.fetch();
+      replacementAccount = sessionResponseSchema.parse(await response.json());
+      await creationResponse;
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  const next = page.getByRole('button', { name: 'Continue', exact: true });
+  try {
+    await next.click();
+    await expect(
+      page.getByRole('progressbar', {
+        name: 'Creating your account',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(next).toBeDisabled();
+    await expect(next.getByText('Continue', { exact: true })).toHaveCount(0);
+    releaseCreation();
+    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page).toHaveURL(/\/welcome$/);
+    await expect(next).toBeEnabled();
+    await next.click();
+    await expect(
+      page.getByRole('link', { name: 'Open Settings', exact: true }),
+    ).toBeVisible();
+    expect(replacementAccount?.userId).not.toBe(account.userId);
+    expect(replacementProofs).toHaveLength(2);
+    expect(replacementProofs[1]).toEqual(replacementProofs[0]);
+  } finally {
+    releaseCreation();
+  }
 });

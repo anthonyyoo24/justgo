@@ -44,7 +44,9 @@ jest.mock('../../providers/AppProvider', () => ({
 }));
 jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
+  const { Text } = require('react-native') as typeof import('react-native');
   return {
+    Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
     useRouter: () => ({
       push: mockPush,
       replace: mockReplace,
@@ -275,9 +277,8 @@ it('guards disconnected, busy and deleted states', () => {
     deletionStatus: 'deleted',
   };
   rerender(s);
-  expect(
-    s.getByText(/This phone’s account data has been cleared/),
-  ).toBeTruthy();
+  expect(s.getByText('Redirect: /welcome')).toBeTruthy();
+  expect(s.queryByLabelText('Back')).toBeNull();
   expect(s.queryByLabelText('Continue to deletion')).toBeNull();
   expect(s.queryByLabelText('Cancel subscription')).toBeNull();
 });
@@ -343,7 +344,7 @@ it('shows failures only below the modal copy, clears them on retry and closes af
   rerender(s);
   await act(async () => finishRetry?.());
   expect(s.queryByLabelText('Delete your account?')).toBeNull();
-  expect(s.getByText('Account deleted')).toBeTruthy();
+  expect(s.getByText('Redirect: /welcome')).toBeTruthy();
   expect(s.queryByRole('progressbar')).toBeNull();
 });
 
