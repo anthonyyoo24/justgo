@@ -139,7 +139,7 @@ test('a connected receiving phone confirms transfer, waits for approval and keep
           response.request().method() === 'POST',
       );
       await phone
-        .getByRole('button', { name: 'Create a private account', exact: true })
+        .getByRole('button', { name: 'Create a new account', exact: true })
         .click();
       accounts.push(sessionResponseSchema.parse(await (await creating).json()));
       await expect(phone.getByText('Connected', { exact: true })).toBeVisible();
@@ -359,7 +359,7 @@ test('leaving receiving transfer cancels its code and returns to the normal conn
         r.request().method() === 'POST',
     );
     await page
-      .getByRole('button', { name: 'Create a private account', exact: true })
+      .getByRole('button', { name: 'Create a new account', exact: true })
       .click();
     const original = sessionResponseSchema.parse(await (await creating).json());
     await expect(page.getByText('Connected', { exact: true })).toBeVisible();
