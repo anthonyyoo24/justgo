@@ -3,9 +3,10 @@
 ## Summary and status
 
 **Status (October 16, 2026):** Implemented and verified locally on
-`codex/phase-08-settings-privacy`; not pushed or merged. The physical-iPhone
-checks, hosted rollout and retention scheduling in [Open gates](#open-gates) are
-still open. Phase 08A starts after this phase merges.
+`codex/phase-08-settings-privacy`; not pushed or merged. Anthony reports the
+physical-iPhone checks done. The backup retention period, publication and the
+other items in [Open gates](#open-gates) are still open. Phase 08A starts after
+this phase merges.
 
 This file replaces the earlier per-change Settings handoff and folds in the
 account-deletion and reflection-keyboard handoffs, under the
@@ -54,12 +55,14 @@ identity retention function; and the October 16 pre-merge stability fixes.
 - **API client errors:** on `/v1/`, any 4xx without its own code keeps its status
   with `INVALID_REQUEST`; only failures without a client status become
   `503 UNAVAILABLE`, which clients treat as transient.
-- **CI:** Expo Doctor is its own job plus a Monday schedule, so upstream SDK patch
-  recommendations no longer hide other results. Pushes run only on `main`,
-  newer pull-request pushes cancel older runs, and each test suite runs once
-  through `test:coverage`.
+- **CI:** one job. Work lands through feature branches and pull requests, so
+  pushes run CI only for merges to `main`; newer pull-request pushes cancel
+  older runs, and each test suite runs once through `test:coverage`. Doctor
+  stays the first step; Anthony deferred a separate Doctor job and weekly
+  schedule (October 16).
 - **Retention cleanup** is a reviewed SQL function, so either scheduler can call
-  it. Recommendation for Anthony: Supabase `pg_cron` running as `justgo_migrator`.
+  it. Anthony deferred the hosted schedule (October 16); until then nothing runs
+  it. Recommendation when scheduled: Supabase `pg_cron` running as `justgo_migrator`.
   It keeps the migration credential out of GitHub and needs no new role, but the
   migrator needs `USAGE` on the `cron` schema. The alternative is a scheduled
   GitHub workflow in a protected environment holding `MIGRATION_DATABASE_URL`.
@@ -136,10 +139,9 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 ## Setup or environment changes
 
-- Apply migrations 0014 and 0015 with the hosted API rollout. The hosted test API
-  (`justgo-two.vercel.app`, deployment `dpl_4BBEqxZmmrv5tJV2CoUwjrqPtHCw`) has the
-  receiving-transfer cancellation from October 14 but not deletion, the beta
-  window or the 4xx change.
+- The hosted test API (`justgo-two.vercel.app`) already serves `DELETE
+/v1/account` (checked October 16). It does not yet have the 4xx change, and
+  migration 0015 is only needed when the cleanup is scheduled.
 - New API variable `BETA_ACCESS_WINDOW` (JSON `{startsAt, expiresAt}` or `null`);
   configuration rejects it outside `APP_ENVIRONMENT=staging`.
 - Native changes need an updated signed development build: item-scoped Keychain
@@ -147,25 +149,19 @@ identity retention function; and the October 16 pre-merge stability fixes.
   Pulsar but neither of these.
 - Journeys accept `JUSTGO_JOURNEY_API_PORT` and `JUSTGO_JOURNEY_APP_PORT` (defaults
   3000/8081). The root `check:static` script is what CI runs before coverage.
-- `main` has no branch protection; making `expo-doctor` a required status check is
-  a repository setting for Anthony.
 
 ## Open gates
 
-| Gate                                                                                                               | Owner                         | Phase   | Done when                                                            |
-| ------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ------- | -------------------------------------------------------------------- |
-| Deletion on a signed build: Keychain item removal, relaunch/retry, iCloud second device, Cancel subscription sheet | Anthony                       | 08      | Physical-iPhone pass after an authorized signed build                |
-| Haptics relaunch, Stop and background behavior                                                                     | Anthony                       | 08      | Physical-iPhone pass on the signed build                             |
-| Two-phone transfer (send and receive, including cancellation on exit)                                              | Anthony                       | 08      | Two physical phones                                                  |
-| Get help and Suggest a feature open the email draft                                                                | Anthony                       | 08      | Physical iPhone opens both drafts with their subjects                |
-| Hosted rollout of migrations 0014–0015 and the API (deletion, beta window, 4xx)                                    | Anthony authorizes            | 08      | Deployed with backup, smoke probes and a disposable-account deletion |
-| Retention scheduler: `pg_cron` (recommended) or protected workflow                                                 | Anthony decides               | 08      | Schedule runs on the hosted database; first run's counts recorded    |
-| Supabase backup retention period                                                                                   | Anthony reads dashboard       | 08 → 10 | Recorded in FOUNDATION.md; Phase 10 writes the policy wording        |
-| Push, PRs, hosted CI green for each merge candidate, merge                                                         | Anthony authorizes each       | 08      | Inspected hosted runs on the pushed commits                          |
-| Month-boundary journey dependence (see above)                                                                      | Implementation owner          | 08A     | Both cases pass when the browser date is the 1st                     |
-| Crash and not-found screens on native (first and repeated)                                                         | Implementation owner          | 11      | Simulator or device check                                            |
-| Hosted restore rehearsal of the checklist                                                                          | Implementation owner, Anthony | 11      | Paid-launch checkpoint                                               |
-| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation                  | As in the plan                | 09–11   | See [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11) and Phase 09/07A  |
+| Gate                                                                                              | Owner                         | Phase   | Done when                                                           |
+| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------- | ------------------------------------------------------------------- |
+| Redeploy the API with the 4xx change (optional before the free beta)                              | Anthony authorizes            | 08–11   | Deployed and probed                                                 |
+| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | later   | Schedule runs on the hosted database; first run's counts recorded   |
+| Supabase backup retention period                                                                  | Anthony reads dashboard       | 08 → 10 | Recorded in FOUNDATION.md; Phase 10 writes the policy wording       |
+| Push, PRs, hosted CI green for each merge candidate, merge                                        | Anthony authorizes each       | 08      | Inspected hosted runs on the pushed commits                         |
+| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A     | Both cases pass when the browser date is the 1st                    |
+| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11      | Simulator or device check                                           |
+| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 11      | Paid-launch checkpoint                                              |
+| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–11   | See [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11) and Phase 09/07A |
 
 ## Final verification
 

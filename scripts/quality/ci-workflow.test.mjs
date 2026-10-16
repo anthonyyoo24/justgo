@@ -21,10 +21,10 @@ const jobs = Object.fromEntries(
 const runs = (job) =>
   [...job.matchAll(/^ {6}(?:- | {2})run: (.+)$/gm)].map((match) => match[1]);
 
-test('pushes run only for main while pull requests and a weekly schedule remain', () => {
+test('pushes run only for merges to main while pull requests remain', () => {
   assert.match(triggers, /^ {2}push:\n {4}branches: \[main\]$/m);
   assert.match(triggers, /^ {2}pull_request:$/m);
-  assert.match(triggers, /^ {2}schedule:\n {4}- cron: '0 13 \* \* 1'$/m);
+  assert.doesNotMatch(triggers, /schedule:/);
 });
 
 test('newer pull-request runs cancel older ones without grouping main commits together', () => {
@@ -35,15 +35,14 @@ test('newer pull-request runs cancel older ones without grouping main commits to
   assert.match(group, /github\.event_name/);
 });
 
-test('Expo Doctor is its own job and the scheduled run checks only Doctor', () => {
-  assert.deepEqual(Object.keys(jobs), ['expo-doctor', 'checks']);
+test('Expo Doctor runs first in the single checks job', () => {
+  assert.deepEqual(Object.keys(jobs), ['checks']);
+  const commands = runs(jobs.checks);
+  assert.ok(commands.indexOf('npm run doctor -w @justgo/mobile') >= 0);
   assert.ok(
-    runs(jobs['expo-doctor']).includes('npm run doctor -w @justgo/mobile'),
+    commands.indexOf('npm run doctor -w @justgo/mobile') <
+      commands.indexOf('npm run check:static'),
   );
-  assert.doesNotMatch(jobs['expo-doctor'], /^ {4}if:/m);
-  assert.doesNotMatch(jobs['expo-doctor'], /continue-on-error/);
-  assert.match(jobs.checks, /^ {4}if: github\.event_name != 'schedule'$/m);
-  assert.doesNotMatch(jobs.checks, /needs:/);
 });
 
 test('each unit and database suite runs once, through coverage', () => {
@@ -53,7 +52,7 @@ test('each unit and database suite runs once, through coverage', () => {
   assert.ok(commands.includes('npm run db:migrate'));
   for (const command of commands) {
     assert.doesNotMatch(command, /npm run check($| )/);
-    assert.doesNotMatch(command, /npm (run )?test($| )|test:db|doctor/);
+    assert.doesNotMatch(command, /npm (run )?test($| )|test:db/);
   }
   assert.doesNotMatch(
     rootPackage.scripts['check:static'],

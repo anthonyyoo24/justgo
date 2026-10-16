@@ -1282,7 +1282,7 @@ from merged main and passes fresh root checks; native/release gates stay open.
 
 - [x] **Dependency alignment before publication:** The fourth review retains merged main's `expo` 57.0.29, `expo-constants` 57.0.22, `expo-linking` 57.0.13 and `expo-router` 57.0.27 pins with the matching lockfile. Fresh `npm ci` and `npm run check` pass. This closes the keyboard integration's dependency-check blocker; the installed binary is unchanged and native/build/device acceptance remains open with Anthony in Phase 11.
 
-**Status:** In progress — implemented and verified locally, including deletion, the pre-merge stability fixes, the retention cleanup function and the restore checklist; physical-iPhone checks, hosted rollout, the retention schedule, the Supabase backup retention period and publication remain open ([handoff](handoffs/phase-08-settings-privacy.md#open-gates))\
+**Status:** In progress — implemented and verified locally, including deletion, the pre-merge stability fixes, the retention cleanup function and the restore checklist; Anthony reports the physical-iPhone checks done; the Supabase backup retention period and publication remain open, and the retention schedule is deferred ([handoff](handoffs/phase-08-settings-privacy.md#open-gates))\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
 
 **Acceptance references:** PRD AC-15–17 · Tech acceptance 3–4, 8–9, 17
@@ -1318,7 +1318,7 @@ Main's hosted CI failed on October 15 and `npm run check` now stops at Expo Doct
 
 1. **Dependency patches [STK-1].** Run `npx expo install --check` to take `expo` ~57.0.30 and `expo-router` ~57.0.28, then rerun `npm run doctor -w @justgo/mobile`. Native build/device acceptance stays in Phase 11, as for earlier patch alignments.
 2. **Flaky journeys [TST-1].** Find and fix why `e2e/progress-flow.spec.ts:258` (41 attempts with an unfinished inline reflection) hit its 60-second timeout on main's October 15 run, without weakening assertions or adding sleeps. Confirm that `1a0fb67` fixed the `identity-catalog.spec.ts:6` failure. Keep a masked failure artifact so the next flake is diagnosable.
-3. **CI triggers and duplicate runs [CI-1, CI-2, CI-3].** Run Expo Doctor as its own required job plus a weekly schedule, so an upstream patch recommendation no longer hides typecheck, lint and test results. Limit `push` to `main` while keeping `pull_request`, add `concurrency` with `cancel-in-progress`, and run each unit and database suite once, with coverage replacing the duplicate run.
+3. **CI triggers and duplicate runs [CI-2, CI-3].** Limit `push` to `main` (merges) while keeping `pull_request`, add `concurrency` with `cancel-in-progress`, and run each unit and database suite once, with coverage replacing the duplicate run. Anthony deferred the separate Expo Doctor job and weekly schedule [CI-1] on October 16; Doctor stays the first CI step.
 4. **Client errors stay client errors [API-3].** In the `/v1/` error handler, return unlisted 4xx statuses as client errors rather than 503 `UNAVAILABLE`; replace the nested ternaries with a lookup table, align contracts/OpenAPI if a code is added, and add regression tests.
 5. **Crash and unknown-link screens [RTR-2, RTR-3].** Export an Expo Router `ErrorBoundary` with a retry action from `app/_layout.tsx` and add `app/+not-found.tsx` returning to `/`. Add component tests and side-panel browser checks.
 
@@ -1331,14 +1331,14 @@ Main's hosted CI failed on October 15 and `npm run check` now stops at Expo Doct
 
 #### Ready to hand off when
 
-- [ ] All required Phase 08 controls remain reachable when unpaid; recovery/transfer and motion preferences work on iOS. Haptics implementation and physical-phone acceptance remain together in this phase. No reminder permission prompt or scheduling is introduced.
-- [ ] Haptic feedback and its saved Settings switch pass automated checks and physical-iPhone acceptance on an updated signed build; timing/strength/feel, disabled/persisted behavior and any resulting fixes are retested within Phase 08.
-- [ ] Get help opens the configured, working support destination from each recovery surface that offers it; no placeholder action or sensitive diagnostic payload is shipped.
+- [x] All required Phase 08 controls remain reachable when unpaid; recovery/transfer and motion preferences work on iOS. Haptics implementation and physical-phone acceptance remain together in this phase. No reminder permission prompt or scheduling is introduced.
+- [x] Haptic feedback and its saved Settings switch pass automated checks and physical-iPhone acceptance on an updated signed build; timing/strength/feel, disabled/persisted behavior and any resulting fixes are retested within Phase 08.
+- [x] Get help opens the configured, working support destination from each recovery surface that offers it; no placeholder action or sensitive diagnostic payload is shipped.
 - [x] Feature requests reuses the configured support contact flow/destination with a feature-request subject/type, remains usable without a purchase, sends no automatic private attachments and handles link-opening failure honestly.
 - [x] Rating and social rows open their verified public destinations when configured, remain honestly unavailable otherwise, and retain a usable retry with plain feedback if opening fails. Actual App Store/profile opening remains a Phase 11 device check once these destinations exist.
 - [x] Export/deletion isolate the owner, revoke credentials and document any pending cleanup; deleted identities cannot resurrect accounts.
 - [x] Server logs contain no sensitive payloads, including from the deletion endpoints; data-control/recovery actions remain usable without paid access. Phase 09 owns the single Terms & Privacy onboarding acceptance and removal of the unavailable analytics Settings rows under the October 15 decision.
-- [ ] The [pre-merge stability fixes](#phase-08-pre-merge) pass, `npm run check` passes with fresh Expo Doctor, and hosted CI is green for each merge candidate. The scheduled retention cleanup has passing evidence, the Supabase backup retention period is recorded, and the backup restore checklist is written.
+- [ ] The [pre-merge stability fixes](#phase-08-pre-merge) pass, `npm run check` passes with fresh Expo Doctor, and hosted CI is green for each merge candidate. The Supabase backup retention period is recorded and the backup restore checklist is written. The retention cleanup function has passing database evidence; Anthony deferred its hosted schedule on October 16.
 - [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **October 14 deletion implementation:** The separate `codex/phase-08-delete-account`

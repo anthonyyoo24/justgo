@@ -3,34 +3,15 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Expo's recommended SDK patches change without a commit; catch them weekly.
-  schedule:
-    - cron: '0 13 * * 1'
 permissions:
   contents: read
-# A newer push to a pull request cancels its older run. Main and scheduled runs
-# are grouped by commit, so every merged commit keeps its own complete result.
+# A newer push to a pull request cancels its older run. Merges to main are
+# grouped by commit, so every merged commit keeps its own complete result.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 jobs:
-  expo-doctor:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm install -g npm@11.16.0
-      - run: npm ci
-      - run: npm run doctor -w @justgo/mobile
   checks:
-    # Doctor runs as its own job, so an upstream patch recommendation cannot
-    # hide typecheck, lint, test or journey results.
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -52,6 +33,7 @@ jobs:
           cache: npm
       - run: npm install -g npm@11.16.0
       - run: npm ci
+      - run: npm run doctor -w @justgo/mobile
       - run: npm run check:static
       - name: Install PostgreSQL 17 snapshot tools
         run: |
