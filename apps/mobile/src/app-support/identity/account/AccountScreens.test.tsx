@@ -208,6 +208,36 @@ beforeEach(() => {
     .mockReturnValue({ remove: jest.fn() });
 });
 
+it('explains transfer entry for phones with and without an account', async () => {
+  const { fetcher } = await connected();
+  mockTool = 'transfer';
+  const source = render(<AccountToolRoute />);
+  await waitFor(() => expect(mockController.getSnapshot().busy).toBe(false));
+  expect(
+    source.getByText(
+      /Open JustGO on your new phone and choose “Transfer from another device.”/,
+    ),
+  ).toBeTruthy();
+  expect(
+    source.getByText(
+      /If that phone already has an account, go to Settings → Account & recovery → Recovery keys → Recover an existing account first/,
+    ),
+  ).toBeTruthy();
+  source.unmount();
+
+  mockController = new IdentityController(
+    createMemoryVault(),
+    createIdentityApi('http://localhost:3000', fetcher as typeof fetch),
+  );
+  await mockController.initialize();
+  const newPhone = render(<RecoveryRoute />);
+  expect(
+    newPhone.getByRole('button', { name: 'Transfer from another device' }),
+  ).toBeEnabled();
+  expect(newPhone.queryByRole('link', { name: 'Recovery keys' })).toBeNull();
+  newPhone.unmount();
+});
+
 it('preserves transfer input when the system text size changes', async () => {
   await connected();
   mockTool = 'transfer';
