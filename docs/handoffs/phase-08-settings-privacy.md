@@ -152,16 +152,16 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 ## Open gates
 
-| Gate                                                                                              | Owner                         | Phase   | Done when                                                           |
-| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------- | ------------------------------------------------------------------- |
-| Redeploy the API with the 4xx change (optional before the free beta)                              | Anthony authorizes            | 08–11   | Deployed and probed                                                 |
-| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | later   | Schedule runs on the hosted database; first run's counts recorded   |
-| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 08 → 10 | Dashboard matches FOUNDATION.md before Phase 10 publishes wording   |
-| Push, PRs, hosted CI green for each merge candidate, merge                                        | Anthony authorizes each       | 08      | Inspected hosted runs on the pushed commits                         |
-| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A     | Both cases pass when the browser date is the 1st                    |
-| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11      | Simulator or device check                                           |
-| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 11      | Paid-launch checkpoint                                              |
-| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–11   | See [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11) and Phase 09/07A |
+| Gate                                                                                              | Owner                         | Phase  | Done when                                                           |
+| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------- |
+| Redeploy the API with the 4xx change (optional before the free beta)                              | Anthony authorizes            | 11     | Deployed and probed                                                 |
+| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 11     | Schedule runs on the hosted database; first run's counts recorded   |
+| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 10, 11 | Dashboard matches FOUNDATION.md before Phase 10 publishes wording   |
+| Push, PRs, hosted CI green for each merge candidate, merge                                        | Anthony authorizes each       | 08     | Inspected hosted runs on the pushed commits                         |
+| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                    |
+| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11     | Simulator or device check                                           |
+| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 11     | Paid-launch checkpoint                                              |
+| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–11  | See [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11) and Phase 09/07A |
 
 ## Final verification
 
