@@ -11,7 +11,7 @@ backgrounding retains it while the process and screen survive. See the
 
 **September 24 scope update:** [Phase 04 decisions](../product/PHASE_04_SCOPE.md) define six manual venues, independent cycling stacks, the 39O fanned deck and five-minute attempts. Omit subtext and the future level-progress indicator. Shared content keeps separate venue placements; completed cards can recur as new attempts. The Phase 07A plan owns verified paid-access expiry and earlier-upload eligibility; current access is an isolated integration seam. See the [implementation handoff](../handoffs/phase-04-challenge-loop.md) for evidence and remaining device gates.
 
-**October 8 Phase 07 reconciliation:** The current implementation uses downloaded challenge content, phone-saved completed attempts/explicit reflections, one ordered background sender and independent Progress reads with limited offline history. The final cutover removes legacy lifecycle/reflection/deck protocols and contracts their schema through migration 0013. Current sections below supersede earlier server-backed Start/Finish, immutable wording and draft autosave requirements. Slice evidence remains in the [07.1–07.4 handoffs](../handoffs/README.md), and final verification/rollout evidence belongs to the [07.5 handoff](../handoffs/phase-07-5-cutover-acceptance.md). 07.3A remains deferred; native billing is planned in 07A and physical-device/staging release acceptance remains 09.
+**October 8 Phase 07 reconciliation:** The current implementation uses downloaded challenge content, phone-saved completed attempts/explicit reflections, one ordered background sender and independent Progress reads with limited offline history. The final cutover removes legacy lifecycle/reflection/deck protocols and contracts their schema through migration 0013. Current sections below supersede earlier server-backed Start/Finish, immutable wording and draft autosave requirements. Slice evidence remains in the [07.1–07.4 handoffs](../handoffs/README.md), and final verification/rollout evidence belongs to the [07.5 handoff](../handoffs/phase-07-5-cutover-acceptance.md). 07.3A remains deferred; native billing is planned in 07A and physical-device/staging release acceptance remains 11.
 
 The owner also retired the unused mobile `features/foundation/` connection screen
 and its dedicated tests. Developer screen previews remain available; API health
@@ -130,8 +130,8 @@ flowchart LR
     K[Keychain / Keystore credentials] --> App[React Native + Expo]
     App -->|Authenticated HTTPS| API[Fastify API on Vercel]
     API --> DB[(PostgreSQL)]
-    API -. Phase 08 consented events .-> PH[PostHog]
-    App -. Phase 08 consented interaction events .-> PH
+    API -. Phase 09 consented events .-> PH[PostHog]
+    App -. Phase 09 consented interaction events .-> PH
     API -. Future text coach .-> AI[AI provider]
     App --> Local[(AsyncStorage catalog / journal)]
     App -. Phase 07A .-> RC[RevenueCat native purchases]
@@ -144,16 +144,16 @@ flowchart LR
     Stripe -. Verified purchase integration .-> RC
 ```
 
-| Data                                                                 | Implemented location / boundary                                                       |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| App account and recovery/session ownership                           | PostgreSQL; secure credentials and pending identity proposals in Keychain             |
-| Stable challenges, current wording/configuration, venues and Level 1 | PostgreSQL plus the downloaded account-scoped catalog in AsyncStorage                 |
-| Selected venue, cycling deck order and unfinished challenge          | Memory only; unfinished activity uses screen-owned React state                        |
-| Completed reps and explicitly submitted feeling/text                 | One versioned AsyncStorage journal envelope, then accepted PostgreSQL attempt columns |
-| Upload operations, receipts and aggregate reconciliation             | Account journal; targeted backend PATCH receipts prevent duplicate application        |
-| Latest summary/current-month counts/today's downloaded pages         | AsyncStorage; older downloaded months/day details use online in-memory queries only   |
-| Billing verification/coverage, jobs and provider bindings            | Phase 07A work; provider-backed production access is not implemented                  |
-| Settings/privacy/analytics and future coach records                  | Their scheduled phases; no current analytics exporter or coach                        |
+| Data                                                                 | Implemented location / boundary                                                                          |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| App account and recovery/session ownership                           | PostgreSQL; secure credentials and pending identity proposals in Keychain                                |
+| Stable challenges, current wording/configuration, venues and Level 1 | PostgreSQL plus the downloaded account-scoped catalog in AsyncStorage                                    |
+| Selected venue, cycling deck order and unfinished challenge          | Memory only; unfinished activity uses screen-owned React state                                           |
+| Completed reps and explicitly submitted feeling/text                 | One versioned AsyncStorage journal envelope, then accepted PostgreSQL attempt columns                    |
+| Upload operations, receipts and aggregate reconciliation             | Account journal; targeted backend PATCH receipts prevent duplicate application                           |
+| Latest summary/current-month counts/today's downloaded pages         | AsyncStorage; older downloaded months/day details use online in-memory queries only                      |
+| Billing verification/coverage, jobs and provider bindings            | Phase 07A work; provider-backed production access is not implemented                                     |
+| Settings/privacy/analytics and future coach records                  | Settings/data controls 08; analytics 09; legal notices 10; future coach 14; no current exporter or coach |
 
 Keychain authenticates the account; AsyncStorage preserves submitted device activity, and PostgreSQL preserves accepted shared history. Pending activity never transfers to another app account. An only-device copy can be lost before upload; the owner accepted this risk without a new backup system or status UI. Do not persist the entire query cache.
 

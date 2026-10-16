@@ -17,6 +17,8 @@ Historical result for the September 16 scope revision: **11 checks passed**, as 
 
 **September 26 numbering correction:** The current Markdown plan uses phases 05–09 for reflections through launch and phase 10 for post-launch lock-screen work. This file and `check-plan.mjs` describe the absent historical HTML tracker’s older IDs; they do not validate the renumbered plan. Any restored tracker or saved export needs an explicit ID migration before use.
 
+**October 14 numbering supersession:** The owner inserted analytics as Phase 09 and legal documents as Phase 10. Release validation is now Phase 11 and post-launch work is 12–14. The September 26 numbering and HTML results above remain historical; the absent HTML checker does not verify the current Markdown plan.
+
 The checks parse the shipped JavaScript, exercise its actual import/completion validator, inspect internal links and compare Markdown/HTML phase titles, dependencies, gate text and handoff paths.
 
 Coverage includes nine launch stages, three deferred stages, lock-screen phase 05 no longer blocking billing, dependency order, four gates per phase, valid fresh state, completion prerequisites, invalid/oversized import fields, rejection of old v1 exports, JSON round-trip, handoff template/index, isolated v2 storage and dynamic totals. All launch stages can complete while phases 05, 11 and 12 remain deferred.

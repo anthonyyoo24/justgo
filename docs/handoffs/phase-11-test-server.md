@@ -1,6 +1,8 @@
-# Phase 09 prerequisite — physical-phone test server
+# Phase 11 prerequisite — physical-phone test server
 
-October 11, 2026. Branch: `codex/phase-08-settings-privacy`. Anthony explicitly approved bringing forward the existing hosted test-server update and approved-account free access so Phase 08 can be tested on his iPhone. This is a narrow Phase 09 prerequisite; Phase 08, the free TestFlight beta and paid launch remain incomplete. Native billing stays on its separate 07A branch. No Git push, PR or merge was performed.
+**October 14 numbering update:** This is the existing former Phase 09 prerequisite, renamed for release Phase 11 after inserting analytics (09) and legal documents (10). Implementation, dates, test evidence, deployment/build identifiers and historical `.local/phase-09/` artifacts below are preserved. Renumbering does not accept the free beta or close open native/release gates.
+
+October 11, 2026. Branch: `codex/phase-08-settings-privacy`. Anthony explicitly approved bringing forward the existing hosted test-server update and approved-account free access so Phase 08 can be tested on his iPhone. This is a narrow Phase 11 prerequisite; Phase 08, the free TestFlight beta and paid launch remain incomplete. Native billing stays on its separate 07A branch. No Git push, PR or merge was performed.
 
 ## Implementation
 
@@ -10,7 +12,7 @@ Current access ends at expiry or revocation. Keep the historical grant and set `
 
 The strict access/OpenAPI contract optionally identifies `source: free_beta`. Unapproved/expired test accounts see a free-testing explanation; Settings identifies the test build. Billing responses without this optional field remain valid. Bring these contract changes into 07A before integrating its separate implementation.
 
-**Offline limit still open:** this prerequisite supplies server-side start-time upload eligibility, not durable offline access admission. The existing mobile guard requires a fresh check within 60 seconds and closes on check failure. Full beta offline start/relaunch/continuation acceptance and any necessary policy implementation remain Phase 09 work; the 07A saved paid-access rules have not been imported or accepted here.
+**Offline limit still open:** this prerequisite supplies server-side start-time upload eligibility, not durable offline access admission. The existing mobile guard requires a fresh check within 60 seconds and closes on check failure. Full beta offline start/relaunch/continuation acceptance and any necessary policy implementation remain Phase 11 work; the 07A saved paid-access rules have not been imported or accepted here.
 
 ## Hosted cutover and protection
 
@@ -28,7 +30,7 @@ Existing Vercel project: `justgo`, scope `anthony-youngshin-yoos-projects`. A pr
 
 **Phone route:** <https://justgo-two.vercel.app>. The existing project's stable production deployment slot hosts the **application staging** API/database for this owner-device preparation. This is deliberate test infrastructure, not the paid/release environment or an App Store release. `APP_ENVIRONMENT=staging` is explicit on that slot. Existing `all_except_custom_domains` protection remains unchanged; generated deployment URLs/previews remain protected. The stable alias accepts normal HTTPS requests while private routes still require verified sessions. No protection bypass is bundled in the app. Verify the intended slot/database before every later deployment; prepare an isolated paid production environment before launch.
 
-The first stable deployment was `dpl_FkoAZFfEnDNE9GP45rvyFiDjixke`. After private owner approval, `dpl_6a3mJC7jFX2FFrupB1skx8217SXJ` served authenticated phone catalog/progress/history requests with 200 responses. The current deployment is `dpl_ENi6zgHhmQwRLuYvBRWHq2csLyuw`, built from the same tested source and current grant configuration on the same stable alias. Public alias readiness returned 200; unauthenticated access and export returned 401. Only 41 allowlisted API/contract/workspace files (about 681 KB) were uploaded; no environment files, fixture scripts, SQL migration directory, local backups, generated iOS projects or mobile source were included.
+The first stable deployment was `dpl_FkoAZFfEnDNE9GP45rvyFiDjixke`. After private owner approval, `dpl_6a3mJC7jFX2FFrupB1skx8217SXJ` served authenticated phone catalog/progress/history requests with 200 responses. The most recent October 11 deployment was `dpl_ENi6zgHhmQwRLuYvBRWHq2csLyuw`, built from the same tested source and current grant configuration on the same stable alias. Public alias readiness returned 200; unauthenticated access and export returned 401. Only 41 allowlisted API/contract/workspace files (about 681 KB) were uploaded; no environment files, fixture scripts, SQL migration directory, local backups, generated iOS projects or mobile source were included.
 
 ## Evidence and phone follow-up
 
@@ -37,7 +39,7 @@ The first stable deployment was `dpl_FkoAZFfEnDNE9GP45rvyFiDjixke`. After privat
 - `npm run test:coverage`: unchanged all-source/critical floors passed, including the clock follow-up. Mobile lines 95.90%, branches 91.28%; API lines 95.01%, branches 90.61%; contracts 100%/100%. The beta reader itself has 100% line/branch coverage. Tests exercise real session/owner isolation, unapproved/revoked access, expiry/revocation bounds, historical uploads, replay and production defaults.
 - Side-panel browser: disposable local account, actual API on 3005 and live Metro on 8081. Unapproved free-test copy, Settings/export reachability, the Free test build footer and Back to the previous access screen were observed. Ignored screenshot: `.local/phase-08/beta-settings-browser.png`. Browser evidence does not establish phone behavior.
 - After the clock correction, a fresh disposable approved local account reached real Home with challenge cards; Home → Settings → Back returned to the same Home. Ignored screenshot: `.local/phase-08/beta-home-after-settings-browser.png`. Editing the provider during diagnostics left a disposed runtime in the browser's Fast Refresh session; a full page reload cleared it, discarding only the documented memory-only browser credential. The new disposable account was approved locally; no hosted grant or phone account was reset.
-- The Vercel workspace installation audit reports 72 findings (21 moderate, 50 high, one critical); the workspace production audit reports 45. `npm audit --workspace @justgo/api --omit=dev --json` reports **zero** API runtime findings. Remaining Expo/Metro/build-tool dependency findings stay open for Phase 09 release triage; no forced upgrade or audit suppression was performed.
+- The Vercel workspace installation audit reports 72 findings (21 moderate, 50 high, one critical); the workspace production audit reports 45. `npm audit --workspace @justgo/api --omit=dev --json` reports **zero** API runtime findings. Remaining Expo/Metro/build-tool dependency findings stay open for Phase 11 release triage; no forced upgrade or audit suppression was performed.
 
 The installed physical EAS development binary remains `1500d7ee-c49a-4047-b88a-278eccdc21bc`, version 0.1.0 (1), bundle `com.anthonyyoo.justgo`. Developer Mode and USB pairing are verified. After the owner enabled/retried Local Network on the same Wi-Fi, Metro observed a real phone bundle request and Anthony confirmed Settings opened; the exact cause of the earlier LAN failure was not isolated.
 
@@ -52,3 +54,22 @@ Anthony reported Settings Back showing “We can’t verify access yet” even t
 Focused provider tests **16/16**, the fresh root check and root coverage gate pass. At 15:47 UTC the existing physical app was reopened with the updated live bundle. **Anthony confirmed that real Home shows challenge cards and Home → Settings → Back returns to Home.** This is owner-reported physical evidence on the installed iPhone build, separate from the browser walkthrough; no native screenshot/recording was captured. The development connection remains on port 8084 for feature testing. The hosted prerequisite is ready for this owner-device workflow; it does not accept the full free beta.
 
 Keep export Save to Files/open/email-draft/cancel/retry, support/feature drafts, Reduce Motion/relaunch/system override, transition frames, large text and VoiceOver acceptance open until actual phone evidence is recorded. Keychain/reinstall/two-device recovery, broader staged account/device/security journeys, durable offline beta admission, haptics, backup ownership/disaster recovery, TestFlight and paid release remain later gates. Purchases remain inactive.
+
+## October 14 receiving-transfer cancellation API update
+
+Anthony explicitly approved updating this existing hosted test API after the
+mobile cancellation implementation encountered its older server contract.
+Deployment **`dpl_4BBEqxZmmrv5tJV2CoUwjrqPtHCw`** is Ready on
+<https://justgo-two.vercel.app>, runtime region `yul1`. The existing Vercel project,
+application-staging slot, protected generated URLs and all environment
+configuration IDs/timestamps remain unchanged. No migration, database reset,
+account/grant change, native build or Git publication was performed.
+
+The [Phase 08 rollout evidence](phase-08-settings-privacy.md#owner-approved-hosted-api-rollout)
+records the 41-file allowlisted upload, exact source hashes, live readiness and
+authorization checks, receiver cancellation/replay probes and retained native
+acceptance. Two unbound probe proposals were cancelled; no accounts, sessions or
+activity were created. The phone development server remains on port **8081**;
+Retry connection resolves queued cancellation against the new API before starting
+a fresh transfer. Physical-phone cancellation/relaunch/offline acceptance and the
+existing Expo/dependency release gates remain open.

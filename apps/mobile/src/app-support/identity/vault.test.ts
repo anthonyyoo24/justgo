@@ -58,33 +58,52 @@ it.each(['not json', '{}', JSON.stringify({ ...state, unexpected: true })])(
   },
 );
 
-it('preserves recovery metadata written by the newer phone-transfer worktree', async () => {
-  const stored = {
-    ...state,
-    ignoredCredentialIds: [credential.id],
-    cancelledTransfers: [
-      {
-        kind: 'transfer',
-        credentialId: credential.id,
-        input: {
-          id: credential.id,
-          deviceId: state.deviceId,
-          sessionId: credential.id,
-          sessionToken: credential.secret,
-          credential: credential.secret,
-          code: 'ABCDEF0123456789',
-          claimSecret: credential.secret,
+it.each(['pending', 'cleanup', 'deleted'] as const)(
+  'preserves %s deletion state together with newer phone-transfer metadata',
+  async (stage) => {
+    const stored = {
+      ...state,
+      accountDeleted: stage === 'deleted',
+      pending:
+        stage === 'deleted'
+          ? null
+          : {
+              kind: 'delete',
+              userId: state.deviceId,
+              receipt:
+                stage === 'pending'
+                  ? null
+                  : {
+                      userId: state.deviceId,
+                      deletedAt: '2026-10-14T10:00:00.000Z',
+                      credentialDigests: [credential.secret],
+                    },
+            },
+      ignoredCredentialIds: [credential.id],
+      cancelledTransfers: [
+        {
+          kind: 'transfer',
+          credentialId: credential.id,
+          input: {
+            id: credential.id,
+            deviceId: state.deviceId,
+            sessionId: credential.id,
+            sessionToken: credential.secret,
+            credential: credential.secret,
+            code: 'ABCDEF0123456789',
+            claimSecret: credential.secret,
+          },
         },
-      },
-    ],
-  };
-  native.readState.mockResolvedValue(JSON.stringify(stored));
-  const vault = createVault();
-  const restored = await vault.read();
-  expect(restored).toEqual(stored);
-  await vault.write(restored!);
-  expect(JSON.parse(native.writeState.mock.calls[0]![0])).toEqual(stored);
-});
+      ],
+    };
+    native.readState.mockResolvedValue(JSON.stringify(stored));
+    const vault = createVault();
+    const restored = await vault.read();
+    expect(restored).toEqual(stored);
+    await vault.write(restored!);
+    expect(JSON.parse(native.writeState.mock.calls[0]![0])).toEqual(stored);
+  },
+);
 
 it.each([
   { ignoredCredentialIds: ['invalid'] },

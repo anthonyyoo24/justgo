@@ -461,3 +461,48 @@ it('requires a provider for runtime consumers', () => {
     'AppProvider is required',
   );
 });
+
+it('cancels a receiving transfer in the background and retries durable cleanup on reconnection', async () => {
+  const screen = await mount();
+  const online = jest.mocked(listenToConnectivity).mock.calls.at(-1)![0];
+  let offline = true;
+  const originalFetch = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async (input, init) => {
+    const path = String(input);
+    if (path.endsWith('/transfers') && init?.method === 'POST') {
+      const body = JSON.parse(init.body as string);
+      return response({
+        id: body.id,
+        status: 'waiting',
+        verification: '012345',
+        expiresAt: new Date(Date.now() + 600000).toISOString(),
+      });
+    }
+    if (path.includes('/transfers/') && init?.method === 'DELETE') {
+      if (offline) throw new Error('Synthetic offline cancellation');
+      return response({ status: 'cancelled' });
+    }
+    return originalFetch(input, init);
+  });
+  await act(async () => {
+    await runtime.identity.startTransfer();
+  });
+  act(() => onAppState('inactive'));
+  await act(async () => {
+    await runtime.identity.cancelTransfer();
+  });
+  expect(runtime.identity.getSnapshot().account).toEqual(session);
+  expect(runtime.identity.getSnapshot().transfer).toBeNull();
+  expect(runtime.identity.getSnapshot().cancellationPending).toBe(true);
+  act(() => onAppState('active'));
+  await waitFor(() => expect(runtime.identity.getSnapshot().busy).toBe(false));
+  act(() => online(false));
+  offline = false;
+  act(() => online(true));
+  await waitFor(() =>
+    expect(runtime.identity.getSnapshot().cancellationPending).toBe(false),
+  );
+  await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
+  expect((await vault.read())!.pending).toBeNull();
+  screen.unmount();
+});

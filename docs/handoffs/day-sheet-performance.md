@@ -19,6 +19,13 @@
 
 ## Finding and change
 
+**October 14 PR #25 follow-up:** The
+[review correction](phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+also fills a viewport when eight initial rows do not create scrolling. It uses
+fresh measurements for each batch and preserves the existing draft/scroll-ahead
+behavior. Earlier native timings below describe the original optimization;
+they are not new measurements of this visibility correction.
+
 The 41-attempt day initially mounted every row, every hidden reflection form and
 every motion adapter. Opening an editor then rendered all 41 rows three times.
 The reflection controller subscription also invalidated the Progress owner on
@@ -143,7 +150,7 @@ regressions have component/browser evidence separately.
 
 Anthony authorized the local merge into Phase 08 on October 12. Owner review and
 separate permissions for push, PR and any subsequent merge remain open.
-Existing Phase 09 physical-iPhone, software-keyboard layout, VoiceOver, large-text
+Existing Phase 11 physical-iPhone, software-keyboard layout, VoiceOver, large-text
 and release performance acceptance remain open. This scoped fix does not close
 those gates or advance the rest of Settings/privacy work.
 
@@ -269,7 +276,7 @@ native performance capture. Saved Progress journey source was retained and
 typechecked; its CLI run was not repeated under the owner's side-panel-only
 testing preference. The existing simulator was shut down at task start and was
 not changed. October 10 native measurements remain historical evidence; new
-physical-phone/VoiceOver/release acceptance stays open in Phase 09.
+physical-phone/VoiceOver/release acceptance stays open in Phase 11.
 
 The temporary test account was cleaned up only through its server-owned registry,
 and both temporary services exited successfully. The original loopback API was

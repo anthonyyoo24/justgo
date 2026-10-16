@@ -10,6 +10,8 @@ import {
   sessionCreateSchema,
   sessionResponseSchema,
   transferApproveSchema,
+  transferCancelSchema,
+  transferCancelResponseSchema,
   transferInspectSchema,
   transferInspectionResponseSchema,
   transferResponseSchema,
@@ -156,13 +158,17 @@ export function identityRoutes(
       );
     },
   );
-  app.delete('/transfers/:id', { preHandler: sensitive }, async (request) =>
-    okSchema.parse(
-      await service.cancelTransfer(
-        bearer(request),
-        parse(idSchema, request.params).id,
-        parse(transferInspectSchema, request.body).code,
-      ),
-    ),
-  );
+  app.delete('/transfers/:id', { preHandler: sensitive }, async (request) => {
+    const id = parse(idSchema, request.params).id;
+    const data = parse(transferCancelSchema, request.body);
+    if ('claimSecret' in data) {
+      if (data.id !== id) throw new IdentityError('INVALID_REQUEST', 400);
+      return transferCancelResponseSchema.parse(
+        await service.cancelReceivingTransfer(data),
+      );
+    }
+    return okSchema.parse(
+      await service.cancelTransfer(bearer(request), id, data.code),
+    );
+  });
 }

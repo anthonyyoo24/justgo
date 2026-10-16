@@ -428,6 +428,31 @@ export class IdentityService {
     )
       fail('TRANSFER_EXPIRED', 410);
   }
+  private matchesTransfer(row: TransferRow, input: TransferStart) {
+    return (
+      row.id === input.id &&
+      row.claim_digest === digest(input.claimSecret) &&
+      row.session_id === input.sessionId &&
+      row.session_digest === digest(input.sessionToken) &&
+      row.device_id === input.deviceId &&
+      row.credential_digest === digest(input.credential)
+    );
+  }
+  private async createTransfer(
+    tx: Tx,
+    input: TransferStart,
+    cancelled = false,
+  ) {
+    const verification = this.transferVerifier(
+      input.id,
+      this.transferVerification(digest(input.claimSecret)),
+    );
+    return (await one<TransferRow>(
+      tx,
+      sql`insert into justgo.device_transfers (id,code_digest,claim_digest,device_id,session_id,session_digest,credential_digest,verification,expires_at,cancelled_at)
+        values (${input.id},${digest(input.code)},${digest(input.claimSecret)},${input.deviceId},${input.sessionId},${digest(input.sessionToken)},${digest(input.credential)},${verification},now()+${this.transferMinutes}*interval '1 minute',case when ${cancelled} then now() else null end) returning *`,
+    ))!;
+  }
   async startTransfer(input: TransferStart) {
     return this.db.transaction(async (tx) => {
       const codeHash = digest(input.code),
@@ -441,14 +466,7 @@ export class IdentityService {
         sql`select * from justgo.device_transfers where code_digest=${codeHash}`,
       );
       if (existing) {
-        if (
-          existing.id !== input.id ||
-          existing.claim_digest !== claimHash ||
-          existing.session_id !== input.sessionId ||
-          existing.session_digest !== digest(input.sessionToken) ||
-          existing.device_id !== input.deviceId ||
-          existing.credential_digest !== digest(input.credential)
-        )
+        if (!this.matchesTransfer(existing, input))
           return fail('CONFLICT', 409);
         await this.liveTransfer(tx, existing);
         const verification = this.transferVerification(claimHash);
@@ -458,13 +476,8 @@ export class IdentityService {
         return { ...this.transferView(existing), verification };
       }
       const verification = this.transferVerification(claimHash);
-      const verifier = this.transferVerifier(input.id, verification);
-      const row = await one<TransferRow>(
-        tx,
-        sql`insert into justgo.device_transfers (id,code_digest,claim_digest,device_id,session_id,session_digest,credential_digest,verification,expires_at)
-        values (${input.id},${codeHash},${claimHash},${input.deviceId},${input.sessionId},${digest(input.sessionToken)},${digest(input.credential)},${verifier},now()+${this.transferMinutes}*interval '1 minute') returning *`,
-      );
-      return { ...this.transferView(row!), verification };
+      const row = await this.createTransfer(tx, input);
+      return { ...this.transferView(row), verification };
     });
   }
   inspectTransfer(token: string, code: string) {
@@ -505,13 +518,41 @@ export class IdentityService {
   }
   cancelTransfer(token: string, id: string, code: string) {
     return this.withSession(token, async (tx, session) => {
-      const row = await this.transfer(tx, code);
+      const found = await this.transfer(tx, code);
+      const row = (await one<TransferRow>(
+        tx,
+        sql`select * from justgo.device_transfers where id=${found.id} for update`,
+      ))!;
       if (row.id !== id || row.user_id !== session.userId || row.redeemed_at)
         return fail('NOT_FOUND', 404);
       await tx.execute(
         sql`update justgo.device_transfers set cancelled_at=now() where id=${row.id}`,
       );
       return { ok: true as const };
+    });
+  }
+  cancelReceivingTransfer(input: TransferStart) {
+    return this.db.transaction(async (tx) => {
+      const codeHash = digest(input.code);
+      await context(tx, 'app.transfer_digest', codeHash);
+      // Serialize with creation too: cancellation may arrive before a delayed POST.
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${codeHash},1))`,
+      );
+      const row = await one<TransferRow>(
+        tx,
+        sql`select * from justgo.device_transfers where code_digest=${codeHash} for update`,
+      );
+      if (!row) {
+        await this.createTransfer(tx, input, true);
+        return { status: 'cancelled' as const };
+      }
+      if (!this.matchesTransfer(row, input)) fail('CREDENTIAL_REJECTED');
+      if (row.redeemed_at) return { status: 'redeemed' as const };
+      await tx.execute(
+        sql`update justgo.device_transfers set cancelled_at=coalesce(cancelled_at,now()) where id=${row.id}`,
+      );
+      return { status: 'cancelled' as const };
     });
   }
   async redeemTransfer(code: string, claimSecret: string) {

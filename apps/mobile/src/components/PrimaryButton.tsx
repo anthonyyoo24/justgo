@@ -22,17 +22,19 @@ export function PrimaryButton({
       onPress={onPress}
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
-      {busy && (
+      {busy ? (
         <ActivityIndicator
           color={colors.white}
+          size="small"
           accessible
           accessibilityRole="progressbar"
           accessibilityLabel={`${label} in progress`}
         />
+      ) : (
+        <Text maxFontSizeMultiplier={2} style={styles.label}>
+          {label}
+        </Text>
       )}
-      <Text maxFontSizeMultiplier={2} style={styles.label}>
-        {label}
-      </Text>
     </Pressable>
   );
 }

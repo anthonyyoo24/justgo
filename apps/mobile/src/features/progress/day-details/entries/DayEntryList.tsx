@@ -1,5 +1,6 @@
 import {
   Fragment,
+  useCallback,
   useLayoutEffect,
   useRef,
   useState,
@@ -29,12 +30,36 @@ export function DayEntryList({
 }) {
   const [visibleCount, setVisibleCount] = useState(rowBatch);
   const fillingAhead = useRef(false);
+  const previousLength = useRef(entries.length);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [content, setContent] = useState({ height: 0, rows: 0 });
+  const measureContent = useCallback(
+    (_: number, height: number) => {
+      const rows = Math.min(visibleCount, entries.length);
+      setContent((measured) =>
+        measured.height === height && measured.rows === rows
+          ? measured
+          : { height, rows },
+      );
+    },
+    [entries.length, visibleCount],
+  );
   useLayoutEffect(() => {
-    // A page can arrive at the scroll boundary without another scroll event.
-    // Fill from the new data immediately so the user can keep scrolling.
-    if (fillingAhead.current)
+    const appended = entries.length > previousLength.current;
+    previousLength.current = entries.length;
+    // Wait for the newly rendered batch's height before deciding to add another.
+    const fitsViewport =
+      viewportHeight > 0 &&
+      content.height > 0 &&
+      content.height <= viewportHeight &&
+      content.rows === Math.min(visibleCount, entries.length);
+    // New data can arrive at the scroll boundary without another scroll event.
+    if (
+      visibleCount < entries.length &&
+      (fitsViewport || (appended && fillingAhead.current))
+    )
       setVisibleCount((count) => Math.min(entries.length, count + rowBatch));
-  }, [entries.length]);
+  }, [content, entries.length, viewportHeight, visibleCount]);
   return (
     <ScrollView
       testID="day-sheet-entry-list"
@@ -42,6 +67,10 @@ export function DayEntryList({
       contentContainerStyle={styles.entries}
       scrollEventThrottle={16}
       keyboardShouldPersistTaps="handled"
+      onLayout={({ nativeEvent }) =>
+        setViewportHeight(nativeEvent.layout.height)
+      }
+      onContentSizeChange={measureContent}
       onScroll={(event) => {
         const { contentOffset, contentSize, layoutMeasurement } =
           event.nativeEvent;

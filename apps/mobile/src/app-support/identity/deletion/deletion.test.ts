@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { IdentityController } from '../controller';
-import { createMemoryVault, type CredentialVault } from '../storage';
+import {
+  createMemoryVault,
+  type CredentialVault,
+  type TransferIntent,
+} from '../storage';
 import { IdentityClientError, type IdentityApi } from '../api';
 
 jest.mock('expo-crypto', () => ({
@@ -258,4 +262,105 @@ it('keeps local data on a definitive server rejection and rejects a receipt for 
   await other.controller.deleteAccount();
   expect(other.remove).not.toHaveBeenCalled();
   expect(other.controller.getSnapshot().deletionStatus).toBe('pending');
+});
+
+const abandonedTransfer = (): TransferIntent => ({
+  kind: 'transfer',
+  credentialId: id(),
+  input: {
+    id: id(),
+    deviceId: id(),
+    sessionId: id(),
+    sessionToken: secret(),
+    credential: secret(),
+    code: 'ABCDEF0123456789',
+    claimSecret: secret(),
+  },
+});
+
+it.each(['pending', 'cleanup'] as const)(
+  'resumes %s deletion before reconciling unrelated abandoned transfers',
+  async (stage) => {
+    const s = setup();
+    await s.controller.initialize();
+    if (stage === 'pending')
+      s.deletion.mockRejectedValueOnce(new IdentityClientError('NETWORK'));
+    else s.remove.mockRejectedValueOnce(new Error('Synthetic cleanup failure'));
+    await s.controller.deleteAccount();
+    const cancelled = abandonedTransfer();
+    await s.vault.write({
+      ...(await s.vault.read())!,
+      cancelledTransfers: [cancelled],
+      ignoredCredentialIds: [cancelled.credentialId],
+    });
+    const reopened = new IdentityController(s.vault, s.api, { id, secret });
+    reopened.setAccountDataRemover(s.remove);
+    await reopened.initialize();
+    expect(reopened.getSnapshot()).toMatchObject({
+      deletionStatus: 'deleted',
+      account: null,
+    });
+    expect(s.deletion).toHaveBeenCalledTimes(stage === 'pending' ? 2 : 1);
+    expect(
+      s.calls.mock.calls.some(([, path]) => path.startsWith('/transfers/')),
+    ).toBe(false);
+    expect(await s.vault.read()).toMatchObject({
+      accountDeleted: true,
+      pending: null,
+      cancelledTransfers: [cancelled],
+      ignoredCredentialIds: [cancelled.credentialId],
+    });
+    const before = s.calls.mock.calls.length;
+    await reopened.retry({ background: true });
+    expect(s.calls).toHaveBeenCalledTimes(before);
+  },
+);
+
+it('retries the saved replacement bootstrap before unrelated cancellation reconciliation', async () => {
+  const s = setup();
+  await s.controller.initialize();
+  await s.controller.deleteAccount();
+  const replacementOwner = id();
+  const calls = s.calls.getMockImplementation()!;
+  let failing = true;
+  s.calls.mockImplementation(async (method, path, body, token) => {
+    if (path === '/sessions') {
+      if (failing) throw new IdentityClientError('NETWORK');
+      const proposal = body as { deviceId: string; sessionId: string };
+      return {
+        userId: replacementOwner,
+        deviceId: proposal.deviceId,
+        sessionId: proposal.sessionId,
+        expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+      };
+    }
+    return calls(method, path, body, token);
+  });
+  await s.controller.createAccount();
+  const pending = (await s.vault.read())!.pending;
+  expect(pending?.kind).toBe('bootstrap');
+  const cancelled = abandonedTransfer();
+  await s.vault.write({
+    ...(await s.vault.read())!,
+    cancelledTransfers: [cancelled],
+  });
+  failing = false;
+  const reopened = new IdentityController(s.vault, s.api, { id, secret });
+  await reopened.initialize();
+  expect(reopened.getSnapshot()).toMatchObject({
+    account: { userId: replacementOwner },
+    deletionStatus: null,
+  });
+  const attempts = s.calls.mock.calls.filter(
+    ([, path]) => path === '/sessions',
+  );
+  expect(attempts.at(-1)![2]).toEqual(attempts.at(-2)![2]);
+  expect(
+    s.calls.mock.calls.some(([, path]) => path.startsWith('/transfers/')),
+  ).toBe(false);
+  expect(await s.vault.read()).toMatchObject({
+    accountDeleted: false,
+    pending: null,
+    cancelledTransfers: [cancelled],
+  });
 });

@@ -172,6 +172,8 @@ Reload the app to clear stale module/asset paths.
   covers it; protect that handoff with a regression and inspect native frames.
 - For large animated lists, bound initial row mounting and subscribe to draft
   changes inside the active editor, with the controller owned above the rows.
+  Fill underfull viewports from layout/content measurements rather than requiring
+  a scroll gesture; await the new batch's measurements before extending it again.
   Avoid measuring every collapsed panel. Compare callback identities honestly
   when memoizing rows, and verify expanding heights and scrolling on the native
   surface; inconsistent row estimates can defeat virtualization.
@@ -199,6 +201,11 @@ Reload the app to clear stale module/asset paths.
   database: Expo's virtual environment can still prefer `.env.local` despite CLI
   overrides. Preserve the guarded public-environment adapter and request fence;
   never let fixture account proofs reach a hosted API.
+
+- Browser layout checks must wait for usable controls after navigation/refresh
+  and retry fresh geometry reads. Missing or detached elements must keep the
+  assertion failing; preserve the alignment limit instead of adding sleeps or
+  weakening the assertion.
 - Before handoff run `npm run check` and, for backend/shared boundaries or a phase
   closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
   Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.
@@ -213,6 +220,8 @@ Reload the app to clear stale module/asset paths.
   related steps. Inspect hosted checks for the pushed commit before marking a new
   CI gate verified; a local pass does not establish a hosted pass. Record failures
   and their fixes in the handoff.
+  After splitting or stacking PRs, verify each actual publication candidate;
+  checks from the combined feature branch do not transfer to older PR branches.
 - Work in small reviewable changes. Update the phase handoff, plan and handoff
   index with actual commands/results, UI evidence and remaining work. Do not
   put secrets, real private reflections or credentials in logs or handoffs.

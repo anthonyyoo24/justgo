@@ -49,6 +49,15 @@ export const transferInspectSchema = z
 export const transferApproveSchema = transferInspectSchema
   .extend({ verification: transferVerificationSchema })
   .strict();
+// The approving account can cancel with its session and code. The receiving
+// phone can cancel its own proposal with the complete digest-bound proof.
+export const transferCancelSchema = z.union([
+  transferInspectSchema,
+  transferStartSchema,
+]);
+export const receivingTransferCancelResponseSchema = z
+  .object({ status: z.enum(['cancelled', 'redeemed']) })
+  .strict();
 export const sessionResponseSchema = z
   .object({
     userId: z.uuid(),
@@ -109,6 +118,10 @@ export const accountDeletionResponseSchema = z
 export type AccountDeletionResponse = z.infer<
   typeof accountDeletionResponseSchema
 >;
+export const transferCancelResponseSchema = z.union([
+  okSchema,
+  receivingTransferCancelResponseSchema,
+]);
 export const identityErrorCodeSchema = z.enum([
   'INVALID_REQUEST',
   'REQUEST_TOO_LARGE',

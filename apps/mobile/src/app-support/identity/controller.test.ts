@@ -62,11 +62,13 @@ const nativeVault = (): CredentialVault => ({
   kind: 'keychain',
 });
 
-it('restores the saved account and preserves newer recovery metadata through renewal', async () => {
+it('restores the saved account and preserves unconfirmed cancellation metadata through renewal', async () => {
   const vault = nativeVault();
-  const server = connected((path) =>
-    path === '/sessions/current' ? info : undefined,
-  );
+  const server = connected((path) => {
+    if (path.startsWith('/transfers/'))
+      throw new IdentityClientError('NETWORK');
+    return path === '/sessions/current' ? info : undefined;
+  });
   const first = new IdentityController(vault, server, random);
   await first.initialize();
   const info = first.getSnapshot().account;
@@ -144,14 +146,26 @@ it.each(['ignored', 'cancelled'])(
             ]
           : [],
     });
-    const server = connected();
+    const server = connected((path) =>
+      path.startsWith('/transfers/') ? { status: 'cancelled' } : undefined,
+    );
     const controller = new IdentityController(vault, server, random);
     await controller.initialize();
     expect(controller.getSnapshot()).toMatchObject({
       account: null,
       credentials: [],
     });
-    expect(server.calls).not.toHaveBeenCalled();
+    expect(
+      server.calls.mock.calls.filter((call) => call[0] === '/sessions'),
+    ).toHaveLength(0);
+    const cancellations = server.calls.mock.calls.filter((call) =>
+      call[0].startsWith('/transfers/'),
+    );
+    expect(cancellations).toHaveLength(kind === 'cancelled' ? 1 : 0);
+    if (kind === 'cancelled') {
+      expect(cancellations[0]![3]).toBe('DELETE');
+      expect((await vault.read())!.cancelledTransfers).toEqual([]);
+    }
     expect(await vault.credentials()).toEqual(
       kind === 'ignored' ? [abandoned] : [],
     );
@@ -619,7 +633,7 @@ it('serializes a late native write and rereads its saved intent before retry', a
   }
 });
 
-it('resumes a persisted transfer intent through resource requests without changing claimant proof', async () => {
+it('retries a transfer during its visible visit without changing claimant proof', async () => {
   const vault = nativeVault();
   let failures = 1;
   const userId = id();
@@ -653,15 +667,14 @@ it('resumes a persisted transfer intent through resource requests without changi
   await first.startTransfer();
   const saved = (await vault.read())!.pending;
   expect(saved?.kind).toBe('transfer');
-  const resumed = new IdentityController(vault, server, random);
-  await resumed.initialize();
+  await first.retry();
   const starts = server.calls.mock.calls.filter(
     ([path]) => path === '/transfers',
   );
   expect(starts).toHaveLength(2);
   expect(starts[0]).toEqual(starts[1]);
   expect(starts[0]![3]).toBe('POST');
-  await resumed.redeemTransfer();
+  await first.redeemTransfer();
   expect(
     server.calls.mock.calls.find(
       ([path, body]) => path === '/sessions' && body?.kind === 'transfer',
@@ -677,7 +690,7 @@ it('resumes a persisted transfer intent through resource requests without changi
     undefined,
     'POST',
   ]);
-  expect(resumed.getSnapshot().account?.userId).toBe(userId);
+  expect(first.getSnapshot().account?.userId).toBe(userId);
   expect((await vault.read())!.pending).toBeNull();
 });
 

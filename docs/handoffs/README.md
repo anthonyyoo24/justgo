@@ -30,6 +30,82 @@ keeps the dialog open for loading/error/retry, with a spinner replacing its Dele
 account label and red feedback below the explanation; its updated evidence
 supersedes those earlier page-level screenshots.
 
+**October 14 local main integration:** GitHub main at `8fdfd2c` is integrated
+into the completed Settings/privacy working branch, retaining receiving-transfer
+changes, the approved phase split and PRs #22–25's reviewed fixes. The
+[local integration handoff](phase-08-settings-privacy.md#october-14-local-main-integration)
+owns conflict decisions and combined verification. No push or new PR is authorized;
+account deletion remains a separate worktree and acceptance task.
+The separately reviewable fixture follow-up fixes cross-case request-budget
+leakage and passes all **32 saved journeys**, retaining production limits and
+unrelated buckets. Publication and hosted checks remain pending.
+
+**October 14 phase split:** Anthony reports most Phase 08 work completed and is implementing deletion. Settings/data controls and existing feature acceptance remain in [Phase 08](../IMPLEMENTATION_PLAN.md#phase-08); analytics/consent moves to [Phase 09](../IMPLEMENTATION_PLAN.md#phase-09), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation move to [Phase 10](../IMPLEMENTATION_PLAN.md#phase-10). Release validation is now [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11); former post-launch phases 10–12 become 12–14. The existing [test-server prerequisite handoff](phase-11-test-server.md) is renamed with its evidence preserved. Historical branch/log/artifact names remain unchanged; this planning edit closes no implementation, device or release gate.
+
+**October 14 receiving-code actions:** The code screen keeps Check approval & finish and the secondary Start a new transfer action, hiding the duplicate transfer entry and Retry connection links. The [receiving-code follow-up](phase-08-settings-privacy.md#october-14-receiving-code-actions) records retry/failure coverage and verification.
+
+**October 14 transfer return:** The [return-stability follow-up](phase-08-settings-privacy.md#october-14-transfer-return-stability) preserves the outgoing code screen while leaving and keeps the account sections fixed during cancellation cleanup.
+
+**October 14 transfer confirmation:** The originating transfer link is hidden while its confirmation box is open and returns on Cancel or request failure. See the [confirmation-link follow-up](phase-08-settings-privacy.md#october-14-transfer-confirmation-link).
+
+**October 14 receiving-phone transfer:** The existing-account recovery page now offers the receiving transfer action even when a new private account is connected. Confirmation protects the current account, old-phone instructions give the exact path, and completion returns to the account hub without late navigation after leaving. The cancellation follow-up retains the old session, cancels unfinished transfers on exit/background/relaunch and durably retries server invalidation; the owner-approved hosted API update is live and its cancellation/replay probes pass, while native validation remains open. The [transfer follow-up](phase-08-settings-privacy.md#october-14-receiving-phone-transfer) records checks and remaining Expo/native gates. The latest [centered-button refinement](phase-08-settings-privacy.md#october-14-centered-primary-button-loading) retains the page and replaces primary-button text with one centered spinner, including Confirm, matching reflection saving and challenge completion. No Git publication or native build is included.
+
+**October 14 PR #25 review corrections:** Day-sheet batches now fill available
+space without requiring a scroll gesture, and the setup guide matches the
+installed Expo/Router pins. The
+[review-fix handoff](phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+records failing-before regressions, verification and retained release gates.
+
+**October 14 fourth review preparation:** PR #24 is merged, and local `main`
+is updated to `6382aed`. The
+[final split-review handoff](phase-08-settings-privacy.md#october-14-fourth-review-preparation)
+records the 70-file haptics/toggle, day-sheet and reflection-keyboard checkpoint,
+merged dependency maintenance and fresh checks. Earlier dependency-blocker
+entries below describe their original checkpoints. Native/release acceptance
+and ongoing account/privacy/planning work remain separate.
+
+**October 14 PR #24 review correction:** Export busy-state descriptions now
+match the retained label and progress indicator. The
+[review follow-up](phase-08-settings-privacy.md#october-14-pr-24-review-correction)
+preserves the earlier wording's history, records verification and reconciles
+the already-fixed journey finding. No app behavior or phase scope changes.
+
+**October 14 PR #24 journey timing fix:** One Foundation run measured a
+Troubleshooting label while the page was opening/refreshing. The
+[fix handoff](phase-08-settings-privacy.md#october-14-pr-24-journey-timing-fix)
+records failing-before repetition, usable-control readiness and retrying fresh
+geometry with the original alignment limit. App code is unchanged; publication
+and hosted acceptance remain separate from local evidence.
+
+**October 14 third review preparation:** PR #23 is merged, local `main` is
+updated and the export review worktree is archived. The
+[account/recovery review handoff](phase-08-settings-privacy.md#october-14-third-review-preparation)
+records the separate 78-file checkpoint, passing code/coverage and cold web/iOS
+bundle checks, and the retained native/journey limits. Ongoing working files
+and the final haptics/performance review remain separate.
+
+**October 14 second review preparation:** After PR #22 merged, local `main`
+was updated and its review worktree archived. The
+[export/test-access review handoff](phase-08-settings-privacy.md#october-14-second-review-preparation)
+records integration of reviewed fixes, passing root/database/coverage checks,
+and the saved browser journey blocked by the existing preview on port 8081.
+The ongoing Phase 08 working files and later review branches remain separate.
+
+**October 14 PR #22 review corrections:** Early Apple/EAS distribution setup
+is separated from post-free-beta Phase 07A billing configuration, and implemented
+Reduce Motion behavior is removed from the open design lists. Native/device
+acceptance remains in Phase 11. The [review follow-up](phase-08-settings-privacy.md#october-14-pr-22-review-corrections)
+records the two addressed comments and documentation verification.
+
+**October 14 PR #22 CI repair:** Both Foundation runs stopped at outdated Expo
+SDK 57 patch pins and then attempted to upload nonexistent coverage reports.
+The [repair handoff](phase-08-settings-privacy.md#october-14-pr-22-ci-repair)
+records the isolated exact-PR fix, producing-step-aware coverage uploads and
+regressions. Anthony authorized pushing `a522fe6` into PR #22 on October 14;
+both hosted Foundation runs pass, including all 24 saved journeys. Native
+build/device acceptance remains separate. Verify each branch when splitting PRs
+and rerun fresh online Doctor immediately before pushing.
+
 **October 14 reflection keyboard:** The separate Phase 08 keyboard worktree
 brings the focused reflection section into view and bounds the writing area above
 the retained Skip/Save footer. The [keyboard handoff](phase-08-reflection-keyboard.md)
@@ -127,7 +203,7 @@ dependency/native acceptance gates. Phase 08 feature completion remains separate
 
 **October 11 Settings/platform folders:** Existing export, test-access, clock-fix and handoff changes were saved in four local commits before moving 19 files into the five owner-approved responsibility folders. The [organization follow-up](phase-08-settings-privacy.md#october-11-folder-organization) records checks and remaining device gates. No Git publication occurred. The subsequent phone reload follow-up records the stale live Metro graph, its cache-cleared restart and successful repeated bundle responses; Anthony confirmed that the phone app opens normally after the restart.
 
-**October 11 hosted phone prerequisite:** Anthony approved bringing forward the test-server update/free account admission. The [server handoff](phase-09-test-server.md) records backup/restoration, migration through 0013 with identity preservation, old-writer fencing, the reachable application-staging route and passing checks. A reproduced phone-clock difference initially blocked access; the corrected check preserves expiry/freshness bounds and passes regressions. Anthony confirmed real Home with challenge cards and Home → Settings → Back on his phone. Physical feature acceptance remains open. No Git publication or beta/release acceptance occurred.
+**October 11 hosted phone prerequisite:** Anthony approved bringing forward the test-server update/free account admission. The [server handoff](phase-11-test-server.md) records backup/restoration, migration through 0013 with identity preservation, old-writer fencing, the reachable application-staging route and passing checks. A reproduced phone-clock difference initially blocked access; the corrected check preserves expiry/freshness bounds and passes regressions. Anthony confirmed real Home with challenge cards and Home → Settings → Back on his phone. Physical feature acceptance remains open. No Git publication or beta/release acceptance occurred.
 
 **October 11 physical development build:** Anthony's iPhone is registered with Apple/Expo and the first signed physical development build succeeded and is installed. The [setup follow-up](phase-08-settings-privacy.md#physical-development-build-follow-up) records checks, build identity and the installation QR. The subsequent hosted API/tester-access work is recorded above; physical feature acceptance remains open. No Git publication occurred.
 
@@ -138,7 +214,7 @@ is addressed locally in a separate `codex/day-sheet-performance` worktree.
 The [performance handoff](day-sheet-performance.md) records the measured render
 cost, progressive row mounting, isolated editor updates and native/browser
 verification. Owner review and Git publication remain open; the existing
-physical-device and release acceptance gates stay with Phase 09.
+physical-device and release acceptance gates stay with Phase 11.
 The owner-authorized `entries/` and `reflection-editor/` organization is retained
 in a separate local commit from the performance fix.
 
@@ -146,14 +222,14 @@ in a separate local commit from the performance fix.
 saved installation-level Settings switch and shared app motion behavior, with
 phone-level accessibility priority. The [motion handoff](phase-08-settings-privacy.md#october-10-reduce-motion-implementation)
 records automated, side-panel browser and simulator evidence. Physical-iPhone,
-VoiceOver and large-text acceptance remain Phase 09 checks; remaining privacy
+VoiceOver and large-text acceptance remain Phase 11 checks; remaining privacy
 controls and legal publication stay open.
 
 **October 10 haptics sequencing:** At Anthony's request, haptic feedback, its
 saved Settings toggle, automated checks, physical-iPhone testing and resulting
-corrections/retests belong together in Phase 09 before the free beta. Haptics no
-longer blocks Phase 08; Reduce motion remains there. The [Phase 08 handoff](phase-08-settings-privacy.md#october-10-haptics-moved-to-phase-09)
-records the deferral and the [Phase 09 plan](../IMPLEMENTATION_PLAN.md#phase-09)
+corrections/retests belong together in Phase 11 before the free beta. Haptics no
+longer blocks Phase 08; Reduce motion remains there. The [Phase 08 handoff](phase-08-settings-privacy.md#october-10-haptics-moved-to-phase-11)
+records the deferral and the [Phase 11 plan](../IMPLEMENTATION_PLAN.md#phase-11)
 contains the open implementation/acceptance task. No app or native build change
 was made by this scheduling update.
 
@@ -428,26 +504,28 @@ If later work invalidates a completed phase, add a dated correction and reopen a
 
 The filenames below are reserved names, not claims that those files exist. Turn each filename into a link after writing that phase’s record.
 
-The launch path was aligned with number order on September 26: reflections through launch are 05–09, and post-launch lock-screen work is 10. Post-launch phases 10–12 may be scheduled independently. Historical browser tracker exports retain the former IDs and need migration before use.
+Historical September 26 baseline: reflections through launch were 05–09, and post-launch work was 10–12. The October 14 split supersedes that numbering: the current launch path ends at 11 and post-launch phases 12–14 may be scheduled independently. Historical browser tracker exports retain their original IDs and need migration before use.
 
 On September 30, quality phase 06A was inserted after Progress (06), preserving the existing IDs. The October 3 plan separates API/offline saving (07) and billing (07A); their reserved filenames below reflect that sequencing without claiming either implementation. It can complete against verified local feature implementations while previously deferred device/staging gates remain open, as recorded in the plan's sequencing decision.
 
-| Phase                                         | Status                                | Dependencies                              | Handoff filename                                             |
-| --------------------------------------------- | ------------------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
-| 01 — Foundation & implementation decisions    | Complete                              | None                                      | [phase-01-foundation.md](phase-01-foundation.md)             |
-| 02 — No-signup identity & recovery            | In progress                           | 01                                        | [phase-02-identity.md](phase-02-identity.md)                 |
-| 03 — App shell & shared API                   | In progress                           | 02                                        | [phase-03-app-shell.md](phase-03-app-shell.md)               |
-| 04 — Challenge deck & reliable attempts       | In progress                           | 03                                        | [phase-04-challenge-loop.md](phase-04-challenge-loop.md)     |
-| 05 — Feelings & typed reflections             | In progress                           | 04                                        | [phase-05-reflections.md](phase-05-reflections.md)           |
-| 06 — Progress calendar & saved history        | In progress                           | 05                                        | [phase-06-progress.md](phase-06-progress.md)                 |
-| 06A — Code quality & test hardening           | Complete                              | 06 (local)                                | [phase-06a-code-quality.md](phase-06a-code-quality.md)       |
-| 07 — API & offline saving                     | In progress                           | 06A                                       | [phase-07-api-offline.md](phase-07-api-offline.md)           |
-| 07A — Native subscriptions & reliable billing | Checkpoint on billing branch          | 07.5; activation after beta               | `phase-07a-billing.md` on codex/phase-07a-native-billing     |
-| 08 — Settings, privacy & measurement          | Settings/motion UI; privacy work open | 07.5                                      | [phase-08-settings-privacy.md](phase-08-settings-privacy.md) |
-| 09 — Release validation & launch              | Not started                           | 08 for beta; accepted 07A for paid launch | `phase-09-release.md`                                        |
-| 10 — Lock-screen countdowns                   | Not scheduled                         | 09                                        | `phase-10-native-timers.md`                                  |
-| 11 — Optional US iOS web checkout             | Not scheduled                         | 09                                        | `phase-11-optional-stripe.md`                                |
-| 12 — Future AI text coach                     | Not scheduled                         | 09                                        | `phase-12-future-text-coach.md`                              |
+| Phase                                         | Status                                                         | Dependencies                                 | Handoff filename                                             |
+| --------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------ |
+| 01 — Foundation & implementation decisions    | Complete                                                       | None                                         | [phase-01-foundation.md](phase-01-foundation.md)             |
+| 02 — No-signup identity & recovery            | In progress                                                    | 01                                           | [phase-02-identity.md](phase-02-identity.md)                 |
+| 03 — App shell & shared API                   | In progress                                                    | 02                                           | [phase-03-app-shell.md](phase-03-app-shell.md)               |
+| 04 — Challenge deck & reliable attempts       | In progress                                                    | 03                                           | [phase-04-challenge-loop.md](phase-04-challenge-loop.md)     |
+| 05 — Feelings & typed reflections             | In progress                                                    | 04                                           | [phase-05-reflections.md](phase-05-reflections.md)           |
+| 06 — Progress calendar & saved history        | In progress                                                    | 05                                           | [phase-06-progress.md](phase-06-progress.md)                 |
+| 06A — Code quality & test hardening           | Complete                                                       | 06 (local)                                   | [phase-06a-code-quality.md](phase-06a-code-quality.md)       |
+| 07 — API & offline saving                     | In progress                                                    | 06A                                          | [phase-07-api-offline.md](phase-07-api-offline.md)           |
+| 07A — Native subscriptions & reliable billing | Checkpoint on billing branch                                   | 07.5; activation after beta                  | `phase-07a-billing.md` on codex/phase-07a-native-billing     |
+| 08 — Settings & privacy controls              | Most slices implemented; deletion in progress; acceptance open | 07.5                                         | [phase-08-settings-privacy.md](phase-08-settings-privacy.md) |
+| 09 — Analytics & consent                      | Not started; exporter disabled                                 | 08                                           | `phase-09-analytics.md`                                      |
+| 10 — Legal documents & release disclosures    | Drafts prepared; review/publication open                       | 08, 09                                       | `phase-10-legal-documents.md`                                |
+| 11 — Release validation & launch              | Hosted prerequisite ready; acceptance open                     | 08–10 for beta; accepted 07A for paid launch | `phase-11-release.md`                                        |
+| 12 — Lock-screen countdowns                   | Not scheduled                                                  | 11                                           | `phase-12-native-timers.md`                                  |
+| 13 — Optional US iOS web checkout             | Not scheduled                                                  | 11                                           | `phase-13-optional-stripe.md`                                |
+| 14 — Future AI text coach                     | Not scheduled                                                  | 11                                           | `phase-14-future-text-coach.md`                              |
 
 The Phase 07 checkpoint handoffs below track separate acceptance. The owner merged 07.1A in [PR #13](https://github.com/anthonyyoo24/justgo/pull/13). 07.1B is merged in [PR #14](https://github.com/anthonyyoo24/justgo/pull/14). 07.2 is merged by the owner via [PR #15](https://github.com/anthonyyoo24/justgo/pull/15) at `8ff5d6c`, with physical-device durability evidence open. The owner merged 07.3 through [PR #16](https://github.com/anthonyyoo24/justgo/pull/16) at `6bccfde`, after both final review-fix hosted runs passed at `cc3f0f2`. Native/device acceptance remains open. Its handoff distinguishes saved journeys, side-panel checks and native gaps. Shared saving/synchronization remains under `apps/mobile/src/data/activity/`; 07.3A is deferred with its checkpoint resume handoff. The owner merged 07.4 / PR #20 at `8dfb44d`. Phase 07.5 now has locally verified cutover, saved journeys and a linked handoff; its native/hosted acceptance and owner review remain open.
 
@@ -463,4 +541,4 @@ The Phase 07 checkpoint handoffs below track separate acceptance. The owner merg
 
 The October 8 [07.5 owner follow-up](phase-07-5-cutover-acceptance.md#october-8-accept-entry-flicker) fixes native accept-entry safe-area movement and the deck's covered handoff, with fresh automated and first/repeated native button-entry evidence. Owner swipe/device and full native acceptance remain open.
 
-The October 9 release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 08 → 09 free beta → 07A activation/acceptance → 09 paid launch. Deferred stages 10, 11 and 12 each follow launch and do not block it. Practice reminders, additional levels/filters, dictation and Android stages will be detailed when scheduled.
+The October 14 release path is 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 08 → 09 → 10 → 11 free beta → 07A activation/acceptance → 11 paid launch. Deferred stages 12, 13 and 14 each follow launch and do not block it. Practice reminders, additional levels/filters, dictation and Android stages will be detailed when scheduled.

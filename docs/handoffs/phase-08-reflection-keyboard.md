@@ -2,6 +2,13 @@
 
 ## Scope and isolation
 
+**Publication follow-up, October 14:** The
+[fourth split-review preparation](phase-08-settings-privacy.md#october-14-fourth-review-preparation)
+integrates this accepted correction with merged main's reviewed Expo patches.
+Fresh candidate checks supersede the dependency blocker recorded at the local
+integration checkpoint below. The original physical-phone evidence and wider
+native/release limits are unchanged.
+
 Anthony requested the reflection keyboard correction in a separate worktree and
 its own development server on October 14, 2026. Branch
 `codex/phase-08-reflection-keyboard` starts from Phase 08 commit `79aaf39`.
@@ -62,7 +69,7 @@ without printing their contents; native dependencies/configuration are unchanged
   that the keyboard change works on his phone through the independent server.
   This accepts the reported editor/footer issue on that tested setup. No native
   screenshot or recording was captured. Exhaustive repeated openings, long input,
-  large text, VoiceOver and wider Phase 08/09 native/release gates remain separate;
+  large text, VoiceOver and wider Phase 08/11 native/release gates remain separate;
   the brief confirmation does not establish that each was tested.
 
 ## Independent phone server
@@ -100,7 +107,7 @@ but missed its API destination. On the physical phone, localhost is the phone.
 
 Added an ignored `apps/mobile/.env.local` override in this worktree with
 `EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app`, matching the confirmed working
-server and the [staging handoff](phase-09-test-server.md). Restarted only 8085 with
+server and the [staging handoff](phase-11-test-server.md). Restarted only 8085 with
 `--clear`; 8084 remains running. The hosted `/health` and `/ready` endpoints pass.
 Rebuilt and inspected the served iOS bundle's actual virtual environment value
 and both identity API/runtime reads, rather than relying on the configuration file
@@ -152,7 +159,7 @@ This metadata changed after the isolated fix's earlier 21/21 pass. Package pins,
 lockfile and installed native binary are unchanged by integration. SDK alignment
 and its required native/build/device acceptance belong to a separate maintenance
 task under the repository rules; the local merge does not authorize a native build.
-Owner: Anthony / implementation owner, before publication and Phase 09 release
+Owner: Anthony / implementation owner, before publication and Phase 11 release
 acceptance. Keep the dependency gate open until that work passes.
 
 - Integrated mobile coverage: **97.18% lines / 92.02% branches**, **662 cases**;
