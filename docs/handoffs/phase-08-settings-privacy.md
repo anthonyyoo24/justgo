@@ -4,7 +4,7 @@
 
 **Status (October 16, 2026):** Implemented and verified locally on
 `codex/phase-08-settings-privacy`; not pushed or merged. Anthony reports the
-physical-iPhone checks done. The backup retention period, publication and the
+physical-iPhone checks done and set 7-day backup retention. Publication and the
 other items in [Open gates](#open-gates) are still open. Phase 08A starts after
 this phase merges.
 
@@ -156,7 +156,7 @@ identity retention function; and the October 16 pre-merge stability fixes.
 | ------------------------------------------------------------------------------------------------- | ----------------------------- | ------- | ------------------------------------------------------------------- |
 | Redeploy the API with the 4xx change (optional before the free beta)                              | Anthony authorizes            | 08–11   | Deployed and probed                                                 |
 | Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | later   | Schedule runs on the hosted database; first run's counts recorded   |
-| Supabase backup retention period                                                                  | Anthony reads dashboard       | 08 → 10 | Recorded in FOUNDATION.md; Phase 10 writes the policy wording       |
+| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 08 → 10 | Dashboard matches FOUNDATION.md before Phase 10 publishes wording   |
 | Push, PRs, hosted CI green for each merge candidate, merge                                        | Anthony authorizes each       | 08      | Inspected hosted runs on the pushed commits                         |
 | Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A     | Both cases pass when the browser date is the 1st                    |
 | Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11      | Simulator or device check                                           |

@@ -1282,7 +1282,7 @@ from merged main and passes fresh root checks; native/release gates stay open.
 
 - [x] **Dependency alignment before publication:** The fourth review retains merged main's `expo` 57.0.29, `expo-constants` 57.0.22, `expo-linking` 57.0.13 and `expo-router` 57.0.27 pins with the matching lockfile. Fresh `npm ci` and `npm run check` pass. This closes the keyboard integration's dependency-check blocker; the installed binary is unchanged and native/build/device acceptance remains open with Anthony in Phase 11.
 
-**Status:** In progress — implemented and verified locally, including deletion, the pre-merge stability fixes, the retention cleanup function and the restore checklist; Anthony reports the physical-iPhone checks done; the Supabase backup retention period and publication remain open, and the retention schedule is deferred ([handoff](handoffs/phase-08-settings-privacy.md#open-gates))\
+**Status:** In progress — implemented and verified locally, including deletion, the pre-merge stability fixes, the retention cleanup function and the restore checklist; Anthony reports the physical-iPhone checks done; the 7-day backup retention is recorded (Pro plan default) and publication remains open, and the retention schedule is deferred ([handoff](handoffs/phase-08-settings-privacy.md#open-gates))\
 **Depends on:** 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
 
 **Acceptance references:** PRD AC-15–17 · Tech acceptance 3–4, 8–9, 17

@@ -68,7 +68,7 @@ Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 5
 
 ## Backup restore checklist
 
-Use this for any restore of a hosted database from a Supabase backup or point-in-time recovery. A restore must never bring back a deleted account or a revoked credential ([October 16 decision](../DECISIONS.md#october-16-codebase-assessment-follow-up)). Backups follow the Supabase plan's default retention, so deleted data leaves backups within that period. **Backup retention: not yet confirmed**; Anthony reads it from the Supabase dashboard and it is recorded here. The hosted rehearsal of this checklist is a Phase 11 paid-launch gate.
+Use this for any restore of a hosted database from a Supabase backup or point-in-time recovery. A restore must never bring back a deleted account or a revoked credential ([October 16 decision](../DECISIONS.md#october-16-codebase-assessment-follow-up)). Backups follow the Supabase plan's default retention, so deleted data leaves backups within that period. **Backup retention: 7 days**, chosen by Anthony on October 16 as the Supabase Pro plan default ([Supabase backups](https://supabase.com/docs/guides/platform/backups)). It applies only once the database is on Pro: Free projects, such as the current $0 test project, get no Supabase backups. Confirm the production project's plan and dashboard value before Phase 10 publishes the policy wording. The hosted rehearsal of this checklist is a Phase 11 paid-launch gate.
 
 Before restoring:
 
