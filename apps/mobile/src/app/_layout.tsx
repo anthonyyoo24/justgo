@@ -17,6 +17,10 @@ import { ChallengeActivityProvider } from '../features/challenges/ChallengeActiv
 import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
 import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider';
 import { welcomeBackgroundColor } from '../app-support/identity/welcome/welcome-artwork';
+import {
+  WelcomeTransition,
+  useWelcomeTransition,
+} from '../app-support/identity/welcome/WelcomeTransition';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -54,9 +58,11 @@ export default function RootLayout() {
         <HapticsPreferencesProvider>
           <AppProvider>
             <SavingFeedbackShell>
-              <ChallengeActivityProvider>
-                <Navigation />
-              </ChallengeActivityProvider>
+              <WelcomeTransition>
+                <ChallengeActivityProvider>
+                  <Navigation />
+                </ChallengeActivityProvider>
+              </WelcomeTransition>
             </SavingFeedbackShell>
           </AppProvider>
         </HapticsPreferencesProvider>
@@ -68,35 +74,39 @@ function Navigation() {
   const access = useAccess();
   const identity = useIdentity();
   const deleted = identity.deletionStatus === 'deleted';
+  const awaitingAccess = useWelcomeTransition();
+  const welcome = deleted || awaitingAccess;
   return (
     <Stack
       screenOptions={{
         headerShown: false,
         animation: 'none',
         contentStyle: {
-          backgroundColor: deleted ? welcomeBackgroundColor : colors.cream,
+          backgroundColor: welcome ? welcomeBackgroundColor : colors.cream,
         },
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Protected guard={deleted}>
+      <Stack.Protected guard={welcome}>
         <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       {/* Removing these routes also removes the deleted account's Back history. */}
-      <Stack.Protected guard={!deleted}>
+      <Stack.Protected guard={!welcome}>
         <Stack.Screen name="settings" />
         <Stack.Screen name="export-data" />
         <Stack.Screen name="delete-account" />
         <Stack.Screen name="recovery" />
         <Stack.Screen name="account/[tool]" />
       </Stack.Protected>
-      <Stack.Protected guard={!identity.deletionStatus && access.verified}>
+      <Stack.Protected
+        guard={!identity.deletionStatus && !awaitingAccess && access.verified}
+      >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="challenge" options={{ gestureEnabled: false }} />
         <Stack.Screen name="success" />
         <Stack.Screen name="reflection" options={{ gestureEnabled: false }} />
       </Stack.Protected>
-      <Stack.Protected guard={!deleted && __DEV__}>
+      <Stack.Protected guard={!welcome && __DEV__}>
         <Stack.Screen name="preview" />
       </Stack.Protected>
     </Stack>

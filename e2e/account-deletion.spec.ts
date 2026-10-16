@@ -7,6 +7,32 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
   page,
   fixtureDatabase,
 }) => {
+  let releaseArtwork!: () => void, releaseTexture!: () => void;
+  const artworkResponse = new Promise<void>((resolve) => {
+    releaseArtwork = resolve;
+  });
+  const textureResponse = new Promise<void>((resolve) => {
+    releaseTexture = resolve;
+  });
+  let artworkLoaded = false,
+    textureRequested = false;
+  await page.route(
+    (url) =>
+      /\/assets\/challenges\/(?:streets(?:-cream)?|paper-texture)\.png/.test(
+        decodeURIComponent(url.href),
+      ),
+    async (route) => {
+      const texture = route.request().url().includes('paper-texture');
+      if (texture) textureRequested = true;
+      await (texture ? textureResponse : artworkResponse);
+      if (!page.isClosed()) await route.continue();
+      if (!texture) artworkLoaded = true;
+    },
+  );
+  page.on('close', () => {
+    releaseArtwork();
+    releaseTexture();
+  });
   await page.goto('/recovery');
   const creating = page.waitForRequest(
     (r) => r.url() === `${journeyApiUrl}/v1/sessions` && r.method() === 'POST',
@@ -258,10 +284,37 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
   ).toHaveCount(0);
   await expect(page.getByRole('link')).toHaveCount(0);
   await expect(page).toHaveURL(/\/welcome$/);
-
   let releaseCreation!: () => void;
   const creationResponse = new Promise<void>((resolve) => {
     releaseCreation = resolve;
+  });
+  let releaseAccess!: () => void;
+  const accessResponse = new Promise<void>((resolve) => {
+    releaseAccess = resolve;
+  });
+  await page.route(`${journeyApiUrl}/v1/access`, async (route) => {
+    await accessResponse;
+    await route.continue();
+  });
+  let releaseCatalog!: () => void;
+  const catalogResponse = new Promise<void>((resolve) => {
+    releaseCatalog = resolve;
+  });
+  let failCatalog = true;
+  let catalogRequests = 0;
+  await page.route(`${journeyApiUrl}/v1/challenges`, async (route) => {
+    catalogRequests++;
+    await catalogResponse;
+    if (failCatalog)
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'UNAVAILABLE',
+          requestId: 'welcome-catalog-retry',
+        }),
+      });
+    else await route.continue();
   });
   let firstCreation = true;
   let replacementAccount:
@@ -292,14 +345,66 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
     await expect(page.getByRole('alert')).toBeVisible();
     await expect(page).toHaveURL(/\/welcome$/);
     await expect(next).toBeEnabled();
+    const checkingAccess = page.waitForRequest(`${journeyApiUrl}/v1/access`);
     await next.click();
+    await checkingAccess;
+    await expect(page).toHaveURL(/\/welcome$/);
+    await expect(
+      page.getByRole('heading', { name: 'JustGO', exact: true }),
+    ).toBeVisible();
+    await expect(next).toBeDisabled();
+    await expect(page.getByText('Checking your access…')).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Check access again', exact: true }),
+    ).toHaveCount(0);
+    releaseAccess();
+    await expect.poll(() => catalogRequests).toBeGreaterThan(0);
+    await expect(
+      page.getByRole('progressbar', {
+        name: 'Preparing your challenges',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'JustGO', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Find a challenge', exact: true }),
+    ).toHaveCount(0);
+    await expect(next).toBeDisabled();
+    releaseCatalog();
+    await expect(page.getByRole('alert')).toHaveText(
+      'Your challenges couldn’t load. Check your connection and try again.',
+    );
+    await expect(next).toBeEnabled();
+    failCatalog = false;
+    await next.click();
+    await expect.poll(() => textureRequested).toBe(true);
+    await expect(next).toBeDisabled();
+    releaseArtwork();
+    await expect.poll(() => artworkLoaded).toBe(true);
+    // The illustration alone must not expose a card still awaiting its texture.
+    await expect(page.getByTestId('welcome-preparation-cover')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'JustGO', exact: true }),
+    ).toBeVisible();
+    releaseTexture();
     await expect(
       page.getByRole('link', { name: 'Open Settings', exact: true }),
     ).toBeVisible();
+    await expect(page.getByTestId('challenge-card')).toBeVisible();
+    await expect(page.getByText('Your challenges couldn’t load.')).toHaveCount(
+      0,
+    );
     expect(replacementAccount?.userId).not.toBe(account.userId);
     expect(replacementProofs).toHaveLength(2);
     expect(replacementProofs[1]).toEqual(replacementProofs[0]);
+    await expect(page.getByTestId('welcome-preparation-cover')).toHaveCount(0);
   } finally {
     releaseCreation();
+    releaseAccess();
+    releaseCatalog();
+    releaseArtwork();
+    releaseTexture();
   }
 });

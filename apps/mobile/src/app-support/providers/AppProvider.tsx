@@ -118,7 +118,9 @@ export function AppProvider({ children }: PropsWithChildren) {
       subscription.remove();
       unsubscribeNetwork();
       runtime.challenges.dispose();
-      runtime.activity.dispose();
+      // React can restart effects while retaining this state-owned runtime.
+      // Parking stops its work and preserves unsaved data for reconnection.
+      runtime.activity.changeAccount(null);
       runtime.client.changeAccount(null);
     };
   }, [runtime]);

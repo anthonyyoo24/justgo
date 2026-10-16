@@ -5,6 +5,14 @@ import { IdentityController } from '../controller';
 import { createMemoryVault } from '../storage';
 import { WelcomeScreen } from './WelcomeScreen';
 
+let mockAwaitingAccess = false;
+jest.mock('./WelcomeTransition', () => ({
+  useWelcomeTransition: () => mockAwaitingAccess,
+}));
+beforeEach(() => {
+  mockAwaitingAccess = false;
+});
+
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   return {
@@ -97,6 +105,21 @@ it('keeps welcome ready when a foreground refresh has no account to reconnect', 
   expect(screen.queryByRole('alert')).toBeNull();
   expect(s.controller.getSnapshot().deletionStatus).toBe('deleted');
   unsubscribe();
+});
+
+it('keeps Continue busy after creation until the first access check finishes', async () => {
+  const s = await setup();
+  await s.controller.createAccount();
+  mockAwaitingAccess = true;
+  const screen = render(<WelcomeScreen controller={s.controller} />);
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  expect(screen.getByLabelText('Creating your account')).toBeTruthy();
+  expect(screen.queryByText('Redirect: /')).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(s.bootstrap).toHaveBeenCalledTimes(1);
+  mockAwaitingAccess = false;
+  screen.rerender(<WelcomeScreen controller={s.controller} />);
+  expect(screen.getByText('Redirect: /')).toBeTruthy();
 });
 
 it('replaces Continue with a spinner, blocks duplicate requests and routes success through normal access checks', async () => {

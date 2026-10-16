@@ -5,10 +5,12 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAccess, useIdentity } from '../providers/AppProvider';
 import { NavigationLink, SettingsLink } from '../../components/NavigationLink';
 import { colors, spacing, typography } from '../../theme/tokens';
+import { useWelcomeTransition } from '../identity/welcome/WelcomeTransition';
 export function AccessScreen() {
   const identity = useIdentity();
   const access = useAccess();
-  if (identity.deletionStatus === 'deleted')
+  const awaitingWelcomeAccess = useWelcomeTransition();
+  if (identity.deletionStatus === 'deleted' || awaitingWelcomeAccess)
     return <Redirect href="/welcome" />;
   if (
     identity.deletionStatus === 'pending' ||

@@ -6,7 +6,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  useSafeAreaInsets,
+  type EdgeInsets,
+} from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { welcomeArtwork, welcomeBackgroundColor } from './welcome-artwork';
@@ -22,13 +25,18 @@ import {
 export function WelcomeView({
   busy = false,
   error = '',
+  busyLabel = 'Creating your account',
+  insets: measuredInsets,
   onContinue,
 }: {
   busy?: boolean;
   error?: string;
+  busyLabel?: string;
+  insets?: EdgeInsets;
   onContinue: () => void;
 }) {
-  const insets = useSafeAreaInsets();
+  const inheritedInsets = useSafeAreaInsets();
+  const insets = measuredInsets ?? inheritedInsets;
   const { height, fontScale } = useWindowDimensions();
   const wordmarkGrowth = 66 * (Math.min(fontScale, 1.5) - 1);
   return (
@@ -90,7 +98,7 @@ export function WelcomeView({
                 color={colors.ink}
                 accessible
                 accessibilityRole="progressbar"
-                accessibilityLabel="Creating your account"
+                accessibilityLabel={busyLabel}
               />
             ) : (
               <Text style={styles.buttonLabel}>Continue</Text>
