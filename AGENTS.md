@@ -225,6 +225,9 @@ Reload the app to clear stale module/asset paths.
   and retry fresh geometry reads. Missing or detached elements must keep the
   assertion failing; preserve the alignment limit instead of adding sleeps or
   weakening the assertion.
+- Journeys must not depend on the time of day or month. Seed dated activity
+  inside the browser's intended local day (`e2e/support/seed-times.ts`); CI runs
+  in UTC, so a seed counted back from "now" crosses midnight on evening pushes.
 - Before a phase handoff or publication, run `npm run check` (it includes the
   online Expo doctor and the full test suite, so skip it for routine slices that
   focused checks cover) and, for backend/shared boundaries or a phase closeout,

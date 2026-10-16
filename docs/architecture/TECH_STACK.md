@@ -268,7 +268,7 @@ The content/attempt boundary below reflects Phase 07. Identity is already implem
 
 Optional transfer records store hashed one-use codes, issuing user/session, expiration, redemption state, and confirmation state. A server account's existence does not depend on enabling analytics.
 
-Reduce Motion is implemented as one installation-level boolean in AsyncStorage, without a `user_settings` table or API. The phone's accessibility setting always takes priority over the app choice; initial loading and live changes share one effective flag. It survives app relaunch, remains independent of accounts/paid access and does not synchronize to another phone. Haptics implementation, its saved switch and physical-phone testing belong together in Phase 08; reminders remain deferred. See [app shell](APP_SHELL.md) and the [Phase 08 motion handoff](../handoffs/phase-08-settings-privacy.md#october-10-reduce-motion-implementation).
+Reduce Motion is implemented as one installation-level boolean in AsyncStorage, without a `user_settings` table or API. The phone's accessibility setting always takes priority over the app choice; initial loading and live changes share one effective flag. It survives app relaunch, remains independent of accounts/paid access and does not synchronize to another phone. Haptics implementation, its saved switch and physical-phone testing belong together in Phase 08; reminders remain deferred. See [app shell](APP_SHELL.md) and the [Phase 08 motion handoff](../handoffs/phase-08-settings-privacy.md).
 
 ### Content and activity
 

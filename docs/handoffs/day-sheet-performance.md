@@ -20,7 +20,7 @@
 ## Finding and change
 
 **October 14 PR #25 follow-up:** The
-[review correction](phase-08-settings-privacy.md#october-14-pr-25-review-corrections)
+[review correction](phase-08-settings-privacy.md)
 also fills a viewport when eight initial rows do not create scrolling. It uses
 fresh measurements for each batch and preserves the existing draft/scroll-ahead
 behavior. Earlier native timings below describe the original optimization;

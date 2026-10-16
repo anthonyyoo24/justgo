@@ -65,7 +65,7 @@ application-staging slot, protected generated URLs and all environment
 configuration IDs/timestamps remain unchanged. No migration, database reset,
 account/grant change, native build or Git publication was performed.
 
-The [Phase 08 rollout evidence](phase-08-settings-privacy.md#owner-approved-hosted-api-rollout)
+The [Phase 08 rollout evidence](phase-08-settings-privacy.md)
 records the 41-file allowlisted upload, exact source hashes, live readiness and
 authorization checks, receiver cancellation/replay probes and retained native
 acceptance. Two unbound probe proposals were cancelled; no accounts, sessions or
