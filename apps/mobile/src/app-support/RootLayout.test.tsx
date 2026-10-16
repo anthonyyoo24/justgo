@@ -33,18 +33,32 @@ jest.mock('../platform/haptics/HapticsPreferencesProvider', () => ({
     children,
 }));
 jest.mock('expo-router', () => {
-  const { Text } = require('react-native') as typeof import('react-native');
+  const { Text, View } =
+    require('react-native') as typeof import('react-native');
   return {
-    Stack: Object.assign(({ children }: { children: ReactNode }) => children, {
-      Screen: ({ name }: { name: string }) => <Text>{name}</Text>,
-      Protected: ({
-        guard,
+    Stack: Object.assign(
+      ({
         children,
+        screenOptions,
       }: {
-        guard: boolean;
         children: ReactNode;
-      }) => (guard ? children : null),
-    }),
+        screenOptions: { contentStyle: { backgroundColor: string } };
+      }) => (
+        <View testID="navigation" style={screenOptions.contentStyle}>
+          {children}
+        </View>
+      ),
+      {
+        Screen: ({ name }: { name: string }) => <Text>{name}</Text>,
+        Protected: ({
+          guard,
+          children,
+        }: {
+          guard: boolean;
+          children: ReactNode;
+        }) => (guard ? children : null),
+      },
+    ),
   };
 });
 
@@ -55,12 +69,18 @@ beforeEach(() => {
 
 it('removes old account routes after deletion and keeps them removed through replacement loading or failure', () => {
   const screen = render(<RootLayout />);
+  expect(screen.getByTestId('navigation')).toHaveStyle({
+    backgroundColor: '#F9EFE8',
+  });
   expect(screen.getByText('settings')).toBeTruthy();
   expect(screen.getByText('(tabs)')).toBeTruthy();
   expect(screen.queryByText('welcome')).toBeNull();
   for (const busy of [false, true, false]) {
     mockIdentity = { deletionStatus: 'deleted', busy };
     screen.rerender(<RootLayout />);
+    expect(screen.getByTestId('navigation')).toHaveStyle({
+      backgroundColor: '#122E45',
+    });
     expect(screen.getByText('index')).toBeTruthy();
     expect(screen.getByText('welcome')).toBeTruthy();
     for (const name of [

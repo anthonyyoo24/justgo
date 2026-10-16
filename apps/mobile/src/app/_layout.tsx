@@ -16,6 +16,7 @@ import { colors } from '../theme/tokens';
 import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
 import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
 import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider';
+import { welcomeBackgroundColor } from '../app-support/identity/welcome/welcome-artwork';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -72,7 +73,9 @@ function Navigation() {
       screenOptions={{
         headerShown: false,
         animation: 'none',
-        contentStyle: { backgroundColor: colors.cream },
+        contentStyle: {
+          backgroundColor: deleted ? welcomeBackgroundColor : colors.cream,
+        },
       }}
     >
       <Stack.Screen name="index" />

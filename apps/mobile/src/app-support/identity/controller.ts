@@ -461,8 +461,16 @@ export class IdentityController {
     );
     await this.finish(info, pending.proposal, credential.id);
   }
-  retry = (options: OperationOptions = {}) =>
-    this.run(
+  retry = (options: OperationOptions = {}) => {
+    // Foreground refresh has nothing to reconnect after completed deletion.
+    // A pending replacement account must still resume with its saved proof.
+    if (
+      this.snapshot.deletionStatus === 'deleted' &&
+      !this.data?.pending &&
+      !this.data?.session
+    )
+      return Promise.resolve();
+    return this.run(
       async () => {
         await this.ensureData();
         if (this.data!.pending) await this.resume();
@@ -475,6 +483,7 @@ export class IdentityController {
       },
       { ...options, resumeDeletion: true },
     );
+  };
   deleteAccount = () =>
     this.run(
       async () => {

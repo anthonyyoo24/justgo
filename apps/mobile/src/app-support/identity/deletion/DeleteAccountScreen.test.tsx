@@ -2,6 +2,11 @@ import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { AppState, Modal, type AppStateStatus } from 'react-native';
 import DeleteAccountRoute from '../../../app/delete-account';
 import { DeleteAccountConfirmation } from './DeleteAccountConfirmation';
+import { preloadWelcomeArtwork } from '../welcome/welcome-artwork';
+
+jest.mock('../welcome/welcome-artwork', () => ({
+  preloadWelcomeArtwork: jest.fn().mockResolvedValue(true),
+}));
 
 const mockDelete = jest.fn(),
   mockRetry = jest.fn(),
@@ -109,6 +114,7 @@ afterEach(async () => {
 });
 it('opens a centered confirmation, cancels safely and requires a fresh explicit delete', () => {
   const s = render(<DeleteAccountRoute />);
+  expect(preloadWelcomeArtwork).toHaveBeenCalledTimes(1);
   expect(s.getByText(/This cannot be undone/)).toBeTruthy();
   expect(s.queryByLabelText('Delete your account?')).toBeNull();
   fireEvent.press(s.getByLabelText('Continue to deletion'));

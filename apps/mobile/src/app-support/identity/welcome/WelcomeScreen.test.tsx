@@ -82,6 +82,23 @@ it('shows the night-paper welcome copy and only Continue, without recovery or le
   expect(s.bootstrap).not.toHaveBeenCalled();
 });
 
+it('keeps welcome ready when a foreground refresh has no account to reconnect', async () => {
+  const s = await setup();
+  const screen = render(<WelcomeScreen controller={s.controller} />);
+  const updates = jest.fn();
+  const unsubscribe = s.controller.subscribe(updates);
+  await act(async () => {
+    await s.controller.retry({ background: true });
+  });
+  expect(updates).not.toHaveBeenCalled();
+  expect(s.bootstrap).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(s.controller.getSnapshot().deletionStatus).toBe('deleted');
+  unsubscribe();
+});
+
 it('replaces Continue with a spinner, blocks duplicate requests and routes success through normal access checks', async () => {
   const s = await setup();
   let release!: () => void;

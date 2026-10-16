@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
+import { welcomeArtwork, welcomeBackgroundColor } from './welcome-artwork';
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
 import {
   colors,
@@ -34,9 +35,12 @@ export function WelcomeView({
     <View style={styles.screen}>
       <StatusBar style="light" />
       <Image
-        source={require('../../../../assets/illustrations/welcome-night-paper.png')}
+        source={welcomeArtwork}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
+        cachePolicy="memory-disk"
+        priority="high"
+        transition={0}
         accessible={false}
       />
       <ScrollView
@@ -99,7 +103,7 @@ export function WelcomeView({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.ink },
+  screen: { flex: 1, backgroundColor: welcomeBackgroundColor },
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
