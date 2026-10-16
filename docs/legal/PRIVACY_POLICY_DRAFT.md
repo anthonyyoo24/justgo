@@ -30,15 +30,15 @@ We process your saved content to provide the journal, display Progress and synch
 
 Your Reduce Motion and Haptics choices are saved locally on this phone. We also read the phone's accessibility setting so the app can respect it. These preferences are not sent to our servers or analytics services.
 
-## Optional analytics
+## Analytics
 
-[REVIEW: The following wording applies only after Phase 09 implements and verifies both choices. Phase 10 owns review/finalization/publication of this policy. If analytics remains disabled, replace this section with the actual disabled behavior.]
+[REVIEW: October 15 owner direction replaces both planned Settings choices with one Terms & Privacy onboarding acceptance for the disclosed analytics scope. No analytics Settings switches or later analytics prompt are planned. The following describes intended Phase 09 behavior, not current collection: export remains disabled. Phase 10 must review the final page, exact fields, regional sufficiency, applicable withdrawal/objection process and publication. If analytics remains disabled, describe that actual behavior.]
 
-General usage analytics is off unless you enable it. If you enable it, we share limited events with PostHog to understand use of features such as challenge completion and Progress. These events can use a pseudonymous identifier linked to your account.
+After you accept the Terms & Privacy page, we share limited events with PostHog to understand use of features such as challenge completion and Progress and improve JustGO. These events can use a random, persistent identifier linked to your JustGO account; they are not anonymous simply because they omit your name or email.
 
-Sharing feeling codes or coarse reflection-length categories requires a separate choice. These categories describe approximate word counts, not the words you wrote. We do not send raw reflection text, recovery credentials, support messages or payment details to analytics, and we do not record replay videos of your app sessions.
+The planned scope includes submitted feeling selections and coarse reflection-length categories. These categories describe approximate word counts, not the words you wrote. We do not send raw reflection text, recovery credentials, support messages or payment details to analytics, and we do not record replay videos of your app sessions. [REVIEW: Retain only the fields actually disclosed, reviewed and implemented.]
 
-You can change either choice in Settings. Turning analytics off stops future optional analytics sharing without preventing cloud saving or eligible paid access. [REVIEW: Specify treatment of previously collected events and verify vendor retention and deletion.]
+There is no analytics on/off switch in Settings. Contact us about applicable privacy requests using the details below. Analytics delivery failures do not prevent cloud saving or eligible paid access. [REVIEW: Specify the request-handling/suppression process, treatment of previously collected events, vendor retention and deletion. Do not imply that onboarding acceptance waives applicable rights.]
 
 ## Security and technical information
 
@@ -54,7 +54,7 @@ Our support inbox uses Google Gmail, and your message also passes through your e
 
 ## Service providers and international processing
 
-We use service providers to host and operate JustGO. These include Vercel for the API and Supabase for database hosting. Apple provides the device and optional iCloud Keychain services used for recovery. PostHog receives optional analytics only when enabled as described above.
+We use service providers to host and operate JustGO. These include Vercel for the API and Supabase for database hosting. Apple provides the device and optional iCloud Keychain services used for recovery. PostHog receives analytics only after the onboarding acceptance described above and within the reviewed scope.
 
 [REVIEW: Finalize the active-provider list for the beta or paid release. Add Apple/RevenueCat subscription processing and Upstash billing delivery only when active. Confirm contracts, subprocessors and actual regions. Remove providers that are not enabled.]
 
@@ -74,7 +74,7 @@ Removing the app from your phone does not delete your cloud account. When paid s
 
 ## Your privacy choices and requests
 
-You can choose whether to submit a feeling or reflection. Settings → Export my data creates a ZIP with your saved activity and reflections, including changes waiting to upload from your current phone. Choose where to save or share this private file. Exporting does not delete your data. [REVIEW: Export is implemented locally; verify physical-iPhone delivery before publication. Optional analytics choices remain unimplemented. In-app deletion requires native-build/device acceptance and hosted rollout before publication. Verify these paths before describing them as available.]
+You can choose whether to submit a feeling or reflection. Settings → Export my data creates a ZIP with your saved activity and reflections, including changes waiting to upload from your current phone. Choose where to save or share this private file. Exporting does not delete your data. [REVIEW: Export is implemented locally; verify physical-iPhone delivery before publication. The Terms & Privacy acceptance page and analytics forwarding remain unimplemented in this checkout. In-app deletion requires native-build/device acceptance and hosted rollout before publication. Verify these paths before describing them as available; analytics Settings switches are no longer planned.]
 
 Contact us with questions or requests to access, correct or delete personal information. We may need to verify that a request concerns your account, without asking you to email a recovery secret. Depending on the laws that apply, you may also have rights to portability, restriction or objection, to withdraw consent, and to complain to a privacy regulator. [REVIEW: Add applicable legal bases, regional rights, complaint contacts and response periods for worldwide distribution.]
 

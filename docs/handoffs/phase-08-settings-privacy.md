@@ -3220,3 +3220,9 @@ behavior are unchanged.
 Directory review: the full identity and account directories, parent docs and
 handoff directories retain clear existing responsibility groups. Tests remain
 beside their owner; no new file or folder move is needed for these conditionals.
+
+## October 15 Phase 09 acceptance planning
+
+Anthony replaced the earlier two-choice analytics plan with one Terms & Privacy onboarding acceptance for the disclosed scope. Phase 09 will remove both unavailable analytics Settings rows and will not add a later analytics prompt. The [Phase 09 planning handoff](phase-09-analytics.md) owns the scope, adapted copy and retained acceptance/account/payload safeguards. Prior two-choice descriptions in this handoff remain historical implementation/planning evidence, not current Phase 09 requirements.
+
+This follow-up updates documentation only. Existing Settings behavior, disabled telemetry, deletion work in its separate checkout and all open Phase 08/device/release gates remain unchanged. Documentation formatting/consistency/link checks apply; no code, database or UI verification is claimed.

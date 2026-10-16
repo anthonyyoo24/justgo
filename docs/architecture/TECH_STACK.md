@@ -22,7 +22,7 @@ App providers/foreground coordination and the startup access gate now live in
 links live in `components/`. Account/recovery UI and session/Keychain support live
 in `app-support/identity/`. These placements preserve existing behavior.
 
-**Updated:** October 8, 2026
+**Updated:** October 15, 2026
 
 **Status:** Architecture spec; phase 01 foundation is implemented and verified, including native simulator launch and staging readiness. Exact versions, environment and operations: [FOUNDATION.md](../operations/FOUNDATION.md); evidence: [phase 01 handoff](../handoffs/phase-01-foundation.md).\
 **Implementation plan:** [Stages and handoffs](../IMPLEMENTATION_PLAN.md).
@@ -41,7 +41,7 @@ The first iOS release includes a hard paywall, one collection of general easy Le
 | React Native, Expo, TypeScript                                        | Required                                                                                                                                     |
 | Accepted backend history and phone submissions                        | PostgreSQL owns accepted history; account-scoped AsyncStorage retains submitted records and ordered upload intent until safely reconciled    |
 | API hosting                                                           | Vercel Functions running the Fastify API                                                                                                     |
-| Deferred onboarding state                                             | Not implemented; revisit its persistence when separately scheduled                                                                           |
+| Terms & Privacy acceptance / deferred questionnaire state             | Phase 09 plans one account-owned acceptance receipt; questionnaire state remains deferred                                                    |
 | Reflection input                                                      | Typed private text at launch; custom dictation and its native dependency/permissions deferred                                                |
 | AI text coach                                                         | Planned later in the same API and database; no voice coach in scope                                                                          |
 | Background processing                                                 | QStash for managed subscription-update delivery and retries from launch; job handlers run on Vercel                                          |
@@ -163,7 +163,7 @@ Keychain authenticates the account; AsyncStorage preserves submitted device acti
 
 ### Deferred onboarding: state, saving, and restoration
 
-**Deferred September 17:** this onboarding design is retained for future scheduling, not phase 03 implementation. No onboarding tables or answer collection are implemented; Zustand is used for the independent activity/browsing responsibilities.
+**Deferred September 17:** this questionnaire design is retained for future scheduling, not phase 03 implementation. The October 15 Phase 09 Terms & Privacy acceptance receipt is a separate, narrowly approved responsibility described in §9; it does not activate questionnaire answers or per-step progress. No onboarding tables or answer collection are implemented; Zustand is used for the independent activity/browsing responsibilities.
 
 Expo Router owns navigation, Zustand holds shared in-memory answers/unsaved edits, and TanStack Query performs API reads and mutations. PostgreSQL owns saved answers, onboarding schema version, last completed step, completion timestamp, and edit revision. Keep screen-local state in React and gesture state in Reanimated; do not copy the entire query cache into Zustand. [Zustand](https://github.com/pmndrs/zustand).
 
@@ -257,14 +257,14 @@ The content/attempt boundary below reflects Phase 07. Identity is already implem
 
 ### Identity and preferences
 
-| Table                  | Main fields                                                                                                            | Relationship/rule                                                                                    |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `users`                | `id`, `created_at`, `status`                                                                                           | Pseudonymous account; no required name, email, or phone                                              |
-| `onboarding_progress`  | `user_id`, schema version, bounded validated answers, last completed step, `completed_at`, `updated_at`, edit revision | One current record per user; answers and step saved atomically; migrate/validate versions explicitly |
-| `recovery_credentials` | `id`, `user_id`, `secret_digest`, `kind`, `created_at`, `revoked_at`                                                   | One user can have Keychain and optional recovery-key credentials; unique digest                      |
-| `devices`              | `id`, `user_id`, `platform`, `created_at`, `last_seen_at`                                                              | Random installation identity, not hardware fingerprint                                               |
-| `device_sessions`      | `id`, `device_id`, `user_id`, `token_digest`, `expires_at`, `revoked_at`                                               | Multiple independent sessions; unique digest; device/owner consistency enforced                      |
-| `consent_changes`      | `id`, `user_id`, scope/version, enabled, server timestamp                                                              | Separate analytics choices from future permission to use personal history in AI coaching             |
+| Table                  | Main fields                                                                                                            | Relationship/rule                                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `users`                | `id`, `created_at`, `status`                                                                                           | Pseudonymous account; no required name, email, or phone                                                 |
+| `onboarding_progress`  | `user_id`, schema version, bounded validated answers, last completed step, `completed_at`, `updated_at`, edit revision | One current record per user; answers and step saved atomically; migrate/validate versions explicitly    |
+| `recovery_credentials` | `id`, `user_id`, `secret_digest`, `kind`, `created_at`, `revoked_at`                                                   | One user can have Keychain and optional recovery-key credentials; unique digest                         |
+| `devices`              | `id`, `user_id`, `platform`, `created_at`, `last_seen_at`                                                              | Random installation identity, not hardware fingerprint                                                  |
+| `device_sessions`      | `id`, `device_id`, `user_id`, `token_digest`, `expires_at`, `revoked_at`                                               | Multiple independent sessions; unique digest; device/owner consistency enforced                         |
+| `consent_changes`      | `id`, `user_id`, legal/scope versions, acceptance state, server timestamp                                              | Planned account-owned Terms & Privacy acceptance receipt; future AI-context permission remains separate |
 
 Optional transfer records store hashed one-use codes, issuing user/session, expiration, redemption state, and confirmation state. A server account's existence does not depend on enabling analytics.
 
@@ -399,7 +399,7 @@ A job is a task; its handler is our processing code. QStash stores a pending del
 | Purchase/restore access verification                  | Immediate authenticated API request to verify RevenueCat state; do not wait for a queue or scheduled recovery                      |
 | Subscription notifications                            | Durable event receipt followed by QStash delivery to our Vercel handler                                                            |
 | Billing handoff repair and missed-notification checks | Vercel Cron selects due records/accounts; QStash delivers the individual refresh jobs                                              |
-| Optional product analytics                            | Consent-aware, best-effort delivery with stable event IDs; no required queue                                                       |
+| Product analytics after onboarding acceptance         | Accepted-scope, best-effort delivery with stable event IDs; no required queue                                                      |
 | Deletion/retention                                    | Bounded operations or provider retention settings; use QStash with durable cleanup status if vendor cleanup needs deferred retries |
 
 #### Subscription-event flow
@@ -470,15 +470,17 @@ Web checkout adds account matching, provider reconciliation, browser-return fail
 
 ## 9. Analytics and sensitive data
 
-PostgreSQL owns product records; PostHog owns behavioral analysis. Use explicit events such as onboarding step completed, paywall viewed, challenge viewed/swiped/started/completed/given up, feedback submitted/skipped, reflection saved, and app foregrounded.
+PostgreSQL owns product records; PostHog owns behavioral analysis. Phase 09 is planned, not enabled. The October 15 owner decision replaces both planned analytics Settings choices with one Terms & Privacy onboarding acceptance for the disclosed scope. No later analytics prompt is planned. Persist a receipt with account ownership, Terms/Privacy/analytics-scope versions and acceptance time; missing/unconfirmed acceptance blocks client and server forwarding. Returning users with a receipt do not repeat the same request. Existing accounts, recovery, slow hydration and account changes must not bypass or mix receipts. This limited page does not activate the deferred questionnaire design in §3.
+
+Use explicit events such as onboarding acceptance completed, paywall viewed, challenge viewed/swiped/started/completed/given up, feedback submitted/skipped, reflection saved, and app foregrounded. The acceptance receipt is first-party state, not dependent on successful PostHog delivery; do not forward pre-acceptance onboarding activity.
 
 Server-confirmed analytics events originate from successful API transactions and use stable IDs derived from the stored domain event or entity/revision. Client-only interaction events go through an authenticated event endpoint or a single consent-aware adapter. Deduplicate by event ID where supported and record occurrence/receipt timestamps. Initial analytics delivery is best effort: analytics failures must not fail a saved reflection or completion, and a crash between commit and delivery can lose an analytics event. PostgreSQL remains authoritative for earned progress. Add a transactional outbox only if reliable analytics delivery becomes a real requirement. Do not indiscriminately duplicate every tap in PostgreSQL.
 
-Useful properties include stable challenge ID, level, attempt ID, after-feeling code when consented, has-reflection flag, and non-overlapping reflection word buckets: `none`, `1–20`, `21–50`, `51–100`, `101+`. Compute length without exporting the text. Input method is only known for app-controlled dictation; keyboard dictation may be indistinguishable from typing.
+Useful properties include stable challenge ID, level, attempt ID, after-feeling code and has-reflection flag, and non-overlapping reflection word buckets: `none`, `1–20`, `21–50`, `51–100`, `101+`. Include feeling/length properties only within the disclosed, accepted and reviewed scope, with no separate Settings switch. Compute length without exporting the text. Persistent pseudonymous identifiers are account-linked, not anonymous/non-identifying. Input method is only known for app-controlled dictation; keyboard dictation may be indistinguishable from typing.
 
-Separate essential storage from optional analysis. A user can keep their cloud journal and paid access while declining analytics. Explain and obtain the appropriate explicit choice for sharing sensitive feeling/reflection metadata. Disable autocapture/session replay and exclude journal text, audio, credentials, payment details, and contact data from analytics and crash payloads. [PostHog React Native controls](https://posthog.com/docs/libraries/react-native).
+Separate product storage from analytics delivery. Preserve saved/pending activity and access to recovery/export/deletion; analytics/provider failures must not prevent product saves or eligible paid access. The Terms & Privacy page explains phone plus cloud saving and product-analysis purposes, with the actual feeling/length scope disclosed if included. Phase 10 reviews final wording, regional grounds and how applicable withdrawal/objection requests are handled without analytics Settings switches. This single-acceptance product decision does not establish legal sufficiency. Disable autocapture/session replay and exclude journal text, audio, credentials, payment details, and contact data from analytics and crash payloads. [PostHog React Native controls](https://posthog.com/docs/libraries/react-native).
 
-Route billing analytics through the server's consent checks too. A mobile opt-out does not disable RevenueCat's independent server-to-server PostHog integration; its fallback customer ID also does not enforce consent. Do not enable unconditional direct forwarding. [RevenueCat PostHog integration](https://www.revenuecat.com/docs/integrations/third-party-integrations/posthog).
+Route billing analytics through the server's accepted-scope and account-eligibility checks too. RevenueCat's independent server-to-server PostHog integration and fallback customer ID do not enforce this boundary. Do not enable unconditional direct forwarding. Recheck acceptance and eligibility before delayed delivery; deletion and applicable privacy-request suppression must cover both client and server paths. [RevenueCat PostHog integration](https://www.revenuecat.com/docs/integrations/third-party-integrations/posthog).
 
 The data supports sequence and cohort questions: actions after a feeling, another challenge within 24 hours, and D1/D7 return rates by reflection-length bucket. Define cohort anchors, eligible observation windows, and missing-data handling. An after-only feeling does not measure improvement from a before state, and a retention correlation does not establish causation.
 
@@ -575,7 +577,7 @@ Acceptance coverage: the first release targets iOS. Conditional future-feature c
 5. Completed-attempt lost acknowledgement: commit the create, drop its response, continue local Reflection/Progress, restart and replay the same UUID/input; assert one backend rep and unchanged start/activity date. Repeat PATCH lost acknowledgement and changed-input/owner/revision cases. Verify aggregate reconciliation, offline/reconnect, memory-only recovery and definitively rejected provisional credit.
 6. Native paywall, purchase, restoration, cancellation/expiry/refund, and server entitlement checks. Verify immediate purchase access without waiting for queued work, short retry behavior, and honest pending states. Before enabling the proposed immediate-access fallback, test a failed billing-projection write separately from a full database outage, stale/expired verification, and forged client premium claims.
 7. If Stripe is enabled: eligible/ineligible storefronts, forged checkout/redirect, delayed payment, invalid/replayed webhooks, browser return, refund/cancel, and duplicate native/web subscriptions.
-8. Offline/error states make no false save claims; analytics opt-out blocks both client and server forwarding without disabling cloud journaling.
+8. Offline/error states make no false save claims; client/server analytics is blocked before account-owned Terms & Privacy acceptance. No analytics Settings switches or later analytics prompt are introduced; account/deletion/privacy-request fencing and product-save independence are verified.
 9. Native iOS accessibility, gestures, keyboard/sheets, and any implemented notification permission behavior. Dictation and Android checks are deferred until those features are built.
 10. Deferred onboarding (only when separately scheduled): cross-screen answers, back-navigation and dependent answers, per-step saves, failed-save retries, relaunch restoration, schema/revision conflicts, dirty-state hydration, and account-switch clearing.
 11. When the coach is implemented: real-device streaming, ownership isolation across every context source, context-consent changes, bounded history, duplicate sends, concurrent allowance enforcement, provider failures, cancellation/timeout recovery, and message/context deletion. Add representative response-quality evaluations.
