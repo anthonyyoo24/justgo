@@ -1,7 +1,9 @@
 # Working on JustGO
 
 Read the requested phase in `docs/IMPLEMENTATION_PLAN.md` and its dependency
-handoffs before editing. The plan owns sequencing and approved future changes;
+handoffs before editing. Until Phase 08A splits the plan, a phase's decisions
+can also sit in the plan's header notes and in `docs/DECISIONS.md`; search both
+for the phase number instead of reading the whole file. The plan owns sequencing and approved future changes;
 `docs/architecture/APP_SHELL.md` and `docs/architecture/TECH_STACK.md` describe the implemented boundaries.
 Keep phase scope bounded and preserve existing behavior unless the task changes it.
 Directory instructions (especially `apps/mobile/AGENTS.md`) also apply.
@@ -11,6 +13,17 @@ cleanup phases. Read [testing guidance](docs/operations/TESTING.md) before code 
 the applicable commands and evidence requirements. Keep detailed architecture in
 the linked architecture docs and phase-specific work/evidence in the plan and
 handoffs; avoid copying competing versions of these rules into every directory.
+
+## Repository map and common commands
+
+- `apps/mobile` (`@justgo/mobile`): Expo app. `apps/api` (`@justgo/api`): API
+  and database. `packages/contracts` (`@justgo/contracts`): shared Zod contracts.
+  `e2e/`: saved Playwright journeys. `scripts/quality` and `scripts/journeys`:
+  architecture, coverage and journey tooling.
+- Focused checks: `npm run test -w <workspace>`, `npm run typecheck -w <workspace>`,
+  `npm run lint`. Broader gates: `npm run check`, `npm run test:coverage`,
+  `npm run test:db`, `npm run test:journey`. See
+  [testing guidance](docs/operations/TESTING.md) for when each applies.
 
 ## Owner review and Git permissions
 
@@ -69,8 +82,10 @@ handoffs; avoid copying competing versions of these rules into every directory.
 
 ## File placement for new mobile code
 
-The [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) records existing
-responsibility groups after the dedicated cleanup. Keep native/web adapter pairs
+The [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) describes the
+responsibility groups. Some groups it shows (for example
+`features/challenges/deck/` and `lib/network/`) are not on disk until Phase 08A;
+where the guide and the tree differ, follow the tree. Keep native/web adapter pairs
 and tests beside their owner. File moves must update imports, command/coverage
 paths, upload allowlists, fixture resolution, asset extraction and documentation
 links together; organizing retained code does not authorize its removal.
@@ -83,8 +98,9 @@ Reload the app to clear stale module/asset paths.
 
 - **Review changed directories after the task.** Complete the requested
   implementation normally, then before handoff identify every directory where
-  the task added or modified files. Review each directory's full contents to
-  see whether it has become too large after the changes. If sensible groups
+  the task added or modified files. Review each directory's complete file list
+  (not every unrelated file's contents) to see whether it has become too large
+  after the changes. If sensible groups
   would improve navigation, reorganize them into responsibility-based
   subfolders without waiting for Anthony to ask. Use judgment rather than a
   fixed file-count threshold; follow the move/verification rules above and keep
@@ -190,11 +206,14 @@ Reload the app to clear stale module/asset paths.
   that would catch the original failure.
 - Await observable asynchronous results and clean up subscriptions, timers and
   queries. Never silence unexpected warnings, remove assertions or weaken lint
-  and coverage floors to make a failing change pass. Run the applicable coverage
-  gate and review important uncovered branches, not only the percentage.
-- After relevant tests pass, test affected UI with Browser Use in the in-app
-  side panel. Honor the owner's browser preference; do not switch to an outside
-  Chrome window when side-panel-only testing was requested. Fix failures and
+  and coverage floors to make a failing change pass. During each slice, review
+  coverage of the affected behavior and important uncovered branches, not only
+  the percentage; run the full `npm run test:coverage` gate at phase completion,
+  before publication or when the change directly affects coverage.
+- After relevant tests pass, test affected UI in the agent's in-app browser
+  pane (Codex: Browser Use side panel; Claude Code: built-in browser). Honor
+  the owner's browser preference; do not switch to an outside Chrome window when
+  in-app-only testing was requested. Fix failures and
   repeat. Use disposable local fixtures only. A one-off browser walkthrough is
   not a saved end-to-end regression test or a CI gate; report each separately.
   Browser journeys must validate their resolved API origin as well as the local
@@ -206,8 +225,14 @@ Reload the app to clear stale module/asset paths.
   and retry fresh geometry reads. Missing or detached elements must keep the
   assertion failing; preserve the alignment limit instead of adding sleeps or
   weakening the assertion.
-- Before handoff run `npm run check` and, for backend/shared boundaries or a phase
-  closeout, `npm run test:db` against the dedicated loopback `justgo_test` database.
+- Before a phase handoff or publication, run `npm run check` (it includes the
+  online Expo doctor and the full test suite, so skip it for routine slices that
+  focused checks cover) and, for backend/shared boundaries or a phase closeout,
+  `npm run test:db` against the dedicated loopback `justgo_test` database.
+  Focused `-w <workspace>` checks miss other workspaces: when a slice touches
+  `packages/contracts`, a tsconfig, ESLint config or `e2e/support`, also run
+  `npm run build:contracts && npm run typecheck` from the root (all workspaces
+  and journeys).
   Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.
   Keep earlier physical-device/staging gates open until evidenced.
 - Before publication, run fresh online Expo validation through `npm run check`
@@ -222,17 +247,23 @@ Reload the app to clear stale module/asset paths.
   and their fixes in the handoff.
   After splitting or stacking PRs, verify each actual publication candidate;
   checks from the combined feature branch do not transfer to older PR branches.
-- Work in small reviewable changes. Update the phase handoff, plan and handoff
-  index with actual commands/results, UI evidence and remaining work. Do not
-  put secrets, real private reflections or credentials in logs or handoffs.
+- Work in small reviewable changes. A handoff records only what the next phase
+  needs: decisions and why, behavior that changed, invariants to preserve,
+  problems that could recur, setup or environment changes, open gates and the
+  final verification run. Edit it in place rather than appending dated entries.
+  Change the plan only when scope or a decision changes (and record the decision
+  in `docs/DECISIONS.md`); update the handoff index row only when status changes.
+  Per-change test runs, small UI adjustments, browser steps and screenshot paths
+  belong in the commit message or PR description. See the
+  [October 16 decision](docs/DECISIONS.md#october-16-codebase-assessment-follow-up).
+  Do not put secrets, real private reflections or credentials in logs or handoffs.
 - Keep routine screenshots and diagnostic recordings in ignored `.local/`
-  storage, with verification results recorded in the handoff. Commit visual
-  evidence only when the owner explicitly requests it.
+  storage. Commit visual evidence only when the owner explicitly requests it.
 - Before claiming completion, reconcile the agreed requirements and relevant
   review findings with the implementation. Each must have passing evidence or
   an explicit, approved deferral with an owner/phase and an open task. Do not
   silently drop a finding when moving work between phases. Record recurring
-  coding lessons here; keep individual bug tasks and test results in the plan
-  and handoffs. Keep automated checks in CI as enforcement alongside this guide.
+  coding lessons here; keep open bug tasks in the plan and lasting results in
+  the handoff. Keep automated checks in CI as enforcement alongside this guide.
 - On the owner's 8 GB Mac, run heavy builds/checks sequentially and reuse existing
   tools/caches. Native signing/build upgrades require a separate task.

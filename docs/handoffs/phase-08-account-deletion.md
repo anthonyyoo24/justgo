@@ -134,14 +134,17 @@ hosted API still need the separate acceptance/rollout steps below.
 
 - Revoked credential rows and a minimal user deletion receipt are security
   tombstones, not retained reflection content. Do not purge them or restore an
-  older live identity over them. Exact retention periods, backup expiry and the
-  published privacy wording still require the operator's Phase 08 decision.
+  older live identity over them. Anthony set the retention defaults on October 16
+  ([decision](../DECISIONS.md#october-16-codebase-assessment-follow-up)): tombstones
+  are kept permanently and backups follow the Supabase plan default. Confirming
+  that backup period is a Phase 08 task; Phase 10 writes the published wording.
 - Before restoring a backup, preserve the latest deletion/tombstone ledger in
   restricted operator storage, restore into an isolated environment, replay every
   later deletion (including activity removal and credential blocking), then verify
   deleted proofs fail before reopening writers. An old snapshot alone must never
-  become the live account database. A hosted backup/deletion replay drill is an
-  open Phase 08/09 gate; the local migration restoration test is separate evidence.
+  become the live account database. Phase 08 writes this as a short restore
+  checklist; the hosted rehearsal is a Phase 11 paid-launch gate under the October
+  16 decision. The local migration restoration test is separate evidence.
 - PostHog, Sentry and RevenueCat forwarding are inactive on this branch, so no
   active vendor deletion job is claimed. Their future activation must include
   durable vendor cleanup/retry and reviewed retention before deleted identities

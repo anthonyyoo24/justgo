@@ -1,6 +1,12 @@
 # JustGO — Implementation Plan
 
-**Version:** 77 · Updated October 14, 2026
+**Version:** 80 · Updated October 16, 2026
+
+**October 16 owner-approved codebase assessment follow-up:** Anthony approved scheduling the [October 16 codebase assessment](https://claude.ai/code/artifact/f5067650-3c46-4c2e-bf14-1fcb107617ab) findings by phase. Bracketed IDs such as [CI-2] refer to that assessment. Small stability fixes that unblock CI land in [Phase 08 before merge](#phase-08-pre-merge). Structure, documentation and tooling cleanup with no user-visible change becomes new [Phase 08A](#phase-08a), after Phase 08 merges and before Phase 09. Phase 08A follows the 06A pattern so later phase numbers stay unchanged. Retention jobs and API error alerting join Phase 08, crash reporting joins Phase 09, two disclosure decisions join Phase 10, and release automation, app icon/splash, write-route rate limits, native CI smoke and the Expo SDK 58 upgrade join Phase 11. Finished and superseded documents are archived or deleted as Phase 08A specifies. The decisions are recorded in the [decision register](DECISIONS.md#october-16-codebase-assessment-follow-up). This planning change implements nothing.
+
+**October 15 owner-approved analytics flow:** Phase 09 uses one **Terms & Privacy** onboarding page, inspired by How We Feel, as the only permission request for its disclosed analytics scope. Remove the two planned analytics Settings controls; do not add a later analytics prompt. This narrowly approves the acceptance page, not the deferred welcome/questionnaire flow. Copy must describe JustGO's phone and cloud saving accurately and must not call persistent account-linked analytics anonymous or non-identifying. The [Phase 09 planning handoff](handoffs/phase-09-analytics.md) records the decision and draft copy. Phase 09 implementation and Phase 10 legal/publication review remain open; telemetry export is still disabled.
+
+**October 15 owner-approved measurement and deck decisions:** [Phase 09](#phase-09) records the agreed PostHog event allowlist, including an analytics-only `start_id` that links each swipe right to its give-up or completion without changing the saved attempt, API or database. It also adds three app changes: each venue deck is shuffled once and its order saved on the phone, the last selected venue is saved, and the post-challenge Reflection screen loses its top Back/X control.
 
 **October 14 owner-approved phase split:** Anthony reports that most Phase 08 work is complete and account deletion is being implemented. Keep Settings, recovery, export/deletion, retention/backup mechanics, preferences and their existing acceptance checks in Phase 08. Move analytics consent, PostHog event delivery and product measurement to new Phase 09; move Privacy Policy, Terms, legal review, public hosting and release-disclosure preparation to new Phase 10. Former Phase 09 release validation is now Phase 11; former post-launch phases 10–12 are now 12–14. This inserts two whole-number phases rather than 08A/08B. Earlier phase IDs and recorded implementation evidence are preserved; branch names, log/artifact paths and historical numbering records are not renamed. This planning change does not mark deletion, analytics, legal review or any open acceptance gate complete.
 
@@ -17,7 +23,7 @@ Phase 06 Progress/history passes local automated and simulator checks, including
 
 **October 9 beta-first sequencing:** Anthony moved payment activation until after Settings and a free TestFlight beta. Finish Phase 08 after the merged 07.5 baseline, complete analytics/consent in Phase 09 and legal notices in Phase 10, then complete the free beta checkpoint in Phase 11, activate and accept Phase 07A, and return to Phase 11 for paid launch. Preserve the local billing implementation and all nine subscription rules; Apple purchase-key generation, RevenueCat connection and live billing setup wait until the paid stage. The free beta requires explicit server-authorized tester access, an isolated hosted backend and signed iOS build; it does not use the local development fixture or an invented client premium flag. This is planned work, not an implemented beta or an upload authorization. Earlier privacy, recovery, native/device and staging gates remain open and must be resolved before exposing valuable tester data.
 
-This authoritative Markdown plan contains thirteen iOS release stages, including quality phase 06A, separate billing phase 07A, analytics phase 09 and legal phase 10, plus three deferred stages. Each phase defines what to implement, what to exclude, its completion checks and the context to hand forward. Phase 07 retains six subphase IDs, with 07.3A deferred separately and 07.4 proceeding after 07.3; IDs through Phase 08 remain unchanged. Use the October 14 numbering for current work and migrate older tracker exports before reuse.
+This authoritative Markdown plan contains fourteen iOS release stages, including quality phase 06A, separate billing phase 07A, structure/docs cleanup phase 08A, analytics phase 09 and legal phase 10, plus three deferred stages. Each phase defines what to implement, what to exclude, its completion checks and the context to hand forward. Phase 07 retains six subphase IDs, with 07.3A deferred separately and 07.4 proceeding after 07.3; IDs through Phase 08 remain unchanged. Use the October 14 numbering for current work and migrate older tracker exports before reuse.
 
 **First release:** iOS, one easy Level 1 challenge collection with manual venue filtering, the in-app timer, Success, typed reflections, the full Progress summary/calendar/day sheet, native subscriptions, and essential Settings/privacy/recovery.
 
@@ -116,26 +122,27 @@ separate unfinished work.
 
 ## Stage overview
 
-| Phase                                                       | Outcome                                                                                                         | Depends on                                   | Status                                                         |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------- |
-| [01 — Foundation & implementation decisions](#phase-01)     | A reproducible workspace and a clear list of decisions to settle before each feature.                           | None                                         | Complete                                                       |
-| [02 — No-signup identity & recovery](#phase-02)             | A real account survives supported recovery paths, without exposing another person’s history.                    | 01                                           | In progress                                                    |
-| [03 — App shell & shared API](#phase-03)                    | The app restores the right account and provides consistent navigation and network behavior.                     | 02                                           | In progress                                                    |
-| [04 — Challenge deck & reliable attempts](#phase-04)        | Browse → accept → complete or give up works against real cloud data exactly once.                               | 03                                           | In progress                                                    |
-| [05 — Feelings & typed reflections](#phase-05)              | A completed attempt can have optional private feedback and typed reflection text.                               | 04                                           | In progress                                                    |
-| [06 — Progress calendar & saved history](#phase-06)         | Users can view the full Progress summary/calendar and read day details and saved reflections.                   | 05                                           | In progress                                                    |
-| [06A — Code quality & test hardening](#phase-06a)           | Existing code is easier to understand and change, with meaningful regression tests and durable coding guidance. | 06 (local)                                   | Complete                                                       |
-| [07 — API & offline saving](#phase-07)                      | Completions/reflections display after local saving and synchronize reliably through resource APIs.              | 06A                                          | In progress                                                    |
-| [07A — Native subscriptions & reliable billing](#phase-07a) | Verified purchases unlock promptly, and later subscription changes recover reliably.                            | 07.5; activate after free beta               | Local work in progress; activation deferred                    |
-| [08 — Settings & privacy controls](#phase-08)               | Users control recovery, private data and preferences, including confirmed account deletion.                     | 07.5                                         | Most slices implemented; deletion in progress; acceptance open |
-| [09 — Analytics & consent](#phase-09)                       | Explicit product measurement respects separate general and sensitive-metadata choices.                          | 08                                           | Not started; exporter disabled                                 |
-| [10 — Legal documents & release disclosures](#phase-10)     | Reviewed public notices and disclosure preparation match the verified release behavior.                         | 08, 09                                       | Drafts prepared; review/publication open                       |
-| [11 — Release validation & launch](#phase-11)               | A free beta validates the core product, then the complete paid product is ready for store submission.           | 08–10 for beta; accepted 07A for paid launch | Hosted prerequisite ready; acceptance open                     |
-| [12 — Lock-screen countdowns](#phase-12)                    | The same accepted challenge is visible on supported lock screens without a JavaScript background timer.         | 11                                           | Not scheduled                                                  |
-| [13 — Optional US iOS web checkout](#phase-13)              | Eligible users can purchase on the web using the same authenticated app identity.                               | 11                                           | Not scheduled                                                  |
-| [14 — Future AI text coach](#phase-14)                      | A separately approved text coach uses bounded, permitted context in the existing backend.                       | 11                                           | Not scheduled                                                  |
+| Phase                                                       | Outcome                                                                                                                         | Depends on                                   | Status                                                         |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------- |
+| [01 — Foundation & implementation decisions](#phase-01)     | A reproducible workspace and a clear list of decisions to settle before each feature.                                           | None                                         | Complete                                                       |
+| [02 — No-signup identity & recovery](#phase-02)             | A real account survives supported recovery paths, without exposing another person’s history.                                    | 01                                           | In progress                                                    |
+| [03 — App shell & shared API](#phase-03)                    | The app restores the right account and provides consistent navigation and network behavior.                                     | 02                                           | In progress                                                    |
+| [04 — Challenge deck & reliable attempts](#phase-04)        | Browse → accept → complete or give up works against real cloud data exactly once.                                               | 03                                           | In progress                                                    |
+| [05 — Feelings & typed reflections](#phase-05)              | A completed attempt can have optional private feedback and typed reflection text.                                               | 04                                           | In progress                                                    |
+| [06 — Progress calendar & saved history](#phase-06)         | Users can view the full Progress summary/calendar and read day details and saved reflections.                                   | 05                                           | In progress                                                    |
+| [06A — Code quality & test hardening](#phase-06a)           | Existing code is easier to understand and change, with meaningful regression tests and durable coding guidance.                 | 06 (local)                                   | Complete                                                       |
+| [07 — API & offline saving](#phase-07)                      | Completions/reflections display after local saving and synchronize reliably through resource APIs.                              | 06A                                          | In progress                                                    |
+| [07A — Native subscriptions & reliable billing](#phase-07a) | Verified purchases unlock promptly, and later subscription changes recover reliably.                                            | 07.5; activate after free beta               | Local work in progress; activation deferred                    |
+| [08 — Settings & privacy controls](#phase-08)               | Users control recovery, private data and preferences, including confirmed account deletion.                                     | 07.5                                         | Most slices implemented; deletion in progress; acceptance open |
+| [08A — Structure, docs & tooling cleanup](#phase-08a)       | Routes, folders and docs match how the app works today; CI is faster and deterministic; no user-visible change.                 | 08 merged, no other open feature branch      | Not started                                                    |
+| [09 — Analytics & consent](#phase-09)                       | Product measurement follows one Terms & Privacy onboarding acceptance; saved shuffled decks and venue; Reflection exit cleanup. | 08, 08A                                      | Not started; exporter disabled                                 |
+| [10 — Legal documents & release disclosures](#phase-10)     | Reviewed public notices and disclosure preparation match the verified release behavior.                                         | 08, 09                                       | Drafts prepared; review/publication open                       |
+| [11 — Release validation & launch](#phase-11)               | A free beta validates the core product, then the complete paid product is ready for store submission.                           | 08–10 for beta; accepted 07A for paid launch | Hosted prerequisite ready; acceptance open                     |
+| [12 — Lock-screen countdowns](#phase-12)                    | The same accepted challenge is visible on supported lock screens without a JavaScript background timer.                         | 11                                           | Not scheduled                                                  |
+| [13 — Optional US iOS web checkout](#phase-13)              | Eligible users can purchase on the web using the same authenticated app identity.                                               | 11                                           | Not scheduled                                                  |
+| [14 — Future AI text coach](#phase-14)                      | A separately approved text coach uses bounded, permitted context in the existing backend.                                       | 11                                           | Not scheduled                                                  |
 
-Release order: 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 08 → 09 → 10 → 11 free beta → 07A activation/acceptance → 11 paid launch. Billing implementation already prepared can be reviewed independently while activation waits. Legal review can begin alongside implementation, but final notices must describe the verified build. Lock-screen timers (12), Stripe (13) and coaching (14) follow release when scheduled; none blocks the first submission or depends on another later phase.
+Release order: 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 08 → 08A → 09 → 10 → 11 free beta → 07A activation/acceptance → 11 paid launch. Billing implementation already prepared can be reviewed independently while activation waits. Legal review can begin alongside implementation, but final notices must describe the verified build. Lock-screen timers (12), Stripe (13) and coaching (14) follow release when scheduled; none blocks the first submission or depends on another later phase.
 
 ## Decisions to settle before dependent work
 
@@ -166,7 +173,7 @@ These remain open in PRD §13. Resolve each with the product owner and update th
 
 EAS builds/signs the app and uploads it to App Store Connect/TestFlight. It does not replace Apple membership or automatically complete listing/review submission. Recheck current requirements during setup; build queues, account verification and review times vary. References: [Expo iOS submission](https://docs.expo.dev/submit/ios/), [Apple enrollment](https://developer.apple.com/programs/enroll/), [first in-app purchase submission](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase).
 
-## Initial iOS release — thirteen stages
+## Initial iOS release — fourteen stages
 
 <a id="phase-01"></a>
 
@@ -1298,13 +1305,27 @@ from merged main and passes fresh root checks; native/release gates stay open.
 - Add a Suggest a feature row under Support using the same private contact flow and configured destination as Get help, as clarified by the owner October 9. Distinguish feature suggestions with an email subject or form request type. Open a user-reviewed email draft or private form, with no automatic reflection/history/credential attachments. Configure and verify the destination before release; share support's link-opening failure feedback and keep the action available. The owner selected email to `anthonyyoo24@gmail.com` October 9; opening the draft on a physical phone remains a release check. Public boards/voting are outside this scope.
 - Keep Settings, recovery, export/deletion and privacy usable in the free beta without a purchase. Hide or clearly disable commercial purchase controls while billing is inactive. Implement cleanup for configured vendors now; verify real billing-provider cleanup and management again when 07A is activated, before paid launch.
 - Configure and verify the owner-selected support email or help destination before release, as confirmed in the October 4 review. Any Get help action in account/saving recovery must open this working destination; do not ship placeholder actions or automatically include private reflection content/credentials. The owner selected `anthonyyoo24@gmail.com` October 9; verify the email-draft flow before release. Reuse the Phase 07 toast presentation for failed support/legal/subscription-management link opening, with plain-language feedback and the original action still available; account and purchase-verification failures retain their dedicated recovery UI.
-- Implement authenticated export and confirmed in-app deletion, immediate credential/session revocation, account cache clearing and durable vendor cleanup where required. Deletion must cover the automatically created no-signup account and associated data, not only deactivate it or require contacting support. Explain retained data and any cleanup delay. When billing is active, explain that account deletion does not cancel an Apple subscription, offer subscription management/cancellation, and retain the option to delete immediately. Define retention/backup behavior consistent with the published policy. See [Apple account-deletion guidance](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion).
+- Implement authenticated export and confirmed in-app deletion, immediate credential/session revocation, account cache clearing and durable vendor cleanup where required. Deletion must cover the automatically created no-signup account and associated data, not only deactivate it or require contacting support. Explain retained data and any cleanup delay. When billing is active, explain that account deletion does not cancel an Apple subscription, offer subscription management/cancellation, and retain the option to delete immediately. Apply the October 16 [retention defaults](DECISIONS.md#october-16-codebase-assessment-follow-up): confirm the Supabase plan's actual backup retention in its dashboard and record that number for Phase 10, and write a short backup restore checklist in `operations/FOUNDATION.md` (save the deletions made since the backup, restore into an isolated environment, reapply them and confirm those accounts stay deleted before reopening the app). The hosted rehearsal of that checklist belongs to Phase 11's paid-launch checkpoint. See [Apple account-deletion guidance](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion).
 - Finish diagnostic redaction and operational service-health dashboards. Keep private reflection text, credentials and other sensitive payloads out of diagnostics; retain safe request identifiers and actionable failure evidence. Product-event metrics and baseline collection belong to Phase 09.
+- Send API 5xx failures to an alerting log drain or error tracker using the same allowlisted, redacted log fields, so a production failure reaches the owner without anyone reading raw logs [SEC-1, server side].
+- Schedule the retention cleanup `architecture/IDENTITY.md` describes: rate buckets older than 30 days and unredeemed transfers expired more than 24 hours, removed in bounded batches. Run it as a protected job (Supabase `pg_cron` or a protected workflow using the migration role), never with mobile runtime access, and make it consistent with the deletion and backup rules above [API-7].
+
+<a id="phase-08-pre-merge"></a>
+
+#### Pre-merge stability fixes — October 16
+
+Main's hosted CI failed on October 15 and `npm run check` now stops at Expo Doctor, so these land on main before the remaining Phase 08 review branches merge. Each is small and reviewable on its own.
+
+1. **Dependency patches [STK-1].** Run `npx expo install --check` to take `expo` ~57.0.30 and `expo-router` ~57.0.28, then rerun `npm run doctor -w @justgo/mobile`. Native build/device acceptance stays in Phase 11, as for earlier patch alignments.
+2. **Flaky journeys [TST-1].** Find and fix why `e2e/progress-flow.spec.ts:258` (41 attempts with an unfinished inline reflection) hit its 60-second timeout on main's October 15 run, without weakening assertions or adding sleeps. Confirm that `1a0fb67` fixed the `identity-catalog.spec.ts:6` failure. Keep a masked failure artifact so the next flake is diagnosable.
+3. **CI triggers and duplicate runs [CI-1, CI-2, CI-3].** Run Expo Doctor as its own required job plus a weekly schedule, so an upstream patch recommendation no longer hides typecheck, lint and test results. Limit `push` to `main` while keeping `pull_request`, add `concurrency` with `cancel-in-progress`, and run each unit and database suite once, with coverage replacing the duplicate run.
+4. **Client errors stay client errors [API-3].** In the `/v1/` error handler, return unlisted 4xx statuses as client errors rather than 503 `UNAVAILABLE`; replace the nested ternaries with a lookup table, align contracts/OpenAPI if a code is added, and add regression tests.
+5. **Crash and unknown-link screens [RTR-2, RTR-3].** Export an Expo Router `ErrorBoundary` with a retry action from `app/_layout.tsx` and add `app/+not-found.tsx` returning to `/`. Add component tests and side-panel browser checks.
 
 #### Keep out of this phase
 
 - No Reset progress from the mockup, unconditional vendor forwarding, session replay/autocapture or journal/credential/audio payloads in telemetry.
-- No optional-analytics requirement for paid access or cloud saves.
+- No dependency of paid access or cloud saves on successful analytics delivery; Phase 09 owns the October 15 onboarding acceptance flow.
 - No practice reminders, reminder notification permissions/scheduling or public feature-request board in the first release. Revisit reminders in separately scheduled post-launch work.
 - No analytics activation or new consent implementation; these belong to Phase 09. No final legal drafting/review/publication or release-disclosure preparation; these belong to Phase 10.
 
@@ -1316,7 +1337,8 @@ from merged main and passes fresh root checks; native/release gates stay open.
 - [ ] Feature requests reuses the configured support contact flow/destination with a feature-request subject/type, remains usable without a purchase, sends no automatic private attachments and handles link-opening failure honestly.
 - [ ] Rating and social rows open their verified public destinations when configured, remain honestly unavailable otherwise, and retain a usable retry with plain feedback if opening fails. Actual App Store/profile opening remains a Phase 11 device check once these destinations exist.
 - [ ] Export/deletion isolate the owner, revoke credentials and document any pending cleanup; deleted identities cannot resurrect accounts.
-- [ ] Configured diagnostics and operational dashboards contain no sensitive payloads; data-control/recovery actions remain usable without paid access. Analytics opt-out acceptance belongs to Phase 09.
+- [ ] Configured diagnostics and operational dashboards contain no sensitive payloads; data-control/recovery actions remain usable without paid access. Phase 09 owns the single Terms & Privacy onboarding acceptance and removal of the unavailable analytics Settings rows under the October 15 decision.
+- [ ] The [pre-merge stability fixes](#phase-08-pre-merge) pass, `npm run check` passes with fresh Expo Doctor, and hosted CI is green for each merge candidate. API 5xx alerting and the scheduled retention cleanup have passing evidence.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; verify its file path below.
 
 **October 14 deletion implementation:** The separate `codex/phase-08-delete-account`
@@ -1442,49 +1464,183 @@ coverage gate pass. [Reproduction and verification](handoffs/phase-07-3-local-fl
 retain owner acceptance and wider device/gesture gates. Phase 08 scope and Git
 publication permissions remain unchanged.
 
+<a id="phase-08a"></a>
+
+### Phase 08A — Structure, docs & tooling cleanup
+
+**Status:** Not started — planned October 16 from the codebase assessment
+
+**Depends on:** 08 merged, including the account-deletion worktree, with no other feature branch open. File moves conflict with any open branch, so start only when the tree is quiet.
+
+**Acceptance references:** Existing implemented behavior; [AGENTS.md](../AGENTS.md) folder, move and verification rules; the [October 16 codebase assessment](https://claude.ai/code/artifact/f5067650-3c46-4c2e-bf14-1fcb107617ab) (bracketed IDs). This phase adds no product behavior or physical-device acceptance gates.
+
+**Outcome:** The repository is easier and cheaper to work in. Routes, folders and documentation match how the app works today, each URL has exactly one route file, route links are type-checked, and CI is faster and does not fail without a code change. Users see no difference.
+
+#### Implement
+
+1. **Documentation first, so Phase 09 starts on the new format [DOC-1–DOC-6].**
+   - Delete files that no longer work or label themselves superseded: `checks/check-plan.mjs` and `checks/plan-check-results.md` (the script reads the missing `IMPLEMENTATION_PLAN.html`; also drop that line from `.prettierignore`), `handoffs/00-planning-baseline.md`, `handoffs/01-ios-release-scope.md` and `operations/SHIPATON_PLAYBOOK.md`. Git keeps their history.
+   - Create `docs/archive/`. Move handoffs whose work and gates are complete (for example Phase 01, 06A, the folder cleanup and day-sheet performance), and `architecture/FRONTEND_ARCHITECTURE_LEARNING_MAP.md`. Keep the deferred 07.3A checkpoint and its browser assessment in place, because Phase 11's native smoke starts from them. Handoffs with open device or release gates move when Phase 11 closes those gates.
+   - Split this plan into a `docs/implementation-plan/` folder: a `README.md` with one status line per phase, the stage table, release order, how to use the plan and the handoff workflow, plus one named file per phase (for example `phase-08-settings-privacy.md`). Every phase file has only these sections: a status line (edited in place), Outcome, Decisions in force, Implement, Keep out, Ready to hand off when, and Open gates for Phase 11.
+   - While splitting, remove what is not a plan: every dated note in the header and phase sections (fold scope changes into Implement or Keep out and add a dated line to `DECISIONS.md`; progress already lives in handoffs), superseded or historical text, evidence inside spec bullets, test counts, commit SHAs, PR numbers, branch names and the missing-HTML-tracker references. Move the open-decisions table to `DECISIONS.md`, the App Store setup table to `operations/APPLE_SETUP.md` and the repository-structure section to `architecture/FOLDER_STRUCTURE.md`. Move Phase 07's settled technical design into architecture docs and archive its Oct 1–4 discussion record.
+   - Leave a short `IMPLEMENTATION_PLAN.md` stub pointing to the new folder so existing links keep working, update the plan path in AGENTS.md, and replace AGENTS.md's rule to update "the phase handoff, plan and handoff index" with: record results in the handoff, change the plan only when scope or a decision changes, and update the index row when status changes.
+   - Rewrite `architecture/APP_SHELL.md`, `architecture/FOLDER_STRUCTURE.md` and `operations/TESTING.md` to describe the current system by concern; move their per-phase evidence into handoffs. Split `architecture/TECH_STACK.md` into the implemented stack and `docs/proposals/` for unbuilt designs (Phase 07A jobs, the Stripe path, the AI coach).
+   - Merge `product/PHASE_04_SCOPE.md` into `product/CHALLENGES.md` and the Phase 04 handoff. Reduce `handoffs/phase-07-api-offline.md` to an index of the 07.1–07.5 handoffs.
+   - Apply the [October 16 handoff rule](DECISIONS.md#october-16-codebase-assessment-follow-up): a handoff records only what the next phase needs. Rewrite `handoffs/TEMPLATE.md` to these sections and nothing else: Summary and status; Decisions and why; Behavior that changed; Invariants to preserve; Problems that could recur; Setup or environment changes; Open gates (one table, edited in place); Final verification (date, commands, CI link). Small UI adjustments with no lasting decision, interim test runs and coverage numbers, browser steps, screenshot paths and merge or publication bookkeeping go in commit messages or PR descriptions instead.
+   - Rewrite `handoffs/phase-08-settings-privacy.md` (231 KB) to that template as one short file, keeping every decision, invariant, recurring problem and open gate it records and dropping the per-change history Git and PRs already hold. Fold `phase-08-reflection-keyboard.md` and the account-deletion handoff into it unless a part needs separate detail. Apply the same rule to the open Phase 09 planning handoff before Phase 09 starts.
+   - Turn `handoffs/README.md` into a table of phase, handoff, status and open gates. Add `docs/README.md` saying which file owns what. Move incident-specific lessons from AGENTS.md into the architecture document each concerns.
+   - Put design material in one `design/` tree: `docs/design-source/` becomes `design/source/` (updating the scripts that read it), third-party `docs/screen-refs/` images leave Git, routine `docs/checks/` screenshots move to `.local/` unless Anthony wants them kept, and `output/` is ignored entirely [REP-1, REP-2]. Confirm whether `product/CURRICULUM.md` still matches the six venue decks; archive it if not.
+2. **File-based routes [FS-1–FS-4, RTR-1, RTR-4].** Move the access gate from `app/index.tsx` to `app/access.tsx`, so Home in `(tabs)/index.tsx` is the only owner of `/` and `Stack.Protected` falls back to the gate. Replace `account/[tool].tsx` with static `recover`, `keys`, `devices`, `transfer` and `troubleshooting` files at the same URLs. Group `challenge`, `success` and `reflection` in a `(challenge)/` folder without a new layout, so URLs and native navigation are unchanged. Delete the `export-data.tsx` redirect. Turn on `experiments.typedRoutes`, include the generated types in `tsconfig.json` and generate them in CI before typechecking. Apart from `/` → `/access` for the gate, no URL changes; freeze the route list before Phase 11.
+3. **Mobile folders [MOB-1–MOB-7, FS-5].** Land the planned `features/challenges/{deck,active,success}/`, `lib/network/`, `platform/connectivity/` and `platform/modals/` groups. Move Settings to `features/settings/` and `IdentityScreen.tsx` into `app-support/identity/account/`. Rename `features/progress/calendar.ts` to `calendar-dates.ts`. Add an `api.ts` for the challenge catalog, Settings export, access check and Progress reads. In separate behavior commits, split `IdentityScreen` (transfer panel, recovery-key form, confirmation hook), key its actions by id rather than visible copy, and make its controller prop required.
+4. **API, database and contracts [FS-6–FS-8, FS-10, API-1, API-2, API-4, API-5, API-8, REP-4].** Move shared request plumbing into `apps/api/src/http/` (`ApiError`, the error handler, `bearer`, one `parse`, diagnostics). Use `routes.ts` and `service.ts` in every domain, rename `privacy/` to `account-export/`, and mirror `src/` folder names in `tests/`. Give the OpenAPI document its own `@justgo/contracts/openapi` entry used only by the API, and add a test comparing registered routes with its paths. Return the real seconds left in `retry-after`; report SQLSTATE codes and the failing migration from `scripts/migrate.ts`. Move the shared error envelope and health/readiness schemas into `contracts/src/errors.ts` and `operational.ts`. Clean `contracts/dist` before each build. Leave `drizzle/` and the single `schema.ts` where they are; Phase 11's paid-launch checkpoint splits the schema when billing tables join it [FS-9].
+5. **HTTP client robustness [SEC-2, SEC-3].** Fetch the URL `http.ts` validated rather than a separately concatenated string, and check status and content type before parsing JSON so edge error pages are not reported as network failures.
+6. **Tooling and tests [TL-1–TL-5, TST-3–TST-6, STK-3–STK-5, REP-5, REP-6].** Adopt type-checked typescript-eslint rules one at a time, plus Testing Library and React rules, the `globals` package and a non-null-assertion warning. Give mobile app source its own types without Jest or Node, and use `@types/node` 24. Add one smoke journey against the exported web build, split the five largest test files and merge the two DeckPreview test files. Remove the Expo template `LICENSE` and unused Android icons, document one import-extension rule, and replace the per-file contracts allowlist in `.vercelignore` with a folder rule.
+7. **CI [CI-4, CI-5, STK-4].** Split the workflow into parallel jobs (static checks, unit with coverage, database, journeys, exports), cache Playwright's browser, let CI use more Jest workers, add `timeout-minutes`, pin actions to commit SHAs, configure Dependabot or Renovate, and add an audit gate scoped to `@justgo/api`. Inspect hosted runs for the pushed commit before marking these complete.
+8. **Repository hygiene [REP-3].** With Anthony's approval for each deletion, remove merged local branches and archived worktrees, and resolve the stash on `codex/phase-07a-native-billing`. Optional, only if measured worthwhile: a React Compiler trial and a staged-files pre-commit hook [TL-6, TL-7].
+
+#### Implementation and verification order
+
+- One PR per step, in the order above. Keep move-only commits separate from behavior changes, and update `architecture/FOLDER_STRUCTURE.md` in the same PR as each move.
+- For moves, use import-aware rewrites, verify with cold bundles and restart Metro with `--clear` before reloading the installed development app, as AGENTS.md requires.
+- Run `npm run check` on every PR, `npm run test:db` for API and contracts steps, side-panel browser checks for route and mobile steps, and simulator checks of launch, sign-out, account switching and the first and repeated challenge flow for the route step.
+
+#### Keep out of this phase
+
+- Product behavior, copy, design or URL changes other than the gate's move to `/access`; new features; API wire changes beyond what Phase 08's pre-merge fixes already made.
+- The Expo SDK 58 / React Native 0.88 upgrade, native module changes or a new signed build; these remain a separate task before Phase 11.
+- Release automation, write-route rate limits, retention jobs and crash reporting, which belong to Phases 11, 08 and 09.
+
+#### Ready to hand off when
+
+- [ ] Documentation matches step 1: listed files deleted or archived, the plan split with a working stub, architecture/testing docs describe the current system, the handoff index is a table and every changed internal link resolves.
+- [ ] Every URL has one route file, typed routes are on and checked in CI, account pages are static files, and simulator checks pass for launch, sign-out, account switching and the challenge flow.
+- [ ] The folder guide matches the tree on disk and an architecture test fails when a listed path is missing; moves preserve behavior with passing `npm run check`, `npm run test:db` and browser checks.
+- [ ] The OpenAPI document is absent from the exported iOS bundle and a test keeps its paths aligned with registered routes; shared API plumbing lives in `src/http/`.
+- [ ] CI runs in parallel jobs with each suite once, timeouts, pinned actions and dependency updates, and hosted checks pass for the pushed commit.
+- [ ] Save the phase handoff with exact changes, verification evidence and any explicit deferrals; verify its path below.
+
+**Carry forward:** Documentation layout and file owners, the frozen route list, the updated folder guide, CI job layout and lint rules, and any deferred cleanup with its owner.
+
+**Handoff file to create:** `handoffs/phase-08a-structure-cleanup.md`
+
 <a id="phase-09"></a>
 
 ### Phase 09 — Analytics & consent
 
-**Status:** Not started — telemetry export remains disabled; Settings choices remain unavailable
+**Status:** Not started — single onboarding acceptance, measurement plan and October 15 app changes planned; telemetry export remains disabled
 
-**Depends on:** 08, including verified account isolation and deletion/cleanup behavior.
+**Depends on:** 08, including verified account isolation and deletion/cleanup behavior, and 08A's documentation and folder structure.
 
 **Acceptance references:** PRD §8, AC-16 · Tech §9; acceptance 8, 16–17
 
-**Outcome:** Useful product measurement respects separate general-analytics and sensitive-metadata choices, without interrupting product saves.
+**Outcome:** Useful product measurement follows one Terms & Privacy onboarding acceptance for the disclosed analytics scope, with no analytics on/off controls in Settings or later analytics permission prompt. Analytics failures never interrupt product saves. Venue decks are shuffled once and resume where the user left off, the last venue is remembered, and Reflection has a single bottom exit.
 
 #### Implement
 
-- Define the measurement questions, explicit event allowlist, validated property schemas and metric definitions for implemented product flows. Separate UI intent from confirmed domain outcomes. Challenge Start/Give up remain local product actions with no required backend attempt save. Deferred onboarding and inactive purchases do not gain new flows merely to generate analytics.
+- Implement the [measurement plan](#phase-09-measurement) below: its event allowlist with validated property schemas, `start_id` linking, and metric definitions in the event dictionary. Separate UI intent from confirmed domain outcomes. Challenge Start/Give up remain local product actions with no required backend attempt save. Only the Terms & Privacy onboarding page is newly approved; welcome/questionnaire onboarding and inactive purchases do not gain new flows merely to generate analytics.
 - Confirm PostHog project/environment separation, pseudonymous account identifiers, region, retention and account-deletion cleanup. The architecture's 90-day event retention is a proposal to approve and configure, not an existing guarantee. Reuse Phase 08 deletion ownership and cleanup behavior for the configured analytics provider.
-- Finalize understandable consent copy and implement the two Settings choices with account-owned persistence and matching client/server enforcement. General analytics and sensitive feeling/reflection metadata are separate choices. Unknown/declined consent blocks optional forwarding; account changes and slow hydration must not reuse another account's choice. Cloud journaling, recovery/data controls and eligible paid access remain independent of analytics consent.
+- Implement one Terms & Privacy onboarding page with a short data explanation, Terms of Service and Privacy Policy links, and an explicit continuation/acceptance action. This is the only permission request for the Phase 09 analytics scope. Verify legal-link wiring and failure behavior against clearly labeled development/test destinations while Phase 10 finalizes public URLs; final public links remain a Phase 10/11 release gate, not a circular dependency for Phase 09 implementation handoff. Remove both unavailable analytics Settings rows and do not replace them with switches or a later prompt. Welcome/questionnaire screens remain deferred.
+- Persist an account-owned receipt identifying the accepted Terms, Privacy Policy and analytics scope versions and acceptance time. Apply the same acceptance boundary on client and server; unconfirmed/missing acceptance blocks forwarding, including delayed work. Handle existing accounts as well as new installs without reusing another account's receipt during recovery, account changes or slow hydration. Keep recovery/export/deletion reachable and preserve saved/pending activity; analytics/provider failures must not interfere with cloud saving or eligible paid access.
+- Adapt the How We Feel copy to actual JustGO behavior: submitted activity is saved on the phone and uploaded to private account records; persistent pseudonymous identifiers are not anonymous/non-identifying; the purpose is understanding app usage and improving JustGO. The single explanation and linked policy must cover the actual transmitted fields, including feeling selections and coarse reflection-length categories if included. Use the draft in the handoff, with final wording and regional sufficiency reviewed in Phase 10; a bundled acceptance is a product decision, not an established legal exemption.
 - Activate explicit PostHog events through consent-aware client/server adapters. Server-confirmed events follow successful transactions and use stable domain-derived IDs; client-only interactions use the approved single consent-aware boundary. Record occurrence/receipt timestamps and prevent retry double-counting. Delivery is best effort and analytics failures must not fail a saved completion or reflection.
-- Allow feeling codes and coarse reflection-length categories only under the applicable sensitive-metadata choice. Compute approved categories without exporting the words. Disable autocapture/session replay and exclude journal text, audio, credentials, payment details and contact data from event payloads. Recheck consent before forwarding queued or delayed work; withdrawal must stop future client and server delivery.
+- Allow feeling codes and coarse reflection-length categories only within the disclosed, accepted and reviewed analytics scope, with no separate sensitive-metadata switch. Compute approved categories without exporting the words. Disable autocapture/session replay and exclude journal text, audio, credentials, payment details and contact data from event payloads. Recheck acceptance and account eligibility before delayed delivery. Preserve enforcement of deletion and applicable withdrawal/objection requests through the reviewed privacy-request process; no Settings toggle does not remove these rights.
 - Route future billing measurement through the same server consent checks; do not enable unconditional RevenueCat-to-PostHog forwarding. Preserve Phase 07A's activation sequencing and verify the integration again before paid launch.
-- Create a small product dashboard for the agreed usage, challenge-flow and return-rate questions. Define cohort anchors, eligible observation windows and missing-data handling; label that results represent consenting users. Collect a baseline before setting targets. Sensitive-metadata comparisons use only the eligible consenting subset; retrospective feelings and retention correlations do not establish wellbeing improvement or causation.
-- Verify consent persistence/withdrawal, account changes, stale callbacks, allowed/blocked payloads, duplicate delivery, provider outages and deletion cleanup with relevant automated and interactive evidence. Supply actual collection/provider facts to Phase 10's data inventory and public notices. Operational service-health dashboards and diagnostic redaction remain Phase 08 responsibilities, with release verification in Phase 11.
+- Create a small product dashboard for the agreed usage, challenge-flow and return-rate questions. Define cohort anchors, eligible observation windows and missing-data handling; describe the actual population with recorded acceptance and eligible events. Collect a baseline before setting targets. Sensitive-metadata comparisons use only the reviewed scope; retrospective feelings and retention correlations do not establish wellbeing improvement or causation.
+- Verify first-use and existing-account acceptance, persistence, hydration/account changes, stale callbacks, allowed/blocked payloads, duplicate delivery, provider outages and deletion/privacy-request cleanup with relevant automated and interactive evidence. Verify the absence of analytics Settings controls and later analytics prompts. Supply actual collection/provider facts and acceptance copy to Phase 10's data inventory and public notices. Operational service-health dashboards and diagnostic redaction remain Phase 08 responsibilities, with release verification in Phase 11.
+- Add app crash and error reporting (for example Sentry) so production crashes and unhandled failures are visible [SEC-1]. Scrub reports to the same allowlist as server logs: never reflection text, feelings, tokens, recovery keys or request bodies. Connect it to the root `ErrorBoundary` from Phase 08. Settle with Phase 10 whether it falls under the onboarding acceptance or the Privacy Policy alone, and record the provider in the data inventory.
+
+<a id="phase-09-measurement"></a>
+
+#### Measurement plan — October 15
+
+Owner-approved October 15. The aim is to learn which challenges and venues people take on, how often they finish, how feelings and reflections relate to what people do next, and what brings them back within a day and across consecutive days.
+
+**Questions the events must answer**
+
+- Which challenges are accepted (swipe right) or passed (swipe left), with cards shown as the denominator, by challenge and venue.
+- Which venues people are in when they accept a challenge.
+- How often a started challenge is completed, given up or left without an outcome, by challenge and venue.
+- After a completion or a give-up, how often the user starts another challenge in the same session, the same day, the next day and later, and how often they stop using the app.
+- How often users record a feeling and/or write a reflection after each challenge, and which feelings follow which challenges.
+- What users do after each feeling: for example, whether "A lot worse" is followed by another challenge or by leaving the app, and how many challenges follow "A lot better" within the next hour and day.
+- How return rates differ between users who record only a feeling, users who also write a reflection, and users who write longer reflections.
+
+**Event allowlist**
+
+Every event carries the pseudonymous account identifier, occurrence timestamp, app version and a stable event ID for deduplication (the event name with its `start_id` or `attempt_id` where one exists). Properties not listed here are not sent.
+
+| Event                 | When it fires                                           | Properties                                                              |
+| --------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `app_opened`          | The app starts or returns to the foreground             | —                                                                       |
+| `app_backgrounded`    | The app leaves the foreground                           | —                                                                       |
+| `venue_selected`      | The user taps a venue pill                              | `venue`, `previous_venue`                                               |
+| `card_shown`          | A card becomes the front, actionable card               | `challenge_id`, `placement_id`, `venue`                                 |
+| `card_passed`         | Swipe left or X                                         | `challenge_id`, `placement_id`, `venue`                                 |
+| `challenge_started`   | Swipe right or heart                                    | `start_id`, `challenge_id`, `placement_id`, `venue`                     |
+| `challenge_given_up`  | Give up                                                 | `start_id`, `challenge_id`, `placement_id`, `venue`                     |
+| `challenge_completed` | Completed, after the phone save succeeds                | `start_id`, `attempt_id`, `challenge_id`, `placement_id`, `venue`       |
+| `reflection_saved`    | Save Reflection on the post-challenge Reflection screen | `attempt_id`, `has_feeling`, `has_text`, `feeling`, `reflection_length` |
+| `reflection_skipped`  | Skip on the post-challenge Reflection screen            | `attempt_id`                                                            |
+| `progress_viewed`     | The Progress screen opens                               | —                                                                       |
+| `day_sheet_opened`    | A calendar day sheet opens                              | —                                                                       |
+
+- `feeling` uses the existing contract codes (`a_lot_worse` … `a_lot_better`) and is present only when a feeling was chosen.
+- `reflection_length` is a word-count bucket computed on the phone (`1-9`, `10-29`, `30-79`, `80+`) and is present only when text was submitted. The words themselves never enter an event.
+- Billing events remain owned by Phase 07A and the billing bullet above.
+
+**Linking a start to its outcome**
+
+- On swipe right, the app generates a random `start_id` and keeps it with the in-memory challenge start (card, start time and time zone). `challenge_started`, `challenge_given_up` and `challenge_completed` all carry it, so each outcome matches its start even when an event is lost or arrives late. A start with no outcome event within the window set in the event dictionary counts as left without an outcome.
+- `start_id` is analytics-only. Do not add it to the saved attempt, the API contract or PostgreSQL. The attempt UUID is still created when Completed is tapped; `challenge_completed` carries it so reflection events link to the same completion.
+- Send `challenge_completed` from the client through the single acceptance-aware analytics boundary once the phone save succeeds, deduplicated by attempt UUID, rather than waiting for the backend upload. PostgreSQL remains the exact record for reps, calendar and streaks; PostHog covers accepting users with best-effort delivery and is used for rates and patterns.
+
+**Event dictionary and analysis**
+
+- Write `docs/architecture/ANALYTICS_EVENTS.md`: one entry per event with when it fires, each property's meaning and allowed values, and the metric definitions (sessions, cohort anchors, observation windows and the left-without-outcome window). Keep it in step with the runtime schemas.
+- Answer the questions above from the PostHog dashboard. The events above are sufficient; no database access is needed for this analysis.
+
+**Not recorded:** time spent viewing a card, seconds elapsed or the timer reaching zero (no goal-reached event), how the user left the Reflection screen, and whether a venue was the launch default or chosen by the user.
+
+<a id="phase-09-app-changes"></a>
+
+#### App changes — October 15
+
+Owner-approved product changes outside analytics. They do not depend on PostHog or the acceptance page, so implement and verify them first.
+
+1. **Shuffled, saved venue decks.**
+   - When an account first has the catalog on this phone, shuffle each venue's placements once, using an injected random source so tests control the order.
+   - Save each venue's card order and current front card on the phone, scoped to the account beside the downloaded catalog. Skip, give up and completion keep rotating the saved order as today; on relaunch each venue resumes at the same card.
+   - When a catalog refresh adds placements, insert them at random positions in the saved order; drop removed or inactive placements. Never fabricate cards.
+   - Missing, unreadable or invalid saved state falls back to a fresh shuffle without blocking Home. Saving this state is best effort: a failed write keeps the in-memory deck working and never shows the saving or loss-risk banner.
+   - An account change loads only that account's saved order.
+2. **Saved last venue.** Save the selected venue with the deck state. Relaunch opens on it; new accounts and missing or unknown saved values open on Streets.
+3. **Reflection exit.** Remove the top Back/X control from the post-challenge Reflection screen. The bottom action (Skip with no input, Save Reflection otherwise) becomes the only exit; the screen's swipe-back gesture is already disabled. Remove the Save / Keep editing / Discard prompt that only Back/X reached. Verify the bottom action stays visible and reachable with the keyboard open on the smallest supported iPhone and at large text sizes. The Progress day-sheet editor keeps its existing dirty-close prompt.
+4. **Documentation.** Update PRD §5.1 (deck order and venue persist instead of resetting on a fresh launch, with the one-time shuffle), PRD §5.4 (bottom action is the only exit), PRD §8 (align the event list with the allowlist above), the venue-stack line in `product/CHALLENGES.md`, and the data inventory (deck and venue state stays on the phone and is not uploaded or sent to analytics).
+
+**Order:** app changes 1–3 → Terms & Privacy page and acceptance receipt → event allowlist and adapters → event dictionary and dashboard.
 
 #### Keep out of this phase
 
-- No required analytics for cloud saves or paid access, raw journal/credential/audio payloads, session replay/autocapture, unconditional vendor forwarding or invented conversion/wellbeing targets.
-- No onboarding, billing activation, experiments, transactional analytics outbox or other unimplemented product feature merely for measurement.
+- No analytics Settings switches, separate sensitive-metadata permission request, later analytics prompt, pre-acceptance forwarding, raw journal/credential/audio payloads, session replay/autocapture, unconditional vendor forwarding or invented conversion/wellbeing targets. Analytics delivery success is never a requirement for a product save or paid access.
+- No welcome/questionnaire onboarding beyond the approved Terms & Privacy page, billing activation, experiments, transactional analytics outbox or other unimplemented product feature merely for measurement. This analytics decision does not authorize unrelated OS permissions or future AI-context sharing.
 - No final legal publication, App Store submission or release deployment; those belong to Phases 10 and 11 under their separate authorization rules.
 
 #### Ready to hand off when
 
-- [ ] Both consent choices are understandable, persisted for the correct account and enforced by client/server paths; unknown/declined choices block optional forwarding.
-- [ ] Consent withdrawal/account changes fence delayed delivery, and declining analytics leaves cloud saves, recovery and eligible paid access working.
+- [ ] One understandable Terms & Privacy page has verified legal-link wiring/failure behavior and an account-owned, versioned acceptance receipt (final public URLs remain Phase 10/11 acceptance); new and existing accounts cannot forward analytics before acceptance. No analytics switches remain in Settings and no later analytics prompt is added.
+- [ ] Account changes, missing acceptance, deletion and applicable privacy requests fence delayed client/server delivery. Recovery/data controls remain reachable; saved/pending activity and product saves survive acceptance/provider failures.
 - [ ] Explicit event schemas, stable IDs, deduplication and provider-failure isolation have passing evidence; transmitted payloads contain only approved fields.
 - [ ] Provider region, identifiers, retention and deletion cleanup are configured/verified and recorded for Phase 10; future billing integration checks remain explicitly owned by 07A/11 until activated.
-- [ ] Initial product reports have documented metric definitions and baseline collection; no unsupported wellbeing or all-user claim is made from opted-in data.
+- [ ] Initial product reports have documented metric definitions, eligible population and baseline collection; no unsupported wellbeing or all-user claim is made.
+- [ ] Venue decks shuffle once per account and resume with the saved order and last venue after relaunch, account change and catalog refresh; invalid saved state falls back without blocking Home. Reflection has no top Back/X, and its bottom action stays reachable with the keyboard open.
+- [ ] The measurement-plan events, including `start_id` linking, send only allowlisted properties; the event dictionary is written; and the measurement questions can be answered from the dashboard.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test/browser/device evidence and any open gates; verify its path below.
 
-**Carry forward:** Consent/event schemas and versions, adapter behavior, provider/environment settings, retention/deletion evidence, metric definitions, dashboard links and baseline limitations; verified facts for Phase 10 and release acceptance for Phase 11.
+**Carry forward:** Event dictionary, acceptance copy/receipts and legal/scope versions, event schemas, adapter behavior, provider/environment settings, retention/deletion/privacy-request evidence, metric definitions, dashboard links and baseline limitations; verified facts for Phase 10 and release acceptance for Phase 11.
 
-**Handoff file to create:** `handoffs/phase-09-analytics.md`
+**Handoff:** [Phase 09 planning record](handoffs/phase-09-analytics.md); implementation evidence remains to be added.
 
-**Working notes / blocker:** October 14: Anthony moved the analytics scope out of Phase 08 into this whole-number phase. Existing telemetry remains a non-exporting stub and both Settings choices remain unavailable. This planning split does not install/enable a provider, change collection behavior or claim acceptance.
+**Working notes / blocker:** October 14 moved analytics out of Phase 08. October 15 replaces the two planned Settings choices with the single onboarding acceptance above, and later that day adds the measurement plan and the deck, venue and Reflection app changes. Existing telemetry remains a non-exporting stub and the unavailable Settings rows have not yet been removed. This planning change does not install/enable a provider, implement the page, establish legal sufficiency or close acceptance gates.
 
 <a id="phase-10"></a>
 
@@ -1492,7 +1648,7 @@ publication permissions remain unchanged.
 
 **Status:** Data inventory, Privacy Policy and Terms drafts prepared — review, finalization and publication remain open
 
-**Depends on:** 08 for verified data-control/retention behavior and 09 for the actual analytics choices/provider configuration. Review can begin alongside implementation; final notices must describe the verified release behavior.
+**Depends on:** 08 for verified data-control/retention behavior and 09 for the actual onboarding acceptance, analytics scope and provider configuration. Review can begin alongside implementation; final notices must describe the verified release behavior.
 
 **Acceptance references:** PRD §8, AC-15–16 · applicable privacy and iOS release-disclosure acceptance
 
@@ -1502,11 +1658,13 @@ publication permissions remain unchanged.
 
 - Continue from the existing [data inventory](legal/DATA_INVENTORY.md), [Privacy Policy draft](legal/PRIVACY_POLICY_DRAFT.md), [Terms draft](legal/TERMS_DRAFT.md) and [review checklist](legal/LEGAL_REVIEW.md); retain the earlier drafting/research evidence. Resolve the review notes with the owner and applicable reviewer rather than claiming worldwide sufficiency from a draft.
 - Resolve operator/jurisdiction/contact details, individual-versus-legal-entity eligibility, regional rights/processing/transfer/provider-agreement review, intended 18+ treatment and Terms/Apple EULA compatibility. Record decisions and any remaining release conditions with an owner and Phase 11 gate.
-- Reconcile collection, providers/regions, purposes, consent, export, deletion/revocation, pending cleanup and retention/backup behavior with the verified implementations. Phase 08 owns deletion/storage mechanics and Phase 09 owns analytics settings; this phase documents those results without inventing a deletion deadline or retention guarantee. Planned/inactive services must be described honestly.
+- Reconcile collection, providers/regions, purposes, consent, export, deletion/revocation, pending cleanup and retention/backup behavior with the verified implementations. Phase 08 owns deletion/storage mechanics and Phase 09 owns onboarding acceptance and analytics enforcement; this phase documents those results without inventing a deletion deadline or retention guarantee. Planned/inactive services must be described honestly.
+- Write the retention section from the October 16 [retention defaults](DECISIONS.md#october-16-codebase-assessment-follow-up): immediate deletion of account activity; a permanent minimal deletion record with no personal content; deleted data leaving backups within the backup period Phase 08 confirmed; short server-log retention with no private content; support emails deleted after 12 months unless still open; and the analytics period Phase 09 configures.
 - Prepare final readable public text, remove draft/review placeholders, set the approved version/effective date and obtain owner content review. Follow the [publication sequence](legal/LEGAL_REVIEW.md#publication-sequence).
 - Prepare a simple public static site with stable HTTPS Privacy/Terms routes and the selected host/domain. Publish only after the separate owner content/hosting approval, preserve protected API preview settings and verify anonymous phone access. Configure and verify Settings/legal links, including existing link-opening failure feedback and relevant native surfaces.
 - Prepare App Privacy, age/eligibility, contact/support and Terms/EULA disclosure answers from the actual inventory and enabled vendors. Phase 11 verifies the final signed bundle's privacy manifests/required-reason APIs and tracking/ATT assessment, and enters/submits final App Store metadata. Record discrepancies as open release tasks, not completed disclosure evidence.
 - Keep the free-beta notices accurate while billing is inactive. When 07A activates, reconcile the paid offer, billing providers, subscription-management/deletion explanation and any changed collection before Phase 11 paid launch. Future analytics/vendor changes require revisiting the notice and consent, rather than silently reusing old wording.
+- Decide two open disclosure questions from the codebase assessment. First, whether production keeps publishing the full API description at `/openapi.json` [SEC-4]. Second, whether private reflections may stay in unencrypted AsyncStorage protected only by iOS default data protection, as `legal/DATA_INVENTORY.md` records, or need a Keychain-keyed encrypted journal before release [SEC-5]. Record each decision, and any implementation task it creates, with an owner phase.
 
 #### Keep out of this phase
 
@@ -1543,13 +1701,18 @@ publication permissions remain unchanged.
 #### Free TestFlight beta checkpoint — before payment activation
 
 - Define authenticated, server-authorized free tester access in an isolated non-production environment, including coverage for offline use and synchronization. Keep real identity/ownership boundaries, preserve tester history and plan how beta access ends or transitions when payments launch. Do not deploy the local fixture server or rely on a client premium switch. Purchases remain disabled and the beta explains that access is free during testing.
-- Finish Phases 08–10 and run the applicable core-product/privacy/recovery/accessibility acceptance checks on the actual signed iOS build and physical devices. Keep native/Keychain/storage, valuable-data recovery and environment-isolation gates explicit; a browser export is not sufficient evidence. Verify the accepted analytics choices and the approved public notices/disclosure preparation against the actual beta build.
+- Finish Phases 08–10 and run the applicable core-product/privacy/recovery/accessibility acceptance checks on the actual signed iOS build and physical devices. Keep native/Keychain/storage, valuable-data recovery and environment-isolation gates explicit; a browser export is not sufficient evidence. Verify the single Terms & Privacy acceptance, absence of analytics Settings switches and approved public notices/disclosure preparation against the actual beta build.
 - Deploy the matching reviewed API/schema to the test environment, verify backup/restoration and old-client compatibility/cutover, and prepare an EAS-signed build, beta review information, support contact and tester instructions. Obtain separate build/upload/distribution authorization where required by the repository's native-build and release rules. External testers need Apple's TestFlight beta review.
 - Collect feedback and resolve beta-blocking issues. Record the build/commit, tester access policy, device evidence and remaining paid-only checks in the Phase 11 handoff. A beta does not establish paid-launch acceptance.
+- Before the beta build, complete the Expo SDK 58 / React Native 0.88 upgrade as its own native-upgrade task, with a new signed development build and a device recheck of affected native behavior [STK-2].
+- Set the app icon and splash in `app.config.ts` from the existing `assets/icon.png` and `assets/splash-icon.png`, embed Inter through the `expo-font` config plugin, and keep the splash visible until fonts and providers are ready [RTR-5].
+- Automate release steps [CI-6, CI-7]: switch `eas.json` to remote app versions with `autoIncrement` on the production profile; pin the EAS CLI version; build and submit to TestFlight from a tag; run migrations through a protected workflow with manual approval and a log; and smoke-check `/ready` after each deploy. These workflows still need the existing separate authorization before any upload or deployment.
+- Rate-limit authenticated write routes (attempts, reflections, export), or add an equivalent Vercel firewall rule, and check the limits against measured beta traffic [API-6].
+- Run a small Maestro smoke against a simulator build in CI, starting from the deferred [07.3A checkpoint](handoffs/phase-07-3a-testing-checkpoint.md), so native launch, recovery and the challenge flow have automated coverage before testers arrive [TST-2].
 
 #### Paid launch checkpoint — after the free beta and accepted 07A
 
-Complete real store/provider configuration, native purchase/restore and all 07A acceptance gates, then run the integrated checks below with payments enabled. Reconcile beta-account/history preservation and the free-to-paid transition before inviting testers to a paid release.
+Complete real store/provider configuration, native purchase/restore and all 07A acceptance gates, then run the integrated checks below with payments enabled. Reconcile beta-account/history preservation and the free-to-paid transition before inviting testers to a paid release. When the billing tables join `apps/api/src/db/schema.ts` at this checkpoint, split it into `schema/identity.ts`, `schema/catalog.ts`, `schema/activity.ts`, `schema/billing.ts` and an `index.ts`, and point `drizzle.config.ts` at the folder; this must generate no migration by itself [FS-9]. Before the paid launch, rehearse Phase 08's backup restore checklist once on the hosted test server with a disposable account: back up, delete the account, restore into an isolated environment, reapply the deletion and confirm the account stays deleted before reopening writers.
 
 #### Implement
 
@@ -1557,7 +1720,7 @@ Complete real store/provider configuration, native purchase/restore and all 07A 
 - Load-test interactive saves/history/purchase checks together with billing bursts and reconciliation using provider test doubles. Measure database connections/CPU/locks, API latency, queue age/drain time and choose configurable capacity limits.
 - Deploy the integrated API and mobile build to a non-production staging environment, applying all reviewed migrations in order, including `0013_attempt_resources_contract`, under the [coordinated cutover and repair procedure](operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients). Retire/block incompatible writers, verify a restorable backup and preservation comparisons, and accept the matching API/mobile together before reopening traffic. Verify end-to-end behavior before production, environment isolation, restoration/forward repair, old-client retirement, alert delivery, scheduler heartbeat and incident/replay instructions. After contraction, do not roll back the old API alone against removed schema. Confirm paid-plan allowances and operating budgets.
 - Follow the App Store checklist below: EAS production build/upload, TestFlight, listing/screenshots/privacy/support, reviewer access and App Review submission. Upload is not review approval. Record submission/release authorization and monitor real purchase/restore and errors after launch.
-- Audit the submitted native bundle and configured SDKs for valid privacy manifests and approved reasons for any required-reason APIs. Reconcile actual cloud journal, analytics, billing and private feedback collection with App Privacy disclosures and the published policy; distinguish optional product analytics consent from Apple's ATT permission, which is required if the actual SDK/data use performs tracking under Apple's definition. Check current screenshot, build-SDK and export-compliance requirements immediately before submission. See [Apple privacy/data-use guidance](https://developer.apple.com/app-store/user-privacy-and-data-use/) and [required-reason API guidance](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api).
+- Audit the submitted native bundle and configured SDKs for valid privacy manifests and approved reasons for any required-reason APIs. Reconcile actual cloud journal, analytics, billing and private feedback collection with App Privacy disclosures and the published policy; distinguish the product's onboarding acceptance from Apple's ATT permission, which is required if the actual SDK/data use performs tracking under Apple's definition. Check current screenshot, build-SDK and export-compliance requirements immediately before submission. See [Apple privacy/data-use guidance](https://developer.apple.com/app-store/user-privacy-and-data-use/) and [required-reason API guidance](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api).
 
 #### Keep out of this phase
 
