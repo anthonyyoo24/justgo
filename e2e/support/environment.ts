@@ -1,5 +1,24 @@
-export const journeyApiUrl = 'http://127.0.0.1:3000';
-export const journeyAppUrl = 'http://127.0.0.1:8081';
+export function journeyServiceUrls(env: NodeJS.ProcessEnv) {
+  const port = (key: string, fallback: number) => {
+    const raw = env[key] ?? String(fallback);
+    if (!/^\d+$/.test(raw) || Number(raw) < 1024 || Number(raw) > 65535)
+      throw new Error(
+        'Journey fixture ports must be integers from 1024 to 65535',
+      );
+    return Number(raw);
+  };
+  const apiPort = port('JUSTGO_JOURNEY_API_PORT', 3000);
+  const appPort = port('JUSTGO_JOURNEY_APP_PORT', 8081);
+  if (apiPort === appPort)
+    throw new Error('Journey fixture ports must be distinct');
+  return {
+    api: `http://127.0.0.1:${apiPort}`,
+    app: `http://127.0.0.1:${appPort}`,
+  };
+}
+const serviceUrls = journeyServiceUrls(process.env);
+export const journeyApiUrl = serviceUrls.api;
+export const journeyAppUrl = serviceUrls.app;
 
 /** Fixture writes must never reach a deployed or non-test database. */
 export function journeyEnvironment(env: NodeJS.ProcessEnv) {

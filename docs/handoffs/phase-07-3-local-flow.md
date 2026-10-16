@@ -412,7 +412,7 @@ merge was performed for this follow-up, and Phase 08/device acceptance stays ope
 - Commands use scoped `DEVELOPER_DIR` with installed Xcode; no global developer
   selection, reinstall, keys/history reset or reflection text entry occurred.
   VoiceOver, physical-iPhone, broader lifecycle/storage and owner gesture acceptance
-  remain assigned to Anthony / Phase 09. The macOS Screenshot selection overlay
+  remain assigned to Anthony / Phase 11. The macOS Screenshot selection overlay
   was closed at the owner's request; all background recorders were stopped.
 - Ignored `.local/phase-08-completion-flicker/` contains diagnostic/final videos,
   extracted timestamped frames and `prepared-success-*` verification logs. No visual
@@ -493,7 +493,7 @@ completion change above is retained. No Git publication or native build occurred
   manual button/recording checks are distinct from saved journeys and device gates.
 - Scoped Xcode selection reused the installed simulator app without reinstalling,
   resetting keys/history or entering reflection text. Evidence and logs remain
-  ignored under `.local/phase-08-accept-flicker/`. Owner acceptance and Phase 08/09
+  ignored under `.local/phase-08-accept-flicker/`. Owner acceptance and Phase 08/11
   release gates remain open; this fix does not complete Settings or native billing.
 
 ## Remaining work and risks
@@ -508,7 +508,7 @@ completion change above is retained. No Git publication or native build occurred
 | Destructive legacy API/schema removal, full product-doc reconciliation and full hosted journey acceptance.                                                              | Phase 07.5, after approved 07.4.                                                                                      |
 | Verified native billing/subscription coverage and unchanged access policy’s provider integration.                                                                       | Phase 07A.                                                                                                            |
 | Hosted CI for the current review-fix revision and owner code review.                                                                                                    | The owner authorized this review-fix push. Verify its exact hosted head; owner acceptance/merge approval remain open. |
-| Earlier physical-device/staging/release gates.                                                                                                                          | Original phase handoffs / Phase 09.                                                                                   |
+| Earlier physical-device/staging/release gates.                                                                                                                          | Original phase handoffs / Phase 11.                                                                                   |
 
 ## Next phase: read this first
 

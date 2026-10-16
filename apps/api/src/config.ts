@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { readBetaGrants } from './access/beta-access.js';
+import { readBetaAccessWindow, readBetaGrants } from './access/beta-access.js';
 
 const configSchema = z.object({
   APP_ENVIRONMENT: z.enum(['production', 'staging']).default('production'),
   BETA_ACCESS_GRANTS: z.string().default('[]'),
+  BETA_ACCESS_WINDOW: z.string().default('null'),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
@@ -35,7 +36,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   if (!result.success) throw new Error('Invalid API environment configuration');
   const config = result.data;
   const grants = readBetaGrants(config.BETA_ACCESS_GRANTS);
-  if (config.APP_ENVIRONMENT !== 'staging' && grants.length > 0)
+  const accessWindow = readBetaAccessWindow(config.BETA_ACCESS_WINDOW);
+  if (
+    config.APP_ENVIRONMENT !== 'staging' &&
+    (grants.length > 0 || accessWindow)
+  )
     throw new Error('Beta access is allowed only in staging');
   if (config.NODE_ENV === 'production' && !config.DATABASE_URL)
     throw new Error('DATABASE_URL is required in production');
@@ -57,6 +62,10 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
         'Unencrypted database connections are allowed only on loopback',
       );
   }
-  return { ...config, BETA_ACCESS_GRANTS: grants };
+  return {
+    ...config,
+    BETA_ACCESS_GRANTS: grants,
+    BETA_ACCESS_WINDOW: accessWindow,
+  };
 }
 export type Config = ReturnType<typeof readConfig>;

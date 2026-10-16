@@ -42,12 +42,16 @@ async function account() {
   users.push(result.userId);
   return { ...input, userId: result.userId };
 }
-function app(grants: Parameters<typeof createBetaAccess>[0]) {
+function app(
+  grants: Parameters<typeof createBetaAccess>[0],
+  accessWindow: Parameters<typeof createBetaAccess>[2] = null,
+  now: () => number = Date.now,
+) {
   const result = buildApp({
     identity,
     logger: false,
     checkDatabase: async () => {},
-    ...createBetaAccess(grants),
+    ...createBetaAccess(grants, now, accessWindow),
   });
   apps.push(result);
   return result;
@@ -84,6 +88,127 @@ afterAll(async () => {
   }
 });
 describe('real authenticated free test access', () => {
+  it('automatically admits a fresh account and its replacement after deletion without reviving the deleted session', async () => {
+    const a = await account();
+    const api = app([], {
+      startsAt: iso(Date.now() - 60_000),
+      expiresAt: iso(Date.now() + 3_600_000),
+    });
+    expect((await api.inject('/v1/access')).statusCode).toBe(401);
+    expect(
+      (await request(api, a.sessionToken, '/v1/access')).json(),
+    ).toMatchObject({ status: 'verified', source: 'free_beta' });
+    const catalog = await request(api, a.sessionToken, '/v1/challenges');
+    expect(catalog.statusCode).toBe(200);
+    const card = catalog.json<Catalog>().cards[0]!;
+    expect(
+      (
+        await request(api, a.sessionToken, '/v1/attempts', {
+          id: randomUUID(),
+          challengeId: card.challengeId,
+          venue: card.venue,
+          startedAt: iso(Date.now()),
+          startTimeZone: 'America/Toronto',
+        })
+      ).statusCode,
+    ).toBe(201);
+    const removed = await api.inject({
+      method: 'DELETE',
+      url: '/v1/account',
+      headers: { authorization: `Bearer ${a.sessionToken}` },
+      payload: { confirmation: 'delete-account' },
+    });
+    expect(removed.statusCode).toBe(200);
+    for (const path of ['/v1/access', '/v1/challenges'])
+      expect((await request(api, a.sessionToken, path)).statusCode).toBe(401);
+    const replacement = await account();
+    expect(replacement.userId).not.toBe(a.userId);
+    expect(
+      (await request(api, replacement.sessionToken, '/v1/access')).json(),
+    ).toMatchObject({ status: 'verified', source: 'free_beta' });
+    expect(
+      (await request(api, replacement.sessionToken, '/v1/challenges'))
+        .statusCode,
+    ).toBe(200);
+  });
+  it('bounds automatic access and earlier uploads without overriding individual expiry or revocation', async () => {
+    const fresh = await account(),
+      expired = await account(),
+      revoked = await account();
+    const start = Date.now() - 3_600_000,
+      end = Date.now() - 60_000;
+    const window = { startsAt: iso(start), expiresAt: iso(end) };
+    const currentWindow = { ...window, expiresAt: iso(Date.now() + 60_000) };
+    const readers = createBetaAccess(
+      [
+        { userId: expired.userId, ...window },
+        {
+          userId: revoked.userId,
+          ...currentWindow,
+          revokedAt: iso(end),
+        },
+      ],
+      Date.now,
+      currentWindow,
+    );
+    for (const account of [expired, revoked])
+      await withOwner(database.db, account.userId, async (tx) => {
+        expect((await readers.entitlementReader(tx)).status).toBe('unpaid');
+        expect(
+          await readers.uploadEligibilityReader(tx, {
+            userId: account.userId,
+            startedAt: iso(end),
+          }),
+        ).toBe('ineligible');
+      });
+    await withOwner(database.db, fresh.userId, async (tx) => {
+      expect((await readers.entitlementReader(tx)).status).toBe('verified');
+      expect(
+        await readers.uploadEligibilityReader(tx, {
+          userId: expired.userId,
+          startedAt: iso(start),
+        }),
+      ).toBe('ineligible');
+      const ended = createBetaAccess([], Date.now, window);
+      expect((await ended.entitlementReader(tx)).status).toBe('unpaid');
+      for (const [startedAt, expected] of [
+        [iso(start - 1), 'ineligible'],
+        [iso(start), 'eligible'],
+        [iso(end - 1), 'eligible'],
+        [iso(end), 'ineligible'],
+      ])
+        expect(
+          await ended.uploadEligibilityReader(tx, {
+            userId: fresh.userId,
+            startedAt: startedAt!,
+          }),
+        ).toBe(expected);
+      expect(
+        (
+          await createBetaAccess([], () => start - 1, window).entitlementReader(
+            tx,
+          )
+        ).status,
+      ).toBe('unpaid');
+      expect(
+        (await createBetaAccess([], () => start, window).entitlementReader(tx))
+          .status,
+      ).toBe('verified');
+      expect(
+        (await createBetaAccess([], () => end, window).entitlementReader(tx))
+          .status,
+      ).toBe('unpaid');
+    });
+    await database.db.transaction(async (tx) => {
+      expect((await readers.entitlementReader(tx)).status).toBe('unpaid');
+      expect(
+        await readers.uploadEligibilityReader(tx, {
+          userId: fresh.userId,
+          startedAt: iso(start),
+        }),
+      ).toBe('ineligible');
+    });
+  });
   it('admits only the approved owner and rejects revoked sessions, while export remains available without a grant', async () => {
     const a = await account(),
       b = await account();

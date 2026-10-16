@@ -107,7 +107,7 @@ but missed its API destination. On the physical phone, localhost is the phone.
 
 Added an ignored `apps/mobile/.env.local` override in this worktree with
 `EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app`, matching the confirmed working
-server and the [staging handoff](phase-09-test-server.md). Restarted only 8085 with
+server and the [staging handoff](phase-11-test-server.md). Restarted only 8085 with
 `--clear`; 8084 remains running. The hosted `/health` and `/ready` endpoints pass.
 Rebuilt and inspected the served iOS bundle's actual virtual environment value
 and both identity API/runtime reads, rather than relying on the configuration file
