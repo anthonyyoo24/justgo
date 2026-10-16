@@ -14,6 +14,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
+import { seedStartTimes } from './support/seed-times';
 
 async function account(page: Page) {
   await page.goto('/recovery');
@@ -26,7 +27,7 @@ async function account(page: Page) {
       r.request().method() === 'POST',
   );
   await page
-    .getByRole('button', { name: 'Create a private account', exact: true })
+    .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
   const proof = sessionCreateSchema.parse((await request).postDataJSON());
   if (proof.kind !== 'bootstrap')
@@ -56,8 +57,17 @@ async function seed(
     ).json(),
   );
   const card = catalog.cards[0]!;
+  // The browser's clock and time zone decide which calendar day is "today".
+  const day = await page.evaluate((daysAgo) => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - daysAgo);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { start: start.getTime(), end: end.getTime(), now: Date.now() };
+  }, daysAgo);
   const ids: string[] = [];
-  for (let n = 0; n < count; n++) {
+  for (const startedAt of seedStartTimes(count, day)) {
     const id = randomUUID();
     const response = await page.request.post(`${journeyApiUrl}/v1/attempts`, {
       headers,
@@ -65,9 +75,7 @@ async function seed(
         id,
         challengeId: card.challengeId,
         venue: card.venue,
-        startedAt: new Date(
-          Date.now() - daysAgo * 86400000 - (count - n) * 60000,
-        ).toISOString(),
+        startedAt: new Date(startedAt).toISOString(),
         startTimeZone: timeZone,
       },
     });

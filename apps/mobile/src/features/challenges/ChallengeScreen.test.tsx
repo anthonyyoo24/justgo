@@ -7,6 +7,7 @@ import type { ChallengeSnapshot } from './controller';
 import { attempt, card } from '../../../test-support/journal';
 import { ChallengeScreen } from './ChallengeScreen';
 import { ChallengeDeck } from './ChallengeDeck';
+import { VenueTabs } from './VenueTabs';
 import {
   ChallengeActivityProvider,
   useChallengeActivity,
@@ -37,6 +38,9 @@ const mockNavigation = {
 };
 let mockFocused = true;
 let mockAccount = { userId: 'deck-owner' };
+let mockRepository: { accountId: string } | null = null;
+const mockMarkReady = jest.fn();
+let mockPreparation = { active: false, attempt: 0, markReady: mockMarkReady };
 const mockCard = { ...card, venue: 'cafe' as const };
 const finishedAttempt = { ...attempt(), venue: 'cafe' as const };
 let mockSnapshot: ChallengeSnapshot;
@@ -74,6 +78,10 @@ jest.mock('expo-router', () => ({
 jest.mock('../../app-support/providers/AppProvider', () => ({
   useRuntime: () => ({ challenges: mockController }),
   useIdentity: () => ({ account: mockAccount }),
+  useJournal: () => mockRepository,
+}));
+jest.mock('../../app-support/identity/welcome/welcome-preparation', () => ({
+  useWelcomePreparation: () => mockPreparation,
 }));
 jest.mock('../../app-support/saving/SavingFeedback', () => ({
   SavingSheetSurface: ({
@@ -119,9 +127,11 @@ jest.mock('./ChallengeDeck', () => ({
   ChallengeDeck: ({
     onAction,
     disabled,
+    onVisualReady,
   }: {
     onAction: (direction: -1 | 1) => Promise<void>;
     disabled: boolean;
+    onVisualReady?: () => void;
   }) => {
     const { useEffect } = require('react');
     const { View, Pressable, Text } = require('react-native');
@@ -129,7 +139,7 @@ jest.mock('./ChallengeDeck', () => ({
       mockMounted();
     }, []);
     return (
-      <View testID="mock-deck">
+      <View testID="mock-deck" onLayout={onVisualReady}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Accept challenge"
@@ -148,6 +158,8 @@ beforeEach(() => {
   jest.replaceProperty(Platform, 'OS', 'web');
   mockFocused = true;
   mockAccount = { userId: 'deck-owner' };
+  mockRepository = { accountId: mockAccount.userId };
+  mockPreparation = { active: false, attempt: 0, markReady: mockMarkReady };
   mockSnapshot = {
     selected: 'cafe',
     error: '',
@@ -167,6 +179,59 @@ function Flow() {
     </ChallengeActivityProvider>
   );
 }
+
+it('starts its catalog read when the matching repository becomes available after identity', () => {
+  mockRepository = null;
+  const screen = render(<Flow />);
+  expect(mockController.refresh).not.toHaveBeenCalled();
+  mockRepository = { accountId: 'previous-owner' };
+  screen.rerender(<Flow />);
+  expect(mockController.refresh).not.toHaveBeenCalled();
+  mockRepository = { accountId: mockAccount.userId };
+  screen.rerender(<Flow />);
+  expect(mockController.refresh).toHaveBeenCalledTimes(1);
+});
+
+it.each(['ios', 'web'] as const)(
+  'keeps the prepared %s deck mounted when the welcome cover reveals it',
+  (platform) => {
+    jest.replaceProperty(Platform, 'OS', platform);
+    mockPreparation = { active: true, attempt: 1, markReady: mockMarkReady };
+    const screen = render(<Flow />);
+    const deck = screen.getByTestId('mock-deck');
+    expect(
+      screen.getByRole('button', { name: 'Accept challenge' }),
+    ).toBeDisabled();
+    expect(screen.UNSAFE_getByType(VenueTabs).props.disabled).toBe(true);
+    expect(mockMarkReady).not.toHaveBeenCalled();
+    fireEvent(deck, 'layout');
+    expect(mockMarkReady).toHaveBeenCalledTimes(1);
+    mockPreparation = { ...mockPreparation, active: false };
+    screen.rerender(<Flow />);
+    expect(screen.getByTestId('mock-deck')).toBe(deck);
+    expect(mockMounted).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole('button', { name: 'Accept challenge' }),
+    ).toBeEnabled();
+    expect(screen.UNSAFE_getByType(VenueTabs).props.disabled).toBe(false);
+    expect(screen.getByTestId('mock-deck').props.onLayout).toBeUndefined();
+  },
+);
+
+it('remounts a stalled prepared deck only when an explicit retry changes the attempt', () => {
+  mockPreparation = { active: true, attempt: 1, markReady: mockMarkReady };
+  const screen = render(<Flow />);
+  const stalled = screen.getByTestId('mock-deck');
+  screen.rerender(<Flow />);
+  expect(screen.getByTestId('mock-deck')).toBe(stalled);
+  expect(mockMounted).toHaveBeenCalledTimes(1);
+  mockPreparation = { ...mockPreparation, attempt: 2 };
+  screen.rerender(<Flow />);
+  expect(screen.getByTestId('mock-deck')).not.toBe(stalled);
+  expect(mockMounted).toHaveBeenCalledTimes(2);
+  expect(mockMarkReady).not.toHaveBeenCalled();
+});
+
 function NativeFlow() {
   return (
     <ChallengeActivityProvider>

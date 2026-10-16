@@ -12,7 +12,9 @@ export type ClientErrorCode =
   | 'STORAGE'
   | 'TIMEOUT'
   | 'CANCELLED'
-  | 'ACCOUNT_CHANGED';
+  | 'ACCOUNT_CHANGED'
+  | 'DELETION_UNAVAILABLE'
+  | 'DELETION_REJECTED';
 export class ApiError extends Error {
   constructor(
     readonly code: ClientErrorCode,

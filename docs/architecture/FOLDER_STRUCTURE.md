@@ -147,7 +147,7 @@ apps/mobile/src/
 
 `remaining files` describes files directly in their parent, not another folder.
 Routes, API contracts, dependencies, stored data and application behavior are
-unchanged. The [Phase 08 follow-up](../handoffs/phase-08-settings-privacy.md#october-11-folder-organization)
+unchanged. The [Phase 08 follow-up](../handoffs/phase-08-settings-privacy.md)
 records verification and remaining physical-device acceptance.
 
 ### October 12 account and recovery screens
@@ -164,14 +164,25 @@ files retain controller/API/vault/storage ownership, disconnected recovery and
 the shared screen-action presentation hook `useIdentityAction.ts`.
 `app/account/[tool].tsx` only connects the focused routes; invalid tools return to
 recovery. No additional subfolders were needed after reviewing the full touched
-directories. See the [account UI handoff](../handoffs/phase-08-settings-privacy.md#october-12-account-and-recovery-ui).
+directories. See the [account UI handoff](../handoffs/phase-08-settings-privacy.md).
 
 The large-text follow-up adds `components/typography/` with `ScaledText.tsx` and
 its colocated regression tests. It owns live text metrics shared by Settings,
 account screens and reusable controls. Page/row layout remains in
 `components/settings/`; account forms and orchestration remain with identity.
 The reviewed directories remain cohesive without further moves. See the
-[large-text handoff](../handoffs/phase-08-settings-privacy.md#october-12-large-text-fixes).
+[large-text handoff](../handoffs/phase-08-settings-privacy.md).
+
+### Phase 08 account deletion
+
+The [account-deletion slice](../handoffs/phase-08-settings-privacy.md) adds
+`app-support/identity/deletion/` for its screen, durable workflow, credential
+cleanup and colocated regressions. Its route remains in `app/`; API deletion
+and database tests stay beside export under their existing privacy owners.
+The cancellation row/test remain beside the deletion screen. Its reusable native
+presentation adapter/test live under `platform/subscriptions/`; the independent
+StoreKit Expo module lives under `modules/justgo-subscriptions/`, separate from
+credential storage.
 
 ### Phase 08 haptics
 

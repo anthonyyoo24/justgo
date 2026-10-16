@@ -1,0 +1,211 @@
+import { useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScaledText as Text } from '../../../components/typography/ScaledText';
+import { useModalIsolation } from '../../../platform/useModalIsolation';
+import { colors, fontFamilies, layout, spacing } from '../../../theme/tokens';
+
+type ConfirmationProps = {
+  busy: boolean;
+  error: string | null;
+  cleanup: boolean;
+  disabled: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+export function DeleteAccountConfirmation(props: ConfirmationProps) {
+  // Read the existing window's insets before presenting the native modal.
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal
+      transparent
+      visible
+      presentationStyle="overFullScreen"
+      animationType="none"
+      onRequestClose={props.onCancel}
+    >
+      <View
+        style={[
+          styles.scrim,
+          {
+            paddingTop: Math.max(spacing.xl, insets.top),
+            paddingBottom: Math.max(spacing.xl, insets.bottom),
+          },
+        ]}
+      >
+        <ConfirmationContent {...props} />
+      </View>
+    </Modal>
+  );
+}
+
+function ConfirmationContent({
+  busy,
+  error,
+  cleanup,
+  disabled,
+  onCancel,
+  onConfirm,
+}: ConfirmationProps) {
+  const surface = useRef<View>(null);
+  const stacked = useWindowDimensions().fontScale > 1.3;
+  const [cleanupInstructions, setCleanupInstructions] = useState(cleanup);
+  // Keep the paragraph steady during an attempt. Explain unfinished cleanup
+  // when it stops, and retain that explanation while its retry is running.
+  if (!busy && cleanupInstructions !== cleanup) setCleanupInstructions(cleanup);
+  useModalIsolation(surface);
+  return (
+    <View
+      ref={surface}
+      role="alertdialog"
+      aria-modal
+      accessibilityLabel="Delete your account?"
+      accessibilityViewIsModal
+      onAccessibilityEscape={onCancel}
+      style={styles.dialog}
+    >
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.copy}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Delete your account?
+        </Text>
+        <Text style={styles.message}>
+          {cleanupInstructions
+            ? 'Your account has been deleted. Finish clearing this phone’s account data and recovery keys.'
+            : 'Your account, progress, feelings and reflections will be permanently deleted. You won’t be able to recover this account.'}
+        </Text>
+        {error && (
+          <Text
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+            style={[styles.message, styles.destructive]}
+          >
+            {error}
+          </Text>
+        )}
+      </ScrollView>
+      <View style={[styles.actions, stacked && styles.stackedActions]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cancel"
+          accessibilityState={{ disabled: busy }}
+          disabled={busy}
+          onPress={onCancel}
+          style={({ pressed }) => [
+            styles.action,
+            stacked && styles.stackedAction,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text maxFontSizeMultiplier={2} style={styles.actionLabel}>
+            Cancel
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
+          accessibilityState={{ disabled: busy || disabled, busy }}
+          disabled={busy || disabled}
+          onPress={onConfirm}
+          style={({ pressed }) => [
+            styles.action,
+            stacked && styles.stackedAction,
+            stacked ? styles.stackedDelete : styles.delete,
+            pressed && styles.pressed,
+          ]}
+        >
+          {busy ? (
+            <ActivityIndicator
+              color="#B3261E"
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel="Deleting account"
+            />
+          ) : (
+            <Text
+              maxFontSizeMultiplier={2}
+              style={[styles.actionLabel, styles.destructive]}
+            >
+              Delete account
+            </Text>
+          )}
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  scrim: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  dialog: {
+    width: '100%',
+    maxWidth: 320,
+    maxHeight: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: colors.white,
+  },
+  scroll: { flexShrink: 1 },
+  copy: { padding: spacing.xl, gap: spacing.sm },
+  title: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 17,
+    lineHeight: 23,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  message: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 15,
+    lineHeight: 21,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  actions: {
+    flexDirection: 'row',
+    flexShrink: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  stackedActions: { flexDirection: 'column' },
+  action: {
+    flex: 1,
+    minHeight: layout.buttonHeight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+  },
+  stackedAction: { flex: 0, width: '100%' },
+  delete: {
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: colors.border,
+  },
+  stackedDelete: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  actionLabel: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 17,
+    lineHeight: 23,
+    color: colors.ink,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
+  destructive: { color: '#B3261E' },
+  pressed: { backgroundColor: colors.successCanvas },
+});

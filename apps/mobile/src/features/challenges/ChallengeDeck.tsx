@@ -1,5 +1,11 @@
 /* eslint-disable react-hooks/refs -- Gesture Handler registers callbacks; it does not execute these event handlers during render. */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Pressable,
   ScrollView,
@@ -62,6 +68,7 @@ export function ChallengeDeck({
   covered = false,
   onBusyChange,
   onAction,
+  onVisualReady,
 }: {
   cards: readonly DeckCard[];
   venue: string;
@@ -70,6 +77,7 @@ export function ChallengeDeck({
   disabled?: boolean;
   covered?: boolean;
   onBusyChange?: (busy: boolean) => void;
+  onVisualReady?: (() => void) | undefined;
   // Resolve with the authoritative queue version, even when it did not advance.
   onAction: (direction: -1 | 1) => Promise<number | void>;
 }) {
@@ -81,6 +89,12 @@ export function ChallengeDeck({
   const busy = useRef(false),
     alive = useRef(true);
   const [working, setWorking] = useState(false);
+  const visualReported = useRef(false);
+  const reportVisualReady = useCallback(() => {
+    if (visualReported.current || !onVisualReady) return;
+    visualReported.current = true;
+    onVisualReady();
+  }, [onVisualReady]);
   const reduced = useReduceMotion();
   const [settlement, setSettlement] = useState<{
     from: number;
@@ -243,6 +257,7 @@ export function ChallengeDeck({
               venue={venue}
               label={label}
               scale={scale}
+              onVisualReady={onVisualReady ? reportVisualReady : undefined}
             />
           ))}
         </View>
@@ -300,6 +315,7 @@ function DeckLayer({
   venue,
   label,
   scale,
+  onVisualReady,
 }: {
   index: number;
   turn: number;
@@ -310,7 +326,15 @@ function DeckLayer({
   venue: string;
   label: string;
   scale: number;
+  onVisualReady?: (() => void) | undefined;
 }) {
+  const [laidOut, setLaidOut] = useState(false);
+  const [artworkSettled, setArtworkSettled] = useState(false);
+  const [textureSettled, setTextureSettled] = useState(false);
+  useEffect(() => {
+    if (index === 0 && laidOut && artworkSettled && textureSettled)
+      onVisualReady?.();
+  }, [index, laidOut, artworkSettled, textureSettled, onVisualReady]);
   const slot = turn + index;
   const style = useAnimatedStyle(() => {
     const visual = cardVisual(
@@ -341,6 +365,13 @@ function DeckLayer({
       aria-hidden={!isFront}
       accessibilityElementsHidden={!isFront}
       importantForAccessibility={isFront ? 'auto' : 'no-hide-descendants'}
+      onLayout={
+        onVisualReady
+          ? ({ nativeEvent: { layout } }) => {
+              if (layout.width > 0 && layout.height > 0) setLaidOut(true);
+            }
+          : undefined
+      }
       style={[
         styles.card,
         cardFrame(scale),
@@ -352,7 +383,9 @@ function DeckLayer({
         style,
       ]}
     >
-      <PaperTexture />
+      <PaperTexture
+        onSettled={onVisualReady ? () => setTextureSettled(true) : undefined}
+      />
       <Animated.View
         testID={`challenge-reveal-${card.id}`}
         style={[StyleSheet.absoluteFill, contentStyle]}
@@ -363,6 +396,9 @@ function DeckLayer({
           label={label}
           scale={scale}
           theme={theme}
+          onArtworkSettled={
+            onVisualReady ? () => setArtworkSettled(true) : undefined
+          }
         />
       </Animated.View>
     </Animated.View>

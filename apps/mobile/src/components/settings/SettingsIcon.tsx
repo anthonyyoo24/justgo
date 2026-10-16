@@ -7,6 +7,7 @@ export type SettingsIconName =
   | 'haptics'
   | 'motion'
   | 'account'
+  | 'subscription'
   | 'export'
   | 'delete'
   | 'analytics'
@@ -33,6 +34,7 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
       'M4 5L2 7L4 9L2 12L4 15L2 17L4 19M20 5L22 7L20 9L22 12L20 15L22 17L20 19M10 18H14',
     motion: 'M7 12H17',
     account: 'M4 21V19C4 15 20 15 20 19V21',
+    subscription: 'M3 9H21M14 15H18',
     export: 'M12 3V15M7 10L12 15L17 10M4 16V21H20V16',
     delete: 'M3 6H21M8 6V3H16V6M6 6L7 21H17L18 6M10 10V17M14 10V17',
     analytics: 'M4 20V13M12 20V8M20 20V3',
@@ -69,6 +71,18 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
           cx={12}
           cy={7}
           r={4}
+          stroke={colors.ink}
+          strokeWidth={1.4}
+          fill="none"
+        />
+      )}
+      {name === 'subscription' && (
+        <Rect
+          x={3}
+          y={4}
+          width={18}
+          height={16}
+          rx={2}
           stroke={colors.ink}
           strokeWidth={1.4}
           fill="none"

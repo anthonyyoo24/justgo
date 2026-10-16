@@ -1,5 +1,6 @@
 import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
+import { z } from 'zod';
 import {
   createMemoryVault,
   credentialSchema,
@@ -12,6 +13,7 @@ type NativeVault = {
   writeState(value: string): Promise<void>;
   listCredentials(): Promise<unknown[]>;
   addCredential(id: string, secret: string): Promise<void>;
+  removeCredential?: (id: string) => Promise<void>;
 };
 export function createVault(): CredentialVault {
   if (Platform.OS === 'web') return createMemoryVault();
@@ -40,5 +42,12 @@ export function createVault(): CredentialVault {
       const credential = credentialSchema.parse(value);
       await module().addCredential(credential.id, credential.secret);
     },
+    ...(native?.removeCredential
+      ? {
+          remove: async (id: string) => {
+            await native.removeCredential!(z.uuid().parse(id));
+          },
+        }
+      : {}),
   };
 }
