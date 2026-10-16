@@ -66,6 +66,25 @@ The Phase 01 helper `withOwner(db, verifiedUserId, tx => …)` establishes trans
 
 Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 54329. They create a uniquely named fixture table as migrator, execute isolation checks as the actual runtime role, and drop that fixture. The local application catalog seed and synthetic accounts/history are disposable; no customer data belongs in this cluster. Never reset a shared environment to run tests. Use forward-repair migrations; restore and destructive rollback procedures require reviewed backups before domain data exists.
 
+## Backup restore checklist
+
+Use this for any restore of a hosted database from a Supabase backup or point-in-time recovery. A restore must never bring back a deleted account or a revoked credential ([October 16 decision](../DECISIONS.md#october-16-codebase-assessment-follow-up)). Backups follow the Supabase plan's default retention, so deleted data leaves backups within that period. **Backup retention: not yet confirmed**; Anthony reads it from the Supabase dashboard and it is recorded here. The hosted rehearsal of this checklist is a Phase 11 paid-launch gate.
+
+Before restoring:
+
+1. Stop API writes and note the backup's timestamp. Writes other accounts made after that timestamp are not recovered by this checklist.
+2. With the migration role, save the deletions made since the backup to restricted operator storage, never the repository, logs or tickets: every `justgo.users` row with `deleted_at` set (`id`, `created_at`, `deleted_at`, `deletion_session_digest`) and every `justgo.recovery_credentials` row with `revoked_at` set (`id`, `user_id`, `digest`, `kind`, `revoked_at`). Taking all of them, not only those after the timestamp, is simplest and safe.
+
+Restore and reapply:
+
+3. Restore into an isolated environment (a new project or branch), never over the live database, with no API pointed at it.
+4. In one reviewed migration-role transaction, apply the saved deletions again, exactly as `apps/api/src/privacy/delete-account.ts` does. For each deleted account, delete its attempt patch receipts, attempts, transfers, sessions and devices, and set `deleted_at` and `deletion_session_digest` from the saved row; insert the user row if the account is newer than the backup. Then make every saved credential revoked: insert missing rows and set `revoked_at` on restored rows that are still active.
+
+Before reopening the app:
+
+5. Confirm in the restored database that every saved account has `deleted_at` set and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
+6. Only then point the API at the restored database and reopen writes. Confirm that one deleted disposable account's recovery proof is rejected through the API before announcing the restore.
+
 ## API deployment and diagnostics
 
 Entrypoint: `apps/api/src/server.ts`, importing Fastify directly for Vercel detection. `build-app.ts` contains the injected/testable app factory. Vercel project **justgo** has root `apps/api`, Fastify preset, Node 24.x, Montréal (`yul1`) function region, and install command `cd ../.. && npm ci`. Deploy from the repository root so the workspace lockfile and contracts are included:
