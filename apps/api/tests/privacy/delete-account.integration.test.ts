@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { Writable } from 'node:stream';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { Pool } from 'pg';
 import { accountDeletionResponseSchema } from '@justgo/contracts';
@@ -6,6 +7,7 @@ import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { IdentityService, digest } from '../../src/identity/service.js';
 import { buildApp } from '../../src/build-app.js';
+import { loggerOptions } from '../../src/diagnostics.js';
 
 const config = readConfig({ ...process.env, DATABASE_POOL_MAX: '3' });
 for (const url of [config.DATABASE_URL, process.env.MIGRATION_DATABASE_URL])
@@ -259,5 +261,91 @@ describe('permanent owner-only deletion on the restricted database role', () => 
     await expect(
       identity.bootstrap({ ...proposal(), credential: b.credential }, false),
     ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+  });
+});
+
+describe('deletion diagnostics', () => {
+  it('logs request IDs, methods and statuses without tokens, credentials, owners or bodies', async () => {
+    let output = '';
+    const logged = buildApp({
+      identity,
+      checkDatabase: async () => {},
+      logger: {
+        ...loggerOptions(),
+        stream: new Writable({
+          write(chunk, _encoding, next) {
+            output += chunk.toString();
+            next();
+          },
+        }),
+      },
+    });
+    const send = (token: string, payload: object) =>
+      logged.inject({
+        method: 'DELETE',
+        url: '/v1/account',
+        payload,
+        headers: { authorization: `Bearer ${token}` },
+      });
+    const a = await account(),
+      b = await account();
+    await history(a.userId);
+    const failure = vi
+      .spyOn(identity, 'withAccountDeletion')
+      .mockRejectedValueOnce(
+        new Error(`Synthetic failure for ${a.userId} ${a.credential}`),
+      );
+    try {
+      expect(
+        (await send(a.sessionToken, { confirmation: 'delete-account' }))
+          .statusCode,
+      ).toBe(503);
+    } finally {
+      failure.mockRestore();
+    }
+    expect(
+      (await send(a.sessionToken, { confirmation: 'yes', note: a.credential }))
+        .statusCode,
+    ).toBe(400);
+    expect(
+      (await send(secret(), { confirmation: 'delete-account' })).statusCode,
+    ).toBe(401);
+    const deleted = await send(a.sessionToken, {
+      confirmation: 'delete-account',
+    });
+    expect(deleted.statusCode).toBe(200);
+    const retried = await send(a.sessionToken, {
+      confirmation: 'delete-account',
+    });
+    expect(retried.json()).toEqual(deleted.json());
+    const receipt = accountDeletionResponseSchema.parse(deleted.json());
+    await logged.close();
+
+    const records = output
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(records.length).toBeGreaterThanOrEqual(10);
+    expect(
+      records
+        .filter((record) => record.msg === 'request completed')
+        .map((record) => (record.res as { statusCode: number }).statusCode),
+    ).toEqual([503, 400, 401, 200, 200]);
+    for (const record of records)
+      expect(record.reqId).toEqual(expect.any(String));
+    expect(output).toContain('"method":"DELETE"');
+    for (const privateValue of [
+      a.sessionToken,
+      digest(a.sessionToken),
+      a.credential,
+      a.userId,
+      b.userId,
+      ...receipt.credentialDigests,
+      'Synthetic failure',
+      'Synthetic deletion fixture',
+      'confirmation',
+      '/v1/account',
+    ])
+      expect(output).not.toContain(privateValue);
   });
 });
