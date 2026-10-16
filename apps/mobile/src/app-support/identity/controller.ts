@@ -70,6 +70,10 @@ const messages: Record<string, string> = {
   INVALID_REQUEST:
     'Check the recovery key, transfer code or six verification digits and try again.',
   UNAVAILABLE: 'The account service is unavailable. Please retry shortly.',
+  DELETION_UNAVAILABLE:
+    'Account deletion is unavailable right now. Your account has not been deleted.',
+  DELETION_REJECTED:
+    'The deletion request could not be accepted. Your account has not been deleted.',
 };
 export class IdentityController {
   private operation: Deadline | null = null;
@@ -508,32 +512,48 @@ export class IdentityController {
       { resumeDeletion: true },
     );
   private async resumeDeletion() {
-    await resumeAccountDeletion({
-      read: () => this.data!,
-      save: (value) => this.save(value),
-      publish: (deletionStatus) =>
-        this.update({
-          account: null,
-          devices: [],
-          recoveryKeys: [],
-          key: null,
-          deletionStatus,
-        }),
-      request: (token) =>
-        this.request(
-          'DELETE',
-          '/account',
-          accountDeletionResponseSchema,
-          { confirmation: 'delete-account' },
-          token,
-        ),
-      clearData: (userId) => {
-        if (!this.removeAccountData) throw new IdentityClientError('STORAGE');
-        return this.storage(() => this.removeAccountData!(userId));
-      },
-      clearCredentials: (digests) =>
-        this.storage(() => removeDeletedCredentials(this.vault, digests)),
-    });
+    try {
+      await resumeAccountDeletion({
+        read: () => this.data!,
+        save: (value) => this.save(value),
+        publish: (deletionStatus) =>
+          this.update({
+            account: null,
+            devices: [],
+            recoveryKeys: [],
+            key: null,
+            deletionStatus,
+          }),
+        request: (token) =>
+          this.request(
+            'DELETE',
+            '/account',
+            accountDeletionResponseSchema,
+            { confirmation: 'delete-account' },
+            token,
+          ),
+        clearData: (userId) => {
+          if (!this.removeAccountData) throw new IdentityClientError('STORAGE');
+          return this.storage(() => this.removeAccountData!(userId));
+        },
+        clearCredentials: (digests) =>
+          this.storage(() => removeDeletedCredentials(this.vault, digests)),
+      });
+    } catch (error) {
+      if (
+        error instanceof IdentityClientError &&
+        ['DELETION_UNAVAILABLE', 'DELETION_REJECTED'].includes(error.code)
+      ) {
+        // Only a definitive rejection releases the deletion fence. Reverify the
+        // saved session before restoring account access, including after relaunch.
+        try {
+          await this.verify();
+        } finally {
+          this.update({ deletionStatus: null });
+        }
+      }
+      throw error;
+    }
     this.update({
       credentials: (await this.credentials()).map((c) => ({ id: c.id })),
       message: 'Your account has been deleted.',

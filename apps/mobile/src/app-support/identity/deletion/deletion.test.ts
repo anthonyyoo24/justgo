@@ -164,6 +164,83 @@ it('does not send deletion from a native binary that cannot erase credentials', 
   expect(s.controller.getSnapshot().account?.userId).toBe(s.userId);
   expect(s.controller.getSnapshot().message).toContain('Update JustGO');
 });
+it.each([
+  ['NOT_FOUND', 'Account deletion is unavailable right now.'],
+  ['INVALID_REQUEST', 'The deletion request could not be accepted.'],
+] as const)(
+  'preserves the connected account when deletion returns %s',
+  async (code, message) => {
+    const s = setup();
+    await s.controller.initialize();
+    const session = s.controller.currentSession();
+    const credentials = await s.vault.credentials();
+    const disconnectedStates: boolean[] = [];
+    const unsubscribe = s.controller.subscribe(() => {
+      const state = s.controller.getSnapshot();
+      disconnectedStates.push(!state.account && state.deletionStatus === null);
+    });
+    s.deletion.mockRejectedValueOnce(new IdentityClientError(code));
+    await s.controller.deleteAccount();
+    unsubscribe();
+    expect(disconnectedStates).not.toContain(true);
+    expect(s.controller.getSnapshot()).toMatchObject({
+      account: { userId: s.userId },
+      deletionStatus: null,
+      hasPending: false,
+    });
+    expect(s.controller.getSnapshot().message).toContain(message);
+    expect(s.controller.getSnapshot().message).toContain(
+      'Your account has not been deleted.',
+    );
+    expect(s.controller.currentSession()).toEqual(session);
+    expect(await s.vault.credentials()).toEqual(credentials);
+    expect(await s.vault.read()).toMatchObject({
+      pending: null,
+      accountDeleted: false,
+    });
+    expect(s.remove).not.toHaveBeenCalled();
+    const reopened = new IdentityController(s.vault, s.api, { id, secret });
+    reopened.setAccountDataRemover(s.remove);
+    await reopened.initialize();
+    expect(reopened.getSnapshot().account?.userId).toBe(s.userId);
+    expect(s.deletion).toHaveBeenCalledTimes(1);
+  },
+);
+it('restores the saved account when a pending deletion is rejected after relaunch', async () => {
+  const s = setup();
+  await s.controller.initialize();
+  const session = s.controller.currentSession();
+  s.deletion.mockRejectedValueOnce(new IdentityClientError('NETWORK'));
+  await s.controller.deleteAccount();
+  s.deletion.mockRejectedValueOnce(new IdentityClientError('NOT_FOUND'));
+  const reopened = new IdentityController(s.vault, s.api, { id, secret });
+  reopened.setAccountDataRemover(s.remove);
+  await reopened.initialize();
+  expect(reopened.currentSession()).toEqual(session);
+  expect(reopened.getSnapshot()).toMatchObject({
+    deletionStatus: null,
+    hasPending: false,
+  });
+  expect(reopened.getSnapshot().message).toContain(
+    'Account deletion is unavailable',
+  );
+  expect(s.remove).not.toHaveBeenCalled();
+});
+it('does not restore access if the saved session was revoked after a rejected deletion', async () => {
+  const s = setup();
+  await s.controller.initialize();
+  s.deletion.mockRejectedValueOnce(new IdentityClientError('NOT_FOUND'));
+  const calls = s.calls.getMockImplementation()!;
+  s.calls.mockImplementation(async (method, path, body, token) => {
+    if (path === '/sessions/current' && s.deletion.mock.calls.length)
+      throw new IdentityClientError('SESSION_REVOKED');
+    return calls(method, path, body, token);
+  });
+  await s.controller.deleteAccount();
+  expect(s.controller.currentSession()).toBeNull();
+  expect(s.controller.getSnapshot().message).toContain('session was revoked');
+  expect(s.remove).not.toHaveBeenCalled();
+});
 it('keeps local data on a definitive server rejection and rejects a receipt for another account', async () => {
   const s = setup();
   await s.controller.initialize();

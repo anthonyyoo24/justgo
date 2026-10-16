@@ -37,6 +37,13 @@ export async function resumeAccountDeletion(context: DeletionWorkflow) {
       ) {
         // A definitive rejection means this proof did not accept a deletion.
         await context.save({ ...context.read(), pending: null });
+        if (error.code === 'NOT_FOUND')
+          throw new IdentityClientError(
+            'DELETION_UNAVAILABLE',
+            error.requestId,
+          );
+        if (error.code === 'INVALID_REQUEST')
+          throw new IdentityClientError('DELETION_REJECTED', error.requestId);
         context.publish(null);
       }
       throw error;

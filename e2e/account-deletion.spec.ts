@@ -92,6 +92,47 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
   await page.getByRole('link', { name: 'Delete account', exact: true }).click();
   await expect(confirmation).toHaveCount(0);
   await continueButton.click();
+  const unavailableMessage =
+    'Account deletion is unavailable right now. Your account has not been deleted.';
+  await page.route(`${journeyApiUrl}/v1/account`, (route) =>
+    route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        code: 'NOT_FOUND',
+        requestId: 'missing-endpoint',
+      }),
+    }),
+  );
+  await confirmation
+    .getByRole('button', { name: 'Delete account', exact: true })
+    .click();
+  await expect(confirmation.getByRole('alert')).toHaveText(unavailableMessage);
+  await expect(page.getByText(/recovery request wasn’t found/)).toHaveCount(0);
+  await cancel.click();
+  await expect(continueButton).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Connect account', exact: true }),
+  ).toHaveCount(0);
+  expect(
+    (
+      await page.request.get(`${journeyApiUrl}/v1/sessions/current`, {
+        headers: {
+          authorization: `Bearer ${'sessionToken' in proof ? proof.sessionToken : ''}`,
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select deleted_at from justgo.users where id=$1',
+        [account.userId],
+      )
+    ).rows[0].deleted_at,
+  ).toBeNull();
+  await page.unroute(`${journeyApiUrl}/v1/account`);
+  await continueButton.click();
   let lost = true;
   let releaseFirst!: () => void, releaseRetry!: () => void;
   const firstResponse = new Promise<void>((resolve) => {
