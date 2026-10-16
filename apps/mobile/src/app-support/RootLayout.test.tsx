@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import RootLayout from '../app/_layout';
+import RootLayout, { ErrorBoundary } from '../app/_layout';
+import { RouteErrorScreen } from './fallbacks/RouteErrorScreen';
 
 let mockIdentity = {
   deletionStatus: null as 'pending' | 'cleanup' | 'deleted' | null,
@@ -77,6 +78,10 @@ beforeEach(() => {
   mockIdentity = { deletionStatus: null, busy: false, account: null };
   mockVerified = true;
   mockPending = false;
+});
+
+it('uses the retryable crash screen as the root error boundary', () => {
+  expect(ErrorBoundary).toBe(RouteErrorScreen);
 });
 
 it('removes old account routes after deletion and keeps them removed through replacement loading or failure', () => {

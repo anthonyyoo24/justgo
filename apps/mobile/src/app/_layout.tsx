@@ -22,6 +22,8 @@ import {
   useWelcomeTransition,
 } from '../app-support/identity/welcome/WelcomeTransition';
 
+export { RouteErrorScreen as ErrorBoundary } from '../app-support/fallbacks/RouteErrorScreen';
+
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     Inter_400Regular,
