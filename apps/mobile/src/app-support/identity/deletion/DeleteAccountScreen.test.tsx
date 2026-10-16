@@ -354,6 +354,65 @@ it('shows failures only below the modal copy, clears them on retry and closes af
   expect(s.queryByRole('progressbar')).toBeNull();
 });
 
+it('keeps the warning unchanged through server deletion and local cleanup until welcome replaces it', async () => {
+  const s = render(<DeleteAccountRoute />);
+  fireEvent.press(s.getByLabelText('Continue to deletion'));
+  const warning = s.getByText(
+    /Your account, progress, feelings and reflections/,
+  ).props.children;
+  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  for (const deletionStatus of ['pending', 'cleanup'] as const) {
+    mockState = { ...mockState, account: null, busy: true, deletionStatus };
+    rerender(s);
+    const dialog = within(s.getByLabelText('Delete your account?'));
+    expect(dialog.getByText(warning)).toBeTruthy();
+    expect(
+      dialog.queryByText(/Finish clearing this phone’s account data/),
+    ).toBeNull();
+    expect(
+      dialog.getByRole('progressbar', { name: 'Deleting account' }),
+    ).toBeTruthy();
+  }
+  mockState = { ...mockState, deletionStatus: 'deleted' };
+  rerender(s);
+  await act(async () => finishDelete?.());
+  expect(s.getByText('Redirect: /welcome')).toBeTruthy();
+  expect(s.queryByLabelText('Delete your account?')).toBeNull();
+});
+
+it('explains failed cleanup after the attempt stops and retains that copy during retry', async () => {
+  const s = render(<DeleteAccountRoute />);
+  fireEvent.press(s.getByLabelText('Continue to deletion'));
+  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  mockState = {
+    ...mockState,
+    account: null,
+    busy: false,
+    deletionStatus: 'cleanup',
+    message: 'Secure storage is unavailable.',
+  };
+  rerender(s);
+  expect(s.queryByText(/Finish clearing this phone’s account data/)).toBeNull();
+  await act(async () => finishDelete?.());
+  const dialog = within(s.getByLabelText('Delete your account?'));
+  expect(
+    dialog.getByText(/Finish clearing this phone’s account data/),
+  ).toBeTruthy();
+  expect(dialog.getByRole('alert')).toHaveTextContent(mockState.message);
+  fireEvent.press(dialog.getByRole('button', { name: 'Delete account' }));
+  expect(mockRetry).toHaveBeenCalledTimes(1);
+  expect(
+    dialog.getByText(/Finish clearing this phone’s account data/),
+  ).toBeTruthy();
+  expect(
+    dialog.queryByText(/Your account, progress, feelings and reflections/),
+  ).toBeNull();
+  expect(dialog.queryByRole('alert')).toBeNull();
+  expect(
+    dialog.getByRole('progressbar', { name: 'Deleting account' }),
+  ).toBeTruthy();
+});
+
 it('keeps an old-build preflight error in the modal without adding page feedback', async () => {
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));

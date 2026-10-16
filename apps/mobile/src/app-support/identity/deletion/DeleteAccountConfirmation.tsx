@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -58,6 +58,10 @@ function ConfirmationContent({
 }: ConfirmationProps) {
   const surface = useRef<View>(null);
   const stacked = useWindowDimensions().fontScale > 1.3;
+  const [cleanupInstructions, setCleanupInstructions] = useState(cleanup);
+  // Keep the paragraph steady during an attempt. Explain unfinished cleanup
+  // when it stops, and retain that explanation while its retry is running.
+  if (!busy && cleanupInstructions !== cleanup) setCleanupInstructions(cleanup);
   useModalIsolation(surface);
   return (
     <View
@@ -74,7 +78,7 @@ function ConfirmationContent({
           Delete your account?
         </Text>
         <Text style={styles.message}>
-          {cleanup
+          {cleanupInstructions
             ? 'Your account has been deleted. Finish clearing this phone’s account data and recovery keys.'
             : 'Your account, progress, feelings and reflections will be permanently deleted. You won’t be able to recover this account.'}
         </Text>
