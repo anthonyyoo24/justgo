@@ -383,25 +383,6 @@ export class AccountRepository {
     this.store.setState({ active: false });
     this.sender.stop();
   }
-  async erase(): Promise<void> {
-    this.dispose();
-    // Drain accepted writes before removal, including hydration's quarantine copy.
-    if (this.hydration) await this.hydration;
-    await Promise.allSettled([...this.saving.values()]);
-    await this.persistence.stopWrites();
-    await this.catalogWrites;
-    const keys = this.options.storage.getAllKeys;
-    if (!keys) throw new ApiError('STORAGE');
-    for (const key of await keys.call(this.options.storage))
-      if (key.startsWith(`${this.key}:`))
-        await this.options.storage.removeItem(key);
-    this.store.setState({
-      journal: emptyJournal(this.accountId),
-      catalog: null,
-      warning: null,
-      flowAttemptId: null,
-    });
-  }
   captureAggregateFence(): number | null {
     const journal = this.store.getState().journal;
     return journal.operations.some(

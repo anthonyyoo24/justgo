@@ -39,7 +39,6 @@ export function createAppRuntime(
   });
   const telemetry = createTelemetry();
   const activity = new ActivityRuntime(client, storage);
-  identity.setAccountDataRemover(activity.deleteAccount);
   const challenges = new ChallengeController(client, {
     repository: activity.getRepository,
   });
@@ -96,22 +95,15 @@ export function AppProvider({ children }: PropsWithChildren) {
       const wasOnline = online;
       online = nextOnline;
       updateEnvironment();
-      if (!wasOnline && online && active) {
-        void runtime.identity.retry({
-          background: !!runtime.identity.getSnapshot().account,
-        });
-        void runtime.challenges.refresh();
-      }
+      if (!wasOnline && online && active) void runtime.challenges.refresh();
     });
     void runtime.identity.initialize();
     const subscription = AppState.addEventListener('change', (next) => {
       active = next === 'active';
       updateEnvironment();
       focusManager.setFocused(active);
-      if (next !== 'active') {
-        runtime.identity.hideKey();
-        void runtime.identity.cancelTransfer();
-      } else {
+      if (next !== 'active') runtime.identity.hideKey();
+      else {
         void runtime.identity.retry({
           background: !!runtime.identity.getSnapshot().account,
         });
@@ -121,14 +113,11 @@ export function AppProvider({ children }: PropsWithChildren) {
       }
     });
     return () => {
-      void runtime.identity.cancelTransfer();
       unsubscribe();
       subscription.remove();
       unsubscribeNetwork();
       runtime.challenges.dispose();
-      // React can restart effects while retaining this state-owned runtime.
-      // Parking stops its work and preserves unsaved data for reconnection.
-      runtime.activity.changeAccount(null);
+      runtime.activity.dispose();
       runtime.client.changeAccount(null);
     };
   }, [runtime]);

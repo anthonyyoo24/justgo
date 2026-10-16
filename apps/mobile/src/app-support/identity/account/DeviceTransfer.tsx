@@ -59,10 +59,8 @@ export function DeviceTransfer({
       <SettingsGroup title="On your new phone">
         <View style={styles.inset}>
           <Text style={styles.body}>
-            Open JustGO on your new phone and choose “Transfer from another
-            device.” If that phone already has an account, go to Settings →
-            Account & recovery → Recovery keys → Recover an existing account
-            first. Keep that phone open while you approve it here.
+            Open JustGO and choose “Transfer from another device.” Keep that
+            phone open while you approve it here.
           </Text>
         </View>
       </SettingsGroup>

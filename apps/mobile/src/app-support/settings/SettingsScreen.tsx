@@ -43,12 +43,7 @@ export function SettingsScreen() {
           </Pressable>
         </Link>
         <SettingsExportRow />
-        <SettingsActionRow
-          icon="delete"
-          label="Delete account"
-          href="/delete-account"
-          chevron
-        />
+        <PendingSettingsRow icon="delete" label="Delete account" />
       </SettingsGroup>
 
       <SettingsGroup title="Privacy">

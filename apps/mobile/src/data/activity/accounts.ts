@@ -27,12 +27,4 @@ export class AccountRepositories {
     this.accounts.clear();
     this.current = null;
   }
-  async erase(accountId: string): Promise<void> {
-    const account = this.accounts.get(accountId) ?? this.create(accountId);
-    if (this.current === account) this.current = null;
-    // Retain failed cleanups for retry; never reactivate a disposed repository.
-    this.accounts.set(accountId, account);
-    await account.erase();
-    this.accounts.delete(accountId);
-  }
 }

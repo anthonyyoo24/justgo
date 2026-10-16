@@ -13,7 +13,7 @@ async function openAccount(page: Page, catalogReady = true) {
       r.request().method() === 'POST',
   );
   await page
-    .getByRole('button', { name: 'Create a new account', exact: true })
+    .getByRole('button', { name: 'Create a private account', exact: true })
     .click();
   const response = await created;
   const body: unknown = await response.json();

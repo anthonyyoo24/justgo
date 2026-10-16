@@ -47,26 +47,6 @@ async function setup(
   return { repo, storage, transport };
 }
 const state = (repo: AccountRepository) => repo.store.getState();
-it('erases only the deleted account, including quarantine, after an outstanding journal write settles', async () => {
-  const { repo, storage } = await setup();
-  storage.values.set(`justgo:v1:${owner}:quarantine:1`, 'Synthetic quarantine');
-  storage.values.set(`justgo:v1:${owner}:catalog`, 'Synthetic catalog');
-  storage.values.set(`justgo:v1:${otherOwner}:journal`, 'Other owner');
-  storage.blocked = deferred<void>();
-  const write = repo.complete(input(), card);
-  await Promise.resolve();
-  const erased = repo.erase();
-  storage.blocked.resolve();
-  await Promise.allSettled([write]);
-  await erased;
-  expect([...storage.values.keys()]).toEqual([
-    `justgo:v1:${otherOwner}:journal`,
-  ]);
-  expect(state(repo).journal.records).toEqual({});
-  await expect(repo.complete(input(), card)).rejects.toMatchObject({
-    code: 'ACCOUNT_CHANGED',
-  });
-});
 const disk = (storage: MemoryStorage) =>
   journalSchema.parse(JSON.parse(storage.values.get(key)!));
 

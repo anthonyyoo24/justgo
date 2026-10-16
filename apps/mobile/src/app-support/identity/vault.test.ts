@@ -18,7 +18,6 @@ const native = {
   writeState: jest.fn(),
   listCredentials: jest.fn(),
   addCredential: jest.fn(),
-  removeCredential: jest.fn(),
 };
 const originalPlatform = Platform.OS;
 beforeEach(() => {
@@ -27,7 +26,6 @@ beforeEach(() => {
   jest.mocked(requireOptionalNativeModule).mockReturnValue(native);
   native.readState.mockResolvedValue(JSON.stringify(state));
   native.listCredentials.mockResolvedValue([credential]);
-  native.removeCredential.mockResolvedValue(undefined);
 });
 afterEach(() => {
   Object.defineProperty(Platform, 'OS', { value: originalPlatform });
@@ -58,61 +56,6 @@ it.each(['not json', '{}', JSON.stringify({ ...state, unexpected: true })])(
   },
 );
 
-it.each(['pending', 'cleanup', 'deleted'] as const)(
-  'preserves %s deletion state together with newer phone-transfer metadata',
-  async (stage) => {
-    const stored = {
-      ...state,
-      accountDeleted: stage === 'deleted',
-      pending:
-        stage === 'deleted'
-          ? null
-          : {
-              kind: 'delete',
-              userId: state.deviceId,
-              receipt:
-                stage === 'pending'
-                  ? null
-                  : {
-                      userId: state.deviceId,
-                      deletedAt: '2026-10-14T10:00:00.000Z',
-                      credentialDigests: [credential.secret],
-                    },
-            },
-      ignoredCredentialIds: [credential.id],
-      cancelledTransfers: [
-        {
-          kind: 'transfer',
-          credentialId: credential.id,
-          input: {
-            id: credential.id,
-            deviceId: state.deviceId,
-            sessionId: credential.id,
-            sessionToken: credential.secret,
-            credential: credential.secret,
-            code: 'ABCDEF0123456789',
-            claimSecret: credential.secret,
-          },
-        },
-      ],
-    };
-    native.readState.mockResolvedValue(JSON.stringify(stored));
-    const vault = createVault();
-    const restored = await vault.read();
-    expect(restored).toEqual(stored);
-    await vault.write(restored!);
-    expect(JSON.parse(native.writeState.mock.calls[0]![0])).toEqual(stored);
-  },
-);
-
-it.each([
-  { ignoredCredentialIds: ['invalid'] },
-  { cancelledTransfers: [{ kind: 'transfer', credentialId: credential.id }] },
-])('rejects malformed recovery metadata %p', async (metadata) => {
-  native.readState.mockResolvedValue(JSON.stringify({ ...state, ...metadata }));
-  await expect(createVault().read()).rejects.toThrow();
-});
-
 it('rejects invalid writes and credential payloads before calling native code', async () => {
   const vault = createVault();
   await expect(
@@ -138,18 +81,6 @@ it('fails explicitly when a native build lacks the module', async () => {
   ]) {
     await expect(action()).rejects.toThrow('updated iOS development build');
   }
-});
-it('removes only a validated credential and detects older binaries before deletion', async () => {
-  const vault = createVault();
-  await vault.remove!(credential.id);
-  expect(native.removeCredential).toHaveBeenCalledWith(credential.id);
-  await expect(vault.remove!('invalid')).rejects.toThrow();
-  native.removeCredential.mockRejectedValueOnce(new Error('Keychain locked'));
-  await expect(vault.remove!(credential.id)).rejects.toThrow('Keychain locked');
-  jest
-    .mocked(requireOptionalNativeModule)
-    .mockReturnValue({ ...native, removeCredential: undefined });
-  expect(createVault().remove).toBeUndefined();
 });
 
 it('propagates native read/write/list/add failures to the identity recovery boundary', async () => {

@@ -80,10 +80,5 @@ public class JustGoKeychainModule: Module {
         guard found == errSecSuccess, let data = result as? Data, data == Data(secret.utf8) else { throw CredentialStoreError(status: errSecDuplicateItem) }
       } else if status != errSecSuccess { throw CredentialStoreError(status: status) }
     }
-    AsyncFunction("removeCredential") { (id: String) in
-      // Scope removal to one verified account's immutable recovery item.
-      let status = SecItemDelete(self.query(true, id) as CFDictionary)
-      guard status == errSecSuccess || status == errSecItemNotFound else { throw CredentialStoreError(status: status) }
-    }
   }
 }

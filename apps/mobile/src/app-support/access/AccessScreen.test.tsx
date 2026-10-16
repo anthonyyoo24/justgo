@@ -1,10 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { AccessScreen } from './AccessScreen';
 import { useAccess, useIdentity } from '../providers/AppProvider';
-let mockWelcomePending = false;
-jest.mock('../identity/welcome/WelcomeTransition', () => ({
-  useWelcomeTransition: () => mockWelcomePending,
-}));
 jest.mock('../providers/AppProvider', () => ({
   useAccess: jest.fn(),
   useIdentity: jest.fn(),
@@ -21,19 +17,11 @@ jest.mock('expo-router', () => {
 const access = useAccess as jest.Mock;
 const identity = useIdentity as jest.Mock;
 beforeEach(() => {
-  mockWelcomePending = false;
   identity.mockReturnValue({
     initialized: true,
     busy: false,
     account: { userId: 'a' },
   });
-});
-it('keeps a replacement on welcome instead of flashing the access-check page', () => {
-  mockWelcomePending = true;
-  access.mockReturnValue({ isPending: true, verified: false });
-  const screen = render(<AccessScreen />);
-  expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
-  expect(screen.queryByText('Checking your access…')).toBeNull();
 });
 it('keeps unavailable access closed and offers retry and recovery without a welcome questionnaire', () => {
   const refetch = jest.fn();
@@ -81,40 +69,6 @@ it('enters tabs only with verified access and returns to recovery when identity 
   screen.rerender(<AccessScreen />);
   expect(screen.getByText('Redirect: /recovery')).toBeTruthy();
 });
-
-it.each([false, true])(
-  'routes a restored deleted account to welcome while busy=%s, even with stale access',
-  (busy) => {
-    identity.mockReturnValue({
-      initialized: true,
-      account: null,
-      busy,
-      deletionStatus: 'deleted',
-    });
-    access.mockReturnValue({ verified: true });
-    const screen = render(<AccessScreen />);
-    expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
-    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
-    expect(screen.queryByText('Redirect: /recovery')).toBeNull();
-  },
-);
-
-it.each(['pending', 'cleanup'])(
-  'resumes %s deletion before presenting access or account creation',
-  (deletionStatus) => {
-    identity.mockReturnValue({
-      initialized: true,
-      account: null,
-      busy: true,
-      deletionStatus,
-    });
-    access.mockReturnValue({ verified: true });
-    const screen = render(<AccessScreen />);
-    expect(screen.getByText('Redirect: /delete-account')).toBeTruthy();
-    expect(screen.queryByText('Redirect: /welcome')).toBeNull();
-    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
-  },
-);
 
 it.each([
   { initialized: false, busy: false, account: null },

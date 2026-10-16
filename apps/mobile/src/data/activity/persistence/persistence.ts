@@ -13,10 +13,6 @@ export class JournalPersistence {
   protected = false;
   storageFull = false;
   private writes: Promise<unknown> = Promise.resolve();
-  async stopWrites() {
-    this.protected = true;
-    await this.writes;
-  }
   constructor(
     private readonly key: string,
     private readonly storage: JournalStorage,

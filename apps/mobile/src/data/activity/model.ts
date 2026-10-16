@@ -207,7 +207,6 @@ export type JournalState = {
   period: { today: string; timeZone: string };
 };
 export interface JournalStorage {
-  getAllKeys?: () => Promise<readonly string[]>;
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;

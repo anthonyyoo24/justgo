@@ -104,19 +104,12 @@ it('moves availability beneath the label and gives enlarged titles the full widt
   expect(screen.getByText('Coming soon').props.style.maxWidth).toBe(76);
 });
 
-it('preserves a pending action and restores current label metrics after resizing', () => {
+it('preserves a pending action while its label metrics resize', () => {
   const screen = render(
-    <PrimaryButton label="Review transfer" onPress={() => undefined} />,
+    <PrimaryButton label="Review transfer" busy onPress={() => undefined} />,
   );
   const button = screen.getByRole('button', { name: 'Review transfer' });
   changeScale(3.2);
-  expect(screen.getByText('Review transfer').props.style).toMatchObject({
-    fontSize: 30,
-    lineHeight: 40,
-  });
-  screen.rerender(
-    <PrimaryButton label="Review transfer" busy onPress={() => undefined} />,
-  );
   expect(
     screen.getByRole('button', { name: 'Review transfer' }) === button,
   ).toBe(true);
@@ -124,19 +117,14 @@ it('preserves a pending action and restores current label metrics after resizing
   expect(
     screen.getByRole('progressbar', { name: 'Review transfer in progress' }),
   ).toBeTruthy();
-  expect(screen.queryByText('Review transfer')).toBeNull();
+  expect(screen.getByText('Review transfer').props.style).toMatchObject({
+    fontSize: 30,
+    lineHeight: 40,
+  });
   changeScale(1);
-  expect(button).toBeDisabled();
-  expect(
-    screen.getByRole('progressbar', { name: 'Review transfer in progress' }),
-  ).toBeTruthy();
-  screen.rerender(
-    <PrimaryButton label="Review transfer" onPress={() => undefined} />,
-  );
   expect(screen.getByText('Review transfer').props.style).toMatchObject({
     fontSize: 15,
     lineHeight: 20,
   });
-  expect(button).toBeEnabled();
-  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(button).toBeDisabled();
 });

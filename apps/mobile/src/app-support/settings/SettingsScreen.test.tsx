@@ -127,13 +127,15 @@ it('renders the actual route with scoped groups, honest pending controls and no 
     'Support',
     'About',
   ]);
-  for (const label of ['General analytics', 'Sensitive metadata'])
+  for (const label of [
+    'Delete account',
+    'General analytics',
+    'Sensitive metadata',
+  ])
     expect(
       screen.getByLabelText(`${label}. Not available yet.`).props
         .accessibilityState.disabled,
     ).toBe(true);
-  fireEvent.press(screen.getByLabelText('Delete account'));
-  expect(mockRouter.push).toHaveBeenCalledWith('/delete-account');
   expect(screen.getByRole('switch', { name: 'Reduce motion' })).toBeEnabled();
   expect(screen.getByRole('switch', { name: 'Haptics' })).toBeEnabled();
   expect(screen.queryByText('Practice reminders')).toBeNull();

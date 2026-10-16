@@ -6,23 +6,12 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ActivityIndicator, Text, View } from 'react-native';
-import {
-  AppProvider,
-  useAccess,
-  useIdentity,
-} from '../app-support/providers/AppProvider';
+import { AppProvider, useAccess } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
 import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
 import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
 import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider';
-import { welcomeBackgroundColor } from '../app-support/identity/welcome/welcome-artwork';
-import {
-  WelcomeTransition,
-  useWelcomeTransition,
-} from '../app-support/identity/welcome/WelcomeTransition';
-
-export { RouteErrorScreen as ErrorBoundary } from '../app-support/fallbacks/RouteErrorScreen';
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -60,11 +49,9 @@ export default function RootLayout() {
         <HapticsPreferencesProvider>
           <AppProvider>
             <SavingFeedbackShell>
-              <WelcomeTransition>
-                <ChallengeActivityProvider>
-                  <Navigation />
-                </ChallengeActivityProvider>
-              </WelcomeTransition>
+              <ChallengeActivityProvider>
+                <Navigation />
+              </ChallengeActivityProvider>
             </SavingFeedbackShell>
           </AppProvider>
         </HapticsPreferencesProvider>
@@ -74,41 +61,26 @@ export default function RootLayout() {
 }
 function Navigation() {
   const access = useAccess();
-  const identity = useIdentity();
-  const deleted = identity.deletionStatus === 'deleted';
-  const awaitingAccess = useWelcomeTransition();
-  const welcome = deleted || awaitingAccess;
   return (
     <Stack
       screenOptions={{
         headerShown: false,
         animation: 'none',
-        contentStyle: {
-          backgroundColor: welcome ? welcomeBackgroundColor : colors.cream,
-        },
+        contentStyle: { backgroundColor: colors.cream },
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Protected guard={welcome}>
-        <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
-      </Stack.Protected>
-      {/* Removing these routes also removes the deleted account's Back history. */}
-      <Stack.Protected guard={!welcome}>
-        <Stack.Screen name="settings" />
-        <Stack.Screen name="export-data" />
-        <Stack.Screen name="delete-account" />
-        <Stack.Screen name="recovery" />
-        <Stack.Screen name="account/[tool]" />
-      </Stack.Protected>
-      <Stack.Protected
-        guard={!identity.deletionStatus && !awaitingAccess && access.verified}
-      >
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="export-data" />
+      <Stack.Screen name="recovery" />
+      <Stack.Screen name="account/[tool]" />
+      <Stack.Protected guard={access.verified}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="challenge" options={{ gestureEnabled: false }} />
         <Stack.Screen name="success" />
         <Stack.Screen name="reflection" options={{ gestureEnabled: false }} />
       </Stack.Protected>
-      <Stack.Protected guard={!welcome && __DEV__}>
+      <Stack.Protected guard={__DEV__}>
         <Stack.Screen name="preview" />
       </Stack.Protected>
     </Stack>

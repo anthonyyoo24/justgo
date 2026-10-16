@@ -1,18 +1,11 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 export default function PreviewRoute() {
-  const { mode, progressState, progressDayState, state } =
-    useLocalSearchParams<{
-      mode?: string;
-      progressState?: string;
-      progressDayState?: string;
-      state?: string;
-    }>();
+  const { mode, progressState, progressDayState } = useLocalSearchParams<{
+    mode?: string;
+    progressState?: string;
+    progressDayState?: string;
+  }>();
   if (!__DEV__) return <Redirect href="/" />;
-  if (mode === 'welcome') {
-    const { WelcomePreview } =
-      require('../dev/previews/WelcomePreview') as typeof import('../dev/previews/WelcomePreview');
-    return <WelcomePreview state={state ?? 'default'} />;
-  }
   if (mode === 'haptics') {
     const { HapticsTestScreen } =
       require('../dev/haptics/HapticsTestScreen') as typeof import('../dev/haptics/HapticsTestScreen');
