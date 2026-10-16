@@ -1,9 +1,36 @@
 name: Foundation checks
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Expo's recommended SDK patches change without a commit; catch them weekly.
+  schedule:
+    - cron: '0 13 * * 1'
 permissions:
   contents: read
+# A newer push to a pull request cancels its older run. Main and scheduled runs
+# are grouped by commit, so every merged commit keeps its own complete result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 jobs:
+  expo-doctor:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install -g npm@11.16.0
+      - run: npm ci
+      - run: npm run doctor -w @justgo/mobile
   checks:
+    # Doctor runs as its own job, so an upstream patch recommendation cannot
+    # hide typecheck, lint, test or journey results.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -25,7 +52,7 @@ jobs:
           cache: npm
       - run: npm install -g npm@11.16.0
       - run: npm ci
-      - run: npm run check
+      - run: npm run check:static
       - name: Install PostgreSQL 17 snapshot tools
         run: |
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
@@ -37,13 +64,15 @@ jobs:
         run: |
           psql -h localhost -U postgres -d justgo_test -v ON_ERROR_STOP=1 -f apps/api/scripts/provision.sql
           psql -h localhost -U postgres -d justgo_test -v ON_ERROR_STOP=1 -c "alter role justgo_runtime password 'runtime-ci-only'; alter role justgo_migrator password 'migration-ci-only';"
-      - run: npm run db:migrate && npm run test:db
+      - run: npm run db:migrate
         env: &database-test-env
           DATABASE_URL: postgresql://justgo_runtime:runtime-ci-only@localhost:5432/justgo_test
           MIGRATION_DATABASE_URL: postgresql://justgo_migrator:migration-ci-only@localhost:5432/justgo_test
           DATABASE_SSL: disable
           JUSTGO_PG_BIN: /usr/lib/postgresql/17/bin
-      - name: Collect and enforce all-source coverage (includes PostgreSQL services)
+      # One run of every unit, component, contract and database suite plus the
+      # migration rehearsal, collecting and enforcing coverage at the same time.
+      - name: Run all workspace tests with all-source coverage (includes PostgreSQL services)
         id: coverage
         run: npm run test:coverage
         env: *database-test-env

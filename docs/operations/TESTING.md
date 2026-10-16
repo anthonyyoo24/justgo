@@ -63,12 +63,21 @@ Keep the loopback/test-database safeguards enabled.
 
 ## Before publication
 
-Run `npm ci` in a clean checkout and `npm run check`; CI runs the same root
-command immediately after installation. Its first step is
+Run `npm ci` in a clean checkout and `npm run check`. Its first step is
 `npm run doctor -w @justgo/mobile`, which bypasses Expo's dependency metadata
 cache with `EXPO_NO_CACHE=1`. The doctor remains pinned in the root lockfile.
-A failed dependency check stops the command before build/test work begins.
+A failed dependency check stops the local command before build/test work begins.
 The command tests protect this early stop, fresh metadata and nonzero exits.
+
+CI runs on pushes to `main` and on pull requests; a newer push to a pull request
+cancels its older run. Its `expo-doctor` job runs the same doctor command on its
+own, and again every Monday, so an upstream patch recommendation fails that job
+without hiding the other results. The `checks` job runs `npm run check:static`
+(contracts build, typecheck, lint, formatting and architecture tests), then
+`npm run test:coverage` once, which is the only run of the unit, component,
+contract, database and migration suites. Journeys and both exports follow.
+`scripts/quality/ci-workflow.test.mjs` protects these triggers and the
+single-run layout.
 
 For split or stacked PRs, perform this verification on each branch's exact
 publication candidate. A passing combined feature branch does not verify an
