@@ -2,7 +2,7 @@
 
 # Phase 08A — Structure, docs & tooling cleanup
 
-**Status:** Local implementation ready — hosted CI, owner review and approved cleanup remain open.
+**Status:** Published for owner review — integration and approved cleanup remain open.
 
 ## Outcome
 

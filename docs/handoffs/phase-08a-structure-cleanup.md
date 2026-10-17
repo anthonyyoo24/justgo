@@ -2,8 +2,9 @@
 
 ## Summary and status
 
-Local implementation is ready. Owner review,
-PR publication, hosted CI and remaining branch/stash cleanup remain open. Phase 08's
+Implementation is published as two stacked PRs. Local gates and the initial
+hosted runs pass; owner review, integration and remaining branch/stash cleanup
+remain open. Phase 08's
 acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 [Phase 08A plan](../implementation-plan/phase-08a-structure-cleanup.md) owns scope.
 
@@ -14,7 +15,9 @@ acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
   a compatibility index.
 - Archive only handoffs whose work and gates are complete. Earlier feature,
   folder-cleanup, performance and native-testing handoffs retain their open gates.
-- Keep one reviewable change per numbered step and separate moves from behavior.
+- Publish the approved two-PR stack in dependency order, keeping move-only
+  commits separate from behavior changes. Each comparison stays within the
+  CodeRabbit file limit; preserve ancestry when integrating the first PR.
   The unknown-link fix belongs to the route step so each candidate preserves entry.
 - Five independent CI producers feed the existing required `checks` status.
   Merge API execution maps from disjoint unit/database suites before enforcing
@@ -38,10 +41,13 @@ acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 - API domains own routes/services, tests mirror source owners, and shared HTTP
   plumbing is separate. OpenAPI has an API-only entry and route-alignment test.
   Rate limits return their remaining window. Diagnostics allowlist SQLSTATE and
-  migration tags without changing SQL, transaction scope or migration history.
+  migration tags and fixed setup reasons without changing SQL, transaction scope
+  or migration history.
 - The HTTP client fetches its admitted canonical URL. Media/status checks keep
   proxy or malformed bodies from becoming credential failures, while retaining
   validated API errors, cancellation, deadlines and bounded replay.
+  Only validated API error envelopes may extend an upload cooldown; unexpected
+  proxy headers use the existing backoff, preserving valid long server cooldowns.
 - Production mobile types exclude Jest/Node globals; tests use a separate program.
   Targeted typed, React and Testing Library rules guard behavior. Split suites
   retain their cases and the migration rehearsal remains ordered. Progress
@@ -91,11 +97,11 @@ acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 
 ## Open gates
 
-| Gate                                                    | Owner                                                               | Required step/phase | Done when                                                         |
-| ------------------------------------------------------- | ------------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------- |
-| PR publication and hosted CI for each candidate         | Anthony authorizes each Git action; implementation owner verifies   | 08A                 | Actual authorized candidates have inspected passing hosted checks |
-| Local branch deletion and billing stash disposition     | Anthony approves each named deletion; implementation owner executes | 08A step 8          | Reviewed cleanup is explicitly approved and completed             |
-| Earlier physical-device, staging and release acceptance | Existing phase owners                                               | 09–11               | Original handoff/release requirements are evidenced               |
+| Gate                                                    | Owner                                                                    | Required step/phase | Done when                                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------- | -------------------------------------------------------------------------------------------------- |
+| Owner review and integration                            | Anthony reviews and authorizes each merge; implementation owner verifies | 08A                 | Review accepted, merges explicitly approved and the retargeted candidate has passing hosted checks |
+| Local branch deletion and billing stash disposition     | Anthony approves each named deletion; implementation owner executes      | 08A step 8          | Reviewed cleanup is explicitly approved and completed                                              |
+| Earlier physical-device, staging and release acceptance | Existing phase owners                                                    | 09–11               | Original handoff/release requirements are evidenced                                                |
 
 ## Final verification
 
@@ -121,4 +127,14 @@ after the clear-cache mobile-move restart. The starting account was restored.
 Native bundle/source-map inspection excluded OpenAPI while retaining public contracts.
 These are distinct from physical-device and hosted acceptance.
 
-Phase 08A CI link: pending authorized publication; no hosted result is claimed.
+GitHub CodeRabbit admitted both split comparisons. Its documentation findings
+were corrected, and the implementation review led to safe migration setup reasons,
+unvalidated-response retry-header isolation and aligned CI setup guidance, with
+focused regressions preserving validated long server cooldowns and credential privacy.
+
+Hosted verification is tracked by the [documentation checks](https://github.com/anthonyyoo24/justgo/pull/30/checks)
+and [implementation checks](https://github.com/anthonyyoo24/justgo/pull/31/checks).
+The initial split candidates passed independently; the implementation runs all
+five producers and the aggregate coverage gate. Recheck the actual candidate
+after retargeting the stack for integration. Owner review and explicit merge
+approval remain required.

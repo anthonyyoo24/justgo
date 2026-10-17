@@ -174,9 +174,10 @@ ordered reflection edits, aggregate reconciliation, limited history, account/ses
 recovery, export and deletion. It is distinct from presentation fixtures,
 one-off interactive walkthroughs and native checks.
 
-Install pinned Chromium with `npx playwright install chromium`; Linux CI uses
-`npx playwright install --with-deps chromium`. Run the full root journey command or
-pass a saved spec, for example:
+Install pinned Chromium with `npx playwright install chromium`; Linux CI uses the
+shared setup action to install system dependencies on every run and Chromium on
+browser-cache misses. Run the full root journey command or pass a saved spec, for
+example:
 
 ```sh
 npm run test:journey -- e2e/data-export.spec.ts
