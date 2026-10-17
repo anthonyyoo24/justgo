@@ -122,7 +122,11 @@ does not promise a backup system or persist the whole query cache.
 ## HTTP contracts and diagnostics
 
 Public strict schemas are imported through `@justgo/contracts`; the apps do not
-import one another's implementation. `/openapi.json` documents health/readiness,
+import one another's implementation. Shared errors and health/readiness schemas
+live in their own modules. The generated document has the API-only
+`@justgo/contracts/openapi` entry, so importing mobile contracts does not load it.
+Contracts builds clean `dist` before compiling both entries. `/openapi.json`
+documents health/readiness,
 identity, access, catalog, canonical activity, Progress, export and deletion.
 Contract changes must keep route validation, statuses, response parsing and
 OpenAPI aligned in the same change.
@@ -133,6 +137,10 @@ and Helmet headers. Versioned failures use a safe typed envelope with a request
 ID. Malformed, oversized and unsupported-media requests retain client-error
 statuses; transient service failures become unavailable responses. Secret-bearing
 URLs, request/response bodies and private reflections are excluded from logs.
+Identity rate limits return the real integer seconds remaining in the database
+bucket through Retry-After. Shared HTTP errors, bearer parsing, input validation
+and allowlisted diagnostics live in the API http owner. SQLSTATE diagnostics
+expose only validated five-character codes through wrapped driver failures.
 `/health` checks process availability; `/ready` checks the database and returns
 503 when unavailable.
 

@@ -34,6 +34,11 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
   presentation, controlled key form and confirmation ownership. Actions use stable
   IDs. Wire reads sit with their catalog/export/access/shared-progress owners.
 
+- API domains consistently own routes/services, tests mirror their source owners,
+  and shared HTTP plumbing is separate. OpenAPI has an API-only package entry.
+  Rate-limit replies expose their remaining window; diagnostics identify safe
+  SQLSTATEs and failing migrations while preserving execution/history.
+
 ## Invariants to preserve
 
 - Existing identity, deletion, activity, access, privacy and native safety rules
@@ -65,7 +70,7 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
 
 | Gate                                                          | Owner                                                | Required step/phase | Done when                                                   |
 | ------------------------------------------------------------- | ---------------------------------------------------- | ------------------- | ----------------------------------------------------------- |
-| API/contracts organization and HTTP robustness                | Implementation owner                                 | 08A steps 4–5       | Focused checks, database gates and bundle isolation pass    |
+| HTTP robustness                                               | Implementation owner                                 | 08A step 5          | Canonical URL and response-media regressions pass           |
 | Tooling, regression journeys and CI changes                   | Implementation owner                                 | 08A steps 6–7       | Local required checks pass; hosted candidates are inspected |
 | Local branch/worktree deletions and billing stash disposition | Anthony approves each deletion; implementation owner | 08A step 8          | Concrete inventory reviewed and approved cleanup completed  |
 | Publication of each step and hosted CI                        | Anthony authorizes each action                       | 08A                 | Authorized candidates have inspected passing hosted checks  |
@@ -82,6 +87,10 @@ walkthrough (launch, self-device sign-out, account switching and first/repeated
 challenge flow). The mobile ownership checkpoint also passed npm run check, cold web/iOS
 exports, focused identity and API-consumer regressions, a side-panel walkthrough
 and a fresh installed-app reload after the clear-cache Metro restart. Existing
-physical-device release gates remain open. No Phase 08A hosted CI is claimed;
+physical-device release gates remain open. The API/contracts checkpoint passed
+npm run check, npm run test:db (including the migration rehearsal), boundary/
+deployment regressions and cold web/iOS exports. The native source map includes
+public contracts and excludes the OpenAPI module; its document markers are
+absent from the Hermes bundle. No Phase 08A hosted CI is claimed;
 remaining steps require their own checks. Detailed
 interim output stays in ignored local logs and commit/PR descriptions.

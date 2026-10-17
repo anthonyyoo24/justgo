@@ -89,19 +89,21 @@ capability changes need a separately authorized compatible build.
 
 ## API and contracts
 
-| Implemented path                 | Responsibility                                                              |
-| -------------------------------- | --------------------------------------------------------------------------- |
-| apps/api/src/identity/           | Session, credential, recovery/transfer and deletion-lock boundaries.        |
-| apps/api/src/access/             | Server-authorized access and staging-only beta admission.                   |
-| apps/api/src/challenges/         | Stable catalog reads.                                                       |
-| apps/api/src/attempts/           | Canonical completion creation and reflection PATCH/replay.                  |
-| apps/api/src/progress/           | Independent summary/month/day resources.                                    |
-| apps/api/src/privacy/            | Owner-isolated export and permanent account deletion.                       |
-| apps/api/src/db/                 | Restricted pools, transaction ownership and current single schema.          |
-| apps/api/tests/                  | Application/error wiring and capability/database/harness integration cases. |
-| apps/api/scripts/                | Migration/provisioning and separate loopback fixture entrypoints.           |
-| apps/api/drizzle/                | Ordered registered SQL migrations and immutable generated metadata.         |
-| packages/contracts/src/activity/ | Catalog, completion/reflection and Progress resource contracts.             |
+| Implemented path                 | Responsibility                                                            |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| apps/api/src/identity/           | Session, credential, recovery/transfer and deletion-lock boundaries.      |
+| apps/api/src/access/             | Server-authorized access and staging-only beta admission.                 |
+| apps/api/src/challenges/         | Stable catalog reads.                                                     |
+| apps/api/src/attempts/           | Canonical completion creation and reflection PATCH/replay.                |
+| apps/api/src/progress/           | Independent summary/month/day resources.                                  |
+| apps/api/src/account-export/     | Owner-isolated export routes and service.                                 |
+| apps/api/src/http/               | Shared errors, bearer/validation, response handling and safe diagnostics. |
+| apps/api/src/db/                 | Restricted pools, transaction ownership and current single schema.        |
+| apps/api/tests/                  | Mirrored domain/db/http/script tests and fixtures.                        |
+| apps/api/scripts/                | Migration/provisioning and separate loopback fixture entrypoints.         |
+| apps/api/drizzle/                | Ordered registered SQL migrations and immutable generated metadata.       |
+| packages/contracts/src/          | Public error/operational schemas; API-only OpenAPI document entry.        |
+| packages/contracts/src/activity/ | Catalog, completion/reflection and Progress resource contracts.           |
 
 Runtime and migration credentials remain separate. Mobile and API import the
 public contracts package and do not import each other's implementations. The
