@@ -19,8 +19,8 @@ JustGO helps adults build social confidence through short, real-world social cha
 For the October 9 legal drafts, the owner identified the personal operator as Youngshin Yoo in Canada and proposed adults 18 and older across available App Store countries and regions. Final distribution, eligibility behavior, age rating and regional legal review remain release decisions. The [data inventory and legal review](../legal/LEGAL_REVIEW.md) track the policy assumptions and required follow-up; no new onboarding is approved by these drafts.
 
 ```text
-Planned first use: Credential bootstrap → Terms & Privacy acceptance → Verify paid access / Hard paywall → Home
-Returning use: Recover account → Verify access → Hydrate saved activity → Home
+Planned first use: Credential bootstrap → Terms & Privacy acceptance (if no current receipt) → Verify paid access / Hard paywall → Home
+Returning use: Recover account → Terms & Privacy acceptance (if no current receipt) → Verify access → Hydrate saved activity → Home
 Core loop: Home → Active Challenge → Success → Reflection → Home
 Primary destinations: Home · Progress
 Supporting surfaces: Settings · Calendar day sheet

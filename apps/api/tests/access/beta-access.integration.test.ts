@@ -209,6 +209,54 @@ describe('real authenticated free test access', () => {
       ).toBe('ineligible');
     });
   });
+  it.each(['automatic window', 'individual grant'])(
+    'rejects future-dated uploads before and during an %s',
+    async (admission) => {
+      const a = await account();
+      let now = Date.now();
+      const startsAt = now + 60_000;
+      const interval = {
+        startsAt: iso(startsAt),
+        expiresAt: iso(startsAt + 3_600_000),
+      };
+      const api = app(
+        admission === 'individual grant'
+          ? [{ userId: a.userId, ...interval }]
+          : [],
+        admission === 'automatic window' ? interval : null,
+        () => now,
+      );
+      const catalog = await request(
+        app([], { ...interval, startsAt: iso(now - 60_000) }, () => now),
+        a.sessionToken,
+        '/v1/challenges',
+      );
+      expect(catalog.statusCode).toBe(200);
+      const card = catalog.json<Catalog>().cards[0]!;
+      const upload = (started: number) =>
+        request(api, a.sessionToken, '/v1/attempts', {
+          id: randomUUID(),
+          challengeId: card.challengeId,
+          venue: card.venue,
+          startedAt: iso(started),
+          startTimeZone: 'UTC',
+        });
+      expect(
+        (await request(api, a.sessionToken, '/v1/access')).json().status,
+      ).toBe('unpaid');
+      // The future start is inside the attempt service's five-minute tolerance,
+      // but a future admission interval must not grant upload access early.
+      const early = await upload(startsAt);
+      expect(early.statusCode).toBe(403);
+      expect(early.json().code).toBe('ATTEMPT_INELIGIBLE');
+
+      now = startsAt;
+      expect((await upload(now)).statusCode).toBe(201);
+      expect((await upload(now + 1)).statusCode).toBe(403);
+      now += 60_000;
+      expect((await upload(now - 30_000)).statusCode).toBe(201);
+    },
+  );
   it('admits only the approved owner and rejects revoked sessions, while export remains available without a grant', async () => {
     const a = await account(),
       b = await account();

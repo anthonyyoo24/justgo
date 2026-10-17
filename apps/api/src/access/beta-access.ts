@@ -105,7 +105,8 @@ export function createBetaAccess(
       if (!userId || userId !== context.userId) return 'ineligible';
       // Keep ended/revoked intervals in operator configuration so earlier offline
       // completions remain uploadable. Never remove a grant to revoke current access.
-      return covers(interval(userId), Date.parse(context.startedAt))
+      const startedAt = Date.parse(context.startedAt);
+      return startedAt <= now() && covers(interval(userId), startedAt)
         ? 'eligible'
         : 'ineligible';
     },

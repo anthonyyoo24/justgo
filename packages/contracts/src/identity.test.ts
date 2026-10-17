@@ -121,7 +121,10 @@ describe('session resource creation proofs', () => {
         'application/json'
       ].schema,
     ).toEqual(expect.objectContaining({ anyOf: expect.any(Array) }));
-    expect(paths['/v1/transfers/{id}'].delete.security).toEqual([]);
+    expect(paths['/v1/transfers/{id}'].delete.security).toEqual([
+      {},
+      { deviceSession: [] },
+    ]);
     expect(paths['/v1/transfers/{id}'].delete.description).toContain(
       'approving account bearer session',
     );

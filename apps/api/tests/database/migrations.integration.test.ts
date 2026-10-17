@@ -134,7 +134,13 @@ type SnapshotTable = {
   checkConstraints: Record<string, unknown>;
   policies: Record<
     string,
-    { for?: string; to?: string[]; using?: string; withCheck?: string }
+    {
+      as?: string;
+      for?: string;
+      to?: string[];
+      using?: string;
+      withCheck?: string;
+    }
   >;
   isRLSEnabled: boolean;
 };
@@ -203,12 +209,13 @@ async function compareMetadata(index: number) {
     const policies = await admin.query<{
       name: string;
       command: string;
+      permissive: string;
       roles: string[];
       qual: string | null;
       check: string | null;
     }>(
       `
-      SELECT policyname AS name,cmd AS command,roles::text[] AS roles,qual,with_check AS check FROM pg_policies WHERE schemaname=$1 AND tablename=$2 ORDER BY policyname`,
+      SELECT policyname AS name,cmd AS command,permissive,roles::text[] AS roles,qual,with_check AS check FROM pg_policies WHERE schemaname=$1 AND tablename=$2 ORDER BY policyname`,
       [schema, table.name],
     );
     expect(policies.rows.map((value) => value.name)).toEqual(
@@ -220,6 +227,9 @@ async function compareMetadata(index: number) {
         (expected.for ?? 'all').toLowerCase(),
       );
       expect(policy.roles).toEqual(expected.to);
+      expect(policy.permissive.toLowerCase()).toBe(
+        (expected.as ?? 'permissive').toLowerCase(),
+      );
       expect(Boolean(policy.qual)).toBe(Boolean(expected.using));
       expect(Boolean(policy.check)).toBe(Boolean(expected.withCheck));
     }
@@ -937,12 +947,15 @@ describe('Phase 07 expansion, final contraction and disposable restoration', () 
     await migration(15);
     await compareMetadata(15);
     expect(await canonicalRows()).toEqual(normalizedBefore);
+    await migration(16);
+    await compareMetadata(16);
+    expect(await canonicalRows()).toEqual(normalizedBefore);
     // Clean installation also applies the complete immutable journal.
     await admin.query(
       `DROP SCHEMA ${schema} CASCADE; CREATE SCHEMA ${schema} AUTHORIZATION justgo_migrator; REVOKE ALL ON SCHEMA ${schema} FROM public; GRANT USAGE ON SCHEMA ${schema} TO justgo_runtime`,
     );
-    for (let index = 0; index <= 15; index++) await migration(index);
-    await compareMetadata(15);
+    for (let index = 0; index <= 16; index++) await migration(index);
+    await compareMetadata(16);
     expect(
       (
         await admin.query(

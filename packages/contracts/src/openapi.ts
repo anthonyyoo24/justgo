@@ -244,6 +244,7 @@ export const openApiDocument = {
         ),
         description:
           'Cancel with either the approving account bearer session and code, or the receiving phone’s complete original transfer proposal. The receiving proof can invalidate a proposal before its start request arrives; exact retries cannot recreate it. A redeemed result means completion already won the race and must be reconciled using the original session proof.',
+        security: [{}, { deviceSession: [] }],
       },
     },
     '/v1/transfer-inspections': {
