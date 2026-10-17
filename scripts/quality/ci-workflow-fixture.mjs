@@ -19,3 +19,8 @@ export const commands = (job) =>
 export const rootPackage = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url)),
 );
+export const action = (name) =>
+  readFileSync(
+    new URL(`../../.github/actions/${name}/action.yml`, import.meta.url),
+    'utf8',
+  );
