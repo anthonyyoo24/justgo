@@ -6,19 +6,12 @@ import { createDatabase, poolOptions } from '../../../src/db/client.js';
 import { readConfig } from '../../../src/config.js';
 import { IdentityService } from '../../../src/identity/service.js';
 import { buildApp } from '../../../src/build-app.js';
+import { localTestDatabaseUrl } from '../../../scripts/local-test-database.js';
 
 const migrationUrl = process.env.MIGRATION_DATABASE_URL;
 const config = readConfig({ ...process.env, DATABASE_POOL_MAX: '3' });
-for (const url of [config.DATABASE_URL, migrationUrl]) {
-  if (
-    !url ||
-    !['localhost', '127.0.0.1'].includes(new URL(url).hostname) ||
-    !new URL(url).pathname.endsWith('/justgo_test')
-  )
-    throw new Error(
-      'Identity tests require the dedicated local justgo_test database',
-    );
-}
+for (const url of [config.DATABASE_URL, migrationUrl])
+  localTestDatabaseUrl(url);
 const db = createDatabase(config);
 const admin = new Pool(
   poolOptions(readConfig({ ...process.env, DATABASE_URL: migrationUrl! })),

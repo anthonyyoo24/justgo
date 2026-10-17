@@ -80,7 +80,10 @@ extracting fixtures. The migration rehearsal remains one ordered test.
 Database tests, API coverage and journeys require `DATABASE_URL` for the restricted
 `justgo_runtime` role, `MIGRATION_DATABASE_URL` for fixture setup/cleanup, and
 `DATABASE_SSL=disable`. They refuse non-loopback hosts and databases other than
-`justgo_test`. Use disposable synthetic data only; never point fixtures at staging,
+`justgo_test`. Validate both URLs with the shared `localTestDatabaseUrl` guard
+before creating pools; reject query parameters and fragments because connection
+options can override the apparent host, database or role. Use disposable synthetic
+data only; never point fixtures at staging,
 production or private accounts. Keep PostgreSQL service suites serialized where
 shared catalog fixtures require it.
 
