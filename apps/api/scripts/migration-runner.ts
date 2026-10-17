@@ -6,6 +6,21 @@ import { NodePgSession, type NodePgClient } from 'drizzle-orm/node-postgres';
 import { readMigrationFiles, type MigrationConfig } from 'drizzle-orm/migrator';
 import { sqlState } from '../src/http/diagnostics.js';
 
+const setupFailureReasons = [
+  'separate_connection_required',
+  'invalid_configuration',
+  'migrator_role_required',
+] as const;
+
+export class MigrationSetupFailure extends Error {
+  constructor(
+    readonly reason: (typeof setupFailureReasons)[number],
+    cause?: unknown,
+  ) {
+    super('Migration setup failed', { cause });
+  }
+}
+
 export class MigrationFailure extends Error {
   constructor(
     readonly migration: string | undefined,
@@ -68,6 +83,10 @@ export function migrationDiagnostic(error: unknown) {
   const code = sqlState(error);
   return {
     event: 'migration_failed',
+    ...(error instanceof MigrationSetupFailure &&
+    setupFailureReasons.includes(error.reason)
+      ? { reason: error.reason }
+      : {}),
     ...(error instanceof MigrationFailure &&
     error.migration &&
     /^\d{4}_[a-z0-9_]+$/.test(error.migration)

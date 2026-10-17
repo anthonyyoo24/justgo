@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   applyMigrations,
   migrationDiagnostic,
+  MigrationSetupFailure,
 } from '../../scripts/migration-runner.js';
 
 const folders: string[] = [];
@@ -70,6 +71,25 @@ function connection(
 }
 
 describe('migration diagnostics without changing Drizzle execution', () => {
+  it('allowlists setup reasons without exposing their causes or arbitrary reasons', () => {
+    const cause = new Error('private connection URL, SQL and credentials');
+    expect(
+      migrationDiagnostic(
+        new MigrationSetupFailure('invalid_configuration', cause),
+      ),
+    ).toEqual({
+      event: 'migration_failed',
+      reason: 'invalid_configuration',
+    });
+    const invalid = new MigrationSetupFailure('invalid_configuration', cause);
+    Object.defineProperty(invalid, 'reason', { value: cause.message });
+    expect(migrationDiagnostic(invalid)).toEqual({
+      event: 'migration_failed',
+    });
+    expect(
+      migrationDiagnostic({ reason: 'invalid_configuration', cause }),
+    ).toEqual({ event: 'migration_failed' });
+  });
   it('preserves SQL, hashes, order and one transaction for all pending files', async () => {
     const config = await fixture();
     const { client, calls } = connection();
