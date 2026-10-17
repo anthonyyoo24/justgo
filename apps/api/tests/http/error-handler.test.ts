@@ -1,8 +1,8 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 import { identityErrorSchema } from '@justgo/contracts';
-import { buildApp } from '../src/build-app.js';
-import { IdentityError, IdentityService } from '../src/identity/service.js';
+import { buildApp } from '../../src/build-app.js';
+import { IdentityError, IdentityService } from '../../src/identity/service.js';
 
 const authorization = `Bearer ${'a'.repeat(64)}`;
 const privateValue = 'private-parser-fixture';

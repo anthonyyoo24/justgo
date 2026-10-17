@@ -8,7 +8,7 @@ import {
 } from '@justgo/contracts';
 import { bearer } from '../identity/routes.js';
 import { IdentityError } from '../identity/service.js';
-import type { ProgressResources } from './resources.js';
+import type { ProgressResources } from './service.js';
 
 const parse = <T>(schema: z.ZodType<T>, value: unknown): T => {
   const result = schema.safeParse(value);

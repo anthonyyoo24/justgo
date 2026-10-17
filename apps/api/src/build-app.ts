@@ -4,12 +4,12 @@ import {
 } from './attempts/service.js';
 import { AttemptPatchService, ReflectionConflict } from './attempts/patch.js';
 import { attemptRoutes } from './attempts/routes.js';
-import { ProgressResources } from './progress/resources.js';
+import { ProgressResources } from './progress/service.js';
 import { ChallengeService } from './challenges/service.js';
 import { challengeRoutes } from './challenges/routes.js';
 import { progressRoutes } from './progress/routes.js';
-import { ExportService } from './privacy/export.js';
-import { privacyRoutes } from './privacy/routes.js';
+import { ExportService } from './account-export/service.js';
+import { privacyRoutes } from './account-export/routes.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
@@ -20,7 +20,7 @@ import {
   openApiDocument,
   type IdentityErrorCode,
 } from '@justgo/contracts';
-import { loggerOptions } from './diagnostics.js';
+import { loggerOptions } from './http/diagnostics.js';
 import { IdentityError, type IdentityService } from './identity/service.js';
 import { bearer, identityRoutes } from './identity/routes.js';
 import { AccessService, type EntitlementReader } from './access/service.js';
