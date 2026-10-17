@@ -44,6 +44,10 @@ Prepared billing code can be reviewed independently while activation waits. Lega
 - Phase 08A uses the approved two-PR stack: documentation/design sources first, then implementation against that documentation branch. Keep move-only commits separate from behavior changes and merge in dependency order. Publishing, pull requests, merges and local branch/worktree deletion require the specific owner authorization in AGENTS.md.
 - Keep first-release scope in the [PRD](../product/PRD.md). Onboarding/questionnaires, reminders, progression/extra filters, dictation, lock-screen display, Android, Stripe and coaching remain deferred unless a phase explicitly implements them.
 
+## Deferred Android follow-up
+
+- [ ] When Anthony schedules Android implementation, protect Active Challenge, Success and Reflection from Android system Back bypassing their explicit actions. `gestureEnabled: false` only covers iOS gestures. Verify system Back cannot abandon an active challenge or discard unsaved Reflection input, while Give up/Completed, Continue, Skip/Save and missing-result recovery still work. This [PR 37 finding](https://github.com/anthonyyoo24/justgo/pull/37#discussion_r4304978856) remains outside the iOS launch gates under the existing platform deferral; the Android implementation owner owns the fix and native acceptance.
+
 ## Handoff workflow
 
 1. Before starting, verify the checkout/environment and read the previous phase and dependency handoffs; check relevant smoke behavior.

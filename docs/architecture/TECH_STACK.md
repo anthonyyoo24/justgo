@@ -23,7 +23,7 @@ recommendations are checked separately by the pinned Doctor command.
 | UI, art and detail sheets        | React Native StyleSheet/tokens, SVG, Expo Image/Font, Gorhom Bottom Sheet, safe-area context |
 | Remote reads                     | TanStack Query 5, account-scoped in-memory queries                                           |
 | Live activity state              | Zustand 5 without persistence middleware                                                     |
-| Phone activity persistence       | AsyncStorage 2.2 with explicit versioned catalog/journal envelopes                           |
+| Phone activity persistence       | AsyncStorage 2.2 with explicit versioned catalog/journal/deck-preference envelopes           |
 | Connectivity and saving feedback | NetInfo, Sonner Native and the Sonner web adapter                                            |
 | Recovery credentials             | Local Expo Swift Keychain module and a typed identity adapter                                |
 | Haptics                          | Pulsar 1.7, gated behind the iPhone TurboModule and saved installation preference            |
@@ -106,7 +106,8 @@ personal deck queue, content revision or generic server outbox tables.
 | Data                                                             | Current owner                                                          |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Secure credentials and pending identity/deletion proposals       | Keychain identity adapter                                              |
-| Venue choice, cycling order and unfinished countdown             | Account-owned memory                                                   |
+| Venue choice and cycling order                                   | Versioned account AsyncStorage deck preferences                        |
+| Unfinished countdown                                             | Account-owned memory                                                   |
 | Downloaded catalog                                               | Versioned account AsyncStorage catalog                                 |
 | Explicitly submitted activity, immutable operations and receipts | One serialized account AsyncStorage journal plus live repository state |
 | Latest summary/current-month counts/today's downloaded pages     | Bounded snapshots in that journal                                      |

@@ -82,6 +82,10 @@ fixtures; the owner’s LAN development server was left running.
 No new native deferral was approved during this implementation. The Phase 09
 native check remains open; browser/component evidence does not close it.
 
+Android system Back is not covered by the iOS gesture setting. Android remains
+outside the approved first-release scope; its route-exit protection and native
+acceptance are tracked in the [deferred Android follow-up](../implementation-plan/README.md#deferred-android-follow-up).
+
 ## Final verification
 
 October 17, 2026:
