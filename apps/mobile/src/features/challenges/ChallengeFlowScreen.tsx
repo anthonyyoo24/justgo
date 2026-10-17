@@ -24,7 +24,9 @@ export function ChallengeFlowScreen() {
   const { challenges } = useRuntime();
   const { active, finish, insets, markPresented } = useChallengeActivity();
   const navigation =
-    useNavigation<NativeStackNavigationProp<{ challenge: undefined }>>();
+    useNavigation<
+      NativeStackNavigationProp<{ '(challenge)/challenge': undefined }>
+    >();
   const [entered, setEntered] = useState(false);
   const [visualReady, setVisualReady] = useState(false);
   const onVisualReady = useCallback(() => setVisualReady(true), []);

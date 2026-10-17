@@ -52,23 +52,40 @@ with file watching disabled must be restarted before its bundle proves edits.
 
 ## Navigation and access
 
-| Route                                       | Responsibility                                                                      |
-| ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `/` startup gate                            | Restore identity and verify access; distinguish loading, unavailable and unpaid     |
-| Home in `/(tabs)` and `/progress`           | Catalog/deck and independent Progress reads with the shared local overlay           |
-| `/challenge`                                | iOS Active → Success flow; empty/restarted start context returns Home               |
-| `/success`, `/reflection`                   | Current-account completed result and explicit reflection submission                 |
-| `/settings`, `/recovery`, `/account/[tool]` | Preferences, account tools, recovery, direct export and support outside paid access |
-| `/delete-account`, `/welcome`               | Durable deletion/cleanup and safe entry after deletion                              |
-| `/export-data`                              | Redirect older export links to Settings                                             |
-| `/preview`                                  | Guarded development fixtures and haptics tools                                      |
-| Unknown links                               | Provider-independent `+not-found` screen with Go home                               |
+| Route                                                               | Responsibility                                                                  |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `/access`                                                           | Restore identity and verify access; distinguish loading, unavailable and unpaid |
+| `/` Home in `/(tabs)` and `/progress`                               | Catalog/deck and independent Progress reads with the shared local overlay       |
+| `/challenge`                                                        | iOS Active → Success flow; empty/restarted start context returns Home           |
+| `/success`, `/reflection`                                           | Current-account completed result and explicit reflection submission             |
+| `/settings`, `/recovery`                                            | Preferences, recovery hub, direct export and support outside paid access        |
+| `/account/recover`, `/account/keys`                                 | Explicit existing-account recovery and recovery-key management                  |
+| `/account/devices`, `/account/transfer`, `/account/troubleshooting` | Device management, transfer and connection tools outside paid access            |
+| `/delete-account`, `/welcome`                                       | Durable deletion/cleanup and safe entry after deletion                          |
+| `/preview`                                                          | Guarded development fixtures and haptics tools                                  |
+| Unknown links                                                       | Provider-independent `+not-found` screen with Go home                           |
 
 The root layout uses `Stack.Protected` for account/access/deletion boundaries.
+Home is the sole owner of `/`. When a product route is inaccessible, the first
+available root screen is `/access`, which restores identity or redirects to
+recovery, deletion or welcome as needed. Static account files own only the listed
+URLs; unknown account tools and the removed `/export-data` route use not found.
+Challenge, Success and reflection files share a `(challenge)` directory without
+another layout, so the root stack owns their gestures and transitions directly.
+Group names do not change their public URLs.
+
 Pending deletion removes the selected account's product screens from Back history;
 welcome becomes available only after required cleanup. Route visits cannot invent
 completed attempts or restore unsaved drafts. Settings, recovery, export and
 deletion remain reachable without paid access.
+
+`experiments.typedRoutes` enables generated navigation types. Mobile typechecking
+runs the installed Expo CLI's `customize tsconfig.json` command without starting
+Metro, discards the previous declaration, and requires a fresh
+`.expo/types/router.d.ts` before TypeScript runs. CI uses the same command through
+the workspace typecheck. Generated declarations and `expo-env.d.ts` stay ignored;
+their explicit tsconfig includes and compile-time invalid-route regressions remain
+tracked.
 
 The root `ErrorBoundary` renders `RouteErrorScreen` after an unhandled render error
 replaces the layout and its providers. It uses no app provider, hides private error

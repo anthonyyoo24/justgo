@@ -26,8 +26,9 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | apps/mobile/src/app/                                             | Route files and layouts; composition only.                                   |
 | apps/mobile/src/app/access.tsx                                   | Identity restoration and access gate at `/access`.                           |
-| apps/mobile/src/app/(tabs)/                                      | Home at `/` and Progress, with the shared tab layout.                         |
+| apps/mobile/src/app/(tabs)/                                      | Home at `/` and Progress, with the shared tab layout.                        |
 | apps/mobile/src/app/(challenge)/                                 | Challenge, Success and reflection routes; no extra navigator/layout.         |
+| apps/mobile/src/app/account/                                     | Static recover, keys, devices, transfer and troubleshooting route adapters.  |
 | apps/mobile/src/app-support/access/                              | Startup/access gate.                                                         |
 | apps/mobile/src/app-support/identity/                            | Identity controller, transport, vault and storage.                           |
 | apps/mobile/src/app-support/identity/account/                    | Account/recovery hub, tools, device transfer and key management.             |
@@ -107,6 +108,12 @@ Source design material lives under the repository-level design/ tree. Third-part
 screen references and routine screenshots/recordings are preserved in ignored
 .local/ storage; output/ is ignored entirely. They are not deployment inputs or
 CI prerequisites. Committed visual evidence requires explicit owner direction.
+
+The mobile workspace's generated `.expo/types/router.d.ts` and `expo-env.d.ts`
+remain ignored. Its typecheck regenerates and validates route declarations before
+compiling app source and the route type cases in `test-support/route-types.ts`.
+`scripts/quality/routes.test.mjs` checks the installed Router's URL inventory and
+the root stack's registrations against the on-disk route tree.
 
 ## Placement and move rules
 
