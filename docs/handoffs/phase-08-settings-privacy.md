@@ -140,8 +140,12 @@ identity retention function; and the October 16 pre-merge stability fixes.
 ## Setup or environment changes
 
 - The hosted test API (`justgo-two.vercel.app`) already serves `DELETE
-/v1/account` (checked October 16). It does not yet have the 4xx change, and
-  migration 0015 is only needed when the cleanup is scheduled.
+/v1/account` (checked October 16). It does not yet have the 4xx change or
+  migration 0016's owner-only transfer DELETE restriction.
+- Apply through forward migration `0016_transfer_delete_owner` on the next
+  authorized hosted update. It makes transfer DELETE owner-only even with a
+  matching code digest; keep already-applied migration 0014 unchanged. The
+  migration runner also applies 0015, but retention scheduling stays deferred.
 - New API variable `BETA_ACCESS_WINDOW` (JSON `{startsAt, expiresAt}` or `null`);
   configuration rejects it outside `APP_ENVIRONMENT=staging`.
 - Native changes need an updated signed development build: item-scoped Keychain
