@@ -1,6 +1,6 @@
 import { ActivityRuntime } from './activity-runtime';
-import { AccountClient } from '../../lib/account-client';
-import { createHttpClient } from '../../lib/http';
+import { AccountClient } from '../../lib/network/account-client';
+import { createHttpClient } from '../../lib/network/http';
 import { journalSchema, type JournalClock } from '../../data/activity/model';
 import {
   MemoryStorage,

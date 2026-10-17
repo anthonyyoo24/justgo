@@ -21,7 +21,7 @@ import type {
 } from '@justgo/contracts';
 import { DayEntryList } from './day-details/entries/DayEntryList';
 import { AccountRepository } from '../../data/activity/repository';
-import { ApiError } from '../../lib/http';
+import { ApiError } from '../../lib/network/http';
 import {
   MemoryStorage,
   backend,
@@ -37,7 +37,7 @@ import {
 } from '../../../test-support/journal';
 import { ProgressScreen } from './ProgressScreen';
 import { ProgressRefresh } from '../../app-support/providers/ProgressRefresh';
-import type { AccountClient } from '../../lib/account-client';
+import type { AccountClient } from '../../lib/network/account-client';
 import type { ActivityRuntime } from '../../app-support/providers/activity-runtime';
 
 jest.mock('../../app-support/providers/activity-hooks', () => ({

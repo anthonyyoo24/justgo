@@ -5,7 +5,7 @@ import { feelingChoices, type FeelingCode } from '@justgo/contracts';
 import type { ProgressEntry } from '../../types';
 import { colors, fontFamilies, typography } from '../../../../theme/tokens';
 import { FeelingFace } from '../../../reflections/FeelingFace';
-import { activityTime } from '../../calendar';
+import { activityTime } from '../../calendar-dates';
 import { SlidingEntryDetails } from './SlidingEntryDetails';
 import { DayReflectionPlaceholder } from '../reflection-editor/DayReflectionEditor';
 const entryMetaInk = '#5F7391';

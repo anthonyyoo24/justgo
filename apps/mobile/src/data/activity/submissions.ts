@@ -7,7 +7,7 @@ import {
   type CreateAttempt,
   type PatchAttempt,
 } from '@justgo/contracts';
-import { ApiError } from '../../lib/http';
+import { ApiError } from '../../lib/network/http';
 import type { Journal, Operation } from './model';
 
 function activityDate(startedAt: string, timeZone: string) {

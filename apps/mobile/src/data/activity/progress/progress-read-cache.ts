@@ -1,6 +1,6 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import type { ProgressDayResponse } from '@justgo/contracts';
-import { accountKey } from '../../../lib/account-client';
+import { accountKey } from '../../../lib/network/account-client';
 import type { JournalState } from '../model';
 import { preserveNewerReflection } from './progress';
 

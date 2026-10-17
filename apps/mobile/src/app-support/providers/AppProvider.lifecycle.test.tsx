@@ -16,7 +16,7 @@ jest.mock('expo-crypto', () => ({
   randomUUID: () => '00000000-0000-4000-8000-000000000009',
   getRandomValues: (array: Uint8Array) => array.fill(0xbb),
 }));
-jest.mock('../../platform/connectivity', () => ({
+jest.mock('../../platform/connectivity/connectivity', () => ({
   listenToConnectivity: () => () => {},
 }));
 jest.mock('../../data/activity/persistence/storage', () => ({

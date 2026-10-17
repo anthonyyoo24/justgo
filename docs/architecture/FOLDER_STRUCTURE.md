@@ -37,10 +37,13 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/app-support/providers/                           | App, account and activity-runtime composition/lifecycle.                     |
 | apps/mobile/src/app-support/fallbacks/                           | Root crash and unknown-link recovery UI.                                     |
 | apps/mobile/src/app-support/saving/                              | App-wide saving/recovery feedback.                                           |
-| apps/mobile/src/app-support/settings/                            | Settings screen and preference rows.                                         |
-| apps/mobile/src/app-support/settings/export/                     | Export collection/coordinator and Settings action.                           |
-| apps/mobile/src/app-support/settings/information/                | Support/About/legal/social destinations and failure feedback.                |
-| apps/mobile/src/features/challenges/                             | Venue/deck orchestration, card UI, active countdown/modal and Success.       |
+| apps/mobile/src/features/settings/                               | Settings screen and preference rows.                                         |
+| apps/mobile/src/features/settings/export/                        | Export collection/coordinator and Settings action.                           |
+| apps/mobile/src/features/settings/information/                   | Support/About/legal/social destinations and failure feedback.                |
+| apps/mobile/src/features/challenges/                             | Challenge orchestration and controller.                                      |
+| apps/mobile/src/features/challenges/deck/                        | Venue tabs, artwork, deck cards and deck model.                              |
+| apps/mobile/src/features/challenges/active/                      | Active countdown, modal, native handoff and lifecycle.                       |
+| apps/mobile/src/features/challenges/success/                     | Success screen and presentation.                                             |
 | apps/mobile/src/features/reflections/                            | Post-challenge feeling/text submission and keyboard composition.             |
 | apps/mobile/src/features/progress/                               | Summary/calendar/day-detail screen and query composition.                    |
 | apps/mobile/src/features/progress/calendar/                      | Calendar presentation and loading state.                                     |
@@ -51,8 +54,11 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/data/activity/sync/                              | Ordered delivery, acknowledgements, transport and retry decisions.           |
 | apps/mobile/src/data/activity/progress/                          | Independent reads, local/backend reconciliation and bounded read cache.      |
 | apps/mobile/src/components/                                      | Reusable UI, including Settings primitives and scalable text.                |
-| apps/mobile/src/lib/                                             | Shared network/account-client and general helpers.                           |
-| apps/mobile/src/platform/                                        | Native/web connectivity and modal adapters plus capability groups below.     |
+| apps/mobile/src/lib/                                             | General reusable helpers.                                                    |
+| apps/mobile/src/lib/network/                                     | Validated HTTP, account client, public URL and deadline helpers.             |
+| apps/mobile/src/platform/                                        | Reusable native/web capability groups.                                       |
+| apps/mobile/src/platform/connectivity/                           | Native/web connection observers and tests.                                   |
+| apps/mobile/src/platform/modals/                                 | Native/web modal isolation adapters and tests.                               |
 | apps/mobile/src/platform/export/                                 | Native share/browser download and temporary-file cleanup.                    |
 | apps/mobile/src/platform/haptics/                                | Preference/lifecycle ownership and Pulsar adapters.                          |
 | apps/mobile/src/platform/haptics/completion/                     | Batter default, session-only development override and playback cancellation. |
@@ -61,6 +67,7 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/platform/toast/                                  | Native/browser notification adapters.                                        |
 | apps/mobile/src/theme/                                           | Typed design tokens.                                                         |
 | apps/mobile/src/dev/                                             | Guarded presentation fixtures and haptics comparison UI.                     |
+| apps/mobile/src/dev/previews/challenges/                         | Developer-only deck and completed/give-up previews.                          |
 
 Features may use shared data and app-support providers; data may use shared
 lib/platform/contracts but imports no feature, app-support, route or visual code.

@@ -1,5 +1,5 @@
 import type { Attempt } from '@justgo/contracts';
-import { ApiError } from '../../lib/http';
+import { ApiError } from '../../lib/network/http';
 import type { JournalState } from './model';
 
 export type LocalExportChange = {

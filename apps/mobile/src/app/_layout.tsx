@@ -13,7 +13,7 @@ import {
 } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
-import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
+import { ChallengeActivityProvider } from '../features/challenges/active/ChallengeActivityProvider';
 import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
 import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider';
 import { welcomeBackgroundColor } from '../app-support/identity/welcome/welcome-artwork';
