@@ -29,3 +29,6 @@
 !packages/contracts/src/activity/attempts.ts
 !packages/contracts/src/activity/reflections.ts
 !packages/contracts/src/activity/progress.ts
+
+!packages/contracts/src/errors.ts
+!packages/contracts/src/operational.ts

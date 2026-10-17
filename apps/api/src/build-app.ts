@@ -2,14 +2,14 @@ import {
   AttemptService,
   type UploadEligibilityReader,
 } from './attempts/service.js';
-import { AttemptPatchService, ReflectionConflict } from './attempts/patch.js';
+import { AttemptPatchService } from './attempts/patch.js';
 import { attemptRoutes } from './attempts/routes.js';
 import { ProgressResources } from './progress/service.js';
 import { ChallengeService } from './challenges/service.js';
 import { challengeRoutes } from './challenges/routes.js';
 import { progressRoutes } from './progress/routes.js';
 import { ExportService } from './account-export/service.js';
-import { privacyRoutes } from './account-export/routes.js';
+import { accountExportRoutes } from './account-export/routes.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
@@ -17,41 +17,14 @@ import helmet from '@fastify/helmet';
 import {
   healthResponseSchema,
   readinessResponseSchema,
-  openApiDocument,
-  type IdentityErrorCode,
 } from '@justgo/contracts';
 import { loggerOptions } from './http/diagnostics.js';
-import { IdentityError, type IdentityService } from './identity/service.js';
-import { bearer, identityRoutes } from './identity/routes.js';
+import type { IdentityService } from './identity/service.js';
+import { identityRoutes } from './identity/routes.js';
+import { accessRoutes } from './access/routes.js';
+import { errorHandler, notFoundHandler } from './http/error-handler.js';
+import { openApiDocument } from '@justgo/contracts/openapi';
 import { AccessService, type EntitlementReader } from './access/service.js';
-
-/** Typed codes for request errors Fastify raises before route code runs. */
-const requestErrorCodes: Partial<Record<number, IdentityErrorCode>> = {
-  400: 'INVALID_REQUEST',
-  413: 'REQUEST_TOO_LARGE',
-  415: 'UNSUPPORTED_MEDIA_TYPE',
-};
-
-/**
- * Map a non-domain failure on a versioned route. Any other 4xx stays a client
- * error with its own status, so clients do not retry unchanged input as if the
- * service were down; only failures without a client status become 503.
- */
-function versionedFailure(error: {
-  statusCode?: number;
-  code?: string;
-  cause?: unknown;
-}): { status: number; code: IdentityErrorCode } {
-  if (
-    error.code === '23505' ||
-    (error.cause as { code?: string } | undefined)?.code === '23505'
-  )
-    return { status: 409, code: 'CONFLICT' };
-  const status = error.statusCode;
-  if (status !== undefined && status >= 400 && status < 500)
-    return { status, code: requestErrorCodes[status] ?? 'INVALID_REQUEST' };
-  return { status: 503, code: 'UNAVAILABLE' };
-}
 
 /**
  * Compose the HTTP app with injected database, identity and access boundaries.
@@ -93,16 +66,20 @@ export function buildApp(
     healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
   );
   app.get('/openapi.json', async () => openApiDocument);
-  app.get('/v1/access', async (request) => {
-    if (!options.identity) throw new IdentityError('UNAVAILABLE', 503);
-    return new AccessService(options.identity, options.entitlementReader).get(
-      bearer(request),
-    );
-  });
+  app.register(
+    async (scope) =>
+      accessRoutes(
+        scope,
+        options.identity
+          ? new AccessService(options.identity, options.entitlementReader)
+          : undefined,
+      ),
+    { prefix: '/v1' },
+  );
   if (options.identity)
     app.register(
       async (scope) =>
-        privacyRoutes(scope, new ExportService(options.identity!)),
+        accountExportRoutes(scope, new ExportService(options.identity!)),
       { prefix: '/v1/account' },
     );
   if (options.identity)
@@ -159,42 +136,7 @@ export function buildApp(
         .send(readinessResponseSchema.parse({ status: 'unavailable' }));
     }
   });
-  app.setErrorHandler<{ statusCode?: number }>((error, request, reply) => {
-    if (request.url.startsWith('/v1/')) {
-      if (error instanceof IdentityError) {
-        if (error.code === 'RATE_LIMITED') reply.header('retry-after', '600');
-        void reply.code(error.status).send({
-          code: error.code,
-          requestId: request.id,
-          ...(error instanceof ReflectionConflict
-            ? { currentAttempt: error.currentAttempt }
-            : {}),
-        });
-        return;
-      }
-      const { status, code } = versionedFailure(error);
-      request.log.error({ err: error }, 'API operation failed');
-      void reply.code(status).send({ code, requestId: request.id });
-      return;
-    }
-    request.log.error({ err: error }, 'Request failed');
-    const statusCode =
-      error.statusCode && error.statusCode >= 400 && error.statusCode < 500
-        ? error.statusCode
-        : 500;
-    void reply.code(statusCode).send({
-      error: statusCode < 500 ? 'Invalid request' : 'Internal server error',
-      requestId: request.id,
-    });
-  });
-  app.setNotFoundHandler((request, reply) =>
-    reply
-      .code(404)
-      .send(
-        request.url.startsWith('/v1/')
-          ? { code: 'NOT_FOUND', requestId: request.id }
-          : { error: 'Not found', requestId: request.id },
-      ),
-  );
+  app.setErrorHandler(errorHandler);
+  app.setNotFoundHandler(notFoundHandler);
   return app;
 }

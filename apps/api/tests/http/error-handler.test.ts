@@ -2,7 +2,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 import { identityErrorSchema } from '@justgo/contracts';
 import { buildApp } from '../../src/build-app.js';
-import { IdentityError, IdentityService } from '../../src/identity/service.js';
+import { IdentityService } from '../../src/identity/service.js';
+import { ApiError } from '../../src/http/api-error.js';
 
 const authorization = `Bearer ${'a'.repeat(64)}`;
 const privateValue = 'private-parser-fixture';
@@ -110,13 +111,13 @@ describe('versioned API request errors', () => {
   it.each([
     {
       name: 'expired session',
-      error: new IdentityError('SESSION_EXPIRED'),
+      error: new ApiError('SESSION_EXPIRED'),
       status: 401,
       code: 'SESSION_EXPIRED',
     },
     {
       name: 'domain conflict',
-      error: new IdentityError('CONFLICT', 409),
+      error: new ApiError('CONFLICT', 409),
       status: 409,
       code: 'CONFLICT',
     },
@@ -143,7 +144,7 @@ describe('versioned API request errors', () => {
     },
     {
       name: 'rate limit',
-      error: new IdentityError('RATE_LIMITED', 429),
+      error: new ApiError('RATE_LIMITED', 429, 17),
       status: 429,
       code: 'RATE_LIMITED',
     },
@@ -187,7 +188,7 @@ describe('versioned API request errors', () => {
         requestId: response.headers['x-request-id'],
       });
       expect(response.headers['retry-after']).toBe(
-        status === 429 ? '600' : undefined,
+        status === 429 ? '17' : undefined,
       );
       expect(response.body).not.toContain(privateValue);
       expect(transaction).toHaveBeenCalledTimes(1);

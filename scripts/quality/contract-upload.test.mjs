@@ -33,5 +33,6 @@ test('the explicit deployment allowlist includes every public contract module an
     }
   }
   visit('packages/contracts/src/index.ts');
+  visit('packages/contracts/src/openapi.ts');
   assert.ok(visited.size > 1, 'The public contract graph must be traversed');
 });

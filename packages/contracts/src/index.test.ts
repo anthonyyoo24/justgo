@@ -1,9 +1,7 @@
+import * as publicContracts from './index.ts';
+import { openApiDocument } from './openapi.ts';
 import { describe, expect, it } from 'vitest';
-import {
-  healthResponseSchema,
-  readinessResponseSchema,
-  openApiDocument,
-} from './index.js';
+import { healthResponseSchema, readinessResponseSchema } from './index.js';
 
 describe('public operational contracts', () => {
   it('accepts a health response without infrastructure details', () => {
@@ -43,4 +41,8 @@ it('documents only canonical product resources after the final cutover', () => {
     '/v1/progress/calendar',
   ]);
   expect(JSON.stringify(openApiDocument)).not.toContain('deprecated');
+});
+
+it('keeps the generated OpenAPI document out of the mobile contracts entry', () => {
+  expect(publicContracts).not.toHaveProperty('openApiDocument');
 });

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import * as challenges from './activity/challenges.ts';
 import * as identity from './identity.ts';
+import { identityErrorSchema } from './errors.ts';
 import * as attempts from './activity/attempts.ts';
 import * as progress from './activity/progress.ts';
 import { accessResponseSchema } from './access.ts';
@@ -25,7 +26,7 @@ function operation(
               description:
                 'REQUEST_TOO_LARGE: body exceeds 32 KiB; do not retry unchanged input',
               content: json(
-                identity.identityErrorSchema.extend({
+                identityErrorSchema.extend({
                   code: z.literal('REQUEST_TOO_LARGE'),
                 }),
               ),
@@ -34,7 +35,7 @@ function operation(
               description:
                 'UNSUPPORTED_MEDIA_TYPE: unsupported request content type; do not retry unchanged input',
               content: json(
-                identity.identityErrorSchema.extend({
+                identityErrorSchema.extend({
                   code: z.literal('UNSUPPORTED_MEDIA_TYPE'),
                 }),
               ),
@@ -44,7 +45,7 @@ function operation(
       default: {
         description:
           'Typed failure; never includes secrets or supplied values. 4xx statuses are client errors identified by code, and an unlisted 4xx uses INVALID_REQUEST. 503 UNAVAILABLE is a transient service failure.',
-        content: json(identity.identityErrorSchema),
+        content: json(identityErrorSchema),
       },
     },
   };
@@ -153,7 +154,7 @@ export const openApiDocument = {
               'Altered operation reuse or stale reflection revision; only genuine revision conflicts include owner-scoped currentAttempt',
             content: json(
               z.union([
-                identity.identityErrorSchema.extend({
+                identityErrorSchema.extend({
                   code: z.literal('CONFLICT'),
                 }),
                 attempts.reflectionConflictSchema,
