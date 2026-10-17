@@ -1,6 +1,6 @@
 # JustGO — MVP Product Requirements
 
-**October 8 Phase 07 reconciliation:** The implemented flow starts challenges in memory, saves completed reps and explicit reflections on the phone, and uploads them in the background. Progress combines local and backend activity with limited current-period offline history. Current requirements below supersede the earlier server-backed lifecycle, immutable wording and cloud-draft behavior; the original handoffs retain their historical evidence. Native billing remains [Phase 07A](../IMPLEMENTATION_PLAN.md#phase-07a), and physical-device/staging release acceptance remains Phase 11.
+**October 8 Phase 07 reconciliation:** The implemented flow starts challenges in memory, saves completed reps and explicit reflections on the phone, and uploads them in the background. Progress combines local and backend activity with limited current-period offline history. Current requirements below supersede the earlier server-backed lifecycle, immutable wording and cloud-draft behavior; the original handoffs retain their historical evidence. Native billing remains [Phase 07A](../implementation-plan/phase-07a-billing.md#phase-07a), and physical-device/staging release acceptance remains Phase 11.
 
 **Status:** Revised draft aligned to the final core-app designs; unresolved product decisions are listed in section 13.  
 **Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.  
@@ -9,7 +9,7 @@
 **October 15 Phase 09 scope:** One Terms & Privacy onboarding page is approved as the only permission request for the disclosed analytics scope. No analytics on/off controls belong in Settings. Welcome/questionnaire onboarding remains deferred. This is planned behavior; analytics export is currently disabled and Phase 10 legal/publication review remains open.
 
 **Implementation specification:** [TECH_STACK.md](../architecture/TECH_STACK.md).\
-**Implementation plan:** [Stages and handoffs](../IMPLEMENTATION_PLAN.md).\
+**Implementation plan:** [Stages and handoffs](../implementation-plan/README.md).\
 **Design source:** [Paper — Version 3](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0), reviewed through Paper MCP on September 16, 2026.
 
 ## 1. Product summary and scope
@@ -188,7 +188,7 @@ There is no Levels page, level selector, skip action, or automatic advancement i
 
 When levels are scheduled, the intended direction is a pool of challenges larger than the configured number of **different** completions required to advance, plus the previously requested Skip to this level flow. Exact thresholds, unlocking/skip behavior, and whether earlier completions count will be decided then. Do not invent a threshold or count catalog exhaustion as level completion now.
 
-Paper’s Levels screens and [CURRICULUM.md](CURRICULUM.md) are future references, not launch requirements or approved numeric targets.
+Paper’s Levels screens and [CURRICULUM.md](../archive/product/CURRICULUM.md) are future references, not launch requirements or approved numeric targets.
 
 ### 5.6 Progress
 
@@ -341,7 +341,7 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 5. Finish Settings/privacy controls and validate the core app in a free TestFlight beta with server-authorized tester access.
 6. Activate native iOS purchases and billing recovery, verify the free-to-paid transition and complete paid App Store submission acceptance. The October 9 beta-first sequence defers commercial setup; it preserves all nine paid subscription rules.
 
-Use the detailed [implementation plan](../IMPLEMENTATION_PLAN.md) for dependencies and the release checklist. Launch acceptance is AC-01–06, AC-08–11, and AC-13–17. AC-07 and AC-12 are deferred; they do not block submission.
+Use the detailed [implementation plan](../implementation-plan/README.md) for dependencies and the release checklist. Launch acceptance is AC-01–06, AC-08–11, and AC-13–17. AC-07 and AC-12 are deferred; they do not block submission.
 
 Include duplicate completion, phone-write failure and warned memory-only recovery, offline/reconnect and lost acknowledgements, ordered text edits/backend-wins conflicts, empty Skip, deck cycling/first-download failure, independent Progress reconciliation, rollover/time-zone boundaries, identity recovery and purchased-but-unverified billing cases. The saved browser app/API/database suite runs through `npm run test:journey` and required CI; publication-specific hosted results and native/device gates are recorded separately in handoffs. Browser previews supplement real iOS development-build/device testing for Keychain and store purchases. Android, native lock-screen surfaces and custom dictation receive their own validation when implemented.
 

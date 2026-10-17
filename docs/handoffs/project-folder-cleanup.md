@@ -2,12 +2,12 @@
 
 ## Snapshot
 
-- **Status:** Both stacked replacements are published as
-  [PR #18](https://github.com/anthonyyoo24/justgo/pull/18) and
-  [PR #19](https://github.com/anthonyyoo24/justgo/pull/19); PR #17 is closed as
-  superseded. This foundation snapshot keeps mobile source/artwork at their
-  merged-07.3 locations; the mobile stage completes the same cleanup.
-  Both still require owner review and explicit merge approval.
+- **Status:** Implementation merged through the foundation and mobile replacements
+  ([PR #18](https://github.com/anthonyyoo24/justgo/pull/18) and
+  [PR #19](https://github.com/anthonyyoo24/justgo/pull/19)). Native/device/release
+  acceptance remains open, so this handoff stays active. The dated review and
+  branch snapshots below are historical; the current
+  [folder guide](../architecture/FOLDER_STRUCTURE.md) owns implemented placement.
 - **Branches / base:** `codex/project-folder-cleanup-foundation` starts at
   owner-merged `main` `6bccfde`; `codex/project-folder-cleanup-mobile` builds
   on it. Original `codex/project-folder-cleanup` at `a02b28d` remains recoverable.
@@ -15,7 +15,7 @@
 - **Scope:** One cleanup across the approved folder candidates, including retained
   browser and legacy code. No product behavior change or planned removal.
 - **Dependencies read:** [07.3](phase-07-3-local-flow.md),
-  [07.2](phase-07-2-local-sync.md), [plan](../IMPLEMENTATION_PLAN.md),
+  [07.2](phase-07-2-local-sync.md), [plan](../implementation-plan/README.md),
   [app shell](../architecture/APP_SHELL.md),
   [tech stack](../architecture/TECH_STACK.md),
   [testing](../operations/TESTING.md) and applicable `AGENTS.md` instructions.
@@ -211,7 +211,7 @@ The in-app side panel at **390 × 844** verified Cafe selection → Accept → e
 active screen with countdown/no Settings or tabs → Give up → Accept → Completed →
 Success → Continue → synthetic feeling/text → Save Reflection → Progress (one rep,
 one active day) → today's day sheet → expanded saved reflection. Browser warn/error
-logs were empty. [Day-sheet proof](../checks/project-folder-cleanup/browser/day-details.jpg)
+logs were empty. Day-sheet proof (ignored `.local/checks/project-folder-cleanup/browser/day-details.jpg`)
 contains only synthetic writing. This is an interactive walkthrough, separate
 from the saved 16-case suite; it does not establish native saving or accessibility.
 The temporary tab closed, viewport reset and exactly one registry-owned disposable
@@ -219,7 +219,7 @@ walkthrough account was transactionally removed. The native owner identity/data
 was not a cleanup target. `.local/folder-cleanup-ui-cleanup.log` records the count.
 
 The retained iPhone 17/iOS 26.5 QA simulator loaded the new development bundle and
-[Home artwork](../checks/project-folder-cleanup/simulator/home.png). Only app
+Home artwork (ignored `.local/checks/project-folder-cleanup/simulator/home.png`). Only app
 reload/presentation was checked natively, with no device or activity-storage reset.
 This does not close 07.2/07.3 native durability, lifecycle, keyboard/toast/modal,
 VoiceOver or physical-device gates. The existing installed binary and sole virtual
@@ -306,18 +306,20 @@ authorized pushed cleanup revision.
 
 ## Remaining work and risks
 
-- Owner review and explicit merge approval of the dedicated cleanup remain open; push/PR/review-checkbox actions are authorized.
-- Carry 07.2/07.3 native saving/relaunch, background/lock, keyboard/toast/modal,
-  VoiceOver/scalable-text/reduced-motion and owner review gates forward.
-- Preserve the scheduled 07.3A replacement of browser UI testing, 07.4 Progress
-  integration and 07.5 legacy cutover/document reconciliation.
-- Inspect current-head hosted Foundation checks on each replacement PR before calling that gate verified.
-- The authorized split resolves the oversized review diff; service capacity and actual review outcomes must be checked separately. Owner review remains required.
+- Carry native saving/relaunch, background/lock, keyboard/toast/modal,
+  VoiceOver/scalable-text/Reduce Motion and physical-device acceptance into
+  Phase 11. Source organization and bundle checks do not satisfy those gates.
+- Keep [07.3A](phase-07-3a-testing-checkpoint.md) deferred and retain its browser
+  assessment. Phase 11 resumes the bounded native smoke; a wholesale browser
+  replacement is not accepted or merge-ready.
+- Progress integration and the legacy cutover are implemented in 07.4/07.5.
+  Preserve their newer controller/editor/motion/read boundaries during further
+  organization; do not restore retained-at-the-time compatibility code.
 
 ## Next phase: read this first
 
 Use [FOLDER_STRUCTURE.md](../architecture/FOLDER_STRUCTURE.md) and the updated
 [07.3A removal assessment](../checks/phase-07-3a-browser-testing-assessment.md)
-for current paths. Review the 07.3 acceptance gaps before starting that migration.
+for current paths. Review the surviving 07.3 acceptance gaps before Phase 11’s native smoke.
 Do not remove retained tests or legacy protocols merely because they now have
 dedicated folders.

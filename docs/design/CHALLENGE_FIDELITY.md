@@ -2,7 +2,7 @@
 
 September 24, 2026. Implementation specification for the seven references in
 [DESIGN.md](DESIGN.md#september-24-challenge-references). Exact Paper JSX is retained
-in `design-source/challenge-paper-extract.json` (token hash `55c015ad`).
+in [`design/source/challenge-paper-extract.json`](../../design/source/challenge-paper-extract.json) (token hash `55c015ad`).
 
 ## Contract
 

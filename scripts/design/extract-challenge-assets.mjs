@@ -1,6 +1,6 @@
 // Deterministic extraction of approved Paper pixels; no generated/replacement art.
 // Usage: NODE_PATH=<directory containing sharp> node scripts/design/extract-challenge-assets.mjs
-// Source image fills and crop geometry: docs/design-source/challenge-paper-extract.json.
+// Source image fills and crop geometry: design/source/challenge-paper-extract.json.
 import { createRequire } from 'node:module';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';

@@ -1,84 +1,55 @@
 # Phase NN — Name
 
-> Replace prompts with actual evidence. Write “Not applicable” with a reason where needed; do not leave ambiguous checkmarks.
+## Summary and status
 
-## Snapshot
+**Status:** Not started / In progress / Blocked / Complete. State what now works,
+link the plan and dependency handoffs, and distinguish implementation from open
+native, hosted or release acceptance. Use actual evidence; say “Not applicable”
+with a reason when a check does not apply.
 
-- **Status:** Not started / In progress / Blocked / Complete
-- **Updated / author:**
-- **Plan phase and scope:**
-- **Previous and dependency handoffs:**
-- **Branch / start commit / end commit / uncommitted changes:** (If Git is not initialized, say so.)
-- **Environment / mobile build / OS versions:**
-- **Summary:** What now works that did not work before?
+## Decisions and why
 
-## What changed
+Record decisions the next phase must preserve, their reason and owner approval or
+source. Distinguish approved behavior from proposals; link the owning product or
+architecture document instead of copying its specification.
 
-| Repo-relative path or migration | Added / changed / removed | Behavior and reason |
-| ------------------------------- | ------------------------- | ------------------- |
-|                                 |                           |                     |
+## Behavior that changed
 
-Include entrypoints and how the code is organized. List new dependencies/version changes, API routes and request/response/error contracts, schema/constraints/indexes, native configuration and deployment settings where applicable. Link source code rather than copying entire files.
+Describe the resulting behavior and its owners. Include relevant contracts,
+migrations, dependencies or configuration changes; link source where useful.
+Omit small visual adjustments and per-change chronology.
 
-## Decisions and invariants
+## Invariants to preserve
 
-| Decision | Reason / approval or source | Implication for later phases |
-| -------- | --------------------------- | ---------------------------- |
-|          |                             |                              |
+Record ownership, security, retry, cancellation, account-isolation and
+compatibility rules that later work could accidentally break.
 
-Record product/configuration decisions, ownership rules, attempt/retry semantics, time-zone rules and any changed PRD/tech-stack sections that apply. Distinguish approved decisions from proposals.
+## Problems that could recur
 
-## Problems encountered and fixes
+Keep only recurring failure modes, their causes, the lasting fixes and relevant
+limits. Interim attempts and routine diagnostic captures belong in commits or PRs.
 
-| Symptom / reproduction | Root cause | Fix and changed path | Verification / remaining limitation |
-| ---------------------- | ---------- | -------------------- | ----------------------------------- |
-|                        |            |                      |                                     |
+## Setup or environment changes
 
-Include relevant failed approaches only when they explain why the selected fix matters or prevent repeating the mistake.
+Record prerequisites, migration/build order, environment variable names, fixture
+boundaries and recovery/forward-repair steps. Never include credentials or private
+activity. Link the operational guide for commands already documented there.
 
-## Verification evidence
+## Open gates
 
-| Command / scenario | Environment / fixture / device | Actual result | Evidence path |
-| ------------------ | ------------------------------ | ------------- | ------------- |
-|                    |                                |               |               |
+Edit this single table in place. Every unfinished requirement needs an owner,
+required phase and observable completion condition. Write “None” if all gates
+are satisfied. Browser checks and JavaScript exports do not establish native
+Keychain, gestures, purchases or device accessibility.
 
-- Relevant unit/component/API/database checks and exact commands:
-- In-app browser behavior checks (or Chrome fallback and why):
-- Native iOS/Android behavior checks, physical devices and OS/build versions:
-- PRD acceptance IDs and tech-stack checks covered:
-- Tests not run, failed or still blocked, with reasons:
-- Plan exit gates met / not met:
+| Gate                   | Owner                          | Required phase | Done when         |
+| ---------------------- | ------------------------------ | -------------- | ----------------- |
+| Unfinished requirement | Person or implementation owner | NN             | Required evidence |
 
-A passing browser preview does not establish Keychain recovery, purchase, lock-screen or dictation behavior. Mark a phase complete only when its required evidence exists.
+## Final verification
 
-## Setup, data and operations
-
-- Commands to install/run/test this phase:
-- Required environment variable **names**, where configured and who can provision them; never values:
-- Migration order, seed/content version and prerequisites:
-- Safe test fixtures and how to reset staging data:
-- Deployment/build steps; native changes requiring a new binary:
-- Rollback/forward-repair steps and older-client compatibility:
-- Monitoring, alerts, provider/capacity settings and recovery/replay procedure:
-
-## Remaining work and risks
-
-| Item | Severity / launch impact | Owner or decision needed | Required by phase |
-| ---- | ------------------------ | ------------------------ | ----------------- |
-|      |                          |                          |                   |
-
-Include intentionally deferred scope, temporary fixtures/flags, unresolved product decisions and known platform limits. Temporary development access must not reach a release build.
-
-## Next phase: read this first
-
-1. First concrete task and its entrypoint:
-2. Dependency or assumption to verify before changing code:
-3. Smoke command/scenario to rerun:
-4. Behavior/invariant to preserve:
-
-## Record updates
-
-- Handoff index updated:
-- HTML tracker updated/exported (browser state is not the implementation record):
-- Relevant PRD/tech-stack decisions synchronized:
-- Dated follow-up corrections, if any:
+Record the final verification date, exact commands and actual results, plus the
+inspected CI link when one exists. Separate automated tests, saved journeys,
+interactive browser checks, native/device evidence and owner-reported acceptance.
+State what was not verified and why. Do not include interim test counts,
+screenshot paths or merge/publication bookkeeping.

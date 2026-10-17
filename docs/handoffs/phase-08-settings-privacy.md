@@ -2,18 +2,18 @@
 
 ## Summary and status
 
-**Status (October 16, 2026):** Implemented and verified locally on
-`codex/phase-08-settings-privacy`; not pushed or merged. Anthony reports the
-physical-iPhone checks done and set 7-day backup retention. Publication and the
-other items in [Open gates](#open-gates) are still open. Phase 08A starts after
-this phase merges.
+**Status (October 17, 2026):** Complete. Implementation is merged into `main`,
+and post-merge CI passes. Anthony reported completing the required physical-iPhone
+checks and chose 7-day backup retention. The approved follow-ups in
+[Open gates](#open-gates) remain with their later phases. Phase 08A is in
+progress; its [handoff](phase-08a-structure-cleanup.md) owns current status and open gates.
 
 This file replaces the earlier per-change Settings handoff and folds in the
 account-deletion and reflection-keyboard handoffs, under the
 [October 16 handoff rule](../DECISIONS.md#october-16-codebase-assessment-follow-up).
 Their per-change history is in Git (for example
 `git show 867e5d2:docs/handoffs/phase-08-settings-privacy.md`) and in PRs #22–25.
-The [plan](../IMPLEMENTATION_PLAN.md#phase-08) owns scope; this file records
+The [plan](../implementation-plan/phase-08-settings-privacy.md#phase-08) owns scope; this file records
 outcomes, invariants and open gates.
 
 Phase 08 delivers Settings with Preferences, Account & data, Privacy, Support and
@@ -74,8 +74,9 @@ identity retention function; and the October 16 pre-merge stability fixes.
   an `ErrorBoundary`.
 - New API: `DELETE /v1/account` and `GET /v1/account/export` (both without paid
   access); the staging beta access window.
-- Migrations `0014_account_deletion` (receipt digest, owner-scoped DELETE grants)
-  and `0015_identity_retention` (`justgo.purge_expired_identity_records`).
+- Migrations `0014_account_deletion` (receipt digest, owner-scoped DELETE grants),
+  `0015_identity_retention` (`justgo.purge_expired_identity_records`) and
+  `0016_transfer_delete_owner` (owner-only transfer deletion).
 - Account-entry copy now says **Create a new account**. Primary buttons replace
   their label with one centered spinner while busy. Automatic account checks
   are quiet.
@@ -148,38 +149,44 @@ identity retention function; and the October 16 pre-merge stability fixes.
   migration runner also applies 0015, but retention scheduling stays deferred.
 - New API variable `BETA_ACCESS_WINDOW` (JSON `{startsAt, expiresAt}` or `null`);
   configuration rejects it outside `APP_ENVIRONMENT=staging`.
-- Native changes need an updated signed development build: item-scoped Keychain
-  removal and the `JustGoSubscriptions` module. The October 12 signed build has
-  Pulsar but neither of these.
+- Native builds need item-scoped Keychain removal for deletion and the
+  `JustGoSubscriptions` module for native subscription management. The original
+  October 12 signed build predates these capabilities. Anthony's reported
+  Phase 08 physical acceptance is recorded in
+  [DECISIONS.md](../DECISIONS.md#october-16-codebase-assessment-follow-up);
+  Phase 11 must verify the capabilities in the actual beta/release build.
 - Journeys accept `JUSTGO_JOURNEY_API_PORT` and `JUSTGO_JOURNEY_APP_PORT` (defaults
   3000/8081). The root `check:static` script is what CI runs before coverage.
 
 ## Open gates
 
-| Gate                                                                                              | Owner                         | Phase  | Done when                                                           |
-| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------- |
-| Redeploy the API with the 4xx change (optional before the free beta)                              | Anthony authorizes            | 11     | Deployed and probed                                                 |
-| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 11     | Schedule runs on the hosted database; first run's counts recorded   |
-| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 10, 11 | Dashboard matches FOUNDATION.md before Phase 10 publishes wording   |
-| Push, PRs, hosted CI green for each merge candidate, merge                                        | Anthony authorizes each       | 08     | Inspected hosted runs on the pushed commits                         |
-| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                    |
-| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11     | Simulator or device check                                           |
-| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 11     | Paid-launch checkpoint                                              |
-| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–11  | See [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11) and Phase 09/07A |
+| Gate                                                                                              | Owner                         | Phase  | Done when                                                                            |
+| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| Redeploy the API with the 4xx mapping and apply migration 0016's transfer DELETE restriction      | Anthony authorizes            | 11     | Forward migrations through 0016 applied; deployment probed                           |
+| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 11     | Schedule runs on the hosted database; first run's counts recorded                    |
+| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 10, 11 | Dashboard matches FOUNDATION.md before Phase 10 publishes wording                    |
+| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                                     |
+| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11     | Simulator or device check                                                            |
+| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 11     | Paid-launch checkpoint                                                               |
+| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–11  | See [Phase 11](../implementation-plan/phase-11-release.md#phase-11) and Phase 09/07A |
 
 ## Final verification
 
-October 16, 2026, on the local branch; no hosted CI run exists for it yet.
+October 17, 2026: [post-merge Foundation checks](https://github.com/anthonyyoo24/justgo/actions/runs/39042916677)
+passed on `main` at `652275887d14c23399c52d4cf429668ba51bea8f`.
 
-- `npm run check`: pass. Fresh Expo Doctor 21/21; 197 tooling, 66 API unit,
-  803 mobile and 27 contract tests.
-- `npm run test:db`: pass. 70 database tests plus the migration/restoration
-  rehearsal through 0015.
-- `npm run test:journey`: 33/33 pass. The Progress journeys also pass with the
-  browser at 00:22 local time (`TZ=Asia/Kolkata`), where the old seeds failed.
-- `npm run test:coverage`: pass with every existing floor unchanged.
-- `npm run export:web` and `npm run export:ios`: pass (JavaScript bundles, not a
-  native build).
-- In-app browser at 390 × 844 against the loopback fixture API: the not-found
-  screen and Go home, and the crash screen with Try again, including keyboard
-  focus.
+- Fresh `npm run doctor -w @justgo/mobile` and `npm run check:static`: pass.
+- `npm run db:migrate` and `npm run test:coverage`: pass, including workspace
+  tests, database tests and the migration/restoration rehearsal through 0016,
+  with every existing coverage floor unchanged.
+- `npm run test:journey`: pass for the full saved app/API/database suite.
+- `npm run export:web -w @justgo/mobile` and
+  `npm run export:ios -w @justgo/mobile`: pass (JavaScript bundles, not a native
+  build).
+
+The recorded pre-publication local `npm run check` and `npm run test:db` passes
+remain separate from this hosted run. Prior in-app browser verification covered
+the not-found and crash screens, their recovery actions and keyboard focus against
+the loopback fixture API. Physical-iPhone acceptance is owner-reported in
+[DECISIONS.md](../DECISIONS.md#october-16-codebase-assessment-follow-up); this
+closeout adds no new browser or native evidence. Later-phase gates remain open.

@@ -1,0 +1,5 @@
+inheritance: true
+reviews:
+  auto_review:
+    base_branches:
+      - '^codex/phase-08a-docs$'

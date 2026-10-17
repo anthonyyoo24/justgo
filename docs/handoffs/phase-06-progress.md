@@ -4,7 +4,7 @@
 
 - **Status:** Local implementation is ready for review and handoff. The phase remains In progress while Phase 05 and earlier dependency gates remain open. Physical-iPhone acceptance and staging deployment are later release/integration work under the approved sequencing decisions.
 - **Updated / author:** October 3, 2026 / Codex.
-- **Scope:** [Plan phase 06](../IMPLEMENTATION_PLAN.md#phase-06), PRD §5.6–5.7 and AC-13–14, 17.
+- **Scope:** [Plan phase 06](../implementation-plan/phase-06-progress.md), PRD §5.6–5.7 and AC-13–14, 17.
 - **Dependency:** [Phase 05 handoff](phase-05-reflections.md), whose native acceptance and staging deployment remain open under the previously approved sequencing exception.
 - **Checkout:** `phase-06-progress-calendar-saved-history`; implementation baseline `2a33cc7` (Phase 05 merge), latest application-source commit `0515a00` and documentation closeout `5a9a418` (September 30). The subsequent PR #8 CI repair updates Expo package pins and this handoff, as recorded below. The original implementation was developed on `codex/phase-06`.
 - **Environment:** Node 24.18.0 / npm 11.16.0, Expo 57.0.26 / React Native 0.86.3, dedicated local PostgreSQL 17 database. Historical native evidence uses the iPhone 17 simulator; no physical-device acceptance is claimed.
@@ -23,7 +23,7 @@
 | `apps/mobile/src/features/progress/calendar/ProgressSkeleton.tsx`, `ProgressView.tsx`, `src/app/preview.tsx`                                      | Adds shared loading shimmer with static reduced-motion placeholders, highlights today even without reps and starts each day-sheet opening animation once despite repeated layout/show events. Preview controls exercise loading and failure recovery.                                                        |
 | `apps/mobile/src/features/reflections/ReflectionScreen.tsx`, `ReflectionView.tsx`, `controller.ts`, `src/features/challenges/ChallengeScreen.tsx` | Keeps the reflection form mounted during initial loading and final-save navigation, disables actions while loading and opens a just-completed attempt without an unnecessary read. Success is dismissed when leaving Reflection, using the existing Home route.                                              |
 | `apps/mobile/src/components/ScreenHeader.tsx`, `NavigationIcon.tsx`, `src/features/challenges/ChallengeLayout.tsx`, `src/theme/tokens.ts`         | Shares the header/settings control, refines navigation and metric artwork, and applies the approved editorial typography across challenge, Success, Reflection and Progress screens.                                                                                                                         |
-| `apps/mobile/assets/`, `design/paper-variants/`, `docs/design-source/progress-failure-illustration.md`                                            | Records the reflection-pencil and disconnected-plugs assets and the day-sheet loading/failure visual references. These are presentation assets, not saved user activity.                                                                                                                                     |
+| `apps/mobile/assets/`, `design/paper-variants/`, `design/source/progress-failure-illustration.md`                                                 | Records the reflection-pencil and disconnected-plugs assets and the day-sheet loading/failure visual references. These are presentation assets, not saved user activity.                                                                                                                                     |
 | `eslint.config.mjs`, `scripts/quality/import-boundaries.test.mjs`, `package.json`, `docs/architecture/TECH_STACK.md`                              | Enforces shared-contract root imports, app separation and shared-mobile-to-feature import boundaries, including re-exports. Adds 12 architecture tests to the workspace check. The subsequent CI package-version repair is recorded below; no local native module or app configuration is edited.            |
 | `docs/product/PRD.md`, `DESIGN.md`, `DECISIONS.md`, `IMPLEMENTATION_PLAN.md`, `handoffs/README.md`, `handoffs/phase-04-challenge-loop.md`         | Aligns the approved read-only history and duration-removal scope, preserves earlier evidence and deferred gates, and records Phase 06A as the next implementation phase before billing.                                                                                                                      |
 
@@ -137,7 +137,7 @@ Browser checks above confirm presentation, not a live authenticated data path. N
       submitted reflections are implemented and locally verified.
 - [x] Local workspace/database checks and affected browser UI pass again on
       `phase-06a-code-quality`: 292 workspace tests and 36 database tests.
-      See [Phase 06A](phase-06a-code-quality.md) for exact current evidence.
+      See [Phase 06A](../archive/handoffs/phase-06a-code-quality.md) for exact current evidence.
 - [x] Loading, empty, unavailable and both Retry states remain protected, with
       sheet reopening, account isolation, today highlighting and reflection expansion.
 - [x] Phase 06A completes the quality follow-ups: separate Progress components,
@@ -158,7 +158,7 @@ does not claim physical-device or staging acceptance.
 
 ## Next phase: read this first
 
-1. Read the completed [Phase 06A quality handoff](phase-06a-code-quality.md) and the latest [Phase 07 plan](../IMPLEMENTATION_PLAN.md#phase-07) before the API/offline implementation. Native billing follows separately in Phase 07A. The component boundaries and tests protect current behavior until those planned changes are implemented together.
+1. Read the completed [Phase 06A quality handoff](../archive/handoffs/phase-06a-code-quality.md) and the latest [Phase 07 plan](../implementation-plan/phase-07-api-offline.md) before the API/offline implementation. Native billing follows separately in Phase 07A. The component boundaries and tests protect current behavior until those planned changes are implemented together.
 2. Preserve the owner-scoped aggregate/paged history contract, frozen completion dates, original revision/Level 1 context, draft-versus-submitted distinction, read-only reflections and omission of elapsed-duration fields.
 3. Preserve account/time-zone cache isolation, skeleton/reduced-motion behavior, active-date actions, automatic paging, both Retry states and opening/closing/reflection animations. Rerun relevant tests, full workspace/database checks and affected browser UI checks after changing these boundaries.
 4. Keep private reflection text out of analytics and unauthenticated responses. Phase 07 owns API/persistence redesign; carry device/staging gates to Phase 11.

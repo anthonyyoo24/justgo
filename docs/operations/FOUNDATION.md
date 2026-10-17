@@ -108,7 +108,7 @@ Responses use `no-store`, security headers and server-generated request IDs. The
 
 ## Design and tests
 
-The [design guide](../design/DESIGN.md), `docs/design-source/` and asset README record Paper provenance, editable-source measurements and raster-only uncertainty. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.
+The [design guide](../design/DESIGN.md), `design/source/` and asset README record Paper provenance, editable-source measurements and raster-only uncertainty. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.
 
 Run `npm run check`, `npm run test:db`, `npm run export:web -w @justgo/mobile`, `npm run export:ios -w @justgo/mobile`, and `npm run doctor -w @justgo/mobile`. CI mirrors these with PostgreSQL 17. Native compilation now runs on EAS using `development-simulator`, per the owner’s 8 GB memory constraint. Keep Simulator and local preview servers stopped during cloud compilation; launch only one simulator afterwards and reuse its binary for JS/UI changes. Preserve local Pods/DerivedData caches. Explain any EAS account/quota/configuration blocker before considering a heavy local fallback.
 
