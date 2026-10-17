@@ -20,7 +20,7 @@ The app restores the right account and provides consistent navigation and networ
 - Use shared strict runtime contracts and one bounded HTTP retry/renewal policy, account-scoped query keys, cancellation and stale-response protection.
 - Keep product state with its owner: React for local presentation, TanStack Query for independent server reads, and the Phase 07 account-scoped activity store/journal for persisted submissions.
 - Keep onboarding/questionnaires deferred. The Phase 08 post-deletion welcome is recovery/navigation, not onboarding.
-- Enforce server-authorized access with no production fixture bypass; telemetry stays non-exporting until Phase 09.
+- Enforce server-authorized access with no production fixture bypass; telemetry stays non-exporting until Phase 11.
 
 ## Keep out
 
@@ -34,7 +34,7 @@ The app restores the right account and provides consistent navigation and networ
 - [ ] Navigation, keyboard, screen-reader labels and reduced motion work on iOS; expired/unverified access has no release bypass.
 - [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 11
+## Open gates for Phase 14
 
 - Native navigation, software keyboard, screen-reader focus/labels, scalable text and reduced motion.
 - Preserve Phase 02 recovery gates and staging/environment isolation.

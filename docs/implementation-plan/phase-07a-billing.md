@@ -47,7 +47,7 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 
 - No Stripe checkout, Redis, Celery, continuously running worker or generic idempotency/outbox table without a concrete need. Queue delivery is for backend billing work; phone reps/reflections retain Phase 07's AsyncStorage sender.
 - No waiting for a queue to grant a verified purchase, client premium flags, private-history recovery from a receipt, or holding database transactions during provider calls.
-- No reopening settled API/offline decisions or adding a multi-phone reflection conflict workflow. General analytics activation remains Phase 09; release deployment/submission remains Phase 11.
+- No reopening settled API/offline decisions or adding a multi-phone reflection conflict workflow. General analytics activation remains Phase 11; release deployment/submission remains Phase 14.
 
 ## Ready to hand off when
 
@@ -58,7 +58,7 @@ For every code slice, write/run relevant tests and verify affected UI in the in-
 - [ ] Integrated Phase 07 recording/synchronization still passes with verified access and after expiry; account changes/revocation preserve pending data without granting unauthorized paid use. Purchase transfers refresh both affected billing accounts, keep private history separate and preserve original-account eligibility for earlier valid pending activity.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; update implemented billing guidance and the handoff index.
 
-## Open gates for Phase 11
+## Open gates for Phase 14
 
 - Real sandbox/native purchase, restore, cancellation, expiry/refund, provider transfer and signed billing-delivery acceptance.
 - Activate only after the free beta; complete before paid launch.

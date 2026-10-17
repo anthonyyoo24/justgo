@@ -100,7 +100,7 @@ URL with the protected `/` can be a no-op when access is unavailable.
 owner transaction to an entitlement reader. The default provider returns
 unavailable. Explicit application staging can compose operator-approved free beta
 grants with start/expiry/revocation and earlier-start coverage; client requests
-cannot grant access. [The beta setup](../handoffs/phase-11-test-server.md) owns its
+cannot grant access. [The beta setup](../handoffs/phase-14-test-server.md) owns its
 environment and release limits.
 
 Mobile polls every 30 seconds and accepts a server verification for at most
@@ -226,7 +226,7 @@ Settings owns Preferences, Account & data, Privacy, Support and About. Support/
 feature-request actions create private email drafts. Legal/social/rating destinations
 use configured URLs or honest unavailable states. The current analytics rows are
 unavailable and telemetry exports nothing; planned acceptance/analytics changes
-belong to [Phase 09](../implementation-plan/phase-09-analytics.md).
+belong to [Phase 10 acceptance](../implementation-plan/phase-10-acceptance.md) and [Phase 11 analytics](../implementation-plan/phase-11-analytics.md).
 
 The direct export action keeps Export my data visible with a spinner and delivers
 CSV/JSON in a ZIP through the native share sheet or browser download. Dismissal

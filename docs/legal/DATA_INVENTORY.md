@@ -1,6 +1,6 @@
 # JustGO data inventory
 
-Prepared October 9, 2026 for the Privacy Policy, Terms of Use and App Store privacy disclosures. This inventory separates implemented behavior from proposed release behavior. Under the October 14 split, the implementation plan assigns data controls/retention mechanics to [Phase 08](../implementation-plan/phase-08-settings-privacy.md#phase-08), analytics/consent to [Phase 09](../implementation-plan/phase-09-analytics.md#phase-09), legal documents/disclosure preparation to [Phase 10](../implementation-plan/phase-10-legal-documents.md#phase-10), and final signed-build/release verification to [Phase 11](../implementation-plan/phase-11-release.md#phase-11). This planning update does not change collection behavior.
+Prepared October 9, 2026 for the Privacy Policy, Terms of Use and App Store privacy disclosures. This inventory separates implemented behavior from proposed release behavior. Under the October 17 phase split, the implementation plan assigns data controls/retention mechanics to [Phase 08](../implementation-plan/phase-08-settings-privacy.md#phase-08), acceptance to [Phase 10](../implementation-plan/phase-10-acceptance.md#phase-10), analytics to [Phase 11](../implementation-plan/phase-11-analytics.md#phase-11), app diagnostics to [Phase 12](../implementation-plan/phase-12-crash-reporting.md#phase-12), legal documents/disclosure preparation to [Phase 13](../implementation-plan/phase-13-legal-documents.md#phase-13), and final signed-build/release verification to [Phase 14](../implementation-plan/phase-14-release.md#phase-14). This planning update does not change collection behavior.
 
 ## Operator and intended audience
 
@@ -12,7 +12,7 @@ Prepared October 9, 2026 for the Privacy Policy, Terms of Use and App Store priv
 | Intended minimum age                         | 18. Proposed by the owner October 9; eligibility wording, enforcement and the App Store rating require review.                                                   |
 | Canadian province and public contact address | Not supplied. Confirm which provincial rules apply and whether a public business or service address is required; do not assume a home address must be published. |
 
-The app's random account identifier is persistent and links records to an account. A no-signup account is not the same as anonymous data. The absence of an email login does not make uploaded journal records uncollected. The October 15 Phase 09 direction uses one Terms & Privacy onboarding acceptance and no analytics Settings switches; it does not make persistent analytics identifiers anonymous.
+The app's random account identifier is persistent and links records to an account. A no-signup account is not the same as anonymous data. The absence of an email login does not make uploaded journal records uncollected. The October 15 acceptance direction (now Phase 10) uses one Terms & Privacy onboarding acceptance and no analytics Settings switches; it does not make persistent analytics identifiers anonymous.
 
 ## Implemented data handling
 

@@ -1,12 +1,12 @@
 # JustGO — MVP Product Requirements
 
-**October 8 Phase 07 reconciliation:** The implemented flow starts challenges in memory, saves completed reps and explicit reflections on the phone, and uploads them in the background. Progress combines local and backend activity with limited current-period offline history. Current requirements below supersede the earlier server-backed lifecycle, immutable wording and cloud-draft behavior; the original handoffs retain their historical evidence. Native billing remains [Phase 07A](../implementation-plan/phase-07a-billing.md#phase-07a), and physical-device/staging release acceptance remains Phase 11.
+**October 8 Phase 07 reconciliation:** The implemented flow starts challenges in memory, saves completed reps and explicit reflections on the phone, and uploads them in the background. Progress combines local and backend activity with limited current-period offline history. Current requirements below supersede the earlier server-backed lifecycle, immutable wording and cloud-draft behavior; the original handoffs retain their historical evidence. Native billing remains [Phase 07A](../implementation-plan/phase-07a-billing.md#phase-07a), and physical-device/staging release acceptance remains Phase 14.
 
 **Status:** Revised draft aligned to the final core-app designs; unresolved product decisions are listed in section 13.  
 **Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.  
 **Updated:** October 15, 2026.
 
-**October 15 Phase 09 scope:** One Terms & Privacy onboarding page is approved as the only permission request for the disclosed analytics scope. No analytics on/off controls belong in Settings. Welcome/questionnaire onboarding remains deferred. This is planned behavior; analytics export is currently disabled and Phase 10 legal/publication review remains open.
+**October 15 acceptance scope (now Phase 10):** One Terms & Privacy onboarding page is approved as the only permission request for the disclosed analytics scope. No analytics on/off controls belong in Settings. Welcome/questionnaire onboarding remains deferred. This is planned behavior; analytics export is currently disabled and Phase 13 legal/publication review remains open.
 
 **Implementation specification:** [TECH_STACK.md](../architecture/TECH_STACK.md).\
 **Implementation plan:** [Stages and handoffs](../implementation-plan/README.md).\
@@ -71,7 +71,7 @@ Explicit interpretation rules:
 | Previous PRD                                               | Revised requirement                                                                                       |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Earlier cross-platform launch plan                         | iOS first; Android implementation and release gates deferred                                              |
-| Core loop only; onboarding excluded                        | Core loop plus hard paywall and account recovery; Phase 09 adds only Terms & Privacy acceptance           |
+| Core loop only; onboarding excluded                        | Core loop plus hard paywall and account recovery; Phase 10 adds only Terms & Privacy acceptance           |
 | Swipe up to replace; double tap to accept                  | Swipe left / X to replace; swipe right / heart to accept                                                  |
 | Venue-filtered deck and Levels page                        | One easy Level 1 collection with six manual venues; no extra filters, level selector or Levels page       |
 | Hide navigation throughout an attempt                      | Active Challenge covers navigation; Completed and Give up are its only exits                              |
@@ -80,7 +80,7 @@ Explicit interpretation rules:
 | No free-form notes                                         | Optional per-attempt typed reflection; custom dictation deferred                                          |
 | Anxiety/confidence calendar heatmap                        | Completion-count calendar with day history                                                                |
 | Every completion counts; earlier practice can imply replay | Venue decks cycle; repeated accepted cards can become new reps; level credit rules are deferred           |
-| Sensitive self-reports stored locally by default           | Phone-saved submissions upload to private cloud records; Phase 09 analytics follows onboarding acceptance |
+| Sensitive self-reports stored locally by default           | Phone-saved submissions upload to private cloud records; Phase 11 analytics follows onboarding acceptance |
 
 ## 3. Navigation and common behavior
 
@@ -104,13 +104,13 @@ Credential access failures show retry/recovery states rather than silently creat
 
 ### 4.2 Terms & Privacy acceptance; broader onboarding deferred
 
-Anthony approved a single Terms & Privacy onboarding page for Phase 09 on October 15. Present a short, accurate explanation of phone/cloud saving and the analytics scope, links to Terms of Service and Privacy Policy, and an explicit continuation/acceptance action. This is the only permission request for that analytics scope; remove the planned analytics Settings controls and do not add a post-reflection prompt. Returning users with recorded acceptance do not see the same request again; existing accounts without a receipt also need this page.
+Anthony approved a single Terms & Privacy onboarding page for Phase 10 (approved October 15). Present a short, accurate explanation of phone/cloud saving and the analytics scope, links to Terms of Service and Privacy Policy, and an explicit continuation/acceptance action. This is the only permission request for that analytics scope; remove the planned analytics Settings controls and do not add a post-reflection prompt. Returning users with recorded acceptance do not see the same request again; existing accounts without a receipt also need this page.
 
-Persist acceptance for the correct account with legal/scope versions and time. Unknown acceptance blocks analytics forwarding, not access to recovery/export/deletion or preservation of saved/pending activity. Describe persistent pseudonymous analytics as account-linked, not anonymous/non-identifying; disclose feeling selections and approximate reflection lengths if included. Final copy and regional sufficiency remain Phase 10 review. See the [Phase 09 planning handoff](../handoffs/phase-09-analytics.md).
+Persist acceptance for the correct account with legal/scope versions and time. Unknown acceptance blocks analytics forwarding, not access to recovery/export/deletion or preservation of saved/pending activity. Describe persistent pseudonymous analytics as account-linked, not anonymous/non-identifying; disclose feeling selections and approximate reflection lengths if included. Final copy and regional sufficiency remain Phase 13 review. See the [Phase 10 planning handoff](../handoffs/phase-10-acceptance.md).
 
 Welcome screens, questionnaire steps, warming-up copy, branching and questionnaire-progress persistence are deferred by Anthony’s September 17 scope decision. Do not invent them or block phase 03 on them. Revisit whether/when to add them with separate product approval. Secure account bootstrap/recovery remains required behind the scenes and is not a signup or welcome flow.
 
-If broader questionnaire onboarding is scheduled later, settle content/design first and retain the original cloud-save, revision-conflict and relaunch-restoration requirements. No questionnaire tables, answer collection or questionnaire Zustand store are needed now; the separate Terms & Privacy acceptance receipt belongs to Phase 09.
+If broader questionnaire onboarding is scheduled later, settle content/design first and retain the original cloud-save, revision-conflict and relaunch-restoration requirements. No questionnaire tables, answer collection or questionnaire Zustand store are needed now; the separate Terms & Privacy acceptance receipt belongs to Phase 10.
 
 ### 4.3 Hard paywall
 
@@ -224,15 +224,15 @@ Saved per-attempt reflection text is read from an expanded challenge entry showi
 
 Use the supplied grouped-row visual style, spacing, icons, and hierarchy as a reference. Functional scope comes from explicit product needs:
 
-| Scope                                           | Settings capability                                                                                                                                                         |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Required by the tech-stack product flow         | Restore Purchases, manage subscription, optional Save recovery key and Transfer to another device, authenticated data export and account deletion, privacy policy and terms |
-| Owner-approved October 15 Phase 09 change       | Remove both analytics rows; permission for the disclosed analytics scope is requested only on the Terms & Privacy onboarding page, with no Settings switches                |
-| Implemented Phase 08 preference                 | Reduce Motion: saved on this phone, with the phone's accessibility preference always taking priority; physical-device acceptance remains Phase 11                           |
-| Phase 08 preference                             | Haptic feedback and its saved switch, implemented and physically tested together in Phase 08 before the free beta                                                           |
-| Owner-approved October 9 addition               | Feature requests reuse Support’s private email draft to anthonyyoo24@gmail.com with a distinct subject and no automatic private attachments                                 |
-| Deferred beyond the first release October 9     | Practice reminders, their notification permission flow and per-device scheduling                                                                                            |
-| Reference-only; not committed by the screenshot | Reset progress, exact help/feedback/about rows, app-version footer, and the “On this device” grouping                                                                       |
+| Scope                                                  | Settings capability                                                                                                                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Required by the tech-stack product flow                | Restore Purchases, manage subscription, optional Save recovery key and Transfer to another device, authenticated data export and account deletion, privacy policy and terms |
+| Owner-approved October 15 acceptance change (Phase 10) | Remove both analytics rows; permission for the disclosed analytics scope is requested only on the Terms & Privacy onboarding page, with no Settings switches                |
+| Implemented Phase 08 preference                        | Reduce Motion: saved on this phone, with the phone's accessibility preference always taking priority; physical-device acceptance remains Phase 14                           |
+| Phase 08 preference                                    | Haptic feedback and its saved switch, implemented and physically tested together in Phase 08 before the free beta                                                           |
+| Owner-approved October 9 addition                      | Feature requests reuse Support’s private email draft to anthonyyoo24@gmail.com with a distinct subject and no automatic private attachments                                 |
+| Deferred beyond the first release October 9            | Practice reminders, their notification permission flow and per-device scheduling                                                                                            |
+| Reference-only; not committed by the screenshot        | Reset progress, exact help/feedback/about rows, app-version footer, and the “On this device” grouping                                                                       |
 
 Any storage explanation must describe phone saving, background uploads and credential-based cloud recovery accurately. Recovery on another device restores uploaded history; it cannot recover the only device copy of a still-pending submission. Do not promise complete backup or cross-device availability before upload. System reduced-motion settings apply even if a custom preference is omitted. Account deletion requires explicit confirmation and revokes recovery/access; it is not the same action as an unapproved Reset progress feature.
 
@@ -275,7 +275,7 @@ Never evict pending or memory-only activity as ordinary cache cleanup. Prune ful
 
 ## 8. Privacy and analytics
 
-Cloud storage is part of the journal feature. Under the October 15 owner decision, Phase 09 analytics follows the single Terms & Privacy onboarding acceptance in §4.2; there are no separate general/sensitive analytics Settings choices or later analytics prompt. Keep analytical processing separate from product saving: analytics delivery failures never prevent saving reflections or eligible paid access. Raw reflection text, audio, credentials, and payment details must not be sent to analytics or diagnostic payloads. No session replay/autocapture on these screens.
+Cloud storage is part of the journal feature. Under the October 15 owner decision, Phase 11 analytics follows the Phase 10 single Terms & Privacy onboarding acceptance in §4.2; there are no separate general/sensitive analytics Settings choices or later analytics prompt. Keep analytical processing separate from product saving: analytics delivery failures never prevent saving reflections or eligible paid access. Raw reflection text, audio, credentials, and payment details must not be sent to analytics or diagnostic payloads. No session replay/autocapture on these screens.
 
 Track consent-aware events for:
 
@@ -315,7 +315,7 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 | ID    | Required result                                                                                                                                                                                                                                                                            |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | AC-01 | On iOS, account bootstrap requires no signup form; valid recovery restores only the authorized account. Credential failures cannot create duplicate accounts silently.                                                                                                                     |
-| AC-02 | Phase 09 adds one Terms & Privacy page with legal links and account-owned versioned acceptance; no analytics Settings switches or later analytics prompt. Welcome/questionnaire onboarding remains deferred.                                                                               |
+| AC-02 | Phase 10 adds one Terms & Privacy page with legal links and account-owned versioned acceptance; no analytics Settings switches or later analytics prompt. Welcome/questionnaire onboarding remains deferred.                                                                               |
 | AC-03 | The hard paywall supports purchase, restore, and honest pending/failed verification; essential recovery, subscription, legal, and data controls remain reachable when unpaid.                                                                                                              |
 | AC-04 | Six Level 1 venue decks cycle independently in memory. Left/X sends no product write; right/heart starts locally. Each Completed action creates one stable UUID; retries cannot duplicate a rep.                                                                                           |
 | AC-05 | Home validates nonempty venue catalogs, distinguishes initial loading/failure/offline misses, and keeps downloaded cards usable through refresh failure. Omit level progress.                                                                                                              |
@@ -347,7 +347,7 @@ Include duplicate completion, phone-write failure and warned memory-only recover
 
 ## 13. Remaining decisions and design gaps
 
-The table records outstanding decisions and previously approved reflection rules. Other proposed defaults are recommendations, not newly approved scope. Reduce Motion's saved preference and system priority are implemented; remaining physical-device, VoiceOver and text-scaling acceptance belongs to Phase 11, separately from open design work.
+The table records outstanding decisions and previously approved reflection rules. Other proposed defaults are recommendations, not newly approved scope. Reduce Motion's saved preference and system priority are implemented; remaining physical-device, VoiceOver and text-scaling acceptance belongs to Phase 14, separately from open design work.
 
 | Decision                             | Proposed default / work needed                                                                                                                                                                                         |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

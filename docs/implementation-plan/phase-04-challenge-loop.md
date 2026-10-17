@@ -35,7 +35,7 @@ Browse → accept → complete or give up works against real cloud data exactly 
 - [ ] Native motion, gestures, interrupted transitions, background/lock and accessibility have release evidence or an explicit owned gate.
 - [x] Implementation decisions and verification are saved in the phase handoff.
 
-## Open gates for Phase 11
+## Open gates for Phase 14
 
 - Physical-iPhone swipe responsiveness, interrupted transitions, VoiceOver, large text, reduced motion, background/lock and relaunch behavior.
 - Verify the matching integrated API/mobile build on staging.

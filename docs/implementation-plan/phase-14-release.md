@@ -1,6 +1,6 @@
-<a id="phase-11"></a>
+<a id="phase-14"></a>
 
-# Phase 11 — Release validation & launch
+# Phase 14 — Release validation & launch
 
 **Status:** Hosted owner-device prerequisite ready; beta/release acceptance not started
 
@@ -10,7 +10,7 @@ A free TestFlight beta validates the complete core product; payment activation a
 
 ## Decisions in force
 
-- Dependencies: 08–10 for the free beta checkpoint; 08–10 and accepted 07A for paid launch.
+- Dependencies: 08–13 for the free beta checkpoint; 08–13 and accepted 07A for paid launch.
 - Acceptance: PRD AC-01–06, 08–11, 13–17 · applicable iOS tech acceptance
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 
@@ -19,9 +19,9 @@ A free TestFlight beta validates the complete core product; payment activation a
 **Free beta checkpoint**
 
 - Define authenticated, server-authorized free tester access in an isolated non-production environment, including coverage for offline use and synchronization. Keep real identity/ownership boundaries, preserve tester history and plan how beta access ends or transitions when payments launch. Do not deploy the local fixture server or rely on a client premium switch. Purchases remain disabled and the beta explains that access is free during testing.
-- Finish Phases 08–10 and run the applicable core-product/privacy/recovery/accessibility acceptance checks on the actual signed iOS build and physical devices. Keep native/Keychain/storage, valuable-data recovery and environment-isolation gates explicit; a browser export is not sufficient evidence. Verify the single Terms & Privacy acceptance, absence of analytics Settings switches and approved public notices/disclosure preparation against the actual beta build.
+- Finish Phases 08–13 and run the applicable core-product/privacy/recovery/accessibility acceptance checks on the actual signed iOS build and physical devices. Keep native/Keychain/storage, valuable-data recovery and environment-isolation gates explicit; a browser export is not sufficient evidence. Verify the single Terms & Privacy acceptance, absence of analytics Settings switches and approved public notices/disclosure preparation against the actual beta build.
 - Deploy the matching reviewed API/schema to the test environment, verify backup/restoration and old-client compatibility/cutover, and prepare an EAS-signed build, beta review information, support contact and tester instructions. Obtain separate build/upload/distribution authorization where required by the repository's native-build and release rules. External testers need Apple's TestFlight beta review.
-- Collect feedback and resolve beta-blocking issues. Record the build/commit, tester access policy, device evidence and remaining paid-only checks in the Phase 11 handoff. A beta does not establish paid-launch acceptance.
+- Collect feedback and resolve beta-blocking issues. Record the build/commit, tester access policy, device evidence and remaining paid-only checks in the Phase 14 handoff. A beta does not establish paid-launch acceptance.
 - Before the beta build, complete the Expo SDK 58 / React Native 0.88 upgrade as its own native-upgrade task, with a new signed development build and a device recheck of affected native behavior [STK-2].
 - Set the app icon and splash in `app.config.ts` from the existing `assets/icon.png` and `assets/splash-icon.png`, embed Inter through the `expo-font` config plugin, and keep the splash visible until fonts and providers are ready [RTR-5].
 - Automate release steps [CI-6, CI-7]: switch `eas.json` to remote app versions with `autoIncrement` on the production profile; pin the EAS CLI version; build and submit to TestFlight from a tag; run migrations through a protected workflow with manual approval and a log; and smoke-check `/ready` after each deploy. These workflows still need the existing separate authorization before any upload or deployment.
@@ -45,18 +45,18 @@ Put the production database on the Supabase Pro plan and confirm 7-day daily bac
 
 ## Keep out
 
-- No unmeasured million-user claim, overdue launch blockers, incompatible native changes through an OTA update or additional feature scope during stabilization. Haptics implementation and its first physical acceptance belong to Phase 08; Phase 11 rechecks the accepted feature on the release build.
+- No unmeasured million-user claim, overdue launch blockers, incompatible native changes through an OTA update or additional feature scope during stabilization. Haptics implementation and its first physical acceptance belong to Phase 08; Phase 14 rechecks the accepted feature on the release build.
 - Do not count Stripe or the future coach toward MVP readiness.
 
 ## Ready to hand off when
 
 - [ ] Phase 08 haptics acceptance is recorded and the accepted feedback/preference still work on the signed beta/release build.
-- [ ] Phase 09 consent/measurement and Phase 10 approved public notices/disclosure preparation have linked acceptance; verify final bundle/disclosures and reconcile 07A billing changes before paid launch.
+- [ ] Phase 09 app continuity, Phase 10 acceptance, Phase 11 measurement, Phase 12 crash reporting and Phase 13 approved public notices/disclosure preparation have linked acceptance; verify final bundle/disclosures and reconcile 07A billing changes before paid launch.
 - [ ] All launch PRD criteria (AC-01–06, AC-08–11, AC-13–17) and applicable iOS tech checks have linked passing evidence; no unresolved launch-blocking product decisions.
 - [ ] Capacity, recovery/restore, security/privacy, rollback and device coverage meet documented release targets; limitations have explicit disposition.
 - [ ] Store/release checklist, operational ownership and handoffs are complete; authorized release and post-release smoke results are recorded before marking launch complete.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 11
+## Open gates for Phase 14
 
 All unchecked acceptance items in this phase remain release gates until evidenced; beta acceptance does not establish paid-launch acceptance.

@@ -25,7 +25,7 @@ Existing code is easier to understand, test and maintain. Important behavior has
 
 - API route renaming, HTTP-contract redesign, schema/persistence changes, or decisions about local versus backend ownership of attempts, venue queues and reflections. Those belong to the separate API discussion. Preserve current behavior and interfaces throughout this phase.
 - New billing/paywall, onboarding, levels, Android, dictation, analytics exporters or other unimplemented features. Missing tests for future features are not gaps in this phase.
-- Physical-device release acceptance, staging/production deployment, store submission, provider integration work, native signing/build upgrades, and full production load/security campaigns. Existing device and release gates remain in Phase 11 and their original handoffs.
+- Physical-device release acceptance, staging/production deployment, store submission, provider integration work, native signing/build upgrades, and full production load/security campaigns. Existing device and release gates remain in Phase 14 and their original handoffs.
 - A new offline sync engine, state-management framework, broad dependency upgrade, wholesale architecture rewrite, arbitrary file-size target, or blanket coverage goal. Use the current tools unless a demonstrated test requirement calls for a small, documented addition.
 
 ## Ready to hand off when
@@ -35,6 +35,6 @@ Existing code is easier to understand, test and maintain. Important behavior has
 - [x] Coverage reports include all relevant production source, and CI enforces the documented thresholds/exclusions and selected type-aware lint rules. Existing user-journey checks pass using isolated fixtures; the evidence distinguishes automated, browser and simulator checks and makes no physical-device claims.
 - [x] Repository agent/coding guidance is updated and discoverable, this plan and the handoff index agree, and the phase handoff records changed paths, tests, UI evidence, coverage changes, preserved decisions and remaining work before billing. Earlier physical-device/staging gates and API decisions retain their separate owners and phases.
 
-## Open gates for Phase 11
+## Open gates for Phase 14
 
 No quality-phase gates remain. Earlier feature physical-device and staging gates retain their original owners.

@@ -1,13 +1,13 @@
-# Phase 09 — Analytics and onboarding acceptance
+# Phase 10 — Terms & Privacy acceptance
 
 ## Summary and status
 
 **Status:** Planning only; implementation not started. Telemetry export is
 disabled and the unavailable analytics Settings rows remain in the app.
-[Phase 09](../implementation-plan/phase-09-analytics.md) owns implementation
+[Phase 10](../implementation-plan/phase-10-acceptance.md) owns implementation
 scope. [Phase 08](phase-08-settings-privacy.md) records the completed dependency
-and retained release gates. Phase 10 owns final legal wording/publication;
-Phase 11 owns release and native acceptance.
+and retained release gates. Phase 13 owns final legal wording/publication;
+Phase 14 owns release and native acceptance.
 
 ## Decisions and why
 
@@ -27,7 +27,7 @@ The reference is Mobbin’s [How We Feel Terms & Privacy screen](https://mobbin.
 uploaded July 9, 2024. It supplies a concise explanation, legal links and an
 acceptance action; it is not evidence of JustGO’s regional legal sufficiency.
 
-**Draft for implementation/design and Phase 10 review; not final approved legal copy:**
+**Draft for implementation/design and Phase 13 review; not final approved legal copy:**
 
 > **Terms & Privacy**
 >
@@ -49,20 +49,18 @@ no-sale sentence does not authorize selling data.
 The same approval also requires one-time shuffled/saved venue decks, the last
 selected venue remembered on the phone, and removal of the post-challenge
 Reflection top exit. These app changes are independent of analytics delivery;
-the [Phase 09 app changes](../implementation-plan/phase-09-analytics.md#phase-09-app-changes)
+the [Phase 09 app changes](../implementation-plan/phase-09-app-continuity.md#phase-09-app-changes)
 own their full specification.
 
 ## Behavior that changed
 
 Planning documents now specify the single page and versioned account receipt.
-No app, database, provider or hosting behavior has changed. Phase 09 must replace
-the unavailable Settings rows, implement the page and receipt boundary, and enable
-only the reviewed explicit events and vendor cleanup.
+No app, database, provider or hosting behavior has changed. Phase 10 replaces the unavailable Settings rows and implements the page and receipt boundary. Phase 11 owns explicit events and vendor cleanup; Phase 12 owns app crash reporting.
 
 Both legal titles must be working links. Clearly labeled development/test URLs
-can verify wiring and failure feedback during Phase 09. Final reviewed public
-URLs and release-build checks belong to Phases 10/11, so publication is not a
-circular prerequisite for the Phase 09 implementation handoff.
+can verify wiring and failure feedback during Phase 10. Final reviewed public
+URLs and release-build checks belong to Phases 13/14, so publication is not a
+circular prerequisite for the Phase 10 implementation handoff.
 
 ## Invariants to preserve
 
@@ -86,37 +84,39 @@ circular prerequisite for the Phase 09 implementation handoff.
   feeling selections and coarse reflection-length categories. Review the actual
   transmitted fields against the explanation and policy together.
 - A single-page product decision does not prove bundled acceptance is sufficient
-  in every intended region. Phase 10 must still review withdrawal/objection
+  in every intended region. Phase 13 must still review withdrawal/objection
   handling and effective client/server suppression without a Settings toggle.
 - Historical two-choice specifications are superseded by the October 15 decision;
   they must not reintroduce an additional prompt during implementation.
 
 ## Setup or environment changes
 
-None. Telemetry export remains disabled. Before activation, follow the
-[Phase 09 plan](../implementation-plan/phase-09-analytics.md) and implemented
+None. Telemetry export remains disabled. Before analytics activation, follow the [Phase 11 plan](../implementation-plan/phase-11-analytics.md), the
+[Phase 10 acceptance plan](../implementation-plan/phase-10-acceptance.md) and implemented
 [analytics boundary](../architecture/TECH_STACK.md#current-access-and-disabled-integrations).
 Use disposable fixtures and keep legal test destinations visibly identified.
 
 ## Open gates
 
-| Gate                                                              | Owner                            | Required phase | Done when                                                                                                                       |
-| ----------------------------------------------------------------- | -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Saved shuffled decks, remembered venue and Reflection exit        | Implementation owner             | 09             | App changes pass persistence, account-isolation, navigation and reduced-motion checks                                           |
-| Page, account-owned receipt, Settings cleanup and explicit events | Implementation owner             | 09             | Implemented with existing-account, missing-acceptance and account-isolation coverage                                            |
-| Retry/provider/deletion safeguards                                | Implementation owner             | 09             | Automated receipt, hydration, stale-callback, payload-exclusion, save-preservation, vendor-failure and cleanup cases pass       |
-| Page and link behavior                                            | Implementation owner             | 09             | In-app browser and relevant native checks verify acceptance, absent analytics controls, labeled test links and failure feedback |
-| Final code/database/coverage verification                         | Implementation owner             | 09             | Required checks pass against the implementation and actual results replace this planning evidence                               |
-| Collection, legal copy, regional sufficiency and privacy requests | Anthony and legal reviewer       | 10             | Reviewed scope, withdrawal/objection handling and release conditions recorded                                                   |
-| Public legal URLs, staging/native/release acceptance              | Implementation owner and Anthony | 10–11          | Published reviewed destinations work in the release build and remaining release gates pass                                      |
+| Gate                                                                    | Owner                            | Required phase | Done when                                                                                                     |
+| ----------------------------------------------------------------------- | -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------- |
+| Saved shuffled decks, remembered venue and Reflection exit              | Implementation owner             | 09             | Phase 09 persistence, account-isolation and navigation checks pass                                            |
+| Page, account-owned receipt, eligibility checks and Settings cleanup    | Implementation owner             | 10             | New/existing accounts, receipt isolation, persistence, legal links and failure handling have passing evidence |
+| Explicit events, actual forwarding, provider failures and cleanup       | Implementation owner             | 11             | Phase 11 consumes receipt checks and passes payload, deduplication, delayed-work and cleanup cases            |
+| App crash/error reporting                                               | Implementation owner             | 12             | Configured delivery, redaction and recovery have evidence                                                     |
+| Collection, final legal copy, regional sufficiency and privacy requests | Anthony and legal reviewer       | 13             | Actual collection and request handling are reviewed and approved                                              |
+| Public legal URLs and signed/native release acceptance                  | Implementation owner and Anthony | 13–14          | Published reviewed destinations and remaining release gates pass                                              |
 
 ## Final verification
 
-October 15, 2026: the planning-only update passed Prettier formatting/check,
-`git diff --check`, local link-destination validation and an independent
-consistency review. No CI run was recorded for that update.
+October 17, 2026: the documentation-only phase split passed formatting checks,
+`git diff --check` and local Markdown link/anchor validation. The original
+measurement specification and draft acceptance copy were checked for preservation.
+An independent planning review checked scope, dependencies and gate ownership.
+Changed directories were reviewed; their existing responsibility groups remain suitable.
 
 Application/database tests and interactive/native checks were not applicable to
-the documentation-only decision. No Phase 09 implementation gate is closed.
-Phase 08A’s documentation restructuring adds no analytics behavior or device
-acceptance; its final documentation validation is recorded in the Phase 08A handoff.
+this documentation-only change. No implementation or release gate is closed.
+The earlier planning evidence remains in Git; each new phase must record its own
+actual final checks and handoff when implemented. Phase 08A's evidence remains in
+its own handoff.
