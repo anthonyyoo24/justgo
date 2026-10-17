@@ -12,7 +12,7 @@ import {
 import { bearer } from '../identity/routes.js';
 import { IdentityError } from '../identity/service.js';
 import type { AttemptService } from './service.js';
-import type { ProgressResources } from '../progress/resources.js';
+import type { ProgressResources } from '../progress/service.js';
 import type { AttemptPatchService } from './patch.js';
 const parse = <T>(schema: z.ZodType<T>, value: unknown): T => {
   const parsed = schema.safeParse(value);

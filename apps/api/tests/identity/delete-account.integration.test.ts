@@ -7,7 +7,7 @@ import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { IdentityService, digest } from '../../src/identity/service.js';
 import { buildApp } from '../../src/build-app.js';
-import { loggerOptions } from '../../src/diagnostics.js';
+import { loggerOptions } from '../../src/http/diagnostics.js';
 
 const config = readConfig({ ...process.env, DATABASE_POOL_MAX: '3' });
 for (const url of [config.DATABASE_URL, process.env.MIGRATION_DATABASE_URL])

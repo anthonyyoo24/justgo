@@ -3,7 +3,7 @@ import pino from 'pino';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/build-app.js';
 import { readConfig } from '../src/config.js';
-import { loggerOptions } from '../src/diagnostics.js';
+import { loggerOptions } from '../src/http/diagnostics.js';
 import { poolOptions } from '../src/db/client.js';
 
 describe('health and readiness', () => {

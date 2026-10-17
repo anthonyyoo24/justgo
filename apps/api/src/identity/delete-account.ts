@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { accountDeletionResponseSchema } from '@justgo/contracts';
-import { digest, type IdentityService } from '../identity/service.js';
+import { digest, type IdentityService } from './service.js';
 
 export class DeleteAccountService {
   constructor(private readonly identity: IdentityService) {}
