@@ -126,8 +126,8 @@ import one another's implementation. Shared errors and health/readiness schemas
 live in their own modules. The generated document has the API-only
 `@justgo/contracts/openapi` entry, so importing mobile contracts does not load it.
 Contracts builds clean `dist` before compiling both entries. `/openapi.json`
-documents health/readiness,
-identity, access, catalog, canonical activity, Progress, export and deletion.
+documents the versioned identity, access, catalog, canonical activity, Progress,
+export and deletion resources.
 Contract changes must keep route validation, statuses, response parsing and
 OpenAPI aligned in the same change.
 
