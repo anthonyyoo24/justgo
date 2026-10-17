@@ -37,7 +37,7 @@ Prepared billing code can be reviewed independently while activation waits. Lega
 - Phase 07 checkpoints remain sequential except deferred 07.3A; keep the retained browser suite and lower-level coverage until replacement native acceptance exists. Phase 11 starts its native smoke from that checkpoint.
 - Phase 08 includes the first physical-iPhone haptics acceptance. Broader device/release rechecks remain Phase 11.
 - Run focused checks during implementation and required phase/publication gates at completion. Follow [testing guidance](../operations/TESTING.md); browser evidence cannot establish native behavior.
-- Phase 08A uses one reviewable change per numbered step in order, with move-only commits separate from behavior changes. Publishing, pull requests, merges and local branch/worktree deletion require the specific owner authorization in AGENTS.md.
+- Phase 08A uses the approved two-PR stack: documentation/design sources first, then implementation against that documentation branch. Keep move-only commits separate from behavior changes and merge in dependency order. Publishing, pull requests, merges and local branch/worktree deletion require the specific owner authorization in AGENTS.md.
 - Keep first-release scope in the [PRD](../product/PRD.md). Onboarding/questionnaires, reminders, progression/extra filters, dictation, lock-screen display, Android, Stripe and coaching remain deferred unless a phase explicitly implements them.
 
 ## Handoff workflow
