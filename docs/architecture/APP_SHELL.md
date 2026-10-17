@@ -176,9 +176,10 @@ second toast host; the account-owned provider acknowledges presentation.
 
 `ChallengeFlowScreen` prepares Success beneath opaque active content, with hidden
 input/accessibility until completion. Completed reveals Success in place, avoiding
-an intermediate native modal dismissal or route blend. Active disables back gestures;
-Success enables them. Continue replaces `/challenge` with `/reflection`; returning
-Home clears its active/result context. Standalone `/success` remains available for
+an intermediate native modal dismissal or route blend. Active and Success both
+disable back gestures; the standalone `/success` route does too. Continue is the
+only exit from a valid Success result and replaces `/challenge` (or `/success`)
+with `/reflection`; returning Home clears its active/result context. Standalone `/success` remains available for
 restored results and Android/web completion.
 
 Android/web use `ActiveChallengeModal` and focus-based dismissal. Native input/

@@ -89,9 +89,13 @@ it('uses the retryable crash screen as the root error boundary', () => {
   expect(ErrorBoundary).toBe(RouteErrorScreen);
 });
 
-it('keeps swipe-back disabled on the bottom-exit-only Reflection route', () => {
+it.each([
+  '(challenge)/challenge',
+  '(challenge)/success',
+  '(challenge)/reflection',
+])('keeps swipe-back disabled on the explicit-action-only %s route', (name) => {
   render(<RootLayout />);
-  expect(mockStackScreenOptions.get('(challenge)/reflection')).toMatchObject({
+  expect(mockStackScreenOptions.get(name)).toMatchObject({
     gestureEnabled: false,
   });
 });

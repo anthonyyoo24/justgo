@@ -111,7 +111,10 @@ function Navigation() {
           name="(challenge)/challenge"
           options={{ gestureEnabled: false }}
         />
-        <Stack.Screen name="(challenge)/success" />
+        <Stack.Screen
+          name="(challenge)/success"
+          options={{ gestureEnabled: false }}
+        />
         <Stack.Screen
           name="(challenge)/reflection"
           options={{ gestureEnabled: false }}

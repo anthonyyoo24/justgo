@@ -5,7 +5,8 @@
 **Status:** Implemented locally; native acceptance open. Venue decks shuffle once,
 resume their saved account-owned order and front card, and remember the selected
 venue on this phone. Post-challenge Reflection exits through its bottom Skip/Save
-action. The [phase plan](../implementation-plan/phase-09-app-continuity.md) owns
+action. Success disables swipe-back on both native route variants and continues
+only through Continue. The [phase plan](../implementation-plan/phase-09-app-continuity.md) owns
 scope; [Phase 08](phase-08-settings-privacy.md) and
 [Phase 08A](phase-08a-structure-cleanup.md) retain their earlier release gates.
 
@@ -34,6 +35,11 @@ behavior.
 - Post-challenge Reflection removes top Back/X and its discard dialog. The bottom
   action remains Skip when empty and Save Reflection with input. The Progress
   day-sheet editor retains its dirty-close prompt and the shared controller.
+
+- Success's native in-place state and standalone route both keep swipe-back
+  disabled. Continue opens Reflection without reactivating the completed challenge.
+  The missing-result screen retains its explicit Back to Home recovery action,
+  under the [October 17 decision](../DECISIONS.md#october-17-success-navigation).
 
 No API contract, database migration, native dependency or analytics configuration
 changed.
@@ -68,10 +74,10 @@ fixtures; the owner’s LAN development server was left running.
 
 ## Open gates
 
-| Gate                                                                          | Owner                            | Required phase | Done when                                                                                                                                                                     |
-| ----------------------------------------------------------------------------- | -------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Smallest-supported iPhone keyboard and large-text acceptance                  | Implementation owner and Anthony | 09             | On a running native simulator/device, verify the bottom Skip/Save stays visible and reachable with the software keyboard open at large text, and verify Reflection navigation |
-| Signed-build persistence, accessibility and earlier device/release acceptance | Existing phase owners            | 14             | Actual beta/release evidence satisfies the phase plan and inherited handoffs                                                                                                  |
+| Gate                                                                          | Owner                            | Required phase | Done when                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------- | -------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Smallest-supported iPhone keyboard and large-text acceptance                  | Implementation owner and Anthony | 09             | On a running native simulator/device, verify the bottom Skip/Save stays visible and reachable with the software keyboard open at large text, and verify Success/Reflection reject back swipes while Continue and Skip/Save still navigate correctly |
+| Signed-build persistence, accessibility and earlier device/release acceptance | Existing phase owners            | 14             | Actual beta/release evidence satisfies the phase plan and inherited handoffs                                                                                                                                                                        |
 
 No new native deferral was approved during this implementation. The Phase 09
 native check remains open; browser/component evidence does not close it.
@@ -96,9 +102,13 @@ October 17, 2026:
   bottom-only Reflection at small and normal phone viewports, including a
   reduced-height save action. Disposable account/API-origin safeguards and fixture
   cleanup were checked separately from automated evidence.
+- Success follow-up: focused native-flow/standalone-route regression suites pass
+  (31 tests); gesture settings remain false before and after completion and Continue
+  opens Reflection. Mobile typecheck and focused lint pass. The in-app browser
+  development preview still continues from Success to bottom-exit Reflection; this
+  presentation fixture does not establish native gesture behavior.
 - Native/device: not verified. XcodeBuildMCP could not find `simctl` through the
   selected command-line tools; the installed Xcode toolchain's read-only probe
   confirmed no booted simulator. A running simulator was requested for the native
   check. No native build, signing change or hosted acceptance was performed.
 - Changed directories were reviewed and remain organized by responsibility.
-  No Git push, pull request or merge was requested or performed.

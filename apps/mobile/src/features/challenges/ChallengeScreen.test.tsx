@@ -532,7 +532,7 @@ it('switches Active to Success in the same native route without a navigation tra
   expect(mockRouter.replace).not.toHaveBeenCalled();
   expect(mockRouter.push).toHaveBeenCalledTimes(1);
   expect(mockScreen).toHaveBeenLastCalledWith({
-    options: { gestureEnabled: true },
+    options: { gestureEnabled: false },
   });
   screen.rerender(<NativeFlow />);
   expect(screen.getByTestId('success-content')).toBe(success);

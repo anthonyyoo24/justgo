@@ -173,6 +173,17 @@ Run 09 → 10 → 11 → 12 → 13 → 14 free beta → 07A activation/acceptanc
 
 Preserve the event allowlist table and analytics-only start_id rules in Phase 11. Move the existing draft acceptance copy/planning handoff to Phase 10. Renumber current references and later phase/handoff filenames together; preserve historical evidence/artifact paths and distinguish dated numbering history. No implementation is started, no acceptance gate is closed and no publication, push, PR or merge is authorized by this planning change.
 
+## October 17 Success navigation
+
+Anthony approved disabling swipe-back on Success as well as Reflection. Continue
+is the only exit from a valid completed result and opens its Reflection; bottom
+Skip/Save then returns Home. Keep gestures disabled both when Success is revealed
+inside the native `/challenge` surface and on standalone `/success`. This avoids
+bypassing Reflection or making a completed challenge appear to become active again.
+Preserve the explicit Back to Home recovery action for a result route without a
+matching completed attempt. Phase 09 owns this follow-up; native gesture acceptance
+remains open until evidenced.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.

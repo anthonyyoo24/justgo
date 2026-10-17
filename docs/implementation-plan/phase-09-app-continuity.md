@@ -6,7 +6,7 @@
 
 ## Outcome
 
-Venue decks shuffle once per account on this phone and resume with their saved order and last selected venue. The post-challenge Reflection screen has one bottom exit.
+Venue decks shuffle once per account on this phone and resume with their saved order and last selected venue. The post-challenge Reflection screen has one bottom exit, and Success continues only through Continue.
 
 ## Decisions in force
 
@@ -26,7 +26,8 @@ Venue decks shuffle once per account on this phone and resume with their saved o
    - An account change loads only that account's saved order.
 2. **Saved last venue.** Save the selected venue with the deck state. Relaunch opens on it; new accounts and missing or unknown saved values open on Streets.
 3. **Reflection exit.** Remove the top Back/X control from the post-challenge Reflection screen. The bottom action (Skip with no input, Save Reflection otherwise) becomes the only exit; the screen's swipe-back gesture is already disabled. Remove the Save / Keep editing / Discard prompt that only Back/X reached. Verify the bottom action stays visible and reachable with the keyboard open on the smallest supported iPhone and at large text sizes. The Progress day-sheet editor keeps its existing dirty-close prompt.
-4. **Documentation.** Update PRD §5.1 (deck order and venue persist instead of resetting on a fresh launch, with the one-time shuffle), PRD §5.4 (bottom action is the only exit), the venue-stack line in `docs/product/CHALLENGES.md`, and the data inventory (deck and venue state stays on the phone and is not uploaded or sent to analytics).
+4. **Success exit (October 17 owner follow-up).** Disable swipe-back both for the Success state inside the native challenge route and for standalone Success. Continue is the only exit from a valid completed result and opens Reflection; preserve missing-result recovery.
+5. **Documentation.** Update PRD §5.1 (deck order and venue persist instead of resetting on a fresh launch, with the one-time shuffle), PRD §5.4 (bottom action is the only exit), the venue-stack line in `docs/product/CHALLENGES.md`, and the data inventory (deck and venue state stays on the phone and is not uploaded or sent to analytics).
 
 ## Keep out
 
@@ -37,13 +38,13 @@ Venue decks shuffle once per account on this phone and resume with their saved o
 
 - [x] Saved shuffle, front card and last venue survive relaunch and remain isolated across accounts; new accounts default to Streets.
 - [x] Catalog additions/removals/inactive placements reconcile correctly; missing, unreadable or invalid state falls back safely and failed writes leave Home usable without saving/loss-risk banners.
-- [ ] Post-challenge Reflection has no top Back/X or associated discard prompt; Skip/Save remains reachable with the keyboard open on the smallest supported iPhone and at large text sizes. Progress editing and reduced-motion behavior remain intact.
+- [ ] Post-challenge Reflection has no top Back/X or associated discard prompt; Skip/Save remains reachable with the keyboard open on the smallest supported iPhone and at large text sizes. Progress editing and reduced-motion behavior remain intact. Success cannot swipe back on either route, and Continue still opens Reflection.
 - [x] Focused tests, required phase checks and in-app browser verification pass; record native/device evidence and any explicitly approved release deferral accurately.
 - [x] Update the named product/inventory docs and save the phase handoff with final evidence and remaining gates; link it from the handoff index.
 
 ## Open native acceptance
 
-- Phase 09 still requires its smallest-supported iPhone software-keyboard/large-text check. Browser/component evidence passes but does not establish native behavior; no new deferral is approved. See the [handoff](../handoffs/phase-09-app-continuity.md#open-gates).
+- Phase 09 still requires its smallest-supported iPhone software-keyboard/large-text check and actual Success/Reflection gesture checks. Browser/component evidence passes but does not establish native behavior; no new deferral is approved. See the [handoff](../handoffs/phase-09-app-continuity.md#open-gates).
 
 ## Open gates for Phase 14
 
