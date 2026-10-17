@@ -1,0 +1,13 @@
+name: Install pinned workspace dependencies
+description: Use the repository Node/npm versions and install the root lockfile.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+    - run: npm install -g npm@11.16.0
+      shell: bash
+    - run: npm ci
+      shell: bash
