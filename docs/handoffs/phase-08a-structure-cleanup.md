@@ -2,9 +2,10 @@
 
 ## Summary and status
 
-Implementation is published as two stacked PRs. Local gates and the initial
-hosted runs pass; owner review, integration and remaining branch/stash cleanup
-remain open. Phase 08's
+Documentation is merged into `main`; implementation is merged into the intermediate
+documentation branch and still needs integration into `main`. Local gates and the
+initial hosted runs pass; final owner review, integration and remaining branch/stash
+cleanup remain open. Phase 08's
 acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 [Phase 08A plan](../implementation-plan/phase-08a-structure-cleanup.md) owns scope.
 
@@ -57,6 +58,9 @@ acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
   immutable action pins, dependency updates and an API production-only audit.
 - Journey isolation checks use the configured fixture ports, allowing a separate
   LAN development server to remain available for phone testing.
+- Identity fixtures validate both runtime and migration URLs with the shared
+  strict loopback database guard before opening pools, rejecting connection-option
+  overrides as well as nonlocal targets.
 
 ## Invariants to preserve
 
@@ -131,10 +135,14 @@ GitHub CodeRabbit admitted both split comparisons. Its documentation findings
 were corrected, and the implementation review led to safe migration setup reasons,
 unvalidated-response retry-header isolation and aligned CI setup guidance, with
 focused regressions preserving validated long server cooldowns and credential privacy.
+Final feedback tightened identity-fixture URL validation and corrected the CI job
+name. Regression tests reject host/database/role query overrides, fragments and
+inexact database paths before either pool is created.
 
 Hosted verification is tracked by the [documentation checks](https://github.com/anthonyyoo24/justgo/pull/30/checks)
 and [implementation checks](https://github.com/anthonyyoo24/justgo/pull/31/checks).
-The initial split candidates passed independently; the implementation runs all
-five producers and the aggregate coverage gate. Recheck the actual candidate
-after retargeting the stack for integration. Owner review and explicit merge
-approval remain required.
+Both split candidates passed independently; the implementation runs all five
+producers and the aggregate coverage gate. The documentation merge's
+[main run](https://github.com/anthonyyoo24/justgo/actions/runs/39067650303) also passed.
+The final integration candidate still needs authorized publication and hosted
+verification. Owner review and explicit merge approval remain required.
