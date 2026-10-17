@@ -187,9 +187,10 @@ migration or service startup. It refuses occupied fixture ports rather than reus
 an unknown server, builds contracts and the production repository bundle, migrates,
 and starts its owned fixture API/Expo services. Defaults are 127.0.0.1:3000 and
 127.0.0.1:8081; `JUSTGO_JOURNEY_API_PORT` and `JUSTGO_JOURNEY_APP_PORT` can select
-distinct unprivileged ports. Expo uses `--localhost`; regression checks reject
-non-loopback binding. Startup/assertion failures fail the command and owned
-services are stopped.
+distinct unprivileged ports. Expo uses `--localhost`; regression checks probe those
+configured service ports and reject non-loopback binding. Select separate fixture
+ports when a phone development server is using LAN port 8081. Startup/assertion
+failures fail the command and owned services are stopped.
 
 Do not assume CLI API overrides defeat Expo's virtual dotenv environment. Preserve
 the guarded public-environment adapter and request-origin fence, and validate the
