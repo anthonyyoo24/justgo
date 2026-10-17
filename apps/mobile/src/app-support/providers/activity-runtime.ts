@@ -128,6 +128,14 @@ export class ActivityRuntime {
     repository.resumeAuthentication();
     this.authenticationPending = null;
   }
+  deleteAccount = async (accountId: string) => {
+    if (this.getRepository()?.accountId === accountId) {
+      this.clearPeriodTimer();
+      this.authenticationPending = null;
+      this.store.setState({ repository: null });
+    }
+    await this.accounts.erase(accountId);
+  };
   dispose() {
     this.disposed = true;
     this.clearPeriodTimer();

@@ -7,8 +7,10 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors, typography } from '../../theme/tokens';
 import {
   useIdentity,
+  useJournal,
   useRuntime,
 } from '../../app-support/providers/AppProvider';
+import { useWelcomePreparation } from '../../app-support/identity/welcome/welcome-preparation';
 import { ChallengeLayout } from './ChallengeLayout';
 import { VenueTabs } from './VenueTabs';
 import { ChallengeDeck } from './ChallengeDeck';
@@ -31,6 +33,8 @@ export function ChallengeScreen() {
 function ChallengeFlow() {
   const { challenges } = useRuntime();
   const { account } = useIdentity();
+  const repository = useJournal();
+  const preparation = useWelcomePreparation();
   const { active, onAction, finish, clear, presentedStart } =
     useChallengeActivity();
   const state = useSyncExternalStore(
@@ -45,8 +49,9 @@ function ChallengeFlow() {
   const wasFocused = useRef(focused);
   const router = useRouter();
   useEffect(() => {
-    if (focused && account) void challenges.refresh();
-  }, [focused, account, challenges]);
+    if (focused && account && repository?.accountId === account.userId)
+      void challenges.refresh();
+  }, [focused, account, repository, challenges]);
   useEffect(() => {
     if (!focused) {
       wasFocused.current = false;
@@ -95,7 +100,7 @@ function ChallengeFlow() {
         )}
         <VenueTabs
           selected={state.selected}
-          disabled={!!active || moving || state.saving}
+          disabled={preparation.active || !!active || moving || state.saving}
           onSelect={(v) => void challenges.select(v)}
         />
         {!queue ? (
@@ -108,17 +113,22 @@ function ChallengeFlow() {
           <ChallengeDeck
             key={
               Platform.OS === 'ios'
-                ? deckIdentity
-                : `${deckIdentity}:${focused}`
+                ? `${deckIdentity}:${preparation.attempt}`
+                : `${deckIdentity}:${focused}:${preparation.attempt}`
             }
             cards={queue.cards}
             venue={venue.id}
             label={venue.label}
             turn={queue.turn}
-            disabled={!!active || state.saving || !focused}
+            disabled={
+              preparation.active || !!active || state.saving || !focused
+            }
             covered={!!active}
             onBusyChange={setMoving}
             onAction={onAction}
+            onVisualReady={
+              preparation.active ? preparation.markReady : undefined
+            }
           />
         )}
       </ChallengeLayout>

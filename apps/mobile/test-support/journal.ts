@@ -48,6 +48,9 @@ export function deferred<T>() {
   return { promise, resolve, reject };
 }
 export class MemoryStorage implements JournalStorage {
+  async getAllKeys() {
+    return [...this.values.keys()];
+  }
   readonly values = new Map<string, string>();
   readonly writes: { key: string; value: string }[] = [];
   fail = false;

@@ -27,7 +27,7 @@ async function account(page: Page) {
       r.request().method() === 'POST',
   );
   await page
-    .getByRole('button', { name: 'Create a private account', exact: true })
+    .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
   const proof = sessionCreateSchema.parse((await request).postDataJSON());
   if (proof.kind !== 'bootstrap')

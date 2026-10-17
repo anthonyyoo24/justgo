@@ -3,11 +3,24 @@ import { render } from '@testing-library/react-native';
 const mockPreviewModuleLoaded = jest.fn();
 const mockPreviewRendered = jest.fn();
 const mockHapticsLoaded = jest.fn();
+const mockWelcomeLoaded = jest.fn();
+const mockWelcomeRendered = jest.fn();
 const mockPreviewParams = {
   mode: '',
   progressState: 'loading',
   progressDayState: 'initial-error',
+  state: '',
 };
+jest.mock('../dev/previews/WelcomePreview', () => {
+  mockWelcomeLoaded();
+  const { Text } = require('react-native') as typeof import('react-native');
+  return {
+    WelcomePreview: (props: unknown) => {
+      mockWelcomeRendered(props);
+      return <Text>Welcome preview</Text>;
+    },
+  };
+});
 jest.mock('../dev/haptics/HapticsTestScreen', () => {
   mockHapticsLoaded();
   const { Text } = require('react-native') as typeof import('react-native');
@@ -41,6 +54,23 @@ afterEach(() => {
   mockPreviewParams.mode = '';
   mockPreviewParams.progressDayState = 'initial-error';
   mockPreviewParams.progressState = 'loading';
+  mockPreviewParams.state = '';
+});
+
+it('guards the isolated welcome preview and passes presentation state without account creation', () => {
+  mockPreviewParams.mode = 'welcome';
+  mockPreviewParams.state = 'loading';
+  development.__DEV__ = false;
+  const screen = render(<PreviewRoute />);
+  expect(screen.getByText('Redirect: /')).toBeTruthy();
+  expect(mockWelcomeLoaded).not.toHaveBeenCalled();
+  development.__DEV__ = true;
+  screen.rerender(<PreviewRoute />);
+  expect(screen.getByText('Welcome preview')).toBeTruthy();
+  expect(mockWelcomeRendered).toHaveBeenLastCalledWith({ state: 'loading' });
+  mockPreviewParams.state = 'error';
+  screen.rerender(<PreviewRoute />);
+  expect(mockWelcomeRendered).toHaveBeenLastCalledWith({ state: 'error' });
 });
 
 it('loads the haptics screen only through the development guard', () => {

@@ -62,6 +62,116 @@ const nativeVault = (): CredentialVault => ({
   kind: 'keychain',
 });
 
+it('restores the saved account and preserves unconfirmed cancellation metadata through renewal', async () => {
+  const vault = nativeVault();
+  const server = connected((path) => {
+    if (path.startsWith('/transfers/'))
+      throw new IdentityClientError('NETWORK');
+    return path === '/sessions/current' ? info : undefined;
+  });
+  const first = new IdentityController(vault, server, random);
+  await first.initialize();
+  const info = first.getSnapshot().account;
+  const abandoned = { id: id(), secret: secret() };
+  await vault.add(abandoned);
+  const metadata = {
+    ignoredCredentialIds: [abandoned.id],
+    cancelledTransfers: [
+      {
+        kind: 'transfer' as const,
+        credentialId: abandoned.id,
+        input: {
+          id: id(),
+          deviceId: info!.deviceId,
+          sessionId: id(),
+          sessionToken: secret(),
+          credential: abandoned.secret,
+          code: 'ABCDEF0123456789',
+          claimSecret: secret(),
+        },
+      },
+    ],
+  };
+  await vault.write({ ...(await vault.read())!, ...metadata });
+  server.calls.mockClear();
+
+  const reopened = new IdentityController(vault, server, random);
+  await reopened.initialize();
+  expect(reopened.getSnapshot().account).toEqual(info);
+  expect(reopened.getSnapshot().credentials).not.toContainEqual({
+    id: abandoned.id,
+  });
+  expect(server.calls.mock.calls.some((call) => call[0] === '/sessions')).toBe(
+    false,
+  );
+  await reopened.renew();
+  expect(reopened.getSnapshot().account?.userId).toBe(info!.userId);
+  expect(await vault.read()).toMatchObject(metadata);
+  const before = server.calls.mock.calls.length;
+  await reopened.recoverCredential(abandoned.id);
+  expect(server.calls).toHaveBeenCalledTimes(before);
+  expect(reopened.getSnapshot().account?.userId).toBe(info!.userId);
+});
+
+it.each(['ignored', 'cancelled'])(
+  'does not silently create an account when only %s transfer metadata remains',
+  async (kind) => {
+    const vault = nativeVault();
+    const abandoned = { id: id(), secret: secret() };
+    if (kind === 'ignored') await vault.add(abandoned);
+    await vault.write({
+      deviceId: id(),
+      selectedId: null,
+      session: null,
+      pending: null,
+      savedKey: null,
+      registration: null,
+      ignoredCredentialIds: kind === 'ignored' ? [abandoned.id] : [],
+      cancelledTransfers:
+        kind === 'cancelled'
+          ? [
+              {
+                kind: 'transfer',
+                credentialId: abandoned.id,
+                input: {
+                  id: id(),
+                  deviceId: id(),
+                  sessionId: id(),
+                  sessionToken: secret(),
+                  credential: abandoned.secret,
+                  code: 'ABCDEF0123456789',
+                  claimSecret: secret(),
+                },
+              },
+            ]
+          : [],
+    });
+    const server = connected((path) =>
+      path.startsWith('/transfers/') ? { status: 'cancelled' } : undefined,
+    );
+    const controller = new IdentityController(vault, server, random);
+    await controller.initialize();
+    expect(controller.getSnapshot()).toMatchObject({
+      account: null,
+      credentials: [],
+    });
+    expect(
+      server.calls.mock.calls.filter((call) => call[0] === '/sessions'),
+    ).toHaveLength(0);
+    const cancellations = server.calls.mock.calls.filter((call) =>
+      call[0].startsWith('/transfers/'),
+    );
+    expect(cancellations).toHaveLength(kind === 'cancelled' ? 1 : 0);
+    if (kind === 'cancelled') {
+      expect(cancellations[0]![3]).toBe('DELETE');
+      expect((await vault.read())!.cancelledTransfers).toEqual([]);
+    }
+    expect(await vault.credentials()).toEqual(
+      kind === 'ignored' ? [abandoned] : [],
+    );
+  },
+);
+
 it('requires user-entered verification, preserves a rejected inspection and clears it after approval', async () => {
   const inspection = { id: id(), expiresAt: expiry(), status: 'waiting' };
   const code = 'ABCDEF0123456789';
@@ -523,7 +633,7 @@ it('serializes a late native write and rereads its saved intent before retry', a
   }
 });
 
-it('resumes a persisted transfer intent through resource requests without changing claimant proof', async () => {
+it('retries a transfer during its visible visit without changing claimant proof', async () => {
   const vault = nativeVault();
   let failures = 1;
   const userId = id();
@@ -557,15 +667,14 @@ it('resumes a persisted transfer intent through resource requests without changi
   await first.startTransfer();
   const saved = (await vault.read())!.pending;
   expect(saved?.kind).toBe('transfer');
-  const resumed = new IdentityController(vault, server, random);
-  await resumed.initialize();
+  await first.retry();
   const starts = server.calls.mock.calls.filter(
     ([path]) => path === '/transfers',
   );
   expect(starts).toHaveLength(2);
   expect(starts[0]).toEqual(starts[1]);
   expect(starts[0]![3]).toBe('POST');
-  await resumed.redeemTransfer();
+  await first.redeemTransfer();
   expect(
     server.calls.mock.calls.find(
       ([path, body]) => path === '/sessions' && body?.kind === 'transfer',
@@ -581,7 +690,7 @@ it('resumes a persisted transfer intent through resource requests without changi
     undefined,
     'POST',
   ]);
-  expect(resumed.getSnapshot().account?.userId).toBe(userId);
+  expect(first.getSnapshot().account?.userId).toBe(userId);
   expect((await vault.read())!.pending).toBeNull();
 });
 
