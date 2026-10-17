@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import test from 'node:test';
 import { runJourney } from './journey-command.mjs';
 import { assertJourneyPortsAvailable } from './journey-ports.mjs';
+import { action, jobs, workflow } from '../quality/ci-workflow-fixture.mjs';
 
 const environment = {
   DATABASE_URL:
@@ -112,14 +112,19 @@ test('an occupied fixture port prevents every command, including contract migrat
 });
 
 test('required CI runs every saved journey using its provisioned test database and verifies the failure report path', () => {
-  const workflow = readFileSync(
-    new URL('../../.github/workflows/ci.yml', import.meta.url),
-    'utf8',
-  );
   assert.match(workflow, /POSTGRES_DB: justgo_test/);
-  assert.match(workflow, /npm ci/);
-  assert.match(workflow, /npx playwright install --with-deps chromium/);
-  assert.match(workflow, /apps\/api\/scripts\/provision\.sql/);
+  for (const name of ['setup-node', 'setup-database', 'setup-playwright'])
+    assert.match(
+      jobs.journeys,
+      new RegExp(`uses: \\.\\/\\.github\\/actions\\/${name}`),
+    );
+  assert.match(action('setup-node'), /npm ci/);
+  assert.match(
+    action('setup-playwright'),
+    /npx playwright install-deps chromium/,
+  );
+  assert.match(action('setup-playwright'), /npx playwright install chromium/);
+  assert.match(action('setup-database'), /apps\/api\/scripts\/provision\.sql/);
   assert.match(workflow, /env: &database-test-env/);
   assert.match(
     workflow,
@@ -131,9 +136,10 @@ test('required CI runs every saved journey using its provisioned test database a
   );
   assert.match(workflow, /DATABASE_SSL: disable/);
   assert.match(workflow, /JUSTGO_PG_BIN: \/usr\/lib\/postgresql\/17\/bin/);
+  assert.match(jobs.journeys, /^ {4}env: \*database-test-env$/m);
   assert.match(
-    workflow,
-    /name: Verify full app\/API\/database journeys and recovery\n\s+run: \|\n\s+npm run test:journey\n\s+test -s \.local\/journey-report\/index\.html\n\s+env: \*database-test-env/,
+    jobs.journeys,
+    /name: Verify app\/API\/database journeys\n\s+run: \|\n\s+npm run test:journey\n\s+test -s \.local\/journey-report\/index\.html/,
   );
   assert.doesNotMatch(workflow, /continue-on-error:/);
 });

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import {
+  action,
   commands,
   jobs,
   rootPackage,
@@ -11,11 +12,6 @@ import {
 
 const [triggers] = workflow.split(/^permissions:$/m);
 const producers = ['static', 'unit', 'database', 'journeys', 'exports'];
-const action = (name) =>
-  readFileSync(
-    new URL(`../../.github/actions/${name}/action.yml`, import.meta.url),
-    'utf8',
-  );
 
 test('pushes run only for main, PRs cancel older revisions, and main results stay independent', () => {
   assert.match(triggers, /^ {2}push:\n {4}branches: \[main\]$/m);
