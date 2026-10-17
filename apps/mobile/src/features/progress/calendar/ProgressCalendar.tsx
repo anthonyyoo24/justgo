@@ -20,7 +20,7 @@ import {
   typography,
 } from '../../../theme/tokens';
 import { ProgressSkeleton, useProgressShimmer } from './ProgressSkeleton';
-import { calendarCells, dayLabel, monthLabel } from '../calendar';
+import { calendarCells, dayLabel, monthLabel } from '../calendar-dates';
 export type ProgressCalendarProps = {
   month: string;
   data?: ProgressResponse | undefined;

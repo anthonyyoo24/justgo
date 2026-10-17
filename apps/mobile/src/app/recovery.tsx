@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
-import { IdentityScreen } from '../app-support/identity/IdentityScreen';
+import { IdentityScreen } from '../app-support/identity/account/IdentityScreen';
 import { useRuntime, useIdentity } from '../app-support/providers/AppProvider';
 import { AccountRecoveryScreen } from '../app-support/identity/account/AccountRecoveryScreen';
 export default function RecoveryRoute() {

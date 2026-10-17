@@ -145,6 +145,8 @@ sparse due-work opportunities permit active/online recovery without another user
 action. Respect cooldown and Retry-After, avoid overlapping bursts, suspend when
 inactive/offline/no work and cancel timers on ownership changes. The app cannot
 promise execution after termination. Independent query/mutation retries remain off.
+Only headers accompanying validated API error envelopes may extend the cooldown;
+malformed or unexpected proxy responses use the existing retry backoff.
 
 Lost responses are unknown outcomes: replay the same attempt/submission identity.
 Matching create/receipt results confirm the earlier operation without another rep

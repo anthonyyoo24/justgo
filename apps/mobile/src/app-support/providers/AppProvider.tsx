@@ -8,7 +8,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { AppState } from 'react-native';
-import { listenToConnectivity } from '../../platform/connectivity';
+import { listenToConnectivity } from '../../platform/connectivity/connectivity';
 import { asyncStorageJournalStorage } from '../../data/activity/persistence/storage';
 import type { JournalStorage } from '../../data/activity/model';
 import { ActivityRuntime } from './activity-runtime';
@@ -19,12 +19,13 @@ import {
   focusManager,
   useQuery,
 } from '@tanstack/react-query';
-import { accessResponseSchema, hasVerifiedAccess } from '@justgo/contracts';
+import { hasVerifiedAccess } from '@justgo/contracts';
+import { readAccess } from '../access/api';
 import { IdentityController } from '../identity/controller';
 import { createIdentityApi } from '../identity/api';
 import { createVault } from '../identity/vault';
-import { AccountClient, accountKey } from '../../lib/account-client';
-import { createHttpClient } from '../../lib/http';
+import { AccountClient, accountKey } from '../../lib/network/account-client';
+import { createHttpClient } from '../../lib/network/http';
 import { createTelemetry } from '../../lib/telemetry';
 
 export function createAppRuntime(
@@ -160,8 +161,7 @@ export function useAccess() {
   const query = useQuery({
     queryKey: accountKey(account?.userId ?? 'disconnected', 'access'),
     enabled: !!account,
-    queryFn: ({ signal }) =>
-      client.request('/v1/access', accessResponseSchema, { signal }),
+    queryFn: ({ signal }) => readAccess(client, signal),
     refetchInterval: 30_000,
   });
   const [now, setNow] = useState(Date.now);

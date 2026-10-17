@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRuntime } from '../../providers/AppProvider';
-import { useModalIsolation } from '../../../platform/useModalIsolation';
+import { useModalIsolation } from '../../../platform/modals/useModalIsolation';
 import { WelcomeView } from './WelcomeView';
 import { welcomeBackgroundColor } from './welcome-artwork';
 

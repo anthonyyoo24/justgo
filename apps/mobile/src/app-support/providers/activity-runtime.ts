@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla';
-import type { AccountClient } from '../../lib/account-client';
+import type { AccountClient } from '../../lib/network/account-client';
 import { AccountRepositories } from '../../data/activity/accounts';
 import { AccountRepository } from '../../data/activity/repository';
 import {

@@ -122,8 +122,12 @@ does not promise a backup system or persist the whole query cache.
 ## HTTP contracts and diagnostics
 
 Public strict schemas are imported through `@justgo/contracts`; the apps do not
-import one another's implementation. `/openapi.json` documents health/readiness,
-identity, access, catalog, canonical activity, Progress, export and deletion.
+import one another's implementation. Shared errors and health/readiness schemas
+live in their own modules. The generated document has the API-only
+`@justgo/contracts/openapi` entry, so importing mobile contracts does not load it.
+Contracts builds clean `dist` before compiling both entries. `/openapi.json`
+documents the versioned identity, access, catalog, canonical activity, Progress,
+export and deletion resources.
 Contract changes must keep route validation, statuses, response parsing and
 OpenAPI aligned in the same change.
 
@@ -133,6 +137,18 @@ and Helmet headers. Versioned failures use a safe typed envelope with a request
 ID. Malformed, oversized and unsupported-media requests retain client-error
 statuses; transient service failures become unavailable responses. Secret-bearing
 URLs, request/response bodies and private reflections are excluded from logs.
+Identity rate limits return the real integer seconds remaining in the database
+bucket through Retry-After. Shared HTTP errors, bearer parsing, input validation
+and allowlisted diagnostics live in the API http owner. SQLSTATE diagnostics
+expose only validated five-character codes through wrapped driver failures.
+Migration setup failures add fixed allowlisted reason codes, without exposing
+environment values or driver messages.
+The mobile HTTP client fetches the exact admitted URL. It accepts JSON media
+types before reading a body and treats malformed/proxy responses as unavailable;
+only transport failures are network errors. Typed JSON errors retain their
+request IDs, conflict data and Retry-After, within the original cancellation/
+timeout and single-GET-replay budget. Unvalidated proxy bodies cannot revoke
+credentials or extend upload cooldowns through their headers.
 `/health` checks process availability; `/ready` checks the database and returns
 503 when unavailable.
 

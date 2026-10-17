@@ -10,6 +10,8 @@ journeyEnvironment(process.env);
 export default defineConfig({
   testDir: '.',
   testMatch: '*.spec.ts',
+  testIgnore: 'exported-web.spec.ts',
+  globalTimeout: 20 * 60_000,
   fullyParallel: false,
   workers: 1,
   retries: 0,

@@ -61,7 +61,7 @@ The focused regression failed before the route fix (`200` instead of `429`) and
 passed afterward. Run it from `apps/api` with:
 
 ```sh
-node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/identity.integration.test.ts -t 'shares the sensitive budget'
+node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/identity/identity.transfers.integration.test.ts -t 'shares the sensitive budget'
 ```
 
 Fresh follow-up verification passed:
@@ -180,7 +180,7 @@ canonical columns transactionally during the compatibility interval.
    again. Remove only the unique rehearsal schema and its temporary snapshot.
 
 Exact saved comparison queries are in `legacyRows` and `canonicalRows` in
-[`migrations.integration.test.ts`](../../apps/api/tests/database/migrations.integration.test.ts);
+[`migrations.integration.test.ts`](../../apps/api/tests/db/migrations.integration.test.ts);
 they compare owner/ID/reference/date/start-zone/content/revision projections.
 The test also checks counts, schema metadata, ambiguity rollback and RLS, plus
 blank normalization and atomic rejection of invalid blank-only/no-feeling

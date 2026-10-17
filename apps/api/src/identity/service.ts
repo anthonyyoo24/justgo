@@ -1,3 +1,4 @@
+import { ApiError } from '../http/api-error.js';
 import {
   createHash,
   createHmac,
@@ -48,14 +49,6 @@ type TransferRow = Row & {
   redeemed_at: Date | null;
   cancelled_at: Date | null;
 };
-export class IdentityError extends Error {
-  constructor(
-    public readonly code: IdentityErrorCode,
-    public readonly status = 401,
-  ) {
-    super(code);
-  }
-}
 export const digest = (secret: string) =>
   createHash('sha256').update(secret).digest('hex');
 const one = async <T extends Row>(tx: Tx, query: SQL) =>
@@ -63,7 +56,7 @@ const one = async <T extends Row>(tx: Tx, query: SQL) =>
 const context = (tx: Tx, key: string, value: string) =>
   tx.execute(sql`select set_config(${key}, ${value}, true)`);
 const fail = (code: IdentityErrorCode, status = 401): never => {
-  throw new IdentityError(code, status);
+  throw new ApiError(code, status);
 };
 const response = (row: SessionRow): SessionResponse => ({
   userId: row.user_id,
@@ -99,20 +92,22 @@ export class IdentityService {
     const key = createHmac('sha256', this.options.rateKey)
       .update(`${lane}:${address}`)
       .digest('hex');
-    const count = await this.db.transaction(async (tx) => {
+    const bucket = await this.db.transaction(async (tx) => {
       await context(tx, 'app.rate_key', key);
-      const row = await one<{ count: number }>(
+      const row = await one<{ count: number; retry_after_seconds: number }>(
         tx,
         sql`
         insert into justgo.identity_rate_buckets (key,count,window_start) values (${key},1,now())
         on conflict (key) do update set
           count = case when identity_rate_buckets.window_start <= now()-interval '10 minutes' then 1 else identity_rate_buckets.count+1 end,
           window_start = case when identity_rate_buckets.window_start <= now()-interval '10 minutes' then now() else identity_rate_buckets.window_start end
-        returning count`,
+        returning count,
+          greatest(1, least(600, ceil(extract(epoch from (window_start + interval '10 minutes' - now())))))::integer as retry_after_seconds`,
       );
-      return row!.count;
+      return row!;
     });
-    if (count > limit) fail('RATE_LIMITED', 429);
+    if (bucket.count > limit)
+      throw new ApiError('RATE_LIMITED', 429, bucket.retry_after_seconds);
   }
   private async owner(tx: Tx, userId: string) {
     // Only called with a server-generated new account or a verified digest-bound identity.
@@ -184,7 +179,7 @@ export class IdentityService {
       } catch (error) {
         // A concurrent identical delete may have committed while owner() waited.
         if (
-          !(error instanceof IdentityError) ||
+          !(error instanceof ApiError) ||
           !['CREDENTIAL_REJECTED', 'UNAUTHORIZED'].includes(error.code)
         )
           throw error;

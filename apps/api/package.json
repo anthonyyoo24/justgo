@@ -8,12 +8,12 @@
     "start": "tsx --env-file-if-exists=.env src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/database/database.integration.test.ts tests/identity/identity.integration.test.ts tests/identity/retention.integration.test.ts tests/activity/challenges.integration.test.ts tests/activity/progress.integration.test.ts tests/activity/attempts.integration.test.ts tests/privacy/export.integration.test.ts tests/privacy/delete-account.integration.test.ts tests/access/beta-access.integration.test.ts && npm run test:migrations",
+    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/db/database.integration.test.ts tests/identity/identity.access.integration.test.ts tests/identity/identity.credentials.integration.test.ts tests/identity/identity.protocol.integration.test.ts tests/identity/identity.sessions.integration.test.ts tests/identity/identity.transfers.integration.test.ts tests/identity/retention.integration.test.ts tests/challenges/challenges.integration.test.ts tests/progress/progress.integration.test.ts tests/attempts/attempts.integration.test.ts tests/account-export/export.integration.test.ts tests/identity/delete-account.integration.test.ts tests/access/beta-access.integration.test.ts && npm run test:migrations",
     "db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "dev:challenges": "tsx --env-file-if-exists=.env scripts/challenge-dev.ts",
     "test:coverage": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run --coverage",
-    "test:migrations": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/database/migrations.integration.test.ts --fileParallelism=false"
+    "test:migrations": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/db/migrations.integration.test.ts --fileParallelism=false"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",

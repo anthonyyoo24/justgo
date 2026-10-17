@@ -4,7 +4,7 @@ import type {
   CreateAttempt,
   PatchAttemptResponse,
 } from '@justgo/contracts';
-import { ApiError } from '../src/lib/http';
+import { ApiError } from '../src/lib/network/http';
 import type { JournalStorage } from '../src/data/activity/model';
 import type { JournalTransport } from '../src/data/activity/sync/transport';
 export const owner = '10000000-0000-4000-8000-000000000001';

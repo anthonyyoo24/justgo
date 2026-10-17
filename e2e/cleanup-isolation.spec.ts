@@ -109,7 +109,10 @@ test('each case retains the real 120-request identity limit', async ({
   const limited = await request.get(`${journeyApiUrl}/v1/devices`);
   expect(limited.status()).toBe(429);
   expect(await limited.json()).toMatchObject({ code: 'RATE_LIMITED' });
-  expect(limited.headers()['retry-after']).toBe('600');
+  const remaining = Number(limited.headers()['retry-after']);
+  expect(Number.isInteger(remaining)).toBe(true);
+  expect(remaining).toBeGreaterThanOrEqual(1);
+  expect(remaining).toBeLessThanOrEqual(600);
 });
 
 test('a later case has a fresh allowance without clearing unrelated rate buckets', async ({

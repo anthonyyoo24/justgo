@@ -49,13 +49,13 @@
     "start": "expo start --dev-client",
     "web": "expo start --web --port 8081",
     "ios": "expo run:ios",
-    "typecheck": "tsc --noEmit",
-    "test": "jest --runInBand",
+    "typecheck": "node ../../scripts/quality/generate-route-types.mjs && tsc --noEmit && tsc --project tsconfig.tests.json --noEmit",
+    "test": "jest",
     "test:native": "maestro test -e APP_ID=\"${APP_ID:?Set APP_ID to the installed development app identifier}\" e2e/launch.yaml",
     "export:web": "expo export --platform web",
     "export:ios": "expo export --platform ios",
     "doctor": "EXPO_NO_CACHE=1 expo-doctor",
-    "test:coverage": "jest --runInBand --coverage"
+    "test:coverage": "jest --coverage"
   },
   "private": true
 }

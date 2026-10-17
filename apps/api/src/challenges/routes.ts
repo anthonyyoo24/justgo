@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { catalogSchema } from '@justgo/contracts';
-import { bearer } from '../identity/routes.js';
+import { bearer } from '../http/bearer.js';
 import type { ChallengeService } from './service.js';
 /**
  * Register the authenticated current-catalog resource with response validation.

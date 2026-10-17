@@ -5,6 +5,7 @@ package-lock.json
 apps/mobile/ios
 apps/mobile/android
 apps/mobile/.expo
+apps/mobile/expo-env.d.ts
 **/dist
 design/source
 
