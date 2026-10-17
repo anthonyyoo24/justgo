@@ -18,7 +18,7 @@ it('uses canonical create/PATCH contracts, coordinates session renewal and fence
     if (init.headers.authorization === 'Bearer old')
       return new Response(
         JSON.stringify({ code: 'SESSION_EXPIRED', requestId: 'fixture' }),
-        { status: 401 },
+        { headers: { 'Content-Type': 'application/json' }, status: 401 },
       );
     const body = JSON.parse(init.body);
     return new Response(
@@ -36,6 +36,7 @@ it('uses canonical create/PATCH contracts, coordinates session renewal and fence
             }
           : { attempt: attempt() },
       ),
+      { headers: { 'Content-Type': 'application/json' } },
     );
   });
   const client = new AccountClient(

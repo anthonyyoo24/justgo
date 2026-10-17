@@ -4,7 +4,11 @@ import { createIdentityApi } from './api';
 it('sends credentials only in body/header, validates responses and never retries writes implicitly', async () => {
   const fetcher = jest
     .fn()
-    .mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    .mockResolvedValue({
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
   await createIdentityApi('http://localhost:3000', fetcher).request(
     'POST',
     '/credentials',
@@ -31,6 +35,7 @@ it('rejects insecure remote URLs and malformed server payloads', async () => {
   ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
   expect(fetcher).not.toHaveBeenCalled();
   fetcher.mockResolvedValue({
+    headers: new Headers({ 'Content-Type': 'application/json' }),
     ok: true,
     json: async () => ({ ok: true, token: 'should-not-exist' }),
   });
@@ -67,6 +72,7 @@ it('normalizes transport and HTTP failures without echoing server payloads', asy
     ),
   ).rejects.toMatchObject({ message: 'NETWORK' });
   fetcher.mockResolvedValue({
+    headers: new Headers({ 'Content-Type': 'application/json' }),
     ok: false,
     json: async () => ({ code: 'SESSION_REVOKED', requestId: 'server-id' }),
   });
@@ -82,7 +88,11 @@ it('normalizes transport and HTTP failures without echoing server payloads', asy
 it('uses bodyless DELETE for a credential resource without a JSON content type', async () => {
   const fetcher = jest
     .fn()
-    .mockResolvedValue(new Response(JSON.stringify({ ok: true })));
+    .mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
   await createIdentityApi('https://example.com', fetcher).request(
     'DELETE',
     '/credentials/00000000-0000-4000-8000-000000000001',

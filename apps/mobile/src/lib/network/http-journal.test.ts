@@ -15,7 +15,10 @@ it('preserves the validated canonical reflection conflict and retry header witho
           requestId: 'safe-id',
           currentAttempt: canonical,
         }),
-        { status: 409, headers: { 'Retry-After': '12' } },
+        {
+          status: 409,
+          headers: { 'Content-Type': 'application/json', 'Retry-After': '12' },
+        },
       ),
   );
   await expect(
@@ -42,6 +45,7 @@ it.each([
   const fetcher = jest.fn(
     async () =>
       new Response(JSON.stringify({ code, requestId: 'fixture' }), {
+        headers: { 'Content-Type': 'application/json' },
         status: 400,
       }),
   );
@@ -63,7 +67,7 @@ it('rejects malformed conflict data instead of consuming an unvalidated attempt'
           requestId: 'fixture',
           currentAttempt: { ...attempt(), activityDate: 'invalid' },
         }),
-        { status: 409 },
+        { headers: { 'Content-Type': 'application/json' }, status: 409 },
       ),
   );
   await expect(
@@ -81,7 +85,13 @@ it.each(['garbage', '-2', 'Infinity'])(
       async () =>
         new Response(
           JSON.stringify({ code: 'RATE_LIMITED', requestId: 'fixture' }),
-          { status: 429, headers: { 'Retry-After': header } },
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': header,
+            },
+          },
         ),
     );
     await expect(
@@ -102,7 +112,10 @@ it('preserves an HTTP-date Retry-After as a remaining delay', async () => {
           JSON.stringify({ code: 'RATE_LIMITED', requestId: 'fixture' }),
           {
             status: 429,
-            headers: { 'Retry-After': 'Mon, 05 Oct 2026 14:01:00 GMT' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': 'Mon, 05 Oct 2026 14:01:00 GMT',
+            },
           },
         ),
     );

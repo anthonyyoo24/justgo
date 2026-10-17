@@ -127,12 +127,17 @@ it('asks for verification from the new device and submits the entered digits onl
     else if (url.endsWith('/transfer-approvals')) {
       if (body.verification !== '012345')
         return {
+          headers: new Headers({ 'Content-Type': 'application/json' }),
           ok: false,
           json: async () => ({ code: 'CONFLICT', requestId: 'test' }),
         };
       result = { ok: true };
     } else throw new Error(`Unexpected test route: ${url}`);
-    return { ok: true, json: async () => result };
+    return {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      json: async () => result,
+    };
   });
   const controller = new IdentityController(
     createMemoryVault(),
@@ -316,7 +321,11 @@ it.each([
       else if (url.includes('/transfers/') && init.method === 'DELETE')
         result = { status: 'cancelled' };
       else throw new Error('Unexpected synthetic identity action');
-      return { ok: true, json: async () => result };
+      return {
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        ok: true,
+        json: async () => result,
+      };
     });
     let sequence = 10;
     const controller = new IdentityController(

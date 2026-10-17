@@ -109,7 +109,10 @@ it.each([false, true])(
                     cards: venues.map(({ id }) => ({ ...card, id, venue: id })),
                   }
                 : {};
-        return new Response(JSON.stringify(body), { status: 200 });
+        return new Response(JSON.stringify(body), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        });
       });
     const provider = (
       <AppProvider>

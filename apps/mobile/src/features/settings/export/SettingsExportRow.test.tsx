@@ -79,6 +79,7 @@ beforeEach(async () => {
   await mockRepo.hydrate();
   await mockRepo.complete(input(), card);
   fetcher = jest.fn(async () => ({
+    headers: new Headers({ 'Content-Type': 'application/json' }),
     ok: true,
     json: async () => ({
       account: { id: owner, createdAt: `${today}T00:00:00.000Z` },
@@ -210,7 +211,11 @@ it('fails instead of claiming an export is complete when the phone journal is un
   expect(save).not.toHaveBeenCalled();
 });
 it('cancels an in-flight export when leaving the screen', async () => {
-  const pending = deferred<{ ok: true; json: () => Promise<object> }>();
+  const pending = deferred<{
+    ok: true;
+    headers: Headers;
+    json: () => Promise<object>;
+  }>();
   fetcher.mockImplementation(() => pending.promise);
   const screen = render(<SettingsExportRow />);
   fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
@@ -218,23 +223,43 @@ it('cancels an in-flight export when leaving the screen', async () => {
   const signal = fetcher.mock.calls[0]![1].signal as AbortSignal;
   screen.unmount();
   expect(signal.aborted).toBe(true);
-  await act(async () => pending.resolve({ ok: true, json: async () => ({}) }));
+  await act(async () =>
+    pending.resolve({
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      json: async () => ({}),
+    }),
+  );
   expect(save).not.toHaveBeenCalled();
 });
 
 it('cancels when a still-mounted stack screen loses focus, and resets the button for returning', async () => {
-  const pending = deferred<{ ok: true; json: () => Promise<object> }>();
+  const pending = deferred<{
+    ok: true;
+    headers: Headers;
+    json: () => Promise<object>;
+  }>();
   fetcher.mockImplementation(() => pending.promise);
   const screen = render(<SettingsExportRow />);
   fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
   act(() => mockBlur?.());
   expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
-  await act(async () => pending.resolve({ ok: true, json: async () => ({}) }));
+  await act(async () =>
+    pending.resolve({
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      json: async () => ({}),
+    }),
+  );
   expect(save).not.toHaveBeenCalled();
 });
 it('clears old feedback and cancels stale work when a different account is activated', async () => {
-  const pending = deferred<{ ok: true; json: () => Promise<object> }>();
+  const pending = deferred<{
+    ok: true;
+    headers: Headers;
+    json: () => Promise<object>;
+  }>();
   fetcher.mockImplementation(() => pending.promise);
   const screen = render(<SettingsExportRow />);
   fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
@@ -243,7 +268,13 @@ it('clears old feedback and cancels stale work when a different account is activ
   mockClient.changeAccount(otherOwner);
   screen.rerender(<SettingsExportRow />);
   expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
-  await act(async () => pending.resolve({ ok: true, json: async () => ({}) }));
+  await act(async () =>
+    pending.resolve({
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      json: async () => ({}),
+    }),
+  );
   expect(save).not.toHaveBeenCalled();
   expect(screen.queryByRole('alert')).toBeNull();
 });
