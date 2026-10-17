@@ -18,7 +18,7 @@ it.each(['PATCH', 'DELETE'] as const)(
           if (failure === 'NETWORK') throw new Error('offline');
           return new Response(
             JSON.stringify({ code: 'UNAVAILABLE', requestId: 'test' }),
-            { status: 503 },
+            { headers: { 'Content-Type': 'application/json' }, status: 503 },
           );
         });
         const http = createHttpClient('https://api.example.test', fetcher);
@@ -54,7 +54,11 @@ it('continues one transient retry for explicit GET reads', async () => {
   const fetcher = jest
     .fn()
     .mockRejectedValueOnce(new Error('offline'))
-    .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
   const client = new AccountClient(
     createHttpClient('https://api.example.test', fetcher),
     session,

@@ -60,7 +60,10 @@ let runtime: ReturnType<typeof createAppRuntime>;
 let access: AccessResponse;
 const originalUrl = process.env.EXPO_PUBLIC_API_URL;
 const response = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status });
+  new Response(JSON.stringify(body), {
+    headers: { 'Content-Type': 'application/json' },
+    status,
+  });
 
 function Probe() {
   const currentRuntime = useRuntime();

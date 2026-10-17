@@ -37,6 +37,14 @@ export type RequestOptions = {
 export function requestMethod(options: RequestOptions): HttpMethod {
   return options.method ?? (options.body === undefined ? 'GET' : 'POST');
 }
+function retryAfterDelay(header: string | null | undefined) {
+  const delay = header
+    ? /^\d+$/.test(header.trim())
+      ? Number(header) * 1000
+      : Date.parse(header) - Date.now()
+    : NaN;
+  return Number.isFinite(delay) && delay >= 0 ? delay : undefined;
+}
 export type HttpClient = ReturnType<typeof createHttpClient>;
 export function createHttpClient(
   baseUrl: string | undefined,
@@ -49,14 +57,15 @@ export function createHttpClient(
       options: RequestOptions = {},
     ): Promise<T> {
       let base: URL;
+      let target: URL;
       try {
         base = new URL(baseUrl ?? '');
+        target = new URL(path, base);
       } catch {
         throw new ApiError('UNAVAILABLE');
       }
       // Progress reads use encoded query parameters. Resolve the relative path
       // against the trusted API origin so a query cannot redirect the request.
-      const target = new URL(path, base);
       if (
         (base.protocol !== 'https:' &&
           !(
@@ -102,33 +111,52 @@ export function createHttpClient(
       const attempt = async () => {
         check();
         try {
-          const response = await fetcher(
-            `${baseUrl!.replace(/\/$/, '')}${path}`,
-            {
-              method,
-              signal: controller.signal,
-              headers: {
-                ...(body === undefined
-                  ? {}
-                  : { 'content-type': 'application/json' }),
-                ...(options.token
-                  ? { authorization: `Bearer ${options.token}` }
-                  : {}),
-              },
-              ...(body === undefined ? {} : { body }),
+          const response = await fetcher(target.href, {
+            method,
+            signal: controller.signal,
+            headers: {
+              ...(body === undefined
+                ? {}
+                : { 'content-type': 'application/json' }),
+              ...(options.token
+                ? { authorization: `Bearer ${options.token}` }
+                : {}),
             },
-          );
-          const value: unknown = await response.json();
+            ...(body === undefined ? {} : { body }),
+          });
           check();
-          if (!response.ok) {
+          const successful = response.ok;
+          const header = response.headers?.get('Retry-After');
+          const unavailable = () =>
+            new ApiError(
+              'UNAVAILABLE',
+              undefined,
+              undefined,
+              retryAfterDelay(header),
+            );
+          // Untrusted proxy pages cannot supply domain or credential failures.
+          const mediaType = response.headers
+            ?.get('Content-Type')
+            ?.split(';')[0]
+            ?.trim();
+          if (
+            !mediaType ||
+            !/^application\/(?:json|[a-z0-9!#$%&'*+.^_`|~-]+\+json)$/i.test(
+              mediaType,
+            )
+          )
+            throw unavailable();
+          let value: unknown;
+          try {
+            value = await response.json();
+          } catch {
+            check();
+            throw unavailable();
+          }
+          check();
+          if (!successful) {
             const conflict = reflectionConflictSchema.safeParse(value);
             const error = identityErrorSchema.safeParse(value);
-            const header = response.headers?.get('Retry-After');
-            const delay = header
-              ? /^\d+$/.test(header.trim())
-                ? Number(header) * 1000
-                : Date.parse(header) - Date.now()
-              : NaN;
             throw new ApiError(
               conflict.success
                 ? conflict.data.code
@@ -141,11 +169,11 @@ export function createHttpClient(
                   ? error.data.requestId
                   : undefined,
               conflict.success ? conflict.data.currentAttempt : undefined,
-              Number.isFinite(delay) && delay >= 0 ? delay : undefined,
+              retryAfterDelay(header),
             );
           }
           const parsed = schema.safeParse(value);
-          if (!parsed.success) throw new ApiError('UNAVAILABLE');
+          if (!parsed.success) throw unavailable();
           return parsed.data;
         } catch (error) {
           check();

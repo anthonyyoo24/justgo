@@ -197,7 +197,11 @@ async function connected() {
         };
       else if (path === '/transfer-approvals') result = { ok: true };
       else throw new Error(`Unexpected test path: ${path}`);
-      return { ok: true, json: async () => result } as Response;
+      return {
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        ok: true,
+        json: async () => result,
+      } as Response;
     },
   );
   mockController = new IdentityController(

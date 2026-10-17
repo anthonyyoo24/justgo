@@ -38,7 +38,11 @@ const page = (
   attempts,
   nextCursor,
 });
-const response = (data: unknown) => ({ ok: true, json: async () => data });
+const response = (data: unknown) => ({
+  headers: new Headers({ 'Content-Type': 'application/json' }),
+  ok: true,
+  json: async () => data,
+});
 async function setup(
   fetcher: jest.Mock = jest.fn(async () => response(page())),
 ) {
@@ -214,6 +218,7 @@ it('does not create a partial file when a later page fails', async () => {
     .fn()
     .mockResolvedValueOnce(response(page([a], a.id)))
     .mockResolvedValue({
+      headers: new Headers({ 'Content-Type': 'application/json' }),
       ok: false,
       json: async () => ({ code: 'UNAVAILABLE', requestId: 'safe' }),
     });
