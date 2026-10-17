@@ -8,4 +8,4 @@
 - Inter 400/500/600: loaded from the pinned `@expo-google-fonts/inter` package, SIL Open Font License in that package's `LICENSE_FONT`. Baskerville uses the iOS system font and is not copied into this repository.
 - Expo template icons in this folder are scaffolding placeholders, not approved App Store artwork. Replace before distribution.
 
-Full-screen Paper reference exports live under `docs/design-source`, never in the runtime bundle. No app screen uses a full-screen raster as its interface.
+Full-screen Paper reference exports live under `design/source`, never in the runtime bundle. No app screen uses a full-screen raster as its interface.

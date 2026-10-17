@@ -5,8 +5,8 @@
 **Status (October 17, 2026):** Complete. Implementation is merged into `main`,
 and post-merge CI passes. Anthony reported completing the required physical-iPhone
 checks and chose 7-day backup retention. The approved follow-ups in
-[Open gates](#open-gates) remain with their later phases. Phase 08A is next and
-has not started.
+[Open gates](#open-gates) remain with their later phases. Phase 08A is in
+progress; its [handoff](phase-08a-structure-cleanup.md) owns current status and open gates.
 
 This file replaces the earlier per-change Settings handoff and folds in the
 account-deletion and reflection-keyboard handoffs, under the
