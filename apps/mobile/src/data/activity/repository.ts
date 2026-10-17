@@ -18,7 +18,7 @@ import {
   challengeCardSchema,
   normalizeReflectionText,
 } from '@justgo/contracts';
-import { ApiError } from '../../lib/http';
+import { ApiError } from '../../lib/network/http';
 import {
   cloneJournal,
   emptyJournal,

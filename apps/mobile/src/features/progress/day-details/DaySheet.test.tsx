@@ -6,7 +6,7 @@ import {
   StyleSheet,
   TextInput,
 } from 'react-native';
-import * as calendar from '../calendar';
+import * as calendar from '../calendar-dates';
 import type { ProgressEntry } from '../types';
 import { DaySheet } from './DaySheet';
 import { DayEntryList } from './entries/DayEntryList';

@@ -4,8 +4,8 @@ import {
   progressCalendarSchema,
   progressDayResponseSchema,
 } from '@justgo/contracts';
-import { accountKey, type AccountClient } from '../../../lib/account-client';
-import { ApiError } from '../../../lib/http';
+import { accountKey, type AccountClient } from '../../../lib/network/account-client';
+import { ApiError } from '../../../lib/network/http';
 import type { JournalState } from '../model';
 import type { AccountRepository } from '../repository';
 import { preserveDayRead } from './progress-read-cache';

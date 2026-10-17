@@ -24,8 +24,8 @@ import type {
   StoredCredential,
   TransferIntent,
 } from './storage';
-import { ApiError, type HttpMethod } from '../../lib/http';
-import { Deadline } from '../../lib/deadline';
+import { ApiError, type HttpMethod } from '../../lib/network/http';
+import { Deadline } from '../../lib/network/deadline';
 import { removeDeletedCredentials } from './deletion/cleanup';
 import { resumeAccountDeletion } from './deletion/workflow';
 
