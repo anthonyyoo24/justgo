@@ -129,6 +129,12 @@ handoffs, architecture into concern-based guides, and unbuilt designs into
 proposals. The original Phase 07 API/persistence discussion is archived; current
 behavior remains in ACTIVITY_DATA.md. No product decision changes in this move.
 
+The approved Phase 08A CI split places fresh Expo Doctor validation first in the
+static-checks job. Five parallel producers feed the required `checks` status;
+API coverage merges execution maps from the disjoint unit/database producers
+before applying the existing floors. This replaces the earlier single-job layout.
+The separate standalone/weekly Doctor job remains deferred.
+
 ## October 17 Phase 08A review split
 
 Anthony approved publishing Phase 08A as two stacked pull requests rather than
