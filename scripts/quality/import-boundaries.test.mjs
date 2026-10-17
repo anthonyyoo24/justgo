@@ -8,7 +8,7 @@ const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../..',
 );
-// Virtual paths need syntax rules only; promise-rule tests use a real TS project below.
+// Virtual paths need syntax rules only; typed-rule tests use a real TS project.
 const eslint = new ESLint({
   cwd: root,
   overrideConfig: [
@@ -18,6 +18,10 @@ const eslint = new ESLint({
         '@typescript-eslint/no-floating-promises': 'off',
         '@typescript-eslint/no-misused-promises': 'off',
         '@typescript-eslint/await-thenable': 'off',
+        '@typescript-eslint/switch-exhaustiveness-check': 'off',
+        '@typescript-eslint/only-throw-error': 'off',
+        '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+        '@typescript-eslint/no-redundant-type-constituents': 'off',
       },
     },
   ],
