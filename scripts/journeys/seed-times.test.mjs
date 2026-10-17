@@ -10,12 +10,18 @@ function assertInsideDay(times, latest) {
   for (let n = 1; n < times.length; n++) assert.ok(times[n] > times[n - 1]);
 }
 
-test('seeds just after local midnight stay on today (hosted run 38660201918)', () => {
-  const now = start + 33 * 60_000 + 44_000;
-  const times = seedStartTimes(41, { start, end, now });
-  assert.equal(times.length, 41);
-  assertInsideDay(times, now);
-});
+for (const [count, elapsed] of [
+  [41, 33 * 60_000 + 44_000], // Original hosted failure: 38660201918.
+  [41, 13 * 60_000 + 30_000], // Split foundation failure: 38985045971.
+  [21, 14 * 60_000 + 30_000],
+]) {
+  test(`${count} starts stay on today ${elapsed}ms after local midnight`, () => {
+    const now = start + elapsed;
+    const times = seedStartTimes(count, { start, end, now });
+    assert.equal(times.length, count);
+    assertInsideDay(times, now);
+  });
+}
 
 test('seeds later in the day keep one minute between starts', () => {
   const now = start + 12 * 3_600_000;
