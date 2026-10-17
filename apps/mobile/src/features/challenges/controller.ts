@@ -1,7 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 import { createStore } from 'zustand/vanilla';
 import {
-  catalogSchema,
   venues,
   type Attempt,
   type Catalog,
@@ -11,6 +10,7 @@ import {
 } from '@justgo/contracts';
 import type { AccountClient } from '../../lib/network/account-client';
 import type { AccountRepository } from '../../data/activity/repository';
+import { readChallengeCatalog } from './api';
 
 export type ChallengeStart = {
   card: ChallengeCard;
@@ -129,11 +129,7 @@ export class ChallengeController {
             });
           return;
         }
-        const catalog = await this.client.request(
-          '/v1/challenges',
-          catalogSchema,
-          { signal: abort.signal },
-        );
+        const catalog = await readChallengeCatalog(this.client, abort.signal);
         if (generation !== this.generation) return;
         if (!this.adoptCatalog(catalog)) throw new Error('INVALID_CATALOG');
         await repository.cacheCatalog(catalog);

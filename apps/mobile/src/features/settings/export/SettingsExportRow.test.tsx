@@ -1,6 +1,9 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { strFromU8, unzipSync } from 'fflate';
-import { AccountClient, createQueryClient } from '../../../lib/network/account-client';
+import {
+  AccountClient,
+  createQueryClient,
+} from '../../../lib/network/account-client';
 import { createHttpClient } from '../../../lib/network/http';
 import { AccountRepository } from '../../../data/activity/repository';
 import { SettingsExportRow } from './SettingsExportRow';

@@ -28,6 +28,12 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
   routes, and challenge routes share a group without an extra native layout.
   The obsolete export redirect is removed; Settings owns export.
 
+- Mobile source groups now match the folder guide: challenge deck/active/success,
+  feature Settings, shared network and platform adapters, and developer previews.
+  Account recovery uses the supplied runtime controller, with separate transfer
+  presentation, controlled key form and confirmation ownership. Actions use stable
+  IDs. Wire reads sit with their catalog/export/access/shared-progress owners.
+
 ## Invariants to preserve
 
 - Existing identity, deletion, activity, access, privacy and native safety rules
@@ -59,7 +65,6 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
 
 | Gate                                                          | Owner                                                | Required step/phase | Done when                                                   |
 | ------------------------------------------------------------- | ---------------------------------------------------- | ------------------- | ----------------------------------------------------------- |
-| Mobile owners and identity separation                         | Implementation owner                                 | 08A step 3          | Moves/behavior checks preserve all existing invariants      |
 | API/contracts organization and HTTP robustness                | Implementation owner                                 | 08A steps 4–5       | Focused checks, database gates and bundle isolation pass    |
 | Tooling, regression journeys and CI changes                   | Implementation owner                                 | 08A steps 6–7       | Local required checks pass; hosted candidates are inspected |
 | Local branch/worktree deletions and billing stash disposition | Anthony approves each deletion; implementation owner | 08A step 8          | Concrete inventory reviewed and approved cleanup completed  |
@@ -74,6 +79,9 @@ required phase-file sections. Source assets were preserved byte-for-byte.
 The route checkpoint passed npm run check, cold web and iOS exports, all saved
 browser journeys, a side-panel walkthrough and the installed iOS simulator
 walkthrough (launch, self-device sign-out, account switching and first/repeated
-challenge flow). Existing physical-device release gates remain open. No Phase
-08A hosted CI is claimed; remaining steps require their own checks. Detailed
+challenge flow). The mobile ownership checkpoint also passed npm run check, cold web/iOS
+exports, focused identity and API-consumer regressions, a side-panel walkthrough
+and a fresh installed-app reload after the clear-cache Metro restart. Existing
+physical-device release gates remain open. No Phase 08A hosted CI is claimed;
+remaining steps require their own checks. Detailed
 interim output stays in ignored local logs and commit/PR descriptions.

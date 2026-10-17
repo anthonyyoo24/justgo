@@ -1,4 +1,9 @@
-import { calendarCells, activityTime, dayLabel, moveMonth } from './calendar-dates';
+import {
+  calendarCells,
+  activityTime,
+  dayLabel,
+  moveMonth,
+} from './calendar-dates';
 
 it('navigates across year boundaries and makes Monday-first month grids without local date drift', () => {
   expect(moveMonth('2026-12', 1)).toBe('2027-01');

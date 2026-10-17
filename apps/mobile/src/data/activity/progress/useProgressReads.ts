@@ -1,10 +1,13 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
-  progressSummarySchema,
-  progressCalendarSchema,
-  progressDayResponseSchema,
-} from '@justgo/contracts';
-import { accountKey, type AccountClient } from '../../../lib/network/account-client';
+  readProgressSummary,
+  readProgressCalendar,
+  readProgressDay,
+} from './api';
+import {
+  accountKey,
+  type AccountClient,
+} from '../../../lib/network/account-client';
 import { ApiError } from '../../../lib/network/http';
 import type { JournalState } from '../model';
 import type { AccountRepository } from '../repository';
@@ -35,11 +38,7 @@ export function useProgressReads(
     queryFn: async ({ signal }) => {
       const fence = repository!.captureAggregateFence();
       if (fence === null) throw new ApiError('CANCELLED');
-      const data = await client.request(
-        `/v1/progress/summary?timeZone=${encodeURIComponent(timeZone)}`,
-        progressSummarySchema,
-        { signal },
-      );
+      const data = await readProgressSummary(client, timeZone, signal);
       if (signal.aborted || !(await repository!.acceptSummary(data, fence)))
         throw new ApiError('CANCELLED');
       return data;
@@ -51,11 +50,7 @@ export function useProgressReads(
     queryFn: async ({ signal }) => {
       const fence = repository!.captureAggregateFence();
       if (fence === null) throw new ApiError('CANCELLED');
-      const data = await client.request(
-        `/v1/progress/calendar?month=${month}`,
-        progressCalendarSchema,
-        { signal },
-      );
+      const data = await readProgressCalendar(client, month, signal);
       if (
         signal.aborted ||
         state!.period.today !== repository!.store.getState().period.today ||
@@ -71,11 +66,7 @@ export function useProgressReads(
     enabled: enabled && !!date,
     initialPageParam: '',
     queryFn: async ({ pageParam, signal }) => {
-      const data = await client.request(
-        `/v1/attempts?date=${date}&limit=20${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ''}`,
-        progressDayResponseSchema,
-        { signal },
-      );
+      const data = await readProgressDay(client, date, pageParam, signal);
       if (signal.aborted || !repository!.store.getState().active)
         throw new ApiError('CANCELLED');
       const retained = preserveDayRead(client.queries, dayKey, data);
