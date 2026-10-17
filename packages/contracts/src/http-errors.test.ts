@@ -1,5 +1,6 @@
+import { openApiDocument } from './openapi.ts';
 import { describe, expect, it } from 'vitest';
-import { identityErrorSchema, openApiDocument } from './index.js';
+import { identityErrorSchema } from './index.js';
 
 describe('permanent request error contracts', () => {
   it.each([

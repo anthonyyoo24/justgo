@@ -16,6 +16,7 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   userInterfaceStyle: 'light',
   platforms: ['ios', 'web'],
+  experiments: { typedRoutes: true },
   ios: {
     // Local simulator identifier only. Reserve the permanent identifier before device recovery work.
     bundleIdentifier: bundleIdentifier ?? 'dev.justgo.foundation',

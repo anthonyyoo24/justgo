@@ -8,7 +8,7 @@ const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../..',
 );
-// Virtual paths need syntax rules only; promise-rule tests use a real TS project below.
+// Virtual paths need syntax rules only; typed-rule tests use a real TS project.
 const eslint = new ESLint({
   cwd: root,
   overrideConfig: [
@@ -18,12 +18,28 @@ const eslint = new ESLint({
         '@typescript-eslint/no-floating-promises': 'off',
         '@typescript-eslint/no-misused-promises': 'off',
         '@typescript-eslint/await-thenable': 'off',
+        '@typescript-eslint/switch-exhaustiveness-check': 'off',
+        '@typescript-eslint/only-throw-error': 'off',
+        '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+        '@typescript-eslint/no-redundant-type-constituents': 'off',
       },
     },
   ],
 });
 
 const cases = [
+  {
+    name: 'API may import the separate OpenAPI entry',
+    file: 'apps/api/src/build-app.ts',
+    source: "import '@justgo/contracts/openapi';",
+    restricted: false,
+  },
+  {
+    name: 'mobile cannot import the OpenAPI entry',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "import '@justgo/contracts/openapi';",
+    restricted: true,
+  },
   {
     name: 'shared component cannot import a feature',
     file: 'apps/mobile/src/components/BoundaryFixture.tsx',
@@ -51,7 +67,7 @@ const cases = [
   {
     name: 'API cannot import mobile source',
     file: 'apps/api/src/identity/BoundaryFixture.ts',
-    source: "import '../../../mobile/src/lib/http';",
+    source: "import '../../../mobile/src/lib/network/http';",
     restricted: true,
   },
   {
@@ -81,7 +97,7 @@ const cases = [
   {
     name: 'features may import shared code',
     file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
-    source: "import '../../lib/account-client';",
+    source: "import '../../lib/network/account-client';",
     restricted: false,
   },
   {
@@ -171,7 +187,7 @@ const cases = [
   {
     name: 'developer previews may compose feature presentation',
     file: 'apps/mobile/src/dev/previews/BoundaryFixture.tsx',
-    source: "import '../../features/challenges/DeckPreview';",
+    source: "import './challenges/DeckPreview';",
     restricted: false,
   },
   {
@@ -189,7 +205,7 @@ const cases = [
   {
     name: 'data cannot re-export a route',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
-    source: "export * from '../../app/reflection';",
+    source: "export * from '../../app/(challenge)/reflection';",
     restricted: true,
   },
   {
@@ -225,7 +241,7 @@ const cases = [
   {
     name: 'data may import shared infrastructure',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
-    source: "import '../../lib/account-client';",
+    source: "import '../../lib/network/account-client';",
     restricted: false,
   },
   {
@@ -249,7 +265,7 @@ const cases = [
   {
     name: 'dot-slash traversal cannot bypass the API-mobile boundary',
     file: 'apps/api/src/identity/BoundaryFixture.ts',
-    source: "import './../../../mobile/src/lib/http';",
+    source: "import './../../../mobile/src/lib/network/http';",
     restricted: true,
   },
   {
@@ -286,7 +302,7 @@ const cases = [
   {
     name: 'features may import shared code with dot-slash traversal',
     file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
-    source: "import './../../lib/account-client';",
+    source: "import './../../lib/network/account-client';",
     restricted: false,
   },
 ];
@@ -317,7 +333,7 @@ cases.push(
   {
     name: 'features may import shared code with an absolute path',
     file: 'apps/mobile/src/features/challenges/BoundaryFixture.ts',
-    source: `import '${path.join(root, 'apps/mobile/src/lib/account-client')}';`,
+    source: `import '${path.join(root, 'apps/mobile/src/lib/network/account-client')}';`,
     restricted: false,
   },
   {
@@ -330,7 +346,7 @@ cases.push(
     name: 'dot-slash TypeScript import assignments cannot bypass boundaries',
     file: 'apps/api/src/identity/BoundaryFixture.ts',
     source:
-      "import mobile = require('./../../../mobile/src/lib/http'); export { mobile };",
+      "import mobile = require('./../../../mobile/src/lib/network/http'); export { mobile };",
     restricted: true,
   },
   {
@@ -510,7 +526,7 @@ for (const [name, source, expected] of [
 ]) {
   test(`promise lint: ${name}`, async () => {
     const [result] = await typedEslint.lintText(source, {
-      filePath: path.join(root, 'apps/mobile/src/lib/http.ts'),
+      filePath: path.join(root, 'apps/mobile/src/lib/network/http.ts'),
     });
     assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
     const promiseErrors = result.messages.filter((item) =>

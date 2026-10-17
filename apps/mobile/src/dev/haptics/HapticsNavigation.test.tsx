@@ -4,12 +4,12 @@ import {
   screen,
   waitFor,
 } from 'expo-router/testing-library';
-import { SettingsScreen } from '../../app-support/settings/SettingsScreen';
+import { SettingsScreen } from '../../features/settings/SettingsScreen';
 import PreviewRoute from '../../app/preview';
 import { Stack } from 'expo-router';
 import { MotionContext } from '../../platform/motion/motion';
 
-jest.mock('../../app-support/settings/export/SettingsExportRow', () => ({
+jest.mock('../../features/settings/export/SettingsExportRow', () => ({
   SettingsExportRow: () => null,
 }));
 jest.mock('../../platform/toast/Toast', () => ({

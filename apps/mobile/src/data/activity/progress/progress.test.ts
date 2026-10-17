@@ -1,9 +1,9 @@
 import { QueryClient } from '@tanstack/react-query';
-import { accountKey } from '../../../lib/account-client';
+import { accountKey } from '../../../lib/network/account-client';
 import { reconcileDayQueries, preserveDayRead } from './progress-read-cache';
 import { progressCalendar, progressDay, progressMetrics } from './progress';
 import { AccountRepository } from '../repository';
-import { ApiError } from '../../../lib/http';
+import { ApiError } from '../../../lib/network/http';
 import type {
   ProgressSummary,
   ProgressCalendar,

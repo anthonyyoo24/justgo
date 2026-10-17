@@ -14,7 +14,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
-import { seedStartTimes } from './support/seed-times';
+import { seedDay, seedStartTimes } from './support/seed-times';
 
 async function account(page: Page) {
   await page.goto('/recovery');
@@ -48,7 +48,7 @@ async function seed(
   proof: Extract<SessionCreate, { kind: 'bootstrap' }>,
   count: number,
   timeZone: string,
-  daysAgo = 0,
+  daysAgo: number | 'previous-month' = 0,
 ) {
   const headers = { authorization: `Bearer ${proof.sessionToken}` };
   const catalog = catalogSchema.parse(
@@ -58,14 +58,7 @@ async function seed(
   );
   const card = catalog.cards[0]!;
   // The browser's clock and time zone decide which calendar day is "today".
-  const day = await page.evaluate((daysAgo) => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - daysAgo);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    return { start: start.getTime(), end: end.getTime(), now: Date.now() };
-  }, daysAgo);
+  const day = await page.evaluate(seedDay, daysAgo);
   const ids: string[] = [];
   for (const startedAt of seedStartTimes(count, day)) {
     const id = randomUUID();
@@ -524,7 +517,7 @@ test('today cached paging survives offline and other days/months require a conne
 }) => {
   const current = await account(page);
   await seed(page, current.proof, 21, current.timeZone);
-  await seed(page, current.proof, 1, current.timeZone, 1);
+  await seed(page, current.proof, 1, current.timeZone, 'previous-month');
   await progress(page, 22);
   await openToday(page, 21);
   await scrollToRep(page, 20);
@@ -538,7 +531,17 @@ test('today cached paging survives offline and other days/months require a conne
     .last()
     .click();
   await expect(page.getByTestId('progress-value-reps')).toHaveText('22');
+  // The older rep is always in the previous month, including on the first.
+  // Open its day online before disconnecting; older calendars disappear offline,
+  // and even previously loaded older-day details must require a connection.
+  await context.setOffline(false);
+  await page
+    .getByRole('button', { name: 'Previous month', exact: true })
+    .click();
+  await expect(page.getByRole('button', { name: /, 1 rep$/ })).toBeVisible();
   await page.getByRole('button', { name: /, 1 rep$/ }).click();
+  await expect(page.getByRole('button', { name: /Rep 1\./ })).toBeVisible();
+  await context.setOffline(true);
   await expect(
     page.getByText("You're currently offline", { exact: true }),
   ).toBeVisible();
@@ -691,8 +694,17 @@ test('older-day Add/Edit keeps confirmed text after pruning and remains online-o
   fixtureDatabase,
 }) => {
   const current = await account(page);
-  const [id] = await seed(page, current.proof, 1, current.timeZone, 1);
+  const [id] = await seed(
+    page,
+    current.proof,
+    1,
+    current.timeZone,
+    'previous-month',
+  );
   await progress(page, 1);
+  await page
+    .getByRole('button', { name: 'Previous month', exact: true })
+    .click();
   await page.getByRole('button', { name: /, 1 rep$/ }).click();
   await page.getByRole('button', { name: /Rep 1\..*Add reflection/ }).click();
   await page

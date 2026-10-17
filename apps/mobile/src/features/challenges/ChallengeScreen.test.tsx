@@ -6,13 +6,13 @@ import { colors } from '../../theme/tokens';
 import type { ChallengeSnapshot } from './controller';
 import { attempt, card } from '../../../test-support/journal';
 import { ChallengeScreen } from './ChallengeScreen';
-import { ChallengeDeck } from './ChallengeDeck';
-import { VenueTabs } from './VenueTabs';
+import { ChallengeDeck } from './deck/ChallengeDeck';
+import { VenueTabs } from './deck/VenueTabs';
 import {
   ChallengeActivityProvider,
   useChallengeActivity,
-} from './ChallengeActivityProvider';
-import { ChallengeFlowScreen } from './ChallengeFlowScreen';
+} from './active/ChallengeActivityProvider';
+import { ChallengeFlowScreen } from './active/ChallengeFlowScreen';
 
 const mockMounted = jest.fn();
 const mockScreen = jest.fn<null, [unknown]>(() => null);
@@ -99,8 +99,8 @@ jest.mock('react-native-screens', () => ({
     return <View testID="window-overlay">{children}</View>;
   },
 }));
-jest.mock('./VenueTabs', () => ({ VenueTabs: () => null }));
-jest.mock('./ChallengeDeck', () => ({
+jest.mock('./deck/VenueTabs', () => ({ VenueTabs: () => null }));
+jest.mock('./deck/ChallengeDeck', () => ({
   ChallengeCard: ({
     onArtworkSettled,
     onTextureSettled,

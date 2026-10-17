@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { parse } from '../http/parse.js';
 import type { FastifyInstance } from 'fastify';
 import {
   idSchema,
@@ -9,16 +9,11 @@ import {
   progressDayQuerySchema,
   progressDayResponseSchema,
 } from '@justgo/contracts';
-import { bearer } from '../identity/routes.js';
-import { IdentityError } from '../identity/service.js';
+import { bearer } from '../http/bearer.js';
 import type { AttemptService } from './service.js';
-import type { ProgressResources } from '../progress/resources.js';
+import type { ProgressResources } from '../progress/service.js';
 import type { AttemptPatchService } from './patch.js';
-const parse = <T>(schema: z.ZodType<T>, value: unknown): T => {
-  const parsed = schema.safeParse(value);
-  if (!parsed.success) throw new IdentityError('INVALID_REQUEST', 400);
-  return parsed.data;
-};
+
 export function attemptRoutes(
   app: FastifyInstance,
   service: AttemptService,

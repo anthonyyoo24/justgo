@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { parse } from '../http/parse.js';
 import type { FastifyInstance } from 'fastify';
 import {
   progressSummaryQuerySchema,
@@ -6,15 +6,9 @@ import {
   progressCalendarQuerySchema,
   progressCalendarSchema,
 } from '@justgo/contracts';
-import { bearer } from '../identity/routes.js';
-import { IdentityError } from '../identity/service.js';
-import type { ProgressResources } from './resources.js';
+import { bearer } from '../http/bearer.js';
+import type { ProgressResources } from './service.js';
 
-const parse = <T>(schema: z.ZodType<T>, value: unknown): T => {
-  const result = schema.safeParse(value);
-  if (!result.success) throw new IdentityError('INVALID_REQUEST', 400);
-  return result.data;
-};
 /**
  * Register independent summary and calendar reads with validated query inputs.
  * Day-history paging belongs to the attempt routes, not a combined Progress read.
