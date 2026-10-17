@@ -2,7 +2,7 @@
 
 ## Summary and status
 
-Implementation and local verification through step 7 are complete. Owner review,
+Local implementation is ready. Owner review,
 publication, hosted CI and approved repository cleanup remain open. Phase 08's
 acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 [Phase 08A plan](../implementation-plan/phase-08a-structure-cleanup.md) owns scope.
@@ -20,6 +20,10 @@ acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
   Merge API execution maps from disjoint unit/database suites before enforcing
   unchanged all-source and critical coverage floors. A partial producer set fails.
 - Optional compiler/hook work remains conditional on measured benefit.
+- Preserve native-billing work and local refs whose integration is unproven.
+  The stash's unique EAS release-workflow decision is restored in DECISIONS;
+  other planning content is already represented or superseded. Named deletion
+  approvals remain required before dropping the stash or cleaning local refs.
 
 ## Behavior that changed
 
