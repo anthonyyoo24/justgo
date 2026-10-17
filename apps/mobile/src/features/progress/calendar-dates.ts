@@ -12,7 +12,7 @@ export function calendarCells(month: string): (string | null)[] {
   const [year, number] = month.split('-').map(Number);
   const first = new Date(Date.UTC(year!, number! - 1, 1));
   const pad = (first.getUTCDay() + 6) % 7;
-  const count = new Date(Date.UTC(year!, number!, 0)).getUTCDate();
+  const count = new Date(Date.UTC(year!, number, 0)).getUTCDate();
   const cells: (string | null)[] = Array(pad).fill(null);
   for (let day = 1; day <= count; day++)
     cells.push(`${month}-${String(day).padStart(2, '0')}`);

@@ -568,7 +568,7 @@ export class IdentityController {
         }
         // Refresh an expiring session before freezing the deletion proof.
         await this.verify();
-        const session = this.data!.session!;
+        const session = this.data!.session;
         await this.save({
           ...this.data!,
           pending: {
@@ -805,16 +805,16 @@ export class IdentityController {
             registered: false,
           },
         });
-      const key = this.data!.savedKey!;
+      const key = this.data.savedKey!;
       await this.request(
         'POST',
         '/credentials',
         okSchema,
         { id: key.id, credential: key.secret, kind: 'key' },
-        this.data!.session!.token,
+        this.data.session.token,
       );
       await this.save({
-        ...this.data!,
+        ...this.data,
         savedKey: { ...key, registered: true },
       });
       this.update({

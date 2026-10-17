@@ -79,7 +79,7 @@ export function SettingsRowContent({
           {status}
         </Text>
       )}
-      {accessory && (
+      {Boolean(accessory) && (
         <View
           style={expanded && [styles.accessory, { minHeight: firstLineHeight }]}
         >
