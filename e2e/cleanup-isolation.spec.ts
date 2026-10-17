@@ -14,6 +14,7 @@ const outsiders = ['rejected', 'accepted'].map((outcome) => ({
   sessionId: randomUUID(),
   sessionToken: secret(),
 }));
+const outsiderRateKey = secret();
 let database: Pool;
 
 test.beforeAll(async () => {
@@ -22,6 +23,10 @@ test.beforeAll(async () => {
     ssl: false,
     max: 1,
   });
+  await database.query(
+    'insert into justgo.identity_rate_buckets (key,count,window_start) values ($1,7,now())',
+    [outsiderRateKey],
+  );
   // These accounts predate the browser requests and are not owned by its fixture API.
   for (const account of outsiders) {
     await database.query('begin');
@@ -84,6 +89,44 @@ for (const account of outsiders) {
   });
 }
 
+test('each case retains the real 120-request identity limit', async ({
+  request,
+  fixtureDatabase,
+}) => {
+  // The database fixture resets only this server's budgets before the case.
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select count from justgo.identity_rate_buckets where key=$1',
+        [outsiderRateKey],
+      )
+    ).rows,
+  ).toEqual([{ count: 7 }]);
+  for (let index = 0; index < 120; index++)
+    expect((await request.get(`${journeyApiUrl}/v1/devices`)).status()).toBe(
+      401,
+    );
+  const limited = await request.get(`${journeyApiUrl}/v1/devices`);
+  expect(limited.status()).toBe(429);
+  expect(await limited.json()).toMatchObject({ code: 'RATE_LIMITED' });
+  expect(limited.headers()['retry-after']).toBe('600');
+});
+
+test('a later case has a fresh allowance without clearing unrelated rate buckets', async ({
+  request,
+  fixtureDatabase,
+}) => {
+  expect((await request.get(`${journeyApiUrl}/v1/devices`)).status()).toBe(401);
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select count from justgo.identity_rate_buckets where key=$1',
+        [outsiderRateKey],
+      )
+    ).rows,
+  ).toEqual([{ count: 7 }]);
+});
+
 test.afterAll(async () => {
   if (!database) return;
   const ids = outsiders.map((account) => account.userId);
@@ -108,6 +151,10 @@ test.afterAll(async () => {
       await database.query(
         'delete from justgo.users where id=any($1::uuid[])',
         [ids],
+      );
+      await database.query(
+        'delete from justgo.identity_rate_buckets where key=$1',
+        [outsiderRateKey],
       );
     } finally {
       await database.end();

@@ -212,7 +212,7 @@ and current native Podfile lock do not contain RNCAsyncStorage. There is no comp
 existing build for this new adapter. A refreshed simulator development build is
 required before claiming native atomicity/durability or termination recovery.
 Keep that appropriate-build/storage check open and retain physical-device/staging
-acceptance in Phase 09. The root AGENTS.md reserves native signing/build upgrades
+acceptance in Phase 11. The root AGENTS.md reserves native signing/build upgrades
 for a separate task. No global developer-tools setting, simulator boot, pod/native
 build, signing or SDK upgrade was performed. Until either phone persistence or
 backend saving succeeds, termination can lose memory-only writing.

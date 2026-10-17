@@ -33,30 +33,58 @@ Session responses contain IDs and expiry, not bearer tokens. Responses use
 `Cache-Control: no-store`; diagnostics omit URLs, headers, bodies, database errors
 and credential values.
 
-| Resource                            | Proof / behavior                                                                                                   |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `POST /sessions`, `kind: bootstrap` | Recovery credential plus persisted device/session proposal; create once or recover the same account.               |
-| `POST /sessions`, `kind: recovery`  | Same proposal shape; only existing active credentials can recover. No fallback to account creation.                |
-| `POST /sessions`, `kind: renewal`   | Bearer session plus persisted next session ID/token; exact retry after rotation.                                   |
-| `POST /sessions`, `kind: transfer`  | Code and claimant secret redeem approval for exactly the saved new-device proposal.                                |
-| `GET /sessions/current`             | Active verified session; authenticated account/device/session IDs and expiry.                                      |
-| `GET /devices`                      | Owner-scoped device metadata.                                                                                      |
-| `DELETE /devices/:id`               | Authenticated owner; soft revocation invalidates that device's sessions. No request body required.                 |
-| `GET /credentials`                  | Owner-scoped IDs, kinds and revocation timestamps; never secrets or digests.                                       |
-| `POST /credentials`                 | Authenticated owner adds a sync credential or recovery key; stable ID permits exact retry.                         |
-| `DELETE /credentials/:id`           | Authenticated owner soft-revokes a recovery credential. No request body required.                                  |
-| `POST /transfers`                   | New device persists code, claimant secret, recovery credential and session proposal.                               |
-| `POST /transfer-inspections`        | Existing authenticated device inspects transfer status; no verification digits returned.                           |
-| `POST /transfer-approvals`          | Existing authenticated device submits the six digits from the new device. No supplied owner ID.                    |
-| `DELETE /transfers/:id`             | Approving account cancels an approved, unredeemed transfer; code stays in the body and must match the resource ID. |
+| Resource                            | Proof / behavior                                                                                                                                                                 |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /sessions`, `kind: bootstrap` | Recovery credential plus persisted device/session proposal; create once or recover the same account.                                                                             |
+| `POST /sessions`, `kind: recovery`  | Same proposal shape; only existing active credentials can recover. No fallback to account creation.                                                                              |
+| `POST /sessions`, `kind: renewal`   | Bearer session plus persisted next session ID/token; exact retry after rotation.                                                                                                 |
+| `POST /sessions`, `kind: transfer`  | Code and claimant secret redeem approval for exactly the saved new-device proposal.                                                                                              |
+| `GET /sessions/current`             | Active verified session; authenticated account/device/session IDs and expiry.                                                                                                    |
+| `GET /devices`                      | Owner-scoped device metadata.                                                                                                                                                    |
+| `DELETE /devices/:id`               | Authenticated owner; soft revocation invalidates that device's sessions. No request body required.                                                                               |
+| `GET /credentials`                  | Owner-scoped IDs, kinds and revocation timestamps; never secrets or digests.                                                                                                     |
+| `POST /credentials`                 | Authenticated owner adds a sync credential or recovery key; stable ID permits exact retry.                                                                                       |
+| `DELETE /credentials/:id`           | Authenticated owner soft-revokes a recovery credential. No request body required.                                                                                                |
+| `POST /transfers`                   | New device persists code, claimant secret, recovery credential and session proposal.                                                                                             |
+| `POST /transfer-inspections`        | Existing authenticated device inspects transfer status; no verification digits returned.                                                                                         |
+| `POST /transfer-approvals`          | Existing authenticated device submits the six digits from the new device. No supplied owner ID.                                                                                  |
+| `DELETE /transfers/:id`             | Receiver supplies its complete persisted proposal without a bearer; approving account may still cancel with bearer plus code. Returns receiver status `cancelled` or `redeemed`. |
 
 Transfer codes have 64 random bits (16 hexadecimal characters, displayed in four groups). A separate 256-bit claimant secret is never displayed to the approving device. The new device alone receives six verification digits; the user enters them on the existing device to approve. Inspection never returns the digits. The server derives them with a transfer-specific HMAC domain under `IDENTITY_RATE_LIMIT_KEY` and stores only a second, independently domain-separated HMAC verifier bound to the transfer ID. Five incorrect submissions cancel the transfer; this counter persists across accounts, addresses and API instances. Transfers expire **10 minutes after creation** and do not reset their deadline on retry. The new device receives no session until approval and proof verification. Exact claimant retries return the same session; they cannot attach a different device or token. Expired/cancelled transfers require a new transfer. Once approved, another account cannot replace the owner, and previously redeemed approval is rejected. The protocol relies on keeping both the transfer code and verification digits private; possession of both permits an authenticated account to approve the pending transfer.
 
-Failures return a typed code and a server-generated request ID. Oversized bodies return `413 REQUEST_TOO_LARGE`; unsupported content types return `415 UNSUPPORTED_MEDIA_TYPE`. Neither is retried unchanged as a temporary outage. Authentication, expiry, revocation, conflict, pending transfer, rate limiting and temporary failures have distinct client states. Invalid JSON/contract inputs never echo supplied values. Client requests have a 10-second deadline and no automatic write retry loop. The controller serializes identity operations and clears the visible account when explicitly switching identities. A persisted uncertain write remains available for retry after relaunch.
+Failures return a typed code and a server-generated request ID. Oversized bodies return `413 REQUEST_TOO_LARGE`; unsupported content types return `415 UNSUPPORTED_MEDIA_TYPE`; any other 4xx keeps its status with `INVALID_REQUEST`. None is retried unchanged as a temporary outage; only failures without a client status return `503 UNAVAILABLE`. Authentication, expiry, revocation, conflict, pending transfer, rate limiting and temporary failures have distinct client states. Invalid JSON/contract inputs never echo supplied values. Client requests have a 10-second deadline and no automatic write retry loop. The controller serializes identity operations. A receiving transfer keeps the current account and session until successful redemption; other explicit recovery actions clear the visible account while switching. Uncertain non-transfer writes remain available for retry after relaunch. An unfinished receiving transfer is cancelled on navigation blur, Back, unmount or any non-active app state. A fresh process cancels a persisted transfer rather than resuming it.
+
+## Receiving-transfer cancellation
+
+The receiving screen owns one transfer visit. Leaving immediately hides its codes,
+fences in-flight results, and moves its full proposal into a durable cancellation
+queue in the device-only secure state. The previous session, recovery key and
+credential selection stay intact until a transfer actually completes. Returning to
+Account & recovery opens the normal hub. Starting again cancels the old proposal
+first and generates a fresh code. Credentials for the new account enter the
+synchronizing vault only after redemption succeeds; abandoned legacy items are
+excluded from automatic account selection.
+
+Receiver cancellation proves every original field: resource ID, code, claimant
+secret, device/session IDs, token and recovery credential. It uses the same code
+advisory lock as creation and a row lock shared with approval/redemption. If DELETE
+arrives before POST, it creates an already-cancelled tombstone so the delayed POST
+cannot revive the code. An already-redeemed result reconciles that exact committed
+session rather than undoing a completed account switch. The approving-account
+bearer-plus-code cancellation remains compatible and now locks the row too.
+
+Background/Back cancellation attempts server cleanup immediately. Force termination
+and loss of connectivity cannot guarantee delivery: startup, foreground and network
+reconnection retry the saved cleanup. The UI shows pending server confirmation;
+it never resumes the abandoned receiving screen. The existing ten-minute server
+expiry remains a final bound. No native bridge change or database migration is
+required. Deploy the API update before testing this behavior with a phone connected
+to the hosted test server; an older API rejects the receiver proof and leaves
+cleanup pending.
 
 ## Database boundary
 
-Drizzle migrations `0001_identity.sql` and `0002_identity_policy_read_paths.sql` add users, devices, recovery credentials, sessions, transfers and rate buckets. All six tables enable and force RLS. No grants go to `PUBLIC`, Supabase `anon` or `authenticated`; no new `SECURITY DEFINER` functions are used. Runtime has only select/insert/update privileges. The separate migrator has an explicit maintenance policy and can perform reviewed cleanup/migrations.
+Drizzle migrations `0001_identity.sql` and `0002_identity_policy_read_paths.sql` add users, devices, recovery credentials, sessions, transfers and rate buckets. All six tables enable and force RLS. No grants go to `PUBLIC`, Supabase `anon` or `authenticated`; no new `SECURITY DEFINER` functions are used. The original identity runtime privileges were select/insert/update. Migration 0014 adds DELETE for account cleanup resources and a digest-bound read of the original deletion receipt; it does not grant deletion of user/credential tombstones. Forward migration 0016 restricts transfer DELETE to the owner even when a transaction has a matching transfer-code digest, preserving cancellation tombstones. The separate migrator has an explicit maintenance policy and can perform reviewed cleanup/migrations.
 
 Pre-authentication policies allow **only a digest-matching read** of the presented recovery/session record. The API validates revocation, expiry, account and device status before setting transaction-local owner context. Bootstrap alone may create a new server-generated user ID after verifying a previously unseen credential digest. Transfer access uses a transaction-local code digest and still requires API proof/approval checks; RLS alone is not authentication.
 
@@ -84,7 +112,7 @@ Apply migrations with the operator’s separate migration connection before depl
 
 Device state uses a separate non-synchronizing `WhenUnlockedThisDeviceOnly` item. A UserDefaults installation marker selects that installation’s item; UserDefaults contains no secret. Secure state includes only credentials, session metadata and pending identity operations, with no journal or persistent domain cache in Keychain. Phase 07 separately stores submitted completed activity/upload intent and the limited downloaded catalog/summary/current-month/today caches in account-scoped AsyncStorage. Storage errors, malformed contents, and locked Keychain access are failures, never an empty-store result. A missing native module fails visibly; there is no insecure native fallback.
 
-The controller preserves all discovered credentials. Multiple candidates require explicit selection. A late candidate is listed without switching an authenticated account. Recovery keys and explicit transfer provide fallback when sync is unavailable. The recovery UI hides a displayed key when the app backgrounds and rechecks identity on foreground. Final Settings design, exports and deletion UI remain phase 08 work.
+The controller preserves all discovered credentials except when confirmed account deletion removes verified matching items through the updated Keychain module. Multiple candidates require explicit selection. A late candidate is listed without switching an authenticated account. Recovery keys and explicit transfer provide fallback when sync is unavailable. The recovery UI hides a displayed key when the app backgrounds and rechecks identity on foreground. Settings and export are implemented; [Phase 08 deletion](../handoffs/phase-08-settings-privacy.md) adds a durable request/receipt/cleanup workflow and guards older native binaries before destructive requests. Physical acceptance and hosted rollout remain open.
 
 The web page is explicitly a development test surface. Its identity vault lives only in JavaScript memory; reload/closing the tab loses those credentials. The Phase 07 activity adapter can persist its account-scoped catalog/journal in browser storage, independently of identity. Saved journeys explicitly recover the same synthetic account after reload; browser storage proves no native Keychain or AsyncStorage behavior. It uses real API authentication but proves no Keychain persistence, iCloud sharing or real-device security. Do not point browser testing at valuable user accounts.
 
@@ -92,9 +120,11 @@ References checked during implementation: [Expo SDK 57](https://docs.expo.dev/ve
 
 ## Retention and recovery operations
 
-Do not purge revoked/deleted recovery digests: retaining their tombstones prevents credential resurrection. Session history supports rotation/revocation and uncertain-response recovery; retain it until a reviewed retention policy exists. The phase 08 privacy/deletion work must define policy and backups before release.
+`DELETE /v1/account` requires an active session and explicit `delete-account` confirmation, derives ownership from that session and shares the owner lock with uploads/recovery. The original deleting proof can retrieve a durable receipt after its session row is removed. Revoked credentials and approved-transfer credential fingerprints remain blocked. See the [deletion handoff](../handoffs/phase-08-settings-privacy.md) for cleanup, rollout and backup-restoration gates.
 
-Rate buckets older than 30 days and unredeemed transfers expired more than 24 hours ago can be removed by the migration operator in bounded batches using their indexed timestamps. No scheduler or production retention job is claimed in phase 02. Protect any future maintenance endpoint separately; do not grant the mobile runtime administrative deletion access. Never run test suites against staging; integration tests refuse non-loopback databases and use unique fixtures in `justgo_test`.
+Do not purge revoked/deleted recovery digests: retaining their tombstones prevents credential resurrection. Session history supports rotation/revocation and uncertain-response recovery; retain it until a reviewed retention policy exists. The [October 16 retention defaults](../DECISIONS.md#october-16-codebase-assessment-follow-up) keep deletion receipts and revoked-credential tombstones permanently; restores follow the [backup restore checklist](../operations/FOUNDATION.md#backup-restore-checklist), which reapplies deletions before reopening writes.
+
+Rate buckets older than 30 days and unredeemed transfers expired more than 24 hours ago are removed in bounded batches using their indexed timestamps. Migration 0015 adds `justgo.purge_expired_identity_records(batch_limit)`: each call deletes at most `batch_limit` (1–10000, default 1000) rows of each kind and returns the counts. It runs with invoker rights, `PUBLIC` cannot execute it, and it never touches deletion receipts, revoked credential tombstones or redeemed transfers. The migration role runs it from a scheduler (Supabase `pg_cron` or a protected workflow) that is configured separately with owner approval; until then no hosted schedule exists. Protect any future maintenance endpoint separately; do not grant the mobile runtime administrative deletion access. Never run test suites against staging; integration tests refuse non-loopback databases and use unique fixtures in `justgo_test`.
 
 For the original additive identity migrations, an API rollback can leave the tables in place. Phase 07 retires the old wire protocol and contracts product tables, so reverting an old API against the contracted schema is unsafe. Follow the [coordinated cutover/backup/forward-repair procedure](../operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients). Do not reset staging or remove credential history to retry a deployment.
 

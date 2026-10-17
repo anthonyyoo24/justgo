@@ -11,7 +11,7 @@ backgrounding retains it while the process and screen survive. See the
 
 **September 24 scope update:** [Phase 04 decisions](../product/PHASE_04_SCOPE.md) define six manual venues, independent cycling stacks, the 39O fanned deck and five-minute attempts. Omit subtext and the future level-progress indicator. Shared content keeps separate venue placements; completed cards can recur as new attempts. The Phase 07A plan owns verified paid-access expiry and earlier-upload eligibility; current access is an isolated integration seam. See the [implementation handoff](../handoffs/phase-04-challenge-loop.md) for evidence and remaining device gates.
 
-**October 8 Phase 07 reconciliation:** The current implementation uses downloaded challenge content, phone-saved completed attempts/explicit reflections, one ordered background sender and independent Progress reads with limited offline history. The final cutover removes legacy lifecycle/reflection/deck protocols and contracts their schema through migration 0013. Current sections below supersede earlier server-backed Start/Finish, immutable wording and draft autosave requirements. Slice evidence remains in the [07.1–07.4 handoffs](../handoffs/README.md), and final verification/rollout evidence belongs to the [07.5 handoff](../handoffs/phase-07-5-cutover-acceptance.md). 07.3A remains deferred; native billing is planned in 07A and physical-device/staging release acceptance remains 09.
+**October 8 Phase 07 reconciliation:** The current implementation uses downloaded challenge content, phone-saved completed attempts/explicit reflections, one ordered background sender and independent Progress reads with limited offline history. The final cutover removes legacy lifecycle/reflection/deck protocols and contracts their schema through migration 0013. Current sections below supersede earlier server-backed Start/Finish, immutable wording and draft autosave requirements. Slice evidence remains in the [07.1–07.4 handoffs](../handoffs/README.md), and final verification/rollout evidence belongs to the [07.5 handoff](../handoffs/phase-07-5-cutover-acceptance.md). 07.3A remains deferred; native billing is planned in 07A and physical-device/staging release acceptance remains 11.
 
 The owner also retired the unused mobile `features/foundation/` connection screen
 and its dedicated tests. Developer screen previews remain available; API health
@@ -22,7 +22,7 @@ App providers/foreground coordination and the startup access gate now live in
 links live in `components/`. Account/recovery UI and session/Keychain support live
 in `app-support/identity/`. These placements preserve existing behavior.
 
-**Updated:** October 8, 2026
+**Updated:** October 15, 2026
 
 **Status:** Architecture spec; phase 01 foundation is implemented and verified, including native simulator launch and staging readiness. Exact versions, environment and operations: [FOUNDATION.md](../operations/FOUNDATION.md); evidence: [phase 01 handoff](../handoffs/phase-01-foundation.md).\
 **Implementation plan:** [Stages and handoffs](../IMPLEMENTATION_PLAN.md).
@@ -41,7 +41,7 @@ The first iOS release includes a hard paywall, one collection of general easy Le
 | React Native, Expo, TypeScript                                        | Required                                                                                                                                     |
 | Accepted backend history and phone submissions                        | PostgreSQL owns accepted history; account-scoped AsyncStorage retains submitted records and ordered upload intent until safely reconciled    |
 | API hosting                                                           | Vercel Functions running the Fastify API                                                                                                     |
-| Deferred onboarding state                                             | Not implemented; revisit its persistence when separately scheduled                                                                           |
+| Terms & Privacy acceptance / deferred questionnaire state             | Phase 09 plans one account-owned acceptance receipt; questionnaire state remains deferred                                                    |
 | Reflection input                                                      | Typed private text at launch; custom dictation and its native dependency/permissions deferred                                                |
 | AI text coach                                                         | Planned later in the same API and database; no voice coach in scope                                                                          |
 | Background processing                                                 | QStash for managed subscription-update delivery and retries from launch; job handlers run on Vercel                                          |
@@ -130,8 +130,8 @@ flowchart LR
     K[Keychain / Keystore credentials] --> App[React Native + Expo]
     App -->|Authenticated HTTPS| API[Fastify API on Vercel]
     API --> DB[(PostgreSQL)]
-    API -. Phase 08 consented events .-> PH[PostHog]
-    App -. Phase 08 consented interaction events .-> PH
+    API -. Phase 09 consented events .-> PH[PostHog]
+    App -. Phase 09 consented interaction events .-> PH
     API -. Future text coach .-> AI[AI provider]
     App --> Local[(AsyncStorage catalog / journal)]
     App -. Phase 07A .-> RC[RevenueCat native purchases]
@@ -144,16 +144,16 @@ flowchart LR
     Stripe -. Verified purchase integration .-> RC
 ```
 
-| Data                                                                 | Implemented location / boundary                                                       |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| App account and recovery/session ownership                           | PostgreSQL; secure credentials and pending identity proposals in Keychain             |
-| Stable challenges, current wording/configuration, venues and Level 1 | PostgreSQL plus the downloaded account-scoped catalog in AsyncStorage                 |
-| Selected venue, cycling deck order and unfinished challenge          | Memory only; unfinished activity uses screen-owned React state                        |
-| Completed reps and explicitly submitted feeling/text                 | One versioned AsyncStorage journal envelope, then accepted PostgreSQL attempt columns |
-| Upload operations, receipts and aggregate reconciliation             | Account journal; targeted backend PATCH receipts prevent duplicate application        |
-| Latest summary/current-month counts/today's downloaded pages         | AsyncStorage; older downloaded months/day details use online in-memory queries only   |
-| Billing verification/coverage, jobs and provider bindings            | Phase 07A work; provider-backed production access is not implemented                  |
-| Settings/privacy/analytics and future coach records                  | Their scheduled phases; no current analytics exporter or coach                        |
+| Data                                                                 | Implemented location / boundary                                                                          |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| App account and recovery/session ownership                           | PostgreSQL; secure credentials and pending identity proposals in Keychain                                |
+| Stable challenges, current wording/configuration, venues and Level 1 | PostgreSQL plus the downloaded account-scoped catalog in AsyncStorage                                    |
+| Selected venue, cycling deck order and unfinished challenge          | Memory only; unfinished activity uses screen-owned React state                                           |
+| Completed reps and explicitly submitted feeling/text                 | One versioned AsyncStorage journal envelope, then accepted PostgreSQL attempt columns                    |
+| Upload operations, receipts and aggregate reconciliation             | Account journal; targeted backend PATCH receipts prevent duplicate application                           |
+| Latest summary/current-month counts/today's downloaded pages         | AsyncStorage; older downloaded months/day details use online in-memory queries only                      |
+| Billing verification/coverage, jobs and provider bindings            | Phase 07A work; provider-backed production access is not implemented                                     |
+| Settings/privacy/analytics and future coach records                  | Settings/data controls 08; analytics 09; legal notices 10; future coach 14; no current exporter or coach |
 
 Keychain authenticates the account; AsyncStorage preserves submitted device activity, and PostgreSQL preserves accepted shared history. Pending activity never transfers to another app account. An only-device copy can be lost before upload; the owner accepted this risk without a new backup system or status UI. Do not persist the entire query cache.
 
@@ -163,7 +163,7 @@ Keychain authenticates the account; AsyncStorage preserves submitted device acti
 
 ### Deferred onboarding: state, saving, and restoration
 
-**Deferred September 17:** this onboarding design is retained for future scheduling, not phase 03 implementation. No onboarding tables or answer collection are implemented; Zustand is used for the independent activity/browsing responsibilities.
+**Deferred September 17:** this questionnaire design is retained for future scheduling, not phase 03 implementation. The October 15 Phase 09 Terms & Privacy acceptance receipt is a separate, narrowly approved responsibility described in §9; it does not activate questionnaire answers or per-step progress. No onboarding tables or answer collection are implemented; Zustand is used for the independent activity/browsing responsibilities.
 
 Expo Router owns navigation, Zustand holds shared in-memory answers/unsaved edits, and TanStack Query performs API reads and mutations. PostgreSQL owns saved answers, onboarding schema version, last completed step, completion timestamp, and edit revision. Keep screen-local state in React and gesture state in Reanimated; do not copy the entire query cache into Zustand. [Zustand](https://github.com/pmndrs/zustand).
 
@@ -257,18 +257,18 @@ The content/attempt boundary below reflects Phase 07. Identity is already implem
 
 ### Identity and preferences
 
-| Table                  | Main fields                                                                                                            | Relationship/rule                                                                                    |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `users`                | `id`, `created_at`, `status`                                                                                           | Pseudonymous account; no required name, email, or phone                                              |
-| `onboarding_progress`  | `user_id`, schema version, bounded validated answers, last completed step, `completed_at`, `updated_at`, edit revision | One current record per user; answers and step saved atomically; migrate/validate versions explicitly |
-| `recovery_credentials` | `id`, `user_id`, `secret_digest`, `kind`, `created_at`, `revoked_at`                                                   | One user can have Keychain and optional recovery-key credentials; unique digest                      |
-| `devices`              | `id`, `user_id`, `platform`, `created_at`, `last_seen_at`                                                              | Random installation identity, not hardware fingerprint                                               |
-| `device_sessions`      | `id`, `device_id`, `user_id`, `token_digest`, `expires_at`, `revoked_at`                                               | Multiple independent sessions; unique digest; device/owner consistency enforced                      |
-| `consent_changes`      | `id`, `user_id`, scope/version, enabled, server timestamp                                                              | Separate analytics choices from future permission to use personal history in AI coaching             |
+| Table                  | Main fields                                                                                                            | Relationship/rule                                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `users`                | `id`, `created_at`, `status`                                                                                           | Pseudonymous account; no required name, email, or phone                                                 |
+| `onboarding_progress`  | `user_id`, schema version, bounded validated answers, last completed step, `completed_at`, `updated_at`, edit revision | One current record per user; answers and step saved atomically; migrate/validate versions explicitly    |
+| `recovery_credentials` | `id`, `user_id`, `secret_digest`, `kind`, `created_at`, `revoked_at`                                                   | One user can have Keychain and optional recovery-key credentials; unique digest                         |
+| `devices`              | `id`, `user_id`, `platform`, `created_at`, `last_seen_at`                                                              | Random installation identity, not hardware fingerprint                                                  |
+| `device_sessions`      | `id`, `device_id`, `user_id`, `token_digest`, `expires_at`, `revoked_at`                                               | Multiple independent sessions; unique digest; device/owner consistency enforced                         |
+| `consent_changes`      | `id`, `user_id`, legal/scope versions, acceptance state, server timestamp                                              | Planned account-owned Terms & Privacy acceptance receipt; future AI-context permission remains separate |
 
 Optional transfer records store hashed one-use codes, issuing user/session, expiration, redemption state, and confirmation state. A server account's existence does not depend on enabling analytics.
 
-Reduce Motion is implemented as one installation-level boolean in AsyncStorage, without a `user_settings` table or API. The phone's accessibility setting always takes priority over the app choice; initial loading and live changes share one effective flag. It survives app relaunch, remains independent of accounts/paid access and does not synchronize to another phone. Haptics implementation, its saved switch and physical-phone testing belong together in Phase 08; reminders remain deferred. See [app shell](APP_SHELL.md) and the [Phase 08 motion handoff](../handoffs/phase-08-settings-privacy.md#october-10-reduce-motion-implementation).
+Reduce Motion is implemented as one installation-level boolean in AsyncStorage, without a `user_settings` table or API. The phone's accessibility setting always takes priority over the app choice; initial loading and live changes share one effective flag. It survives app relaunch, remains independent of accounts/paid access and does not synchronize to another phone. Haptics implementation, its saved switch and physical-phone testing belong together in Phase 08; reminders remain deferred. See [app shell](APP_SHELL.md) and the [Phase 08 motion handoff](../handoffs/phase-08-settings-privacy.md).
 
 ### Content and activity
 
@@ -399,7 +399,7 @@ A job is a task; its handler is our processing code. QStash stores a pending del
 | Purchase/restore access verification                  | Immediate authenticated API request to verify RevenueCat state; do not wait for a queue or scheduled recovery                      |
 | Subscription notifications                            | Durable event receipt followed by QStash delivery to our Vercel handler                                                            |
 | Billing handoff repair and missed-notification checks | Vercel Cron selects due records/accounts; QStash delivers the individual refresh jobs                                              |
-| Optional product analytics                            | Consent-aware, best-effort delivery with stable event IDs; no required queue                                                       |
+| Product analytics after onboarding acceptance         | Accepted-scope, best-effort delivery with stable event IDs; no required queue                                                      |
 | Deletion/retention                                    | Bounded operations or provider retention settings; use QStash with durable cleanup status if vendor cleanup needs deferred retries |
 
 #### Subscription-event flow
@@ -470,15 +470,17 @@ Web checkout adds account matching, provider reconciliation, browser-return fail
 
 ## 9. Analytics and sensitive data
 
-PostgreSQL owns product records; PostHog owns behavioral analysis. Use explicit events such as onboarding step completed, paywall viewed, challenge viewed/swiped/started/completed/given up, feedback submitted/skipped, reflection saved, and app foregrounded.
+PostgreSQL owns product records; PostHog owns behavioral analysis. Phase 09 is planned, not enabled. The October 15 owner decision replaces both planned analytics Settings choices with one Terms & Privacy onboarding acceptance for the disclosed scope. No later analytics prompt is planned. Persist a receipt with account ownership, Terms/Privacy/analytics-scope versions and acceptance time; missing/unconfirmed acceptance blocks client and server forwarding. Returning users with a receipt do not repeat the same request. Existing accounts, recovery, slow hydration and account changes must not bypass or mix receipts. This limited page does not activate the deferred questionnaire design in §3.
+
+Use explicit events such as onboarding acceptance completed, paywall viewed, challenge viewed/swiped/started/completed/given up, feedback submitted/skipped, reflection saved, and app foregrounded. The acceptance receipt is first-party state, not dependent on successful PostHog delivery; do not forward pre-acceptance onboarding activity.
 
 Server-confirmed analytics events originate from successful API transactions and use stable IDs derived from the stored domain event or entity/revision. Client-only interaction events go through an authenticated event endpoint or a single consent-aware adapter. Deduplicate by event ID where supported and record occurrence/receipt timestamps. Initial analytics delivery is best effort: analytics failures must not fail a saved reflection or completion, and a crash between commit and delivery can lose an analytics event. PostgreSQL remains authoritative for earned progress. Add a transactional outbox only if reliable analytics delivery becomes a real requirement. Do not indiscriminately duplicate every tap in PostgreSQL.
 
-Useful properties include stable challenge ID, level, attempt ID, after-feeling code when consented, has-reflection flag, and non-overlapping reflection word buckets: `none`, `1–20`, `21–50`, `51–100`, `101+`. Compute length without exporting the text. Input method is only known for app-controlled dictation; keyboard dictation may be indistinguishable from typing.
+Useful properties include stable challenge ID, level, attempt ID, after-feeling code and has-reflection flag, and non-overlapping reflection word buckets: `none`, `1–20`, `21–50`, `51–100`, `101+`. Include feeling/length properties only within the disclosed, accepted and reviewed scope, with no separate Settings switch. Compute length without exporting the text. Persistent pseudonymous identifiers are account-linked, not anonymous/non-identifying. Input method is only known for app-controlled dictation; keyboard dictation may be indistinguishable from typing.
 
-Separate essential storage from optional analysis. A user can keep their cloud journal and paid access while declining analytics. Explain and obtain the appropriate explicit choice for sharing sensitive feeling/reflection metadata. Disable autocapture/session replay and exclude journal text, audio, credentials, payment details, and contact data from analytics and crash payloads. [PostHog React Native controls](https://posthog.com/docs/libraries/react-native).
+Separate product storage from analytics delivery. Preserve saved/pending activity and access to recovery/export/deletion; analytics/provider failures must not prevent product saves or eligible paid access. The Terms & Privacy page explains phone plus cloud saving and product-analysis purposes, with the actual feeling/length scope disclosed if included. Phase 10 reviews final wording, regional grounds and how applicable withdrawal/objection requests are handled without analytics Settings switches. This single-acceptance product decision does not establish legal sufficiency. Disable autocapture/session replay and exclude journal text, audio, credentials, payment details, and contact data from analytics and crash payloads. [PostHog React Native controls](https://posthog.com/docs/libraries/react-native).
 
-Route billing analytics through the server's consent checks too. A mobile opt-out does not disable RevenueCat's independent server-to-server PostHog integration; its fallback customer ID also does not enforce consent. Do not enable unconditional direct forwarding. [RevenueCat PostHog integration](https://www.revenuecat.com/docs/integrations/third-party-integrations/posthog).
+Route billing analytics through the server's accepted-scope and account-eligibility checks too. RevenueCat's independent server-to-server PostHog integration and fallback customer ID do not enforce this boundary. Do not enable unconditional direct forwarding. Recheck acceptance and eligibility before delayed delivery; deletion and applicable privacy-request suppression must cover both client and server paths. [RevenueCat PostHog integration](https://www.revenuecat.com/docs/integrations/third-party-integrations/posthog).
 
 The data supports sequence and cohort questions: actions after a feeling, another challenge within 24 hours, and D1/D7 return rates by reflection-length bucket. Define cohort anchors, eligible observation windows, and missing-data handling. An after-only feeling does not measure improvement from a before state, and a retention correlation does not establish causation.
 
@@ -558,7 +560,7 @@ The Swift implementation lives in `apps/mobile/modules/justgo-keychain`; `app-su
 - App support composes the app's providers and startup/access flow. Features may consume its provider hooks. App support cannot import route implementations; routes compose app support instead. Developer screen fixtures live in `dev/previews/`, with their guarded loader in `app/preview.tsx`. Other production files cannot load developer code; tests cover the development gate.
 - Data modules own shared app-data rules, persistence and synchronization. They may import shared `lib/`, platform adapters and public contracts, but cannot import routes, app-support, developer code, features, UI components or theme. Keep the stored journal envelope's technical name separate from the user-facing feature names.
 - Keep native platform access behind typed adapters; the current Keychain adapter is in `app-support/identity/`. Put shared public request/response schemas and types in `packages/contracts`; server implementation and secrets stay in `apps/api`.
-- Import contracts from either app through `@justgo/contracts`, whose root export is `packages/contracts/src/index.ts`. Mobile must not import API implementation, and API must not import mobile code. ESLint checks the shared/data/app-support/developer import directions, including re-exports, `import()` and `require()`, and `npm run check` runs the boundary tests in CI. [AGENTS.md](../../AGENTS.md#enforced-code-boundaries) owns the coding rule; [APP_SHELL.md](APP_SHELL.md#implemented-folder-responsibilities) records the current app folders.
+- Import contracts from either app through `@justgo/contracts`, whose root export is `packages/contracts/src/index.ts`. Mobile must not import API implementation, and API must not import mobile code. ESLint checks the shared/data/app-support/developer import directions, including re-exports, `import()` and `require()`, and `npm run check` (in CI, `npm run check:static`) runs the boundary tests. [AGENTS.md](../../AGENTS.md#enforced-code-boundaries) owns the coding rule; [APP_SHELL.md](APP_SHELL.md#implemented-folder-responsibilities) records the current app folders.
 
 This structure supports growth in features and contributors. Runtime capacity remains governed by the performance and capacity requirements below; new features do not require a separate app or service by default.
 
@@ -575,7 +577,7 @@ Acceptance coverage: the first release targets iOS. Conditional future-feature c
 5. Completed-attempt lost acknowledgement: commit the create, drop its response, continue local Reflection/Progress, restart and replay the same UUID/input; assert one backend rep and unchanged start/activity date. Repeat PATCH lost acknowledgement and changed-input/owner/revision cases. Verify aggregate reconciliation, offline/reconnect, memory-only recovery and definitively rejected provisional credit.
 6. Native paywall, purchase, restoration, cancellation/expiry/refund, and server entitlement checks. Verify immediate purchase access without waiting for queued work, short retry behavior, and honest pending states. Before enabling the proposed immediate-access fallback, test a failed billing-projection write separately from a full database outage, stale/expired verification, and forged client premium claims.
 7. If Stripe is enabled: eligible/ineligible storefronts, forged checkout/redirect, delayed payment, invalid/replayed webhooks, browser return, refund/cancel, and duplicate native/web subscriptions.
-8. Offline/error states make no false save claims; analytics opt-out blocks both client and server forwarding without disabling cloud journaling.
+8. Offline/error states make no false save claims; client/server analytics is blocked before account-owned Terms & Privacy acceptance. No analytics Settings switches or later analytics prompt are introduced; account/deletion/privacy-request fencing and product-save independence are verified.
 9. Native iOS accessibility, gestures, keyboard/sheets, and any implemented notification permission behavior. Dictation and Android checks are deferred until those features are built.
 10. Deferred onboarding (only when separately scheduled): cross-screen answers, back-navigation and dependent answers, per-step saves, failed-save retries, relaunch restoration, schema/revision conflicts, dirty-state hydration, and account-switch clearing.
 11. When the coach is implemented: real-device streaming, ownership isolation across every context source, context-consent changes, bounded history, duplicate sends, concurrent allowance enforcement, provider failures, cancellation/timeout recovery, and message/context deletion. Add representative response-quality evaluations.

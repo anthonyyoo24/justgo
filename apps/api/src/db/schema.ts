@@ -67,8 +67,28 @@ export const users = appSchema
       id: uuid().primaryKey(),
       createdAt: time('created_at').notNull().defaultNow(),
       deletedAt: time('deleted_at'),
+      deletionSessionDigest: text('deletion_session_digest'),
     },
-    () => ownerPolicies('id'),
+    (t) => [
+      maintenance(),
+      uniqueIndex('users_deletion_session_uq').on(t.deletionSessionDigest),
+      pgPolicy('owner_read', {
+        for: 'select',
+        to: 'justgo_runtime',
+        using: sql`id = (select justgo.current_user_id()) OR (deleted_at is not null AND deletion_session_digest = (select current_setting('app.session_digest',true)))`,
+      }),
+      pgPolicy('owner_insert', {
+        for: 'insert',
+        to: 'justgo_runtime',
+        withCheck: sql`id = (select justgo.current_user_id())`,
+      }),
+      pgPolicy('owner_update', {
+        for: 'update',
+        to: 'justgo_runtime',
+        using: sql`id = (select justgo.current_user_id())`,
+        withCheck: sql`id = (select justgo.current_user_id())`,
+      }),
+    ],
   )
   .enableRLS();
 export const devices = appSchema
@@ -129,6 +149,11 @@ export const sessions = appSchema
         foreignColumns: [devices.userId, devices.id],
       }),
       ...identityPolicies('app.session_digest'),
+      pgPolicy('owner_delete', {
+        for: 'delete',
+        to: 'justgo_runtime',
+        using: sql`user_id = (select justgo.current_user_id())`,
+      }),
     ],
   )
   .enableRLS();
@@ -172,6 +197,12 @@ export const transfers = appSchema
         to: 'justgo_runtime',
         using: sql`user_id = (select justgo.current_user_id()) OR code_digest = (select current_setting('app.transfer_digest',true))`,
         withCheck: sql`user_id = (select justgo.current_user_id()) OR code_digest = (select current_setting('app.transfer_digest',true))`,
+      }),
+      pgPolicy('owner_delete_only', {
+        as: 'restrictive',
+        for: 'delete',
+        to: 'justgo_runtime',
+        using: sql`user_id = (select justgo.current_user_id())`,
       }),
     ],
   )

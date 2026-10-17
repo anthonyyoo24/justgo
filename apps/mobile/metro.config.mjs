@@ -1,5 +1,8 @@
 import path from 'node:path';
-import { journeyEnvironment } from '../../e2e/support/environment.ts';
+import {
+  journeyEnvironment,
+  journeyApiUrl,
+} from '../../e2e/support/environment.ts';
 import metroConfig from 'expo/metro-config.js';
 const { getDefaultConfig } = metroConfig;
 const configRoot = import.meta.dirname;
@@ -9,7 +12,14 @@ const config = getDefaultConfig(configRoot);
 // production bundle. Validate its database/environment before enabling it.
 if (process.env.JUSTGO_JOURNEY_FIXTURES === '1') {
   journeyEnvironment(process.env);
+  if (process.env.EXPO_PUBLIC_API_URL !== journeyApiUrl)
+    throw new Error('Journey fixtures require the isolated loopback API URL');
   config.resolver.resolveRequest = (context, moduleName, platform) => {
+    if (platform === 'web' && moduleName === 'expo/virtual/env')
+      return {
+        type: 'sourceFile',
+        filePath: path.join(configRoot, 'test-support/journey-environment.ts'),
+      };
     if (
       platform === 'web' &&
       context.originModulePath ===

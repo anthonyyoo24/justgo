@@ -1,6 +1,34 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { journeyEnvironment } from '../../e2e/support/environment.ts';
+import {
+  journeyEnvironment,
+  journeyServiceUrls,
+} from '../../e2e/support/environment.ts';
+
+test('parallel worktree journey ports remain loopback, distinct and bounded', () => {
+  assert.deepEqual(journeyServiceUrls({}), {
+    api: 'http://127.0.0.1:3000',
+    app: 'http://127.0.0.1:8081',
+  });
+  assert.deepEqual(
+    journeyServiceUrls({
+      JUSTGO_JOURNEY_API_PORT: '3002',
+      JUSTGO_JOURNEY_APP_PORT: '8083',
+    }),
+    { api: 'http://127.0.0.1:3002', app: 'http://127.0.0.1:8083' },
+  );
+  for (const value of [
+    '0',
+    '80',
+    '65536',
+    '3002.5',
+    'https://example.com',
+    '3002junk',
+    '',
+  ])
+    assert.throws(() => journeyServiceUrls({ JUSTGO_JOURNEY_API_PORT: value }));
+  assert.throws(() => journeyServiceUrls({ JUSTGO_JOURNEY_API_PORT: '8081' }));
+});
 
 const fixture = {
   DATABASE_URL:

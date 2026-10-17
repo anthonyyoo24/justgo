@@ -42,7 +42,8 @@ function operation(
           }
         : {}),
       default: {
-        description: 'Typed failure; never includes secrets or supplied values',
+        description:
+          'Typed failure; never includes secrets or supplied values. 4xx statuses are client errors identified by code, and an unlisted 4xx uses INVALID_REQUEST. 503 UNAVAILABLE is a transient service failure.',
         content: json(identity.identityErrorSchema),
       },
     },
@@ -61,6 +62,16 @@ export const openApiDocument = {
     },
   },
   paths: {
+    '/v1/account': {
+      delete: {
+        ...operation(
+          identity.accountDeletionResponseSchema,
+          identity.accountDeletionRequestSchema,
+        ),
+        description:
+          'Permanently removes owned activity, devices, sessions and transfers without paid access. Retains revoked credential fingerprints and a minimal deletion receipt to prevent resurrection. Retry a lost response with the same bearer token; only the session that initiated deletion can retrieve its receipt. Does not cancel an Apple subscription.',
+      },
+    },
     '/v1/account/export': {
       get: {
         ...operation(exportPageSchema),
@@ -225,7 +236,16 @@ export const openApiDocument = {
           schema: { type: 'string', format: 'uuid' },
         },
       ],
-      delete: operation(identity.okSchema, identity.transferInspectSchema),
+      delete: {
+        ...operation(
+          identity.transferCancelResponseSchema,
+          identity.transferCancelSchema,
+          false,
+        ),
+        description:
+          'Cancel with either the approving account bearer session and code, or the receiving phone’s complete original transfer proposal. The receiving proof can invalidate a proposal before its start request arrives; exact retries cannot recreate it. A redeemed result means completion already won the race and must be reconciled using the original session proof.',
+        security: [{}, { deviceSession: [] }],
+      },
     },
     '/v1/transfer-inspections': {
       post: operation(

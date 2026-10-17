@@ -24,6 +24,17 @@ export const betaGrantsSchema = z
     (grants) => new Set(grants.map((g) => g.userId)).size === grants.length,
   );
 type BetaGrant = z.infer<typeof grantSchema>;
+const betaAccessWindowSchema = z
+  .object({
+    startsAt: z.iso.datetime(),
+    expiresAt: z.iso.datetime(),
+  })
+  .strict()
+  .refine(
+    (window) => Date.parse(window.startsAt) < Date.parse(window.expiresAt),
+  );
+type BetaAccessWindow = z.infer<typeof betaAccessWindowSchema>;
+type AccessInterval = Pick<BetaGrant, 'startsAt' | 'expiresAt' | 'revokedAt'>;
 
 /** Server operator configuration only; never accepted from a mobile request. */
 export function readBetaGrants(value: string) {
@@ -35,9 +46,19 @@ export function readBetaGrants(value: string) {
   }
 }
 
+/** Optional, bounded admission for authenticated accounts in a staging test build. */
+export function readBetaAccessWindow(value: string) {
+  try {
+    return betaAccessWindowSchema.nullable().parse(JSON.parse(value));
+  } catch {
+    throw new Error('Invalid beta access window configuration');
+  }
+}
+
 export function createBetaAccess(
   grants: readonly BetaGrant[],
   now: () => number = Date.now,
+  accessWindow: BetaAccessWindow | null = null,
 ): {
   entitlementReader: EntitlementReader;
   uploadEligibilityReader: UploadEligibilityReader;
@@ -45,12 +66,17 @@ export function createBetaAccess(
   const approved = new Map(
     betaGrantsSchema.parse(grants).map((g) => [g.userId, g]),
   );
-  const end = (g: BetaGrant) =>
+  const window = betaAccessWindowSchema.nullable().parse(accessWindow);
+  // Explicit account restrictions take precedence over general test admission.
+  // Keep individual intervals intact for expiry/revocation and earlier uploads.
+  const interval = (userId: string | null | undefined) =>
+    userId ? (approved.get(userId) ?? window) : undefined;
+  const end = (g: AccessInterval) =>
     Math.min(
       Date.parse(g.expiresAt),
       g.revokedAt ? Date.parse(g.revokedAt) : Infinity,
     );
-  const covers = (g: BetaGrant | undefined, time: number) =>
+  const covers = (g: AccessInterval | null | undefined, time: number) =>
     !!g && time >= Date.parse(g.startsAt) && time < end(g);
   const owner = async (tx: Parameters<EntitlementReader>[0]) =>
     (
@@ -61,7 +87,7 @@ export function createBetaAccess(
   return {
     entitlementReader: async (tx) => {
       const userId = await owner(tx);
-      const grant = userId ? approved.get(userId) : undefined;
+      const grant = interval(userId);
       const time = now();
       const checkedAt = new Date(time).toISOString();
       return covers(grant, time)
@@ -79,7 +105,8 @@ export function createBetaAccess(
       if (!userId || userId !== context.userId) return 'ineligible';
       // Keep ended/revoked intervals in operator configuration so earlier offline
       // completions remain uploadable. Never remove a grant to revoke current access.
-      return covers(approved.get(userId), Date.parse(context.startedAt))
+      const startedAt = Date.parse(context.startedAt);
+      return startedAt <= now() && covers(interval(userId), startedAt)
         ? 'eligible'
         : 'ineligible';
     },

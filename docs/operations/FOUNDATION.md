@@ -12,8 +12,8 @@ Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versi
 | -------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                         |
 | TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                       |
-| Expo / React Native / React      | 57.0.29 / 0.86.3 / 19.2.3                                                                          |
-| Expo Router / development client | 57.0.27 / 57.0.20                                                                                  |
+| Expo / React Native / React      | 57.0.30 / 0.86.3 / 19.2.3                                                                          |
+| Expo Router / development client | 57.0.28 / 57.0.20                                                                                  |
 | Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                                          |
 | Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                                    |
 | Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                                           |
@@ -66,6 +66,25 @@ The Phase 01 helper `withOwner(db, verifiedUserId, tx => …)` establishes trans
 
 Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 54329. They create a uniquely named fixture table as migrator, execute isolation checks as the actual runtime role, and drop that fixture. The local application catalog seed and synthetic accounts/history are disposable; no customer data belongs in this cluster. Never reset a shared environment to run tests. Use forward-repair migrations; restore and destructive rollback procedures require reviewed backups before domain data exists.
 
+## Backup restore checklist
+
+Use this for any restore of a hosted database from a Supabase backup or point-in-time recovery. A restore must never bring back a deleted account or a revoked credential ([October 16 decision](../DECISIONS.md#october-16-codebase-assessment-follow-up)). Backups follow the Supabase plan's default retention, so deleted data leaves backups within that period. **Backup retention: 7 days**, chosen by Anthony on October 16 as the Supabase Pro plan default ([Supabase backups](https://supabase.com/docs/guides/platform/backups)). It applies only once the database is on Pro: Free projects, such as the current $0 test project, get no Supabase backups. Confirm the production project's plan and dashboard value before Phase 10 publishes the policy wording. The hosted rehearsal of this checklist is a Phase 11 paid-launch gate.
+
+Before restoring:
+
+1. Stop API writes and note the backup's timestamp. Writes other accounts made after that timestamp are not recovered by this checklist.
+2. With the migration role, save the deletions made since the backup to restricted operator storage, never the repository, logs or tickets: every `justgo.users` row with `deleted_at` set (`id`, `created_at`, `deleted_at`, `deletion_session_digest`) and every `justgo.recovery_credentials` row with `revoked_at` set (`id`, `user_id`, `digest`, `kind`, `revoked_at`). Taking all of them, not only those after the timestamp, is simplest and safe.
+
+Restore and reapply:
+
+3. Restore into an isolated environment (a new project or branch), never over the live database, with no API pointed at it.
+4. In one reviewed migration-role transaction, apply the saved deletions again, exactly as `apps/api/src/privacy/delete-account.ts` does. For each deleted account, delete its attempt patch receipts, attempts, transfers, sessions and devices, and set `deleted_at` and `deletion_session_digest` from the saved row; insert the user row if the account is newer than the backup. Then make every saved credential revoked: insert missing rows and set `revoked_at` on restored rows that are still active.
+
+Before reopening the app:
+
+5. Confirm in the restored database that every saved account has `deleted_at` set and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
+6. Only then point the API at the restored database and reopen writes. Confirm that one deleted disposable account's recovery proof is rejected through the API before announcing the restore.
+
 ## API deployment and diagnostics
 
 Entrypoint: `apps/api/src/server.ts`, importing Fastify directly for Vercel detection. `build-app.ts` contains the injected/testable app factory. Vercel project **justgo** has root `apps/api`, Fastify preset, Node 24.x, Montréal (`yul1`) function region, and install command `cd ../.. && npm ci`. Deploy from the repository root so the workspace lockfile and contracts are included:
@@ -85,7 +104,7 @@ Set runtime variables in the **preview** environment before deployment. Use Secr
 | `GET /health` | 200 `{ "status": "ok", "service": "justgo-api" }`             | Process/platform failures only; not a database check |
 | `GET /ready`  | 200 `{ "status": "ready" }` after database/role/context check | 503 `{ "status": "unavailable" }`                    |
 
-Responses use `no-store`, security headers and server-generated request IDs. The Phase 01 connection probe validated both endpoints with an 8-second deadline. The current identity UI uses the authenticated API and its 10-second request deadline; see [IDENTITY.md](../architecture/IDENTITY.md). Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. Identity and private reflection records now exist; diagnostics must exclude both secrets and journal contents. Sentry and analytics export are not enabled; implement opt-in interfaces in the appropriate phase and revalidate scrubbing before export.
+Responses use `no-store`, security headers and server-generated request IDs. The Phase 01 connection probe validated both endpoints with an 8-second deadline. The current identity UI uses the authenticated API and its 10-second request deadline; see [IDENTITY.md](../architecture/IDENTITY.md). Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. Identity and private reflection records now exist; diagnostics must exclude both secrets and journal contents. Sentry and analytics export are not enabled; Phase 09 plans a single Terms & Privacy onboarding acceptance with no analytics Settings switches. Implement its account-owned client/server enforcement and revalidate scrubbing before analytics export; diagnostic activation still needs its own field/basis review.
 
 ## Design and tests
 
@@ -103,10 +122,10 @@ The Phase 01 `npm audit` recorded 18 moderate dependency advisories, with no hig
 
 ## Phase 07 coordinated cutover and old clients
 
-This runbook prepares Phase 09 staging/release integration; Phase 07.5 local implementation does not deploy externally or prove that old installed clients are retired. The final public protocol is catalog/completed-attempt/reflection PATCH and independent summary/calendar/day resources, alongside noun identity resources. Old identity/product action routes return 404; no compatibility writer remains after contraction.
+This runbook prepares Phase 11 staging/release integration; Phase 07.5 local implementation does not deploy externally or prove that old installed clients are retired. The final public protocol is catalog/completed-attempt/reflection PATCH and independent summary/calendar/day resources, alongside noun identity resources. Old identity/product action routes return 404; no compatibility writer remains after contraction.
 
 1. Inventory the deployed API build/schema journal and distributed mobile/native runtime versions before maintenance. Confirm the new client contains the canonical contracts/callers and the required AsyncStorage/NetInfo runtime. Block/distribute an update for older clients before reopening paid product access; there is no implemented general minimum-version endpoint or silent old-client conversion. Preserve recovery credentials and existing securely saved identity proposals.
-2. Prepare a restorable pre-cutover database backup under the separate operator role, protect its private contents outside repository/log artifacts, and record only counts/comparison outcomes. Rehearse restoration and forward application on disposable data with `npm run test:migrations`; production backup/PITR and a reachable phone staging route are Phase 09 requirements. Never test by resetting shared staging or production.
+2. Prepare a restorable pre-cutover database backup under the separate operator role, protect its private contents outside repository/log artifacts, and record only counts/comparison outcomes. Rehearse restoration and forward application on disposable data with `npm run test:migrations`; production backup/PITR and a reachable phone staging route are Phase 11 requirements. Never test by resetting shared staging or production.
 3. Stop all old API writers/traffic for the final comparison. Apply the unchanged additive/backfill migrations through 0012 if missing. Compare completed `(owner,id,activity_date)` sets, original starts, Level 1/challenge/venue references, canonical catalog and owner-matched submitted feeling/text/revisions. Preserve recorded historical dates and nullable unknown start zones with their historical display fallback. Do not promote drafts/skips or invent legacy lifecycle timestamps.
 4. With old writers still stopped, apply reviewed registered `0013_attempt_resources_contract.sql` using `npm run db:migrate` and the separate migration environment. It removes obsolete lifecycle, revision, queue/preferences/skips, separate reflections and action receipts; targeted `attempt_patch_receipts` remain. Repeat preservation/schema/ownership checks before opening traffic. Retain inactive historical challenge/placement references.
 5. Deploy matching canonical API/contracts and distribute/reload the matching mobile client together, then run staged recovery/revocation/transfer and completion/reflection/Progress checks. Check old paths return 404 without writes and reject old public fields. Do not grant a production test entitlement or bundle a deployment-protection bypass. Phase 07A must connect real verified access/earlier-upload coverage before paid release.

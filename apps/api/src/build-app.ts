@@ -18,11 +18,40 @@ import {
   healthResponseSchema,
   readinessResponseSchema,
   openApiDocument,
+  type IdentityErrorCode,
 } from '@justgo/contracts';
 import { loggerOptions } from './diagnostics.js';
 import { IdentityError, type IdentityService } from './identity/service.js';
 import { bearer, identityRoutes } from './identity/routes.js';
 import { AccessService, type EntitlementReader } from './access/service.js';
+
+/** Typed codes for request errors Fastify raises before route code runs. */
+const requestErrorCodes: Partial<Record<number, IdentityErrorCode>> = {
+  400: 'INVALID_REQUEST',
+  413: 'REQUEST_TOO_LARGE',
+  415: 'UNSUPPORTED_MEDIA_TYPE',
+};
+
+/**
+ * Map a non-domain failure on a versioned route. Any other 4xx stays a client
+ * error with its own status, so clients do not retry unchanged input as if the
+ * service were down; only failures without a client status become 503.
+ */
+function versionedFailure(error: {
+  statusCode?: number;
+  code?: string;
+  cause?: unknown;
+}): { status: number; code: IdentityErrorCode } {
+  if (
+    error.code === '23505' ||
+    (error.cause as { code?: string } | undefined)?.code === '23505'
+  )
+    return { status: 409, code: 'CONFLICT' };
+  const status = error.statusCode;
+  if (status !== undefined && status >= 400 && status < 500)
+    return { status, code: requestErrorCodes[status] ?? 'INVALID_REQUEST' };
+  return { status: 503, code: 'UNAVAILABLE' };
+}
 
 /**
  * Compose the HTTP app with injected database, identity and access boundaries.
@@ -143,33 +172,9 @@ export function buildApp(
         });
         return;
       }
-      const dbCode =
-        (error as { code?: string; cause?: { code?: string } }).code ??
-        (error as { cause?: { code?: string } }).cause?.code;
-      const code =
-        dbCode === '23505'
-          ? 'CONFLICT'
-          : error.statusCode === 400
-            ? 'INVALID_REQUEST'
-            : error.statusCode === 413
-              ? 'REQUEST_TOO_LARGE'
-              : error.statusCode === 415
-                ? 'UNSUPPORTED_MEDIA_TYPE'
-                : 'UNAVAILABLE';
+      const { status, code } = versionedFailure(error);
       request.log.error({ err: error }, 'API operation failed');
-      void reply
-        .code(
-          code === 'CONFLICT'
-            ? 409
-            : code === 'INVALID_REQUEST'
-              ? 400
-              : code === 'REQUEST_TOO_LARGE'
-                ? 413
-                : code === 'UNSUPPORTED_MEDIA_TYPE'
-                  ? 415
-                  : 503,
-        )
-        .send({ code, requestId: request.id });
+      void reply.code(status).send({ code, requestId: request.id });
       return;
     }
     request.log.error({ err: error }, 'Request failed');

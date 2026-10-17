@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { sessionCreateSchema } from './identity.js';
+import {
+  sessionCreateSchema,
+  accountDeletionRequestSchema,
+  accountDeletionResponseSchema,
+  transferCancelSchema,
+  receivingTransferCancelResponseSchema,
+} from './identity.js';
 import { openApiDocument } from './openapi.js';
 
 const proposal = {
@@ -7,6 +13,35 @@ const proposal = {
   sessionId: '00000000-0000-4000-8000-000000000002',
   sessionToken: 'a'.repeat(64),
 };
+it('requires explicit owner-independent deletion confirmation and a bounded private receipt shape', () => {
+  expect(
+    accountDeletionRequestSchema.parse({ confirmation: 'delete-account' }),
+  ).toEqual({ confirmation: 'delete-account' });
+  expect(
+    accountDeletionRequestSchema.safeParse({
+      confirmation: 'delete-account',
+      userId: proposal.deviceId,
+    }).success,
+  ).toBe(false);
+  expect(
+    accountDeletionResponseSchema.safeParse({
+      userId: proposal.deviceId,
+      deletedAt: '2026-10-14T10:00:00Z',
+      credentialDigests: ['a'.repeat(64)],
+    }).success,
+  ).toBe(true);
+  expect(
+    accountDeletionResponseSchema.safeParse({
+      userId: proposal.deviceId,
+      deletedAt: '2026-10-14T10:00:00Z',
+      credentialDigests: [],
+      sessionToken: proposal.sessionToken,
+    }).success,
+  ).toBe(false);
+  expect(openApiDocument.paths['/v1/account'].delete.security).toEqual([
+    { deviceSession: [] },
+  ]);
+});
 const requests = [
   { kind: 'bootstrap', ...proposal, credential: 'b'.repeat(64) },
   { kind: 'recovery', ...proposal, credential: 'b'.repeat(64) },
@@ -85,10 +120,57 @@ describe('session resource creation proofs', () => {
       paths['/v1/transfers/{id}'].delete.requestBody?.content[
         'application/json'
       ].schema,
-    ).toEqual(expect.objectContaining({ required: ['code'] }));
+    ).toEqual(expect.objectContaining({ anyOf: expect.any(Array) }));
+    expect(paths['/v1/transfers/{id}'].delete.security).toEqual([
+      {},
+      { deviceSession: [] },
+    ]);
+    expect(paths['/v1/transfers/{id}'].delete.description).toContain(
+      'approving account bearer session',
+    );
     expect(paths['/v1/transfers'].post.security).toEqual([]);
     expect(paths['/v1/transfer-approvals'].post.security).toEqual([
       { deviceSession: [] },
     ]);
   });
+});
+
+it('requires a complete receiving proposal or the strict approving-account code body', () => {
+  const input = {
+    ...proposal,
+    id: '00000000-0000-4000-8000-000000000003',
+    credential: 'b'.repeat(64),
+    code: 'ABCDEF0123456789',
+    claimSecret: 'c'.repeat(64),
+  };
+  expect(transferCancelSchema.parse(input)).toEqual(input);
+  expect(transferCancelSchema.parse({ code: input.code })).toEqual({
+    code: input.code,
+  });
+  for (const key of [
+    'id',
+    'credential',
+    'deviceId',
+    'sessionId',
+    'sessionToken',
+    'claimSecret',
+  ]) {
+    const incomplete: Record<string, unknown> = { ...input };
+    delete incomplete[key];
+    expect(transferCancelSchema.safeParse(incomplete).success).toBe(false);
+  }
+  expect(
+    transferCancelSchema.safeParse({ ...input, userId: proposal.deviceId })
+      .success,
+  ).toBe(false);
+  expect(
+    receivingTransferCancelResponseSchema.parse({ status: 'cancelled' }),
+  ).toEqual({ status: 'cancelled' });
+  expect(
+    receivingTransferCancelResponseSchema.parse({ status: 'redeemed' }),
+  ).toEqual({ status: 'redeemed' });
+  expect(
+    receivingTransferCancelResponseSchema.safeParse({ status: 'waiting' })
+      .success,
+  ).toBe(false);
 });

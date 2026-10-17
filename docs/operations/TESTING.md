@@ -9,7 +9,7 @@ owns API/offline changes and Phase 07A owns billing.
 
 Anthony stopped unfinished [07.3A](../IMPLEMENTATION_PLAN.md#phase-07-3a) on October 7 and approved 07.4/07.5 using retained browser/lower-level checks plus relevant manual native verification. The checkpoint `c7c67b2`, [resume handoff](../handoffs/phase-07-3a-testing-checkpoint.md) and [file inventory](../checks/phase-07-3a-browser-testing-assessment.md) remain available; native journeys/hosted CI are not accepted.
 
-Keep the Playwright/Chromium browser suite, web adapters, fixture safeguards and unchanged coverage floors. A future native replacement must prove equivalent actual-app/API/database journeys and inspect the authorized commit's hosted gate before retiring browser support. Retain the Maestro launch smoke and relevant manual simulator checks meanwhile. Mocks, browser storage and exports cannot establish native Keychain/AsyncStorage persistence, OS lifecycle, software keyboard, VoiceOver, radio/backup or physical-device behavior. Carry those release gates to 09 with their recorded evidence/limits.
+Keep the Playwright/Chromium browser suite, web adapters, fixture safeguards and unchanged coverage floors. A future native replacement must prove equivalent actual-app/API/database journeys and inspect the authorized commit's hosted gate before retiring browser support. Retain the Maestro launch smoke and relevant manual simulator checks meanwhile. Mocks, browser storage and exports cannot establish native Keychain/AsyncStorage persistence, OS lifecycle, software keyboard, VoiceOver, radio/backup or physical-device behavior. Carry those release gates to 11 with their recorded evidence/limits.
 
 ## Commands
 
@@ -63,12 +63,19 @@ Keep the loopback/test-database safeguards enabled.
 
 ## Before publication
 
-Run `npm ci` in a clean checkout and `npm run check`; CI runs the same root
-command immediately after installation. Its first step is
+Run `npm ci` in a clean checkout and `npm run check`. Its first step is
 `npm run doctor -w @justgo/mobile`, which bypasses Expo's dependency metadata
 cache with `EXPO_NO_CACHE=1`. The doctor remains pinned in the root lockfile.
-A failed dependency check stops the command before build/test work begins.
+A failed dependency check stops the local command before build/test work begins.
 The command tests protect this early stop, fresh metadata and nonzero exits.
+
+CI runs on pull requests and on merges to `main`; a newer push to a pull request
+cancels its older run. Its single `checks` job runs the doctor command first,
+then `npm run check:static` (contracts build, typecheck, lint, formatting and
+architecture tests), then `npm run test:coverage` once, which is the only run of
+the unit, component, contract, database and migration suites. Journeys and both
+exports follow. `scripts/quality/ci-workflow.test.mjs` protects these triggers
+and the single-run layout.
 
 For split or stacked PRs, perform this verification on each branch's exact
 publication candidate. A passing combined feature branch does not verify an
@@ -193,6 +200,14 @@ transactions can leave registry UUIDs without rows; deleting those is a harmless
 no-op. Registry failures fail teardown instead of falling back to browser IDs. The dedicated
 fixture server grants isolated test access and upload eligibility; deployed API
 startup has no such provider. Browser identity credentials remain memory-only; the activity adapter persists catalog/journal independently and reload tests explicitly recover the same synthetic account.
+
+Cases share a loopback address but receive independent rate-limit allowances.
+Before each database-backed case, the fixture resets only the two hashed buckets
+owned by that run's server, obtained from its strict read-only registry. Existing
+limits stay enabled within the case; unrelated buckets are preserved. Saved
+regressions exhaust the real 120-request identity limit, require the next case to
+start fresh, and retain an unrelated bucket throughout. No production endpoint,
+limit or account-cleanup authority is changed.
 
 This automated browser runs headlessly. Interactive walkthroughs use the Codex
 side panel, under the same fixture API/Expo configuration. These are separate
@@ -336,4 +351,4 @@ is dismissed and keeps failure feedback/retries in Settings. The saved journey v
 the route stays `/settings` through download. Side-panel downloads and simulator
 share sheets are separate manual evidence.
 Physical-iPhone Save to Files, cancellation, accessibility and native cleanup
-remain release checks in Phase 09 until evidenced in the phase handoff.
+remain release checks in Phase 11 until evidenced in the phase handoff.

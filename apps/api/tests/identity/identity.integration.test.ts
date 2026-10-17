@@ -305,6 +305,191 @@ describe('identity protocol through the restricted runtime', () => {
       ).json().code,
     ).toBe('CREDENTIAL_REJECTED');
   });
+  it('lets the receiver cancel before approval without changing its current account', async () => {
+    const current = await account(),
+      t = await start();
+    const cancel = () =>
+      app.inject({
+        method: 'DELETE',
+        url: `/v1/transfers/${t.input.id}`,
+        payload: t.input,
+        remoteAddress: `127.2.0.${++address}`,
+      });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await cancel();
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ status: 'cancelled' });
+    }
+    expect((await service.me(current.input.sessionToken)).userId).toBe(
+      current.session.userId,
+    );
+    await expect(service.startTransfer(t.input)).rejects.toMatchObject({
+      code: 'CREDENTIAL_REJECTED',
+    });
+    await expect(
+      service.inspectTransfer(current.input.sessionToken, t.input.code),
+    ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+    await expect(
+      service.approveTransfer(
+        current.input.sessionToken,
+        t.input.code,
+        t.result.verification,
+      ),
+    ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+    await expect(
+      service.redeemTransfer(t.input.code, t.input.claimSecret),
+    ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+  });
+  it('records cancellation before creation so a delayed start cannot revive the code', async () => {
+    const input = transfer();
+    transfers.add(input.id);
+    expect(await service.cancelReceivingTransfer(input)).toEqual({
+      status: 'cancelled',
+    });
+    await expect(service.startTransfer(input)).rejects.toMatchObject({
+      code: 'CREDENTIAL_REJECTED',
+    });
+    const fresh = transfer();
+    transfers.add(fresh.id);
+    const results = await Promise.allSettled([
+      service.startTransfer(fresh),
+      service.cancelReceivingTransfer(fresh),
+    ]);
+    expect(results[1]).toMatchObject({
+      status: 'fulfilled',
+      value: { status: 'cancelled' },
+    });
+    await expect(service.startTransfer(fresh)).rejects.toMatchObject({
+      code: 'CREDENTIAL_REJECTED',
+    });
+  });
+  it('requires the complete exact receiver proposal and validates the resource id', async () => {
+    const t = await start();
+    for (const field of [
+      'claimSecret',
+      'sessionToken',
+      'credential',
+      'id',
+      'deviceId',
+      'sessionId',
+    ] as const) {
+      await expect(
+        service.cancelReceivingTransfer({
+          ...t.input,
+          [field]:
+            field.endsWith('Id') || field === 'id' ? randomUUID() : secret(),
+        }),
+      ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+    }
+    const invalid = await app.inject({
+      method: 'DELETE',
+      url: `/v1/transfers/${randomUUID()}`,
+      payload: t.input,
+      remoteAddress: `127.2.0.${++address}`,
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: `/v1/transfers/${t.input.id}`,
+          payload: { code: t.input.code },
+          remoteAddress: `127.2.0.${++address}`,
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect((await service.startTransfer(t.input)).status).toBe('waiting');
+  });
+  it('serializes cancellation with approval and redemption, retaining only an already completed transfer', async () => {
+    const owner = await account();
+    const approving = await start();
+    await Promise.allSettled([
+      service.approveTransfer(
+        owner.input.sessionToken,
+        approving.input.code,
+        approving.result.verification,
+      ),
+      service.cancelReceivingTransfer(approving.input),
+    ]);
+    await expect(
+      service.redeemTransfer(approving.input.code, approving.input.claimSecret),
+    ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
+    const t = await start();
+    await service.approveTransfer(
+      owner.input.sessionToken,
+      t.input.code,
+      t.result.verification,
+    );
+    const [claim, cancel] = await Promise.allSettled([
+      service.redeemTransfer(t.input.code, t.input.claimSecret),
+      service.cancelReceivingTransfer(t.input),
+    ]);
+    expect(cancel.status).toBe('fulfilled');
+    const outcome = cancel.status === 'fulfilled' ? cancel.value.status : null;
+    if (outcome === 'redeemed') {
+      expect(claim).toMatchObject({
+        status: 'fulfilled',
+        value: { userId: owner.session.userId, sessionId: t.input.sessionId },
+      });
+      expect(
+        await service.redeemTransfer(t.input.code, t.input.claimSecret),
+      ).toEqual(claim.status === 'fulfilled' ? claim.value : null);
+    } else {
+      expect(claim).toMatchObject({
+        status: 'rejected',
+        reason: { code: 'CREDENTIAL_REJECTED' },
+      });
+    }
+    const count = await admin.query(
+      'select count(*)::int as count from justgo.device_sessions where id=$1',
+      [t.input.sessionId],
+    );
+    expect(count.rows[0].count).toBe(outcome === 'redeemed' ? 1 : 0);
+    const completed = await start();
+    await service.approveTransfer(
+      owner.input.sessionToken,
+      completed.input.code,
+      completed.result.verification,
+    );
+    const issued = await service.redeemTransfer(
+      completed.input.code,
+      completed.input.claimSecret,
+    );
+    expect(await service.cancelReceivingTransfer(completed.input)).toEqual({
+      status: 'redeemed',
+    });
+    expect(
+      await service.redeemTransfer(
+        completed.input.code,
+        completed.input.claimSecret,
+      ),
+    ).toEqual(issued);
+    await admin.query(
+      "update justgo.device_transfers set expires_at=now()-interval '1 second' where id=$1",
+      [completed.input.id],
+    );
+    expect(await service.cancelReceivingTransfer(completed.input)).toEqual({
+      status: 'redeemed',
+    });
+    expect(await service.me(completed.input.sessionToken)).toEqual(issued);
+  });
+  it('rate limits full receiver cancellation proofs before mutating the transfer', async () => {
+    const t = await start(),
+      ip = `receiver-${randomUUID()}`;
+    const cancel = (payload: TransferStart) =>
+      app.inject({
+        method: 'DELETE',
+        url: `/v1/transfers/${t.input.id}`,
+        payload,
+        remoteAddress: ip,
+      });
+    for (let attempt = 0; attempt < 3; attempt++)
+      expect(
+        (await cancel({ ...t.input, claimSecret: secret() })).statusCode,
+      ).toBe(401);
+    expect((await cancel(t.input)).statusCode).toBe(429);
+    expect((await service.startTransfer(t.input)).status).toBe('waiting');
+  });
   it('soft revokes owned device and credential resources with bodyless DELETE', async () => {
     const owner = await account();
     const key = {
