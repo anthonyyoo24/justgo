@@ -1,5 +1,6 @@
 module.exports = {
   preset: 'jest-expo',
+  maxWorkers: process.env.CI ? 2 : 1,
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.test.{ts,tsx}',

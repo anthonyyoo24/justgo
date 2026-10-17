@@ -6,8 +6,19 @@
     "exactOptionalPropertyTypes": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "types": ["jest", "node"]
+    "types": ["react", "react-native", "expo/types"]
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  "exclude": ["node_modules", "ios", "android"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "ios",
+    "android",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
 }
