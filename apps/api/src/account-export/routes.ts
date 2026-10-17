@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { exportPageQuerySchema, exportPageSchema } from '@justgo/contracts';
 import { bearer } from '../identity/routes.js';
 import { IdentityError } from '../identity/service.js';
-import type { ExportService } from './export.js';
+import type { ExportService } from './service.js';
 
 export function privacyRoutes(app: FastifyInstance, service: ExportService) {
   app.get('/export', async (request) => {

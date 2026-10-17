@@ -19,7 +19,7 @@ import {
   accountDeletionRequestSchema,
   accountDeletionResponseSchema,
 } from '@justgo/contracts';
-import { DeleteAccountService } from '../privacy/delete-account.js';
+import { DeleteAccountService } from './delete-account.js';
 import { IdentityError, type IdentityService } from './service.js';
 import { rateAddress } from './address.js';
 
