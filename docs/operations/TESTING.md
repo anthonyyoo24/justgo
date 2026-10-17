@@ -17,7 +17,7 @@ without automatically collecting whole-project coverage after every edit.
 | Command                                | Purpose                                                                                                   |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `npm run test -w <workspace>`          | Workspace unit/component/contract tests; API default excludes database integration                        |
-| `npm run typecheck -w <workspace>`     | Focused workspace TypeScript                                                                              |
+| `npm run typecheck -w <workspace>`     | Focused TypeScript; mobile generates route types, then checks source and tests separately                 |
 | `npm run lint`                         | Repository lint and dependency-direction rules                                                            |
 | `npm run test:architecture`            | Tooling, boundary, fixture and quality regressions                                                        |
 | `npm run check`                        | Fresh online Expo Doctor, contracts build, all typechecks, lint, format, architecture and workspace tests |
@@ -28,6 +28,7 @@ without automatically collecting whole-project coverage after every edit.
 | `npm run test:journey`                 | Saved actual-app/API/database browser and repository journeys                                             |
 | `npm run test:migrations`              | Standalone preservation/restoration rehearsal                                                             |
 | `npm run export:web -w @justgo/mobile` | Cold web export                                                                                           |
+| `npm run test:exported-web`            | Smoke the existing production web export without API/database traffic                                     |
 | `npm run export:ios -w @justgo/mobile` | Cold iOS JavaScript/assets export                                                                         |
 
 Pass `-- --runTestsByPath src/...test.tsx` to the mobile test script, or
@@ -37,6 +38,42 @@ changing contracts, tsconfig, ESLint configuration or `e2e/support` also runs
 and journeys. Before phase handoff/publication, run `npm run check`, full coverage
 and applicable saved journeys/exports; `test:db` is required for backend/shared
 boundaries and phase closeout. Earlier native/staging gates stay open until evidenced.
+
+## Type and lint environments
+
+Mobile `typecheck` generates fresh Expo route declarations before checking
+`tsconfig.json` and `tsconfig.tests.json`. Generation removes the previous route
+declaration and fails if Expo produces no valid replacement; ignored `.expo/`
+output cannot make a clean checkout pass with stale routes. The tracked route-type
+fixtures are checked by the test program.
+
+The source program admits React, React Native and Expo types, including Expo's
+public environment declarations. Jest globals and Node APIs belong to the separate
+test program. Root tooling/API use the pinned Node 24 declarations; installing those
+types must not make `Buffer`, `__dirname` or Jest globals available to mobile source.
+The ambient-type regression checks that separation.
+
+ESLint applies type-aware rules for promises, exhaustive switches, throwing Error
+objects, unnecessary assertions and redundant unions to production TypeScript. Non-null
+assertions warn. Mobile React rules protect list keys, nested component definitions
+and leaked conditional rendering. Testing Library rules require awaited async
+queries/utilities and reject awaited synchronous queries or promises passed to
+`fireEvent`; native renderer `findByType` inspection remains synchronous. Focused
+lint fixtures prove that each configured rule detects its intended failure.
+
+Relative imports in API/contracts TypeScript use `.js` for NodeNext's emitted
+modules. Metro app imports omit the extension so platform resolution can select
+native/web adapters; a test may explicitly name the adapter it is exercising.
+Directly executed Node tooling names the actual runtime extension (`.mjs`, or `.ts`
+when Node executes that TypeScript directly). Keep public contract imports through
+`@justgo/contracts`; update imports without rewriting SQL or other data strings.
+
+Mobile Jest uses one worker locally and two in CI, configured in
+`apps/mobile/jest.config.cjs`; package scripts leave that choice to Jest. Workspace
+commands still run sequentially on the development Mac. Split suites keep tests
+beside their owner and reusable fixtures under mobile `test-support/` or API
+`tests/<capability>/fixtures/`. Preserve timer/subscription/query cleanup when
+extracting fixtures. The migration rehearsal remains one ordered test.
 
 ## Isolated database environment
 
@@ -108,9 +145,9 @@ state. Never suppress unexpected warnings or add arbitrary waits to hide races.
 `require()` and TypeScript import assignments, resolving relative traversal.
 Computed loader paths must become literal/reviewable. Literal assets, permitted
 Jest factories and guarded previews stay allowed; fixtures fail on parser errors.
-Production TypeScript's type-aware promise rules reject unhandled/misused promises
-and invalid awaits. `void` denotes intentional background ownership; it does not
-catch rejection. Controllers/query layers must already handle the failure.
+The type-aware lint rules above reject unhandled/misused promises and invalid
+awaits. `void` denotes intentional background ownership; it does not catch rejection.
+Controllers/query layers must already handle the failure.
 
 Keychain tests establish JS schema/module/error wiring, not native entitlement,
 iCloud synchronization or physical recovery. When switching native worktrees,
@@ -166,8 +203,11 @@ production rate limit or cleanup authority changes.
 
 Seed dated activity inside the browser's intended local day using
 `e2e/support/seed-times.ts`; counting backward from wall-clock now crosses midnight
-in UTC CI and month-start dates require deliberate adjacent-month fixtures. Layout
-assertions wait for usable controls and retry fresh geometry after navigation;
+in UTC CI. Use deliberate previous-month fixtures when a case needs an older
+month, including on the first day of a month or year. Older-month calendar data is
+unavailable offline: open an older day online and await its entries before testing
+the transition to its offline message. Layout assertions wait for usable controls
+and retry fresh geometry after navigation;
 missing/detached controls keep failing. Preserve alignment limits rather than adding
 sleeps or weakening assertions.
 
@@ -177,6 +217,34 @@ only masked UI failure screenshots are permitted. Reports must include a nonempt
 `index.html`; CI uploads report/attachments and treats missing required output as
 failure. The repository bundle is rebuilt with pinned esbuild; an ignored prior
 artifact is never a prerequisite.
+
+## Production exported-web smoke
+
+Build the ordinary production web export, then run the independent smoke suite:
+
+```sh
+npm run export:web -w @justgo/mobile
+npm run test:exported-web
+```
+
+The smoke requires the resulting `apps/mobile/dist/index.html`. It starts its own
+loopback static server at `127.0.0.1:8093`; `JUSTGO_EXPORTED_WEB_PORT` may select a
+different unprivileged port. It never reuses an existing server. The server serves
+exported assets and falls back to `index.html` for route navigation, rejecting API
+paths, hidden files and paths outside the export directory. No API/database, journey
+fixture flags or account creation are prerequisites.
+
+The request fence permits only that static origin and rejects every `/v1` request.
+The suite checks supporting routes, unknown-link recovery, absent development
+controls, browser errors and asset failures without sending account credentials.
+It has its own Playwright configuration and a five-minute suite limit; the regular
+journey configuration excludes this spec and has a twenty-minute suite limit.
+
+Reports are `.local/exported-web-report/index.html` and
+`.local/exported-web-results/`. Traces, video and automatic screenshots are off.
+Run the smoke before `export:ios`, which replaces the same default `dist/` output.
+This checks the exported browser app and static assets; native/device evidence
+remains separate.
 
 ## Interactive browser and native evidence
 
