@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { seedStartTimes } from '../../e2e/support/seed-times.ts';
+import { seedDay, seedStartTimes } from '../../e2e/support/seed-times.ts';
 
 const start = Date.UTC(2026, 9, 15);
 const end = start + 86_400_000;
@@ -41,3 +41,21 @@ test('seeding refuses when the day cannot hold distinct past starts', () => {
     /Cannot seed 41 distinct starts/,
   );
 });
+
+for (const [year, month, date] of [
+  [2026, 0, 1],
+  [2026, 10, 1],
+  [2026, 10, 17],
+  [2028, 2, 1],
+]) {
+  test(`previous-month activity stays visible after one month step from ${year}-${month + 1}-${date}`, () => {
+    const now = new Date(year, month, date, 0, 3).getTime();
+    const day = seedDay('previous-month', now);
+    const expected = new Date(year, month, 0);
+    assert.equal(day.start, expected.getTime());
+    assert.equal(day.end, new Date(year, month, 1).getTime());
+    const [startedAt] = seedStartTimes(1, day);
+    assert.ok(startedAt >= day.start && startedAt < day.end);
+    assert.ok(startedAt < now);
+  });
+}

@@ -1,6 +1,10 @@
 import type { z } from 'zod';
-import { ApiError, createHttpClient, type HttpMethod } from '../../lib/http';
-export { ApiError as IdentityClientError } from '../../lib/http';
+import {
+  ApiError,
+  createHttpClient,
+  type HttpMethod,
+} from '../../lib/network/http';
+export { ApiError as IdentityClientError } from '../../lib/network/http';
 export interface IdentityApi {
   request<T>(
     method: HttpMethod,

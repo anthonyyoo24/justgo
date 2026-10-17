@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { HttpMethod } from '../../lib/http';
+import type { HttpMethod } from '../../lib/network/http';
 import { IdentityController } from './controller';
 import { IdentityClientError, type IdentityApi } from './api';
 import {

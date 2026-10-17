@@ -13,7 +13,7 @@ import {
 } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
-import { ChallengeActivityProvider } from '../features/challenges/ChallengeActivityProvider';
+import { ChallengeActivityProvider } from '../features/challenges/active/ChallengeActivityProvider';
 import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
 import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider';
 import { welcomeBackgroundColor } from '../app-support/identity/welcome/welcome-artwork';
@@ -88,25 +88,34 @@ function Navigation() {
         },
       }}
     >
-      <Stack.Screen name="index" />
+      <Stack.Screen name="access" />
       <Stack.Protected guard={welcome}>
         <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       {/* Removing these routes also removes the deleted account's Back history. */}
       <Stack.Protected guard={!welcome}>
         <Stack.Screen name="settings" />
-        <Stack.Screen name="export-data" />
         <Stack.Screen name="delete-account" />
         <Stack.Screen name="recovery" />
-        <Stack.Screen name="account/[tool]" />
+        <Stack.Screen name="account/recover" />
+        <Stack.Screen name="account/keys" />
+        <Stack.Screen name="account/devices" />
+        <Stack.Screen name="account/transfer" />
+        <Stack.Screen name="account/troubleshooting" />
       </Stack.Protected>
       <Stack.Protected
         guard={!identity.deletionStatus && !awaitingAccess && access.verified}
       >
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="challenge" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="success" />
-        <Stack.Screen name="reflection" options={{ gestureEnabled: false }} />
+        <Stack.Screen
+          name="(challenge)/challenge"
+          options={{ gestureEnabled: false }}
+        />
+        <Stack.Screen name="(challenge)/success" />
+        <Stack.Screen
+          name="(challenge)/reflection"
+          options={{ gestureEnabled: false }}
+        />
       </Stack.Protected>
       <Stack.Protected guard={!welcome && __DEV__}>
         <Stack.Screen name="preview" />

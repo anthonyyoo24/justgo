@@ -12,7 +12,7 @@ jest.mock('../../features/progress/day-details/entries/useEntryMotion', () =>
     '../../features/progress/day-details/entries/useEntryMotion.ts',
   ),
 );
-jest.mock('../../features/challenges/DeckPreview', () => ({
+jest.mock('./challenges/DeckPreview', () => ({
   DeckPreview: ({ onCompleted }: { onCompleted: () => void }) => {
     const { Pressable, Text } = require('react-native');
     return (

@@ -2,7 +2,7 @@
 
 # Phase 08A — Structure, docs & tooling cleanup
 
-**Status:** In progress — documentation and structure cleanup.
+**Status:** Local implementation ready — hosted CI, owner review and approved cleanup remain open.
 
 ## Outcome
 
@@ -51,11 +51,11 @@ The repository is easier and cheaper to work in. Routes, folders and documentati
 ## Ready to hand off when
 
 - [x] Documentation matches step 1: listed files deleted or archived, the plan split with a working stub, architecture/testing docs describe the current system, the handoff index is a table and every changed internal link resolves.
-- [ ] Every URL has one route file, typed routes are on and checked in CI, account pages are static files, and simulator checks pass for launch, sign-out, account switching and the challenge flow.
-- [ ] The folder guide matches the tree on disk and an architecture test fails when a listed path is missing; moves preserve behavior with passing `npm run check`, `npm run test:db` and browser checks.
-- [ ] The OpenAPI document is absent from the exported iOS bundle and a test keeps its paths aligned with registered routes; shared API plumbing lives in `src/http/`.
+- [x] Every URL has one route file, typed routes are on and checked in CI, account pages are static files, and simulator checks pass for launch, sign-out, account switching and the challenge flow.
+- [x] The folder guide matches the tree on disk and an architecture test fails when a listed path is missing; moves preserve behavior with passing `npm run check`, `npm run test:db` and browser checks.
+- [x] The OpenAPI document is absent from the exported iOS bundle and a test keeps its paths aligned with registered routes; shared API plumbing lives in `src/http/`.
 - [ ] CI runs in parallel jobs with each suite once, timeouts, pinned actions and dependency updates, and hosted checks pass for the pushed commit.
-- [ ] Save the phase handoff with exact changes, verification evidence and any explicit deferrals; link it from the handoff index.
+- [x] Save the phase handoff with exact changes, verification evidence and any explicit deferrals; link it from the handoff index.
 
 ## Open gates for Phase 11
 

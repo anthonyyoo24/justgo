@@ -100,7 +100,7 @@ identity retention function; and the October 16 pre-merge stability fixes.
   items; a persisted deleted marker prevents automatic replacement accounts.
   Binaries without item-scoped Keychain removal refuse before the request.
 - Export never contains recovery keys, session tokens or request diagnostics.
-- Logs use the allowlisted serializers in `apps/api/src/diagnostics.ts`. The
+- Logs use the allowlisted serializers in `apps/api/src/http/diagnostics.ts`. The
   deletion log test fails if tokens, credentials, owner IDs, bodies, URLs or raw
   error messages appear.
 - The crash screen renders outside every provider and never shows the error's

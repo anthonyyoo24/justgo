@@ -25,6 +25,10 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | Implemented path                                                 | Owner                                                                        |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | apps/mobile/src/app/                                             | Route files and layouts; composition only.                                   |
+| apps/mobile/src/app/access.tsx                                   | Identity restoration and access gate at `/access`.                           |
+| apps/mobile/src/app/(tabs)/                                      | Home at `/` and Progress, with the shared tab layout.                        |
+| apps/mobile/src/app/(challenge)/                                 | Challenge, Success and reflection routes; no extra navigator/layout.         |
+| apps/mobile/src/app/account/                                     | Static recover, keys, devices, transfer and troubleshooting route adapters.  |
 | apps/mobile/src/app-support/access/                              | Startup/access gate.                                                         |
 | apps/mobile/src/app-support/identity/                            | Identity controller, transport, vault and storage.                           |
 | apps/mobile/src/app-support/identity/account/                    | Account/recovery hub, tools, device transfer and key management.             |
@@ -33,10 +37,13 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/app-support/providers/                           | App, account and activity-runtime composition/lifecycle.                     |
 | apps/mobile/src/app-support/fallbacks/                           | Root crash and unknown-link recovery UI.                                     |
 | apps/mobile/src/app-support/saving/                              | App-wide saving/recovery feedback.                                           |
-| apps/mobile/src/app-support/settings/                            | Settings screen and preference rows.                                         |
-| apps/mobile/src/app-support/settings/export/                     | Export collection/coordinator and Settings action.                           |
-| apps/mobile/src/app-support/settings/information/                | Support/About/legal/social destinations and failure feedback.                |
-| apps/mobile/src/features/challenges/                             | Venue/deck orchestration, card UI, active countdown/modal and Success.       |
+| apps/mobile/src/features/settings/                               | Settings screen and preference rows.                                         |
+| apps/mobile/src/features/settings/export/                        | Export collection/coordinator and Settings action.                           |
+| apps/mobile/src/features/settings/information/                   | Support/About/legal/social destinations and failure feedback.                |
+| apps/mobile/src/features/challenges/                             | Challenge orchestration and controller.                                      |
+| apps/mobile/src/features/challenges/deck/                        | Venue tabs, artwork, deck cards and deck model.                              |
+| apps/mobile/src/features/challenges/active/                      | Active countdown, modal, native handoff and lifecycle.                       |
+| apps/mobile/src/features/challenges/success/                     | Success screen and presentation.                                             |
 | apps/mobile/src/features/reflections/                            | Post-challenge feeling/text submission and keyboard composition.             |
 | apps/mobile/src/features/progress/                               | Summary/calendar/day-detail screen and query composition.                    |
 | apps/mobile/src/features/progress/calendar/                      | Calendar presentation and loading state.                                     |
@@ -47,8 +54,11 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/data/activity/sync/                              | Ordered delivery, acknowledgements, transport and retry decisions.           |
 | apps/mobile/src/data/activity/progress/                          | Independent reads, local/backend reconciliation and bounded read cache.      |
 | apps/mobile/src/components/                                      | Reusable UI, including Settings primitives and scalable text.                |
-| apps/mobile/src/lib/                                             | Shared network/account-client and general helpers.                           |
-| apps/mobile/src/platform/                                        | Native/web connectivity and modal adapters plus capability groups below.     |
+| apps/mobile/src/lib/                                             | General reusable helpers.                                                    |
+| apps/mobile/src/lib/network/                                     | Validated HTTP, account client, public URL and deadline helpers.             |
+| apps/mobile/src/platform/                                        | Reusable native/web capability groups.                                       |
+| apps/mobile/src/platform/connectivity/                           | Native/web connection observers and tests.                                   |
+| apps/mobile/src/platform/modals/                                 | Native/web modal isolation adapters and tests.                               |
 | apps/mobile/src/platform/export/                                 | Native share/browser download and temporary-file cleanup.                    |
 | apps/mobile/src/platform/haptics/                                | Preference/lifecycle ownership and Pulsar adapters.                          |
 | apps/mobile/src/platform/haptics/completion/                     | Batter default, session-only development override and playback cancellation. |
@@ -57,6 +67,13 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/platform/toast/                                  | Native/browser notification adapters.                                        |
 | apps/mobile/src/theme/                                           | Typed design tokens.                                                         |
 | apps/mobile/src/dev/                                             | Guarded presentation fixtures and haptics comparison UI.                     |
+| apps/mobile/src/dev/previews/challenges/                         | Developer-only deck and completed/give-up previews.                          |
+
+Wire-only `api.ts` modules live with the challenge catalog, Settings export,
+app-support access and shared data/activity/progress reads. Their composing
+controllers, providers and queries retain hydration, clocks, cursor validation,
+account fencing and cache acceptance. `calendar-dates.ts` owns calendar/date
+calculations separately from the `calendar/` presentation group.
 
 Features may use shared data and app-support providers; data may use shared
 lib/platform/contracts but imports no feature, app-support, route or visual code.
@@ -72,19 +89,21 @@ capability changes need a separately authorized compatible build.
 
 ## API and contracts
 
-| Implemented path                 | Responsibility                                                              |
-| -------------------------------- | --------------------------------------------------------------------------- |
-| apps/api/src/identity/           | Session, credential, recovery/transfer and deletion-lock boundaries.        |
-| apps/api/src/access/             | Server-authorized access and staging-only beta admission.                   |
-| apps/api/src/challenges/         | Stable catalog reads.                                                       |
-| apps/api/src/attempts/           | Canonical completion creation and reflection PATCH/replay.                  |
-| apps/api/src/progress/           | Independent summary/month/day resources.                                    |
-| apps/api/src/privacy/            | Owner-isolated export and permanent account deletion.                       |
-| apps/api/src/db/                 | Restricted pools, transaction ownership and current single schema.          |
-| apps/api/tests/                  | Application/error wiring and capability/database/harness integration cases. |
-| apps/api/scripts/                | Migration/provisioning and separate loopback fixture entrypoints.           |
-| apps/api/drizzle/                | Ordered registered SQL migrations and immutable generated metadata.         |
-| packages/contracts/src/activity/ | Catalog, completion/reflection and Progress resource contracts.             |
+| Implemented path                 | Responsibility                                                            |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| apps/api/src/identity/           | Session, credential, recovery/transfer and deletion-lock boundaries.      |
+| apps/api/src/access/             | Server-authorized access and staging-only beta admission.                 |
+| apps/api/src/challenges/         | Stable catalog reads.                                                     |
+| apps/api/src/attempts/           | Canonical completion creation and reflection PATCH/replay.                |
+| apps/api/src/progress/           | Independent summary/month/day resources.                                  |
+| apps/api/src/account-export/     | Owner-isolated export routes and service.                                 |
+| apps/api/src/http/               | Shared errors, bearer/validation, response handling and safe diagnostics. |
+| apps/api/src/db/                 | Restricted pools, transaction ownership and current single schema.        |
+| apps/api/tests/                  | Mirrored domain/db/http/script tests and fixtures.                        |
+| apps/api/scripts/                | Migration/provisioning and separate loopback fixture entrypoints.         |
+| apps/api/drizzle/                | Ordered registered SQL migrations and immutable generated metadata.       |
+| packages/contracts/src/          | Public error/operational schemas; API-only OpenAPI document entry.        |
+| packages/contracts/src/activity/ | Catalog, completion/reflection and Progress resource contracts.           |
 
 Runtime and migration credentials remain separate. Mobile and API import the
 public contracts package and do not import each other's implementations. The
@@ -104,6 +123,14 @@ Source design material lives under the repository-level design/ tree. Third-part
 screen references and routine screenshots/recordings are preserved in ignored
 .local/ storage; output/ is ignored entirely. They are not deployment inputs or
 CI prerequisites. Committed visual evidence requires explicit owner direction.
+
+The mobile workspace's generated `.expo/types/router.d.ts` and `expo-env.d.ts`
+remain ignored. Its typecheck regenerates and validates route declarations before
+compiling app source and the route type cases in `test-support/route-types.ts`.
+`scripts/quality/routes.test.mjs` checks the installed Router's URL inventory and
+the root stack's registrations against the on-disk route tree.
+`scripts/quality/folder-structure.test.mjs` verifies these documented owners
+exist and keeps the approved mobile responsibility groups in the guide.
 
 ## Placement and move rules
 

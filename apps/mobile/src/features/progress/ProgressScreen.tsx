@@ -13,7 +13,7 @@ import {
   progressMetrics,
 } from '../../data/activity/progress/progress';
 import { useProgressReads } from '../../data/activity/progress/useProgressReads';
-import { moveMonth } from './calendar';
+import { moveMonth } from './calendar-dates';
 import { ProgressView } from './ProgressView';
 import { displayEntry } from './types';
 import { useDayReflection } from './day-details/reflection-editor/useDayReflection';

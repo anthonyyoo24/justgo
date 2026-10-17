@@ -18,14 +18,19 @@
 !packages/contracts/tsconfig.json
 !packages/contracts/tsconfig.build.json
 !packages/contracts/src
-!packages/contracts/src/index.ts
-!packages/contracts/src/identity.ts
-!packages/contracts/src/access.ts
-!packages/contracts/src/data-export.ts
-!packages/contracts/src/openapi.ts
+!packages/contracts/src/**
 
-!packages/contracts/src/activity
-!packages/contracts/src/activity/challenges.ts
-!packages/contracts/src/activity/attempts.ts
-!packages/contracts/src/activity/reflections.ts
-!packages/contracts/src/activity/progress.ts
+# Final exclusions also apply inside the production source folder rules.
+**/*.test.*
+**/*.spec.*
+**/__tests__/
+**/__mocks__/
+**/test-support/
+**/.env
+**/.env.*
+**/*.key
+**/*.pem
+**/*.p8
+**/*.p12
+**/*.mobileprovision
+**/dist/

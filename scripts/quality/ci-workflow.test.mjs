@@ -1,73 +1,180 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
+import {
+  action,
+  commands,
+  jobs,
+  rootPackage,
+  workflow,
+} from './ci-workflow-fixture.mjs';
 
-const workflow = readFileSync(
-  new URL('../../.github/workflows/ci.yml', import.meta.url),
-  'utf8',
-);
-const rootPackage = JSON.parse(
-  readFileSync(new URL('../../package.json', import.meta.url)),
-);
 const [triggers] = workflow.split(/^permissions:$/m);
-const jobs = Object.fromEntries(
-  workflow
-    .split(/^jobs:$/m)[1]
-    .split(/^ {2}(?=[\w-]+:$)/m)
-    .slice(1)
-    .map((job) => [job.slice(0, job.indexOf(':')), job]),
-);
-// Single-line run commands, from both `- run:` steps and named steps.
-const runs = (job) =>
-  [...job.matchAll(/^ {6}(?:- | {2})run: (.+)$/gm)].map((match) => match[1]);
+const producers = ['static', 'unit', 'database', 'journeys', 'exports'];
 
-test('pushes run only for merges to main while pull requests remain', () => {
+test('pushes run only for main, PRs cancel older revisions, and main results stay independent', () => {
   assert.match(triggers, /^ {2}push:\n {4}branches: \[main\]$/m);
   assert.match(triggers, /^ {2}pull_request:$/m);
   assert.doesNotMatch(triggers, /schedule:/);
-});
-
-test('newer pull-request runs cancel older ones without grouping main commits together', () => {
   assert.match(workflow, /^ {2}cancel-in-progress: true$/m);
   const group = workflow.match(/^ {2}group: (.+)$/m)?.[1];
-  assert.ok(group, 'concurrency needs a group');
   assert.match(group, /github\.event\.pull_request\.number \|\| github\.sha/);
   assert.match(group, /github\.event_name/);
+  assert.match(workflow, /^permissions:\n {2}contents: read$/m);
 });
 
-test('Expo Doctor runs first in the single checks job', () => {
-  assert.deepEqual(Object.keys(jobs), ['checks']);
-  const commands = runs(jobs.checks);
-  assert.ok(commands.indexOf('npm run doctor -w @justgo/mobile') >= 0);
+test('independent bounded producer jobs feed one always-evaluated required status', () => {
+  assert.deepEqual(Object.keys(jobs), [...producers, 'checks']);
+  for (const name of producers) assert.doesNotMatch(jobs[name], /^ {4}needs:/m);
+  for (const job of Object.values(jobs)) {
+    assert.match(job, /^ {4}timeout-minutes: [1-9]\d*$/m);
+    assert.match(job, /persist-credentials: false/);
+    assert.match(job, /uses: \.\/\.github\/actions\/setup-node/);
+  }
+  assert.match(
+    jobs.checks,
+    /^ {4}needs: \[static, unit, database, journeys, exports\]$/m,
+  );
+  assert.match(jobs.checks, /^ {4}if: always\(\)$/m);
+  assert.match(
+    jobs.checks,
+    /run: node scripts\/quality\/api-coverage.mjs require-jobs/,
+  );
+  assert.match(jobs.checks, /JUSTGO_CI_RESULTS: \$\{\{ toJSON\(needs\) \}\}/);
+});
+
+test('static checks retain fresh route typechecking and audit only API production dependencies', () => {
+  const runs = commands(jobs.static);
   assert.ok(
-    commands.indexOf('npm run doctor -w @justgo/mobile') <
-      commands.indexOf('npm run check:static'),
+    runs.indexOf('npm run doctor -w @justgo/mobile') <
+      runs.indexOf('npm run check:static'),
+  );
+  assert.ok(
+    runs.includes(
+      'npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low',
+    ),
+  );
+  assert.match(rootPackage.scripts['check:static'], /npm run typecheck/);
+  assert.match(
+    rootPackage.scripts['check:static'],
+    /npm run test:architecture$/,
   );
 });
 
-test('each unit and database suite runs once, through coverage', () => {
-  const commands = runs(jobs.checks);
-  assert.ok(commands.includes('npm run check:static'));
-  assert.ok(commands.includes('npm run test:coverage'));
-  assert.ok(commands.includes('npm run db:migrate'));
-  for (const command of commands) {
-    assert.doesNotMatch(command, /npm run check($| )/);
-    assert.doesNotMatch(command, /npm (run )?test($| )|test:db/);
-  }
-  assert.doesNotMatch(
-    rootPackage.scripts['check:static'],
-    /doctor|--workspaces|test:db|test:coverage/,
+test('unit and database suites run once and API coverage merges without rerunning tests', () => {
+  assert.deepEqual(commands(jobs.unit), [
+    'npm run test:coverage -w @justgo/mobile',
+    'npm run test:coverage -w @justgo/contracts',
+    'node scripts/quality/api-coverage.mjs unit',
+  ]);
+  assert.ok(
+    commands(jobs.database).includes(
+      'node scripts/quality/api-coverage.mjs database',
+    ),
+  );
+  for (const job of Object.values(jobs))
+    assert.doesNotMatch(
+      job,
+      /run: npm run (?:check$|test$|test:db$|test:migrations$|test:coverage$)/m,
+    );
+  assert.match(
+    jobs.checks,
+    /node scripts\/quality\/api-coverage.mjs merge\n {10}npm run coverage:check/,
   );
   assert.match(rootPackage.scripts['test:coverage'], /--workspaces/);
 });
 
-test('the local check still runs Doctor, the static checks and every workspace test', () => {
+test('database and journey prerequisites share isolated roles without ignored env files', () => {
+  assert.match(jobs.database, /^ {4}env: &database-test-env$/m);
+  assert.match(
+    jobs.database,
+    /justgo_runtime:runtime-ci-only@localhost:5432\/justgo_test/,
+  );
+  assert.match(
+    jobs.database,
+    /justgo_migrator:migration-ci-only@localhost:5432\/justgo_test/,
+  );
+  assert.match(jobs.database, /DATABASE_SSL: disable/);
+  assert.match(jobs.journeys, /^ {4}env: \*database-test-env$/m);
+  assert.match(jobs.journeys, /^ {4}services: \*postgres-service$/m);
+  for (const name of ['database', 'journeys'])
+    assert.match(jobs[name], /uses: \.\/\.github\/actions\/setup-database/);
+  assert.match(jobs.database, /- run: npm run db:migrate/);
+  // The journey wrapper validates its environment and migrates before service start.
+  assert.doesNotMatch(action('setup-database'), /db:migrate/);
+  assert.match(action('setup-database'), /apps\/api\/scripts\/provision.sql/);
+  assert.match(jobs.database, /postgresql-client-17/);
+});
+
+test('browser cache is versioned, installs system dependencies on hits, and exports smoke uses web output', () => {
+  const setup = action('setup-playwright');
+  assert.match(setup, /require\('@playwright\/test\/package.json'\).version/);
+  assert.match(setup, /path: ~\/\.cache\/ms-playwright/);
+  assert.match(
+    setup,
+    /key: \$\{\{ runner.os \}\}-playwright-\$\{\{ steps.playwright.outputs.version \}\}/,
+  );
+  assert.match(setup, /- run: npx playwright install-deps chromium/);
+  assert.match(
+    setup,
+    /if: steps.browser-cache.outputs.cache-hit != 'true'\n {6}run: npx playwright install chromium/,
+  );
+  for (const name of ['journeys', 'exports'])
+    assert.match(jobs[name], /uses: \.\/\.github\/actions\/setup-playwright/);
+  assert.ok(
+    jobs.exports.indexOf('npm run export:web -w @justgo/mobile') <
+      jobs.exports.indexOf('npm run test:exported-web'),
+  );
+  assert.ok(
+    jobs.exports.indexOf('npm run test:exported-web') <
+      jobs.exports.indexOf('npm run export:ios -w @justgo/mobile'),
+  );
+});
+
+test('every external action has an immutable reviewed-release pin and updates are configured', () => {
+  const definitions = [
+    workflow,
+    action('setup-node'),
+    action('setup-database'),
+    action('setup-playwright'),
+  ];
+  let external = 0;
+  for (const source of definitions)
+    for (const [, reference] of source.matchAll(/\buses: ([^\s]+)/g)) {
+      if (reference.startsWith('./')) continue;
+      external++;
+      assert.match(reference, /^actions\/[\w-]+@[a-f0-9]{40}$/);
+    }
+  assert.ok(external > 5);
+  const updates = readFileSync(
+    new URL('../../.github/dependabot.yml', import.meta.url),
+    'utf8',
+  );
+  assert.match(updates, /package-ecosystem: github-actions/);
+  assert.match(updates, /package-ecosystem: npm/);
+  assert.equal([...updates.matchAll(/interval: weekly/g)].length, 2);
+});
+
+test('Jest uses one local worker and two on CI without changing local verification ordering', () => {
+  const source = readFileSync(
+    new URL('../../apps/mobile/jest.config.cjs', import.meta.url),
+    'utf8',
+  );
+  for (const [CI, expected] of [
+    [undefined, 1],
+    ['true', 2],
+  ]) {
+    const module = { exports: {} };
+    runInNewContext(source, {
+      module,
+      process: { env: { CI } },
+      require: { resolve: (value) => value },
+    });
+    assert.equal(module.exports.maxWorkers, expected);
+  }
   assert.equal(
     rootPackage.scripts.check,
     'npm run doctor -w @justgo/mobile && npm run check:static && npm run test --workspaces',
-  );
-  assert.match(
-    rootPackage.scripts['check:static'],
-    /npm run test:architecture$/,
   );
 });

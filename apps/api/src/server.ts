@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import { buildApp } from './build-app.js';
 import { readConfig } from './config.js';
 import { checkDatabase, createDatabase } from './db/client.js';
-import { loggerOptions } from './diagnostics.js';
+import { loggerOptions } from './http/diagnostics.js';
 import { IdentityService } from './identity/service.js';
 import { createBetaAccess } from './access/beta-access.js';
 

@@ -76,11 +76,12 @@ it('keeps showing the error screen when a retry fails again', async () => {
   ).toBe(true);
 });
 
-it('shows unknown links as not found and returns to the root route', async () => {
+it('shows unknown links as not found and enters the access gate', async () => {
   const navigation = renderRouter(
     {
       _layout: StackLayout,
-      index: () => <Text>Access gate</Text>,
+      index: () => <Text>Home ready</Text>,
+      access: () => <Text>Access gate ready</Text>,
       '+not-found': NotFoundRoute,
     },
     { initialUrl: '/no-such-page' },
@@ -90,7 +91,7 @@ it('shows unknown links as not found and returns to the root route', async () =>
     screen.getByText('This link doesn’t open anything in JustGO.'),
   ).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: 'Go home' }));
-  await waitFor(() => expect(navigation.getPathname()).toBe('/'));
-  expect(screen.getByText('Access gate')).toBeTruthy();
+  await waitFor(() => expect(navigation.getPathname()).toBe('/access'));
+  expect(screen.getByText('Access gate ready')).toBeTruthy();
   expect(screen.queryByRole('header', { name: 'Page not found' })).toBeNull();
 });

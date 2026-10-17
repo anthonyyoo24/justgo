@@ -111,6 +111,10 @@ scheduling are deferred beyond first release. Feature requests use the private
 support contact flow rather than a public board. This records the original owner
 decisions moved from the plan; it grants no deployment/upload/publication approval.
 
+Anthony declined Tminus and Lance for now and retained the existing EAS release
+workflow. This decision is recovered from the preserved native-billing planning
+stash; no submission service was installed or connected.
+
 ## October 15 measurement and app changes
 
 Anthony approved the explicit analytics event allowlist and analytics-only start_id
@@ -128,6 +132,12 @@ Phase 08A moves plan scope into named phase files, implementation results into
 handoffs, architecture into concern-based guides, and unbuilt designs into
 proposals. The original Phase 07 API/persistence discussion is archived; current
 behavior remains in ACTIVITY_DATA.md. No product decision changes in this move.
+
+The approved Phase 08A CI split places fresh Expo Doctor validation first in the
+static-checks job. Five parallel producers feed the required `checks` status;
+API coverage merges execution maps from the disjoint unit/database producers
+before applying the existing floors. This replaces the earlier single-job layout.
+The separate standalone/weekly Doctor job remains deferred.
 
 ## October 17 Phase 08A review split
 

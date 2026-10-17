@@ -5,15 +5,74 @@ on:
   pull_request:
 permissions:
   contents: read
-# A newer push to a pull request cancels its older run. Merges to main are
-# grouped by commit, so every merged commit keeps its own complete result.
+# New PR pushes replace older runs; main commits keep independent results.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 jobs:
-  checks:
+  static:
     runs-on: ubuntu-24.04
-    services:
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - run: npm run doctor -w @justgo/mobile
+      # Mobile typechecking generates and verifies fresh Expo route declarations
+      # without starting Metro, including on clean CI runners.
+      - run: npm run check:static
+      - name: Audit API production dependencies
+        run: npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - name: Collect mobile coverage
+        id: mobile-coverage
+        run: npm run test:coverage -w @justgo/mobile
+      - name: Upload mobile coverage
+        if: always() && (steps.mobile-coverage.outcome == 'success' || steps.mobile-coverage.outcome == 'failure')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-mobile
+          path: coverage/mobile/
+          if-no-files-found: error
+      - name: Collect contracts coverage
+        id: contracts-coverage
+        run: npm run test:coverage -w @justgo/contracts
+      - name: Upload contracts coverage
+        if: always() && (steps.contracts-coverage.outcome == 'success' || steps.contracts-coverage.outcome == 'failure')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-contracts
+          path: coverage/contracts/
+          if-no-files-found: error
+      - name: Collect API unit coverage
+        id: api-unit-coverage
+        run: node scripts/quality/api-coverage.mjs unit
+      - name: Upload API unit coverage
+        if: always() && (steps.api-unit-coverage.outcome == 'success' || steps.api-unit-coverage.outcome == 'failure')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-api-unit
+          path: |
+            coverage/api-unit/
+            coverage/api-blobs/unit.json
+          if-no-files-found: error
+  database:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env: &database-test-env
+      DATABASE_URL: postgresql://justgo_runtime:runtime-ci-only@localhost:5432/justgo_test
+      MIGRATION_DATABASE_URL: postgresql://justgo_migrator:migration-ci-only@localhost:5432/justgo_test
+      DATABASE_SSL: disable
+      JUSTGO_PG_BIN: /usr/lib/postgresql/17/bin
+    services: &postgres-service
       postgres:
         image: postgres:17
         env:
@@ -24,62 +83,117 @@ jobs:
           --health-cmd pg_isready --health-interval 5s
           --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm install -g npm@11.16.0
-      - run: npm ci
-      - run: npm run doctor -w @justgo/mobile
-      - run: npm run check:static
+      - uses: ./.github/actions/setup-node
       - name: Install PostgreSQL 17 snapshot tools
         run: |
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y postgresql-client-17
           /usr/lib/postgresql/17/bin/pg_dump --version
-      - name: Provision isolated CI roles
-        env:
-          PGPASSWORD: local-ci-only
-        run: |
-          psql -h localhost -U postgres -d justgo_test -v ON_ERROR_STOP=1 -f apps/api/scripts/provision.sql
-          psql -h localhost -U postgres -d justgo_test -v ON_ERROR_STOP=1 -c "alter role justgo_runtime password 'runtime-ci-only'; alter role justgo_migrator password 'migration-ci-only';"
+      - uses: ./.github/actions/setup-database
       - run: npm run db:migrate
-        env: &database-test-env
-          DATABASE_URL: postgresql://justgo_runtime:runtime-ci-only@localhost:5432/justgo_test
-          MIGRATION_DATABASE_URL: postgresql://justgo_migrator:migration-ci-only@localhost:5432/justgo_test
-          DATABASE_SSL: disable
-          JUSTGO_PG_BIN: /usr/lib/postgresql/17/bin
-      # One run of every unit, component, contract and database suite plus the
-      # migration rehearsal, collecting and enforcing coverage at the same time.
-      - name: Run all workspace tests with all-source coverage (includes PostgreSQL services)
-        id: coverage
-        run: npm run test:coverage
-        env: *database-test-env
-      - name: Upload coverage reports
-        if: always() && (steps.coverage.outcome == 'success' || steps.coverage.outcome == 'failure')
-        uses: actions/upload-artifact@v4
+      # Includes every integration suite and the migration rehearsal exactly once.
+      - name: Collect API database coverage
+        id: api-database-coverage
+        run: node scripts/quality/api-coverage.mjs database
+      - name: Upload API database coverage
+        if: always() && (steps.api-database-coverage.outcome == 'success' || steps.api-database-coverage.outcome == 'failure')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: coverage
-          path: coverage/
+          name: coverage-api-database
+          path: |
+            coverage/api-database/
+            coverage/api-blobs/database.json
           if-no-files-found: error
-      - name: Install journey browser
-        run: npx playwright install --with-deps chromium
-      - name: Verify full app/API/database journeys and recovery
+  journeys:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env: *database-test-env
+    services: *postgres-service
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - uses: ./.github/actions/setup-database
+      - uses: ./.github/actions/setup-playwright
+      - name: Verify app/API/database journeys
         run: |
           npm run test:journey
           test -s .local/journey-report/index.html
-        env: *database-test-env
       - name: Upload journey results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: journey-results
           path: |
             .local/journey-results/
             .local/journey-report/
+          include-hidden-files: true
           if-no-files-found: ignore
+  exports:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
       - run: npm run export:web -w @justgo/mobile
+      - uses: ./.github/actions/setup-playwright
+      - name: Verify exported web build
+        run: |
+          npm run test:exported-web
+          test -s .local/exported-web-report/index.html
+      - name: Upload exported web results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: exported-web-results
+          path: |
+            .local/exported-web-results/
+            .local/exported-web-report/
+          include-hidden-files: true
+          if-no-files-found: ignore
       - run: npm run export:ios -w @justgo/mobile
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: [static, unit, database, journeys, exports]
+    if: always()
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Require every producer to pass
+        env:
+          JUSTGO_CI_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/quality/api-coverage.mjs require-jobs
+      - uses: ./.github/actions/setup-node
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: coverage-mobile
+          path: coverage/mobile/
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: coverage-contracts
+          path: coverage/contracts/
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: coverage-api-*
+          path: coverage/
+          merge-multiple: true
+      - name: Merge API execution maps and enforce all coverage floors
+        id: coverage
+        run: |
+          node scripts/quality/api-coverage.mjs merge
+          npm run coverage:check
+      - name: Upload combined coverage reports
+        if: always() && (steps.coverage.outcome == 'success' || steps.coverage.outcome == 'failure')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: error

@@ -1,5 +1,5 @@
 import { AccountRepository } from '../repository';
-import { ApiError } from '../../../lib/http';
+import { ApiError } from '../../../lib/network/http';
 import { journalSchema } from '../model';
 import { sparseRetryDelay } from './retry';
 import {

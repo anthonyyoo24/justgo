@@ -1,0 +1,12 @@
+name: Provision isolated CI database roles
+description: Provision the disposable PostgreSQL service without ignored environment files.
+runs:
+  using: composite
+  steps:
+    - name: Provision isolated roles
+      env:
+        PGPASSWORD: local-ci-only
+      run: |
+        psql -h localhost -U postgres -d justgo_test -v ON_ERROR_STOP=1 -f apps/api/scripts/provision.sql
+        psql -h localhost -U postgres -d justgo_test -v ON_ERROR_STOP=1 -c "alter role justgo_runtime password 'runtime-ci-only'; alter role justgo_migrator password 'migration-ci-only';"
+      shell: bash
