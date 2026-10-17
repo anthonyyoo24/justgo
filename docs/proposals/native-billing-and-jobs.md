@@ -40,7 +40,7 @@ A job is a task; its handler is our processing code. QStash stores a pending del
 | Product analytics after onboarding acceptance         | Accepted-scope, best-effort delivery with stable event IDs; no required queue                                                      |
 | Deletion/retention                                    | Bounded operations or provider retention settings; use QStash with durable cleanup status if vendor cleanup needs deferred retries |
 
-#### Subscription-event flow
+### Subscription-event flow
 
 1. RevenueCat sends an event such as a renewal, expiration, or refund. The ingress endpoint authenticates the webhook, validates its environment and customer mapping, and commits its unique provider/event reference and minimal replay context to `billing_events`. If durable capture fails, return a failure so the provider can retry.
 2. Publish the stored event reference to QStash and await acceptance. Return a successful HTTP response to RevenueCat after QStash accepts it, or immediately if this event was already processed. A pending duplicate still needs a confirmed handoff; it must not be discarded just because its database row exists. If publishing fails or its outcome is unknown, preserve dispatch status and return a retryable failure. Recording the QStash message ID is useful for tracing; a lost acknowledgement can still cause duplicate delivery.
@@ -53,7 +53,7 @@ QStash delivers at least once, so database constraints and idempotent processing
 
 Set a shared QStash flow-control key for billing work with measured concurrency/rate limits that leave database and provider capacity for interactive requests. QStash automatically starts eligible waiting deliveries within those limits. Its short deduplication window is not a replacement for permanent provider-event uniqueness. After exhausted retries, alert on the failed delivery, retain the unresolved business record, and support replay after diagnosis; observe the plan's dead-letter retention rather than treating that queue as permanent storage. [Flow control](https://upstash.com/docs/qstash/features/flowcontrol), [deduplication](https://upstash.com/docs/qstash/features/deduplication), [dead-letter queue](https://upstash.com/docs/qstash/features/dlq).
 
-#### Scheduled recovery and reconciliation
+### Scheduled recovery and reconciliation
 
 Implement both checks in Phase 07A before launch:
 

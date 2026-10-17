@@ -129,6 +129,18 @@ handoffs, architecture into concern-based guides, and unbuilt designs into
 proposals. The original Phase 07 API/persistence discussion is archived; current
 behavior remains in ACTIVITY_DATA.md. No product decision changes in this move.
 
+## October 17 Phase 08A review split
+
+Anthony approved publishing Phase 08A as two stacked pull requests rather than
+one pull request per implementation step. Documentation and design-source
+organization form the first comparison; the remaining implementation uses that
+branch as its base. Each comparison must remain within CodeRabbit's 300-file
+limit. Repository review configuration inherits the existing organization settings
+and allows automatic review against the documentation branch. Preserve separate
+move and behavior commits, validate both actual
+publication candidates, and retain all existing device and release gates.
+Merge approval remains a separate owner decision.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.
