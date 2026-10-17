@@ -90,7 +90,9 @@ tracked.
 The root `ErrorBoundary` renders `RouteErrorScreen` after an unhandled render error
 replaces the layout and its providers. It uses no app provider, hides private error
 text and retries by rendering the layout/providers again. Unknown links remain
-outside protected groups and replace themselves with Home when dismissed.
+outside protected groups. Their Go home action enters the unprotected `/access`
+gate, which resolves the current account/access destination. Replacing an unknown
+URL with the protected `/` can be a no-op when access is unavailable.
 
 ### Access verification
 

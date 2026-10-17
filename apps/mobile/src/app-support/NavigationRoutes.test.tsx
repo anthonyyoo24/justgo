@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
+import { fireEvent } from '@testing-library/react-native';
 import { router, Stack } from 'expo-router';
 import {
   act,
@@ -147,6 +148,22 @@ it.each(['/account/toString', '/account/unknown', '/export-data'])(
     expect(
       await screen.findByRole('header', { name: 'Page not found' }),
     ).toBeTruthy();
+  },
+);
+
+it.each([
+  [true, true, 'Home ready', '/'],
+  [false, true, 'We can’t verify access yet.', '/access'],
+  [false, false, 'Recovery ready', '/recovery'],
+] as const)(
+  'leaves an unknown URL through the access gate (verified=%s, account=%s)',
+  async (verified, hasAccount, destination, pathname) => {
+    mockSnapshot.access.verified = verified;
+    if (!hasAccount) mockSnapshot.identity.account = null;
+    const navigation = renderRouter(routes, { initialUrl: '/unknown-route' });
+    fireEvent.press(await screen.findByRole('button', { name: 'Go home' }));
+    expect(await screen.findByText(destination)).toBeTruthy();
+    expect(navigation.getPathname()).toBe(pathname);
   },
 );
 
