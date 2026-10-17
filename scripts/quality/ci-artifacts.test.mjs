@@ -1,48 +1,63 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { jobs, steps, property } from './ci-workflow-fixture.mjs';
 
-const workflow = readFileSync(
-  new URL('../../.github/workflows/ci.yml', import.meta.url),
-  'utf8',
-);
-const steps = workflow.split(/^ {6}- /m).slice(1);
-const collection = steps.find((step) =>
-  step.includes('run: npm run test:coverage\n'),
-);
-const upload = steps.find((step) =>
-  step.startsWith('name: Upload coverage reports\n'),
-);
-
-function property(step, name) {
-  return step?.match(new RegExp(`^        ${name}: (.+)$`, 'm'))?.[1];
-}
-
-// This workflow expression uses the shared JavaScript/GitHub Actions subset.
-// Read the real condition so reverting to always() reproduces the skipped-step bug.
-for (const [outcome, expected] of [
-  ['success', true],
-  ['failure', true],
-  ['skipped', false],
-  ['cancelled', false],
-  [undefined, false],
-]) {
-  test(`coverage upload eligibility after collection outcome ${outcome}`, () => {
+for (const [name, job] of Object.entries(jobs)) {
+  for (const upload of steps(job).filter((step) =>
+    /^name: Upload .*coverage/m.test(step),
+  )) {
     const condition = property(upload, 'if');
-    assert.ok(condition, 'coverage upload needs an explicit condition');
-    const coverageId = property(collection, 'id') ?? 'coverage';
-    const eligible = runInNewContext(condition, {
-      // A prior check may have failed, but completed coverage still needs upload.
-      always: () => true,
-      steps: { [coverageId]: { outcome } },
+    const producerId = condition?.match(/steps\.([\w-]+)\.outcome/)?.[1];
+    const collection = steps(job).find(
+      (step) => property(step, 'id') === producerId,
+    );
+    test(`${name}/${producerId} uploads only executed coverage and fails on missing reports`, () => {
+      assert.ok(collection, 'coverage upload references a producing step');
+      assert.match(upload, /^ {10}if-no-files-found: error$/m);
+      for (const [outcome, expected] of [
+        ['success', true],
+        ['failure', true],
+        ['skipped', false],
+        ['cancelled', false],
+        [undefined, false],
+      ]) {
+        // GitHub permits hyphens in property names; normalize that lexical difference.
+        const expression = condition.replace(/steps\.([\w-]+)/g, 'steps["$1"]');
+        assert.equal(
+          runInNewContext(expression, {
+            always: () => true,
+            steps: { [producerId]: { outcome } },
+          }),
+          expected,
+        );
+      }
     });
-    assert.equal(eligible, expected);
-  });
+  }
 }
 
-test('coverage uploads retain missing-report failures and reference their producing step', () => {
-  assert.ok(property(collection, 'id'), 'coverage collection needs a step id');
-  assert.match(upload, /^ {10}if-no-files-found: error$/m);
-  assert.match(upload, /^ {10}path: coverage\/$/m);
+test('the final job requires both API producers and preserves workspace report paths', () => {
+  for (const artifact of ['coverage-mobile', 'coverage-contracts'])
+    assert.match(jobs.checks, new RegExp(`name: ${artifact}`));
+  assert.match(jobs.checks, /pattern: coverage-api-\*/);
+  assert.match(jobs.checks, /merge-multiple: true/);
+  assert.match(jobs.checks, /path: coverage\/mobile\//);
+  assert.match(jobs.checks, /path: coverage\/contracts\//);
+  assert.match(jobs.unit, /coverage\/api-blobs\/unit.json/);
+  assert.match(jobs.database, /coverage\/api-blobs\/database.json/);
+});
+
+test('journey and exported-build reports retain hidden artifact paths and required HTML output', () => {
+  for (const [name, prefix] of [
+    ['journeys', 'journey'],
+    ['exports', 'exported-web'],
+  ]) {
+    assert.match(
+      jobs[name],
+      new RegExp(`test -s \\.local/${prefix}-report/index.html`),
+    );
+    assert.match(jobs[name], new RegExp(`\\.local/${prefix}-results/`));
+    assert.match(jobs[name], new RegExp(`\\.local/${prefix}-report/`));
+    assert.match(jobs[name], /include-hidden-files: true/);
+  }
 });
