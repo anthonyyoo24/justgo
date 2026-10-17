@@ -124,7 +124,7 @@ it.each([
   },
   { status: 200, mediaType: 'application/json', body: '{"ok":' },
 ])(
-  'classifies HTTP $status $mediaType protocol failure as unavailable and retains Retry-After',
+  'classifies HTTP $status $mediaType protocol failure as unavailable without trusting Retry-After',
   async ({ status, mediaType, body }) => {
     const response = new Response(body, {
       status,
@@ -140,7 +140,7 @@ it.each([
     ).rejects.toMatchObject({
       code: 'UNAVAILABLE',
       message: 'UNAVAILABLE',
-      retryAfterMs: 23000,
+      retryAfterMs: undefined,
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
   },

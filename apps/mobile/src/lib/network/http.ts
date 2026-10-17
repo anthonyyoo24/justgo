@@ -126,14 +126,7 @@ export function createHttpClient(
           });
           check();
           const successful = response.ok;
-          const header = response.headers?.get('Retry-After');
-          const unavailable = () =>
-            new ApiError(
-              'UNAVAILABLE',
-              undefined,
-              undefined,
-              retryAfterDelay(header),
-            );
+          const unavailable = () => new ApiError('UNAVAILABLE');
           // Untrusted proxy pages cannot supply domain or credential failures.
           const mediaType = response.headers
             ?.get('Content-Type')
@@ -157,6 +150,8 @@ export function createHttpClient(
           if (!successful) {
             const conflict = reflectionConflictSchema.safeParse(value);
             const error = identityErrorSchema.safeParse(value);
+            // Only validated API errors may extend the journal's cooldown.
+            // Unvalidated proxy pages and bodies do not own retry policy.
             throw new ApiError(
               conflict.success
                 ? conflict.data.code
@@ -169,7 +164,9 @@ export function createHttpClient(
                   ? error.data.requestId
                   : undefined,
               conflict.success ? conflict.data.currentAttempt : undefined,
-              retryAfterDelay(header),
+              conflict.success || error.success
+                ? retryAfterDelay(response.headers?.get('Retry-After'))
+                : undefined,
             );
           }
           const parsed = schema.safeParse(value);

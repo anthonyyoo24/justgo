@@ -130,3 +130,59 @@ it('preserves an HTTP-date Retry-After as a remaining delay', async () => {
     jest.useRealTimers();
   }
 });
+
+it.each([
+  ['text/html', '<html>Synthetic proxy outage</html>', 503],
+  ['application/json', '{', 429],
+  [
+    'application/json',
+    JSON.stringify({ code: 'UNKNOWN', requestId: 'fixture' }),
+    429,
+  ],
+  ['application/json', JSON.stringify({ unexpected: true }), 200],
+] as const)(
+  'ignores an excessive retry header on an unvalidated %s response (%s, %s)',
+  async (mediaType, body, status) => {
+    const fetcher = jest.fn(
+      async () =>
+        new Response(body, {
+          status,
+          headers: { 'Content-Type': mediaType, 'Retry-After': '999999999' },
+        }),
+    );
+    await expect(
+      createHttpClient('https://api.example.test', fetcher).request(
+        '/v1/attempts',
+        okSchema,
+        { method: 'POST' },
+      ),
+    ).rejects.toMatchObject({ code: 'UNAVAILABLE', retryAfterMs: undefined });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  },
+);
+
+it('retains a validated server cooldown beyond the native timer limit', async () => {
+  const fetcher = jest.fn(
+    async () =>
+      new Response(
+        JSON.stringify({ code: 'RATE_LIMITED', requestId: 'fixture' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '3000000',
+          },
+        },
+      ),
+  );
+  await expect(
+    createHttpClient('https://api.example.test', fetcher).request(
+      '/v1/attempts',
+      okSchema,
+      { method: 'POST' },
+    ),
+  ).rejects.toMatchObject({
+    code: 'RATE_LIMITED',
+    retryAfterMs: 3_000_000_000,
+  });
+});
