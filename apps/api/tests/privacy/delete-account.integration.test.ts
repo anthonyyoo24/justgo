@@ -88,6 +88,79 @@ afterAll(async () => {
   await Promise.all([database.pool.end(), admin.end()]);
 });
 describe('permanent owner-only deletion on the restricted database role', () => {
+  it('blocks transfer-digest deletion while preserving owner cleanup and cancellation tombstones', async () => {
+    const a = await account(),
+      b = await account();
+    const transfer = () => ({
+      ...proposal(),
+      credential: secret(),
+      id: randomUUID(),
+      code: randomBytes(8).toString('hex').toUpperCase(),
+      claimSecret: secret(),
+    });
+    const cancelled = transfer(),
+      approved = transfer();
+    try {
+      await identity.cancelReceivingTransfer(cancelled);
+      const started = await identity.startTransfer(approved);
+      await identity.approveTransfer(
+        a.sessionToken,
+        approved.code,
+        started.verification,
+      );
+      for (const [input, userId, deletions] of [
+        [cancelled, '', 0],
+        [cancelled, a.userId, 0],
+        [approved, '', 0],
+        [approved, b.userId, 0],
+        [approved, a.userId, 1],
+      ] as const) {
+        const connection = await database.pool.connect();
+        try {
+          await connection.query('BEGIN');
+          await connection.query(
+            "select set_config('app.user_id',$1,true), set_config('app.transfer_digest',$2,true)",
+            [userId, digest(input.code)],
+          );
+          expect(
+            (
+              await connection.query(
+                'select id from justgo.device_transfers where id=$1',
+                [input.id],
+              )
+            ).rowCount,
+          ).toBe(1);
+          expect(
+            (
+              await connection.query(
+                'delete from justgo.device_transfers where id=$1 returning id',
+                [input.id],
+              )
+            ).rowCount,
+          ).toBe(deletions);
+        } finally {
+          await connection.query('ROLLBACK');
+          connection.release();
+        }
+      }
+      await expect(identity.startTransfer(cancelled)).rejects.toMatchObject({
+        code: 'CREDENTIAL_REJECTED',
+      });
+      expect(
+        (
+          await admin.query(
+            'select id from justgo.device_transfers where id=any($1::uuid[])',
+            [[cancelled.id, approved.id]],
+          )
+        ).rowCount,
+      ).toBe(2);
+    } finally {
+      await admin.query(
+        'delete from justgo.device_transfers where id=any($1::uuid[])',
+        [[cancelled.id, approved.id]],
+      );
+    }
+  });
   it('requires an active proof and exact confirmation, without accepting another owner', async () => {
     const a = await account(),
       b = await account();

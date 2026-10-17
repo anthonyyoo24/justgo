@@ -133,6 +133,15 @@ describe('versioned API request errors', () => {
       code: 'CONFLICT',
     },
     {
+      name: 'database uniqueness conflict with a wrapper code',
+      error: Object.assign(
+        new Error(privateValue, { cause: { code: '23505' } }),
+        { code: 'QUERY_FAILED' },
+      ),
+      status: 409,
+      code: 'CONFLICT',
+    },
+    {
       name: 'rate limit',
       error: new IdentityError('RATE_LIMITED', 429),
       status: 429,

@@ -198,6 +198,12 @@ export const transfers = appSchema
         using: sql`user_id = (select justgo.current_user_id()) OR code_digest = (select current_setting('app.transfer_digest',true))`,
         withCheck: sql`user_id = (select justgo.current_user_id()) OR code_digest = (select current_setting('app.transfer_digest',true))`,
       }),
+      pgPolicy('owner_delete_only', {
+        as: 'restrictive',
+        for: 'delete',
+        to: 'justgo_runtime',
+        using: sql`user_id = (select justgo.current_user_id())`,
+      }),
     ],
   )
   .enableRLS();

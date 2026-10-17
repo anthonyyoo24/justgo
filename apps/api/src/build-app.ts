@@ -42,9 +42,11 @@ function versionedFailure(error: {
   code?: string;
   cause?: unknown;
 }): { status: number; code: IdentityErrorCode } {
-  const dbCode =
-    error.code ?? (error.cause as { code?: string } | undefined)?.code;
-  if (dbCode === '23505') return { status: 409, code: 'CONFLICT' };
+  if (
+    error.code === '23505' ||
+    (error.cause as { code?: string } | undefined)?.code === '23505'
+  )
+    return { status: 409, code: 'CONFLICT' };
   const status = error.statusCode;
   if (status !== undefined && status >= 400 && status < 500)
     return { status, code: requestErrorCodes[status] ?? 'INVALID_REQUEST' };
