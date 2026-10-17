@@ -21,6 +21,7 @@ describe('Expo project configuration', () => {
     expect(config.ios.bundleIdentifier).toBe('dev.justgo.foundation');
     expect(config.scheme).toBe('justgo');
     expect(config.plugins).toContain('expo-dev-client');
+    expect(config.experiments.typedRoutes).toBe(true);
   });
 
   it('requires a confirmed identifier for EAS builds', () => {

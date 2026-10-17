@@ -24,6 +24,9 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
   a compatibility index. Unbuilt provider designs live in proposals.
 - Source design material is preserved under design/source; routine screenshots
   and third-party references are retained in ignored local storage.
+- Home alone owns `/`; the access gate is `/access`. Account tools use static
+  routes, and challenge routes share a group without an extra native layout.
+  The obsolete export redirect is removed; Settings owns export.
 
 ## Invariants to preserve
 
@@ -49,24 +52,28 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
   [folder guide](../architecture/FOLDER_STRUCTURE.md) for current owners.
 - Design sources are excluded from native build uploads; ignored local evidence
   is not a fresh-checkout or CI prerequisite.
+- Mobile typechecking generates Expo route declarations first, including on a
+  fresh CI checkout. Generated declarations stay ignored and outside formatting.
 
 ## Open gates
 
-| Gate                                                          | Owner                                                | Required step/phase | Done when                                                       |
-| ------------------------------------------------------------- | ---------------------------------------------------- | ------------------- | --------------------------------------------------------------- |
-| Routes, typed navigation and native walkthrough               | Implementation owner                                 | 08A step 2          | Route inventory, browser/simulator checks and cold exports pass |
-| Mobile owners and identity separation                         | Implementation owner                                 | 08A step 3          | Moves/behavior checks preserve all existing invariants          |
-| API/contracts organization and HTTP robustness                | Implementation owner                                 | 08A steps 4–5       | Focused checks, database gates and bundle isolation pass        |
-| Tooling, regression journeys and CI changes                   | Implementation owner                                 | 08A steps 6–7       | Local required checks pass; hosted candidates are inspected     |
-| Local branch/worktree deletions and billing stash disposition | Anthony approves each deletion; implementation owner | 08A step 8          | Concrete inventory reviewed and approved cleanup completed      |
-| Publication of each step and hosted CI                        | Anthony authorizes each action                       | 08A                 | Authorized candidates have inspected passing hosted checks      |
-| Earlier physical-device, staging and release acceptance       | Existing phase owners                                | 09–11               | Original handoff/release requirements are evidenced             |
+| Gate                                                          | Owner                                                | Required step/phase | Done when                                                   |
+| ------------------------------------------------------------- | ---------------------------------------------------- | ------------------- | ----------------------------------------------------------- |
+| Mobile owners and identity separation                         | Implementation owner                                 | 08A step 3          | Moves/behavior checks preserve all existing invariants      |
+| API/contracts organization and HTTP robustness                | Implementation owner                                 | 08A steps 4–5       | Focused checks, database gates and bundle isolation pass    |
+| Tooling, regression journeys and CI changes                   | Implementation owner                                 | 08A steps 6–7       | Local required checks pass; hosted candidates are inspected |
+| Local branch/worktree deletions and billing stash disposition | Anthony approves each deletion; implementation owner | 08A step 8          | Concrete inventory reviewed and approved cleanup completed  |
+| Publication of each step and hosted CI                        | Anthony authorizes each action                       | 08A                 | Authorized candidates have inspected passing hosted checks  |
+| Earlier physical-device, staging and release acceptance       | Existing phase owners                                | 09–11               | Original handoff/release requirements are evidenced         |
 
 ## Final verification
 
 October 17, 2026: documentation step verification passed locally: npm run check
 with fresh online Expo Doctor, formatting, all internal Markdown links and the
 required phase-file sections. Source assets were preserved byte-for-byte.
-No Phase 08A hosted CI, browser or native acceptance is claimed yet. Remaining
-steps require their own focused and integrated checks; detailed interim output
-stays in ignored local logs and commit/PR descriptions.
+The route checkpoint passed npm run check, cold web and iOS exports, all saved
+browser journeys, a side-panel walkthrough and the installed iOS simulator
+walkthrough (launch, self-device sign-out, account switching and first/repeated
+challenge flow). Existing physical-device release gates remain open. No Phase
+08A hosted CI is claimed; remaining steps require their own checks. Detailed
+interim output stays in ignored local logs and commit/PR descriptions.

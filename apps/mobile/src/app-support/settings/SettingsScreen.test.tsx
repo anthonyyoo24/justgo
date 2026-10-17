@@ -7,7 +7,6 @@ import {
 import type { LinkProps } from 'expo-router';
 import { Linking } from 'react-native';
 import SettingsRoute from '../../app/settings';
-import ExportDataRoute from '../../app/export-data';
 import { SettingsScreen } from './SettingsScreen';
 import { SettingsGroup } from '../../components/settings/SettingsRows';
 import { appleStandardTerms } from './information/legal-links';
@@ -358,10 +357,4 @@ it('opens configured public legal pages', async () => {
     expect(openUrl).toHaveBeenCalledWith('https://example.com/terms'),
   );
   expect(screen.queryByText('Apple’s standard license agreement')).toBeNull();
-});
-
-it('redirects older export links to Settings without a separate export page', () => {
-  const screen = render(<ExportDataRoute />);
-  expect(screen.getByText('Redirect: /settings')).toBeTruthy();
-  expect(screen.queryByText('Export ZIP')).toBeNull();
 });
