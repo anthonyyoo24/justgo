@@ -39,7 +39,9 @@ jest.mock('../../../features/challenges/active/ActiveChallenge', () => ({
     );
   },
 }));
-jest.mock('../../../features/challenges/deck/VenueTabs', () => ({ VenueTabs: () => null }));
+jest.mock('../../../features/challenges/deck/VenueTabs', () => ({
+  VenueTabs: () => null,
+}));
 
 it('opens success only for a completed preview challenge', () => {
   const onCompleted = jest.fn();

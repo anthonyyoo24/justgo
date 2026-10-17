@@ -69,6 +69,12 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/dev/                                             | Guarded presentation fixtures and haptics comparison UI.                     |
 | apps/mobile/src/dev/previews/challenges/                         | Developer-only deck and completed/give-up previews.                          |
 
+Wire-only `api.ts` modules live with the challenge catalog, Settings export,
+app-support access and shared data/activity/progress reads. Their composing
+controllers, providers and queries retain hydration, clocks, cursor validation,
+account fencing and cache acceptance. `calendar-dates.ts` owns calendar/date
+calculations separately from the `calendar/` presentation group.
+
 Features may use shared data and app-support providers; data may use shared
 lib/platform/contracts but imports no feature, app-support, route or visual code.
 Shared components/lib/theme/platform import no app-specific owner. Production
@@ -121,6 +127,8 @@ remain ignored. Its typecheck regenerates and validates route declarations befor
 compiling app source and the route type cases in `test-support/route-types.ts`.
 `scripts/quality/routes.test.mjs` checks the installed Router's URL inventory and
 the root stack's registrations against the on-disk route tree.
+`scripts/quality/folder-structure.test.mjs` verifies these documented owners
+exist and keeps the approved mobile responsibility groups in the guide.
 
 ## Placement and move rules
 
