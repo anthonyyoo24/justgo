@@ -28,7 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import type { ProgressEntry } from '../types';
 import { colors, fontFamilies, typography } from '../../../theme/tokens';
-import { dayLabel } from '../calendar';
+import { dayLabel } from '../calendar-dates';
 import { ProgressEntryRow } from './entries/ProgressEntryRow';
 import { DayEntryList } from './entries/DayEntryList';
 export type ProgressDay = {

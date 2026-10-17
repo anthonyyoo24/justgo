@@ -1,4 +1,4 @@
-import { IdentityScreen } from '../../app-support/identity/IdentityScreen';
+import { IdentityScreen } from '../../app-support/identity/account/IdentityScreen';
 import { useRuntime } from '../../app-support/providers/AppProvider';
 
 export default function RecoverAccountRoute() {

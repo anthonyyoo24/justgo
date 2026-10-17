@@ -1,4 +1,4 @@
-import { ApiError } from '../../../lib/http';
+import { ApiError } from '../../../lib/network/http';
 import type { Journal, JournalClock, JournalState, Operation } from '../model';
 import type { JournalTransport } from './transport';
 import { sparseRetryDelay } from './retry';

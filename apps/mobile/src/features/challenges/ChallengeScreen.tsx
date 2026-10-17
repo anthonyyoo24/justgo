@@ -12,11 +12,11 @@ import {
 } from '../../app-support/providers/AppProvider';
 import { useWelcomePreparation } from '../../app-support/identity/welcome/welcome-preparation';
 import { ChallengeLayout } from './ChallengeLayout';
-import { VenueTabs } from './VenueTabs';
-import { ChallengeDeck } from './ChallengeDeck';
-import { ActiveChallengeModal } from './ActiveChallengeModal';
-import { useChallengeActivity } from './ChallengeActivityProvider';
-import { NativeChallengeHandoff } from './NativeChallengeHandoff';
+import { VenueTabs } from './deck/VenueTabs';
+import { ChallengeDeck } from './deck/ChallengeDeck';
+import { ActiveChallengeModal } from './active/ActiveChallengeModal';
+import { useChallengeActivity } from './active/ChallengeActivityProvider';
+import { NativeChallengeHandoff } from './active/NativeChallengeHandoff';
 /**
  * Reset Home's navigation bookkeeping when the account changes. The activity
  * provider separately scopes the in-memory challenge to the same identity.

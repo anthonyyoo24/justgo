@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
-import { useModalIsolation } from '../../../platform/useModalIsolation';
+import { useModalIsolation } from '../../../platform/modals/useModalIsolation';
 import { colors, fontFamilies, layout, spacing } from '../../../theme/tokens';
 
 type ConfirmationProps = {

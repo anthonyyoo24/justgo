@@ -31,7 +31,7 @@ jest.mock('./identity/welcome/WelcomePreparationCover', () => ({
 jest.mock('./saving/SavingFeedback', () => ({
   SavingFeedbackShell: ({ children }: { children: ReactNode }) => children,
 }));
-jest.mock('../features/challenges/ChallengeActivityProvider', () => ({
+jest.mock('../features/challenges/active/ChallengeActivityProvider', () => ({
   ChallengeActivityProvider: ({ children }: { children: ReactNode }) =>
     children,
 }));
