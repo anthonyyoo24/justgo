@@ -25,6 +25,18 @@ const eslint = new ESLint({
 
 const cases = [
   {
+    name: 'API may import the separate OpenAPI entry',
+    file: 'apps/api/src/build-app.ts',
+    source: "import '@justgo/contracts/openapi';",
+    restricted: false,
+  },
+  {
+    name: 'mobile cannot import the OpenAPI entry',
+    file: 'apps/mobile/src/lib/BoundaryFixture.ts',
+    source: "import '@justgo/contracts/openapi';",
+    restricted: true,
+  },
+  {
     name: 'shared component cannot import a feature',
     file: 'apps/mobile/src/components/BoundaryFixture.tsx',
     source: "import '../features/challenges/ChallengeScreen';",

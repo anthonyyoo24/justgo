@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -28,8 +28,9 @@ const db = createDatabase(config);
 const admin = new Pool(
   poolOptions(readConfig({ ...process.env, DATABASE_URL: migrationUrl! })),
 );
+const rateKey = `isolated-identity-integration-tests-${randomUUID()}`;
 const service = new IdentityService(db.db, {
-  rateKey: `isolated-identity-integration-tests-${randomUUID()}`,
+  rateKey,
   rateLimit: 3,
 });
 const app = buildApp({
@@ -40,6 +41,14 @@ const app = buildApp({
 });
 const users = new Set<string>(),
   transfers = new Set<string>();
+function retryAfterSeconds(value: unknown) {
+  expect(typeof value).toBe('string');
+  const seconds = Number(value);
+  expect(Number.isInteger(seconds)).toBe(true);
+  expect(seconds).toBeGreaterThanOrEqual(1);
+  expect(seconds).toBeLessThanOrEqual(600);
+  return seconds;
+}
 const secret = () => randomBytes(32).toString('hex');
 const proposal = () => ({
   deviceId: randomUUID(),
@@ -913,9 +922,9 @@ describe('identity protocol through the restricted runtime', () => {
       ),
     );
     expect(results.filter((r) => r.statusCode === 429)).toHaveLength(2);
-    expect(
+    retryAfterSeconds(
       results.find((r) => r.statusCode === 429)!.headers['retry-after'],
-    ).toBe('600');
+    );
     const again = await app.inject({
       method: 'POST',
       url: '/v1/sessions',
@@ -925,6 +934,48 @@ describe('identity protocol through the restricted runtime', () => {
     });
     expect(again.statusCode).toBe(429);
     expect(again.body).not.toContain(input.credential);
+  });
+  it('returns the remaining bucket seconds, then resets the expired window atomically', async () => {
+    const ip = `remaining-window-${randomUUID()}`;
+    const key = createHmac('sha256', rateKey)
+      .update(`recovery:${ip}`)
+      .digest('hex');
+    const input = { kind: 'recovery', ...request() };
+    try {
+      for (let attempt = 0; attempt < 3; attempt++)
+        expect((await post('/sessions', input, undefined, ip)).statusCode).toBe(
+          401,
+        );
+      await admin.query(
+        "update justgo.identity_rate_buckets set window_start=now()-interval '9 minutes 30 seconds' where key=$1",
+        [key],
+      );
+      const limited = await post('/sessions', input, undefined, ip);
+      expect(limited.statusCode).toBe(429);
+      const remaining = retryAfterSeconds(limited.headers['retry-after']);
+      expect(remaining).toBeLessThanOrEqual(30);
+      expect(limited.body).not.toContain(input.credential);
+      await admin.query(
+        "update justgo.identity_rate_buckets set window_start=now()-interval '11 minutes' where key=$1",
+        [key],
+      );
+      const reset = await post('/sessions', input, undefined, ip);
+      expect(reset.statusCode).toBe(401);
+      expect(reset.headers['retry-after']).toBeUndefined();
+      expect(
+        (
+          await admin.query(
+            'select count from justgo.identity_rate_buckets where key=$1',
+            [key],
+          )
+        ).rows[0].count,
+      ).toBe(1);
+    } finally {
+      await admin.query(
+        'delete from justgo.identity_rate_buckets where key=$1',
+        [key],
+      );
+    }
   });
   it('shares the sensitive budget with transfer cancellation and leaves blocked transfers unchanged', async () => {
     const owner = await account(),
@@ -962,7 +1013,7 @@ describe('identity protocol through the restricted runtime', () => {
     );
     expect(limited.statusCode).toBe(429);
     expect(limited.json().code).toBe('RATE_LIMITED');
-    expect(limited.headers['retry-after']).toBe('600');
+    retryAfterSeconds(limited.headers['retry-after']);
     const inspection = await post(
       '/transfer-inspections',
       { code: t.input.code },

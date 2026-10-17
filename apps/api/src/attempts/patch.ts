@@ -5,11 +5,18 @@ import {
   type Attempt,
   type PatchAttempt,
 } from '@justgo/contracts';
-import { IdentityError, type IdentityService } from '../identity/service.js';
+import type { IdentityService } from '../identity/service.js';
+import { ApiError } from '../http/api-error.js';
 import { projectAttempt, readAttempt } from './model.js';
-export class ReflectionConflict extends IdentityError {
+export class ReflectionConflict extends ApiError {
   constructor(readonly currentAttempt: Attempt) {
     super('REFLECTION_CONFLICT', 409);
+  }
+  override response(requestId: string) {
+    return {
+      ...super.response(requestId),
+      currentAttempt: this.currentAttempt,
+    };
   }
 }
 export class AttemptPatchService {
@@ -22,7 +29,7 @@ export class AttemptPatchService {
   patch(token: string, id: string, input: PatchAttempt) {
     return this.identity.withSession(token, async (tx, session) => {
       const row = await readAttempt(tx, session.userId, id);
-      if (!row) throw new IdentityError('NOT_FOUND', 404);
+      if (!row) throw new ApiError('NOT_FOUND', 404);
       const normalized = {
         expectedReflectionRevision: input.expectedReflectionRevision,
         reflection: {
@@ -48,7 +55,7 @@ export class AttemptPatchService {
       ).rows[0];
       if (receipt) {
         if (receipt.attempt_id !== id || receipt.input_digest !== digest)
-          throw new IdentityError('CONFLICT', 409);
+          throw new ApiError('CONFLICT', 409);
         return {
           attempt: projectAttempt(row),
           acknowledgement: {
@@ -64,14 +71,14 @@ export class AttemptPatchService {
         (input.reflection.feeling !== undefined ||
           input.reflection.text === undefined)
       )
-        throw new IdentityError('INVALID_REQUEST', 400);
+        throw new ApiError('INVALID_REQUEST', 400);
       const feeling =
         row.reflection_revision === 0
           ? (input.reflection.feeling ?? null)
           : row.reflection_feeling;
       const text = normalizeReflectionText(input.reflection.text);
       if (feeling === null && text === null)
-        throw new IdentityError('INVALID_REQUEST', 400);
+        throw new ApiError('INVALID_REQUEST', 400);
       const appliedRevision = row.reflection_revision + 1;
       await tx.execute(
         sql`update justgo.attempts set reflection_feeling=${feeling},reflection_text=${text},reflection_revision=${appliedRevision} where user_id=${session.userId} and id=${id}`,

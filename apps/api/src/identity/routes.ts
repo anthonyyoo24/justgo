@@ -1,3 +1,5 @@
+import { bearer } from '../http/bearer.js';
+import { parse } from '../http/parse.js';
 import { z } from 'zod';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
@@ -6,7 +8,6 @@ import {
   devicesResponseSchema,
   idSchema,
   okSchema,
-  secretSchema,
   sessionCreateSchema,
   sessionResponseSchema,
   transferApproveSchema,
@@ -20,22 +21,10 @@ import {
   accountDeletionResponseSchema,
 } from '@justgo/contracts';
 import { DeleteAccountService } from './delete-account.js';
-import { IdentityError, type IdentityService } from './service.js';
+import type { IdentityService } from './service.js';
+import { ApiError } from '../http/api-error.js';
 import { rateAddress } from './address.js';
 
-export function bearer(request: FastifyRequest) {
-  const value = request.headers.authorization;
-  const parsed = secretSchema.safeParse(
-    value?.startsWith('Bearer ') ? value.slice(7) : undefined,
-  );
-  if (!parsed.success) throw new IdentityError('UNAUTHORIZED');
-  return parsed.data;
-}
-function parse<T>(schema: z.ZodType<T>, data: unknown): T {
-  const parsed = schema.safeParse(data);
-  if (!parsed.success) throw new IdentityError('INVALID_REQUEST', 400);
-  return parsed.data;
-}
 export function identityRoutes(
   app: FastifyInstance,
   service: IdentityService,
@@ -162,7 +151,7 @@ export function identityRoutes(
     const id = parse(idSchema, request.params).id;
     const data = parse(transferCancelSchema, request.body);
     if ('claimSecret' in data) {
-      if (data.id !== id) throw new IdentityError('INVALID_REQUEST', 400);
+      if (data.id !== id) throw new ApiError('INVALID_REQUEST', 400);
       return transferCancelResponseSchema.parse(
         await service.cancelReceivingTransfer(data),
       );
