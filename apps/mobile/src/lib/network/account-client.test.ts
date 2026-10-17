@@ -40,8 +40,13 @@ function setup(fetcher: jest.Mock) {
     },
   };
 }
-const ok = () => ({ ok: true, json: async () => ({ ok: true }) });
+const ok = () => ({
+  headers: new Headers({ 'Content-Type': 'application/json' }),
+  ok: true,
+  json: async () => ({ ok: true }),
+});
 const failure = (code: string) => ({
+  headers: new Headers({ 'Content-Type': 'application/json' }),
   ok: false,
   json: async () => ({ code, requestId: 'safe-id' }),
 });
@@ -164,6 +169,64 @@ it.each([
     expect(reject).not.toHaveBeenCalled();
   },
 );
+it.each([
+  {
+    mediaType: 'text/html',
+    body: '<html>Synthetic unauthorized proxy page</html>',
+  },
+  {
+    mediaType: 'text/plain',
+    body: JSON.stringify({
+      code: 'SESSION_REVOKED',
+      requestId: 'synthetic-proxy',
+    }),
+  },
+])(
+  'keeps stored credentials when an HTTP 401 proxy sends $mediaType',
+  async ({ mediaType, body }) => {
+    const fetcher = jest.fn(
+      async () =>
+        new Response(body, {
+          status: 401,
+          headers: { 'Content-Type': mediaType },
+        }),
+    );
+    const { client, renew, reject } = setup(fetcher);
+    await expect(client.request('/v1/test', okSchema)).rejects.toMatchObject({
+      code: 'UNAVAILABLE',
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(reject).not.toHaveBeenCalled();
+    expect(renew).not.toHaveBeenCalled();
+    expect(client.ownsAccount('owner-a')).toBe(true);
+  },
+);
+it.each(['application/json', 'APPLICATION/PROBLEM+JSON; charset=utf-8'])(
+  'retains validated session rejection for HTTP 401 %s',
+  async (mediaType) => {
+    const fetcher = jest.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: 'SESSION_REVOKED',
+            requestId: 'synthetic-server',
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': mediaType },
+          },
+        ),
+    );
+    const { client, renew, reject } = setup(fetcher);
+    await expect(client.request('/v1/test', okSchema)).rejects.toMatchObject({
+      code: 'SESSION_REVOKED',
+      requestId: 'synthetic-server',
+    });
+    expect(reject).toHaveBeenCalledWith('old-token', 'SESSION_REVOKED');
+    expect(renew).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  },
+);
 it('retries a transient read only once and disables nested query/mutation retries', async () => {
   const fetcher = jest
     .fn()
@@ -233,7 +296,11 @@ it('bounds the full request including body parsing and an unresponsive renewal',
   try {
     const fetcher = jest
       .fn()
-      .mockResolvedValue({ ok: true, json: () => new Promise(() => {}) });
+      .mockResolvedValue({
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        ok: true,
+        json: () => new Promise(() => {}),
+      });
     const { client } = setup(fetcher);
     const pending = client.request('/v1/test', okSchema, { timeoutMs: 100 });
     const assertion = expect(pending).rejects.toMatchObject({
