@@ -148,12 +148,23 @@ enforce owner and matching-input idempotency.
 [CHALLENGES.md](../product/CHALLENGES.md#challenge-loop-and-content) owns the
 six-venue cycling rules and product behavior. The challenge controller owns
 account-scoped catalog/deck continuity and accepted completion context.
+Its decks shuffle once per account on this phone, restoring saved order/front and
+last venue through the repository's optional `:decks` preferences. New accounts or
+missing/unknown saved venue values start in Streets. Catalog refresh preserves
+surviving order/front, inserts added placements behind the front at random positions
+and drops removed/inactive placements. Outcome rotation checks the original
+placement so a removed active card cannot advance the untouched next card.
+Preference failures keep the live deck usable without activity saving/loss-risk
+feedback; [ACTIVITY_DATA.md](ACTIVITY_DATA.md#repository-and-storage-ownership)
+owns storage, account fencing and deletion draining.
+
 `ChallengeActivityProvider`, above the navigator, owns the in-memory active start
 across Home and `/challenge`. Start freezes the card, timestamp and time zone;
 countdown samples start + original duration once per second and on foreground.
 Background/lock retain it while the process survives. Fresh mount/account change/
 process restart discard unfinished activity. Zero waits for explicit Completed or
-Give up; Give up records nothing.
+Give up; Give up creates no saved attempt or rep, while its deck rotation can save
+optional phone preferences.
 
 On iOS, keep the outgoing deck's identity when Home loses focus. A focus-based key
 would remount its resting state before the destination covers it and flash the
@@ -181,9 +192,13 @@ repeated native openings; browser/component evidence cannot prove inset timing.
 ## Reflections and Progress presentation
 
 Completed waits for repository saving; ordinary local success never waits for HTTP.
-The reflection controller owns validation, dirty-close decisions and newer-input
-protection. Only explicit saves enter the journal; there is no draft autosave or
-URL-based completion recovery. `useReflectionKeyboard` measures the section and
+The shared reflection controller owns validation and newer-input protection, plus
+the Progress editor's dirty-close decisions. Post-challenge Reflection exposes no
+top Back/X or discard dialog, and its root route disables swipe-back. Its only exit
+is bottom Skip when empty or Save Reflection otherwise. The Progress day-sheet
+editor retains its Save / Keep editing / Discard prompt. Only explicit saves enter
+the journal; there is no draft autosave or URL-based completion recovery.
+`useReflectionKeyboard` measures the section and
 available viewport, adds trailing scroll space and brings the focused editor into
 view. The bounded internally scrolling input and fixed Skip/Save footer preserve
 access on reduced viewports; focus scrolling honors effective Reduce Motion.

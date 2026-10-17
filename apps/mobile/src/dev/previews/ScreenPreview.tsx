@@ -126,7 +126,6 @@ export function ScreenPreview({
   const [step, setStep] = useState<'deck' | 'success' | 'reflection'>('deck');
   const [feeling, setFeeling] = useState<FeelingCode | null>(null);
   const [reflection, setReflection] = useState('');
-  const [dismissOpen, setDismissOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -143,7 +142,6 @@ export function ScreenPreview({
       setStep('deck');
       setFeeling(null);
       setReflection('');
-      setDismissOpen(false);
       setSubmitting(false);
     };
     return (
@@ -163,14 +161,8 @@ export function ScreenPreview({
             done();
           }, 1200);
         }}
-        onClose={() =>
-          feeling || reflection.trim() ? setDismissOpen(true) : done()
-        }
-        dismissOpen={dismissOpen}
         busy={submitting}
         savingVisible={submitting}
-        onKeepEditing={() => setDismissOpen(false)}
-        onDiscard={done}
       />
     );
   }

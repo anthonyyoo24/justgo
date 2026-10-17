@@ -2,7 +2,7 @@
 
 # Phase 09 — App continuity & Reflection exit
 
-**Status:** Not started
+**Status:** Implemented locally; native acceptance open
 
 ## Outcome
 
@@ -35,11 +35,15 @@ Venue decks shuffle once per account on this phone and resume with their saved o
 
 ## Ready to hand off when
 
-- [ ] Saved shuffle, front card and last venue survive relaunch and remain isolated across accounts; new accounts default to Streets.
-- [ ] Catalog additions/removals/inactive placements reconcile correctly; missing, unreadable or invalid state falls back safely and failed writes leave Home usable without saving/loss-risk banners.
+- [x] Saved shuffle, front card and last venue survive relaunch and remain isolated across accounts; new accounts default to Streets.
+- [x] Catalog additions/removals/inactive placements reconcile correctly; missing, unreadable or invalid state falls back safely and failed writes leave Home usable without saving/loss-risk banners.
 - [ ] Post-challenge Reflection has no top Back/X or associated discard prompt; Skip/Save remains reachable with the keyboard open on the smallest supported iPhone and at large text sizes. Progress editing and reduced-motion behavior remain intact.
-- [ ] Focused tests, required phase checks and in-app browser verification pass; record native/device evidence and any explicitly approved release deferral accurately.
-- [ ] Update the named product/inventory docs and save the phase handoff with final evidence and remaining gates; link it from the handoff index.
+- [x] Focused tests, required phase checks and in-app browser verification pass; record native/device evidence and any explicitly approved release deferral accurately.
+- [x] Update the named product/inventory docs and save the phase handoff with final evidence and remaining gates; link it from the handoff index.
+
+## Open native acceptance
+
+- Phase 09 still requires its smallest-supported iPhone software-keyboard/large-text check. Browser/component evidence passes but does not establish native behavior; no new deferral is approved. See the [handoff](../handoffs/phase-09-app-continuity.md#open-gates).
 
 ## Open gates for Phase 14
 

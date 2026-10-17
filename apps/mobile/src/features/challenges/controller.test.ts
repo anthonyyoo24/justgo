@@ -40,6 +40,7 @@ beforeEach(async () => {
     {
       repository: () => current,
       id: ids,
+      random: () => 0.99,
     },
   );
   controller.changeAccount(owner);
@@ -59,7 +60,7 @@ async function downloaded() {
   await repository.cacheCatalog(catalog);
 }
 
-it('hydrates all venue decks and cycles without IDs, writes or unfinished state', async () => {
+it('hydrates all venue decks and cycles without attempt IDs, product writes or unfinished state', async () => {
   await downloaded();
   await controller.refresh();
   for (const { id } of venues)

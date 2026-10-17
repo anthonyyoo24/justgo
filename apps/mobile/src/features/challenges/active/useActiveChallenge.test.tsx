@@ -171,3 +171,37 @@ it('does not play late completion feedback after leaving the account flow', asyn
   });
   expect(mockFeedback.mock.calls).toEqual([['accept']]);
 });
+
+it.each(['given_up', 'completed'] as const)(
+  'does not skip an untouched front when an active placement is removed before %s',
+  async (outcome) => {
+    await controller.refresh();
+    const screen = renderHook(() => useActiveChallenge(controller, capture));
+    await act(async () => screen.result.current.onAction(1));
+    const active = screen.result.current.active!;
+    await act(async () =>
+      repository.cacheCatalog({
+        cards: [
+          ...catalog.cards.filter((card) => card.id !== active.card.id),
+          { ...active.card, id: 'replacement', position: 99 },
+        ],
+      }),
+    );
+    const before = controller.getSnapshot().queues.streets!;
+    expect(before.cards).toHaveLength(2);
+    const ids = before.cards.map((card) => card.id);
+    await act(async () => screen.result.current.finish(outcome));
+    await repository.deckPreferences.settled();
+    expect(
+      controller.getSnapshot().queues.streets?.cards.map((card) => card.id),
+    ).toEqual(ids);
+    expect(controller.getSnapshot().queues.streets?.turn).toBe(before.turn);
+    expect((await repository.deckPreferences.read())?.orders.streets).toEqual(
+      ids,
+    );
+    expect(repository.store.getState().journal.operations).toHaveLength(
+      outcome === 'completed' ? 1 : 0,
+    );
+    screen.unmount();
+  },
+);

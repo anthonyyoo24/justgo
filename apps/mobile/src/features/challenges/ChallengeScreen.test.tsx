@@ -356,7 +356,7 @@ it('keeps navigation mounted behind an opaque full-screen active view and refuse
   expect(mockController.skip).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole('button', { name: 'Give up' }));
   expect(screen.queryByTestId('active-challenge-modal')).toBeNull();
-  expect(mockController.skip).toHaveBeenCalledWith('cafe');
+  expect(mockController.skip).toHaveBeenCalledWith('cafe', mockCard.id);
   expect(screen.getByRole('link', { name: 'Open Settings' })).toBeTruthy();
   expect(screen.UNSAFE_getByType(ChallengeDeck).props.covered).toBe(false);
 });
@@ -686,7 +686,7 @@ it('gives up a fresh native challenge through Home without saving a rep', async 
   await act(async () =>
     fireEvent.press(screen.getByRole('button', { name: 'Give up' })),
   );
-  expect(mockController.skip).toHaveBeenCalledWith('cafe');
+  expect(mockController.skip).toHaveBeenCalledWith('cafe', mockCard.id);
   expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(tabs)');
   expect(mockController.complete).not.toHaveBeenCalled();
 });

@@ -76,13 +76,9 @@ export function ReflectionScreen() {
       }}
       onTextChange={controller.setText}
       onSubmit={() => void controller.submit()}
-      onClose={controller.close}
       busy={state.submitting}
       savingVisible={savingVisible}
       error={state.error}
-      dismissOpen={state.dismissOpen}
-      onKeepEditing={controller.keepEditing}
-      onDiscard={controller.discard}
     />
   );
 }

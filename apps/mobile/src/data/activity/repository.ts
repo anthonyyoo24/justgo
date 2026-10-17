@@ -34,6 +34,7 @@ import {
 } from './model';
 import { JournalSender } from './sync/sender';
 import { JournalPersistence } from './persistence/persistence';
+import { DeckPreferencesStorage } from './persistence/deck-preferences';
 import { addCompletion, addReflection, correctReflection } from './submissions';
 import type { JournalTransport } from './sync/transport';
 import { preserveNewerReflection } from './progress/progress';
@@ -51,6 +52,7 @@ export type AccountRepositoryOptions = {
 export class AccountRepository {
   readonly store;
   readonly accountId: string;
+  readonly deckPreferences: DeckPreferencesStorage;
   private readonly key: string;
   private readonly clock: JournalClock;
   private readonly sender: JournalSender;
@@ -67,6 +69,10 @@ export class AccountRepository {
     periodSchema.parse({ today: options.today, timeZone: options.timeZone });
     this.accountId = options.accountId;
     this.key = `justgo:v1:${options.accountId}`;
+    this.deckPreferences = new DeckPreferencesStorage(
+      options.accountId,
+      options.storage,
+    );
     this.clock = options.clock ?? systemClock;
     this.store = createStore<JournalState>(() => ({
       ready: false,
@@ -390,6 +396,7 @@ export class AccountRepository {
     await Promise.allSettled([...this.saving.values()]);
     await this.persistence.stopWrites();
     await this.catalogWrites;
+    await this.deckPreferences.stop();
     const keys = this.options.storage.getAllKeys;
     if (!keys) throw new ApiError('STORAGE');
     for (const key of await keys.call(this.options.storage))
