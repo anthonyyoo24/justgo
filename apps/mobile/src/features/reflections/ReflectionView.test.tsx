@@ -1,4 +1,5 @@
 import { fireEvent, render, within } from '@testing-library/react-native';
+import * as ReactNative from 'react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { ChallengeLayout } from '../challenges/ChallengeLayout';
 import { ReflectionView } from './ReflectionView';
@@ -11,8 +12,9 @@ const props = () => ({
   onFeelingChange: jest.fn(),
   onTextChange: jest.fn(),
   onSubmit: jest.fn(),
-  onClose: jest.fn(),
 });
+
+afterEach(() => jest.restoreAllMocks());
 
 it('starts unselected and offers Skip until a feeling or written text is present', () => {
   const base = props();
@@ -43,7 +45,7 @@ it('starts unselected and offers Skip until a feeling or written text is present
   expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
 });
 
-it('has native multiline entry and an accessible dismissal choice without a Dictate control', () => {
+it('has native multiline entry and only the bottom exit, including with unsaved input', () => {
   const base = props();
   const screen = render(<ReflectionView {...base} />);
   const input = screen.getByLabelText('Your reflection');
@@ -57,44 +59,53 @@ it('has native multiline entry and an accessible dismissal choice without a Dict
     'I tried even though I was nervous.',
   );
   expect(screen.queryByText('Dictate')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Close reflection' }));
-  expect(base.onClose).toHaveBeenCalledTimes(1);
-  screen.rerender(
-    <ReflectionView
-      {...base}
-      text="A note"
-      dismissOpen
-      onKeepEditing={jest.fn()}
-      onDiscard={jest.fn()}
-    />,
-  );
-  expect(screen.getByRole('button', { name: 'Discard and skip' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Keep editing' })).toBeTruthy();
+  expect(screen.getAllByRole('button')).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
+  screen.rerender(<ReflectionView {...base} text="A note" />);
+  expect(screen.getAllByRole('button')).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Save Reflection' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Close reflection' })).toBeNull();
+  expect(screen.queryByText('Leave your reflection?')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Discard and skip' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Keep editing' })).toBeNull();
 });
 
-it('fits the focused editor above the footer and keeps Skip/Save outside the scroll area', () => {
-  const base = props();
-  const screen = render(<ReflectionView {...base} />);
-  const viewport = screen.getByTestId('reflection-scroll');
-  const input = screen.getByLabelText('Your reflection');
-  const measure = (node: typeof input, y: number, height: number) =>
-    fireEvent(node, 'layout', {
-      nativeEvent: { layout: { x: 0, y, width: 390, height } },
+it.each([1, 2])(
+  'keeps the bottom exit outside the focused scroll area on a small phone at text scale %s',
+  (fontScale) => {
+    jest.spyOn(ReactNative, 'useWindowDimensions').mockReturnValue({
+      width: 375,
+      height: 667,
+      scale: 2,
+      fontScale,
     });
-  measure(viewport, 0, 700);
-  measure(screen.getByTestId('reflection-section'), 350, 320);
-  measure(input, 92, 228);
-  fireEvent(input, 'focus');
-  measure(viewport, 0, 260);
-  expect(StyleSheet.flatten(input.props.style).height).toBe(140);
-  expect(input.props.scrollEnabled).toBe(true);
-  expect(within(viewport).queryByRole('button', { name: 'Skip' })).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
-  expect(base.onSubmit).toHaveBeenCalledTimes(1);
-  screen.rerender(<ReflectionView {...base} text="Disposable reflection" />);
-  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
-  expect(base.onSubmit).toHaveBeenCalledTimes(2);
-});
+    const base = props();
+    const screen = render(<ReflectionView {...base} />);
+    const viewport = screen.getByTestId('reflection-scroll');
+    const input = screen.getByLabelText('Your reflection');
+    const measure = (node: typeof input, y: number, height: number) =>
+      fireEvent(node, 'layout', {
+        nativeEvent: { layout: { x: 0, y, width: 375, height } },
+      });
+    const inputTop = fontScale === 1 ? 92 : 130;
+    measure(viewport, 0, 550);
+    measure(screen.getByTestId('reflection-section'), 350, inputTop + 228);
+    measure(input, inputTop, 228);
+    fireEvent(input, 'focus');
+    measure(viewport, 0, 260);
+    expect(StyleSheet.flatten(input.props.style).height).toBe(
+      260 - inputTop - 12 - 16,
+    );
+    expect(input.props.scrollEnabled).toBe(true);
+    expect(within(viewport).queryByRole('button', { name: 'Skip' })).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
+    expect(base.onSubmit).toHaveBeenCalledTimes(1);
+    screen.rerender(<ReflectionView {...base} text="Disposable reflection" />);
+    fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
+    expect(base.onSubmit).toHaveBeenCalledTimes(2);
+  },
+);
 
 it('matches the challenge screens’ top header typography', () => {
   const reflection = render(<ReflectionView {...props()} />);
@@ -154,45 +165,4 @@ it('preserves feeling while editing and keeps validation inline', () => {
       .every((r) => r.props.accessibilityState.disabled),
   ).toBe(true);
   expect(screen.getByText('Check this field')).toBeTruthy();
-});
-it('prevents duplicate dirty-close saves or discard while a write is pending', () => {
-  const base = props();
-  const screen = render(
-    <ReflectionView
-      {...base}
-      text="Saved"
-      dismissOpen
-      busy
-      onDiscard={jest.fn()}
-    />,
-  );
-  for (const button of screen.getAllByRole('button', {
-    name: 'Save Reflection',
-  }))
-    expect(button).toBeDisabled();
-  expect(
-    screen.getByRole('button', { name: 'Discard and skip' }),
-  ).toBeDisabled();
-  expect(screen.queryByTestId('reflection-dismiss-save-spinner')).toBeNull();
-  screen.rerender(
-    <ReflectionView {...base} text="Saved" dismissOpen busy savingVisible />,
-  );
-  expect(
-    screen.getAllByRole('button', { name: 'Saving reflection' }),
-  ).toHaveLength(1);
-  for (const button of screen.getAllByRole('button', {
-    name: 'Saving reflection',
-  })) {
-    expect(button).toBeDisabled();
-    expect(button.props.accessibilityState.busy).toBe(true);
-    fireEvent.press(button);
-  }
-  expect(base.onSubmit).not.toHaveBeenCalled();
-  expect(screen.getByTestId('reflection-dismiss-save-spinner')).toBeTruthy();
-  expect(screen.queryByText('Save Reflection')).toBeNull();
-  expect(screen.queryByText('Saving…')).toBeNull();
-  expect(screen.getByRole('button', { name: 'Keep editing' })).toBeTruthy();
-  screen.rerender(<ReflectionView {...base} text="Saved" dismissOpen />);
-  expect(screen.getByText('Save Reflection')).toBeTruthy();
-  expect(screen.queryByTestId('reflection-dismiss-save-spinner')).toBeNull();
 });

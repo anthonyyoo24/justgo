@@ -153,30 +153,31 @@ test('slow phone writes prevent duplicate activation, expose delayed feedback an
   await page
     .getByLabel('Your reflection', { exact: true })
     .fill('First explicit submission.');
-  await page
-    .getByRole('button', { name: 'Close reflection', exact: true })
-    .click();
+  await expect(
+    page.getByRole('button', { name: 'Close reflection', exact: true }),
+  ).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.getByLabel('Your reflection', { exact: true })).toHaveValue(
+    'First explicit submission.',
+  );
   await fault(page, 'blocked');
   await page
     .getByRole('button', { name: 'Save Reflection', exact: true })
-    .last()
     .dispatchEvent('click');
   await page
     .getByRole('button', { name: 'Save Reflection', exact: true })
-    .last()
     .dispatchEvent('click');
   await expect(
-    page.getByRole('button', { name: 'Saving reflection', exact: true }).last(),
+    page.getByRole('button', { name: 'Saving reflection', exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByTestId('reflection-dismiss-save-spinner'),
-  ).toBeVisible();
+    page.getByRole('button', { name: 'Keep editing', exact: true }),
+  ).toHaveCount(0);
   await expect(page.getByTestId('reflection-submit-spinner')).toBeVisible();
   await expect(page.getByText('Save Reflection', { exact: true })).toHaveCount(
     0,
   );
   await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
   await page
     .getByLabel('Your reflection', { exact: true })
     .fill('Newer unsent input.');
@@ -566,7 +567,7 @@ test('first-download failure has a recovery action and later refresh failure lea
   ).toHaveLength(0);
 });
 
-test('active challenges hide all page navigation, preserve browsing continuity, and reset after reload', async ({
+test('active challenges hide all page navigation and reset after reload while the selected venue persists', async ({
   page,
   fixtureDatabase,
 }) => {
@@ -623,6 +624,9 @@ test('active challenges hide all page navigation, preserve browsing continuity, 
   await expect(
     page.getByRole('button', { name: 'Completed', exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole('tab', { name: 'Gym', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
   expect(
     (
       await fixtureDatabase.query(

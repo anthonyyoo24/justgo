@@ -22,7 +22,7 @@ Users control recovery, private data and preferences, with authenticated export 
 - Keep accessible app-drawn toggles visually steady; Reduce Motion input feedback obeys Haptics. The control's own short movement may animate in both directions unless system Reduce Motion or hydration suppresses it.
 - Retain the guarded development-only Test haptics page and session override; production always uses Batter. Never persist/export/report test selections.
 - Export a private ZIP of CSV, JSON and README with full authenticated paged history, safe metadata, preferences and labeled captured pending/rejected local copies. Exclude credentials and diagnostics, fence account changes/cancellation and clean temporary files. Share-sheet dismissal resets quietly; actual failures remain retryable.
-- Provide the configured support and feature-request email drafts without automatic private attachments, preserve failed-link feedback, and keep App Store/social rows unavailable until real destinations are verified. Existing legal links remain honest pending Phase 10.
+- Provide the configured support and feature-request email drafts without automatic private attachments, preserve failed-link feedback, and keep App Store/social rows unavailable until real destinations are verified. Existing legal links remain honest pending Phase 13.
 - Permanently delete the account in an owner-locked transaction, revoke credentials, retain minimal receipts/tombstones, persist intent and receipt, stop uploads/drain writes and remove only the selected account's storage/Keychain items. Refuse before destructive requests on incapable binaries; retries must not resurrect accounts.
 - Show the post-deletion/access-waiting welcome with new-account/recovery choices and remove deleted-account screens from Back history. This does not reopen deferred onboarding.
 - Explain that deletion does not cancel an Apple subscription and retain immediate deletion plus subscription management. Billing-provider cleanup/management is reaccepted when billing activates.
@@ -40,9 +40,9 @@ Users control recovery, private data and preferences, with authenticated export 
 ## Keep out
 
 - No Reset progress from the mockup, unconditional vendor forwarding, session replay/autocapture or journal/credential/audio payloads in telemetry.
-- No dependency of paid access or cloud saves on successful analytics delivery; Phase 09 owns the recorded owner decision onboarding acceptance flow.
+- No dependency of paid access or cloud saves on successful analytics delivery; Phase 10 owns the recorded owner decision onboarding acceptance flow.
 - No practice reminders, reminder notification permissions/scheduling or public feature-request board in the first release. Revisit reminders in separately scheduled post-launch work.
-- No analytics activation or new consent implementation; these belong to Phase 09. No final legal drafting/review/publication or release-disclosure preparation; these belong to Phase 10.
+- No analytics activation or new consent implementation; these belong to Phases 10–11. No final legal drafting/review/publication or release-disclosure preparation; these belong to Phase 13.
 
 ## Ready to hand off when
 
@@ -50,15 +50,15 @@ Users control recovery, private data and preferences, with authenticated export 
 - [x] Haptic feedback and its saved Settings switch pass automated checks and physical-iPhone acceptance on an updated signed build; timing/strength/feel, disabled/persisted behavior and any resulting fixes are retested within Phase 08.
 - [x] Get help opens the configured, working support destination from each recovery surface that offers it; no placeholder action or sensitive diagnostic payload is shipped.
 - [x] Feature requests reuses the configured support contact flow/destination with a feature-request subject/type, remains usable without a purchase, sends no automatic private attachments and handles link-opening failure honestly.
-- [x] Rating and social rows open their verified public destinations when configured, remain honestly unavailable otherwise, and retain a usable retry with plain feedback if opening fails. Actual App Store/profile opening remains a Phase 11 device check once these destinations exist.
+- [x] Rating and social rows open their verified public destinations when configured, remain honestly unavailable otherwise, and retain a usable retry with plain feedback if opening fails. Actual App Store/profile opening remains a Phase 14 device check once these destinations exist.
 - [x] Export/deletion isolate the owner, revoke credentials and document any pending cleanup; deleted identities cannot resurrect accounts.
-- [x] Server logs contain no sensitive payloads, including from the deletion endpoints; data-control/recovery actions remain usable without paid access. Phase 09 owns the single Terms & Privacy onboarding acceptance and removal of the unavailable analytics Settings rows under the recorded owner decision decision.
+- [x] Server logs contain no sensitive payloads, including from the deletion endpoints; data-control/recovery actions remain usable without paid access. Phase 10 owns the single Terms & Privacy onboarding acceptance and removal of the unavailable analytics Settings rows under the recorded owner decision.
 - [x] The [pre-merge stability fixes](phase-08-settings-privacy.md#phase-08-pre-merge) pass, `npm run check` passes with fresh Expo Doctor, and hosted CI is green for each merge candidate. The Supabase backup retention period is recorded and the backup restore checklist is written. The retention cleanup function has passing database evidence; Anthony deferred its hosted schedule on the recorded owner decision.
 - [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 11
+## Open gates for Phase 14
 
 - Phase 08A owns the month-boundary Progress journey correction.
-- Phase 09 owns analytics activation and vendor cleanup; Phase 10 owns legal notices and production Pro backup confirmation.
-- Phase 11 owns hosted forward migrations through 0016, API rollout, retention scheduling, native crash/not-found checks, signed-build capability/accessibility checks and the hosted restore rehearsal.
+- Phase 11 owns analytics activation and vendor cleanup; Phase 13 owns legal notices and production Pro backup confirmation.
+- Phase 14 owns hosted forward migrations through 0016, API rollout, retention scheduling, native crash/not-found checks, signed-build capability/accessibility checks and the hosted restore rehearsal.
 - See [open-gate owners](../handoffs/phase-08-settings-privacy.md#open-gates).

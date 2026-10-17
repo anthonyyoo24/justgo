@@ -32,7 +32,7 @@ Your Reduce Motion and Haptics choices are saved locally on this phone. We also 
 
 ## Analytics
 
-[REVIEW: October 15 owner direction replaces both planned Settings choices with one Terms & Privacy onboarding acceptance for the disclosed analytics scope. No analytics Settings switches or later analytics prompt are planned. The following describes intended Phase 09 behavior, not current collection: export remains disabled. Phase 10 must review the final page, exact fields, regional sufficiency, applicable withdrawal/objection process and publication. If analytics remains disabled, describe that actual behavior.]
+[REVIEW: October 15 owner direction replaces both planned Settings choices with one Terms & Privacy onboarding acceptance for the disclosed analytics scope. No analytics Settings switches or later analytics prompt are planned. The following describes intended Phase 11 behavior, not current collection: export remains disabled. Phase 13 must review the final page, exact fields, regional sufficiency, applicable withdrawal/objection process and publication. If analytics remains disabled, describe that actual behavior.]
 
 After you accept the Terms & Privacy page, we share limited events with PostHog to understand use of features such as challenge completion and Progress and improve JustGO. These events can use a random, persistent identifier linked to your JustGO account; they are not anonymous simply because they omit your name or email.
 

@@ -50,7 +50,9 @@ became inactive or minor wording changed. Minor wording edits appear in history;
 a substantially different activity receives a new challenge ID.
 
 Only Completed creates a saved rep. Its UUID is generated once before the phone
-write and reused through retries/restarts. Start and Give up remain memory-only.
+write and reused through retries/restarts. Unfinished activity remains memory-only;
+Start and Give up create no saved attempt or API write. Give up may save an updated
+local deck order through the separate optional preference path below.
 The countdown derives from captured start + original duration, and zero waits for
 an explicit outcome. Completed, reflection and upload time never move the rep to
 another calendar day: new `activityDate` freezes the original start in its captured
@@ -72,9 +74,31 @@ screens cannot mutate a competing queue. Storage, transport, clock and randomnes
 are controllable boundaries for tests. Credentials remain in secure identity
 storage, outside this repository.
 
-The account prefix is `justgo:v1:<accountId>`, with separate `:catalog` and
-`:journal` keys. The catalog stores validated downloaded content. Venue selection
-and cycling order remain memory-only. One serialized journal envelope contains
+The account prefix is `justgo:v1:<accountId>`, with separate `:catalog`, `:decks`
+and `:journal` keys. The catalog stores validated downloaded content. `:decks`
+stores a versioned account-owned envelope with the last selected venue and each
+venue's ordered placement IDs; the first ID is its current front. It stays on this
+phone, outside API uploads, analytics and cross-device recovery. Missing or unknown
+saved venue values default to Streets. Missing, unreadable, invalid or owner-mismatched
+deck state is replaceable with a fresh shuffle.
+
+`DeckPreferencesStorage` owns validation and serialized best-effort preference
+writes; the challenge controller owns the live order and catalog reconciliation.
+Shuffle each new venue once through injected randomness. Refresh retains surviving
+order and the current front, inserts added placements randomly behind that front,
+and drops removed/inactive placements without fabricating cards. If no saved
+placement survives, shuffle the available cards afresh. Rotate only the matching
+front placement: completing or giving up an active card removed during refresh
+must not rotate the untouched next card. Account-generation fences prevent late
+reads from replacing another account's state or a newer explicit venue choice.
+
+Preference-write failures leave live browsing usable and never enter journal
+saving, retry, loss-risk or cloud-fallback handling. Later preference changes may
+retry the optional save. Account deletion stops new preference writes, drains
+accepted reads/writes and then removes the account-prefixed keys, preventing a
+late optional write from recreating deleted data.
+
+One serialized journal envelope contains
 submitted display records, immutable operation payloads, version/receipt state,
 change generation and bounded summary/calendar/today snapshots. Display and upload
 intent therefore commit in one write; multi-key AsyncStorage writes are not treated

@@ -23,7 +23,7 @@ recommendations are checked separately by the pinned Doctor command.
 | UI, art and detail sheets        | React Native StyleSheet/tokens, SVG, Expo Image/Font, Gorhom Bottom Sheet, safe-area context |
 | Remote reads                     | TanStack Query 5, account-scoped in-memory queries                                           |
 | Live activity state              | Zustand 5 without persistence middleware                                                     |
-| Phone activity persistence       | AsyncStorage 2.2 with explicit versioned catalog/journal envelopes                           |
+| Phone activity persistence       | AsyncStorage 2.2 with explicit versioned catalog/journal/deck-preference envelopes           |
 | Connectivity and saving feedback | NetInfo, Sonner Native and the Sonner web adapter                                            |
 | Recovery credentials             | Local Expo Swift Keychain module and a typed identity adapter                                |
 | Haptics                          | Pulsar 1.7, gated behind the iPhone TurboModule and saved installation preference            |
@@ -106,7 +106,8 @@ personal deck queue, content revision or generic server outbox tables.
 | Data                                                             | Current owner                                                          |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Secure credentials and pending identity/deletion proposals       | Keychain identity adapter                                              |
-| Venue choice, cycling order and unfinished countdown             | Account-owned memory                                                   |
+| Venue choice and cycling order                                   | Versioned account AsyncStorage deck preferences                        |
+| Unfinished countdown                                             | Account-owned memory                                                   |
 | Downloaded catalog                                               | Versioned account AsyncStorage catalog                                 |
 | Explicitly submitted activity, immutable operations and receipts | One serialized account AsyncStorage journal plus live repository state |
 | Latest summary/current-month counts/today's downloaded pages     | Bounded snapshots in that journal                                      |
@@ -172,9 +173,9 @@ owned by [Phase 07A](../implementation-plan/phase-07a-billing.md). The optional
 
 Analytics and crash-reporting providers are not installed or enabled. The current
 telemetry helper has an event-name allowlist, account-reset consent and no exporter
-or payload API. [Phase 09](../implementation-plan/phase-09-analytics.md) owns the
-Terms & Privacy acceptance receipt, disclosed event scope and crash reporting;
-[Phase 10](../implementation-plan/phase-10-legal-documents.md) owns final legal
+or payload API. [Phase 10](../implementation-plan/phase-10-acceptance.md) owns the
+Terms & Privacy acceptance receipt, [Phase 11](../implementation-plan/phase-11-analytics.md) owns the disclosed events, and [Phase 12](../implementation-plan/phase-12-crash-reporting.md) owns app crash reporting;
+[Phase 13](../implementation-plan/phase-13-legal-documents.md) owns final legal
 notices and public destinations. Questionnaire onboarding, reminders, custom
 dictation, lock-screen display and progression remain deferred; their existence
 in a plan must not be read as installed dependencies, tables or behavior.

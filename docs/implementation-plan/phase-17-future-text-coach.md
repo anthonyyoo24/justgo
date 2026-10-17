@@ -1,6 +1,6 @@
-<a id="phase-14"></a>
+<a id="phase-17"></a>
 
-# Phase 14 — Future AI text coach
+# Phase 17 — Future AI text coach
 
 **Status:** Not scheduled
 
@@ -10,7 +10,7 @@ A separately approved text coach uses bounded, permitted context in the existing
 
 ## Decisions in force
 
-- Dependencies: 11
+- Dependencies: 14
 - Acceptance: PRD §9 · Tech §10; acceptance 11, 16–17
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 
@@ -32,6 +32,6 @@ A separately approved text coach uses bounded, permitted context in the existing
 - [ ] Cross-user/context-consent isolation, deletion, prompt-injection handling, latency and cost limits are verified.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 11
+## Open gates for Phase 14
 
 Not a first-release gate; schedule separately after launch.

@@ -40,7 +40,7 @@ Deleting the app or your JustGO account does not cancel an Apple subscription. [
 
 ## Privacy and closing your account
 
-The Privacy Policy explains account data, phone/cloud journal storage, analytics, service providers and retention. Phase 09 plans one Terms & Privacy onboarding acceptance for the disclosed analytics scope, with no analytics Settings switches or later analytics prompt. [REVIEW: Insert the public URL and reconcile this intended acceptance flow with the actual implementation and applicable consent requirements before publication.]
+The Privacy Policy explains account data, phone/cloud journal storage, analytics, service providers and retention. Phase 10 plans one Terms & Privacy onboarding acceptance for the disclosed analytics scope, with no analytics Settings switches or later analytics prompt. [REVIEW: Insert the public URL and reconcile this intended acceptance flow with the actual implementation and applicable consent requirements before publication.]
 
 You can delete your account through [verified Settings path]. [REVIEW: Publish this statement only after deletion, revocation and cleanup are verified. Describe any delayed cleanup consistently with the policy.]
 

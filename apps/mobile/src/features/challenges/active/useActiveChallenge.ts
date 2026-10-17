@@ -59,7 +59,7 @@ export function useActiveChallenge(
       if (!alive.current || !start) return;
       if (outcome === 'given_up') {
         if (controller.getSnapshot().completionStarted) return;
-        controller.skip(start.card.venue);
+        controller.skip(start.card.venue, start.card.id);
         clear();
       } else {
         // The controller/repository retain accepted submissions and own failures.

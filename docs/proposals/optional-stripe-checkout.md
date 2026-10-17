@@ -1,6 +1,6 @@
 # Optional US iOS web checkout proposal
 
-**Status:** Deferred and disabled. [Phase 13](../implementation-plan/phase-13-optional-stripe.md)
+**Status:** Deferred and disabled. [Phase 16](../implementation-plan/phase-16-optional-stripe.md)
 owns approval and acceptance. Native billing is a separate prerequisite described
 in the [billing proposal](native-billing-and-jobs.md). This is a retained design,
 not a current statement of store eligibility; recheck official rules, provider

@@ -127,6 +127,18 @@ it('opens a local reflection immediately and saves without HTTP gating', async (
   );
   expect(mockChallenges.dismissSuccess).toHaveBeenCalledTimes(1);
 });
+it('skips only through the bottom action without writing an empty reflection', () => {
+  const submit = jest.spyOn(mockRepository!, 'submitReflection');
+  const screen = render(<ReflectionScreen />);
+  expect(screen.getAllByRole('button')).toHaveLength(1);
+  expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Close reflection' })).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
+  expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(tabs)');
+  expect(mockChallenges.dismissSuccess).toHaveBeenCalledTimes(1);
+  expect(submit).not.toHaveBeenCalled();
+  expect(mockRepository?.getAttempt(uuid(1))?.reflection).toBeNull();
+});
 it.each(['progress', 'recovery'])(
   'keeps a different completion flow when saving an older reflection from %s',
   async (source) => {

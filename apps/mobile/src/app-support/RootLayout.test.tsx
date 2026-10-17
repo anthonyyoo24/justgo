@@ -11,6 +11,7 @@ let mockIdentity = {
 let mockVerified = true;
 let mockPending = false;
 const mockRefreshChallenges = jest.fn(async () => {});
+const mockStackScreenOptions = new Map<string, unknown>();
 jest.mock('expo-font', () => ({ useFonts: () => [true, null] }));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('react-native-gesture-handler', () => ({
@@ -60,7 +61,10 @@ jest.mock('expo-router', () => {
         </View>
       ),
       {
-        Screen: ({ name }: { name: string }) => <Text>{name}</Text>,
+        Screen: ({ name, options }: { name: string; options?: unknown }) => {
+          mockStackScreenOptions.set(name, options);
+          return <Text>{name}</Text>;
+        },
         Protected: ({
           guard,
           children,
@@ -75,6 +79,7 @@ jest.mock('expo-router', () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockStackScreenOptions.clear();
   mockIdentity = { deletionStatus: null, busy: false, account: null };
   mockVerified = true;
   mockPending = false;
@@ -82,6 +87,17 @@ beforeEach(() => {
 
 it('uses the retryable crash screen as the root error boundary', () => {
   expect(ErrorBoundary).toBe(RouteErrorScreen);
+});
+
+it.each([
+  '(challenge)/challenge',
+  '(challenge)/success',
+  '(challenge)/reflection',
+])('keeps swipe-back disabled on the explicit-action-only %s route', (name) => {
+  render(<RootLayout />);
+  expect(mockStackScreenOptions.get(name)).toMatchObject({
+    gestureEnabled: false,
+  });
 });
 
 it('removes old account routes after deletion and keeps them removed through replacement loading or failure', () => {

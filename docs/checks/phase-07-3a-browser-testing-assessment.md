@@ -106,7 +106,7 @@ Keychain/AsyncStorage durability and native lifecycle checks rather than treatin
 browser reloads as equivalent. Capture targeted transition recordings for the
 first/repeated completion flicker; eventual screen assertions alone can miss a
 brief incorrect frame. Physical-device VoiceOver, recovery, motion and release
-checks remain explicitly owned by their existing handoffs/Phase 11.
+checks remain explicitly owned by their existing handoffs/Phase 14.
 
 ## Documentation to reconcile during 07.3A
 

@@ -1,6 +1,6 @@
 # Future AI text coach proposal
 
-**Status:** Deferred. [Phase 14](../implementation-plan/phase-14-future-text-coach.md)
+**Status:** Deferred. [Phase 17](../implementation-plan/phase-17-future-text-coach.md)
 owns approval and acceptance. No coach dependencies, tables, API routes, provider
 configuration or UI are implemented. Revalidate streaming APIs and provider
 privacy/retention behavior when scheduling the work.

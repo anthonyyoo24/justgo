@@ -12,7 +12,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 import { colors, fontFamilies } from '../../theme/tokens';
 import {
   challengeDisplayFont,
@@ -30,28 +29,20 @@ export function ReflectionView({
   onFeelingChange,
   onTextChange,
   onSubmit,
-  onClose,
   busy = false,
   savingVisible = false,
   editing = false,
   error,
-  dismissOpen = false,
-  onKeepEditing,
-  onDiscard,
 }: {
   feeling: FeelingCode | null;
   text: string;
   onFeelingChange: (value: FeelingCode | null) => void;
   onTextChange: (value: string) => void;
   onSubmit: () => void;
-  onClose: () => void;
   busy?: boolean;
   savingVisible?: boolean;
   editing?: boolean;
   error?: string | null;
-  dismissOpen?: boolean;
-  onKeepEditing?: () => void;
-  onDiscard?: () => void;
 }) {
   const { width, fontScale } = useWindowDimensions();
   const scale = Math.min(width, 390) / 390;
@@ -96,25 +87,6 @@ export function ReflectionView({
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              accessibilityState={{ disabled: inactive }}
-              disabled={inactive}
-              onPress={onClose}
-              style={styles.iconButton}
-            >
-              <Svg width={20} height={20} viewBox="0 0 20 20" aria-hidden>
-                <Path
-                  d="M12.5 3.5 L6 10 L12.5 16.5"
-                  fill="none"
-                  stroke={colors.ink}
-                  strokeWidth={1.8}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </Svg>
-            </Pressable>
             <Text
               style={[
                 styles.headerTitle,
@@ -123,24 +95,6 @@ export function ReflectionView({
             >
               Reflection
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close reflection"
-              accessibilityState={{ disabled: inactive }}
-              disabled={inactive}
-              onPress={onClose}
-              style={styles.iconButton}
-            >
-              <Svg width={20} height={20} viewBox="0 0 20 20" aria-hidden>
-                <Path
-                  d="M3.5 3.5 L16.5 16.5 M16.5 3.5 L3.5 16.5"
-                  fill="none"
-                  stroke={colors.ink}
-                  strokeWidth={1.8}
-                  strokeLinecap="round"
-                />
-              </Svg>
-            </Pressable>
           </View>
           <Text accessibilityRole="header" style={styles.title}>
             How do you feel?
@@ -262,55 +216,6 @@ export function ReflectionView({
             )}
           </Pressable>
         </View>
-        {dismissOpen && (
-          <View style={styles.scrim} accessibilityViewIsModal>
-            <View style={styles.dialog}>
-              <Text accessibilityRole="header" style={styles.dialogTitle}>
-                Leave your reflection?
-              </Text>
-              <Text style={styles.dialogBody}>
-                You have an unfinished reflection. Choose what to do with it.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  savingVisible ? 'Saving reflection' : 'Save Reflection'
-                }
-                onPress={onSubmit}
-                disabled={busy}
-                accessibilityState={{ disabled: busy, busy: savingVisible }}
-                style={styles.dialogAction}
-              >
-                {savingVisible ? (
-                  <ActivityIndicator
-                    color={colors.ink}
-                    size="small"
-                    accessible={false}
-                    testID="reflection-dismiss-save-spinner"
-                  />
-                ) : (
-                  <Text style={styles.dialogActionText}>Save Reflection</Text>
-                )}
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={onKeepEditing}
-                style={styles.dialogAction}
-              >
-                <Text style={styles.dialogActionText}>Keep editing</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={onDiscard}
-                disabled={busy}
-                accessibilityState={{ disabled: busy }}
-                style={styles.dialogAction}
-              >
-                <Text style={styles.dialogActionText}>Discard and skip</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -324,12 +229,6 @@ const styles = StyleSheet.create({
   header: {
     minHeight: 44,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -452,47 +351,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     color: colors.white,
-  },
-  scrim: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    zIndex: 5,
-    backgroundColor: '#102C4980',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  dialog: {
-    backgroundColor: colors.paper,
-    borderRadius: 16,
-    padding: 24,
-    gap: 12,
-  },
-  dialogTitle: {
-    fontFamily: fontFamilies.display,
-    fontWeight: '600',
-    fontSize: 24,
-    color: colors.ink,
-  },
-  dialogBody: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.ink,
-  },
-  dialogAction: {
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.ink,
-  },
-  dialogActionText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 14,
-    color: colors.ink,
   },
 });
