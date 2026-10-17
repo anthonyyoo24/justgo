@@ -135,8 +135,8 @@ export async function collectExport({
     formatVersion: 1,
     startedAt,
     exportedAt: new Date().toISOString(),
-    account: first!.account,
-    devices: first!.devices,
+    account: first.account,
+    devices: first.devices,
     preferences: { reduceMotion, haptics },
     attempts: attempts.sort(
       (a, b) =>

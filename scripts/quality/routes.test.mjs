@@ -104,7 +104,7 @@ test('mobile and CI typechecking generate route types before TypeScript reads th
   );
   assert.equal(
     mobilePackage.scripts.typecheck,
-    'node ../../scripts/quality/generate-route-types.mjs && tsc --noEmit',
+    'node ../../scripts/quality/generate-route-types.mjs && tsc --noEmit && tsc --project tsconfig.tests.json --noEmit',
   );
   assert.match(rootPackage.scripts.typecheck, /npm run typecheck --workspaces/);
   assert.match(rootPackage.scripts['check:static'], /npm run typecheck/);
