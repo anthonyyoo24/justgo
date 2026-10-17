@@ -80,7 +80,7 @@ it('shows unknown links as not found and returns to the root route', async () =>
   const navigation = renderRouter(
     {
       _layout: StackLayout,
-      index: () => <Text>Access gate</Text>,
+      index: () => <Text>Home ready</Text>,
       '+not-found': NotFoundRoute,
     },
     { initialUrl: '/no-such-page' },
@@ -91,6 +91,6 @@ it('shows unknown links as not found and returns to the root route', async () =>
   ).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: 'Go home' }));
   await waitFor(() => expect(navigation.getPathname()).toBe('/'));
-  expect(screen.getByText('Access gate')).toBeTruthy();
+  expect(screen.getByText('Home ready')).toBeTruthy();
   expect(screen.queryByRole('header', { name: 'Page not found' })).toBeNull();
 });

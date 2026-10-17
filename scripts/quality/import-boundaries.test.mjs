@@ -189,7 +189,7 @@ const cases = [
   {
     name: 'data cannot re-export a route',
     file: 'apps/mobile/src/data/activity/BoundaryFixture.ts',
-    source: "export * from '../../app/reflection';",
+    source: "export * from '../../app/(challenge)/reflection';",
     restricted: true,
   },
   {

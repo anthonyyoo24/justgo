@@ -98,18 +98,21 @@ it('removes old account routes after deletion and keeps them removed through rep
     expect(screen.getByTestId('navigation')).toHaveStyle({
       backgroundColor: '#122E45',
     });
-    expect(screen.getByText('index')).toBeTruthy();
+    expect(screen.getByText('access')).toBeTruthy();
     expect(screen.getByText('welcome')).toBeTruthy();
     for (const name of [
       'settings',
-      'export-data',
       'delete-account',
       'recovery',
-      'account/[tool]',
+      'account/recover',
+      'account/keys',
+      'account/devices',
+      'account/transfer',
+      'account/troubleshooting',
       '(tabs)',
-      'challenge',
-      'success',
-      'reflection',
+      '(challenge)/challenge',
+      '(challenge)/success',
+      '(challenge)/reflection',
       'preview',
     ])
       expect(screen.queryByText(name)).toBeNull();
@@ -133,7 +136,7 @@ it.each(['pending', 'cleanup'] as const)(
     expect(screen.getByText('delete-account')).toBeTruthy();
     expect(screen.queryByText('welcome')).toBeNull();
     expect(screen.queryByText('(tabs)')).toBeNull();
-    expect(screen.queryByText('challenge')).toBeNull();
+    expect(screen.queryByText('(challenge)/challenge')).toBeNull();
   },
 );
 

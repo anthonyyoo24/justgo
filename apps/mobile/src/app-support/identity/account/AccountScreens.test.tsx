@@ -14,7 +14,11 @@ import {
 } from 'react-native';
 import type { LinkProps } from 'expo-router';
 import RecoveryRoute from '../../../app/recovery';
-import AccountToolRoute from '../../../app/account/[tool]';
+import RecoverAccountRoute from '../../../app/account/recover';
+import RecoveryKeysRoute from '../../../app/account/keys';
+import DevicesRoute from '../../../app/account/devices';
+import TransferAccountRoute from '../../../app/account/transfer';
+import AccountTroubleshootingRoute from '../../../app/account/troubleshooting';
 import { IdentityController } from '../controller';
 import { createIdentityApi, IdentityClientError } from '../api';
 import { createMemoryVault } from '../storage';
@@ -23,6 +27,17 @@ import { supportContact, contactFailureMessage } from '../../contact';
 
 let mockController: IdentityController;
 let mockTool = 'keys';
+const accountRoutes = {
+  recover: RecoverAccountRoute,
+  keys: RecoveryKeysRoute,
+  devices: DevicesRoute,
+  transfer: TransferAccountRoute,
+  troubleshooting: AccountTroubleshootingRoute,
+};
+function AccountToolRoute() {
+  const Route = accountRoutes[mockTool as keyof typeof accountRoutes];
+  return <Route />;
+}
 let mockFocused = true;
 const mockRouter = {
   canGoBack: jest.fn(() => true),
@@ -621,7 +636,7 @@ it('keeps session maintenance in Troubleshooting and falls back to the account p
   expect(mockRouter.replace).toHaveBeenLastCalledWith('/recovery');
 });
 
-it('offers explicit existing-account recovery and rejects unknown tool URLs', async () => {
+it('offers explicit existing-account recovery at its static route', async () => {
   await connected();
   mockTool = 'recover';
   const screen = render(<AccountToolRoute />);
@@ -632,9 +647,6 @@ it('offers explicit existing-account recovery and rejects unknown tool URLs', as
   expect(screen.getByRole('button', { name: 'Recover with key' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Get help' })).toBeNull();
   expect(screen.queryByText('JustGO · Your account, kept private')).toBeNull();
-  mockTool = 'toString';
-  screen.rerender(<AccountToolRoute />);
-  expect(screen.getByText('Redirect: /recovery')).toBeTruthy();
 });
 
 it('confirms receiving a transfer from a connected account, preserves Cancel and finishes recovery', async () => {

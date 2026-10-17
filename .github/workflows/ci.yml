@@ -34,6 +34,8 @@ jobs:
       - run: npm install -g npm@11.16.0
       - run: npm ci
       - run: npm run doctor -w @justgo/mobile
+      # Mobile typechecking generates and verifies fresh Expo route declarations
+      # without starting Metro, including on clean CI runners.
       - run: npm run check:static
       - name: Install PostgreSQL 17 snapshot tools
         run: |

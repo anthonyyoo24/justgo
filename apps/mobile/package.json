@@ -49,7 +49,7 @@
     "start": "expo start --dev-client",
     "web": "expo start --web --port 8081",
     "ios": "expo run:ios",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ../../scripts/quality/generate-route-types.mjs && tsc --noEmit",
     "test": "jest --runInBand",
     "test:native": "maestro test -e APP_ID=\"${APP_ID:?Set APP_ID to the installed development app identifier}\" e2e/launch.yaml",
     "export:web": "expo export --platform web",
