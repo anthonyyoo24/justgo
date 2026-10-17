@@ -1,9 +1,6 @@
-import {
-  exportPageSchema,
-  type ExportPage,
-  type Attempt,
-} from '@justgo/contracts';
+import type { ExportPage, Attempt } from '@justgo/contracts';
 import { strToU8, zipSync } from 'fflate';
+import { readExportPage } from './api';
 import type { AccountClient } from '../../../lib/network/account-client';
 import { ApiError } from '../../../lib/network/http';
 import {
@@ -116,12 +113,7 @@ export async function collectExport({
   let cursor: string | null = null;
   let first: ExportPage | undefined;
   do {
-    const page: ExportPage = await client.request(
-      '/v1/account/export' +
-        (cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''),
-      exportPageSchema,
-      { signal },
-    );
+    const page: ExportPage = await readExportPage(client, cursor, signal);
     check();
     if (page.account.id !== repository.accountId)
       throw new ApiError('ACCOUNT_CHANGED');

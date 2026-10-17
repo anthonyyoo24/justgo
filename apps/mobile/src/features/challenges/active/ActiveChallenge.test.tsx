@@ -5,7 +5,9 @@ import { ChallengeCard } from '../deck/ChallengeDeck';
 import { ActiveChallenge } from './ActiveChallenge';
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../../app-support/providers/AppProvider', () => ({}));
-jest.mock('../deck/ChallengeDeck', () => ({ ChallengeCard: jest.fn(() => null) }));
+jest.mock('../deck/ChallengeDeck', () => ({
+  ChallengeCard: jest.fn(() => null),
+}));
 const attempt: ChallengeStart = {
   card: {
     id: 'GY-01',

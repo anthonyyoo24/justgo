@@ -1,6 +1,9 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { exportPageSchema, type ExportPage } from '@justgo/contracts';
-import { AccountClient, createQueryClient } from '../../../lib/network/account-client';
+import {
+  AccountClient,
+  createQueryClient,
+} from '../../../lib/network/account-client';
 import { ApiError, createHttpClient } from '../../../lib/network/http';
 import { AccountRepository } from '../../../data/activity/repository';
 import { collectExport } from './data-export';

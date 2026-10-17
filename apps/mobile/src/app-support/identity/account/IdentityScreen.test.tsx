@@ -3,7 +3,8 @@ import { IdentityScreen } from './IdentityScreen';
 import { AccountToolsScreen } from './AccountToolsScreen';
 import { IdentityController } from '../controller';
 import { createMemoryVault } from '../storage';
-import { Linking } from 'react-native';
+import { AppState, Linking, type AppStateStatus } from 'react-native';
+import type { ComponentProps } from 'react';
 import { supportContact, contactFailureMessage } from '../../contact';
 import { showMessageToast } from '../../../platform/toast/Toast';
 import {
@@ -11,6 +12,14 @@ import {
   IdentityClientError,
   type IdentityApi,
 } from '../api';
+
+// A screen cannot create a private runtime when its caller omits the controller.
+type Assert<T extends true> = T;
+export type RequiresSuppliedController = Assert<
+  undefined extends ComponentProps<typeof IdentityScreen>['controller']
+    ? false
+    : true
+>;
 
 jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
@@ -35,7 +44,6 @@ jest.mock('expo-crypto', () => ({
   getRandomValues: () => new Uint8Array(32).fill(1),
   randomUUID: () => '00000000-0000-4000-8000-000000000001',
 }));
-jest.mock('../vault', () => ({ createVault: jest.fn() }));
 jest.mock('../../../platform/toast/Toast', () => ({
   showMessageToast: jest.fn(),
 }));
@@ -385,3 +393,93 @@ it.each([
     }
   },
 );
+
+it('keeps creation pending by action ID when arriving credentials change its label', async () => {
+  const controller = new IdentityController(createMemoryVault(), {
+    request: jest.fn(),
+  });
+  let snapshot = { ...controller.getSnapshot(), initialized: true };
+  jest.spyOn(controller, 'getSnapshot').mockImplementation(() => snapshot);
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const create = jest
+    .spyOn(controller, 'createAccount')
+    .mockImplementation(async () => {
+      snapshot = { ...snapshot, busy: true, hasPending: true };
+      await pending;
+      snapshot = { ...snapshot, busy: false };
+    });
+  const screen = render(<IdentityScreen controller={controller} managed />);
+  try {
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Create a new account' }),
+    );
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    snapshot = {
+      ...snapshot,
+      credentials: [{ id: '10000000-0000-4000-8000-000000000001' }],
+    };
+    screen.rerender(<IdentityScreen controller={controller} managed />);
+    const renamed = screen.getByRole('button', {
+      name: 'Create a separate account',
+    });
+    expect(renamed).toBeDisabled();
+    expect(
+      screen.getByRole('progressbar', {
+        name: 'Create a separate account in progress',
+      }),
+    ).toBeTruthy();
+    fireEvent.press(renamed);
+    expect(create).toHaveBeenCalledTimes(1);
+  } finally {
+    await act(async () => {
+      release();
+      await pending;
+    });
+    await waitFor(() => expect(screen.queryByRole('progressbar')).toBeNull());
+    screen.unmount();
+  }
+});
+
+it('retains a recovery key across temporary closes and clears it on background', async () => {
+  let onState: ((state: AppStateStatus) => void) | undefined;
+  const listener = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_event, callback) => {
+      onState = callback;
+      return { remove: jest.fn() };
+    });
+  const controller = new IdentityController(createMemoryVault(), {
+    request: jest.fn(),
+  });
+  await controller.initialize();
+  const screen = render(<IdentityScreen controller={controller} managed />);
+  try {
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Recover an existing account' }),
+    );
+    fireEvent.changeText(
+      screen.getByLabelText('Recovery key'),
+      'private synthetic key',
+    );
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Close recovery options' }),
+    );
+    expect(screen.queryByLabelText('Recovery key')).toBeNull();
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Recover an existing account' }),
+    );
+    expect(screen.getByLabelText('Recovery key').props.value).toBe(
+      'private synthetic key',
+    );
+    await act(async () => {
+      onState?.('background');
+    });
+    expect(screen.getByLabelText('Recovery key').props.value).toBe('');
+  } finally {
+    screen.unmount();
+    listener.mockRestore();
+  }
+});
