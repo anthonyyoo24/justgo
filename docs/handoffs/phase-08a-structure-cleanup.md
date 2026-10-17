@@ -44,6 +44,13 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
   untrusted bodies from rejecting saved credentials. Retry/cancellation budgets
   and validated API errors remain intact.
 
+- Production mobile types exclude Jest/Node globals; tests have a separate
+  program. Targeted typed, React and Testing Library lint rules guard behavior.
+  Large suites share fixtures while retaining their cases and ordered migration
+  rehearsal. Progress journeys always exercise the previous month. A normal
+  production-export smoke fences all API traffic and covers routes/assets.
+  Unknown-link recovery enters `/access` so unavailable access cannot strand it.
+
 ## Invariants to preserve
 
 - Existing identity, deletion, activity, access, privacy and native safety rules
@@ -61,6 +68,8 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
   restart an owned server with --clear before reloading the installed app.
 - Archived proposals and evidence cannot override the current phase scope or
   establish acceptance for a newer revision.
+- Syntax-only lint fixtures must disable type-aware rules when they deliberately
+  have no TypeScript project; production and typed negative fixtures keep them on.
 
 ## Setup or environment changes
 
@@ -70,12 +79,15 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
   is not a fresh-checkout or CI prerequisite.
 - Mobile typechecking generates Expo route declarations first, including on a
   fresh CI checkout. Generated declarations stay ignored and outside formatting.
+- Node types match Node 24. Jest uses one local worker and two in CI. Run the
+  normal exported-web smoke before iOS export replaces the shared output folder;
+  [testing guidance](../operations/TESTING.md) owns the commands and import policy.
 
 ## Open gates
 
 | Gate                                                          | Owner                                                | Required step/phase | Done when                                                   |
 | ------------------------------------------------------------- | ---------------------------------------------------- | ------------------- | ----------------------------------------------------------- |
-| Tooling, regression journeys and CI changes                   | Implementation owner                                 | 08A steps 6–7       | Local required checks pass; hosted candidates are inspected |
+| CI changes                                                    | Implementation owner                                 | 08A step 7          | Local required checks pass; hosted candidates are inspected |
 | Local branch/worktree deletions and billing stash disposition | Anthony approves each deletion; implementation owner | 08A step 8          | Concrete inventory reviewed and approved cleanup completed  |
 | Publication of each step and hosted CI                        | Anthony authorizes each action                       | 08A                 | Authorized candidates have inspected passing hosted checks  |
 | Earlier physical-device, staging and release acceptance       | Existing phase owners                                | 09–11               | Original handoff/release requirements are evidenced         |
@@ -99,5 +111,8 @@ absent from the Hermes bundle. HTTP verification passed the full npm run check
 and focused protocol/account/consumer regressions, including malformed media,
 authentication-shaped proxy bodies, timeout/cancellation and bounded replay.
 No Phase 08A hosted CI is claimed;
-remaining steps require their own checks. Detailed
+the tooling checkpoint passed the final npm run check, database suites and ordered
+migration rehearsal, all saved journeys, normal production exported-web smoke,
+cold web/iOS exports and a side-panel Settings/unknown-route walkthrough.
+Remaining steps require their own checks. Detailed
 interim output stays in ignored local logs and commit/PR descriptions.

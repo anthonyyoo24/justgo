@@ -61,7 +61,7 @@ The focused regression failed before the route fix (`200` instead of `429`) and
 passed afterward. Run it from `apps/api` with:
 
 ```sh
-node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/identity.integration.test.ts -t 'shares the sensitive budget'
+node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/identity/identity.transfers.integration.test.ts -t 'shares the sensitive budget'
 ```
 
 Fresh follow-up verification passed:
