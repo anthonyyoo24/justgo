@@ -2,7 +2,7 @@
 
 # Phase 08A — Structure, docs & tooling cleanup
 
-**Status:** In progress — documentation and structure cleanup.
+**Status:** Local implementation ready — hosted CI, owner review and approved cleanup remain open.
 
 ## Outcome
 
@@ -55,7 +55,7 @@ The repository is easier and cheaper to work in. Routes, folders and documentati
 - [x] The folder guide matches the tree on disk and an architecture test fails when a listed path is missing; moves preserve behavior with passing `npm run check`, `npm run test:db` and browser checks.
 - [x] The OpenAPI document is absent from the exported iOS bundle and a test keeps its paths aligned with registered routes; shared API plumbing lives in `src/http/`.
 - [ ] CI runs in parallel jobs with each suite once, timeouts, pinned actions and dependency updates, and hosted checks pass for the pushed commit.
-- [ ] Save the phase handoff with exact changes, verification evidence and any explicit deferrals; link it from the handoff index.
+- [x] Save the phase handoff with exact changes, verification evidence and any explicit deferrals; link it from the handoff index.
 
 ## Open gates for Phase 11
 
