@@ -1,6 +1,6 @@
 # JustGO legal document review and publication
 
-**October 14 phase ownership:** [Phase 10](../IMPLEMENTATION_PLAN.md#phase-10) owns this review, final Privacy Policy/Terms, public hosting and disclosure preparation. Phase 08 supplies verified data-control/retention behavior, Phase 09 supplies actual analytics facts, and Phase 11 verifies the signed release and submits final metadata. Existing drafts and open review decisions are preserved.
+**October 14 phase ownership:** [Phase 10](../implementation-plan/phase-10-legal-documents.md#phase-10) owns this review, final Privacy Policy/Terms, public hosting and disclosure preparation. Phase 08 supplies verified data-control/retention behavior, Phase 09 supplies actual analytics facts, and Phase 11 verifies the signed release and submits final metadata. Existing drafts and open review decisions are preserved.
 
 The next step is owner review of the [data inventory](DATA_INVENTORY.md), [Privacy Policy draft](PRIVACY_POLICY_DRAFT.md) and [Terms of Use draft](TERMS_DRAFT.md). Youngshin Yoo is the confirmed personal operator in Canada. The intended draft scope is adults 18 and older across available App Store countries and regions. No public pages or App Store settings were changed by this drafting work.
 
@@ -47,7 +47,7 @@ Copy must describe phone plus cloud storage, product-analysis purposes and persi
 5. Open both public URLs without an authenticated developer session, then configure the app links and App Store metadata. Check links from the actual iPhone build and purchase/recovery surfaces. Verify that the posted policy matches App Privacy answers.
 6. For the free beta, describe its actual services and free access. Before paid launch, update the documents and disclosures for enabled billing providers and the final offer. Material new processing may need updated notice or consent; do not silently reuse old wording.
 
-This drafting step does not select a domain, create a website, send email, enable a vendor or authorize Git publication. The subsequently authorized Settings layout and existing recovery/contact actions are now locally verified, as recorded in the [Phase 08 handoff](../handoffs/phase-08-settings-privacy.md). Remaining data controls stay in [Phase 08](../IMPLEMENTATION_PLAN.md#phase-08), analytics in [Phase 09](../IMPLEMENTATION_PLAN.md#phase-09), legal review/publication in [Phase 10](../IMPLEMENTATION_PLAN.md#phase-10), and broader physical-device/release acceptance in [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11). Their existing open gates remain open.
+This drafting step does not select a domain, create a website, send email, enable a vendor or authorize Git publication. The subsequently authorized Settings layout and existing recovery/contact actions are now locally verified, as recorded in the [Phase 08 handoff](../handoffs/phase-08-settings-privacy.md). Remaining data controls stay in [Phase 08](../implementation-plan/phase-08-settings-privacy.md#phase-08), analytics in [Phase 09](../implementation-plan/phase-09-analytics.md#phase-09), legal review/publication in [Phase 10](../implementation-plan/phase-10-legal-documents.md#phase-10), and broader physical-device/release acceptance in [Phase 11](../implementation-plan/phase-11-release.md#phase-11). Their existing open gates remain open.
 
 ## Drafting resources
 

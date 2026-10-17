@@ -2,7 +2,7 @@
 
 September 24, 2026. Implementation specification for the seven references in
 [DESIGN.md](DESIGN.md#september-24-challenge-references). Exact Paper JSX is retained
-in `design-source/challenge-paper-extract.json` (token hash `55c015ad`).
+in [`design/source/challenge-paper-extract.json`](../../design/source/challenge-paper-extract.json) (token hash `55c015ad`).
 
 ## Contract
 
@@ -120,7 +120,7 @@ panel and baked illustration backing peach.
 | Peach `#FCD9B9`      | Cream `#F8EFE7` | Cream artwork variant          |
 
 These references are raster overlays, not editable accent fills. Exact JSX and
-original fill URLs are in `design-source/challenge-color-variants.json`. The cream
+original fill URLs are in [`design/source/challenge-color-variants.json`](../../design/source/challenge-color-variants.json). The cream
 value is a raster sample, not a claimed Paper token: median RGB from the blank
 panel region `(155,280,20,100)` of the original fill normalized to 620 × 628 is
 `(248,239,231)` for cream-front and `(248,239,232)` for peach-front. Their illustration

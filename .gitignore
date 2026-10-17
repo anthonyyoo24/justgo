@@ -17,4 +17,4 @@ apps/mobile/android/
 *.key
 *.mobileprovision
 *.pem
-output/challenge-fidelity/
+output/

@@ -1,7 +1,5 @@
 # JustGO — Level 1 challenges
 
-**Updated:** September 26, 2026
-
 **Content status:** Finalized in discussion with Anthony, including the latest revisions. This is a human-readable content reference, not an import file. Creating this document does not insert challenges into the database.
 
 ## Scope and behavior
@@ -11,11 +9,90 @@
 - **Difficulty:** Level 1, the easiest version. Each challenge starts an interaction with a small greeting, comment, or question. Continuing the conversation is optional.
 - **Duration:** Five-minute attempt window for all cards. The interaction may be much shorter; reaching zero does not automatically mark the attempt failed or completed.
 - **Subtext:** The accompanying line below the challenge text. Example wording can be adapted naturally; bracketed words such as `[item]` or `[name]` are conversational placeholders.
-- **Venue stacks:** Each account has an independent in-memory card order for each venue, reset on fresh launch. Completing a card moves it to the back of that venue's stack. A shared challenge's card in another venue stays in place. Each new completed repetition has its own attempt history; Start/Give up create no saved record.
+- **Venue stacks:** Each account has an independent in-memory card order for each venue, reset on fresh launch. Streets is selected on fresh launch. Skipping or completing a card moves it to the back of that venue's stack. A shared challenge's card in another venue stays in place. Each new completed repetition has its own attempt history; Start/Give up create no saved record.
 - **Shared content:** A challenge can supply content for multiple venue cards without coupling their ordering. The overlap index below identifies related actions while preserving the reviewed wording for every card.
 - **Card copy length:** Review each new batch on the actual card at the standard type size, including database, preview, and demo text. Every challenge should render in two to four complete lines without scrolling; character count alone cannot reliably predict wrapping.
 
 The earlier no-replay and grouped-venue proposals are superseded by the venue list and cycling-stack decisions above. Phase 04 seeded this catalog; Phase 07 retains stable challenge IDs/current wording, 58 shared challenges and 61 placements, with catalog persistence for offline use. Minor wording changes become visible in historical entries; substantial activity changes get new IDs. Current UI omits subtext; the guidance below is authoring reference, not an additional launch feature.
+
+## Challenge loop and content
+
+These current decisions consolidate the September 24 scope approval and its
+October 8 reconciliation after Phase 07. They supersede earlier general-only,
+grouped-venue and no-replay proposals. [Phase 04](../handoffs/phase-04-challenge-loop.md)
+records the original implementation evidence; [Phase 07](../handoffs/phase-07-api-offline.md)
+records the current local-save protocol.
+
+Venue pills filter manually and scroll horizontally when needed. There is no
+GPS selection or additional Anywhere/All venue. Venue selection and per-venue
+cycling order stay in process memory; no server preferences, personal queues or
+per-skip requests remain. A venue change cannot restart an active attempt.
+
+Start captures the selected challenge, start timestamp, named time zone and
+original duration in React memory. The full-screen active view hides Settings and
+tabs and exits only through Completed or Give up. Lock/background preserves the
+attempt while the app remains alive; a fresh mount, account change or process
+restart discards unfinished activity. Zero still awaits an explicit outcome.
+Start and Give up create no saved attempt. Completed allocates one UUID and waits
+for phone saving before Success, then uploads in the background. Retries preserve
+that UUID; another deliberate completion earns a distinct rep. Reflection and
+Progress are integrated through the same account journal.
+
+Keep 300 seconds on each stable challenge record and capture that duration when
+starting. Differing durations are outside this version. Minor wording edits are
+visible in historical entries; substantially different activities need a new ID.
+Retain inactive content for history and pending references. No separate JSON
+catalog/import workflow or admin dashboard is required.
+
+Do not show subtext, hints, per-challenge illustrations or safety-guideline fields
+in this version. A nullable model field and the authoring drafts below do not
+make those UI requirements. Existing respectful-content principles still apply.
+Levels and progression are deferred: retain Level 1 history without thresholds,
+and omit the “3 / 12” indicator or equivalent progress line. A normal exhausted
+state does not exist because decks cycle. Validate all six nonempty venues and
+render real downloaded cards; a missing initial catalog uses loading, failure or
+offline recovery rather than the retired empty-venue message.
+
+## Deck and motion
+
+Use the original [39O Café screen without subtext](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0/OMO-0)
+and its stack fanning right. The bottom-edge variant is not selected. Preserve
+its styling/shadow depth with the current venue and deferred-level decisions;
+[CHALLENGE_FIDELITY.md](../design/CHALLENGE_FIDELITY.md) owns measured visual guidance.
+
+The front card follows the thumb and tilts; cancellation settles it back. A
+committed swipe flies offscreen while the middle card moves left/up into front
+and the rear moves into the tilted middle position. A fourth card starts hidden
+behind the rear and fans right before the others settle. Overlap these movements,
+using the accepted roughly 300 ms post-release timing without a pronounced
+bounce. The incoming card takes the departing color and next queued content.
+
+Gesture Handler, Reanimated and Worklets own the existing native implementation;
+no additional deck library is needed. X/heart buttons use the same animation
+controller, and duplicate input cannot advance twice. Completion uses the
+serialized account journal and ordered sender; slow phone writes have delayed
+accessible feedback while ordinary uploads do not gate navigation. Preserve
+accessible button alternatives and Reduce Motion. Native/physical touch feel and
+release accessibility acceptance stay explicit in the handoff rather than being
+inferred from browser or component tests.
+
+## Access and development testing
+
+Phase 07A owns the approved paid-access policy: lock ordinary paid use at the saved
+verified expiry until an online check succeeds, preserve an earlier valid saved
+window through transient check failures, and accept authenticated uploads of reps
+created under server-verifiable coverage. Saved/pending activity keeps its account
+owner. Recovery and always-available account/data controls remain reachable.
+Production paid access remains unavailable until provider verification is connected.
+The current staging beta admission and its separate offline limits are recorded in
+the [test-server handoff](../handoffs/phase-11-test-server.md).
+
+Before billing, exercise the real loop with disposable local/test entitlement
+fixtures. Presentation previews make no domain writes and cannot become a
+production access bypass. Apple membership, signing and the installed development
+build are recorded in [APPLE_SETUP.md](../operations/APPLE_SETUP.md); a successful
+build does not establish two-iPhone recovery, native accessibility or release
+acceptance. Retain those gates in [Phase 11](../implementation-plan/phase-11-release.md).
 
 ## Subtext writing guidance
 

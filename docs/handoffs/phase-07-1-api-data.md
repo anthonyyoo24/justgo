@@ -4,8 +4,8 @@
 
 - **Status:** 07.1A passes fresh local checks and awaits owner review through existing PR #13. Only A publication is authorized; B stays local with no PR. Neither slice is approved to merge. Native/device/staging release gates remain open.
 - **Updated / author:** October 4, 2026 / Codex.
-- **Scope:** [07.1A](../IMPLEMENTATION_PLAN.md#phase-07-1): tasks 1–4, backend task 8, compatibility and their unit/component/database/migration checks. The saved Playwright journey, its runner/dependency/typecheck and browser CI gate are 07.1B, preserved locally without publication. Local synchronization, new flow/history UI and final removal remain 07.2–07.5.
-- **Dependency:** verified local [06A](phase-06a-code-quality.md), then documentation-only planning PR #11 at `8118bf5`.
+- **Scope:** [07.1A](../implementation-plan/phase-07-api-offline.md#phase-07-1): tasks 1–4, backend task 8, compatibility and their unit/component/database/migration checks. The saved Playwright journey, its runner/dependency/typecheck and browser CI gate are 07.1B, preserved locally without publication. Local synchronization, new flow/history UI and final removal remain 07.2–07.5.
+- **Dependency:** verified local [06A](../archive/handoffs/phase-06a-code-quality.md), then documentation-only planning PR #11 at `8118bf5`.
 - **Branch:** `codex/phase-07.1-api-data`. All mixed drafts remain recoverable at `6d4279f` on `codex/archive/phase-07-drafts` and in the local Git bundle recorded by the umbrella handoff.
 - **Environment:** Node 24.18.0 / npm 11.16.0, existing Expo 57.0.26 pins, PostgreSQL 17 loopback `justgo_test`. No deployment or new native build/signing work.
 - **Browser constraint:** all interactive verification uses Codex side panels. Automated saved browser tests run headlessly; native/device acceptance is separate.

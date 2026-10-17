@@ -2,9 +2,11 @@
 
 ## Snapshot
 
-- **Status:** owner-authorized local integration into
-  `codex/phase-08-settings-privacy`; no Git publication. October 12 integration
-  evidence is recorded below; October 10 measurements describe the original fix.
+- **Status:** Integrated with the completed Phase 08 implementation. Native
+  development measurements and local/browser checks passed; physical-phone,
+  accessibility and release performance acceptance remain open. This handoff
+  stays active for those gates. Dated branch/integration snapshots below are
+  historical.
 - **Scope:** Phase 07.4 Progress follow-up. Anthony initially requested an
   investigation, then authorized the fix in a separate worktree while retaining
   the original checkout for other work.
@@ -148,11 +150,9 @@ regressions have component/browser evidence separately.
 
 ## Remaining acceptance
 
-Anthony authorized the local merge into Phase 08 on October 12. Owner review and
-separate permissions for push, PR and any subsequent merge remain open.
-Existing Phase 11 physical-iPhone, software-keyboard layout, VoiceOver, large-text
-and release performance acceptance remain open. This scoped fix does not close
-those gates or advance the rest of Settings/privacy work.
+The implementation is integrated into Phase 08. Phase 11 physical-iPhone,
+software-keyboard layout, VoiceOver, large-text and release performance acceptance
+remain open; this scoped fix does not establish those results.
 
 Preserve the draft controller above the list and the existing native reveal/focus
 handoff when changing this screen. Re-run the 41-attempt journey, focused Progress

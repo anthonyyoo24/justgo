@@ -1,24 +1,31 @@
 # Phase 09 — Analytics and onboarding acceptance
 
-## Snapshot
+## Summary and status
 
-- **Status:** Planning only; implementation not started. Telemetry export remains disabled and the original unavailable analytics Settings rows remain in the app.
-- **Updated:** October 15, 2026.
-- **Scope:** [Phase 09](../IMPLEMENTATION_PLAN.md#phase-09), [PRD §§4.2 and 8](../product/PRD.md), [analytics architecture](../architecture/TECH_STACK.md#9-analytics-and-sensitive-data).
-- **Dependency:** [Phase 08 Settings/privacy handoff](phase-08-settings-privacy.md), including unresolved deletion, retention and account-isolation acceptance. Phase 10 owns final legal wording/publication; Phase 11 retains release/native gates.
-- **Checkout:** `codex/phase-08-settings-privacy`, starting at `1a0fb67`; this follow-up changes documentation only. No app, database, provider or hosting configuration changed.
+**Status:** Planning only; implementation not started. Telemetry export is
+disabled and the unavailable analytics Settings rows remain in the app.
+[Phase 09](../implementation-plan/phase-09-analytics.md) owns implementation
+scope. [Phase 08](phase-08-settings-privacy.md) records the completed dependency
+and retained release gates. Phase 10 owns final legal wording/publication;
+Phase 11 owns release and native acceptance.
 
-## October 15 owner decision
+## Decisions and why
 
-Anthony directed Phase 09 to use one **Terms & Privacy** onboarding page, inspired by How We Feel, as the only permission request for its disclosed analytics scope. Remove both planned analytics on/off controls from Settings. Do not add a separate feelings/reflection-metadata choice or ask again after the first reflection. Existing users with a receipt should not repeat the same acceptance; existing accounts without one must be handled alongside first installs.
+Anthony chose one **Terms & Privacy** onboarding page as the only permission
+request for its disclosed analytics scope on October 15, 2026. Remove both planned
+analytics Settings controls; do not add a separate feelings/reflection-metadata
+choice or a later analytics prompt. Accounts with the same accepted versions
+should not repeat acceptance; existing accounts without a receipt join first
+installs at this boundary.
 
-This supersedes the earlier two-opt-in plan. The scope exception is only this page and its account-owned acceptance; welcome screens, questionnaire/branching flows and answer persistence remain deferred. It does not authorize future AI-context sharing, unrelated OS permissions or undisclosed material changes to collection.
+The exception covers this page and account-owned acceptance only. Welcome screens,
+questionnaires, branching flows and answer persistence remain deferred. It does
+not authorize future AI-context sharing, unrelated OS permissions or undisclosed
+material changes to collection.
 
-## Reference and copy adaptation
-
-Mobbin's [How We Feel Terms & Privacy screen](https://mobbin.com/screens/a06cb3a8-f066-4250-9adc-3b27d595d1fa), uploaded July 9, 2024, has a concise data explanation, Terms/Privacy links and an I Accept action. The research did not verify today's installed native app or establish that its approach satisfies JustGO's regional obligations.
-
-Anthony proposed wording about device storage, no sale without permission and non-identifying app usage for research. Adapt the facts for JustGO: submitted activity is saved on the phone **and uploaded to private account records**; persistent pseudonymous analytics is account-linked; the planned purpose is product measurement and improvement. If feeling selections and coarse reflection lengths are transmitted, the explanation must identify that scope rather than imply only generic usage counts.
+The reference is Mobbin’s [How We Feel Terms & Privacy screen](https://mobbin.com/screens/a06cb3a8-f066-4250-9adc-3b27d595d1fa),
+uploaded July 9, 2024. It supplies a concise explanation, legal links and an
+acceptance action; it is not evidence of JustGO’s regional legal sufficiency.
 
 **Draft for implementation/design and Phase 10 review; not final approved legal copy:**
 
@@ -34,34 +41,82 @@ Anthony proposed wording about device storage, no sale without permission and no
 >
 > **I Accept**
 
-Render both legal titles as working links. Final fields and wording must match the reviewed implementation; the no-sale sentence does not authorize selling data. Phase 09 can verify link wiring and failure feedback with clearly labeled development/test destinations. Final reviewed public URLs and release-build link verification remain Phase 10/11 gates; their later ownership does not prevent the Phase 09 implementation handoff. Keep unavailable production destinations honest and do not claim release acceptance.
+The final fields and explanation must match the reviewed implementation. Activity
+is saved on the phone and uploaded to private account records; a persistent random
+analytics identifier is pseudonymous and account-linked, not anonymous. The
+no-sale sentence does not authorize selling data.
 
-## Implementation safeguards carried forward
+The same approval also requires one-time shuffled/saved venue decks, the last
+selected venue remembered on the phone, and removal of the post-challenge
+Reflection top exit. These app changes are independent of analytics delivery;
+the [Phase 09 app changes](../implementation-plan/phase-09-analytics.md#phase-09-app-changes)
+own their full specification.
 
-- Store acceptance for the authenticated account with Terms, Privacy Policy and analytics-scope versions and acceptance time. Do not depend on PostHog delivery to save the receipt.
-- Missing/unconfirmed acceptance blocks client and server analytics. Account recovery, slow hydration, account changes, deletion and stale/delayed callbacks must not reuse another account's acceptance. Do not forward pre-acceptance onboarding activity.
-- Preserve saved/pending journal records and access to recovery/export/deletion. Analytics/provider failures never fail product saves or eligible paid access.
-- Keep explicit event/property allowlists, runtime validation, stable event IDs, deduplication and best-effort delivery. No autocapture/replay, raw reflection text, audio, credentials, payment information or contact details in analytics.
-- Apply the same boundary to future billing delivery; no unconditional RevenueCat-to-PostHog forwarding. Verify provider environments, identifiers, regions, retention and deletion cleanup.
-- Keep applicable withdrawal/objection requests and effective client/server suppression in Phase 10's review despite the absence of a Settings toggle. The single-page decision is not evidence that bundled acceptance suffices in every intended region.
+## Behavior that changed
 
-## Documentation and evidence
+Planning documents now specify the single page and versioned account receipt.
+No app, database, provider or hosting behavior has changed. Phase 09 must replace
+the unavailable Settings rows, implement the page and receipt boundary, and enable
+only the reviewed explicit events and vendor cleanup.
 
-The plan, PRD, architecture/app-shell/design guidance, decision register, legal drafts/inventory/review, foundation notes and README/handoff index now distinguish the approved future experience from disabled current telemetry. Historical Phase 08 screenshots, tests and dated two-choice records remain historical evidence; the October 15 decision supersedes their future requirements.
+Both legal titles must be working links. Clearly labeled development/test URLs
+can verify wiring and failure feedback during Phase 09. Final reviewed public
+URLs and release-build checks belong to Phases 10/11, so publication is not a
+circular prerequisite for the Phase 09 implementation handoff.
 
-Verification for this documentation update:
+## Invariants to preserve
 
-- Prettier formatting and final formatting check across all 15 changed Markdown files: **pass**.
-- `git diff --check`: **pass**.
-- Added relative-link destination check: **25 links pass**; this checks local file existence, not public URL or browser behavior.
-- Independent documentation review: resolved the remaining two-choice phase-summary text, the Phase 09/10 public-link sequencing loop, and the ambiguous phrase about disabled export. Current and planned behavior are distinguished.
-- Reviewed the full contents of each changed directory; existing responsibility groups remain appropriate, so no file moves were needed.
+- Save the authenticated account’s Terms, Privacy Policy and analytics-scope
+  versions and acceptance time independently of PostHog delivery.
+- Missing or unconfirmed acceptance blocks client and server analytics. Recovery,
+  slow hydration, account changes, deletion and delayed callbacks cannot reuse
+  another account’s receipt. Never forward pre-acceptance onboarding activity.
+- Preserve saved/pending journal records and recovery/export/deletion access.
+  Provider failure cannot fail product saves or eligible paid access.
+- Retain event/property allowlists, runtime validation, stable IDs, deduplication
+  and best-effort delivery. Exclude autocapture/replay, raw reflection text,
+  audio, credentials, payment information and contact details.
+- Future billing delivery uses the same boundary; no unconditional
+  RevenueCat-to-PostHog forwarding. Verify provider environments, identifiers,
+  regions, retention and deletion cleanup before activation.
 
-Application tests, database tests and interactive/native UI checks are not applicable because no code or UI changed. No implementation gate is closed and no publication is authorized.
+## Problems that could recur
 
-## Remaining work
+- Generic “non-identifying usage” copy would conceal the planned account linkage,
+  feeling selections and coarse reflection-length categories. Review the actual
+  transmitted fields against the explanation and policy together.
+- A single-page product decision does not prove bundled acceptance is sufficient
+  in every intended region. Phase 10 must still review withdrawal/objection
+  handling and effective client/server suppression without a Settings toggle.
+- Historical two-choice specifications are superseded by the October 15 decision;
+  they must not reintroduce an additional prompt during implementation.
 
-1. Complete Phase 08 dependency acceptance, then implement the page, receipt boundary, removal of Settings rows, explicit events and provider cleanup in Phase 09.
-2. Add automated coverage for receipt persistence, existing users, slow hydration, account changes, missing acceptance, payload exclusions, retries, provider failures, deletion and applicable privacy requests. Verify the page and absent analytics controls in the in-app browser and relevant native surface.
-3. Run Phase 09's required code/database/coverage checks and add actual implementation evidence here; none has run for this planning-only update.
-4. Phase 10 reviews exact collection, single-page acceptance, regional requirements and privacy-request handling, finalizes legal copy and public links, and records unresolved release conditions. Phase 11 retains native/staging/release verification.
+## Setup or environment changes
+
+None. Telemetry export remains disabled. Before activation, follow the
+[Phase 09 plan](../implementation-plan/phase-09-analytics.md) and implemented
+[analytics boundary](../architecture/TECH_STACK.md#current-access-and-disabled-integrations).
+Use disposable fixtures and keep legal test destinations visibly identified.
+
+## Open gates
+
+| Gate                                                              | Owner                            | Required phase | Done when                                                                                                                       |
+| ----------------------------------------------------------------- | -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Saved shuffled decks, remembered venue and Reflection exit        | Implementation owner             | 09             | App changes pass persistence, account-isolation, navigation and reduced-motion checks                                           |
+| Page, account-owned receipt, Settings cleanup and explicit events | Implementation owner             | 09             | Implemented with existing-account, missing-acceptance and account-isolation coverage                                            |
+| Retry/provider/deletion safeguards                                | Implementation owner             | 09             | Automated receipt, hydration, stale-callback, payload-exclusion, save-preservation, vendor-failure and cleanup cases pass       |
+| Page and link behavior                                            | Implementation owner             | 09             | In-app browser and relevant native checks verify acceptance, absent analytics controls, labeled test links and failure feedback |
+| Final code/database/coverage verification                         | Implementation owner             | 09             | Required checks pass against the implementation and actual results replace this planning evidence                               |
+| Collection, legal copy, regional sufficiency and privacy requests | Anthony and legal reviewer       | 10             | Reviewed scope, withdrawal/objection handling and release conditions recorded                                                   |
+| Public legal URLs, staging/native/release acceptance              | Implementation owner and Anthony | 10–11          | Published reviewed destinations work in the release build and remaining release gates pass                                      |
+
+## Final verification
+
+October 15, 2026: the planning-only update passed Prettier formatting/check,
+`git diff --check`, local link-destination validation and an independent
+consistency review. No CI run was recorded for that update.
+
+Application/database tests and interactive/native checks were not applicable to
+the documentation-only decision. No Phase 09 implementation gate is closed.
+Phase 08A’s documentation restructuring adds no analytics behavior or device
+acceptance; its final documentation validation is recorded in the Phase 08A handoff.

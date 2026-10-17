@@ -1,263 +1,250 @@
 # App shell and shared API
 
-Phase 03 established navigation and account/network infrastructure. Anthony deferred welcome screens and questionnaire onboarding on September 17, 2026; no onboarding state or answer collection is implemented. Phase 07.3 integrates the account activity repository, local challenge/completion/reflection flow and saving feedback. 07.4 adds Progress reconciliation and inline day-entry reflection editing; 07.5 removes the temporary protocol/schema compatibility and reconciles this guide. Billing remains 07A, with physical-device/staging release gates in 11.
+This guide describes navigation, mobile runtime composition and platform-facing
+presentation. [ACTIVITY_DATA.md](ACTIVITY_DATA.md) owns activity persistence and
+reconciliation; [IDENTITY.md](IDENTITY.md) owns account proofs and recovery;
+[TECH_STACK.md](TECH_STACK.md) owns installed technologies/server boundaries.
+The [plan](../implementation-plan/README.md) owns future behavior and the
+[handoffs](../handoffs/README.md) own verification and open release gates.
 
 ## Implemented folder responsibilities
 
-The October 6 dedicated cleanup groups modules without changing product behavior in two stacked PRs. Its foundation organization is present; the remaining mobile cleanup is a separate review. Current activity and Progress groups landed through the 07.4 follow-up. [Foundation PR #18](https://github.com/anthonyyoo24/justgo/pull/18)
-organizes tooling, API tests, contracts and documentation while retaining the
-merged-07.3 mobile source/artwork paths. [Mobile PR #19](https://github.com/anthonyyoo24/justgo/pull/19)
-proposes moving challenge previews to `dev/previews/challenges/`, groups Challenges into
-`deck/`, `active/` and `success/`, activity into `persistence/` and `sync/`, and
-Progress into `calendar/` and `day-details/`. Native/web adapter families remain
-colocated. [FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md) describes the final structure
-after both PRs; the [cleanup handoff](../handoffs/project-folder-cleanup.md) records
-stage-specific verification.
+`src/app/` connects Expo Router to screens and layouts. `app-support/` composes
+providers, startup/access, identity/account recovery and saving feedback. Product
+capabilities live in `features/`; shared saved activity and synchronization live
+in `data/activity/`. Shared UI, general infrastructure, design tokens and reusable
+platform adapters live in `components/`, `lib/`, `theme/` and `platform/`.
+[FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md) owns the complete current path map.
 
-The October 5 owner-approved cleanup places the startup gate in
-`app-support/access/AccessScreen.tsx` and app/account/foreground composition in
-`app-support/providers/AppProvider.tsx`. Feature screens consume the provider hooks;
-shared components/lib/theme/platform and the data layer cannot import app support.
-App support composes features but cannot import route implementations.
-Account/recovery screens, session coordination and the typed Keychain adapter
-live in `app-support/identity/`; the Swift module remains under `modules/`.
+Features can consume app-support providers and data. App support can compose
+features/data/shared code, but cannot import route implementations. Data uses
+contracts/general infrastructure/platform adapters and cannot import UI, features,
+app support or routes. Shared code cannot import app-specific layers. Only the
+guarded `app/preview.tsx` route loads `dev/` from production source; the route and
+fixture loader both require `__DEV__`.
 
-Development screen fixtures and their tests live in `dev/previews/`. Only the
-guarded `app/preview.tsx` route loads them from production source; both route and
-fixture still check `__DEV__`. Shared `components/NavigationLink.tsx` owns text-link
-styling and the Settings variant. Shared `components/settings/` owns the Settings/account page layout, group cards, rows and outline icons. Account screens use those same components.
-Shared `components/typography/ScaledText` derives explicit font/line-height metrics
-from the live system text scale so native rendering and layout measurements stay
-aligned without remounting forms or pending actions. Its native text does not apply
-the same scale twice. Settings/account descriptions follow the full selected size;
-headings and action labels use a 2× bound. Enlarged headers give titles their own
-full-width line, and unavailable statuses move below row labels. Native inputs
-retain their platform text scaling. See the [large-text follow-up](../handoffs/phase-08-settings-privacy.md).
-The unused Foundation screen and Shell Home/Focused placeholders are removed;
-their historical implementation evidence remains in earlier handoffs. Route paths,
-access policy and foreground behavior are unchanged. The
-[07.2 handoff](../handoffs/phase-07-2-local-sync.md) records checks and browser evidence.
+## Runtime composition and account ownership
 
-## Routes and access
+`app-support/providers/AppProvider.tsx` composes the identity controller,
+account-scoped client/query cache, telemetry helper, activity runtime and challenge
+controller. It synchronizes account identity before consumers, forwards foreground
+and connectivity changes, and stops account work/listeners during teardown.
+Installation-level Motion and Haptics providers sit outside account/access guards.
 
-The full-screen reflection view keeps its Skip/Save footer outside the scroll
-viewport. `features/reflections/useReflectionKeyboard` measures the section and
-available viewport, provides trailing scroll room and brings the focused editor
-into view after keyboard/layout changes. A bounded, internally scrolling input
-fits typical keyboard-reduced layouts; focus scrolling honors effective Reduce
-Motion. This changes presentation only, with native timing/geometry acceptance
-recorded separately in the [Phase 08 keyboard handoff](../handoffs/phase-08-settings-privacy.md).
+Account changes synchronously advance the request generation, abort pending
+requests and clear queries/mutations before exposing the next account. Late
+responses are fenced even when transport cancellation is ignored. Same-account
+automatic session recovery preserves that owner boundary; explicit recovery resets
+it. Memory-only submissions stay parked in their original account partition while
+the process survives. They never migrate to the next account or use its session.
 
-- `/`: restore the real account, then check `/v1/access`. Loading, unavailable and unpaid have distinct UI. Only a fresh, unexpired server verification admits the paid routes.
-- `/(tabs)` and `/progress`: Home uses the downloaded catalog and local venue/start/countdown/completion state. Progress uses independent canonical summary/calendar/day reads and the shared repository's local activity overlay. Current-month counts and today's downloaded pages survive offline; other days and months require a connection.
-- `/challenge`: guarded iOS Active → Success flow with memory-only start context; Completed changes content in place. Give up returns Home and Continue opens Reflection. An empty direct/restarted route returns Home.
-- `/success` and `/reflection`: guarded focused routes read a completed attempt from the current account’s repository. There is no server success lookup or reflection draft recovery/autosave. Visiting a URL cannot fabricate a completion. Only explicit reflection submissions enter the journal; empty Skip sends nothing.
-- `/settings`, `/recovery` and `/account/[tool]`: reachable regardless of paid access. A connected account opens a Settings-style hub with Account, Recovery and Devices groups; Troubleshooting sits under Account. Get help stays in Settings and disconnected recovery. Recovery keys, Move to another phone and Devices open focused screens; manual refresh/renewal and account details are under Troubleshooting. Existing-account recovery remains explicit, and disconnected accounts retain the creation/key/transfer entry. All screens share the app-level identity controller. Automatic account checks are quiet; `useIdentityAction` owns screen-local spinner placement for the initiating control, while the controller retains serialization, timeouts and failures. Shared primary buttons replace visible text with one centered spinner while busy, preserving their accessible name and blocking repeated presses, matching challenge completion and reflection saving. Account-tool revocation confirmation closes before a destructive request and its originating row shows progress. Existing-account recovery confirmations remain visible during their request, with the centered spinner inside Confirm. The receiving recovery form stays mounted until the request settles, then the transfer code or failure appears. Return-key submission, keyboard insets, key hiding and confirmation before revocation remain in place.
-- Unknown links render `+not-found`, outside the root `Stack.Protected` groups, with a Go home action that replaces it with `/`. The root layout exports `ErrorBoundary` (`app-support/fallbacks/RouteErrorScreen`), which replaces the whole layout after an unhandled render error, so it uses no app provider; it hides the error text and offers Try again, which re-renders the layout and its providers.
-- `/preview`: development-only presentation fixture. It has no domain queries or writes and never changes an account's entitlement. The route guard and module load both require `__DEV__`. There is no runtime flag, API parameter or production environment switch that unlocks it.
+A runtime created before async hydration must reconcile the current snapshot when
+connecting and subscribe to later changes. A construction-to-subscription gap
+must not hide hydration or newer accepted input. `ProgressRefresh` receives its
+runtime from the composing provider; shared subscriptions stay context-free so
+observers do not import their provider back and create a module cycle.
 
-`AccessService` calls `IdentityService.withSession` and passes the same verified owner transaction into an entitlement reader. The default production reader returns **unavailable** until phase 07A implements a verified billing projection. Explicit application staging can compose operator-approved free beta grants through the same owner transaction; no client request can grant access. The private configuration records start, expiry and optional revocation, preserving earlier-start upload coverage. An optional `free_beta` source identifies this mode in access/Settings copy. See the [test-server handoff](../handoffs/phase-11-test-server.md). Mobile still accepts a verification for at most 60 seconds and never past its expiry; checks repeat every 30 seconds and on foreground. A server check up to five seconds ahead of the phone’s receipt time uses the same bounded clock alignment for admission and its closure timer; stale or more distant future checks remain closed. A failed recheck closes access. Durable offline beta admission remains open; this prerequisite does not implement 07A's nine saved paid-access rules. Attempt uploads authenticate ownership and use the earlier-coverage interface; 07A connects the provider-backed implementation. A navigation guard is not authorization.
+React can restart an effect while retaining the state-owned runtime. Cleanup parks
+activity/client work without erasing recoverable input; foreground reconnects the
+current runtime. After changing provider lifecycle effects, fully reload the
+installed development app if Fast Refresh retained a disposed runtime. A preview
+with file watching disabled must be restarted before its bundle proves edits.
 
-Settings is a secondary route without bottom tabs, with Preferences, Account & data, Privacy, Support and About groups. Existing recovery tools and private support/feature-request email drafts are connected. Reduce Motion and Export my data are implemented. Settings → Delete account now connects explicit confirmation, a durable deletion request/receipt and account-scoped storage/credential cleanup; its [handoff](../handoffs/phase-08-settings-privacy.md) keeps the new native-build, hosted rollout and retention gates open. The two original analytics rows remain unavailable, with analytics still off. Phase 09 is now planned to remove those analytics rows and add one Terms & Privacy onboarding acceptance; that change is not implemented here. Legal/social/rating rows use configured public destinations or honest unavailable states. Billing activation remains Phase 07A, haptics implementation/testing Phase 08, and reminders are deferred beyond the first release.
+## Navigation and access
 
-Settings ends after About, without version/free-test branding or a developer
-preview shortcut. The explicit Recover an account form has no duplicate Get help
-action or privacy tagline; disconnected account entry retains direct help for
-connection failures. The retained development-only Test haptics row opens the
-guarded preview route's haptics mode; the general screen-preview footer stays removed.
+| Route                                       | Responsibility                                                                      |
+| ------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `/` startup gate                            | Restore identity and verify access; distinguish loading, unavailable and unpaid     |
+| Home in `/(tabs)` and `/progress`           | Catalog/deck and independent Progress reads with the shared local overlay           |
+| `/challenge`                                | iOS Active → Success flow; empty/restarted start context returns Home               |
+| `/success`, `/reflection`                   | Current-account completed result and explicit reflection submission                 |
+| `/settings`, `/recovery`, `/account/[tool]` | Preferences, account tools, recovery, direct export and support outside paid access |
+| `/delete-account`, `/welcome`               | Durable deletion/cleanup and safe entry after deletion                              |
+| `/export-data`                              | Redirect older export links to Settings                                             |
+| `/preview`                                  | Guarded development fixtures and haptics tools                                      |
+| Unknown links                               | Provider-independent `+not-found` screen with Go home                               |
 
-Connected and disconnected Account & recovery pages omit the bottom Back to app
-shortcut. The shared header Back button returns through navigation history, with
-Settings as the fallback when the account page has no previous screen.
+The root layout uses `Stack.Protected` for account/access/deletion boundaries.
+Pending deletion removes the selected account's product screens from Back history;
+welcome becomes available only after required cleanup. Route visits cannot invent
+completed attempts or restore unsaved drafts. Settings, recovery, export and
+deletion remain reachable without paid access.
 
-`app-support/settings/export` owns the direct Settings export action, authenticated page collection and CSV/JSON ZIP formatting. Tapping Export my data keeps its label and shows an inline spinner, then presents the native share sheet or browser download. Dismissing the share sheet resets the row quietly. Actual failures display red inline feedback until retry or leaving Settings; duplicate taps, focus loss and account changes retain cancellation protection. A disconnected account opens recovery instead. `data/activity/export` captures accepted local changes independently of cache pruning or uploading. `platform/export/export-file` owns the iOS cache-file/share-sheet and web Blob/download adapters, with private temporary-file cleanup and an owner/cancellation check immediately before presentation. `/export-data` redirects older links to Settings; there is no separate export screen. The Settings action remains available outside the paid-access guard. `/v1/account/export` uses the existing verified-session owner transaction and primary-key paging, never an entitlement or client-selected account. Each page returns at most 50 attempts and safe account/device metadata; every page is owner-scoped. Online/local versions are labeled separately, and the README explains the read interval and spreadsheet formula escaping. See the [export handoff](../handoffs/phase-08-settings-privacy.md).
+The root `ErrorBoundary` renders `RouteErrorScreen` after an unhandled render error
+replaces the layout and its providers. It uses no app provider, hides private error
+text and retries by rendering the layout/providers again. Unknown links remain
+outside protected groups and replace themselves with Home when dismissed.
 
-`platform/motion/MotionPreferencesProvider` wraps the root app and toast hosts. It owns one installation-level AsyncStorage boolean and combines it with React Native's live accessibility setting and foreground refresh. System Reduce Motion always wins; motion stays reduced while either initial read is unresolved. The Settings switch saves before applying a new choice and exposes read/write failures for retry. Cards, Progress loading, day-sheet/reflection motion and toast adapters consume the same effective flag. It contains no account, journal or network state and does not synchronize across devices. See the [motion handoff](../handoffs/phase-08-settings-privacy.md) for evidence and open device checks.
+### Access verification
 
-`platform/haptics/` owns the installation preference, context and iPhone/web adapters. The root composes its provider outside account/access guards. Feedback stays quiet until hydration and during writes; a saved off choice survives relaunch and account changes. The default is on. `react-native-pulsar` 1.7.0 is the only haptics dependency. The native adapter checks its TurboModule before importing the enforcing SDK; old binaries remain usable with unavailable feedback. The adapter only runs in an active iPhone app and the provider contains native failures. One Pulsar system heavy impact follows accepted challenge state, changed feelings or successful enabling. Accepted completion uses Pulsar Batter by default, coalesced across repeated taps. Four heavy taps remain a development comparison, recreated through Pulsar. Unsupported binaries stay quiet rather than using another library. Playback observes preference/lifecycle/foreground guards and is stopped on disable/background/disposal; native failures stay contained. This replaces the original light/selection/success presets and the first medium-impact adjustment after Anthony reported weak feedback and requested vibration-like completion feedback on his physical phone. No private feeling/text payload is passed to the adapter. Callbacks remain stable across preference changes and are fenced after disabling/unmounting. Web does not use browser vibration. Export includes the saved haptics choice. Both preference rows use the shared `SettingsToggleRow` with a decorative pill and an accessible, full-row Pressable. There is no interactive native `UISwitch` to emit feedback outside the app gate. Reduce Motion requests one selection tap through the haptics provider; the Haptics row retains its success-only enable preview and silent disable. Checked, disabled/busy state and keyboard Enter/Space remain available. Pressing or saving never dims the row, icon or label; permanent-disable dimming is confined to the toggle pill. Anthony selected Batter; wider native/release acceptance remains open. See the [strength follow-up](../handoffs/phase-08-settings-privacy.md).
+`AccessService` calls `IdentityService.withSession` and supplies that same verified
+owner transaction to an entitlement reader. The default provider returns
+unavailable. Explicit application staging can compose operator-approved free beta
+grants with start/expiry/revocation and earlier-start coverage; client requests
+cannot grant access. [The beta setup](../handoffs/phase-11-test-server.md) owns its
+environment and release limits.
 
-The custom `SettingsToggleRow` animates its thumb translation and ink-track
-opacity from one `Animated.Value`, using a 200 ms cubic ease-out transition.
-Only accepted value changes start motion; initial rendering and saving-only
-updates do not. Haptics uses the effective Reduce Motion flag: enabling it stops
-any in-flight transition and applies the value immediately. The Reduce Motion
-row's own short status transition is exempt from the app preference, so it
-animates both on and off while the rest of the app responds immediately. Its
-movement remains suppressed during hydration and whenever the phone's Reduce
-Motion preference is enabled or unknown. Native uses the
-Animated native driver for transform/opacity; web uses its JavaScript driver.
-This visual animation adds no haptics and never changes row/icon/label opacity.
-The unsuccessful native-switch comparison was removed at Anthony's request;
-the developer haptics page retains only its preset testing tools.
+Mobile polls every 30 seconds and accepts a server verification for at most
+60 seconds, never beyond expiry. A failed recheck closes access. A server check
+up to five seconds ahead of receipt uses one bounded clock offset for admission,
+freshness and closure timers. Stale or more distant future checks remain closed;
+clock alignment cannot extend validity. Refresh on foreground.
 
-Completion policy and the retained development tool live in `platform/haptics/completion/`.
-They share the Batter default and cancellation; development can override the preset
-in memory for Preview and real completion. Reloading restores Batter. `dev/haptics/` presents the Settings-style picker through
-`/preview?mode=haptics`. Pulsar is loaded lazily only when its iPhone TurboModule
-exists; older binaries stay quiet and explain the required Pulsar-enabled
-build for native feedback. Production always uses Batter and ignores
-development choices. The guarded Settings row/page remain development-only.
-No selected preset enters exports, account storage, telemetry or server calls.
+This current boundary is distinct from the planned persisted paid-access rules in
+[Phase 07A](../implementation-plan/phase-07a-billing.md). Activity upload
+eligibility checks verified coverage for the original start rather than today's
+paid status, through its separate injected reader. Neither an unavailable provider
+nor a navigation guard grants production paid access.
 
-## Request and state rules
+## Request policy
 
-`lib/http.ts` is the shared transport, including identity requests. It validates HTTPS (development loopback only may use HTTP), strict response schemas and typed errors. Tokens are restricted to headers/bodies. It never logs response bodies or transport messages. The full HTTP operation, including body parsing, has a maximum ten-second deadline and supports cancellation even if a transport ignores AbortSignal.
+The shared HTTP transport validates HTTPS URLs, with HTTP allowed only for
+development loopback, validates strict response schemas, bounds the whole operation
+including body parsing to ten seconds, and supports cancellation even when a
+transport ignores AbortSignal. Credentials stay in headers/bodies, never URLs or
+logs. Transport messages and response bodies cannot become diagnostics.
 
-`lib/account-client.ts` owns the domain-request policy: at most two sends within one ten-second total budget, covering either a transient read retry or authentication replay. This request layer never retries an uncertain write itself; the activity sender separately replays its persisted stable completion/PATCH operations. The transport supports explicit GET/POST/PATCH/DELETE methods; both retry layers classify a read by the resolved GET method, so a bodyless DELETE cannot be retried as a read. Oversized-body and unsupported-media responses retain typed 413/415 failures and do not enter outage retries. Rate-limit, validation, conflict and revoked-session errors never trigger transient retries. An authentication replay reuses the original serialized body. Concurrent expired-session responses share one recovery operation; an already-rotated token is reused and there is no recursive recovery loop. The identity controller's persisted proposals preserve recovery/renewal idempotency. Shared renewal has its own ten-second deadline, independent of individual request deadlines, and releases its cached promise on timeout. Identity actions also bound their I/O and release the busy state on timeout; late API results cannot resume the expired action. Native storage calls remain serialized even after timeout because native writes cannot be cancelled safely. A timed-out write invalidates the in-memory state so retry reads the durable pending intent before continuing. If native storage never returns, retries report storage unavailable rather than starting overlapping writes.
+The account client owns at most two sends in one ten-second total budget for an
+eligible GET retry or authentication replay. It classifies reads by resolved
+method, so a bodyless DELETE is a write. It never retries an uncertain write;
+the persisted activity sender owns completion/PATCH replay. Validation, conflict,
+rate-limit, revoked-session and typed 413/415 failures do not become outage retries.
+Authentication replay retains the original serialized body.
 
-TanStack Query 5.103.1 has query and mutation retries disabled, with in-memory caches only. Requests consume its abort signal. Query keys begin with `['account', userId, ...]`. Account loss or switching synchronously increments a generation, aborts pending requests and clears all queries/mutations before the next account appears. A late response is rejected even if the transport ignores cancellation. Account-local form state should be keyed/reset at the same boundary when those features are implemented. Automatic same-account expired-session recovery preserves the owner boundary; explicit recovery still clears it.
+Concurrent expired-session responses share one renewal/recovery operation and reuse
+an already rotated token. There is no recursive renewal loop. Renewal has its own
+ten-second deadline and releases its cached promise on timeout. Identity actions
+bound I/O, release busy state and fence late results. Native storage writes remain
+serialized after a timeout because native I/O cannot be cancelled safely. A timed-out
+write invalidates in-memory identity state so retry rereads the durable intent;
+a never-returning write must not permit overlapping storage mutations.
 
-`stableAction(id, input)` snapshots a user action for manual retries. Generate its ID once, retain the action through an uncertain response, and enforce owner/matching-input idempotency in each future consuming endpoint. This helper alone is not server deduplication.
+TanStack Query retries are disabled for reads and mutations. Query keys begin with
+`['account', userId, ...]`, and requests consume query cancellation. `stableAction`
+snapshots an ID/input for manual replay; the consuming server endpoint must still
+enforce owner and matching-input idempotency.
 
-`lib/telemetry.ts` accepts only a small event-name allowlist and a consent state. It has no exporter or payload API. Nothing is transmitted, even with granted consent, until Phase 09 implements and verifies the single Terms & Privacy onboarding acceptance, account-owned receipts, event schemas and provider configuration. The October 15 plan has no analytics Settings switches or later analytics prompt. Account changes reset consent. Phase 08 owns Settings/data controls; Phase 10 owns the final legal notices and public links.
+## Challenge presentation and lifecycle
 
-## Phase 07 identity resource cutover
+[CHALLENGES.md](../product/CHALLENGES.md#challenge-loop-and-content) owns the
+six-venue cycling rules and product behavior. The challenge controller owns
+account-scoped catalog/deck continuity and accepted completion context.
+`ChallengeActivityProvider`, above the navigator, owns the in-memory active start
+across Home and `/challenge`. Start freezes the card, timestamp and time zone;
+countdown samples start + original duration once per second and on foreground.
+Background/lock retain it while the process survives. Fresh mount/account change/
+process restart discard unfinished activity. Zero waits for explicit Completed or
+Give up; Give up records nothing.
 
-The first Phase 07 slice replaces `/v1/identity/*` action paths with the session, device, credential and transfer resources documented in [IDENTITY.md](IDENTITY.md#api-contracts). API/mobile contracts and callers move together. Persisted identity intents and secure proofs remain compatible; an old running client must update with the API. The identity route slice preserves secure proposals and access verification; later 07.2–07.4 integrate the implemented activity journal/flow/Progress independently.
+On iOS, keep the outgoing deck's identity when Home loses focus. A focus-based key
+would remount its resting state before the destination covers it and flash the
+accepted card. `NativeChallengeHandoff` prepares an opaque window overlay, waits
+for layout and decorative images, opens `/challenge` once and remains until the
+destination's layout/images and entry transition settle. Image failures also settle
+readiness. The cover blocks actions and mirrors saving feedback without creating a
+second toast host; the account-owned provider acknowledges presentation.
 
-## Contracts and extension points
+`ChallengeFlowScreen` prepares Success beneath opaque active content, with hidden
+input/accessibility until completion. Completed reveals Success in place, avoiding
+an intermediate native modal dismissal or route blend. Active disables back gestures;
+Success enables them. Continue replaces `/challenge` with `/reflection`; returning
+Home clears its active/result context. Standalone `/success` remains available for
+restored results and Android/web completion.
 
-`packages/contracts/src/access.ts` owns the current access response and freshness predicate. `/openapi.json` serves OpenAPI 3.1 generated from strict Zod access, identity and canonical activity contracts, including transfer inspection/approval, completed-attempt replay, reflection PATCH/conflict and independent Progress reads. Add new contracts to `.vercelignore`'s exact upload allowlist before deploying.
+Android/web use `ActiveChallengeModal` and focus-based dismissal. Native input/
+accessibility isolation and the web inert/ARIA adapter disable underlying navigation.
+For native full-screen content sharing the root window, use safe areas measured
+above the stack on the first frame and avoid adding the same inset twice. Web uses
+root measurements with inner inset edges disabled; Android retains dialog-owned
+measurement because its window bounds can exclude system bars. Verify first and
+repeated native openings; browser/component evidence cannot prove inset timing.
 
-Routes stay thin. Shared visual components use `theme/tokens.ts`; tab artwork uses the extracted Paper SVG paths. Navigation has no animation, so reduced-motion users receive the same behavior. Screen content scrolls with safe areas and scalable text. Do not use reference screenshots as screen backgrounds or treat their sample data as approved product content.
+## Reflections and Progress presentation
 
-References checked: [Expo 57](https://docs.expo.dev/versions/v57.0.0/), [protected routes](https://docs.expo.dev/router/advanced/protected/), [query cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation), [query retries](https://tanstack.com/query/latest/docs/framework/react/guides/query-retries), [Zod JSON Schema](https://zod.dev/json-schema). Use only SDK 57 APIs; the newer `redirectTo` and SDK 58 custom-navigator APIs are not used.
+Completed waits for repository saving; ordinary local success never waits for HTTP.
+The reflection controller owns validation, dirty-close decisions and newer-input
+protection. Only explicit saves enter the journal; there is no draft autosave or
+URL-based completion recovery. `useReflectionKeyboard` measures the section and
+available viewport, adds trailing scroll space and brings the focused editor into
+view. The bounded internally scrolling input and fixed Skip/Save footer preserve
+access on reduced viewports; focus scrolling honors effective Reduce Motion.
 
-## Maintainer entrypoints after Phase 06A
+`ProgressScreen` owns selected date/editor coordination; independent read hooks
+accept repository data. `ProgressView` composes the calendar, day sheet and entry
+rows. The day-details group keeps sheet/motion, entry expansion and reflection
+editor responsibilities together. `ConnectedDayReflectionEditor` owns draft
+subscriptions so typing updates stay inside the active editor.
 
-Follow [root coding instructions](../../AGENTS.md) and [testing guidance](../operations/TESTING.md).
-`ProgressScreen` owns account-scoped selection and editing; `useProgressReads`
-owns independent queries and repository acceptance. `ProgressView` composes
-`ProgressCalendar` (summary/calendar), `DaySheet` (modal/paging/retry) and
-`ProgressEntryRow` (metadata/reflection expansion). Each owns its related styles.
-`DayReflectionEditor` renders the Paper textbox/actions and `useDayReflection`
-reuses the existing reflection controller for explicit saves and guarded closes.
-Within `day-details/`, the sheet and its motion hook remain at the root.
-`entries/` owns the list, rows, expanding details and native/browser motion pair;
-`reflection-editor/` owns the form and editor-session hook. Tests stay beside
-their implementations, and consumers import these owners directly.
-`DayEntryList` mounts eight rows initially and fills ahead of scrolling before
-requesting the next backend page. Visited rows stay mounted until the day closes,
-preserving animated layout and active drafts. Rows compare their complete display
-values and callback identities; collapsed detail panels have no mounted content
-or motion adapter. `ConnectedDayReflectionEditor` owns the controller subscription
-so typing and dismissal updates stay inside the active editor.
-`ChallengeScreen` owns deck orchestration; `ActiveChallenge` owns the countdown and
-outcome controls; `SuccessScreen` owns the local completed-result route. The shared
-feeling choices come from the versioned contracts. The Phase 06A refactor preserved behavior; Phase 07 separately replaces its server-backed persistence policy with the journal flow below. App-provider and vault adapter tests cover their real
-JavaScript wiring; native Keychain behavior still needs its separate device gates.
+`DayEntryList` initially mounts eight rows, fills ahead of scrolling and requests
+further backend pages. Visited rows stay mounted until the day closes so animated
+heights/drafts survive. Fill underfull viewports using layout/content measurements
+and await each batch's measurements before extending again. Compare full display
+values and callback identity when memoizing rows. Collapsed detail content/motion
+adapters stay unmounted; do not measure every collapsed panel. Native expanding
+heights and scrolling require native evidence.
 
-## Phase 07 final API/schema boundary
+## Saving feedback and account tools
 
-Catalog, completed-attempt and inline-reflection resources plus independent summary/calendar/day reads are the only product protocol. `POST /v1/attempts` creates a completed rep with the UUID generated on Completed and original start/zone; `PATCH /v1/attempts/:id` submits reflection or edits text with a stable submission ID/expected revision. Day entries come from filtered `GET /v1/attempts`; there is no separate reflection GET or combined Progress route.
+`SavingFeedback` owns root/covering-sheet hosts and `SavingNotice` owns exceptional
+loss-risk/intervention presentation. Warnings reserve layout space and permit
+manual dismissal while recovery continues. Full recovery closes the warning and
+emits one account-scoped toast, including after dismissal. Authentication,
+unreadable storage and rejected records remain discoverable; correctable reflection
+input reopens in the existing editor. Genuine revision conflicts adopt backend
+reflection data automatically. [ACTIVITY_DATA.md](ACTIVITY_DATA.md) owns the rules.
 
-Migration `0013_attempt_resources_contract.sql` follows expansion/backfill 0010–0012 and removes active/given-up lifecycle, content revisions, personal queues/preferences/skips, separate reflections and legacy action receipts. The new targeted PATCH receipts remain. Historical IDs/owners/dates/starts and submitted reflection content/revisions are preserved, including nullable legacy display-zone fallback. Canonical history projects current challenge wording and original start time.
+Connected account screens share the Settings page/group/row components. Recovery
+keys, device transfer and device management are focused tools; troubleshooting
+contains account details and manual refresh/renewal. `useIdentityAction` places a
+spinner on the initiating control while the identity controller serializes actions,
+timeouts and failures. Busy primary buttons preserve accessible names. Revocation
+confirmation closes before its request; existing-account recovery confirmation
+stays mounted through Confirm. The receiving form survives until its request
+settles. Return-key submission, key hiding and explicit revocation confirmation
+remain accessible. Header Back uses history with Settings fallback.
 
-Old action/compatibility routes return 404 and cannot write obsolete state; canonical mobile/contracts/API must roll out together. See the [coordinated deployment and old-client procedure](../operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients). A local migration/test pass does not establish a staging deployment or retirement of all old installed clients.
+Settings owns Preferences, Account & data, Privacy, Support and About. Support/
+feature-request actions create private email drafts. Legal/social/rating destinations
+use configured URLs or honest unavailable states. The current analytics rows are
+unavailable and telemetry exports nothing; planned acceptance/analytics changes
+belong to [Phase 09](../implementation-plan/phase-09-analytics.md).
 
-HTTP remains method-aware with eligible GET/authentication replay only; the journal sender owns background create/PATCH retries. 413/415 are typed permanent failures. The [07.5 handoff](../handoffs/phase-07-5-cutover-acceptance.md) records current cutover verification, while earlier handoffs preserve slice evidence.
+The direct export action keeps Export my data visible with a spinner and delivers
+CSV/JSON in a ZIP through the native share sheet or browser download. Dismissal
+resets quietly; failures remain inline for retry. Duplicate taps, focus loss,
+cancellation and account changes fence collection/presentation. Local accepted
+changes are captured independently of pruning/upload. The authenticated API pages
+at most 50 owner-scoped attempts plus safe account/device metadata; pending local
+copies and cloud versions are labeled separately. CSV formula escaping, read-interval
+notes and private temporary-file cleanup are part of the export boundary.
 
-## Phase 07.2 local persistence boundary
+## Installation preferences and accessibility
 
-The shared activity repository, AsyncStorage adapter, Zustand live state and
-ordered sender are implemented under `data/activity`. This data module owns local
-saving, cached activity and upload coordination for the user-facing features.
-Features may import data; data uses shared infrastructure/contracts and cannot
-import routes, app-support, developer code, features, components or theme. Shared
-components/lib/theme/platform cannot import routes, app-support, developer code, data
-or features. The journal now also retains a nullable compact current-month
-reconciliation baseline, with a default for previously stored envelopes.
-07.3 wires challenge/completion/reflection screens and provider/lifecycle
-coordination into this boundary. 07.4 composes local/backend Progress through
-`data/activity/progress/progress.ts` and independent read/cache helpers in the
-same `progress/` folder. Storage adapters and serialized writes live under
-`data/activity/persistence/`; delivery, transport and retry scheduling live under
-`data/activity/sync/`. Repository, account ownership, schemas and submission rules
-stay at the activity root. The
-[07.2 handoff](../handoffs/phase-07-2-local-sync.md) records version/durability rules,
-retry/recovery interfaces, test evidence and open native checks. HTTP now preserves
-validated reflection-conflict data and Retry-After; normal uploads have one retry
-owner and use the existing coordinated authentication boundary.
+`MotionPreferencesProvider` combines one saved AsyncStorage boolean with the live
+system Reduce Motion setting and foreground refresh. System preference wins;
+motion stays reduced while either initial read is unresolved. Save before applying
+a new choice and expose read/write errors. Cards, sheets, reflection and toasts
+consume the same effective flag. The preference is account-independent.
 
-## Phase 07.3 runtime and saving presentation
+Haptics defaults on but stays quiet during hydration/writes, when disabled or
+inactive, and when the iPhone TurboModule is absent. The adapter checks availability
+before importing Pulsar's enforcing SDK; unsupported old binaries remain usable.
+One heavy impact follows accepted start/feeling changes or successful enabling;
+completion uses Batter, coalesced across repeated taps. Playback cancels on disable,
+background and disposal, with contained native errors and stable callbacks. Web
+never vibrates and no private input enters the adapter. Development-only preset
+selection is in memory; production always uses Batter.
 
-`app-support/providers/activity-runtime.ts` composes account repositories, storage
-and the account-bound transport. `AppProvider` synchronizes identity before feature
-controllers, forwards foreground/connectivity changes and disposes listeners,
-controllers and senders on unmount. Native connectivity uses NetInfo; the web
-adapter listens to browser online/offline events. Parked repositories preserve
-memory-only submissions for same-account recovery while the process survives.
-`useJournal` and `useActivityState` expose the current repository/live state.
+Both preference rows use an accessible full-row `SettingsToggleRow`, decorative
+pill, keyboard Enter/Space and checked/disabled state. Only accepted values animate
+thumb/track for 200 ms; initial and saving-only updates do not. Effective Reduce
+Motion stops Haptics-row motion immediately. The Reduce Motion row's short status
+transition is exempt from the app preference, but system motion preference and
+unresolved hydration still suppress it. Row/icon/label opacity stays unchanged.
 
-`features/challenges/controller.ts` owns a focused Zustand store for downloaded
-venue decks, cycling and accepted completion context. `ChallengeActivityProvider`
-scopes `useActiveChallenge` to the current account above the navigator, retaining
-unfinished activity only in React memory across Home and `/challenge`. Start
-captures a frozen card, timestamp and time zone; the deadline is derived from start
-plus original duration. `ActiveChallenge` samples the clock once per second and
-immediately on foreground; it never depends on a background interval. Provider
-remount/account change resets unfinished activity.
-
-On iOS, the exiting deck keeps its identity when Home loses focus; remounting it
-at that point would flash the accepted card back into the deck. Accept prepares
-`NativeChallengeHandoff` in a window overlay, hidden until its layout and decorative
-images settle. The opaque cover opens `/challenge` once and remains until that
-destination's layout/images are ready and its opening `transitionEnd` arrives.
-Image errors also settle readiness; the cover blocks actions during this handoff
-and disappears when the account-owned provider acknowledges the presented start.
-The temporary cover mirrors saving notices without registering a second toast
-host/channel; the native destination owns the sheet host through cover removal.
-The native route disables back gestures while active. Its
-`ChallengeFlowScreen` prepares Success beneath an opaque `ActiveChallengeContent`,
-with hidden accessibility/pointer input until completion. Both views use measured
-window safe-area padding from above the stack. Completed reveals the existing
-Success view in place: it neither dismisses a native modal nor changes native
-routes, avoiding the intermediate stack blend and first-layout/artwork settling
-observed in the [October 10 investigation](../handoffs/phase-07-3-local-flow.md#october-10-native-completion-handoff-follow-up).
-Success enables back navigation; Continue replaces `/challenge` with `/reflection`.
-Returning Home clears the activity/result without reopening Success. Standalone
-`/success` remains available for restored results and Android/web completion.
-Give up clears the active route to Home without recording a rep.
-
-Android/web retain `ActiveChallengeModal` and focus-based dismissal. Native
-input/accessibility isolation and the web inert/ARIA adapter keep underlying
-navigation unavailable. The active saving surface retains warnings/details/
-dismissal, with page links deferred until the challenge ends. Web uses measured
-root safe-area padding on first render, with inner inset edges disabled. Android
-retains modal-owned measurement because its dialog bounds can exclude system
-bars. The covered deck retains the departed accepted card until the active
-surface closes, rather than restoring it during presentation.
-
-Completed creates one UUID and awaits repository saving. Ordinary local success
-never waits for HTTP. `features/reflections/controller.ts` owns React-form state,
-validation, dirty-close choices and newer-input protection; explicit submissions
-use the repository’s serialized write/fallback and ordered sender.
-
-`app-support/saving/SavingFeedback.tsx` owns the shell and covering-sheet feedback
-hosts; `SavingNotice.tsx` owns truthful loss-risk/intervention presentation. Warnings
-reserve layout space and permit dismissal without stopping recovery. Full recovery
-shows one account-scoped confirmation, including after dismissal. Authentication,
-unreadable storage and rejected records remain discoverable outside the editor;
-invalid reflection requests open retained input for an explicit correction.
-Genuine revision conflicts adopt backend data automatically, without a chooser.
-No generic Progress sync-status feature or placeholder support action is added.
-`platform/toast/Toast` uses Sonner Native on iOS and the documented Sonner web adapter.
-Native simulator evidence and remaining keyboard/modal/VoiceOver/durability gates are recorded separately in the phase handoffs; bundle exports and web screenshots are distinct evidence. See the [07.3 handoff](../handoffs/phase-07-3-local-flow.md).
-
-## Phase 07.4 Progress composition
-
-`ProgressRefresh` receives the runtime from `AppProvider`, preloads summary,
-current-month counts and today's pages, and refreshes reads after upload settlement
-and reconnection. Its shared activity subscription is independent of provider
-context, avoiding an import cycle. Summary/calendar acceptance rejects obsolete
-account, period and generation responses; unknown create outcomes block aggregate
-refreshes without blocking local progress or day lookups.
-
-The summary and current-month baseline add only their not-yet-covered local IDs.
-Rows merge by attempt ID, and lower reflection revisions cannot erase confirmed
-writing. Before pruning an uploaded older-day edit, its canonical reflection
-moves into the account's in-memory query pages. Backend-wins conflict results can
-replace optimistic text there. Downloaded older history is never persisted and is
-hidden offline; an active older-day editor can retain its own accepted input.
-See the [07.4 handoff](../handoffs/phase-07-4-progress-history.md) for verification
-and the native/release gates that remain open.
+`ScaledText` computes explicit font/line-height metrics from live system text scale
+without double-scaling native text or remounting forms. Descriptions follow the
+full selected size; headings/actions cap at 2×. Enlarged headers gain a full-width
+title line, unavailable statuses move below labels, and native inputs retain
+platform scaling. Browser/tests and simulator checks do not establish physical
+VoiceOver, software-keyboard or device behavior; track those gates in handoffs.

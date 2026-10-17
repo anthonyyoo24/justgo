@@ -1,6 +1,6 @@
 # JustGO data inventory
 
-Prepared October 9, 2026 for the Privacy Policy, Terms of Use and App Store privacy disclosures. This inventory separates implemented behavior from proposed release behavior. Under the October 14 split, the implementation plan assigns data controls/retention mechanics to [Phase 08](../IMPLEMENTATION_PLAN.md#phase-08), analytics/consent to [Phase 09](../IMPLEMENTATION_PLAN.md#phase-09), legal documents/disclosure preparation to [Phase 10](../IMPLEMENTATION_PLAN.md#phase-10), and final signed-build/release verification to [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11). This planning update does not change collection behavior.
+Prepared October 9, 2026 for the Privacy Policy, Terms of Use and App Store privacy disclosures. This inventory separates implemented behavior from proposed release behavior. Under the October 14 split, the implementation plan assigns data controls/retention mechanics to [Phase 08](../implementation-plan/phase-08-settings-privacy.md#phase-08), analytics/consent to [Phase 09](../implementation-plan/phase-09-analytics.md#phase-09), legal documents/disclosure preparation to [Phase 10](../implementation-plan/phase-10-legal-documents.md#phase-10), and final signed-build/release verification to [Phase 11](../implementation-plan/phase-11-release.md#phase-11). This planning update does not change collection behavior.
 
 ## Operator and intended audience
 
@@ -50,7 +50,7 @@ Recovering an account on another phone restores uploaded history. It cannot rest
 | Upstash QStash                                                     | Billing delivery design/checkpoint; not active in Settings                                             | Minimal billing job references and delivery metadata. Verify actual retained payloads and logs when billing resumes.                                                                                                                                                           |
 | AI coach, Stripe checkout, Android, reminders and custom dictation | Outside the first-release scope                                                                        | Reassess the policy and consent before any later addition. No current journal-to-AI disclosure or reminder permission should be implied.                                                                                                                                       |
 
-Evidence: [foundation environment and providers](../operations/FOUNDATION.md), [Phase 07A checkpoint and sequencing](../IMPLEMENTATION_PLAN.md#phase-07a), [analytics design](../architecture/TECH_STACK.md#9-analytics-and-sensitive-data) and [current telemetry stub](../../apps/mobile/src/lib/telemetry.ts). Production provider settings have not been audited by this drafting task.
+Evidence: [foundation environment and providers](../operations/FOUNDATION.md), [Phase 07A checkpoint and sequencing](../implementation-plan/phase-07a-billing.md#phase-07a), [analytics design](../architecture/TECH_STACK.md#9-analytics-and-sensitive-data) and [current telemetry stub](../../apps/mobile/src/lib/telemetry.ts). Production provider settings have not been audited by this drafting task.
 
 ## Retention decisions for review
 

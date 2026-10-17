@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 15, 2026. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 15 decision below supersedes the two-choice analytics plan. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 17, 2026. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 15 decision below supersedes the two-choice analytics plan. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -8,18 +8,18 @@ Updated October 15, 2026. Historical dated decisions below retain their original
 | Expo SDK 57 / React Native 0.86, Node 24 LTS, iOS 16.4 minimum                  | Implementation owner           | 01                              | Pinned; see FOUNDATION.md for exact versions and evidence.                                                                                                                                                                                                  |
 | Staging Supabase organization/project                                           | Anthony                        | 01                              | Approved anthonyyoo corp; created dedicated JustGo in Canada Central.                                                                                                                                                                                       |
 | Vercel project                                                                  | Anthony / implementation owner | 01                              | Dedicated justgo project; API root apps/api, Montréal compute.                                                                                                                                                                                              |
-| Production infrastructure and budgets                                           | Anthony                        | Before 09                       | Separate from staging; not provisioned.                                                                                                                                                                                                                     |
-| Permanent bundle ID, Expo owner/project, Apple enrollment type                  | Anthony                        | Before 02 device recovery tests | Expo @anthonyyoos-team/justgo linked and verified. Apple enrollment reported complete September 21; permanent bundle ID/signing/device validation pending; simulator identifier is provisional.                                                             |
+| Production infrastructure and budgets                                           | Anthony                        | Before 11                       | Separate from staging; not provisioned.                                                                                                                                                                                                                     |
+| Permanent bundle ID, Expo owner/project, Apple enrollment type                  | Anthony                        | Before 02 device recovery tests | Apple membership, linked Expo project, permanent bundle ID and signed physical development build are verified in APPLE_SETUP.md. Broader recovery/native release acceptance remains Phase 11; the simulator identifier is development-only.                 |
 | iOS artwork and reusable tokens                                                 | Implementation owner / Anthony | 01; refine per feature          | Paper extracts recorded. Raster-only exact measurements remain explicit gaps in DESIGN.md.                                                                                                                                                                  |
 | Onboarding questions, branching and final designs                               | Anthony                        | Deferred                        | Deferred September 17; no welcome/questionnaire flow in phase 03. Revisit separately.                                                                                                                                                                       |
-| Easy Level 1 challenge text, venue, subtext and duration                        | Anthony                        | Before 04                       | Six venues and 61 placements approved September 24; five minutes, no displayed subtext. Seeded in phase 04; see PHASE_04_SCOPE.md.                                                                                                                          |
-| Level indicator/exhaustion; Home color variants                                 | Anthony                        | Before 04                       | Counter omitted; independent cycling stacks. Three colors rotate with the deck; empty-venue copy and Streets default recorded in phase 04.                                                                                                                  |
+| Easy Level 1 challenge text, venue, subtext and duration                        | Anthony                        | Before 04                       | Six venues and 61 placements approved September 24; five minutes, no displayed subtext. Seeded in phase 04; see CHALLENGES.md.                                                                                                                              |
+| Level indicator/exhaustion; Home color variants                                 | Anthony                        | Before 04                       | Counter omitted; independent cycling stacks. Three colors rotate with the deck; Streets is the initial venue. Configured venue decks are nonempty; catalog loading/refresh failures have recovery states rather than an ordinary empty deck.                |
 | Optional feeling/text save, empty Save and Back/X draft behavior                | Anthony                        | Before 06                       | Approved September 27: overall step optional; feeling-only/text-only/both accepted; empty bottom action is Skip; empty Back/X skips; dirty Back/X offers save, keep editing or discard and skip.                                                            |
 | Saved reflection reading and edit/delete controls                               | Anthony                        | Before 07                       | Phase 06 implemented reading. Phase 07.4 adds explicit Add/Edit text, preserving feeling and dirty-close protection; deletion remains excluded.                                                                                                             |
 | Elapsed-duration storage/display and day-sheet summary                          | Anthony                        | 06                              | Approved September 29: remove elapsed-duration storage/API fields and per-entry/day duration displays; omit the day-level rep total and use Feeling. Completion clocks, frozen dates/zones and calendar rep badges remain. See PRD §5.7 and migration 0009. |
 | Code quality and test hardening before billing                                  | Anthony / implementation owner | 06A                             | Complete; see the Phase 06A handoff. Objective coverage/lint/boundary gates remain. Phase 07 separately redesigns API/persistence; deferred physical-device/staging gates stay open.                                                                        |
 | Subscription products/pricing/trials, paywall, expiry rules, RevenueCat mapping | Anthony                        | 07A                             | Pricing/products/trials and final paywall setup remain open. The nine subscription verification/expiry/earlier-upload rules are confirmed in Phase 07A; production billing is not implemented.                                                              |
-| Settings rows/reminder defaults                                                 | Anthony                        | Before 09                       | Open.                                                                                                                                                                                                                                                       |
+| Settings rows/reminder defaults                                                 | Anthony                        | 08 / deferred                   | Settings controls are implemented in Phase 08; practice reminders and notification scheduling remain deferred beyond first release.                                                                                                                         |
 | Future levels/credit/taxonomy, Android, dictation, lock-screen display          | Anthony                        | Respective deferred phase       | Intentionally deferred; not launch blockers.                                                                                                                                                                                                                |
 
 September 27 reflection follow-up: tapping the selected face again clears the feeling. “Choose one.” stays visible, and any written reflection remains intact.
@@ -38,7 +38,7 @@ Anthony authorized phase 02 staging follow-up and phase 03 on a feature branch. 
 
 ## September 21 phase 04 scope decisions
 
-Anthony approved venue filtering in phase 04 using Street & Park, Gym, Café & Bookshop, Bar & Party, and Errands & Transit from the reference in the “Clarify venue exclusions” task. The counter is future level progress and is omitted at launch. Per-challenge illustration, separate hint and safety-guideline fields are not required. Confirmed expired paid access locks paid functionality without a finish/reflection exception; billing now belongs to Phase 07A under the October 3 split. See [PHASE_04_SCOPE.md](product/PHASE_04_SCOPE.md) for approved scope, proposals and remaining details.
+Anthony approved venue filtering in phase 04 using Street & Park, Gym, Café & Bookshop, Bar & Party, and Errands & Transit from the reference in the “Clarify venue exclusions” task. The counter is future level progress and is omitted at launch. Per-challenge illustration, separate hint and safety-guideline fields are not required. Confirmed expired paid access locks paid functionality without a finish/reflection exception; billing now belongs to Phase 07A under the October 3 split. See [PHASE_04_SCOPE.md](product/CHALLENGES.md) for approved scope, proposals and remaining details.
 
 Apple Developer enrollment is complete according to Anthony; account/team access, permanent identifier, signing and physical-device evidence have not been verified. The existing device-gate deferral remains in effect. Small device checks during development are recommended, with the full acceptance pass before release.
 
@@ -54,7 +54,7 @@ Physical-iPhone acceptance is scheduled after the full app build in Phase 11. St
 
 ## September 30 Phase 06A sequencing
 
-Anthony approved [Phase 06A — Code quality & test hardening](IMPLEMENTATION_PLAN.md#phase-06a) between Progress and billing. It may start and complete against verified local implementations while earlier physical-device/staging gates remain open. API route and persistence redesign is discussed separately. The quality phase is complete; the Phase 06A handoff records its tests and maintained thresholds.
+Anthony approved [Phase 06A — Code quality & test hardening](implementation-plan/phase-06a-code-quality.md#phase-06a) between Progress and billing. It may start and complete against verified local implementations while earlier physical-device/staging gates remain open. API route and persistence redesign is discussed separately. The quality phase is complete; the Phase 06A handoff records its tests and maintained thresholds.
 
 ## October 8 Phase 07 implementation reconciliation
 
@@ -71,9 +71,9 @@ See [APP_SHELL.md](architecture/APP_SHELL.md), [PRD](product/PRD.md) and the [Ph
 
 ## October 14 Phase 08 scope split and renumbering
 
-Anthony reports most Phase 08 work completed and is implementing account deletion. Keep deletion, retention/backup mechanics and the existing Settings/recovery/export/preference acceptance in [Phase 08](IMPLEMENTATION_PLAN.md#phase-08). Move analytics consent, PostHog and product measurement to [Phase 09](IMPLEMENTATION_PLAN.md#phase-09), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation to [Phase 10](IMPLEMENTATION_PLAN.md#phase-10). Operational diagnostic redaction/service-health dashboards stay in Phase 08.
+Anthony reports most Phase 08 work completed and is implementing account deletion. Keep deletion, retention/backup mechanics and the existing Settings/recovery/export/preference acceptance in [Phase 08](implementation-plan/phase-08-settings-privacy.md#phase-08). Move analytics consent, PostHog and product measurement to [Phase 09](implementation-plan/phase-09-analytics.md#phase-09), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation to [Phase 10](implementation-plan/phase-10-legal-documents.md#phase-10). Operational diagnostic redaction/service-health dashboards stay in Phase 08.
 
-Former release Phase 09 is now [Phase 11](IMPLEMENTATION_PLAN.md#phase-11); lock-screen countdowns, optional US checkout and the future coach shift from 10–12 to 12–14. Earlier IDs and billing's beta-first activation sequence remain unchanged. Existing open device/staging/release gates keep their owners under the new numbering. This is a documentation/planning change, not feature implementation, phase acceptance or publication authorization.
+Former release Phase 09 is now [Phase 11](implementation-plan/phase-11-release.md#phase-11); lock-screen countdowns, optional US checkout and the future coach shift from 10–12 to 12–14. Earlier IDs and billing's beta-first activation sequence remain unchanged. Existing open device/staging/release gates keep their owners under the new numbering. This is a documentation/planning change, not feature implementation, phase acceptance or publication authorization.
 
 ## October 15 Phase 09 Terms & Privacy acceptance
 
@@ -85,7 +85,7 @@ The How We Feel reference supplies the page structure, not JustGO's data claims:
 
 Anthony approved these decisions while reviewing the [October 16 codebase assessment](https://claude.ai/code/artifact/f5067650-3c46-4c2e-bf14-1fcb107617ab):
 
-- **Placement.** New work from the assessment goes only into Phase 08 or later, because Phase 08 is current. CI-unblocking fixes land as [Phase 08 pre-merge work](IMPLEMENTATION_PLAN.md#phase-08-pre-merge); structure, documentation and tooling cleanup with no user-visible change becomes [Phase 08A](IMPLEMENTATION_PLAN.md#phase-08a), after Phase 08 merges and before Phase 09; remaining items join Phases 08–11.
+- **Placement.** New work from the assessment goes only into Phase 08 or later, because Phase 08 is current. CI-unblocking fixes land as [Phase 08 pre-merge work](implementation-plan/phase-08-settings-privacy.md#phase-08-pre-merge); structure, documentation and tooling cleanup with no user-visible change becomes [Phase 08A](implementation-plan/phase-08a-structure-cleanup.md#phase-08a), after Phase 08 merges and before Phase 09; remaining items join Phases 08–11.
 - **File-based routes.** Keep every current URL except the access gate, which moves from `/` to `/access` so Home is the only owner of `/`. Group screens with parenthesized folders, which change no URL, and freeze the route list before Phase 11. Turn on Expo Router typed routes.
 - **Implementation plan folder.** Split `IMPLEMENTATION_PLAN.md` into a `docs/implementation-plan/` folder with a README and one file per phase, including Phases 01–07. Moving earlier phases' text is documentation housekeeping, not new work for those phases.
 - **Superseded and finished documents.** Delete files that no longer work or label themselves superseded; Git keeps their history. Archive finished handoffs in `docs/archive/`, and keep handoffs with open gates until those gates close.
@@ -97,3 +97,61 @@ Anthony approved these decisions while reviewing the [October 16 codebase assess
 - **Post-deletion welcome screen.** The welcome screen shown after account deletion, or while a new account waits for access, belongs to account deletion. It does not reopen the deferred welcome/questionnaire onboarding.
 - **Later the same day:** Anthony deferred the separate Expo Doctor CI job and its weekly schedule [CI-1]; Doctor remains the first step of the single CI job. Work always lands through feature branches and pull requests, so `push` runs only for merges to `main`. He also deferred scheduling the retention cleanup on the hosted database; the cleanup function itself ships with Phase 08. He reported completing the Phase 08 physical-iPhone checks (deletion on a signed build, haptics lifecycle, two-phone transfer, Get help and Suggest a feature email drafts).
 - **Placing the deferred Phase 08 items:** Anthony approved moving four follow-ups into later phases. The month-boundary journey fix joins Phase 08A, landing on its own first if 08A has not started by November 1. The API redeploy with the 4xx mapping and the retention cleanup schedule (migration 0015, Supabase `pg_cron` recommended) join the Phase 11 free-beta server setup. Phase 10 confirms the production database will be on Supabase Pro (7-day daily backups) before writing the backup period, and Phase 11's paid launch puts production on Pro. Anthony chose the standard 7-day backup period.
+
+## October 9 beta-first sequencing and reminder deferral
+
+Anthony moved payment activation until after Settings and a free TestFlight beta.
+Finish Phase 08, then analytics/acceptance in 09 and legal notices in 10, then the
+Phase 11 free-beta checkpoint; activate and accept 07A before returning to 11 for
+paid launch. Preserve prepared local billing work and all nine subscription rules.
+Do not generate purchase keys or enable RevenueCat/live billing before its stage.
+Free testers use authenticated server-authorized access in isolated hosting and a
+signed iOS build. Practice reminders, notification permission requests and reminder
+scheduling are deferred beyond first release. Feature requests use the private
+support contact flow rather than a public board. This records the original owner
+decisions moved from the plan; it grants no deployment/upload/publication approval.
+
+## October 15 measurement and app changes
+
+Anthony approved the explicit analytics event allowlist and analytics-only start_id
+linking in the [Phase 09 plan](implementation-plan/phase-09-analytics.md#phase-09-measurement).
+The identifier never enters saved attempts or API/database contracts. He also
+approved one-time shuffled venue decks persisted on the phone, remembering the
+last venue, and removing the post-challenge Reflection top exit. These app changes
+remain independent of analytics activation; PostgreSQL remains authoritative for
+exact reps while best-effort accepting-user events support rates and patterns.
+This preserves the header decisions from the original plan without changing scope.
+
+## October 17 Phase 08A documentation ownership
+
+Phase 08A moves plan scope into named phase files, implementation results into
+handoffs, architecture into concern-based guides, and unbuilt designs into
+proposals. The original Phase 07 API/persistence discussion is archived; current
+behavior remains in ACTIVITY_DATA.md. No product decision changes in this move.
+
+## October 17 Phase 08A review split
+
+Anthony approved publishing Phase 08A as two stacked pull requests rather than
+one pull request per implementation step. Documentation and design-source
+organization form the first comparison; the remaining implementation uses that
+branch as its base. Each comparison must remain within CodeRabbit's 300-file
+limit. Repository review configuration inherits the existing organization settings
+and allows automatic review against the documentation branch. Preserve separate
+move and behavior commits, validate both actual
+publication candidates, and retain all existing device and release gates.
+Merge approval remains a separate owner decision.
+
+## Open and settled product decisions
+
+This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.
+
+| Decision                        | Before phase                                  | What needs an answer                                                                                                                                                                                                                      |
+| ------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Onboarding content              | Deferred                                      | Welcome/questionnaire flow deferred by Anthony; revisit scope and designs separately. No phase 03 gate.                                                                                                                                   |
+| Launch catalog                  | 04                                            | Settled: CHALLENGES.md supplies 61 placements in six venues; five minutes, no displayed subtext. Seeded by phase 04. The archived curriculum remains a future draft.                                                                      |
+| Deck counter                    | 04                                            | Settled: omit level progress; each venue cycles. New accounts start in Streets. Configured decks are nonempty; loading/refresh failures retain recovery actions. See CHALLENGES.md.                                                       |
+| Future levels                   | Later; not a launch blocker                   | Thresholds, unlocking/skipping, historical-credit policy and later taxonomy; retain Level 1 history now without implementing progression.                                                                                                 |
+| Reflection save & dismissal     | Approved September 27                         | Feeling-only/text-only/both; empty bottom action and empty Back/X skip; dirty Back/X offers save, keep editing or discard and skip.                                                                                                       |
+| Reading saved reflections       | Settled; 06/07.4                              | Per-attempt reading and inline text Add/Edit are implemented; feelings remain immutable after submission.                                                                                                                                 |
+| Apple account & offer           | Apple setup from 01; billing in post-beta 07A | Enrollment, bundle ID/app record and signing start early. Configure subscription products and RevenueCat mapping after the free beta, during 07A; settle offer/paywall rules before billing validation.                                   |
+| Supporting designs & formatting | Relevant phase                                | Home color variants, remaining Settings controls, Phase 08 haptic preferences, duration rounding and outstanding small-screen/accessibility design states. See the owning phase and handoff before treating an older design note as open. |
