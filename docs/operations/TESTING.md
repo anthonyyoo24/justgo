@@ -101,6 +101,16 @@ reports; the root command applies the combined gate. Reports are ignored generat
 output under `coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
 Jest uses Istanbul; Vitest's V8 provider is pinned with its Vitest version.
 
+CI collects API unit and database coverage separately with the same Vitest source
+configuration. The unit producer excludes `*.integration.test.ts`; the database
+producer selects those files, including the single migration rehearsal. Each writes
+its own report and Vitest execution blob. The final `checks` job requires both
+nonempty blobs and merges their execution maps with Vitest without rerunning tests.
+It does not add percentages or overlapping JSON summaries. Unimported production
+source remains in the merged API report, and the normal global/critical checker
+runs against the union together with the mobile/contracts reports. Missing producer
+results or artifacts cannot make partial coverage pass.
+
 All production `src/**/*.ts` and mobile `src/**/*.tsx` files count, including
 unimported source. Only tests and declaration-only files are excluded inside those
 trees. Routes, preview wiring, API bootstrap and schema remain visible, including
@@ -241,7 +251,9 @@ It has its own Playwright configuration and a five-minute suite limit; the regul
 journey configuration excludes this spec and has a twenty-minute suite limit.
 
 Reports are `.local/exported-web-report/index.html` and
-`.local/exported-web-results/`. Traces, video and automatic screenshots are off.
+`.local/exported-web-results/`. CI requires a nonempty HTML report and uploads the
+report/results after the smoke, including failures. Traces, video and automatic
+screenshots are off.
 Run the smoke before `export:ios`, which replaces the same default `dist/` output.
 This checks the exported browser app and static assets; native/device evidence
 remains separate.
@@ -304,12 +316,42 @@ never hide live metadata changes with offline mode/exclusions. Native/device
 acceptance for changed dependencies stays separate.
 
 CI runs on pull requests and pushes to `main`, cancels superseded PR runs and keeps
-each main commit's result. The current workflow runs online Doctor/static checks,
-then one all-workspace coverage run including PostgreSQL/migration suites, followed
-by journeys and exports. Coverage upload runs when coverage executed, including
-failures; missing reports then fail upload. Tooling tests protect the actual workflow
-conditions and each suite's single-run layout. The workflow file owns current job
-structure and setup prerequisites.
+each main commit's result. Five producer jobs run independently:
+
+- `static`: online Doctor, contracts/type/lint/format/tooling checks and the API
+  production-dependency audit.
+- `unit`: mobile, contracts and API unit suites with coverage.
+- `database`: isolated PostgreSQL setup, migrations and every API integration suite,
+  including the migration rehearsal, with coverage.
+- `journeys`: isolated PostgreSQL and the actual app/API/database journeys. Their
+  wrapper owns migration and fixture service startup.
+- `exports`: production web export, its independent static smoke, then iOS export.
+
+The final `checks` job runs even when a producer fails, is skipped or is cancelled;
+any such result fails the aggregate status. After all producers pass, it downloads
+the coverage artifacts, merges the API execution maps and enforces the unchanged
+all-source/global/critical floors. Suites execute once rather than being repeated
+by root coverage or database commands. Coverage uploads run when their collection
+step executed, including failures; missing reports then fail upload. Tooling tests
+protect producer dependencies, failure handling, artifact paths and coverage union.
+
+Local setup actions share pinned Node/npm installation, isolated database roles and
+Playwright setup. Chromium binaries are cached by runner OS and installed Playwright
+version; Linux system dependencies are installed even on cache hits. A cache is not
+correctness evidence or a measured speed improvement. Jobs and Playwright suites
+have explicit timeouts; local heavy workspace commands remain sequential.
+
+External GitHub Actions use commit SHA pins with readable version comments.
+Dependabot checks npm and Actions weekly, groups compatible npm minor/patch updates
+and leaves npm major upgrades for manual scope/native acceptance. Updates do not
+merge automatically. The audit gate is scoped to API production dependencies:
+
+```sh
+npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low
+```
+
+The workflow and setup actions own exact job limits, versions and prerequisites;
+clean runners must not rely on ignored environment files or existing artifacts.
 
 For split/stacked changes, verify each exact publication candidate. Checks from a
 combined feature branch do not transfer to an older branch's dependency pins or
