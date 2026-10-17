@@ -111,6 +111,10 @@ scheduling are deferred beyond first release. Feature requests use the private
 support contact flow rather than a public board. This records the original owner
 decisions moved from the plan; it grants no deployment/upload/publication approval.
 
+Anthony declined Tminus and Lance for now and retained the existing EAS release
+workflow. This decision is recovered from the preserved native-billing planning
+stash; no submission service was installed or connected.
+
 ## October 15 measurement and app changes
 
 Anthony approved the explicit analytics event allowlist and analytics-only start_id
