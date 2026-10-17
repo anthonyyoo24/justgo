@@ -39,6 +39,11 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
   Rate-limit replies expose their remaining window; diagnostics identify safe
   SQLSTATEs and failing migrations while preserving execution/history.
 
+- The HTTP client fetches its admitted canonical URL. JSON media/status checks
+  distinguish invalid or proxy responses from transport failure and prevent
+  untrusted bodies from rejecting saved credentials. Retry/cancellation budgets
+  and validated API errors remain intact.
+
 ## Invariants to preserve
 
 - Existing identity, deletion, activity, access, privacy and native safety rules
@@ -70,7 +75,6 @@ The [phase plan](../implementation-plan/phase-08a-structure-cleanup.md) owns sco
 
 | Gate                                                          | Owner                                                | Required step/phase | Done when                                                   |
 | ------------------------------------------------------------- | ---------------------------------------------------- | ------------------- | ----------------------------------------------------------- |
-| HTTP robustness                                               | Implementation owner                                 | 08A step 5          | Canonical URL and response-media regressions pass           |
 | Tooling, regression journeys and CI changes                   | Implementation owner                                 | 08A steps 6–7       | Local required checks pass; hosted candidates are inspected |
 | Local branch/worktree deletions and billing stash disposition | Anthony approves each deletion; implementation owner | 08A step 8          | Concrete inventory reviewed and approved cleanup completed  |
 | Publication of each step and hosted CI                        | Anthony authorizes each action                       | 08A                 | Authorized candidates have inspected passing hosted checks  |
@@ -91,6 +95,9 @@ physical-device release gates remain open. The API/contracts checkpoint passed
 npm run check, npm run test:db (including the migration rehearsal), boundary/
 deployment regressions and cold web/iOS exports. The native source map includes
 public contracts and excludes the OpenAPI module; its document markers are
-absent from the Hermes bundle. No Phase 08A hosted CI is claimed;
+absent from the Hermes bundle. HTTP verification passed the full npm run check
+and focused protocol/account/consumer regressions, including malformed media,
+authentication-shaped proxy bodies, timeout/cancellation and bounded replay.
+No Phase 08A hosted CI is claimed;
 remaining steps require their own checks. Detailed
 interim output stays in ignored local logs and commit/PR descriptions.
