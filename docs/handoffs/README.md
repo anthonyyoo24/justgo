@@ -1,5 +1,10 @@
 # Implementation handoffs
 
+**Current Phase 08 status:** Complete. The [handoff](phase-08-settings-privacy.md)
+records final verification and the approved follow-ups retained for later phases.
+Phase 08A is next and has not started. The dated Phase 08 entries below describe
+historical checkpoints; the phase index and handoff own its current status.
+
 **October 16 codebase assessment scheduling:** Anthony approved placing the [codebase assessment](https://claude.ai/code/artifact/f5067650-3c46-4c2e-bf14-1fcb107617ab) findings in the plan. CI-unblocking fixes become [Phase 08 pre-merge work](../IMPLEMENTATION_PLAN.md#phase-08-pre-merge); structure, documentation and tooling cleanup becomes new [Phase 08A](../IMPLEMENTATION_PLAN.md#phase-08a) before Phase 09; remaining items join Phases 08–11. Its handoff file is created when the phase starts. This is a planning change; nothing is implemented.
 
 **October 15 Phase 09 acceptance decision:** Anthony replaced the two planned analytics Settings choices with one Terms & Privacy onboarding page as the only permission request for its disclosed scope. No analytics switches or later analytics prompt are planned; broader welcome/questionnaire onboarding stays deferred. The [Phase 09 planning handoff](phase-09-analytics.md) records the adapted copy, retained enforcement and open legal/implementation work. Telemetry export remains disabled; this documentation update closes no feature or release gate.
@@ -523,7 +528,7 @@ On September 30, quality phase 06A was inserted after Progress (06), preserving 
 | 06A — Code quality & test hardening           | Complete                                                         | 06 (local)                                   | [phase-06a-code-quality.md](phase-06a-code-quality.md)       |
 | 07 — API & offline saving                     | In progress                                                      | 06A                                          | [phase-07-api-offline.md](phase-07-api-offline.md)           |
 | 07A — Native subscriptions & reliable billing | Checkpoint on billing branch                                     | 07.5; activation after beta                  | `phase-07a-billing.md` on codex/phase-07a-native-billing     |
-| 08 — Settings & privacy controls              | Implemented locally; device, hosted and retention gates open     | 07.5                                         | [phase-08-settings-privacy.md](phase-08-settings-privacy.md) |
+| 08 — Settings & privacy controls              | Complete; approved later-phase gates retained in handoff         | 07.5                                         | [phase-08-settings-privacy.md](phase-08-settings-privacy.md) |
 | 09 — Analytics & consent                      | Planning recorded; implementation not started, exporter disabled | 08                                           | [Phase 09 planning record](phase-09-analytics.md)            |
 | 10 — Legal documents & release disclosures    | Drafts prepared; review/publication open                         | 08, 09                                       | `phase-10-legal-documents.md`                                |
 | 11 — Release validation & launch              | Hosted prerequisite ready; acceptance open                       | 08–10 for beta; accepted 07A for paid launch | `phase-11-release.md`                                        |
