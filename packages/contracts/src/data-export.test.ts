@@ -1,9 +1,6 @@
+import { openApiDocument } from './openapi.ts';
 import { describe, expect, it } from 'vitest';
-import {
-  exportPageQuerySchema,
-  exportPageSchema,
-  openApiDocument,
-} from './index.ts';
+import { exportPageQuerySchema, exportPageSchema } from './index.ts';
 
 describe('private data export contract', () => {
   it('accepts only an optional bounded UUID cursor, never a requested account', () => {

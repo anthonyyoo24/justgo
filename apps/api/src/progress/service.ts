@@ -6,7 +6,8 @@ import {
   type ProgressDayResponse,
 } from '@justgo/contracts';
 import { z } from 'zod';
-import { IdentityError, type IdentityService } from '../identity/service.js';
+import type { IdentityService } from '../identity/service.js';
+import { ApiError } from '../http/api-error.js';
 import type { EntitlementReader } from '../access/service.js';
 import {
   attemptQuery,
@@ -27,7 +28,7 @@ const decodeCursor = (value: string, date: string) => {
     if (parsed[0] !== date) throw new Error();
     return parsed;
   } catch {
-    throw new IdentityError('INVALID_REQUEST', 400);
+    throw new ApiError('INVALID_REQUEST', 400);
   }
 };
 export class ProgressResources {
@@ -45,7 +46,7 @@ export class ProgressResources {
       // and rows in these multi-query reads share one product-write boundary.
       const access = await this.entitlement?.(tx);
       if (!hasVerifiedAccess(access))
-        throw new IdentityError(
+        throw new ApiError(
           access?.status === 'unpaid' ? 'ACCESS_REQUIRED' : 'UNAVAILABLE',
           access?.status === 'unpaid' ? 403 : 503,
         );

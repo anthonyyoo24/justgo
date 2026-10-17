@@ -30,7 +30,13 @@ function boundaryMessage(filename, specifier) {
     return 'The API cannot import mobile code.';
   if (under(file, 'apps/mobile') && api)
     return 'Mobile cannot import API implementation.';
-  if ((under(file, 'apps/mobile') || under(file, 'apps/api')) && contracts)
+  const apiOpenApi =
+    under(file, 'apps/api') && specifier === '@justgo/contracts/openapi';
+  if (
+    (under(file, 'apps/mobile') || under(file, 'apps/api')) &&
+    contracts &&
+    !apiOpenApi
+  )
     return 'Import shared contracts through @justgo/contracts.';
   const mobileTarget = target.startsWith('@justgo/mobile/src/')
     ? target.replace('@justgo/mobile/src/', 'apps/mobile/src/')
