@@ -1,6 +1,6 @@
 # JustGO design guide
 
-**September 24 scope update:** [Phase 04 decisions](../product/PHASE_04_SCOPE.md) define six manual venues, independent cycling stacks, the 39O fanned deck and five-minute attempts. Omit subtext and the future level-progress indicator. Shared content keeps separate venue placements; completed cards can recur as new attempts. Current local-saving behavior is described by the [PRD](../product/PRD.md); verified subscription/expiry rules are implemented separately in Phase 07A. See the [implementation handoff](../handoffs/phase-04-challenge-loop.md) for evidence and remaining device gates.
+**September 24 scope update:** [Phase 04 decisions](../product/CHALLENGES.md) define six manual venues, independent cycling stacks, the 39O fanned deck and five-minute attempts. Omit subtext and the future level-progress indicator. Shared content keeps separate venue placements; completed cards can recur as new attempts. Current local-saving behavior is described by the [PRD](../product/PRD.md); verified subscription/expiry rules are implemented separately in Phase 07A. See the [implementation handoff](../handoffs/phase-04-challenge-loop.md) for evidence and remaining device gates.
 
 Extracted September 17, 2026 from [Paper Version 3](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0). The selected final row is authoritative for appearance; [PRD §2](../product/PRD.md#2-design-authority-and-changes-from-the-previous-prd) owns behavior. The earlier cobalt page tokens and local inspiration screenshots do not override the selected row.
 

@@ -1,9 +1,8 @@
 # Working on JustGO
 
-Read the requested phase in `docs/IMPLEMENTATION_PLAN.md` and its dependency
-handoffs before editing. Until Phase 08A splits the plan, a phase's decisions
-can also sit in the plan's header notes and in `docs/DECISIONS.md`; search both
-for the phase number instead of reading the whole file. The plan owns sequencing and approved future changes;
+Read the requested phase from [the implementation plan](docs/implementation-plan/README.md)
+and its dependency handoffs before editing. Consult `docs/DECISIONS.md` for the
+recorded decisions in force. The phase files own sequencing and approved future changes;
 `docs/architecture/APP_SHELL.md` and `docs/architecture/TECH_STACK.md` describe the implemented boundaries.
 Keep phase scope bounded and preserve existing behavior unless the task changes it.
 Directory instructions (especially `apps/mobile/AGENTS.md`) also apply.
@@ -11,7 +10,7 @@ Directory instructions (especially `apps/mobile/AGENTS.md`) also apply.
 This file is the shared coding standard for future features and fixes, not only
 cleanup phases. Read [testing guidance](docs/operations/TESTING.md) before code changes for
 the applicable commands and evidence requirements. Keep detailed architecture in
-the linked architecture docs and phase-specific work/evidence in the plan and
+the linked architecture docs and phase-specific scope in the plan and results/evidence in
 handoffs; avoid copying competing versions of these rules into every directory.
 
 ## Repository map and common commands
@@ -83,9 +82,7 @@ handoffs; avoid copying competing versions of these rules into every directory.
 ## File placement for new mobile code
 
 The [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) describes the
-responsibility groups. Some groups it shows (for example
-`features/challenges/deck/` and `lib/network/`) are not on disk until Phase 08A;
-where the guide and the tree differ, follow the tree. Keep native/web adapter pairs
+implemented responsibility groups. Keep native/web adapter pairs
 and tests beside their owner. File moves must update imports, command/coverage
 paths, upload allowlists, fixture resolution, asset extraction and documentation
 links together; organizing retained code does not authorize its removal.
@@ -153,46 +150,11 @@ Reload the app to clear stale module/asset paths.
   deliberate background operation whose failure is already handled; explain
   non-obvious ownership of errors. Do not suppress async warnings or broad lint
   rules to make checks pass.
-- Controllers that can mount before asynchronous hydration must reconcile the
-  current store when connecting as well as subscribe to later changes. Test slow
-  hydration and the construction-to-subscription gap, preserving newer input.
-  Runtime date/time-zone coordination must refresh on account activation,
-  foreground and day boundaries, and cancel/fence callbacks on lifecycle changes.
-- Account deletion must persist its intent and confirmed receipt before cleanup,
-  stop uploads, drain accepted storage writes and remove only the selected account's
-  data. Preserve credential tombstones and same-proof retry behavior; delayed
-  recovery/iCloud credentials must never recreate a deleted identity. Follow the
-  [identity boundary](docs/architecture/IDENTITY.md) and keep native cleanup
-  capability checks ahead of destructive requests.
-- Native development worktrees share the installed app's Keychain namespace.
-  Compare persisted schemas when switching worktrees and preserve known newer
-  recovery/deletion safety metadata. A schema rejection can appear as a generic
-  secure-storage error; do not reset Keychain or loosen validation to hide it.
-  Cover format compatibility and account preservation with synthetic fixtures.
-- Provider-owned refresh observers must receive runtime dependencies without
-  importing their composing provider back. Share context-free subscriptions to
-  avoid module cycles. When a preview disables file watching, restart it before
-  treating its served bundle as evidence for edited source.
-- Device/server clocks can differ even when both use automatic time. Keep access
-  clock alignment bounded and apply the same clock to admission, freshness and
-  expiry timers; test the bounds without extending validity. Fully reload the
-  development app after editing provider lifecycle effects when Fast Refresh has
-  retained an already disposed runtime; verify the fresh runtime before handoff.
-- For a full-screen native modal sharing the root window, use already measured
-  safe-area values for its first visible layout and avoid applying the same
-  inset twice. Native inset measurement after presentation can hide the title
-  and move content. Verify first and repeated openings on the native surface;
-  browser/component checks cannot establish that timing.
-- Preserve an outgoing animated component's identity through navigation focus
-  loss. A focus-based key can remount its resting state before the destination
-  covers it; protect that handoff with a regression and inspect native frames.
-- For large animated lists, bound initial row mounting and subscribe to draft
-  changes inside the active editor, with the controller owned above the rows.
-  Fill underfull viewports from layout/content measurements rather than requiring
-  a scroll gesture; await the new batch's measurements before extending it again.
-  Avoid measuring every collapsed panel. Compare callback identities honestly
-  when memoizing rows, and verify expanding heights and scrolling on the native
-  surface; inconsistent row estimates can defeat virtualization.
+- Preserve the domain safety invariants in the [identity boundary](docs/architecture/IDENTITY.md),
+  [activity architecture](docs/architecture/ACTIVITY_DATA.md) and
+  [app shell](docs/architecture/APP_SHELL.md). These documents own hydration,
+  account deletion/credential preservation, lifecycle/clock coordination and native
+  modal/animation/list behavior; consult the relevant owner before changing it.
 
 ## Verification and handoff
 
@@ -265,8 +227,8 @@ Reload the app to clear stale module/asset paths.
 - Before claiming completion, reconcile the agreed requirements and relevant
   review findings with the implementation. Each must have passing evidence or
   an explicit, approved deferral with an owner/phase and an open task. Do not
-  silently drop a finding when moving work between phases. Record recurring
-  coding lessons here; keep open bug tasks in the plan and lasting results in
+  silently drop a finding when moving work between phases. Record reusable coding rules here and domain/incident lessons in the owning
+  architecture guide; keep open bug tasks in the plan and lasting results in
   the handoff. Keep automated checks in CI as enforcement alongside this guide.
 - On the owner's 8 GB Mac, run heavy builds/checks sequentially and reuse existing
   tools/caches. Native signing/build upgrades require a separate task.

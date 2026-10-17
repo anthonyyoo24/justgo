@@ -129,3 +129,17 @@ Rate buckets older than 30 days and unredeemed transfers expired more than 24 ho
 For the original additive identity migrations, an API rollback can leave the tables in place. Phase 07 retires the old wire protocol and contracts product tables, so reverting an old API against the contracted schema is unsafe. Follow the [coordinated cutover/backup/forward-repair procedure](../operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients). Do not reset staging or remove credential history to retry a deployment.
 
 Account recovery restores uploaded server history and hydrates only the current app account's available local journal. It cannot recover an only-device pending copy from another installation. Same-account renewal preserves accepted local records; explicit account switches fence reads/uploads, hide prior views and keep any pending/memory-only content in its original partition. Provider purchase restoration does not prove ownership of private history. Production verification/coverage integration remains Phase 07A.
+
+## Account deletion and development-build safety
+
+- Account deletion must persist its intent and confirmed receipt before cleanup,
+  stop uploads, drain accepted storage writes and remove only the selected account's
+  data. Preserve credential tombstones and same-proof retry behavior; delayed
+  recovery/iCloud credentials must never recreate a deleted identity. Follow the
+  [identity boundary](#account-deletion-and-development-build-safety) and keep native cleanup
+  capability checks ahead of destructive requests.
+- Native development worktrees share the installed app's Keychain namespace.
+  Compare persisted schemas when switching worktrees and preserve known newer
+  recovery/deletion safety metadata. A schema rejection can appear as a generic
+  secure-storage error; do not reset Keychain or loosen validation to hide it.
+  Cover format compatibility and account preservation with synthetic fixtures.

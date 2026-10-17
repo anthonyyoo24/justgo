@@ -23,12 +23,12 @@ extraction pipeline. Component tests also cover all six venues through the
 cream → peach → light card cycle and queued-to-front theme handoff.
 
 Source IDs, URLs and geometry are retained in
-`docs/design-source/challenge-paper-extract.json`; full source images are cached
+`design/source/challenge-paper-extract.json`; full source images are cached
 under ignored `output/challenge-fidelity/source/` instead of shipped in the app.
 The extractor requires `sharp` as a development tool only (available in the Codex
 workspace dependency runtime); no mobile dependency or native rebuild is needed.
 The two color-variant exports are retained in
-`docs/design-source/challenge-color-variants.json`.
+`design/source/challenge-color-variants.json`.
 
 See `docs/CHALLENGE_FIDELITY.md` for measured values, reconstruction decisions and
 verification evidence. The raster header lettering and peach-panel contour have

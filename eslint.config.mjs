@@ -14,7 +14,7 @@ export default tseslint.config(
       '**/android/**',
       '.local/**',
       '.vercel/**',
-      'docs/design-source/**',
+      'design/source/**',
     ],
   },
   js.configs.recommended,

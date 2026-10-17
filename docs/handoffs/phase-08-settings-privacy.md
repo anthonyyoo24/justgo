@@ -13,7 +13,7 @@ account-deletion and reflection-keyboard handoffs, under the
 [October 16 handoff rule](../DECISIONS.md#october-16-codebase-assessment-follow-up).
 Their per-change history is in Git (for example
 `git show 867e5d2:docs/handoffs/phase-08-settings-privacy.md`) and in PRs #22–25.
-The [plan](../IMPLEMENTATION_PLAN.md#phase-08) owns scope; this file records
+The [plan](../implementation-plan/phase-08-settings-privacy.md#phase-08) owns scope; this file records
 outcomes, invariants and open gates.
 
 Phase 08 delivers Settings with Preferences, Account & data, Privacy, Support and
@@ -160,15 +160,15 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 ## Open gates
 
-| Gate                                                                                              | Owner                         | Phase  | Done when                                                           |
-| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------- |
-| Redeploy the API with the 4xx mapping and apply migration 0016's transfer DELETE restriction      | Anthony authorizes            | 11     | Forward migrations through 0016 applied; deployment probed          |
-| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 11     | Schedule runs on the hosted database; first run's counts recorded   |
-| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 10, 11 | Dashboard matches FOUNDATION.md before Phase 10 publishes wording   |
-| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                    |
-| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11     | Simulator or device check                                           |
-| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 11     | Paid-launch checkpoint                                              |
-| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–11  | See [Phase 11](../IMPLEMENTATION_PLAN.md#phase-11) and Phase 09/07A |
+| Gate                                                                                              | Owner                         | Phase  | Done when                                                                            |
+| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| Redeploy the API with the 4xx mapping and apply migration 0016's transfer DELETE restriction      | Anthony authorizes            | 11     | Forward migrations through 0016 applied; deployment probed                           |
+| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 11     | Schedule runs on the hosted database; first run's counts recorded                    |
+| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 10, 11 | Dashboard matches FOUNDATION.md before Phase 10 publishes wording                    |
+| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                                     |
+| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11     | Simulator or device check                                                            |
+| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 11     | Paid-launch checkpoint                                                               |
+| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–11  | See [Phase 11](../implementation-plan/phase-11-release.md#phase-11) and Phase 09/07A |
 
 ## Final verification
 

@@ -20,6 +20,7 @@ apps/mobile/android/
 
 # Cloud native builds use CNG; preserve local generated projects/caches without uploading them.
 /docs/
+/design/
 /.github/
 /scripts/
 /apps/api/*

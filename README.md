@@ -4,7 +4,7 @@ An iOS-first social-confidence app with no-signup credential recovery, six venue
 
 See the [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) for the current directory groupings and responsibilities.
 
-Read [repository coding and verification instructions](AGENTS.md) before changing code, plus directory-specific `AGENTS.md` files. Phase scope and handoffs live in the [implementation plan](docs/IMPLEMENTATION_PLAN.md).
+Read [repository coding and verification instructions](AGENTS.md) before changing code, plus directory-specific `AGENTS.md` files. Phase scope and handoffs live in the [implementation plan](docs/implementation-plan/README.md).
 
 ## Start locally
 
@@ -61,9 +61,9 @@ Generated native projects and completed Xcode caches are retained locally and ex
 
 The local Expo module is auto-linked from `apps/mobile/modules/justgo-keychain`; native dependency or Swift changes require a new EAS build. If `xcrun simctl` resolves only Command Line Tools, use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for simulator commands without changing the global developer selection.
 
-A native smoke flow lives in `apps/mobile/e2e/launch.yaml`. With Maestro installed, a running development build, Metro and healthy API, run `APP_ID=dev.justgo.foundation npm run test:native -w @justgo/mobile`. The command requires a nonempty `APP_ID` and passes it explicitly to Maestro with `-e`; use the identifier of your installed development app. This is a launch harness, not proof of physical-device recovery or purchases. The [phase handoff](docs/handoffs/phase-01-foundation.md) owns actual results.
+A native smoke flow lives in `apps/mobile/e2e/launch.yaml`. With Maestro installed, a running development build, Metro and healthy API, run `APP_ID=dev.justgo.foundation npm run test:native -w @justgo/mobile`. The command requires a nonempty `APP_ID` and passes it explicitly to Maestro with `-e`; use the identifier of your installed development app. This is a launch harness, not proof of physical-device recovery or purchases. The [phase handoff](docs/archive/handoffs/phase-01-foundation.md) owns actual results.
 
-[Phase 07.3A — hybrid/native testing](docs/IMPLEMENTATION_PLAN.md#phase-07-3a) was deferred by Anthony on October 7. Its checkpoint and [removal assessment](docs/checks/phase-07-3a-browser-testing-assessment.md) remain reference material; it is not a prerequisite for 07.4/07.5. Retain browser journeys/adapters/CI and lower-level coverage. Manual native checks use the existing installed development binary; physical-device Keychain/AsyncStorage, software keyboard, VoiceOver and release acceptance remain separate gates.
+[Phase 07.3A — hybrid/native testing](docs/implementation-plan/phase-07-api-offline.md#phase-07-3a) was deferred by Anthony on October 7. Its checkpoint and [removal assessment](docs/checks/phase-07-3a-browser-testing-assessment.md) remain reference material; it is not a prerequisite for 07.4/07.5. Retain browser journeys/adapters/CI and lower-level coverage. Manual native checks use the existing installed development binary; physical-device Keychain/AsyncStorage, software keyboard, VoiceOver and release acceptance remain separate gates.
 
 ## Workspace
 
@@ -72,4 +72,4 @@ A native smoke flow lives in `apps/mobile/e2e/launch.yaml`. With Maestro install
 - `packages/contracts`: public Zod response schemas shared by mobile and API.
 - `docs`: product scope, implementation plan, extracted design references and durable phase handoffs.
 
-Read [foundation setup and versions](docs/operations/FOUNDATION.md), [design guide](docs/design/DESIGN.md), [decision register](docs/DECISIONS.md), [Apple/RevenueCat checklist](docs/operations/APPLE_SETUP.md), and the [phase 01 handoff](docs/handoffs/phase-01-foundation.md). The [PRD](docs/product/PRD.md) owns product behavior and the [implementation plan](docs/IMPLEMENTATION_PLAN.md) owns release gates.
+Read [foundation setup and versions](docs/operations/FOUNDATION.md), [design guide](docs/design/DESIGN.md), [decision register](docs/DECISIONS.md), [Apple/RevenueCat checklist](docs/operations/APPLE_SETUP.md), and the [phase 01 handoff](docs/archive/handoffs/phase-01-foundation.md). The [PRD](docs/product/PRD.md) owns product behavior and the [implementation plan](docs/implementation-plan/README.md) owns release gates.

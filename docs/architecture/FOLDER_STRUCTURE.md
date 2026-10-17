@@ -1,508 +1,122 @@
 # Repository folder structure
 
-The owner-authorized cleanup is split into foundation and mobile PRs for review.
-This guide shows the final structure after **both** land. In the foundation stage,
-most mobile source and artwork still use their merged-07.3 locations; tooling, API tests,
-contracts and documentation already use the groups below. The owner-authorized
-October 8 follow-up on `codex/phase-07.4-progress-history` implements the Progress
-and shared activity groups below, including the newer reflection editor and
-Progress read/cache files. Other mobile cleanup remains separate. See the
-[cleanup handoff](../handoffs/project-folder-cleanup.md) for sequencing and checks.
+This guide describes the implemented tree. [The implementation plan](../implementation-plan/README.md)
+owns future moves; [handoffs](../handoffs/README.md) own verification and open gates.
+Tests stay beside their mobile/contracts owner; API integration tests live in capability groups under tests. Native/web adapter families stay together.
 
-The October 6 dedicated cleanup groups existing files by responsibility. Tests
-remain beside their implementations. Route paths, public package exports,
-storage envelopes, API behavior and artwork pixels are unchanged. The
-[cleanup handoff](../handoffs/project-folder-cleanup.md) records verification and
-the preceding phase's open acceptance gates.
+## Repository owners
 
-## Mobile source
+| Path                   | Responsibility                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| apps/mobile/           | Expo app, product UI, local account data and native adapters.                                 |
+| apps/api/              | Authenticated API, restricted database access, migrations and safe local fixture entrypoints. |
+| packages/contracts/    | Public strict Zod contracts shared by API/mobile, with colocated validation tests.            |
+| e2e/                   | Saved Playwright app/API/database journeys and shared fixtures.                               |
+| scripts/quality/       | Architecture, coverage, deployment-allowlist and command safeguards.                          |
+| scripts/journeys/      | Isolated journey lifecycle, environment and production-repository bundling.                   |
+| scripts/design/        | Asset extraction and palette adaptation.                                                      |
+| design/source/         | Preserved original design measurements, source exports and reference illustrations.           |
+| design/paper-variants/ | Design variants and reconstruction source.                                                    |
+| docs/                  | Concern-owned product/architecture/operations guidance, phase plans, handoffs and archives.   |
+| .local/                | Ignored disposable databases, temporary fixtures, visual evidence, logs and downloads.        |
 
-```text
-apps/mobile/src/
-├── app/                              Expo Router route files and layouts
-├── app-support/
-│   ├── access/                       startup access gate
-│   ├── identity/                     account/recovery coordination and credentials
-│   ├── providers/                    app, account and activity lifecycle composition
-│   └── saving/                       shared saving notices and recovery feedback
-├── features/
-│   ├── challenges/
-│   │   ├── ChallengeScreen.tsx       Home screen orchestration
-│   │   ├── controller.ts             venue/deck state and accepted completion context
-│   │   ├── ChallengeLayout.tsx        shared challenge screen layout
-│   │   ├── challenge-design.ts        existing challenge design helpers
-│   │   ├── deck/                     cards, venue selection, artwork and deck motion
-│   │   │   ├── ChallengeDeck.tsx
-│   │   │   ├── VenueTabs.tsx
-│   │   │   ├── VenueArt.tsx
-│   │   │   └── deck-model.ts
-│   │   ├── active/                   unfinished challenge, full-screen modal and timer
-│   │   │   ├── ActiveChallenge.tsx
-│   │   │   ├── ActiveChallengeModal.tsx
-│   │   │   ├── useActiveChallenge.ts
-│   │   │   └── countdown.ts
-│   │   └── success/                  completed challenge confirmation
-│   │       ├── SuccessScreen.tsx
-│   │       └── SuccessView.tsx
-│   ├── reflections/                  reflection screen, form and feeling presentation
-│   └── progress/
-│       ├── ProgressScreen.tsx        query and navigation coordination
-│       ├── ProgressView.tsx          calendar/day-detail composition
-│       ├── calendar.ts               shared date and calendar helpers
-│       ├── types.ts                  shared Progress display types
-│       ├── calendar/                 calendar UI and loading presentation
-│       │   ├── ProgressCalendar.tsx
-│       │   └── ProgressSkeleton.tsx
-│       └── day-details/              day sheet and activity/reflection rows
-│           ├── DaySheet.tsx
-│           ├── useDaySheetMotion.ts
-│           ├── entries/              progressive list, row details and their motion
-│           │   ├── DayEntryList.tsx
-│           │   ├── ProgressEntryRow.tsx
-│           │   ├── SlidingEntryDetails.tsx
-│           │   ├── useEntryMotion.ts
-│           │   └── useEntryMotion.native.ts
-│           └── reflection-editor/    inline form and editor-session coordination
-│               ├── DayReflectionEditor.tsx
-│               └── useDayReflection.tsx
-├── data/activity/
-│   ├── accounts.ts                   account repository ownership
-│   ├── repository.ts                 activity storage/submission/sync orchestration
-│   ├── model.ts                      shared journal schemas and controllable interfaces
-│   ├── submissions.ts                completion/reflection domain transitions
-│   ├── persistence/                  AsyncStorage adapter and serialized writes
-│   │   ├── storage.ts
-│   │   └── persistence.ts
-│   ├── sync/                         delivery, acknowledgements, transport and retries
-│   │   ├── delivery.ts
-│   │   ├── retry.ts
-│   │   ├── sender.ts
-│   │   └── transport.ts
-│   └── progress/                     Progress composition, reads and query-cache repair
-│       ├── progress.ts
-│       ├── progress-read-cache.ts
-│       └── useProgressReads.ts
-├── components/                       reusable visual building blocks
-├── lib/
-│   ├── network/                      HTTP transport and coordinated account client
-│   ├── deadline.ts                   shared I/O deadline helper
-│   ├── telemetry.ts                  consent-aware telemetry boundary
-│   └── useDelayedBusy.ts             delayed saving-feedback helper
-├── platform/
-│   ├── connectivity/                 native/browser connectivity adapters
-│   ├── toast/                        native/browser notification adapters
-│   └── modals/                       native/browser modal isolation adapters
-├── theme/                            design tokens
-└── dev/previews/
-    ├── ScreenPreview.tsx             guarded developer screen presentation
-    └── challenges/                   challenge preview and synthetic card copy
-```
+## Mobile boundaries
 
-The diagram omits colocated `*.test.ts` / `*.test.tsx` files. Native and `.web.*`
-implementations stay in the same adapter folder so platform resolution continues
-to work. The feature's card presentation is shared by deck browsing and the
-active challenge; moving it into `deck/` does not duplicate it.
+| Implemented path                                                 | Owner                                                                        |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| apps/mobile/src/app/                                             | Route files and layouts; composition only.                                   |
+| apps/mobile/src/app-support/access/                              | Startup/access gate.                                                         |
+| apps/mobile/src/app-support/identity/                            | Identity controller, transport, vault and storage.                           |
+| apps/mobile/src/app-support/identity/account/                    | Account/recovery hub, tools, device transfer and key management.             |
+| apps/mobile/src/app-support/identity/deletion/                   | Durable account-deletion workflow, cleanup and confirmation UI.              |
+| apps/mobile/src/app-support/identity/welcome/                    | Post-deletion/access-waiting welcome and transition preparation.             |
+| apps/mobile/src/app-support/providers/                           | App, account and activity-runtime composition/lifecycle.                     |
+| apps/mobile/src/app-support/fallbacks/                           | Root crash and unknown-link recovery UI.                                     |
+| apps/mobile/src/app-support/saving/                              | App-wide saving/recovery feedback.                                           |
+| apps/mobile/src/app-support/settings/                            | Settings screen and preference rows.                                         |
+| apps/mobile/src/app-support/settings/export/                     | Export collection/coordinator and Settings action.                           |
+| apps/mobile/src/app-support/settings/information/                | Support/About/legal/social destinations and failure feedback.                |
+| apps/mobile/src/features/challenges/                             | Venue/deck orchestration, card UI, active countdown/modal and Success.       |
+| apps/mobile/src/features/reflections/                            | Post-challenge feeling/text submission and keyboard composition.             |
+| apps/mobile/src/features/progress/                               | Summary/calendar/day-detail screen and query composition.                    |
+| apps/mobile/src/features/progress/calendar/                      | Calendar presentation and loading state.                                     |
+| apps/mobile/src/features/progress/day-details/entries/           | Progressive list, row/details and native/shared entry motion.                |
+| apps/mobile/src/features/progress/day-details/reflection-editor/ | Inline text editor and session orchestration.                                |
+| apps/mobile/src/data/activity/                                   | Shared account-scoped activity repository and domain submissions.            |
+| apps/mobile/src/data/activity/persistence/                       | Persisted journal envelopes and serialized writes.                           |
+| apps/mobile/src/data/activity/sync/                              | Ordered delivery, acknowledgements, transport and retry decisions.           |
+| apps/mobile/src/data/activity/progress/                          | Independent reads, local/backend reconciliation and bounded read cache.      |
+| apps/mobile/src/components/                                      | Reusable UI, including Settings primitives and scalable text.                |
+| apps/mobile/src/lib/                                             | Shared network/account-client and general helpers.                           |
+| apps/mobile/src/platform/                                        | Native/web connectivity and modal adapters plus capability groups below.     |
+| apps/mobile/src/platform/export/                                 | Native share/browser download and temporary-file cleanup.                    |
+| apps/mobile/src/platform/haptics/                                | Preference/lifecycle ownership and Pulsar adapters.                          |
+| apps/mobile/src/platform/haptics/completion/                     | Batter default, session-only development override and playback cancellation. |
+| apps/mobile/src/platform/motion/                                 | Installation/system motion preferences.                                      |
+| apps/mobile/src/platform/subscriptions/                          | Native subscription-management presentation boundary.                        |
+| apps/mobile/src/platform/toast/                                  | Native/browser notification adapters.                                        |
+| apps/mobile/src/theme/                                           | Typed design tokens.                                                         |
+| apps/mobile/src/dev/                                             | Guarded presentation fixtures and haptics comparison UI.                     |
 
-The October 8 follow-up moves 27 Progress/activity source and test files, retaining
-tests beside their owner and both entry-motion implementations together. Shared
-`progress/calendar.ts` remains outside the calendar UI folder; its consumers use
-an explicit `../calendar` import. Metro's guarded storage fixture, its regression
-test, journey exports, asset paths and all consumers follow the new locations.
-The [07.4 handoff](../handoffs/phase-07-4-progress-history.md#october-8-owner-review--progress-and-activity-folders)
-records current verification. This overlap with the earlier mobile cleanup must
-be reconciled when integrating its branch, retaining the newer editor/read files.
+Features may use shared data and app-support providers; data may use shared
+lib/platform/contracts but imports no feature, app-support, route or visual code.
+Shared components/lib/theme/platform import no app-specific owner. Production
+source may load developer fixtures only through the guarded preview route.
+AGENTS.md and import-boundary tests enforce these directions.
 
-The owner-authorized October 10 performance follow-up keeps sheet orchestration
-at the `day-details/` root, groups the list/rows/entry-motion adapters in
-`entries/`, and groups the inline form/session hook in `reflection-editor/`.
-The ten moved files include their colocated tests; both motion implementations
-stay together. The [performance handoff](../handoffs/day-sheet-performance.md)
-records the separate performance and organization commits, checks and bundle
-verification. The historical cleanup inventory below retains its dated paths.
+Mobile icons live in assets/. Venue artwork, cream variants and shared
+texture/flourish live together in the flat assets/challenges/ directory; welcome
+artwork lives in assets/illustrations/. Local Expo modules live in modules/justgo-keychain/ and
+modules/justgo-subscriptions/. Generated ios/android projects are ignored; native
+capability changes need a separately authorized compatible build.
 
-Mobile assets keep application icons at `apps/mobile/assets/`; challenge artwork
-uses `assets/challenges/venues/` for six venue/color pairs and
-`assets/challenges/decoration/` for the paper texture and lower flourish. The
-native Keychain module remains under `apps/mobile/modules/justgo-keychain/`.
+## API and contracts
 
-## Phase 08 Settings and platform organization
+| Implemented path                 | Responsibility                                                              |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| apps/api/src/identity/           | Session, credential, recovery/transfer and deletion-lock boundaries.        |
+| apps/api/src/access/             | Server-authorized access and staging-only beta admission.                   |
+| apps/api/src/challenges/         | Stable catalog reads.                                                       |
+| apps/api/src/attempts/           | Canonical completion creation and reflection PATCH/replay.                  |
+| apps/api/src/progress/           | Independent summary/month/day resources.                                    |
+| apps/api/src/privacy/            | Owner-isolated export and permanent account deletion.                       |
+| apps/api/src/db/                 | Restricted pools, transaction ownership and current single schema.          |
+| apps/api/tests/                  | Application/error wiring and capability/database/harness integration cases. |
+| apps/api/scripts/                | Migration/provisioning and separate loopback fixture entrypoints.           |
+| apps/api/drizzle/                | Ordered registered SQL migrations and immutable generated metadata.         |
+| packages/contracts/src/activity/ | Catalog, completion/reflection and Progress resource contracts.             |
 
-The October 11 owner-approved follow-up groups 19 existing files into five
-folders on `codex/phase-08-settings-privacy`. This is implemented independently
-of the broader mobile cleanup diagram above. Tests stay beside their owner;
-iOS and `.web.*` file pairs retain the same names and platform resolution.
-
-```text
-apps/mobile/src/
-├── app-support/settings/             15 files total
-│   ├── export/                       4 files: export action, ZIP collection and tests
-│   ├── information/                  5 files: Support/About, legal/social links and tests
-│   └── remaining files               6 files: main screen, rows, icons and motion row/tests
-└── platform/                         17 files total
-    ├── export/                       4 files: native/web file delivery and tests
-    ├── toast/                        4 files: native/web notices and tests
-    ├── motion/                       2 files: preferences provider and context/hooks
-    └── remaining files               7 files: connectivity and modal isolation adapters/tests
-```
-
-`remaining files` describes files directly in their parent, not another folder.
-Routes, API contracts, dependencies, stored data and application behavior are
-unchanged. The [Phase 08 follow-up](../handoffs/phase-08-settings-privacy.md)
-records verification and remaining physical-device acceptance.
-
-### October 12 account and recovery screens
-
-Settings and connected-account pages now share `components/settings/` (three
-files: page, grouped rows and icons). The existing row/icon files moved there;
-Settings behavior and typography are preserved. `app-support/settings/` now has
-13 files: four at its root, four in export and five in information.
-
-`app-support/identity/account/` contains eight cohesive files: the account hub,
-focused-tool composition, recovery keys, device transfer, device management,
-confirmation, styles and their colocated screen tests. The ten identity root
-files retain controller/API/vault/storage ownership, disconnected recovery and
-the shared screen-action presentation hook `useIdentityAction.ts`.
-`app/account/[tool].tsx` only connects the focused routes; invalid tools return to
-recovery. No additional subfolders were needed after reviewing the full touched
-directories. See the [account UI handoff](../handoffs/phase-08-settings-privacy.md).
-
-The large-text follow-up adds `components/typography/` with `ScaledText.tsx` and
-its colocated regression tests. It owns live text metrics shared by Settings,
-account screens and reusable controls. Page/row layout remains in
-`components/settings/`; account forms and orchestration remain with identity.
-The reviewed directories remain cohesive without further moves. See the
-[large-text handoff](../handoffs/phase-08-settings-privacy.md).
-
-### Phase 08 account deletion
-
-The [account-deletion slice](../handoffs/phase-08-settings-privacy.md) adds
-`app-support/identity/deletion/` for its screen, durable workflow, credential
-cleanup and colocated regressions. Its route remains in `app/`; API deletion
-and database tests stay beside export under their existing privacy owners.
-The cancellation row/test remain beside the deletion screen. Its reusable native
-presentation adapter/test live under `platform/subscriptions/`; the independent
-StoreKit Expo module lives under `modules/justgo-subscriptions/`, separate from
-credential storage.
-
-### Phase 08 haptics
-
-`platform/haptics/` contains the installation preference provider/context and
-native/web feedback adapters, with colocated adapter tests. Settings keeps its
-Haptics row and preference regressions beside the existing motion row. Challenge
-and reflection owners invoke shared feedback at accepted user-action boundaries;
-the platform directory imports no product or account code.
-
-The completion group `platform/haptics/completion/` owns the approved Batter default,
-session-only development overrides and preview/cancellation with their tests.
-The single Pulsar native/web adapter family lives directly under
-`platform/haptics/`, alongside the saved preference provider and context. `dev/haptics/` owns the three screen/test
-files; the existing guarded preview route loads it using `mode=haptics`.
-No shared platform code imports developer screens. Existing haptics preference
-files remain at their owner, without unrelated folder moves.
-
-The reviewed Settings directory has six direct files (main screen and the two
-preference rows with their tests), plus export/information groups. The haptics
-adapter family is already in its own responsibility folder. This slice adds no
-files to the 35-file Challenges directory; its existing broader deck/active/success
-organization remains the separately documented mobile cleanup work, rather than
-duplicating those pending moves here.
-
-## API, contracts and verification
-
-```text
-apps/api/
-├── src/                              existing API capability/service boundaries
-├── tests/
-│   ├── app.test.ts                   application wiring and deployment guards
-│   ├── http-errors.test.ts           HTTP error contract behavior
-│   ├── activity/                     challenges, attempts, reflections and Progress
-│   ├── identity/                     identity policies and real session transactions
-│   ├── database/                     database/migration safety and rehearsal checks
-│   │   └── fixtures/                 recorded hashes for already-applied migrations
-│   └── harness/                      disposable fixture startup/shutdown safeguards
-├── scripts/                          API operations and isolated fixture servers
-└── drizzle/                          ordered migrations and generated metadata
-
-packages/contracts/src/
-├── index.ts                          unchanged public @justgo/contracts entrypoint
-├── identity.ts                       account, session and recovery contracts
-├── access.ts                         paid-access contracts
-├── openapi.ts                        API specification composed from the contracts
-└── activity/                         canonical challenge/attempt/reflection/Progress contracts and colocated tests
-
-scripts/
-├── local-database.mjs                loopback database provisioning/lifecycle
-├── quality/                         coverage, architecture and upload-allowlist checks
-├── journeys/                        saved journey runner/build/environment checks
-└── design/                          original artwork extraction and palette adaptation
-
-e2e/
-├── *.spec.ts                         existing saved app/API/database cases
-├── playwright.config.ts             existing browser runner configuration
-└── support/                         shared fixtures, environment and repository entrypoint
-```
-
-App-specific native automation remains in `apps/mobile/e2e/`. Browser testing/adapters/CI are retained while 07.3A is deferred. Phase 07.5 removes temporary legacy contracts/routes/services; the canonical API owners are `challenges/`, `attempts/` (including reflection PATCH) and `progress/resources.ts`. The detailed cleanup diagram below remains its historical inventory, not a list of files that must survive protocol retirement.
+Runtime and migration credentials remain separate. Mobile and API import the
+public contracts package and do not import each other's implementations. The
+[stack](TECH_STACK.md), [activity design](ACTIVITY_DATA.md) and [identity boundary](IDENTITY.md)
+own the actual protocol and storage rules.
 
 ## Documentation and evidence
 
-```text
-docs/
-├── IMPLEMENTATION_PLAN.md            phase sequencing and acceptance gates
-├── DECISIONS.md                      decision register
-├── product/                         PRD, challenge content, curriculum and scope
-├── architecture/                    app shell, tech stack, identity and folder guidance
-├── design/                          design guide and challenge fidelity measurements
-├── operations/                      setup, testing, release and event guidance
-├── handoffs/                        phase records and their chronological index
-├── checks/
-│   └── phase-07-3/
-│       ├── browser/                  historical browser screenshots
-│       └── simulator/                historical iOS Simulator screenshots
-├── design-source/                   source measurements and extracted design references
-└── screen-refs/                     visual inspiration collection
-```
+[docs/README.md](../README.md) maps each concern. Named files under
+implementation-plan/ own phase scope/status; DECISIONS.md owns why. Architecture
+and operations explain the current system. Handoffs record lasting outcomes and
+owned gates, and completed handoffs move to archive/ only after their own gates
+close. Deferred native testing and handoffs with open release gates remain active.
+Unbuilt billing/Stripe/coaching designs live in proposals/.
 
-Keep the phase plan and handoff index as stable entrypoints. Root/package tool
-configuration, ordered migrations, small cohesive features and existing reference
-collections remain flat. Add another folder when an implemented responsibility
-needs it; avoid empty future folders or a mandatory screen/component/hook taxonomy.
+Source design material lives under the repository-level design/ tree. Third-party
+screen references and routine screenshots/recordings are preserved in ignored
+.local/ storage; output/ is ignored entirely. They are not deployment inputs or
+CI prerequisites. Committed visual evidence requires explicit owner direction.
 
-## Complete created and moved file diagram
+## Placement and move rules
 
-This snapshot covers merged phase 7.3 (`3e41330` → `6bccfde`) and the dedicated
-cleanup rebased onto that merge. It lists **all 152 distinct new or moved files**, including
-tests, artwork and verification images, at their current cleanup-branch locations.
-There are **43 phase additions**, **5 cleanup additions** and **133 moves**;
-29 phase additions also appear among the moves, so they are listed once.
-
-- **`new in 7.3`**: created during the phase implementation.
-- **`new in cleanup`**: created for the organization, guidance or verification work.
-- **`moved`**: relocated during cleanup, including any necessary import updates.
-- **`7.3 folder` / `cleanup folder`**: a directory first present in that slice.
-  Other directories provide the existing parent structure.
-
-[PR #16](https://github.com/anthonyyoo24/justgo/pull/16) contains the phase changes
-at their original locations. The cleanup remains a separate branch and PR based on merged `main`.
-The earlier overview explains each responsibility group; this tree expands every
-new or relocated file instead of omitting tests and images. This is the October 6
-cleanup inventory; it predates the later 07.4 files and October 8 folder follow-up
-described above, and is retained as the historical cleanup snapshot.
-
-```text
-justgo/
-├── apps/
-│   ├── api/
-│   │   └── tests/
-│   │       ├── activity/ [cleanup folder]
-│   │       │   ├── attempts.integration.test.ts [moved]
-│   │       │   ├── challenges.integration.test.ts [moved]
-│   │       │   ├── progress.integration.test.ts [moved]
-│   │       │   └── reflections.integration.test.ts [moved]
-│   │       ├── database/ [cleanup folder]
-│   │       │   ├── fixtures/ [cleanup folder]
-│   │       │   │   └── applied-migration-hashes.json [moved]
-│   │       │   ├── database.integration.test.ts [moved]
-│   │       │   ├── migration-metadata.test.ts [moved]
-│   │       │   ├── migrations.integration.test.ts [moved]
-│   │       │   └── rehearsal-target.test.ts [moved]
-│   │       ├── harness/ [cleanup folder]
-│   │       │   ├── challenge-fixture.test.ts [moved]
-│   │       │   └── fixture-shutdown.test.ts [moved]
-│   │       └── identity/ [cleanup folder]
-│   │           ├── identity.integration.test.ts [moved]
-│   │           └── identity.test.ts [moved]
-│   └── mobile/
-│       ├── assets/
-│       │   └── challenges/
-│       │       ├── decoration/ [cleanup folder]
-│       │       │   ├── lower-flourish.png [moved]
-│       │       │   └── paper-texture.png [moved]
-│       │       └── venues/ [cleanup folder]
-│       │           ├── bars-cream.png [moved]
-│       │           ├── bars.png [moved]
-│       │           ├── bookstore-cream.png [moved]
-│       │           ├── bookstore.png [moved]
-│       │           ├── cafe-cream.png [moved]
-│       │           ├── cafe.png [moved]
-│       │           ├── gym-cream.png [moved]
-│       │           ├── gym.png [moved]
-│       │           ├── park-cream.png [moved]
-│       │           ├── park.png [moved]
-│       │           ├── streets-cream.png [moved]
-│       │           └── streets.png [moved]
-│       ├── src/
-│       │   ├── app-support/
-│       │   │   ├── providers/
-│       │   │   │   ├── activity-runtime.test.ts [new in 7.3]
-│       │   │   │   └── activity-runtime.ts [new in 7.3]
-│       │   │   └── saving/ [7.3 folder]
-│       │   │       ├── presentation.ts [new in 7.3]
-│       │   │       ├── SavingFeedback.test.tsx [new in 7.3]
-│       │   │       ├── SavingFeedback.tsx [new in 7.3]
-│       │   │       └── SavingNotice.tsx [new in 7.3]
-│       │   ├── data/
-│       │   │   └── activity/
-│       │   │       ├── persistence/ [cleanup folder]
-│       │   │       │   ├── persistence.ts [moved]
-│       │   │       │   ├── storage.test.ts [moved]
-│       │   │       │   └── storage.ts [moved]
-│       │   │       └── sync/ [cleanup folder]
-│       │   │           ├── delivery.ts [moved]
-│       │   │           ├── retry.ts [moved]
-│       │   │           ├── sender.test.ts [moved]
-│       │   │           ├── sender.ts [moved]
-│       │   │           ├── transport.test.ts [moved]
-│       │   │           └── transport.ts [moved]
-│       │   ├── dev/
-│       │   │   └── previews/
-│       │   │       └── challenges/ [cleanup folder]
-│       │   │           ├── DeckPreview.test.ts [moved]
-│       │   │           ├── DeckPreview.test.tsx [moved]
-│       │   │           ├── DeckPreview.tsx [moved]
-│       │   │           └── preview-copy.ts [moved]
-│       │   ├── features/
-│       │   │   ├── challenges/
-│       │   │   │   ├── active/ [cleanup folder]
-│       │   │   │   │   ├── ActiveChallenge.test.tsx [moved]
-│       │   │   │   │   ├── ActiveChallenge.tsx [moved]
-│       │   │   │   │   ├── ActiveChallengeModal.tsx [new in 7.3, moved]
-│       │   │   │   │   ├── countdown.test.ts [moved]
-│       │   │   │   │   ├── countdown.ts [moved]
-│       │   │   │   │   ├── useActiveChallenge.test.tsx [new in 7.3, moved]
-│       │   │   │   │   └── useActiveChallenge.ts [new in 7.3, moved]
-│       │   │   │   ├── deck/ [cleanup folder]
-│       │   │   │   │   ├── ChallengeDeck.test.tsx [moved]
-│       │   │   │   │   ├── ChallengeDeck.tsx [moved]
-│       │   │   │   │   ├── deck-model.test.ts [moved]
-│       │   │   │   │   ├── deck-model.ts [moved]
-│       │   │   │   │   ├── VenueArt.test.tsx [moved]
-│       │   │   │   │   ├── VenueArt.tsx [moved]
-│       │   │   │   │   ├── VenueTabs.test.tsx [moved]
-│       │   │   │   │   └── VenueTabs.tsx [moved]
-│       │   │   │   └── success/ [cleanup folder]
-│       │   │   │       ├── SuccessScreen.test.tsx [moved]
-│       │   │   │       ├── SuccessScreen.tsx [moved]
-│       │   │   │       ├── SuccessView.test.tsx [moved]
-│       │   │   │       └── SuccessView.tsx [moved]
-│       │   │   └── progress/
-│       │   │       ├── calendar/ [cleanup folder]
-│       │   │       │   ├── ProgressCalendar.tsx [moved]
-│       │   │       │   ├── ProgressSkeleton.test.tsx [moved]
-│       │   │       │   └── ProgressSkeleton.tsx [moved]
-│       │   │       └── day-details/ [cleanup folder]
-│       │   │           ├── DaySheet.test.tsx [moved]
-│       │   │           ├── DaySheet.tsx [moved]
-│       │   │           ├── ProgressEntryRow.test.tsx [moved]
-│       │   │           └── ProgressEntryRow.tsx [moved]
-│       │   ├── lib/
-│       │   │   ├── network/ [cleanup folder]
-│       │   │   │   ├── account-client.test.ts [moved]
-│       │   │   │   ├── account-client.ts [moved]
-│       │   │   │   ├── http-journal.test.ts [moved]
-│       │   │   │   ├── http-methods.test.ts [moved]
-│       │   │   │   └── http.ts [moved]
-│       │   │   ├── useDelayedBusy.test.tsx [new in 7.3]
-│       │   │   └── useDelayedBusy.ts [new in 7.3]
-│       │   └── platform/ [7.3 folder]
-│       │       ├── connectivity/ [cleanup folder]
-│       │       │   ├── connectivity.test.ts [new in 7.3, moved]
-│       │       │   ├── connectivity.ts [new in 7.3, moved]
-│       │       │   ├── connectivity.web.test.ts [new in 7.3, moved]
-│       │       │   └── connectivity.web.ts [new in 7.3, moved]
-│       │       ├── modals/ [cleanup folder]
-│       │       │   ├── useModalIsolation.ts [new in 7.3, moved]
-│       │       │   ├── useModalIsolation.web.test.tsx [new in 7.3, moved]
-│       │       │   └── useModalIsolation.web.ts [new in 7.3, moved]
-│       │       └── toast/ [cleanup folder]
-│       │           ├── Toast.test.tsx [new in 7.3, moved]
-│       │           ├── Toast.tsx [new in 7.3, moved]
-│       │           ├── Toast.web.test.tsx [new in 7.3, moved]
-│       │           └── Toast.web.tsx [new in 7.3, moved]
-│       ├── test-support/
-│       │   ├── challenge-catalog.ts [new in 7.3]
-│       │   └── journey-storage.ts [new in 7.3]
-│       └── metro.config.mjs [new in 7.3]
-├── docs/
-│   ├── architecture/ [cleanup folder]
-│   │   ├── APP_SHELL.md [moved]
-│   │   ├── FOLDER_STRUCTURE.md [new in cleanup]
-│   │   ├── FRONTEND_ARCHITECTURE_LEARNING_MAP.md [moved]
-│   │   ├── IDENTITY.md [moved]
-│   │   └── TECH_STACK.md [moved]
-│   ├── checks/
-│   │   ├── phase-07-3/ [7.3 folder]
-│   │   │   ├── browser/ [cleanup folder]
-│   │   │   │   ├── active-exclusive.jpg [new in 7.3, moved]
-│   │   │   │   ├── active-retained-notice.jpg [new in 7.3, moved]
-│   │   │   │   ├── correction-active.jpg [new in 7.3, moved]
-│   │   │   │   ├── home.jpg [new in 7.3, moved]
-│   │   │   │   ├── pr16-dependency-progress.jpg [new in 7.3, moved]
-│   │   │   │   ├── pr16-review-reflection.jpg [new in 7.3, moved]
-│   │   │   │   ├── recovery-home.jpg [new in 7.3, moved]
-│   │   │   │   ├── transition-browser-home.png [new in 7.3, moved]
-│   │   │   │   ├── warning-reflection.jpg [new in 7.3, moved]
-│   │   │   │   └── warning-sheet.jpg [new in 7.3, moved]
-│   │   │   └── simulator/ [cleanup folder]
-│   │   │       ├── native-active.png [new in 7.3, moved]
-│   │   │       ├── native-home.png [new in 7.3, moved]
-│   │   │       └── native-transition-comparison.png [new in 7.3, moved]
-│   │   ├── project-folder-cleanup/ [cleanup folder]
-│   │   │   ├── browser/ [cleanup folder]
-│   │   │   │   └── day-details.jpg [new in cleanup]
-│   │   │   └── simulator/ [cleanup folder]
-│   │   │       └── home.png [new in cleanup]
-│   │   └── phase-07-3a-browser-testing-assessment.md [new in 7.3]
-│   ├── design/ [cleanup folder]
-│   │   ├── CHALLENGE_FIDELITY.md [moved]
-│   │   └── DESIGN.md [moved]
-│   ├── handoffs/
-│   │   ├── phase-07-3-local-flow.md [new in 7.3]
-│   │   └── project-folder-cleanup.md [new in cleanup]
-│   ├── operations/ [cleanup folder]
-│   │   ├── APPLE_SETUP.md [moved]
-│   │   ├── FOUNDATION.md [moved]
-│   │   ├── SHIPATON_PLAYBOOK.md [moved]
-│   │   └── TESTING.md [moved]
-│   └── product/ [cleanup folder]
-│       ├── CHALLENGES.md [moved]
-│       ├── CURRICULUM.md [moved]
-│       ├── PHASE_04_SCOPE.md [moved]
-│       └── PRD.md [moved]
-├── e2e/
-│   ├── support/ [cleanup folder]
-│   │   ├── activity-entry.ts [moved]
-│   │   ├── environment.ts [moved]
-│   │   └── fixtures.ts [moved]
-│   └── local-flow.spec.ts [new in 7.3]
-├── packages/
-│   └── contracts/
-│       └── src/
-│           ├── activity/ [cleanup folder]
-│           │   ├── attempts.test.ts [moved]
-│           │   ├── attempts.ts [moved]
-│           │   ├── challenges.test.ts [moved]
-│           │   ├── challenges.ts [moved]
-│           │   ├── progress.test.ts [moved]
-│           │   ├── progress.ts [moved]
-│           │   ├── reflections.test.ts [moved]
-│           │   └── reflections.ts [moved]
-│           └── legacy/ [cleanup folder]
-│               ├── legacy-challenges.ts [moved]
-│               ├── legacy-progress.ts [moved]
-│               └── legacy-reflections.ts [moved]
-└── scripts/
-    ├── journeys/ [cleanup folder]
-    │   ├── build-journey-repository.mjs [moved]
-    │   ├── journey-environment.test.mjs [moved]
-    │   ├── journey-metro.test.mjs [new in 7.3, moved]
-    │   └── run-journey.mjs [moved]
-    └── quality/ [cleanup folder]
-        ├── check-coverage.mjs [moved]
-        ├── check-coverage.test.mjs [moved]
-        ├── contract-upload.test.mjs [new in cleanup]
-        ├── coverage-thresholds.json [moved]
-        ├── import-boundaries.mjs [moved]
-        ├── import-boundaries.test.mjs [moved]
-        └── mobile-verification.test.mjs [new in 7.3, moved]
-```
+- Choose a product or supporting responsibility before creating files. Extract
+  cohesive groups when navigation/responsibilities warrant it; avoid empty future
+  folders or automatic components/hooks/services layers.
+- Keep routes thin, domain logic with its owner, tests beside their owner and
+  native/web pairs together. Developer fixtures remain in dev/.
+- Moves must update imports, dynamic loaders, Jest/coverage selectors, fixture
+  seams, assets, deployment allowlists, scripts and documentation together.
+- Keep move-only work separately reviewable from behavior changes. Use
+  import-aware rewrites and cold web/iOS bundles. Restart an owned Metro with
+  --clear and reload the existing app after moves; exports do not refresh a live
+  dependency graph.
+- Review complete file lists in touched directories before handoff. Preserve
+  unrelated retained code and all existing coverage/boundary safeguards.
