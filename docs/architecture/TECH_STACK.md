@@ -141,6 +141,11 @@ Identity rate limits return the real integer seconds remaining in the database
 bucket through Retry-After. Shared HTTP errors, bearer parsing, input validation
 and allowlisted diagnostics live in the API http owner. SQLSTATE diagnostics
 expose only validated five-character codes through wrapped driver failures.
+The mobile HTTP client fetches the exact admitted URL. It accepts JSON media
+types before reading a body and treats malformed/proxy responses as unavailable;
+only transport failures are network errors. Typed JSON errors retain their
+request IDs, conflict data and Retry-After, within the original cancellation/
+timeout and single-GET-replay budget. Proxy bodies cannot revoke credentials.
 `/health` checks process availability; `/ready` checks the database and returns
 503 when unavailable.
 

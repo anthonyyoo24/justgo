@@ -294,13 +294,11 @@ it('returns ACCOUNT_CHANGED even when transport ignores abort', async () => {
 it('bounds the full request including body parsing and an unresponsive renewal', async () => {
   jest.useFakeTimers();
   try {
-    const fetcher = jest
-      .fn()
-      .mockResolvedValue({
-        headers: new Headers({ 'Content-Type': 'application/json' }),
-        ok: true,
-        json: () => new Promise(() => {}),
-      });
+    const fetcher = jest.fn().mockResolvedValue({
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      ok: true,
+      json: () => new Promise(() => {}),
+    });
     const { client } = setup(fetcher);
     const pending = client.request('/v1/test', okSchema, { timeoutMs: 100 });
     const assertion = expect(pending).rejects.toMatchObject({
