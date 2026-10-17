@@ -25,6 +25,9 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | Implemented path                                                 | Owner                                                                        |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | apps/mobile/src/app/                                             | Route files and layouts; composition only.                                   |
+| apps/mobile/src/app/access.tsx                                   | Identity restoration and access gate at `/access`.                           |
+| apps/mobile/src/app/(tabs)/                                      | Home at `/` and Progress, with the shared tab layout.                         |
+| apps/mobile/src/app/(challenge)/                                 | Challenge, Success and reflection routes; no extra navigator/layout.         |
 | apps/mobile/src/app-support/access/                              | Startup/access gate.                                                         |
 | apps/mobile/src/app-support/identity/                            | Identity controller, transport, vault and storage.                           |
 | apps/mobile/src/app-support/identity/account/                    | Account/recovery hub, tools, device transfer and key management.             |
