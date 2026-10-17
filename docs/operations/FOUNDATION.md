@@ -56,6 +56,12 @@ Staging: dedicated **JustGo**, project ref `kmcpcauaxlgpevkkenwd`, Canada Centra
 3. Review generated SQL and journal together. `npm run db:generate -w @justgo/api -- --name feature_name` generates later domain changes; custom migrations use Drizzle Kit's `--custom` option. `npm run db:migrate` verifies the effective migration role before applying the journal to schema `drizzle`.
 4. Runtime uses the **transaction** pooler on 6543, username `justgo_runtime.<project-ref>`, with the separate password. No administrator, migration or Supabase service-role key belongs in the API runtime. Mobile never connects to PostgreSQL or Supabase directly.
 
+Migration failures report only the registered SQL filename (when attributable)
+and a validated SQLSTATE, without SQL, parameters or raw driver messages. The
+runner preserves Drizzle's single transaction for all pending files, original
+SQL/hashes and journal checkpoints; transaction-control/setup failures do not
+invent a failing filename.
+
 Staging administrative provisioning is recorded as Supabase migration `foundation_roles`. Application migration `0000_foundation.sql` was applied through Drizzle with its own journal; it creates only `justgo.current_user_id()`. Keep these responsibilities separate. Do not reapply the function SQL through a second migration runner.
 
 The runtime role owns no schema/table, cannot bypass RLS, create roles/databases/tables, or assume the migrator. Future owner-scoped tables must enable **and force** RLS, have `USING` and `WITH CHECK` policies for `justgo_runtime`, grant only required operations, and index `user_id` alongside access-path indexes. Example policy predicate: `user_id = (select justgo.current_user_id())`. Add constraints and indexes with the consuming feature, not a speculative full schema.
@@ -78,7 +84,7 @@ Before restoring:
 Restore and reapply:
 
 3. Restore into an isolated environment (a new project or branch), never over the live database, with no API pointed at it.
-4. In one reviewed migration-role transaction, apply the saved deletions again, exactly as `apps/api/src/privacy/delete-account.ts` does. For each deleted account, delete its attempt patch receipts, attempts, transfers, sessions and devices, and set `deleted_at` and `deletion_session_digest` from the saved row; insert the user row if the account is newer than the backup. Then make every saved credential revoked: insert missing rows and set `revoked_at` on restored rows that are still active.
+4. In one reviewed migration-role transaction, apply the saved deletions again, exactly as `apps/api/src/identity/delete-account.ts` does. For each deleted account, delete its attempt patch receipts, attempts, transfers, sessions and devices, and set `deleted_at` and `deletion_session_digest` from the saved row; insert the user row if the account is newer than the backup. Then make every saved credential revoked: insert missing rows and set `revoked_at` on restored rows that are still active.
 
 Before reopening the app:
 

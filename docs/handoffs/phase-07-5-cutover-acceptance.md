@@ -43,7 +43,7 @@
   evidence, followed by passing zero/one/multiple cases.
 - Keep all coverage floors. The removed reflection service's **95% branch / 99%
   line** gate follows `src/attempts/patch.ts`; the removed Progress service's
-  **95% / 96%** gate follows `src/progress/resources.ts`. Identity, challenge,
+  **95% / 96%** gate follows `src/progress/service.ts`. Identity, challenge,
   mobile, contracts and global floors are unchanged. Retired contract files are
   removed from the exact deployment upload allowlist.
 

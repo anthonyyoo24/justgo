@@ -27,6 +27,8 @@ const requiredOwners = [
   'apps/mobile/src/platform/connectivity/',
   'apps/mobile/src/platform/modals/',
   'apps/mobile/src/dev/previews/challenges/',
+  'apps/api/src/http/',
+  'apps/api/src/account-export/',
 ];
 const missingPaths = (exists) =>
   listedPaths.filter((owner) => !exists(path.join(root, owner)));
