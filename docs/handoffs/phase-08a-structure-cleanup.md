@@ -3,7 +3,7 @@
 ## Summary and status
 
 Local implementation is ready. Owner review,
-publication, hosted CI and approved repository cleanup remain open. Phase 08's
+PR publication, hosted CI and remaining branch/stash cleanup remain open. Phase 08's
 acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 [Phase 08A plan](../implementation-plan/phase-08a-structure-cleanup.md) owns scope.
 
@@ -49,6 +49,8 @@ acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 - The normal exported-web smoke verifies routes/assets with zero API traffic.
   CI adds shared setup, versioned browser caching, bounded workers/timeouts,
   immutable action pins, dependency updates and an API production-only audit.
+- Journey isolation checks use the configured fixture ports, allowing a separate
+  LAN development server to remain available for phone testing.
 
 ## Invariants to preserve
 
@@ -89,11 +91,11 @@ acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 
 ## Open gates
 
-| Gate                                                         | Owner                                                               | Required step/phase | Done when                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------- |
-| Publication and hosted CI for each candidate                 | Anthony authorizes each Git action; implementation owner verifies   | 08A                 | Actual authorized candidates have inspected passing hosted checks |
-| Local branch/worktree deletion and billing stash disposition | Anthony approves each named deletion; implementation owner executes | 08A step 8          | Reviewed cleanup is explicitly approved and completed             |
-| Earlier physical-device, staging and release acceptance      | Existing phase owners                                               | 09–11               | Original handoff/release requirements are evidenced               |
+| Gate                                                    | Owner                                                               | Required step/phase | Done when                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------- |
+| PR publication and hosted CI for each candidate         | Anthony authorizes each Git action; implementation owner verifies   | 08A                 | Actual authorized candidates have inspected passing hosted checks |
+| Local branch deletion and billing stash disposition     | Anthony approves each named deletion; implementation owner executes | 08A step 8          | Reviewed cleanup is explicitly approved and completed             |
+| Earlier physical-device, staging and release acceptance | Existing phase owners                                               | 09–11               | Original handoff/release requirements are evidenced               |
 
 ## Final verification
 
@@ -103,6 +105,14 @@ October 17, 2026: `npm run check` with fresh online Expo Doctor,
 cold web/iOS exports passed locally. The actual split API unit/database coverage
 producers and fresh execution-map merge passed `npm run coverage:check` with all
 source and existing global/critical floors retained. The scoped API audit passed.
+
+CodeRabbit CLI 0.9.0 deep reviews covered the documentation checkpoint and the
+remaining implementation separately because the combined comparison exceeds its
+300-file limit. Current documentation issues were corrected; the implementation
+pass reported no findings. A follow-up including the configured-port regression
+completed, and both remaining minor comments were disproved against the current
+URL validation and moved-test discovery. The nondefault-port isolation regression
+and full saved journeys passed with the separate phone server still running.
 
 Side-panel walkthroughs verified moved screens and production Settings/unknown-link
 recovery. Installed iOS simulator checks covered launch, self-device sign-out,
