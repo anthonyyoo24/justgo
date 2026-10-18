@@ -1,5 +1,6 @@
 import { errorTransport } from './transport';
 import { diagnosticConfiguration } from './configuration';
+import { diagnosticEvent } from './event';
 import type { ReactNativeOptions } from '@sentry/react-native';
 const config = diagnosticConfiguration(
   'true',
@@ -48,6 +49,78 @@ it('sends only rebuilt error envelopes without cookies/referrer, attachments or 
   expect(JSON.parse(body.split('\n')[1]!)).toEqual({ type: 'event' });
   await expect(transport.flush()).resolves.toBe(true);
 });
+it.each([
+  'http://localhost:8081/.expo/.virtual-metro-entry.bundle?token=PRIVATE',
+  'https://example.com/_expo/static/js/web/entry-0123456789abcdef.js',
+])(
+  'preserves Expo stack coordinates through capture and final transport for %s',
+  async (filename) => {
+    const send = jest.fn<Promise<Response>, Parameters<typeof fetch>>(ok);
+    const captured = diagnosticEvent(
+      {
+        event_id: 'a'.repeat(32),
+        exception: {
+          values: [
+            {
+              value: 'PRIVATE',
+              stacktrace: {
+                frames: [
+                  { filename, lineno: 17, colno: 42, function: 'PRIVATE' },
+                ],
+              },
+            },
+          ],
+        },
+        debug_meta: {
+          images: [
+            {
+              type: 'sourcemap',
+              debug_id: '12345678-1234-1234-1234-123456789abc',
+              code_file: filename,
+            },
+          ],
+        },
+      },
+      build,
+    );
+    if (!captured) throw new Error('The fixture must produce a scrubbed event');
+    const transport = errorTransport(config, build, send);
+    await expect(
+      transport.send([
+        { event_id: 'a'.repeat(32), sent_at: '2026-10-18T00:00:00.000Z' },
+        [[{ type: 'event' }, captured]],
+      ]),
+    ).resolves.toEqual({ statusCode: 200 });
+    const body = String(send.mock.calls[0]![1]?.body);
+    expect(body).not.toMatch(/PRIVATE|localhost|example\.com|_expo/);
+    expect(JSON.parse(body.split('\n')[2]!)).toMatchObject({
+      exception: {
+        values: [
+          {
+            stacktrace: {
+              frames: [
+                {
+                  filename: 'app:///index.bundle',
+                  lineno: 17,
+                  colno: 42,
+                },
+              ],
+            },
+          },
+        ],
+      },
+      debug_meta: {
+        images: [
+          {
+            type: 'sourcemap',
+            debug_id: '12345678-1234-1234-1234-123456789abc',
+            code_file: 'app:///index.bundle',
+          },
+        ],
+      },
+    });
+  },
+);
 it('rejects non-error and malformed envelopes before network work', async () => {
   const send = jest.fn(ok);
   const transport = errorTransport(config, build, send);

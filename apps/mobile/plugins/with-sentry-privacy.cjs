@@ -105,8 +105,8 @@ private enum JustGODiagnostics {
     // Preserve the SDK's native duplicate exclusion: these JS errors are
     // already reported through the separately scrubbed JavaScript pipeline.
     if exceptions.contains(where: {
-      ($0.type?.contains("Unhandled JS Exception") ?? false) ||
-      ($0.value?.contains("ExceptionsManager.reportException") ?? false)
+      $0.type.contains("Unhandled JS Exception") ||
+      $0.value.contains("ExceptionsManager.reportException")
     }) { return nil }
 
     // Construct an allowlist instead of mutating the input. This also excludes
@@ -148,7 +148,7 @@ private enum JustGODiagnostics {
         "SIGABRT", "SIGBUS", "SIGFPE", "SIGILL", "SIGSEGV", "SIGTRAP",
         "NSInvalidArgumentException", "NSRangeException", "NSInternalInconsistencyException"
       ]
-      let type = allowedTypes.contains(original.type ?? "") ? original.type : "NativeError"
+      let type = allowedTypes.contains(original.type) ? original.type : "NativeError"
       let exception = Exception(value: "Native application failure", type: type)
       exception.threadId = original.threadId
       exception.stacktrace = stack(original.stacktrace)

@@ -196,6 +196,45 @@ it('bounds frames and refuses machine paths, traversal and account/route URLs', 
   ).toHaveLength(64);
 });
 
+it.each([
+  'http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=ios&token=PRIVATE',
+  'https://example.com/_expo/static/js/web/index-8d8db065ce1929f324f02f4e491278d2.js',
+  'app:///entry-0123456789abcdef.js#PRIVATE',
+  'app:///main-0123456789abcdef.ios.bundle',
+  'app:///index.web.js',
+])(
+  'preserves only canonical stack and source-map locations for Expo bundle %s',
+  (filename) => {
+    const input = event();
+    input.exception.values[0]!.stacktrace.frames[0]!.filename = filename;
+    input.debug_meta.images[0]!.code_file = filename;
+    const safe = diagnosticEvent(input, build);
+    expect(safe?.exception?.values?.[0]?.stacktrace?.frames).toEqual([
+      { filename: 'app:///index.bundle', lineno: 7, colno: 4, in_app: true },
+    ]);
+    expect(safe?.debug_meta?.images).toEqual([
+      {
+        type: 'sourcemap',
+        debug_id: input.debug_meta.images[0]!.debug_id,
+        code_file: 'app:///index.bundle',
+      },
+    ]);
+    expect(JSON.stringify(safe)).not.toMatch(
+      /PRIVATE|localhost|example\.com|_expo/,
+    );
+  },
+);
+
+it.each([
+  'app:///entry-PRIVATE_REFLECTION.js',
+  'app:///index-1234567.js',
+  `app:///index-${'a'.repeat(65)}.js`,
+  'app:///my-entry-0123456789abcdef.js',
+  'app:///.virtual-metro-private.bundle',
+])('rejects arbitrary or malformed bundle names: %s', (filename) => {
+  expect(diagnosticFilename(filename)).toBeUndefined();
+});
+
 it('does not trust private text formatted as a valid source filename or JavaScript symbol', () => {
   const input = {
     exception: {

@@ -1,6 +1,8 @@
 import type { ExportedConfig, XcodeProject } from 'expo/config-plugins';
 import type { ExpoConfig } from 'expo/config';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const withSentryPrivacy = require('./with-sentry-privacy.cjs') as (
   config: ExpoConfig,
@@ -13,6 +15,12 @@ const withSentry = require('@sentry/react-native/expo').withSentry as (
 const publicDsn = `https://${'a'.repeat(32)}@o123.ingest.us.sentry.io/4512279181459456`;
 const enabled = { enabled: true, dsn: publicDsn, environment: 'staging' };
 const disabled = { enabled: false, dsn: '', environment: undefined };
+// Supplementary compiler evidence where Swift is installed; ordinary generation
+// assertions below still enforce the reviewed nonoptional exception contract.
+const swiftTest =
+  spawnSync('swift', ['--version'], { timeout: 5_000 }).status === 0
+    ? it
+    : it.skip;
 const base: ExpoConfig = {
   name: 'JustGO',
   slug: 'justgo',
@@ -241,6 +249,9 @@ describe('native Sentry privacy config plugin', () => {
       'user.ipAddress = "0.0.0.0"',
       '"version": "8.58.0"',
       'ExceptionsManager.reportException',
+      '$0.type.contains("Unhandled JS Exception")',
+      '$0.value.contains("ExceptionsManager.reportException")',
+      'allowedTypes.contains(original.type) ? original.type : "NativeError"',
     ])
       expect(contents).toContain(text);
     for (const field of [
@@ -273,6 +284,36 @@ describe('native Sentry privacy config plugin', () => {
     ])
       expect(contents).not.toMatch(new RegExp(`= original\\.${field}\\b`));
   });
+  swiftTest(
+    'compiles and runs generated exception handling against Cocoa 8.58 String properties (requires Swift)',
+    async () => {
+      const contents = await evaluate();
+      const duplicateFilter = contents.match(
+        / {4}if exceptions\.contains\(where: \{[\s\S]*?\}\) \{ return nil \}/,
+      )?.[0];
+      const exceptionMapping = contents.match(
+        / {4}clean\.exceptions = exceptions\.prefix\(10\)\.map \{[\s\S]*?^ {4}\}/m,
+      )?.[0];
+      if (!duplicateFilter || !exceptionMapping)
+        throw new Error('Generated native exception handling was not found');
+      const source = readFileSync(
+        join(__dirname, 'with-sentry-privacy.fixture.swift'),
+        'utf8',
+      )
+        .replace('// GENERATED_DUPLICATE_FILTER', duplicateFilter)
+        .replace('// GENERATED_EXCEPTION_MAPPING', exceptionMapping);
+      const result = spawnSync('swift', ['-'], {
+        input: source,
+        encoding: 'utf8',
+        timeout: 20_000,
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.stderr).toBe('');
+      expect(result.status).toBe(0);
+      expect(result.stdout).toBe('Native exception contract passed\n');
+    },
+    30_000,
+  );
   it('disables supported non-error sources and limits attachments without newer APIs', async () => {
     const contents = await evaluate();
     for (const flag of [

@@ -22,12 +22,16 @@ const coordinate = (value: unknown) =>
     ? value
     : undefined;
 
-/** Strip machine paths, credentials, query strings and route/account parameters. */
+/** Keep known bundle locations; strip paths, hashes, credentials and parameters. */
 export function diagnosticFilename(value: unknown): string | undefined {
   if (typeof value !== 'string') return;
   const path = value.split(/[?#]/)[0] ?? '';
   if (/(?:^|\/)main\.jsbundle$/.test(path)) return 'app:///main.jsbundle';
-  if (/(?:^|\/)(?:index|entry|main)(?:\.ios|\.web)?\.(?:bundle|js)$/.test(path))
+  if (
+    /(?:^|\/)(?:\.virtual-metro-entry\.bundle|(?:index|entry|main)(?:-[0-9a-f]{8,64})?(?:\.ios|\.web)?\.(?:bundle|js))$/.test(
+      path,
+    )
+  )
     return 'app:///index.bundle';
   return;
 }
