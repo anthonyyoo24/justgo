@@ -171,12 +171,12 @@ owned by [Phase 07A](../implementation-plan/phase-07a-billing.md). The optional
 [Stripe checkout](../proposals/optional-stripe-checkout.md) and future
 [text coach](../proposals/future-text-coach.md) are separate proposals.
 
-Analytics and crash-reporting providers are not installed or enabled. The current
+Analytics and crash-reporting SDKs are not installed or enabled in the app. Sentry account setup exists (`anthony-corp`, React Native `justgo-mobile`, US region); account setup does not establish delivery, redaction or release acceptance. The current
 telemetry helper has an event-name allowlist, account-reset consent and no exporter
 or payload API. [Phase 10](../implementation-plan/phase-10-acceptance.md) owns the
-implemented Terms & Privacy acceptance receipt and tested eligibility boundary, [Phase 11](../implementation-plan/phase-11-analytics.md) owns the disclosed events, and [Phase 12](../implementation-plan/phase-12-crash-reporting.md) owns app crash reporting;
-[Phase 13](../implementation-plan/phase-13-legal-documents.md) owns final legal
-notices and public destinations. Questionnaire onboarding, reminders, custom
+implemented Terms & Privacy acceptance receipt and tested eligibility boundary, [Phase 14](../implementation-plan/phase-14-analytics.md) owns post-paid-launch analytics and the approved event allowlist, and [Phase 11](../implementation-plan/phase-11-crash-reporting.md) owns app crash reporting;
+[Phase 12](../implementation-plan/phase-12-legal-documents.md) owns final legal
+notices, launch acceptance wording/versions and public destinations. Product analytics stays disabled through beta and paid launch; later activation requires reviewed notices and current account-owned acceptance. Questionnaire onboarding, reminders, custom
 dictation, lock-screen display and progression remain deferred; their existence
 in a plan must not be read as installed dependencies, tables or behavior.
 

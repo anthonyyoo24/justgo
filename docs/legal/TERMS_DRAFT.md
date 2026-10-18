@@ -40,7 +40,7 @@ Deleting the app or your JustGO account does not cancel an Apple subscription. [
 
 ## Privacy and closing your account
 
-The Privacy Policy explains account data, phone/cloud journal storage, analytics, service providers and retention. Phase 10 plans one Terms & Privacy onboarding acceptance for the disclosed analytics scope, with no analytics Settings switches or later analytics prompt. [REVIEW: Insert the public URL and reconcile this intended acceptance flow with the actual implementation and applicable consent requirements before publication.]
+The Privacy Policy explains account data, phone/cloud journal storage, enabled service providers and retention. Phase 10 implements one Terms & Privacy acceptance page and account-owned receipt. Product analytics remains disabled through paid launch. Phase 12 reviews the launch wording/versions and actual Sentry collection; Phase 14 must review notices and current scope acceptance before any post-launch analytics activation, using the existing page for required reacceptance without separate analytics Settings switches or prompts. [REVIEW: Insert the public URL and reconcile the launch copy with the actual implementation and applicable consent requirements before publication.]
 
 You can delete your account through [verified Settings path]. [REVIEW: Publish this statement only after deletion, revocation and cleanup are verified. Describe any delayed cleanup consistently with the policy.]
 

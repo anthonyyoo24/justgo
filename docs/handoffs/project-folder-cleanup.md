@@ -308,9 +308,9 @@ authorized pushed cleanup revision.
 
 - Carry native saving/relaunch, background/lock, keyboard/toast/modal,
   VoiceOver/scalable-text/Reduce Motion and physical-device acceptance into
-  Phase 14. Source organization and bundle checks do not satisfy those gates.
+  Phase 13. Source organization and bundle checks do not satisfy those gates.
 - Keep [07.3A](phase-07-3a-testing-checkpoint.md) deferred and retain its browser
-  assessment. Phase 14 resumes the bounded native smoke; a wholesale browser
+  assessment. Phase 13 resumes the bounded native smoke; a wholesale browser
   replacement is not accepted or merge-ready.
 - Progress integration and the legacy cutover are implemented in 07.4/07.5.
   Preserve their newer controller/editor/motion/read boundaries during further
@@ -320,6 +320,6 @@ authorized pushed cleanup revision.
 
 Use [FOLDER_STRUCTURE.md](../architecture/FOLDER_STRUCTURE.md) and the updated
 [07.3A removal assessment](../checks/phase-07-3a-browser-testing-assessment.md)
-for current paths. Review the surviving 07.3 acceptance gaps before Phase 14’s native smoke.
+for current paths. Review the surviving 07.3 acceptance gaps before Phase 13’s native smoke.
 Do not remove retained tests or legacy protocols merely because they now have
 dedicated folders.

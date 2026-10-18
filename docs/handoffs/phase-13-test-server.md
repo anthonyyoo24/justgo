@@ -1,8 +1,8 @@
-# Phase 14 prerequisite — physical-phone test server
+# Phase 13 prerequisite — physical-phone test server
 
-**Numbering history:** This prerequisite belonged to release Phase 09 before October 14, then Phase 11, and now Phase 14 after the October 17 split. Implementation dates, test evidence, deployment/build identifiers and historical `.local/phase-09/` artifact paths are preserved. Renumbering does not accept the free beta or close any native/release gate.
+**Numbering history:** This prerequisite belonged to release Phase 09 before October 14, then Phase 11 after October 14, Phase 14 after the October 17 split, and now Phase 13 after the October 18 reorder. Implementation dates, test evidence, deployment/build identifiers and historical `.local/phase-09/` artifact paths are preserved. Renumbering does not accept the free beta or close any native/release gate.
 
-October 11, 2026. Branch: `codex/phase-08-settings-privacy`. Anthony explicitly approved bringing forward the existing hosted test-server update and approved-account free access so Phase 08 can be tested on his iPhone. This is a narrow Phase 14 prerequisite; Phase 08, the free TestFlight beta and paid launch remain incomplete. Native billing stays on its separate 07A branch. No Git push, PR or merge was performed.
+October 11, 2026. Branch: `codex/phase-08-settings-privacy`. Anthony explicitly approved bringing forward the existing hosted test-server update and approved-account free access so Phase 08 can be tested on his iPhone. This is a narrow Phase 13 prerequisite; Phase 08, the free TestFlight beta and paid launch remain incomplete. Native billing stays on its separate 07A branch. No Git push, PR or merge was performed.
 
 ## Implementation
 
@@ -12,7 +12,7 @@ Current access ends at expiry or revocation. Keep the historical grant and set `
 
 The strict access/OpenAPI contract optionally identifies `source: free_beta`. Unapproved/expired test accounts see a free-testing explanation; Settings identifies the test build. Billing responses without this optional field remain valid. Bring these contract changes into 07A before integrating its separate implementation.
 
-**Offline limit still open:** this prerequisite supplies server-side start-time upload eligibility, not durable offline access admission. The existing mobile guard requires a fresh check within 60 seconds and closes on check failure. Full beta offline start/relaunch/continuation acceptance and any necessary policy implementation remain Phase 14 work; the 07A saved paid-access rules have not been imported or accepted here.
+**Offline limit still open:** this prerequisite supplies server-side start-time upload eligibility, not durable offline access admission. The existing mobile guard requires a fresh check within 60 seconds and closes on check failure. Full beta offline start/relaunch/continuation acceptance and any necessary policy implementation remain Phase 13 work; the 07A saved paid-access rules have not been imported or accepted here.
 
 ## Hosted cutover and protection
 
@@ -57,7 +57,7 @@ native build, provider activation or signed-device acceptance was performed.
 - `npm run test:coverage`: unchanged all-source/critical floors passed, including the clock follow-up. Mobile lines 95.90%, branches 91.28%; API lines 95.01%, branches 90.61%; contracts 100%/100%. The beta reader itself has 100% line/branch coverage. Tests exercise real session/owner isolation, unapproved/revoked access, expiry/revocation bounds, historical uploads, replay and production defaults.
 - Side-panel browser: disposable local account, actual API on 3005 and live Metro on 8081. Unapproved free-test copy, Settings/export reachability, the Free test build footer and Back to the previous access screen were observed. Ignored screenshot: `.local/phase-08/beta-settings-browser.png`. Browser evidence does not establish phone behavior.
 - After the clock correction, a fresh disposable approved local account reached real Home with challenge cards; Home → Settings → Back returned to the same Home. Ignored screenshot: `.local/phase-08/beta-home-after-settings-browser.png`. Editing the provider during diagnostics left a disposed runtime in the browser's Fast Refresh session; a full page reload cleared it, discarding only the documented memory-only browser credential. The new disposable account was approved locally; no hosted grant or phone account was reset.
-- The Vercel workspace installation audit reports 72 findings (21 moderate, 50 high, one critical); the workspace production audit reports 45. `npm audit --workspace @justgo/api --omit=dev --json` reports **zero** API runtime findings. Remaining Expo/Metro/build-tool dependency findings stay open for Phase 14 release triage; no forced upgrade or audit suppression was performed.
+- The Vercel workspace installation audit reports 72 findings (21 moderate, 50 high, one critical); the workspace production audit reports 45. `npm audit --workspace @justgo/api --omit=dev --json` reports **zero** API runtime findings. Remaining Expo/Metro/build-tool dependency findings stay open for Phase 13 release triage; no forced upgrade or audit suppression was performed.
 
 The installed physical EAS development binary remains `1500d7ee-c49a-4047-b88a-278eccdc21bc`, version 0.1.0 (1), bundle `com.anthonyyoo.justgo`. Developer Mode and USB pairing are verified. After the owner enabled/retried Local Network on the same Wi-Fi, Metro observed a real phone bundle request and Anthony confirmed Settings opened; the exact cause of the earlier LAN failure was not isolated.
 

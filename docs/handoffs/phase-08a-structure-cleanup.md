@@ -105,7 +105,7 @@ acceptance is recorded in its [handoff](phase-08-settings-privacy.md); the
 | ------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------- | -------------------------------------------------------------------------------------------------- |
 | Owner review and integration                            | Anthony reviews and authorizes each merge; implementation owner verifies | 08A                 | Review accepted, merges explicitly approved and the retargeted candidate has passing hosted checks |
 | Local branch deletion and billing stash disposition     | Anthony approves each named deletion; implementation owner executes      | 08A step 8          | Reviewed cleanup is explicitly approved and completed                                              |
-| Earlier physical-device, staging and release acceptance | Existing phase owners                                                    | 09–14               | Original handoff/release requirements are evidenced                                                |
+| Earlier physical-device, staging and release acceptance | Existing phase owners                                                    | 09–13               | Original handoff/release requirements are evidenced                                                |
 
 ## Final verification
 

@@ -1,12 +1,12 @@
 # JustGO — MVP Product Requirements
 
-**October 8 Phase 07 reconciliation:** The implemented flow starts challenges in memory, saves completed reps and explicit reflections on the phone, and uploads them in the background. Progress combines local and backend activity with limited current-period offline history. Current requirements below supersede the earlier server-backed lifecycle, immutable wording and cloud-draft behavior; the original handoffs retain their historical evidence. Native billing remains [Phase 07A](../implementation-plan/phase-07a-billing.md#phase-07a), and physical-device/staging release acceptance remains Phase 14.
+**October 8 Phase 07 reconciliation:** The implemented flow starts challenges in memory, saves completed reps and explicit reflections on the phone, and uploads them in the background. Progress combines local and backend activity with limited current-period offline history. Current requirements below supersede the earlier server-backed lifecycle, immutable wording and cloud-draft behavior; the original handoffs retain their historical evidence. Native billing remains [Phase 07A](../implementation-plan/phase-07a-billing.md#phase-07a), and physical-device/staging release acceptance remains Phase 13.
 
 **Status:** Revised draft aligned to the final core-app designs; unresolved product decisions are listed in section 13.  
 **Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.  
 **Updated:** October 15, 2026.
 
-**October 15 acceptance scope (now Phase 10):** One Terms & Privacy onboarding page is approved as the only permission request for the disclosed analytics scope. No analytics on/off controls belong in Settings. The existing Welcome leads to acceptance before new-account creation; additional welcome/questionnaire onboarding remains deferred. This is planned behavior; analytics export is currently disabled and Phase 13 legal/publication review remains open.
+**October 15 acceptance scope (now Phase 10):** One Terms & Privacy onboarding page is approved as the only permission request for the disclosed analytics scope. No analytics on/off controls belong in Settings. The existing Welcome leads to acceptance before new-account creation; additional welcome/questionnaire onboarding remains deferred. The receipt boundary is implemented; analytics export stays disabled through paid launch. Phase 12 reviews launch copy/versions and public notices; Phase 14 reviews current acceptance before later activation.
 
 **Implementation specification:** [TECH_STACK.md](../architecture/TECH_STACK.md).\
 **Implementation plan:** [Stages and handoffs](../implementation-plan/README.md).\
@@ -80,7 +80,7 @@ Explicit interpretation rules:
 | No free-form notes                                         | Optional per-attempt typed reflection; custom dictation deferred                                          |
 | Anxiety/confidence calendar heatmap                        | Completion-count calendar with day history                                                                |
 | Every completion counts; earlier practice can imply replay | Venue decks cycle; repeated accepted cards can become new reps; level credit rules are deferred           |
-| Sensitive self-reports stored locally by default           | Phone-saved submissions upload to private cloud records; Phase 11 analytics follows onboarding acceptance |
+| Sensitive self-reports stored locally by default           | Phone-saved submissions upload to private cloud records; Phase 14 analytics follows onboarding acceptance |
 
 ## 3. Navigation and common behavior
 
@@ -106,7 +106,7 @@ Credential access failures show retry/recovery states rather than silently creat
 
 Anthony approved a single Terms & Privacy onboarding page for Phase 10 (approved October 15). Present a short, accurate explanation of phone/cloud saving and the analytics scope, links to Terms of Service and Privacy Policy, and an explicit continuation/acceptance action. This is the only permission request for that analytics scope; remove the planned analytics Settings controls and do not add a post-reflection prompt. Returning users with recorded acceptance do not see the same request again; existing accounts without a receipt also need this page.
 
-Persist acceptance for the correct account with legal/scope versions and time. Unknown acceptance blocks analytics forwarding, not access to recovery/export/deletion or preservation of saved/pending activity. Describe persistent pseudonymous analytics as account-linked, not anonymous/non-identifying; disclose feeling selections and approximate reflection lengths if included. Final copy and regional sufficiency remain Phase 13 review. See the [Phase 10 handoff](../handoffs/phase-10-acceptance.md).
+Persist acceptance for the correct account with legal/scope versions and time. Unknown acceptance blocks analytics forwarding, not access to recovery/export/deletion or preservation of saved/pending activity. Describe persistent pseudonymous analytics as account-linked, not anonymous/non-identifying; disclose feeling selections and approximate reflection lengths if included. Final launch copy, legal/scope versions and regional sufficiency remain Phase 12 review; remove claims of active PostHog collection while analytics is deferred. Phase 14 must review notices and current account acceptance again before activation. See the [Phase 10 handoff](../handoffs/phase-10-acceptance.md).
 
 Anthony approved reusing the existing Welcome screen before Terms & Privacy on October 17. Continue does not create credentials or a server account; I Accept persists the same bootstrap proof and accepted versions before sending. Uncertain retries reuse that proof. Existing-account recovery stays available and does not create a replacement account or imply acceptance. Additional welcome screens, questionnaires, branching and answer persistence remain deferred.
 
@@ -228,7 +228,7 @@ Use the supplied grouped-row visual style, spacing, icons, and hierarchy as a re
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Required by the tech-stack product flow                | Restore Purchases, manage subscription, optional Save recovery key and Transfer to another device, authenticated data export and account deletion, privacy policy and terms |
 | Owner-approved October 15 acceptance change (Phase 10) | Remove both analytics rows; permission for the disclosed analytics scope is requested only on the Terms & Privacy onboarding page, with no Settings switches                |
-| Implemented Phase 08 preference                        | Reduce Motion: saved on this phone, with the phone's accessibility preference always taking priority; physical-device acceptance remains Phase 14                           |
+| Implemented Phase 08 preference                        | Reduce Motion: saved on this phone, with the phone's accessibility preference always taking priority; physical-device acceptance remains Phase 13                           |
 | Phase 08 preference                                    | Haptic feedback and its saved switch, implemented and physically tested together in Phase 08 before the free beta                                                           |
 | Owner-approved October 9 addition                      | Feature requests reuse Support’s private email draft to anthonyyoo24@gmail.com with a distinct subject and no automatic private attachments                                 |
 | Deferred beyond the first release October 9            | Practice reminders, their notification permission flow and per-device scheduling                                                                                            |
@@ -275,18 +275,13 @@ Never evict pending or memory-only activity as ordinary cache cleanup. Prune ful
 
 ## 8. Privacy and analytics
 
-Cloud storage is part of the journal feature. Under the October 15 owner decision, Phase 11 analytics follows the Phase 10 single Terms & Privacy onboarding acceptance in §4.2; there are no separate general/sensitive analytics Settings choices or later analytics prompt. Keep analytical processing separate from product saving: analytics delivery failures never prevent saving reflections or eligible paid access. Raw reflection text, audio, credentials, and payment details must not be sent to analytics or diagnostic payloads. No session replay/autocapture on these screens.
+Cloud storage is part of the journal feature. Product analytics remains disabled through free beta and paid launch. Phase 11 integrates scrubbed Sentry crash/error reporting before Phase 12 finalizes the public notices, acceptance wording and reviewed legal/scope versions; Phase 13 verifies the signed launch build. This planning change does not itself change the current acceptance page or receipts.
 
-Track consent-aware events for:
+Phase 14 owns post-launch product analytics and its [approved event allowlist and measurement plan](../implementation-plan/phase-14-analytics.md#phase-14-measurement). Keep that future scope out of launch collection and do not backfill pre-activation history. Before activation, review the actual provider/payloads, update notices/disclosures and accepted versions, and require current account-owned acceptance through the existing Terms & Privacy page. There are no separate general/sensitive analytics Settings switches or separate analytics prompts.
 
-- Terms & Privacy acceptance completed, paywall views, purchase/restore verification outcomes. No pre-acceptance activity is forwarded and deferred questionnaires gain no events yet.
-- Home/deck views, card replacements, accept requests, local starts, completed activities, give-ups and goal reached.
-- Success Continue, feeling submitted/skipped, reflection saved/skipped.
-- Progress viewed, month changed, and day sheet opened.
+Keep analytical processing separate from product saving: analytics failures never prevent saving reflections or eligible paid access. Stable event identities prevent retry double-counting. Feeling codes or coarse reflection-length metadata require disclosed, reviewed scope; raw reflection text, audio, credentials and payment details must never enter analytics or diagnostic payloads. Sentry reports must also exclude feelings and request bodies. No session replay/autocapture is approved.
 
-Separate UI intent from confirmed domain events. Stable event identities prevent retry double-counting. Analytics outages must not fail product saves. Feeling codes or coarse reflection-length metadata must be disclosed within the single accepted scope and reviewed with the actual payloads; there is no separate sensitive-data switch. Raw text never becomes an event property. Both client and server block forwarding before acceptance and fence account changes, deletion and applicable privacy requests. Final legal review remains open; onboarding acceptance is not proof of worldwide sufficiency.
-
-Initial metrics are onboarding/paywall conversion, challenge start and completion rates, replacement/give-up rates, optional feeling/reflection response rates, D1/D7 retention, and weekly users completing at least three challenges. Set targets after baseline data exists. Retrospective feelings and retention correlations are not evidence that JustGO caused improvement.
+Both client and server must block analytics forwarding without current acceptance and fence account changes, deletion and applicable privacy requests. Reuse Phase 10's tested boundary rather than assuming a launch receipt authorizes future processing. Final legal review remains open; onboarding acceptance is not proof of worldwide sufficiency. Collect an analytics baseline only after activation before setting targets; retrospective feelings and retention correlations do not establish wellbeing improvement or causation.
 
 ## 9. Explicit non-goals
 
@@ -329,7 +324,7 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 | AC-13 | Independent summary/calendar/day reads combine local/backend activity once, preserve totals through acknowledgement and stale responses, and expose current/best streak, all-time/month reps and active days. Offline downloaded history is limited to current-month counts/today’s pages.                     |
 | AC-14 | An available active date opens all loaded entries chronologically by original start and ID, with start time and exact feeling labels or Not recorded. Other days require online lookup. No duration, day-level rep summary or Day note.                                                                        |
 | AC-15 | Settings implements only scoped capabilities, accurately describes phone saving/cloud recovery and pending-copy limits, and does not add Reset progress solely from the reference image.                                                                                                                       |
-| AC-16 | Client/server analytics requires recorded onboarding acceptance for the correct account/scope. Analytics failures never fail product saves; account changes/deletion/privacy requests fence delivery. No journal text, audio, or credentials enter analytics/diagnostics.                                      |
+| AC-16 | Product analytics is disabled through paid launch. Later Phase 14 activation requires reviewed notices and current account/scope acceptance; account changes/deletion/privacy requests fence delivery and failures never block saves. No journal text, audio or credentials enter analytics/diagnostics.       |
 | AC-17 | Controls work with screen readers, text scaling, reduced motion, platform back navigation, and keyboard/sheet interactions on iOS. Android verification is deferred.                                                                                                                                           |
 
 ## 12. Validation and implementation order
@@ -347,7 +342,7 @@ Include duplicate completion, phone-write failure and warned memory-only recover
 
 ## 13. Remaining decisions and design gaps
 
-The table records outstanding decisions and previously approved reflection rules. Other proposed defaults are recommendations, not newly approved scope. Reduce Motion's saved preference and system priority are implemented; remaining physical-device, VoiceOver and text-scaling acceptance belongs to Phase 14, separately from open design work.
+The table records outstanding decisions and previously approved reflection rules. Other proposed defaults are recommendations, not newly approved scope. Reduce Motion's saved preference and system priority are implemented; remaining physical-device, VoiceOver and text-scaling acceptance belongs to Phase 13, separately from open design work.
 
 | Decision                             | Proposed default / work needed                                                                                                                                                                                                    |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

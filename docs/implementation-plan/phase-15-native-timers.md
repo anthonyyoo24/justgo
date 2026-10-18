@@ -10,7 +10,7 @@ The same accepted challenge is visible on supported lock screens without a JavaS
 
 ## Decisions in force
 
-- Dependencies: 14
+- Dependencies: Phase 13 paid launch; Phase 14 analytics is not a prerequisite.
 - Acceptance: PRD AC-06–07, 17 · Tech acceptance 9, 12, 17
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 
@@ -33,6 +33,6 @@ The same accepted challenge is visible on supported lock screens without a JavaS
 - [ ] Permission denial, dismissal and unsupported-device paths retain a usable in-app countdown; native limitations are documented.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 14
+## Open gates for Phase 13
 
 Not a first-release gate; schedule separately after launch.

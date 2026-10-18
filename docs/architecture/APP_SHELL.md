@@ -101,7 +101,7 @@ URL with the protected `/` can be a no-op when access is unavailable.
 owner transaction to an entitlement reader. The default provider returns
 unavailable. Explicit application staging can compose operator-approved free beta
 grants with start/expiry/revocation and earlier-start coverage; client requests
-cannot grant access. [The beta setup](../handoffs/phase-14-test-server.md) owns its
+cannot grant access. [The beta setup](../handoffs/phase-13-test-server.md) owns its
 environment and release limits.
 
 Mobile polls every 30 seconds and accepts a server verification for at most
@@ -241,7 +241,7 @@ remain accessible. Header Back uses history with Settings fallback.
 
 Settings owns Preferences, Account & data, Support and About. Support/
 feature-request actions create private email drafts. Legal/social/rating destinations
-use configured URLs or honest unavailable states. Phase 10 removed both analytics rows; telemetry still exports nothing. The acceptance controller reads the authenticated account receipt, fences late responses and captures generation-bound eligibility tickets. Unknown/refreshing confirmation, account changes, recovery operations, backgrounding, deletion and privacy invalidation fail closed for delivery. A previously confirmed current receipt can keep the same account in the app during a failed refresh; it cannot enable analytics without new confirmation. Activity synchronization and paid-access verification do not depend on this controller. Phase 11 must check captured work again immediately before forwarding.
+use configured URLs or honest unavailable states. Phase 10 removed both analytics rows; telemetry still exports nothing. The acceptance controller reads the authenticated account receipt, fences late responses and captures generation-bound eligibility tickets. Unknown/refreshing confirmation, account changes, recovery operations, backgrounding, deletion and privacy invalidation fail closed for delivery. A previously confirmed current receipt can keep the same account in the app during a failed refresh; it cannot enable analytics without new confirmation. Activity synchronization and paid-access verification do not depend on this controller. Phase 14 must check captured work again immediately before forwarding.
 
 Welcome Continue opts into the new-account preparation handoff and opens acceptance without creating an account. I Accept submits a persisted accepted bootstrap or an owner-scoped receipt write. The acceptance page contains no account shortcut; existing Settings/recovery/data-control routes retain their established navigation. Choosing recovery cancels that handoff, so an accepted recovered account stays in its recovery hub. Replacement-creation routes carry their source owner; remounting cannot turn the resulting account into another creation request.
 

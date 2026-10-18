@@ -10,7 +10,7 @@ Eligible users can purchase on the web using the same authenticated app identity
 
 ## Decisions in force
 
-- Dependencies: 14
+- Dependencies: Phase 13 paid launch; Phase 14 analytics is not a prerequisite.
 - Acceptance: PRD §4.3, §9 · Tech §8; acceptance 7, 14–17
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 
@@ -31,6 +31,6 @@ Eligible users can purchase on the web using the same authenticated app identity
 - [ ] Rollout/rollback, provider reconciliation and measurement evidence are recorded.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 14
+## Open gates for Phase 13
 
 Not a first-release gate; schedule separately after launch.
