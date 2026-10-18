@@ -140,7 +140,7 @@ export class ProgressResources {
         order by a.started_at,a.id limit ${limit + 1}`)
       ).rows;
       const page = rows.slice(0, limit),
-        last = page.at(-1);
+        last = page[page.length - 1];
       return {
         date,
         totalReps: total,
