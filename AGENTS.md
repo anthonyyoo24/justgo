@@ -9,7 +9,8 @@ Directory instructions (especially `apps/mobile/AGENTS.md`) also apply.
 
 Reuse already-read guidance when the checkout, relevant instructions and tool
 versions are unchanged and the context is available. Reread changed or newly
-relevant sections; always verify the current environment and served code.
+relevant sections. Verify the current test environment and served code when runtime
+behavior or a running app is in scope.
 
 This file is the shared coding standard for future features and fixes, not only
 cleanup phases. Read [testing guidance](docs/operations/TESTING.md) before code changes for
