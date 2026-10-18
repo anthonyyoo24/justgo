@@ -7,6 +7,7 @@ import {
 import { Stack } from 'expo-router';
 import { Text } from 'react-native';
 import NotFoundRoute from '../../app/+not-found';
+import { errorReporter } from '../diagnostics/start';
 import { RouteErrorScreen } from './RouteErrorScreen';
 
 const privateText = 'Disposable private reflection text';
@@ -19,6 +20,7 @@ afterEach(() => jest.restoreAllMocks());
 it('replaces a crashed route with a retryable screen that hides the error text', async () => {
   // React reports every caught render error; assert it is the expected one.
   const report = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const capture = jest.spyOn(errorReporter, 'capture');
   let broken = true;
   function Home() {
     if (broken) throw new Error(privateText);
@@ -38,6 +40,7 @@ it('replaces a crashed route with a retryable screen that hides the error text',
     'JustGO couldn’t show this screen. Try again, or close and reopen the app.',
   );
   expect(screen.queryByText(privateText, { exact: false })).toBeNull();
+  expect(capture).toHaveBeenCalledWith(new Error(privateText));
   expect(report).toHaveBeenCalledTimes(1);
   expect(report.mock.calls[0]![1]).toEqual(new Error(privateText));
   expect(report.mock.calls[0]![3]).toContain('using the error boundary');

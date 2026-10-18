@@ -101,7 +101,7 @@ URL with the protected `/` can be a no-op when access is unavailable.
 owner transaction to an entitlement reader. The default provider returns
 unavailable. Explicit application staging can compose operator-approved free beta
 grants with start/expiry/revocation and earlier-start coverage; client requests
-cannot grant access. [The beta setup](../handoffs/phase-14-test-server.md) owns its
+cannot grant access. [The beta setup](../handoffs/phase-13-test-server.md) owns its
 environment and release limits.
 
 Mobile polls every 30 seconds and accepts a server verification for at most
@@ -115,6 +115,48 @@ This current boundary is distinct from the planned persisted paid-access rules i
 eligibility checks verified coverage for the original start rather than today's
 paid status, through its separate injected reader. Neither an unavailable provider
 nor a navigation guard grants production paid access.
+
+## App error reporting
+
+`apps/mobile/index.ts` initializes the optional diagnostics owner before loading
+Expo Router. The provider-independent root ErrorBoundary reports through that
+owner and retains its generic message and Retry action. Reporter and transport
+failures never join product saving, account recovery or access decisions.
+
+The JavaScript `beforeSend` callback rebuilds an allowlisted error, and the custom
+transport repeats that boundary immediately before exporting one event. It drops
+other envelope items, raw messages, arbitrary paths/symbols, user/account IDs,
+headers, URLs, context, breadcrumbs and attachments. Only canonical bundle names,
+numeric locations, debug UUIDs, error handling state, event ID/time and trusted
+app/build/OS/environment metadata survive. Source-mapped development paths are
+discarded; signed-build stack usefulness and symbolication require release proof.
+JS delivery is memory-only, capped at two requests with five-second aborts and a
+one-minute pause after provider/network failures; it has no persistent retry queue.
+
+Native crashes bypass JS callbacks. The reviewed iOS config plugin owns early
+Cocoa initialization and independently reconstructs native events with numeric
+addresses/debug UUIDs and generic reasons. JS uses `autoInitializeNativeSdk: false`
+so it cannot replace that callback. Replay, screenshots, view hierarchy, network
+capture, automatic sessions, logs, tracing and profiling remain disabled. SDK or
+native API additions, including manual attachments, require renewed privacy review.
+Only `SentryCrashIntegration` is enabled natively. Cocoa 8.58 runs global event
+processors after `beforeSend`; its built-in Replay processor stays excluded.
+It also adds envelope trace metadata after the callback: random trace ID, public
+key, release/environment and SDK metadata. Do not add native user/segment/replay
+scope or manual span APIs without reviewing that separate header boundary.
+The native crash cache can retain original crash details locally until the next
+launch; outbound reconstruction is separate from that local capture.
+
+Explicit enabled/DSN/environment settings control JS delivery; native settings are
+baked into the binary and require a rebuild to change. An OTA JS disable does not
+disable native reporting in an already enabled binary. Neither path sets an
+account/device identifier. No account-owned diagnostics queue or identifier needs
+resetting on account changes/deletion. Anthony approved minimal essential
+reporting under the Privacy Policy before onboarding acceptance; account receipts
+do not gate this narrow diagnostics path. Real-user activation stays off until
+Phase 12 completes matching notices/provider review and Phase 13 verifies the
+signed build. See the [field inventory](../legal/DATA_INVENTORY.md#sentry-diagnostic-boundary)
+and [setup/handoff](../handoffs/phase-11-crash-reporting.md).
 
 ## Request policy
 
@@ -241,7 +283,7 @@ remain accessible. Header Back uses history with Settings fallback.
 
 Settings owns Preferences, Account & data, Support and About. Support/
 feature-request actions create private email drafts. Legal/social/rating destinations
-use configured URLs or honest unavailable states. Phase 10 removed both analytics rows; telemetry still exports nothing. The acceptance controller reads the authenticated account receipt, fences late responses and captures generation-bound eligibility tickets. Unknown/refreshing confirmation, account changes, recovery operations, backgrounding, deletion and privacy invalidation fail closed for delivery. A previously confirmed current receipt can keep the same account in the app during a failed refresh; it cannot enable analytics without new confirmation. Activity synchronization and paid-access verification do not depend on this controller. Phase 11 must check captured work again immediately before forwarding.
+use configured URLs or honest unavailable states. Phase 10 removed both analytics rows; telemetry still exports nothing. The acceptance controller reads the authenticated account receipt, fences late responses and captures generation-bound eligibility tickets. Unknown/refreshing confirmation, account changes, recovery operations, backgrounding, deletion and privacy invalidation fail closed for delivery. A previously confirmed current receipt can keep the same account in the app during a failed refresh; it cannot enable analytics without new confirmation. Activity synchronization and paid-access verification do not depend on this controller. Phase 14 must check captured work again immediately before forwarding.
 
 Welcome Continue opts into the new-account preparation handoff and opens acceptance without creating an account. I Accept submits a persisted accepted bootstrap or an owner-scoped receipt write. The acceptance page contains no account shortcut; existing Settings/recovery/data-control routes retain their established navigation. Choosing recovery cancels that handoff, so an accepted recovered account stays in its recovery hub. Replacement-creation routes carry their source owner; remounting cannot turn the resulting account into another creation request.
 

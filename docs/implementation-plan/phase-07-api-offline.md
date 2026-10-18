@@ -42,7 +42,7 @@ Challenge completions and submitted reflections save locally and display immedia
 
 <a id="phase-07-3a"></a>
 
-- 07.3A: deferred hybrid/native-testing checkpoint. Preserve the existing browser suite, adapters, coverage floors and checkpoint/browser assessment; Phase 14 starts its native smoke here.
+- 07.3A: deferred hybrid/native-testing checkpoint. Preserve the existing browser suite, adapters, coverage floors and checkpoint/browser assessment; Phase 13 starts its native smoke here.
 
 <a id="phase-07-4"></a>
 
@@ -58,7 +58,7 @@ Challenge completions and submitted reflections save locally and display immedia
 
 - Native purchase/paywall/restore implementation, subscription refresh/expiry policy, provider billing records/webhooks, QStash and scheduled billing recovery. These belong to Phase 07A; recorded subscription decisions remain intact there.
 - No production premium bypass, Stripe checkout, generic server outbox or continuously running worker for phone uploads. Keep existing authentication/ownership checks and isolated development/test access boundaries.
-- General PostHog activation remains Phase 11. Earlier physical-device/staging gates remain in Phase 14.
+- General PostHog activation remains Phase 14. Earlier physical-device/staging gates remain in Phase 13.
 
 ## Ready to hand off when
 
@@ -68,7 +68,7 @@ Challenge completions and submitted reflections save locally and display immedia
 - [x] Earlier-upload eligibility/access seams have isolated provider fixtures; no live billing completion or production bypass is claimed.
 - [x] Contracts, API/mobile callers, migrations and current architecture agree; each checkpoint has a handoff.
 
-## Open gates for Phase 14
+## Open gates for Phase 13
 
 - Native Keychain/AsyncStorage durability, saved/rejected/queued data through background/relaunch, software keyboard/toast/modal and physical-device accessibility.
 - Deferred 07.3A native automation is a release smoke prerequisite, not completed evidence.

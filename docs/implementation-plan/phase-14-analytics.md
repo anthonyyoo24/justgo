@@ -1,8 +1,8 @@
-<a id="phase-11"></a>
+<a id="phase-14"></a>
 
-# Phase 11 — Product analytics & PostHog dashboard
+# Phase 14 — Product analytics & PostHog dashboard
 
-**Status:** Not started; analytics exporter disabled
+**Status:** Deferred until after paid launch; analytics exporter disabled
 
 ## Outcome
 
@@ -10,22 +10,22 @@ Explicit, acceptance-aware PostHog events answer the agreed challenge-flow and r
 
 ## Decisions in force
 
-- Dependencies: 10 for the implemented account-owned acceptance/eligibility boundary, and 09 for the final deck/Reflection behavior being measured.
+- Dependencies: Phase 13 paid launch, Phase 09's final deck/Reflection behavior, Phase 10's account-owned acceptance/eligibility boundary and Phase 12's approved launch notices. This phase is not required for beta or paid launch.
 - Acceptance: PRD §8, AC-16; preserve the October 15 event allowlist and analytics-only `start_id` decision.
-- Reuse Phase 08 deletion ownership and Phase 10 receipt checks. Final notices belong to Phase 13 and signed-release acceptance to Phase 14.
+- Reuse Phase 08 deletion ownership and Phase 10 receipt checks. Before post-launch activation, update the inventory, public notices and App Privacy disclosures established in Phases 12–13, review legal/analytics-scope versions and require current account-owned acceptance. A launch receipt does not automatically authorize newly enabled analytics. Verify the actual signed update before enabling delivery.
 
 ## Implement
 
-- Implement the [measurement plan](phase-11-analytics.md#phase-11-measurement) below: its event allowlist with validated property schemas, `start_id` linking, and metric definitions in the event dictionary. Separate UI intent from confirmed domain outcomes. Challenge Start/Give up remain local product actions with no required backend attempt save. Only the Terms & Privacy onboarding page is newly approved; welcome/questionnaire onboarding and inactive purchases do not gain new flows merely to generate analytics.
+- Implement the [measurement plan](phase-14-analytics.md#phase-14-measurement) below: its event allowlist with validated property schemas, `start_id` linking, and metric definitions in the event dictionary. Separate UI intent from confirmed domain outcomes. Challenge Start/Give up remain local product actions with no required backend attempt save. Reuse the single Terms & Privacy acceptance page for reviewed material-version reacceptance; welcome/questionnaire onboarding and extra product flows solely for analytics remain outside scope.
 - Confirm PostHog project/environment separation, pseudonymous account identifiers, region, retention and account-deletion cleanup. The architecture's 90-day event retention is a proposal to approve and configure, not an existing guarantee. Reuse Phase 08 deletion ownership and cleanup behavior for the configured analytics provider.
 - Activate explicit PostHog events through consent-aware client/server adapters. Server-confirmed events follow successful transactions and use stable domain-derived IDs; client-only interactions use the approved single consent-aware boundary. Record occurrence/receipt timestamps and prevent retry double-counting. Delivery is best effort and analytics failures must not fail a saved completion or reflection.
 - Allow feeling codes and coarse reflection-length categories only within the disclosed, accepted and reviewed analytics scope, with no separate sensitive-metadata switch. Compute approved categories without exporting the words. Disable autocapture/session replay and exclude journal text, audio, credentials, payment details and contact data from event payloads. Recheck acceptance and account eligibility before delayed delivery. Preserve enforcement of deletion and applicable withdrawal/objection requests through the reviewed privacy-request process; no Settings toggle does not remove these rights.
-- Route future billing measurement through the same server consent checks; do not enable unconditional RevenueCat-to-PostHog forwarding. Preserve Phase 07A's activation sequencing and verify the integration again before paid launch.
+- Route billing measurement through the same server consent checks; do not enable unconditional RevenueCat-to-PostHog forwarding. Phase 07A billing and paid launch precede this phase. Verify any now-active billing integration at analytics activation, without making purchases or paid access depend on analytics.
 - Create a small product dashboard for the agreed usage, challenge-flow and return-rate questions. Define cohort anchors, eligible observation windows and missing-data handling; describe the actual population with recorded acceptance and eligible events. Collect a baseline before setting targets. Sensitive-metadata comparisons use only the reviewed scope; retrospective feelings and retention correlations do not establish wellbeing improvement or causation.
-- Verify actual client/server forwarding against Phase 10's receipt/eligibility boundary: first use, existing accounts, missing acceptance, hydration/account changes, stale callbacks, allowed/blocked payloads, duplicate delivery, provider outages and deletion/privacy-request cleanup. Never forward pre-acceptance onboarding activity.
-- Supply actual collection/provider facts to Phase 13's data inventory and public notices. Update PRD §8 to match the allowlist at closeout. Diagnostic redaction stays with Phase 08; app crash reporting belongs to Phase 12 and server health monitoring to Phase 14.
+- Verify actual client/server forwarding against Phase 10's receipt/eligibility boundary: first use, existing launch accounts accepting the reviewed analytics version, missing acceptance, hydration/account changes, stale callbacks, allowed/blocked payloads, duplicate delivery, provider outages and deletion/privacy-request cleanup. Never backfill pre-activation history or forward pre-acceptance onboarding activity.
+- Reconcile actual collection/provider facts with the data inventory, public notices and release disclosures from Phases 12–13 before activation, under their existing review/publication permissions. Update PRD §8 to match the allowlist at closeout. Diagnostic redaction stays with Phase 08; app crash reporting belongs to Phase 11 and server health monitoring to Phase 13.
 
-<a id="phase-11-measurement"></a>
+<a id="phase-14-measurement"></a>
 
 **Measurement plan**
 
@@ -79,7 +79,7 @@ Every event carries the pseudonymous account identifier, occurrence timestamp, a
 
 ## Keep out
 
-- No new acceptance flow or analytics Settings switches, raw journal/credential/audio payloads, session replay/autocapture, unconditional vendor forwarding or invented conversion/wellbeing targets.
+- No separate analytics acceptance flow or Settings switches, raw journal/credential/audio payloads, session replay/autocapture, unconditional vendor forwarding or invented conversion/wellbeing targets. Reacceptance of a reviewed material version uses the existing Terms & Privacy page.
 - No billing activation, experiments, transactional analytics outbox, extra product feature solely for measurement or unrelated OS/AI-context permission.
 - Analytics delivery success never gates product saves or eligible paid access. No final legal publication, App Store submission or release deployment.
 
@@ -87,11 +87,12 @@ Every event carries the pseudonymous account identifier, occurrence timestamp, a
 
 - [ ] Explicit event schemas, stable IDs, occurrence/receipt times, deduplication, `start_id` linking and provider-failure isolation have passing evidence; transmitted properties match the allowlist.
 - [ ] Actual client/server delivery and delayed work respect account-owned acceptance, deletion and applicable privacy requests; saved/pending activity and product saves survive provider failures.
-- [ ] Provider environments, pseudonymous identifiers, region, retention and deletion cleanup are configured/verified and recorded for Phase 13; 07A/14 retain future billing activation checks.
+- [ ] Provider environments, pseudonymous identifiers, region, retention and deletion cleanup are configured/verified in the inventory and reviewed notices; any active Phase 07A billing integration is acceptance-aware at analytics activation.
+- [ ] Updated notices/disclosures and legal/analytics-scope versions are reviewed before activation; existing launch accounts require current acceptance, with no replay of pre-activation history.
 - [ ] ANALYTICS_EVENTS.md defines events and metrics, including sessions, cohort anchors, observation/missing-outcome windows and eligible population; the PostHog dashboard answers the measurement questions and baseline collection is documented before setting targets.
 - [ ] Reports state their accepting-user/best-effort population and do not imply wellbeing improvement or causation from correlations.
 - [ ] Required automated/phase and interactive checks pass; save the handoff with final evidence and remaining gates, and link it from the index.
 
-## Open gates for Phase 14
+## Open gates before analytics activation
 
-- Verify acceptance, configured providers, cleanup and disclosures on the signed beta/release build. Carry physical-device and billing-integration acceptance forward until evidenced.
+- Verify acceptance/reacceptance, configured providers, cleanup and updated disclosures on the actual signed post-launch update, including any active billing integration. Phase 14 owns these activation gates; earlier launch evidence does not establish analytics acceptance.

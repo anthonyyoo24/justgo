@@ -150,7 +150,7 @@ regressions have component/browser evidence separately.
 
 ## Remaining acceptance
 
-The implementation is integrated into Phase 08. Phase 14 physical-iPhone,
+The implementation is integrated into Phase 08. Phase 13 physical-iPhone,
 software-keyboard layout, VoiceOver, large-text and release performance acceptance
 remain open; this scoped fix does not establish those results.
 
@@ -276,7 +276,7 @@ native performance capture. Saved Progress journey source was retained and
 typechecked; its CLI run was not repeated under the owner's side-panel-only
 testing preference. The existing simulator was shut down at task start and was
 not changed. October 10 native measurements remain historical evidence; new
-physical-phone/VoiceOver/release acceptance stays open in Phase 14.
+physical-phone/VoiceOver/release acceptance stays open in Phase 13.
 
 The temporary test account was cleaned up only through its server-owned registry,
 and both temporary services exited successfully. The original loopback API was

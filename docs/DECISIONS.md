@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 17, 2026. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 15 decision below supersedes the two-choice analytics plan. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 18, 2026. The [October 18 sequencing decision](#october-18-crash-reporting-before-launch-and-analytics-deferral) owns the current phase map. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 15 decision below supersedes the two-choice analytics plan. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -8,8 +8,8 @@ Updated October 17, 2026. Historical dated decisions below retain their original
 | Expo SDK 57 / React Native 0.86, Node 24 LTS, iOS 16.4 minimum                  | Implementation owner           | 01                              | Pinned; see FOUNDATION.md for exact versions and evidence.                                                                                                                                                                                                  |
 | Staging Supabase organization/project                                           | Anthony                        | 01                              | Approved anthonyyoo corp; created dedicated JustGo in Canada Central.                                                                                                                                                                                       |
 | Vercel project                                                                  | Anthony / implementation owner | 01                              | Dedicated justgo project; API root apps/api, Montréal compute.                                                                                                                                                                                              |
-| Production infrastructure and budgets                                           | Anthony                        | Before 14                       | Separate from staging; not provisioned.                                                                                                                                                                                                                     |
-| Permanent bundle ID, Expo owner/project, Apple enrollment type                  | Anthony                        | Before 02 device recovery tests | Apple membership, linked Expo project, permanent bundle ID and signed physical development build are verified in APPLE_SETUP.md. Broader recovery/native release acceptance remains Phase 14; the simulator identifier is development-only.                 |
+| Production infrastructure and budgets                                           | Anthony                        | Before 13                       | Separate from staging; not provisioned.                                                                                                                                                                                                                     |
+| Permanent bundle ID, Expo owner/project, Apple enrollment type                  | Anthony                        | Before 02 device recovery tests | Apple membership, linked Expo project, permanent bundle ID and signed physical development build are verified in APPLE_SETUP.md. Broader recovery/native release acceptance remains Phase 13; the simulator identifier is development-only.                 |
 | iOS artwork and reusable tokens                                                 | Implementation owner / Anthony | 01; refine per feature          | Paper extracts recorded. Raster-only exact measurements remain explicit gaps in DESIGN.md.                                                                                                                                                                  |
 | Onboarding questions, branching and final designs                               | Anthony                        | Deferred                        | Deferred September 17; no welcome/questionnaire flow in phase 03. Revisit separately.                                                                                                                                                                       |
 | Easy Level 1 challenge text, venue, subtext and duration                        | Anthony                        | Before 04                       | Six venues and 61 placements approved September 24; five minutes, no displayed subtext. Seeded in phase 04; see CHALLENGES.md.                                                                                                                              |
@@ -65,7 +65,7 @@ Anthony approved [Phase 06A — Code quality & test hardening](implementation-pl
 - Explicit reflection saves use stable submission IDs/expected revisions, preserve feeling on later text edits and never autosave drafts. Genuine conflicts adopt current backend writing automatically; no two-phone chooser. Ordered replay protects newer local writing from older acknowledgements.
 - Normal uploads use one sender, two short retries and sparse active/online recovery opportunities with cooldown/Retry-After. Device-write failure clears disposable confirmed period payloads, retries once, then tries the same operation online. If neither saves, continue with memory-only content and a dismissible loss-risk banner; full recovery shows one toast. Accepted pre-upload only-device loss risk adds no backup system.
 - Progress independently reconciles each aggregate and merges day rows by attempt ID. Definitive completion rejection removes provisional credit while retaining content; reflection-only rejection retains valid rep credit. The saved app/API/database suite and required browser CI remain; 07.3A is deferred, and native/device/staging gates remain separately owned.
-- Access/earlier-upload provider interfaces have isolated tests, with no production paid bypass. Phase 07A connects RevenueCat verification/coverage, account-scoped saved access, purchase/restore, webhook delivery and scheduled billing recovery. Under the current phase ownership, Phase 08 owns support/Settings/data controls, Phases 10–11 acceptance/analytics, Phase 13 legal documents/disclosures and Phase 14 the full physical-device/staging/release pass.
+- Access/earlier-upload provider interfaces have isolated tests, with no production paid bypass. Phase 07A connects RevenueCat verification/coverage, account-scoped saved access, purchase/restore, webhook delivery and scheduled billing recovery. Under the phase ownership recorded before the October 18 reorder, Phase 08 owns support/Settings/data controls, Phases 10–11 acceptance/analytics, Phase 13 legal documents/disclosures and Phase 14 the full physical-device/staging/release pass.
 
 See [APP_SHELL.md](architecture/APP_SHELL.md), [PRD](product/PRD.md) and the [Phase 07 handoff](handoffs/phase-07-api-offline.md) for current implementation and evidence. Earlier dated sections are historical and do not reopen superseded behavior.
 
@@ -73,9 +73,9 @@ See [APP_SHELL.md](architecture/APP_SHELL.md), [PRD](product/PRD.md) and the [Ph
 
 Historical numbering in this section records the October 14 split; the October 17 mapping below supersedes it.
 
-Anthony reports most Phase 08 work completed and is implementing account deletion. Keep deletion, retention/backup mechanics and the existing Settings/recovery/export/preference acceptance in [Phase 08](implementation-plan/phase-08-settings-privacy.md#phase-08). Move analytics consent, PostHog and product measurement to [then Phase 09 (now 10–11)](implementation-plan/phase-11-analytics.md#phase-11), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation to [then Phase 10 (now 13)](implementation-plan/phase-13-legal-documents.md#phase-13). Operational diagnostic redaction/service-health dashboards stay in Phase 08.
+Anthony reports most Phase 08 work completed and is implementing account deletion. Keep deletion, retention/backup mechanics and the existing Settings/recovery/export/preference acceptance in [Phase 08](implementation-plan/phase-08-settings-privacy.md#phase-08). Move analytics consent, PostHog and product measurement to [then Phase 09 (now 10 and 14)](implementation-plan/phase-14-analytics.md#phase-14), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation to [then Phase 10 (now 12)](implementation-plan/phase-12-legal-documents.md#phase-12). Operational diagnostic redaction/service-health dashboards stay in Phase 08.
 
-Former release Phase 09 is now [then Phase 11 (now 14)](implementation-plan/phase-14-release.md#phase-14); lock-screen countdowns, optional US checkout and the future coach shift from 10–12 to 12–14. Earlier IDs and billing's beta-first activation sequence remain unchanged. Existing open device/staging/release gates keep their owners under the new numbering. This is a documentation/planning change, not feature implementation, phase acceptance or publication authorization.
+Former release Phase 09 is now [then Phase 11 (now 13)](implementation-plan/phase-13-release.md#phase-13); lock-screen countdowns, optional US checkout and the future coach shift from 10–12 to 12–14. Earlier IDs and billing's beta-first activation sequence remain unchanged. Existing open device/staging/release gates keep their owners under the new numbering. This is a documentation/planning change, not feature implementation, phase acceptance or publication authorization.
 
 ## October 15 Terms & Privacy acceptance (now Phase 10)
 
@@ -103,7 +103,7 @@ Anthony approved these decisions while reviewing the [October 16 codebase assess
 ## October 9 beta-first sequencing and reminder deferral
 
 Anthony moved payment activation until after Settings and a free TestFlight beta.
-Under the current numbering, finish Phase 08/08A, then Phases 09–12 and legal notices in 13, then the
+Under the October 17 numbering, finish Phase 08/08A, then Phases 09–12 and legal notices in 13, then the
 Phase 14 free-beta checkpoint; activate and accept 07A before returning to 14 for
 paid launch. Preserve prepared local billing work and all nine subscription rules.
 Do not generate purchase keys or enable RevenueCat/live billing before its stage.
@@ -120,7 +120,7 @@ stash; no submission service was installed or connected.
 ## October 15 measurement and app changes
 
 Anthony approved the explicit analytics event allowlist and analytics-only start_id
-linking in the [Phase 11 plan](implementation-plan/phase-11-analytics.md#phase-11-measurement).
+linking in the [Phase 11 plan](implementation-plan/phase-14-analytics.md#phase-14-measurement).
 The identifier never enters saved attempts or API/database contracts. He also
 approved one-time shuffled venue decks persisted on the phone, remembering the
 last venue, and removing the post-challenge Reflection top exit. These app changes
@@ -159,17 +159,17 @@ Anthony wants each phase to group related work that can be requested and complet
 
 Split the former Phase 09 without adding or dropping approved scope:
 
-| Previous owner          | Current phase                                                  | Responsibility                                                                                                   |
+| Previous owner          | Phase on October 17                                            | Responsibility                                                                                                   |
 | ----------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | 09 app changes          | [09](implementation-plan/phase-09-app-continuity.md#phase-09)  | One-time shuffled/saved venue decks, remembered venue and bottom-only post-challenge Reflection exit             |
 | 09 acceptance           | [10](implementation-plan/phase-10-acceptance.md#phase-10)      | Terms & Privacy page, account-owned versioned receipt, eligibility boundary and unavailable Settings-row removal |
-| 09 measurement          | [11](implementation-plan/phase-11-analytics.md#phase-11)       | Explicit events, acceptance-aware adapters, PostHog settings/cleanup, event dictionary and dashboard             |
-| 09 app diagnostics      | [12](implementation-plan/phase-12-crash-reporting.md#phase-12) | App crash/unhandled-error reporting, redaction and provider facts                                                |
-| 10 legal                | [13](implementation-plan/phase-13-legal-documents.md#phase-13) | Legal review, public notices/hosting and release-disclosure preparation                                          |
-| 11 release              | [14](implementation-plan/phase-14-release.md#phase-14)         | Free beta, server monitoring, native/staging/release validation and paid launch                                  |
+| 09 measurement          | [11](implementation-plan/phase-14-analytics.md#phase-14)       | Explicit events, acceptance-aware adapters, PostHog settings/cleanup, event dictionary and dashboard             |
+| 09 app diagnostics      | [12](implementation-plan/phase-11-crash-reporting.md#phase-11) | App crash/unhandled-error reporting, redaction and provider facts                                                |
+| 10 legal                | [13](implementation-plan/phase-12-legal-documents.md#phase-12) | Legal review, public notices/hosting and release-disclosure preparation                                          |
+| 11 release              | [14](implementation-plan/phase-13-release.md#phase-13)         | Free beta, server monitoring, native/staging/release validation and paid launch                                  |
 | 12–14 optional features | 15–17                                                          | Lock-screen countdowns, optional US web checkout and future AI text coach respectively                           |
 
-Run 09 → 10 → 11 → 12 → 13 → 14 free beta → 07A activation/acceptance → 14 paid launch. Legal review may proceed alongside implementation. Phase 10 remains verifiable with labeled legal test URLs and analytics disabled; Phase 11 consumes its tested receipt boundary. Resolve the app-reporting fields/provider/privacy basis before enabling delivery in 12, with final legal reconciliation in 13. Server monitoring stays in 14. Earlier IDs through 08A and billing sequencing remain unchanged.
+The October 17 order was 09 → 10 → 11 → 12 → 13 → 14 free beta → 07A activation/acceptance → 14 paid launch. The October 18 decision below supersedes that order and the table's phase numbers. Legal review may proceed alongside implementation. Phase 10 remains verifiable with labeled legal test URLs and analytics disabled; Phase 11 consumes its tested receipt boundary. Resolve the app-reporting fields/provider/privacy basis before enabling delivery in 12, with final legal reconciliation in 13. Server monitoring stays in 14. Earlier IDs through 08A and billing sequencing remain unchanged.
 
 Preserve the event allowlist table and analytics-only start_id rules in Phase 11. Move the existing draft acceptance copy/planning handoff to Phase 10. Renumber current references and later phase/handoff filenames together; preserve historical evidence/artifact paths and distinguish dated numbering history. No implementation is started, no acceptance gate is closed and no publication, push, PR or merge is authorized by this planning change.
 
@@ -217,6 +217,53 @@ details in task/review records and update durable documentation when behavior,
 invariants, setup or paths change. Preserve regression tests, coverage floors,
 fixture isolation/cleanup, native/device evidence and separate Git permissions.
 Keep heavy checks sequential on the 8 GB Mac.
+
+## October 18 crash reporting before launch and analytics deferral
+
+Anthony approved moving product analytics until after paid launch and integrating basic Sentry crash/error reporting before legal finalization. Renumber the current phase files, dependency/handoff references and compatibility index together:
+
+| Previous phase | Current phase                                                  | Responsibility                                                                         |
+| -------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 12             | [11](implementation-plan/phase-11-crash-reporting.md#phase-11) | Sentry app crash/unhandled-error reporting, redaction, recovery and provider facts     |
+| 13             | [12](implementation-plan/phase-12-legal-documents.md#phase-12) | Final launch notices, acceptance copy/versions, public URLs and disclosure preparation |
+| 14             | [13](implementation-plan/phase-13-release.md#phase-13)         | Free beta, server monitoring, signed-device/release validation and paid launch         |
+| 11             | [14](implementation-plan/phase-14-analytics.md#phase-14)       | PostHog events, cleanup, dictionary and dashboard after paid launch                    |
+
+Run 10 → 11 crash reporting → 12 legal → 13 free beta → 07A activation/acceptance → 13 paid launch → 14 analytics. Earlier phase IDs and billing's beta-first sequence stay unchanged. Phases 15–17 stay optional after paid launch and do not depend on analytics.
+
+Sentry account setup created the React Native `justgo-mobile` project under `anthony-corp` in the US region. That is setup evidence only: the SDK, delivery/redaction, verified retention/privacy basis and signed-device acceptance remain Phase 11 work. API uptime/5xx monitoring stays in Phase 13. Analytics is not a prerequisite for either crash reporting or launch.
+
+Keep product analytics and unconditional billing-to-PostHog forwarding disabled through beta and paid launch. Preserve Phase 10's account-owned receipt, restrictions and eligibility fencing. Phase 12 must align the existing acceptance page and reviewed legal/scope versions with actual launch collection; the current runtime copy still describes PostHog/feeling/length scope and is not changed by this planning edit. Do not silently treat a launch receipt as permission for future analytics.
+
+Before Phase 14 activation, review the provider/payloads, update public notices/disclosures and accepted versions, and require current account-owned acceptance through the existing Terms & Privacy page. Preserve the approved event allowlist and analytics-only `start_id` rules; do not backfill pre-activation history. No separate analytics switch or separate prompt is added.
+
+Preserve historical decision numbering and ignored evidence paths. The live hosted-test handoff moves to `phase-13-test-server.md`; its rollout evidence and all earlier device/release gates remain unchanged. This reordering does not implement an SDK or runtime copy change, close an acceptance gate, or authorize Git publication, deployment, native build/upload, legal publication or new data delivery.
+
+## October 18 minimal Sentry integration
+
+Install Expo 57's supported Sentry React Native 7.11.0 (Cocoa 8.58.0), keeping
+Expo Doctor validation intact. The app-support diagnostics owner starts before
+Router and independently allowlists JS events at capture and final transport;
+the iOS config plugin separately allowlists native events because Cocoa crashes
+bypass JavaScript callbacks. Keep replay, tracing, logs, sessions, attachments and
+account/user linkage disabled. Preserve generic ErrorBoundary recovery and keep
+provider failure outside product saving/access/recovery.
+
+Synthetic browser delivery and provider-stored redaction are verified. On
+October 18, Anthony approved minimal essential diagnostics under the Privacy
+Policy, including startup before onboarding acceptance. Reporting does not depend
+on the account's Terms & Privacy receipt. Preserve the narrow approved fields:
+app/version, OS version and scrubbed technical stacks; no account ID, stored IP,
+feelings, journal text or breadcrumbs. Phase 12 reviews matching notices and
+applicable requirements before real-user activation; signed-build acceptance stays
+in Phase 13. This owner scope decision does not close those launch gates.
+Account deletion cannot
+identify reports through an app account because no account identifier is sent;
+Phase 12 must review event-based requests/retention without promising linked erasure.
+The [inventory](legal/DATA_INVENTORY.md#sentry-diagnostic-boundary) records exact
+fields, local native cache and provider facts. Native config changes require a
+rebuilt binary; an OTA JS disable does not disable already enabled native capture.
+Signed-build crash/restart, payload inspection and symbolication remain Phase 13.
 
 ## Open and settled product decisions
 

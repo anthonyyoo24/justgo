@@ -4,7 +4,7 @@
 
 **Status:** Implemented and verified; existing hosted test API updated October 18.
 Anthony confirmed the app fixes and authorized local commits on October 18.
-Analytics and crash exporters remain disabled. The [phase plan](../implementation-plan/phase-10-acceptance.md)
+Analytics and crash exporters remain disabled. The October 18 reorder defers analytics to Phase 14 after paid launch; Phase 12 owns the launch copy/version update because the current acceptance wording still describes PostHog collection. The implemented receipt boundary and recorded evidence below are unchanged. The [phase plan](../implementation-plan/phase-10-acceptance.md)
 owns scope; [Phase 09](phase-09-app-continuity.md) retains its native gate and
 [Phase 08](phase-08-settings-privacy.md) retains deletion/release safeguards.
 
@@ -15,7 +15,7 @@ uses the existing Welcome → Continue → Terms & Privacy → I Accept flow. Co
 only navigates; account creation starts after acceptance. The refined navy
 [Paper screen](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0/PEZ-0)
 is the visual authority. Questionnaires and extra onboarding remain deferred.
-Phase 13 reviews final legal wording, regional sufficiency and public publication.
+Phase 12 reviews final legal wording, regional sufficiency and public publication.
 The [October 18 refinement](../DECISIONS.md#october-18-acceptance-layout-and-hosted-endpoint)
 removes account shortcuts, keeps the legal agreement directly above the bottom
 button and uses the red save error “Couldn’t save your acceptance. Please try
@@ -36,9 +36,9 @@ again.” Established Settings/recovery/data routes remain available.
   Legal URL resolution is shared by acceptance and Settings; it never substitutes
   Apple's EULA for JustGO service terms. Loopback development APIs provide visibly
   labeled draft documents without authentication. Public release URLs stay a
-  Phase 13 gate.
+  Phase 12 gate.
 - The client receipt controller fences hydration, account changes, recovery,
-  backgrounding, stale callbacks and privacy invalidation. Phase 11 consumes its
+  backgrounding, stale callbacks and privacy invalidation. Phase 14 consumes its
   generation-bound eligibility tickets and the shared eligibility rule; the server
   rereads live ownership/receipt/restriction immediately before a delivery decision.
 
@@ -55,7 +55,7 @@ again.” Established Settings/recovery/data routes remain available.
   to one recovered from an existing credential. Persisted pending versions are
   nonsecret and retain the same credential/device/session proof on uncertain retry.
 - Do not cache server eligibility decisions or hold database owner locks while
-  awaiting a provider. Phase 11 must enforce the rule at actual forwarding.
+  awaiting a provider. Phase 14 must enforce the rule at actual forwarding.
 - Current versions are `2026-10-17-draft` for Terms/Privacy and
   `2026-10-17-v1` for analytics scope. Reviewed material changes require deliberate
   version updates and matching notices, rather than silently reusing this receipt.
@@ -116,9 +116,9 @@ The deployable server leaves draft routes disabled by default and in production.
 
 | Gate                                                    | Owner                         | Required phase | Done when                                                                                                                                                   |
 | ------------------------------------------------------- | ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Actual analytics delivery and provider cleanup          | Phase 11 implementation owner | 11             | Client/server adapters use this receipt boundary at forwarding and deletion/privacy cleanup, without replay or product-save dependency                      |
-| Final wording, privacy-request handling and public URLs | Anthony and legal reviewer    | 13             | Reviewed documents, versions and authenticated-free HTTPS destinations match enabled collection; owner separately approves publication                      |
-| Signed native acceptance                                | Anthony and release owner     | 14             | Signed iPhone verifies creation/relaunch/recovery, links, large text and VoiceOver, preserving earlier device gates; hosted prerequisite is evidenced above |
+| Actual analytics delivery and provider cleanup          | Phase 14 implementation owner | 14             | Client/server adapters use this receipt boundary at forwarding and deletion/privacy cleanup, without replay or product-save dependency                      |
+| Final wording, privacy-request handling and public URLs | Anthony and legal reviewer    | 12             | Reviewed documents, versions and authenticated-free HTTPS destinations match enabled collection; owner separately approves publication                      |
+| Signed native acceptance                                | Anthony and release owner     | 13             | Signed iPhone verifies creation/relaunch/recovery, links, large text and VoiceOver, preserving earlier device gates; hosted prerequisite is evidenced above |
 
 ## Final verification
 
@@ -165,5 +165,5 @@ October 18, 2026, on the final source:
 
 Changed directories were reviewed by their complete file lists; existing
 responsibility groups remain appropriate. No hosted Git CI or physical-device
-acceptance is claimed. Phase 11 delivery, Phase 13 legal publication and the
+acceptance is claimed. Phase 14 delivery, Phase 12 legal publication and the
 earlier signed-device/release gates remain open with the owners above.

@@ -87,7 +87,7 @@ cleanup pending.
 
 Phase 10 adds `GET/PUT /v1/account/acceptance`. Both derive the owner from the current session and use its transaction/owner lock, independently of paid access. Shared contracts define the Terms, Privacy Policy and analytics-scope versions. Server time records acceptance; retrying unchanged versions preserves that time. Migration `0017_account_acceptance` adds the forced-RLS owner table and an account privacy-restriction timestamp. Deletion removes the receipt; a privacy restriction survives reacceptance and never blocks product saving/access. User-requested export includes the receipt and restriction status.
 
-The pending secure bootstrap retains nonsecret accepted versions through lost responses and relaunch; normal confirmed receipts come from the server, not another account’s device state. Phase 11 consumes the shared eligibility rule and the mobile controller’s generation tickets. The server adapter rereads live owner/receipt/restriction for each delivery decision and fails closed on errors; never cache that decision or hold an owner transaction while awaiting a provider. No exporter is enabled.
+The pending secure bootstrap retains nonsecret accepted versions through lost responses and relaunch; normal confirmed receipts come from the server, not another account’s device state. Phase 14 consumes the shared eligibility rule and the mobile controller’s generation tickets. The server adapter rereads live owner/receipt/restriction for each delivery decision and fails closed on errors; never cache that decision or hold an owner transaction while awaiting a provider. No exporter is enabled.
 
 ## Database boundary
 

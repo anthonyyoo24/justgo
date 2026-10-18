@@ -19,6 +19,14 @@ export function SettingsScreen() {
         <SettingsMotionRow />
         {__DEV__ && (
           <SettingsActionRow
+            icon="help"
+            label="Test error reporting"
+            href="/preview?mode=diagnostics"
+            chevron
+          />
+        )}
+        {__DEV__ && (
+          <SettingsActionRow
             icon="haptics"
             label="Test haptics"
             href="/preview?mode=haptics"

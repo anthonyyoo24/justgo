@@ -32,9 +32,9 @@ Your Reduce Motion and Haptics choices are saved locally on this phone. We also 
 
 ## Analytics
 
-[REVIEW: October 15 owner direction replaces both planned Settings choices with one Terms & Privacy onboarding acceptance for the disclosed analytics scope. No analytics Settings switches or later analytics prompt are planned. The following describes intended Phase 11 behavior, not current collection: export remains disabled. Phase 13 must review the final page, exact fields, regional sufficiency, applicable withdrawal/objection process and publication. If analytics remains disabled, describe that actual behavior.]
+[REVIEW: October 15 owner direction replaces both planned Settings choices with one Terms & Privacy onboarding acceptance for the disclosed analytics scope. No analytics Settings switches or later analytics prompt are planned. Product analytics is deferred until after paid launch; the following is future Phase 14 scope, not launch collection. Export remains disabled through beta and paid launch. Phase 12 must review the final page, exact fields, regional sufficiency, applicable withdrawal/objection process and publication. For launch, replace future-tense/provider collection claims below with the verified disabled state. Phase 14 must update notices and accepted versions before enabling analytics; do not assume a launch receipt covers that future scope.]
 
-After you accept the Terms & Privacy page, we share limited events with PostHog to understand use of features such as challenge completion and Progress and improve JustGO. These events can use a random, persistent identifier linked to your JustGO account; they are not anonymous simply because they omit your name or email.
+Product analytics is disabled for launch. If enabled in a later update after reviewed notices and current scope acceptance, we would share limited events with PostHog to understand use of features such as challenge completion and Progress and improve JustGO. These events can use a random, persistent identifier linked to your JustGO account; they are not anonymous simply because they omit your name or email.
 
 The planned scope includes submitted feeling selections and coarse reflection-length categories. These categories describe approximate word counts, not the words you wrote. We do not send raw reflection text, recovery credentials, support messages or payment details to analytics, and we do not record replay videos of your app sessions. [REVIEW: Retain only the fields actually disclosed, reviewed and implemented.]
 
@@ -54,7 +54,7 @@ Our support inbox uses Google Gmail, and your message also passes through your e
 
 ## Service providers and international processing
 
-We use service providers to host and operate JustGO. These include Vercel for the API and Supabase for database hosting. Apple provides the device and optional iCloud Keychain services used for recovery. PostHog receives analytics only after the onboarding acceptance described above and within the reviewed scope.
+We use service providers to host and operate JustGO. These include Vercel for the API and Supabase for database hosting. Apple provides the device and optional iCloud Keychain services used for recovery. PostHog product analytics is disabled for launch. Any later activation requires updated notices and current account-owned scope acceptance as described above.
 
 [REVIEW: Finalize the active-provider list for the beta or paid release. Add Apple/RevenueCat subscription processing and Upstash billing delivery only when active. Confirm contracts, subprocessors and actual regions. Remove providers that are not enabled.]
 
@@ -74,7 +74,7 @@ Removing the app from your phone does not delete your cloud account. When paid s
 
 ## Your privacy choices and requests
 
-You can choose whether to submit a feeling or reflection. Settings → Export my data creates a ZIP with your saved activity and reflections, including changes waiting to upload from your current phone. Choose where to save or share this private file. Exporting does not delete your data. [REVIEW: Export is implemented locally; verify physical-iPhone delivery before publication. The Terms & Privacy acceptance page and analytics forwarding remain unimplemented in this checkout. In-app deletion requires native-build/device acceptance and hosted rollout before publication. Verify these paths before describing them as available; analytics Settings switches are no longer planned.]
+You can choose whether to submit a feeling or reflection. Settings → Export my data creates a ZIP with your saved activity and reflections, including changes waiting to upload from your current phone. Choose where to save or share this private file. Exporting does not delete your data. [REVIEW: Export is implemented locally; verify physical-iPhone delivery before publication. The Terms & Privacy receipt boundary is implemented; Phase 12 must align its launch wording/versions. Analytics forwarding is unimplemented and deferred until after paid launch. In-app deletion requires native-build/device acceptance and hosted rollout before publication. Verify these paths before describing them as available; analytics Settings switches are no longer planned.]
 
 Contact us with questions or requests to access, correct or delete personal information. We may need to verify that a request concerns your account, without asking you to email a recovery secret. Depending on the laws that apply, you may also have rights to portability, restriction or objection, to withdraw consent, and to complain to a privacy regulator. [REVIEW: Add applicable legal bases, regional rights, complaint contacts and response periods for worldwide distribution.]
 

@@ -10,6 +10,7 @@ module.exports = {
   coverageReporters: ['text-summary', 'json-summary', 'lcov', 'html'],
   testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   moduleNameMapper: {
+    '^@sentry/react-native$': '<rootDir>/test-support/sentry-sdk.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
     // Hoisted Expo Router tests must use this workspace's installed renderer.
     '^@testing-library/react-native$':

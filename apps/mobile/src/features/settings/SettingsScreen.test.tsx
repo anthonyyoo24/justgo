@@ -148,7 +148,7 @@ it('ends after About without version, test-build or developer-preview footer ite
   expect(screen.getByRole('button', { name: 'Terms of use' })).toBeTruthy();
 });
 
-it('offers Test haptics only in development', () => {
+it('offers synthetic diagnostic and haptics checks only in development', () => {
   const development = globalThis as typeof globalThis & { __DEV__: boolean };
   const original = development.__DEV__;
   try {
@@ -156,9 +156,14 @@ it('offers Test haptics only in development', () => {
     const screen = render(<SettingsScreen />);
     fireEvent.press(screen.getByRole('link', { name: 'Test haptics' }));
     expect(mockRouter.push).toHaveBeenCalledWith('/preview?mode=haptics');
+    fireEvent.press(screen.getByRole('link', { name: 'Test error reporting' }));
+    expect(mockRouter.push).toHaveBeenCalledWith('/preview?mode=diagnostics');
     development.__DEV__ = false;
     screen.rerender(<SettingsScreen />);
     expect(screen.queryByRole('link', { name: 'Test haptics' })).toBeNull();
+    expect(
+      screen.queryByRole('link', { name: 'Test error reporting' }),
+    ).toBeNull();
   } finally {
     development.__DEV__ = original;
   }

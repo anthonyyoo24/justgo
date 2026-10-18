@@ -6,6 +6,11 @@ describe('Expo project configuration', () => {
     process.env = { ...originalEnv };
     delete process.env.EAS_BUILD_PROFILE;
     delete process.env.IOS_BUNDLE_IDENTIFIER;
+    delete process.env.EXPO_PUBLIC_SENTRY_ENABLED;
+    delete process.env.EXPO_PUBLIC_SENTRY_DSN;
+    delete process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT;
+    delete process.env.SENTRY_AUTH_TOKEN;
+    delete process.env.SENTRY_ENVIRONMENT;
   });
   afterEach(() => {
     process.env = originalEnv;
@@ -24,9 +29,64 @@ describe('Expo project configuration', () => {
     expect(config.experiments.typedRoutes).toBe(true);
   });
 
+  it('requires explicit valid reporting configuration and installs native privacy after Sentry', () => {
+    process.env.EXPO_PUBLIC_SENTRY_ENABLED = 'true';
+    expect(() => require('./app.config')).toThrow('Sentry reporting requires');
+    jest.resetModules();
+    const dsn = `https://${'a'.repeat(32)}@o123.ingest.us.sentry.io/4512279181459456`;
+    process.env.EXPO_PUBLIC_SENTRY_DSN = dsn;
+    process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT = 'staging';
+    process.env.SENTRY_AUTH_TOKEN = 'private-build-token';
+    const { default: config } = require('./app.config');
+    expect(config.plugins.slice(-2)).toEqual([
+      [
+        '@sentry/react-native/expo',
+        expect.objectContaining({
+          organization: 'anthony-corp',
+          project: 'justgo-mobile',
+        }),
+      ],
+      [
+        './plugins/with-sentry-privacy.cjs',
+        {
+          enabled: true,
+          dsn,
+          environment: 'staging',
+        },
+      ],
+    ]);
+    expect(JSON.stringify(config)).not.toContain('private-build-token');
+  });
+
   it('requires a confirmed identifier for EAS builds', () => {
     process.env.EAS_BUILD_PROFILE = 'development';
     expect(() => require('./app.config')).toThrow('IOS_BUNDLE_IDENTIFIER');
+  });
+
+  it('reconciles native disabled state even after an enabled prebuild', () => {
+    const { default: config } = require('./app.config');
+    expect(config.plugins.slice(-2)).toEqual([
+      [
+        '@sentry/react-native/expo',
+        expect.objectContaining({
+          project: 'justgo-mobile',
+        }),
+      ],
+      [
+        './plugins/with-sentry-privacy.cjs',
+        { enabled: false, dsn: '', environment: 'development' },
+      ],
+    ]);
+  });
+
+  it('rejects a conflicting native environment override', () => {
+    process.env.EXPO_PUBLIC_SENTRY_ENABLED = 'true';
+    process.env.EXPO_PUBLIC_SENTRY_DSN = `https://${'a'.repeat(32)}@o123.ingest.us.sentry.io/4512279181459456`;
+    process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT = 'staging';
+    process.env.SENTRY_ENVIRONMENT = 'production';
+    expect(() => require('./app.config')).toThrow(
+      'SENTRY_ENVIRONMENT must match',
+    );
   });
 
   it('uses the confirmed identifier without changing the project', () => {
