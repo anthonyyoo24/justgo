@@ -14,6 +14,25 @@ focused tests/typechecks for the changed behavior and affected consumers; correc
 failures before extending the implementation. Review important uncovered branches
 without automatically collecting whole-project coverage after every edit.
 
+Choose the scope before running checks. Classify the actual behavior and boundary
+changed, rather than the directory, phase label or presence of a handoff edit.
+A routine follow-up does not reopen phase closeout.
+
+| Change                               | Default verification                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Documentation only                   | Scoped formatting, local links and consistency with the owning rules; no app tests, builds or UI checks.                                                                                                                                                                                                                                                                                                                                         |
+| Routine contained fix                | Meaningful regression tests for affected behavior, success/failure cases and consumers; affected workspace typechecks, repository lint and changed-file formatting. Run saved critical journeys affected by the change; add one grouped in-app walkthrough for UI behavior changes.                                                                                                                                                              |
+| Boundary or configuration change     | Widen checks to the affected consumers and boundary failures. Contracts, tsconfig, ESLint or `e2e/support` changes require the root contracts build and all-workspace typecheck. Backend/shared protocol or data-boundary changes require `test:db` against loopback `justgo_test`, including applicable ownership, replay, failure and migration/policy cases. Dependency/native changes retain applicable Doctor, build and device acceptance. |
+| Actual phase closeout or publication | Full `check`, full coverage and applicable saved journeys/exports; `test:db` at phase closeout and for backend/shared boundaries. Publication also requires fresh online dependency validation and Doctor immediately before pushing. Keep required hosted, staging and physical-device gates.                                                                                                                                                   |
+
+Routine fixes do not automatically run the full root suite, Doctor, aggregate
+coverage, database suites, all journeys or both platform exports. Expand for a
+concrete failure, affected boundary/configuration, explicit owner request or
+required phase/publication gate; briefly state the trigger without adding an
+approval checkpoint. Keep meaningful regression coverage, thresholds and affected
+consumers intact. After the scoped checks, relevant UI verification, fixture
+cleanup and changed-directory review pass, finish without optional extra checks.
+
 | Command                                | Purpose                                                                                                   |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `npm run test -w <workspace>`          | Workspace unit/component/contract tests; API default excludes database integration                        |
@@ -35,9 +54,15 @@ Pass `-- --runTestsByPath src/...test.tsx` to the mobile test script, or
 `-- path/to/test.ts` to API/contracts Vitest scripts, for focused tests. A slice
 changing contracts, tsconfig, ESLint configuration or `e2e/support` also runs
 `npm run build:contracts && npm run typecheck` at the root, covering all consumers
-and journeys. Before phase handoff/publication, run `npm run check`, full coverage
-and applicable saved journeys/exports; `test:db` is required for backend/shared
-boundaries and phase closeout. Earlier native/staging gates stay open until evidenced.
+and journeys. Use the scope matrix above for broader gates; editing a handoff is
+not itself a phase-closeout trigger. A mobile UI/navigation fix alone does not
+change a server protocol or data boundary. Earlier native/staging gates stay open
+until evidenced.
+
+Account for checks included in broader commands instead of repeating a passed
+standalone check merely for final reporting. Repeat when inputs changed, results
+are stale or a failure needs investigation. Required phase/publication commands
+still run in full; overlapping internals do not authorize skipping their gates.
 
 ## Type and lint environments
 
@@ -95,6 +120,15 @@ coverage and journeys. Inspect hosted results for the pushed commit before marki
 a gate verified.
 
 ## Coverage policy
+
+Run the full aggregate gate at actual phase closeout and before publication.
+Run it earlier when coverage configuration, source inclusion/exclusion rules,
+critical selectors or thresholds change in a way that can invalidate the gate,
+or when an affected boundary, concrete failure or owner request requires it.
+Ordinary files or branches under unchanged coverage rules do not alone trigger
+whole-project coverage. Review important affected branches and use focused
+coverage when needed; never exclude an affected consumer or lower a floor to
+make a focused run pass.
 
 The root coverage command builds contracts, runs workspaces sequentially and
 enforces [coverage-thresholds.json](../../scripts/quality/coverage-thresholds.json).
@@ -272,13 +306,19 @@ configuration and API origin before reusing a server. Honor side-panel-only requ
 record unavailable capabilities rather than switching browsers against preference.
 Keep screenshots/recordings in ignored `.local/` unless explicitly requested for Git.
 
+Group related affected states and screenshots into one walkthrough. Prefer the
+existing guarded launchers and saved specs over building a harness for a one-off
+fix. Reuse a running fixture only after verifying its ownership, current served
+code, configuration and run-specific cleanup authority. Do not adopt another
+run's account registry or leave accounts behind when a check fails. The saved
+journey wrapper owns its service lifecycle; pass affected specs to that wrapper
+rather than bypassing its database guards, request fence or teardown.
+
 Record actual viewport, flow, fixtures, failure and recovery, keeping saved automated
 journeys, one-off walkthroughs, native simulator and physical-device evidence separate.
 Browser/export/component checks cannot establish Keychain/AsyncStorage durability,
 OS lifecycle, gestures, software keyboard, VoiceOver, radio/backup or physical recovery.
-Large folder moves require cold web/iOS bundles and an owned Metro restart with
-`--clear` before reloading the existing installed development app; an unrelated
-export does not refresh its live dependency graph.
+Use the [move checks](#file-moves-and-bundle-checks) when module or asset paths change.
 
 The [native-testing checkpoint](../handoffs/phase-07-3a-testing-checkpoint.md) and
 [browser assessment](../checks/phase-07-3a-browser-testing-assessment.md) remain the
@@ -288,6 +328,30 @@ actual-app/API/database cases and its authorized commit's hosted gate. Retain th
 Maestro launch smoke (`APP_ID=... npm run test:native -w @justgo/mobile`) and relevant
 manual simulator checks meanwhile. Device/staging gates belong in
 [Phase 14](../implementation-plan/phase-14-release.md) and the applicable handoffs.
+
+## File moves and bundle checks
+
+Every move updates affected imports, dynamic loaders, test discovery, coverage
+selectors, fixtures, assets, packaging/upload allowlists, scripts and documentation
+links in the same change. Keep tests and native/web adapter pairs beside their
+owner; preserve all boundary checks and coverage floors.
+
+For a small move within the same resolver and packaging rules, run affected
+tests, typechecks and import/discovery/packaging checks. Cold-bundle an affected
+platform when those checks cannot establish module or asset resolution; both
+platform exports are not automatic for every move.
+
+Large moves and platform-sensitive moves affecting adapter resolution,
+entrypoints, shared assets or packaging require cold web and iOS exports.
+Run the production exported-web smoke after the web export, before the iOS export
+replaces `dist/`. Changes to coverage inclusion/exclusion rules or selectors also
+follow the coverage policy above.
+
+After source/asset moves, restart the owned running Metro server with `--clear`
+and reload the existing installed development app to clear stale module/asset
+paths. A separate successful export does not refresh that server's live graph.
+Keep functional changes and moves separately reviewable, and review the complete
+file lists only in touched directories; unrelated cleanup remains follow-up work.
 
 <a id="migration-preservation-rehearsal-071"></a>
 

@@ -203,6 +203,21 @@ it does not authorize Git publication, release deployment, legal publication,
 retention scheduling, provider activation or native distribution. The
 [Phase 10 handoff](handoffs/phase-10-acceptance.md) records the rollout evidence.
 
+## October 18 focused verification for routine fixes
+
+Anthony approved focused checks as the default for routine fixes, classified by
+the behavior and boundary changed. A follow-up or handoff edit does not reopen
+phase closeout. The [testing guide](operations/TESTING.md#choosing-checks) owns the
+scope matrix, concrete escalation triggers, coverage and file-move checks; actual
+phase closeout and publication retain their full required gates.
+
+Reuse unchanged instructions, versioned reference documentation and correctly
+configured tools when context and ownership are verified. Keep routine check
+details in task/review records and update durable documentation when behavior,
+invariants, setup or paths change. Preserve regression tests, coverage floors,
+fixture isolation/cleanup, native/device evidence and separate Git permissions.
+Keep heavy checks sequential on the 8 GB Mac.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.

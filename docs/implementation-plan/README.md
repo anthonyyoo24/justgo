@@ -40,7 +40,7 @@ Prepared billing code can be reviewed independently while activation waits. Lega
 - Earlier feature implementation may proceed against verified local identity/core behavior while explicitly owned physical-device and staging gates remain open. Quality phases do not close those gates.
 - Phase 07 checkpoints remain sequential except deferred 07.3A; keep the retained browser suite and lower-level coverage until replacement native acceptance exists. Phase 14 starts its native smoke from that checkpoint.
 - Phase 08 includes the first physical-iPhone haptics acceptance. Broader device/release rechecks remain Phase 14.
-- Run focused checks during implementation and required phase/publication gates at completion. Follow [testing guidance](../operations/TESTING.md); browser evidence cannot establish native behavior.
+- Routine fixes default to focused checks for affected behavior and consumers. A follow-up fix or handoff edit does not reopen phase closeout. Run the full required gates at actual phase closeout/publication, or widen earlier for the concrete triggers in [testing guidance](../operations/TESTING.md#choosing-checks). Browser evidence cannot establish native behavior.
 - Phase 08A uses the approved two-PR stack: documentation/design sources first, then implementation against that documentation branch. Keep move-only commits separate from behavior changes and merge in dependency order. Publishing, pull requests, merges and local branch/worktree deletion require the specific owner authorization in AGENTS.md.
 - Keep first-release scope in the [PRD](../product/PRD.md). Onboarding/questionnaires, reminders, progression/extra filters, dictation, lock-screen display, Android, Stripe and coaching remain deferred unless a phase explicitly implements them.
 
@@ -50,8 +50,8 @@ Prepared billing code can be reviewed independently while activation waits. Lega
 
 ## Handoff workflow
 
-1. Before starting, verify the checkout/environment and read the previous phase and dependency handoffs; check relevant smoke behavior.
+1. Before starting, verify the checkout and applicable environment, then read the requested phase and dependency handoffs. Reuse already-read guidance when its inputs are unchanged and context is available; reread changed/newly relevant sections. Choose verification scope before running checks.
 2. During implementation, retain decisions, checks and unresolved issues in task conversation. Do not rewrite project docs after every small change.
-3. At phase completion, update applicable docs together and edit the handoff using [TEMPLATE.md](../handoffs/TEMPLATE.md). Record only what the next phase needs: decisions and why, changed behavior, invariants, recurring problems, setup, owned open gates and final verification.
-4. Record results in the handoff; change a phase plan only when scope or a decision changes, and edit its status in place. Update the index row only when status changes. Keep detailed interim checks, screenshots and publication bookkeeping in commits/PR descriptions.
+3. At actual phase closeout, run its required gates, update applicable docs together and edit the handoff using [TEMPLATE.md](../handoffs/TEMPLATE.md). Record only what the next phase needs: decisions and why, changed behavior, invariants, recurring problems, setup, owned open gates and final verification. Routine follow-ups update durable behavior/invariant/setup documentation and moved-file links as needed, without refreshing all phase evidence or creating another handoff.
+4. Record phase results in the handoff; change a phase plan only when scope or a decision changes, and edit its status in place. Update the index row only when status changes. Keep routine/interim checks, screenshots and publication bookkeeping in task/commit/PR records. A handoff edit alone does not trigger phase-wide checks or close an open gate.
 5. Mark complete only when required work/dependencies are satisfied, verification exists and each remaining gate has an approved owner/phase. A deferral is not a passing result. Do not publish or merge without the separate authorization required by AGENTS.md.

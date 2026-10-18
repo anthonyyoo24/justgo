@@ -143,8 +143,12 @@ exist and keeps the approved mobile responsibility groups in the guide.
 - Moves must update imports, dynamic loaders, Jest/coverage selectors, fixture
   seams, assets, deployment allowlists, scripts and documentation together.
 - Keep move-only work separately reviewable from behavior changes. Use
-  import-aware rewrites and cold web/iOS bundles. Restart an owned Metro with
-  --clear and reload the existing app after moves; exports do not refresh a live
+  import-aware rewrites and the [move checks](../operations/TESTING.md#file-moves-and-bundle-checks):
+  focused import/discovery/packaging checks for small moves, cold web/iOS bundles
+  for large or platform-sensitive moves. Restart an owned Metro with `--clear`
+  and reload the existing app after moves; exports do not refresh a live
   dependency graph.
 - Review complete file lists in touched directories before handoff. Preserve
-  unrelated retained code and all existing coverage/boundary safeguards.
+  unrelated retained code and all existing coverage/boundary safeguards. Keep
+  necessary organization within the task's responsibility; record unrelated
+  cleanup separately instead of expanding a routine fix.
