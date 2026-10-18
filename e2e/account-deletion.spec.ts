@@ -1,7 +1,9 @@
 import { sessionCreateSchema, sessionResponseSchema } from '@justgo/contracts';
+import type { JSHandle } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
+import { acceptFixtureTerms } from './support/acceptance';
 
 test('Settings permanently deletes the owned account and retries a lost acknowledgement without resurrecting it', async ({
   page,
@@ -45,9 +47,12 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
+  await acceptFixtureTerms(page);
   const proof = sessionCreateSchema.parse((await creating).postDataJSON());
   const account = sessionResponseSchema.parse(await (await created).json());
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await fixtureDatabase.query(
     `insert into justgo.attempts (user_id,id,venue_id,challenge_id,level_id,started_at,activity_date,legacy_display_time_zone,reflection_text,reflection_revision)
     select $1,gen_random_uuid(),v.venue_id,c.id,c.level_id,now(),'2026-10-14','America/Toronto','Disposable deletion journey',1
@@ -330,29 +335,68 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
       await route.abort('failed');
     } else await route.continue();
   });
-  const next = page.getByRole('button', { name: 'Continue', exact: true });
+  const accepting = page.getByRole('button', { name: 'I Accept', exact: true });
+  let flashWatcher:
+    JSHandle<{ flashed: boolean; observer: MutationObserver }> | undefined;
   try {
-    await next.click();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
+    ).toBeVisible();
+    flashWatcher = await page.evaluateHandle(() => {
+      const state = {
+        flashed: false,
+        observer: new MutationObserver(() => {}),
+      };
+      const inspect = () => {
+        state.flashed ||= Array.from(
+          document.querySelectorAll('h1,h2,h3,[role="heading"]'),
+        ).some(
+          (element) =>
+            element.textContent === 'JustGO' &&
+            !element.closest('[aria-hidden="true"],[inert]') &&
+            element.checkVisibility({
+              checkOpacity: true,
+              checkVisibilityCSS: true,
+            }),
+        );
+      };
+      state.observer = new MutationObserver(inspect);
+      state.observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true,
+      });
+      inspect();
+      return state;
+    });
+    await acceptFixtureTerms(page);
     await expect(
       page.getByRole('progressbar', {
         name: 'Creating your account',
         exact: true,
       }),
     ).toBeVisible();
-    await expect(next).toBeDisabled();
-    await expect(next.getByText('Continue', { exact: true })).toHaveCount(0);
+    await expect(accepting).toBeDisabled();
+    await expect(accepting.getByText('I Accept', { exact: true })).toHaveCount(
+      0,
+    );
     releaseCreation();
     await expect(page.getByRole('alert')).toBeVisible();
-    await expect(page).toHaveURL(/\/welcome$/);
-    await expect(next).toBeEnabled();
+    await expect(page).toHaveURL(/\/acceptance$/);
+    await expect(accepting).toBeEnabled();
     const checkingAccess = page.waitForRequest(`${journeyApiUrl}/v1/access`);
-    await next.click();
+    await accepting.click();
     await checkingAccess;
-    await expect(page).toHaveURL(/\/welcome$/);
+    await expect(page).toHaveURL(/\/acceptance$/);
     await expect(
-      page.getByRole('heading', { name: 'JustGO', exact: true }),
+      page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
     ).toBeVisible();
-    await expect(next).toBeDisabled();
+    await expect(accepting).toBeDisabled();
+    await expect(
+      page.getByRole('button', { name: 'Continue', exact: true }),
+    ).toHaveCount(0);
     await expect(page.getByText('Checking your access…')).toHaveCount(0);
     await expect(
       page.getByRole('button', { name: 'Check access again', exact: true }),
@@ -366,27 +410,30 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
       }),
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'JustGO', exact: true }),
+      page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: 'Find a challenge', exact: true }),
     ).toHaveCount(0);
-    await expect(next).toBeDisabled();
+    await expect(accepting).toBeDisabled();
     releaseCatalog();
     await expect(page.getByRole('alert')).toHaveText(
       'Your challenges couldn’t load. Check your connection and try again.',
     );
-    await expect(next).toBeEnabled();
+    const retry = page.getByRole('button', { name: 'Try again', exact: true });
+    await expect(retry).toBeEnabled();
     failCatalog = false;
-    await next.click();
+    await retry.click();
     await expect.poll(() => textureRequested).toBe(true);
-    await expect(next).toBeDisabled();
+    await expect(accepting).toBeDisabled();
     releaseArtwork();
     await expect.poll(() => artworkLoaded).toBe(true);
     // The illustration alone must not expose a card still awaiting its texture.
-    await expect(page.getByTestId('welcome-preparation-cover')).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'JustGO', exact: true }),
+      page.getByTestId('acceptance-preparation-cover'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
     ).toBeVisible();
     releaseTexture();
     await expect(
@@ -399,12 +446,22 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
     expect(replacementAccount?.userId).not.toBe(account.userId);
     expect(replacementProofs).toHaveLength(2);
     expect(replacementProofs[1]).toEqual(replacementProofs[0]);
-    await expect(page.getByTestId('welcome-preparation-cover')).toHaveCount(0);
+    await expect(page.getByTestId('acceptance-preparation-cover')).toHaveCount(
+      0,
+    );
+    expect(await flashWatcher.evaluate((state) => state.flashed)).toBe(false);
+    await expect(
+      page.getByRole('button', { name: 'Continue', exact: true }),
+    ).toHaveCount(0);
   } finally {
     releaseCreation();
     releaseAccess();
     releaseCatalog();
     releaseArtwork();
     releaseTexture();
+    if (flashWatcher) {
+      await flashWatcher.evaluate((state) => state.observer.disconnect());
+      await flashWatcher.dispose();
+    }
   }
 });

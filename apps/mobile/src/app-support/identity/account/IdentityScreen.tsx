@@ -29,10 +29,12 @@ export function IdentityScreen({
   controller,
   managed = false,
   recoveryOnly = false,
+  onCreateAccount,
 }: {
   controller: IdentityController;
   managed?: boolean;
   recoveryOnly?: boolean;
+  onCreateAccount?: () => Promise<void>;
 }) {
   const liveState = useSyncExternalStore(
     controller.subscribe,
@@ -52,6 +54,7 @@ export function IdentityScreen({
   const [recoveryOpen, setRecoveryOpen] = useState(recoveryOnly);
   const [recoveryKey, setRecoveryKey] = useState('');
   const router = useRouter();
+  const createAccount = onCreateAccount ?? controller.createAccount;
   const navigation: { getCurrentRoute(): { key: string } | undefined } =
     useNavigationContainerRef();
   const { activeAction, runAction } = useIdentityAction(controller);
@@ -112,11 +115,27 @@ export function IdentityScreen({
     action: () => Promise<void>,
   ) =>
     selectConfirmation(message, id, action, recoveryOpen && !receivingTransfer);
+  const recoverAccount = async (work: () => Promise<void>) => {
+    const routeKey = navigation.getCurrentRoute()?.key;
+    const previousSession = controller.getSnapshot().account?.sessionId;
+    await work();
+    const account = controller.getSnapshot().account;
+    // Account guards can remount this screen while recovery is in flight.
+    // The initiating action retains its route/session boundary through that remount.
+    if (
+      recoveryOnly &&
+      routeKey &&
+      navigation.getCurrentRoute()?.key === routeKey &&
+      account &&
+      account.sessionId !== previousSession
+    )
+      router.replace('/recovery');
+  };
   const recoverWithKey = async () => {
     if (state.busy) return;
     const value = recoveryKey;
     setRecoveryKey('');
-    await controller.recoverKey(value);
+    await recoverAccount(() => controller.recoverKey(value));
   };
   const finishTransfer = async () => {
     const routeKey = navigation.getCurrentRoute()?.key;
@@ -260,10 +279,10 @@ export function IdentityScreen({
                     confirm(
                       'Create a separate empty account? This will not merge or recover any existing progress.',
                       'create-account',
-                      controller.createAccount,
+                      createAccount,
                     );
                   }
-                : controller.createAccount,
+                : createAccount,
             )}
         </>
       )}
@@ -341,7 +360,10 @@ export function IdentityScreen({
                 confirm(
                   'Switch to the account linked to this credential? No accounts or history will be merged.',
                   `recover-credential:${credential.id}`,
-                  () => controller.recoverCredential(credential.id),
+                  () =>
+                    recoverAccount(() =>
+                      controller.recoverCredential(credential.id),
+                    ),
                 )
               }
             />
@@ -359,7 +381,7 @@ export function IdentityScreen({
                 confirm(
                   'Create a separate empty account? Existing accounts and credentials will be kept separate. This does not recover or merge your previous progress.',
                   'create-separate-account',
-                  controller.createAccount,
+                  createAccount,
                 )
               }
             />

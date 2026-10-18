@@ -537,12 +537,15 @@ describe('Phase 07 expansion, final contraction and disposable restoration', () 
     await migration(16);
     await compareMetadata(16);
     expect(await canonicalRows()).toEqual(normalizedBefore);
+    await migration(17);
+    await compareMetadata(17);
+    expect(await canonicalRows()).toEqual(normalizedBefore);
     // Clean installation also applies the complete immutable journal.
     await admin.query(
       `DROP SCHEMA ${schema} CASCADE; CREATE SCHEMA ${schema} AUTHORIZATION justgo_migrator; REVOKE ALL ON SCHEMA ${schema} FROM public; GRANT USAGE ON SCHEMA ${schema} TO justgo_runtime`,
     );
-    for (let index = 0; index <= 16; index++) await migration(index);
-    await compareMetadata(16);
+    for (let index = 0; index <= 17; index++) await migration(index);
+    await compareMetadata(17);
     expect(
       (
         await admin.query(

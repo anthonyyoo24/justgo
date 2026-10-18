@@ -25,7 +25,7 @@ export class ApiError extends Error {
     super(code);
   }
 }
-export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type RequestOptions = {
   method?: HttpMethod;
   body?: unknown;

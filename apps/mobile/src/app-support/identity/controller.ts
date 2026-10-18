@@ -1,6 +1,8 @@
 import { getRandomValues, randomUUID } from 'expo-crypto';
 import {
   credentialsResponseSchema,
+  CURRENT_ACCEPTANCE_VERSIONS,
+  type AcceptanceVersions,
   accountDeletionResponseSchema,
   devicesResponseSchema,
   okSchema,
@@ -33,6 +35,7 @@ type Snapshot = {
   busy: boolean;
   busyInBackground: boolean;
   initialized: boolean;
+  needsWelcome: boolean;
   hasPending: boolean;
   cancellationPending: boolean;
   account: SessionResponse | null;
@@ -101,6 +104,7 @@ export class IdentityController {
     busy: false,
     busyInBackground: false,
     initialized: false,
+    needsWelcome: false,
     hasPending: false,
     cancellationPending: false,
     account: null,
@@ -391,11 +395,13 @@ export class IdentityController {
           this.update({ message: 'Choose a recovery method to continue.' });
           return;
         }
-        if (this.vault.kind === 'keychain') await this.newAccount();
+        // Creating an account requires an explicit Terms & Privacy acceptance.
+        // Discovering an empty vault alone never creates a server account.
+        this.update({ needsWelcome: true });
       },
       { resumeDeletion: true },
     );
-  private async newAccount() {
+  private async newAccount(acceptance?: AcceptanceVersions) {
     const credential = { id: this.random.id(), secret: this.random.secret() };
     // Persist the complete pending intent first, then the synchronizing item, then call the API.
     await this.save({
@@ -409,6 +415,7 @@ export class IdentityController {
         credentialId: credential.id,
         secret: credential.secret,
         proposal: this.proposal(),
+        ...(acceptance ? { acceptance } : {}),
       },
     });
     this.update({
@@ -424,6 +431,26 @@ export class IdentityController {
     this.run(async () => {
       await this.ensureData();
       await this.newAccount();
+    });
+  createAcceptedAccount = () =>
+    this.run(async () => {
+      const pending = this.data!.pending;
+      if (pending?.kind === 'bootstrap') {
+        // Retain the original proof after an uncertain response. The explicit
+        // tap can update legal versions without creating another account.
+        await this.save({
+          ...this.data!,
+          pending: { ...pending, acceptance: CURRENT_ACCEPTANCE_VERSIONS },
+        });
+        await this.resume();
+      } else if (
+        !pending ||
+        pending.kind === 'recover' ||
+        pending.kind === 'renew'
+      ) {
+        // An explicit separate-account choice retains the old credentials.
+        await this.newAccount(CURRENT_ACCEPTANCE_VERSIONS);
+      } else throw new IdentityClientError('CONFLICT');
     });
   private async finish(
     info: SessionResponse,
@@ -451,6 +478,7 @@ export class IdentityController {
     this.transferActive = false;
     this.update({
       account: info,
+      needsWelcome: false,
       deletionStatus: null,
       devices: [],
       recoveryKeys: [],
@@ -520,6 +548,9 @@ export class IdentityController {
         kind: pending.kind === 'bootstrap' ? 'bootstrap' : 'recovery',
         ...pending.proposal,
         credential: credential.secret,
+        ...(pending.kind === 'bootstrap' && pending.acceptance
+          ? { acceptance: pending.acceptance }
+          : {}),
       },
     );
     await this.finish(info, pending.proposal, credential.id);
@@ -528,9 +559,11 @@ export class IdentityController {
     // Foreground refresh has nothing to reconnect after completed deletion.
     // A pending replacement account must still resume with its saved proof.
     if (
-      this.snapshot.deletionStatus === 'deleted' &&
-      !this.data?.pending &&
-      !this.data?.session
+      (this.snapshot.deletionStatus === 'deleted' ||
+        this.snapshot.needsWelcome) &&
+      this.data !== null &&
+      !this.data.pending &&
+      !this.data.session
     )
       return Promise.resolve();
     return this.run(

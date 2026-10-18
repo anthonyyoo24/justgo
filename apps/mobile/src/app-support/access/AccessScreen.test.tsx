@@ -1,6 +1,10 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { AccessScreen } from './AccessScreen';
-import { useAccess, useIdentity } from '../providers/AppProvider';
+import {
+  useAccess,
+  useIdentity,
+  useAcceptance,
+} from '../providers/AppProvider';
 let mockWelcomePending = false;
 jest.mock('../identity/welcome/WelcomeTransition', () => ({
   useWelcomeTransition: () => mockWelcomePending,
@@ -8,6 +12,7 @@ jest.mock('../identity/welcome/WelcomeTransition', () => ({
 jest.mock('../providers/AppProvider', () => ({
   useAccess: jest.fn(),
   useIdentity: jest.fn(),
+  useAcceptance: jest.fn(),
 }));
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
@@ -20,19 +25,47 @@ jest.mock('expo-router', () => {
 });
 const access = useAccess as jest.Mock;
 const identity = useIdentity as jest.Mock;
+const acceptance = useAcceptance as jest.Mock;
 beforeEach(() => {
   mockWelcomePending = false;
+  acceptance.mockReturnValue({ status: 'accepted' });
   identity.mockReturnValue({
     initialized: true,
     busy: false,
     account: { userId: 'a' },
   });
 });
-it('keeps a replacement on welcome instead of flashing the access-check page', () => {
+
+it.each(['loading', 'required', 'error'])(
+  'sends %s acceptance to its page despite verified paid access',
+  (status) => {
+    acceptance.mockReturnValue({ status });
+    access.mockReturnValue({ verified: true });
+    const screen = render(<AccessScreen />);
+    expect(screen.getByText('Redirect: /acceptance')).toBeTruthy();
+    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
+  },
+);
+
+it('sends a fresh installation to welcome before account creation or acceptance checks', () => {
+  identity.mockReturnValue({
+    initialized: true,
+    busy: false,
+    account: null,
+    needsWelcome: true,
+  });
+  acceptance.mockReturnValue({ status: 'disconnected' });
+  access.mockReturnValue({ verified: false });
+  const screen = render(<AccessScreen />);
+  expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
+  expect(screen.queryByText('Redirect: /recovery')).toBeNull();
+});
+it('keeps an accepted replacement on Terms while its preparation cover is opening', () => {
   mockWelcomePending = true;
   access.mockReturnValue({ isPending: true, verified: false });
   const screen = render(<AccessScreen />);
-  expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
+  expect(screen.getByText('Redirect: /acceptance')).toBeTruthy();
+  expect(screen.queryByText('Redirect: /welcome')).toBeNull();
   expect(screen.queryByText('Checking your access…')).toBeNull();
 });
 it('keeps unavailable access closed and offers retry and recovery without a welcome questionnaire', () => {

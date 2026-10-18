@@ -22,6 +22,9 @@ export class DeleteAccountService {
           );
           // All authenticated product/identity mutations take the same owner lock.
           await tx.execute(
+            sql`delete from justgo.account_acceptances where user_id=${userId}`,
+          );
+          await tx.execute(
             sql`delete from justgo.attempt_patch_receipts where user_id=${userId}`,
           );
           await tx.execute(
@@ -39,7 +42,7 @@ export class DeleteAccountService {
           const result = await tx.execute<{
             deleted_at: Date;
           }>(sql`update justgo.users
-          set deleted_at=now(), deletion_session_digest=${digest(token)} where id=${userId} returning deleted_at`);
+          set deleted_at=now(), deletion_session_digest=${digest(token)}, analytics_restricted_at=null where id=${userId} returning deleted_at`);
           deletedAt = result.rows[0]!.deleted_at;
         }
         const credentials = await tx.execute<{ digest: string }>(

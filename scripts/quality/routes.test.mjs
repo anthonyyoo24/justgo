@@ -53,6 +53,7 @@ test('the installed Router resolves each application URL to exactly one file', (
     urls.sort(),
     [
       '/',
+      '/acceptance',
       '/access',
       '/account/devices',
       '/account/keys',

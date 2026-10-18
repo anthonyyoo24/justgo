@@ -21,16 +21,28 @@ export type RequiresSuppliedController = Assert<
     : true
 >;
 
+let mockCurrentRouteKey: string | undefined = 'recovery';
+const mockReplace = jest.fn();
+beforeEach(() => {
+  mockCurrentRouteKey = 'recovery';
+  mockReplace.mockClear();
+  jest
+    .spyOn(AppState, 'addEventListener')
+    .mockReturnValue({ remove: jest.fn() });
+});
+afterEach(() => jest.restoreAllMocks());
+
 jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   const { Text } = require('react-native') as typeof import('react-native');
   return {
     useNavigationContainerRef: () => ({
-      getCurrentRoute: () => ({ key: 'recovery' }),
+      getCurrentRoute: () =>
+        mockCurrentRouteKey ? { key: mockCurrentRouteKey } : undefined,
     }),
     useRouter: () => ({
       canGoBack: () => false,
-      replace: jest.fn(),
+      replace: mockReplace,
       dismissTo: jest.fn(),
       back: jest.fn(),
     }),
@@ -211,6 +223,9 @@ it('shows service unavailable for a malformed API address, without blaming secur
     createIdentityApi('not-a-url', fetcher),
   );
   const screen = render(<IdentityScreen controller={controller} />);
+  fireEvent.press(
+    await screen.findByRole('button', { name: 'Create a new account' }),
+  );
   await waitFor(() =>
     expect(screen.getByText(/account service is unavailable/)).toBeTruthy(),
   );
@@ -492,3 +507,133 @@ it('retains a recovery key across temporary closes and clears it on background',
     listener.mockRestore();
   }
 });
+
+function recoveryNavigation(method: 'key' | 'credential') {
+  const controller = new IdentityController(createMemoryVault(), {
+    request: jest.fn(),
+  });
+  const account = {
+    userId: '40000000-0000-4000-8000-000000000001',
+    deviceId: '40000000-0000-4000-8000-000000000002',
+    sessionId: '40000000-0000-4000-8000-000000000003',
+    expiresAt: '2026-10-18T12:00:00.000Z',
+  };
+  const credentialId = '40000000-0000-4000-8000-000000000004';
+  let snapshot = {
+    ...controller.getSnapshot(),
+    initialized: true,
+    account,
+    credentials: [{ id: credentialId }],
+  };
+  jest.spyOn(controller, 'getSnapshot').mockImplementation(() => snapshot);
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const recovery = jest
+    .spyOn(controller, method === 'key' ? 'recoverKey' : 'recoverCredential')
+    .mockImplementation(async () => {
+      snapshot = { ...snapshot, busy: true };
+      await pending;
+      snapshot = { ...snapshot, busy: false };
+    });
+  const screen = render(
+    <IdentityScreen controller={controller} managed recoveryOnly />,
+  );
+  const start = () => {
+    if (method === 'key') {
+      fireEvent.changeText(
+        screen.getByLabelText('Recovery key'),
+        'a'.repeat(64),
+      );
+      fireEvent.press(screen.getByRole('button', { name: 'Recover with key' }));
+    } else {
+      fireEvent.press(
+        screen.getByRole('button', {
+          name: `Recover saved credential 1 (${credentialId.slice(0, 8)})`,
+        }),
+      );
+      fireEvent.press(screen.getByRole('button', { name: 'Confirm' }));
+    }
+  };
+  return {
+    controller,
+    screen,
+    recovery,
+    start,
+    changeAccount: () => {
+      snapshot = {
+        ...snapshot,
+        account: {
+          ...account,
+          userId: '40000000-0000-4000-8000-000000000005',
+          sessionId: '40000000-0000-4000-8000-000000000006',
+        },
+      };
+    },
+    fail: () => {
+      snapshot = { ...snapshot, message: 'Couldn’t connect. Please retry.' };
+    },
+    finish: async () => {
+      release();
+      await pending;
+      await Promise.resolve();
+    },
+  };
+}
+
+it.each(['key', 'credential'] as const)(
+  'returns %s recovery to the account hub even if an account guard remounts the screen',
+  async (method) => {
+    const s = recoveryNavigation(method);
+    s.start();
+    await waitFor(() => expect(s.recovery).toHaveBeenCalledTimes(1));
+    s.changeAccount();
+    s.screen.unmount();
+    const remounted = render(
+      <IdentityScreen controller={s.controller} managed recoveryOnly />,
+    );
+    expect(remounted.queryByText('Redirect: /recovery')).toBeNull();
+    await act(s.finish);
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/recovery'));
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+    remounted.unmount();
+  },
+);
+
+it.each(['key', 'credential'] as const)(
+  'does not navigate after late %s recovery when the initiating route has been left',
+  async (method) => {
+    const s = recoveryNavigation(method);
+    s.start();
+    await waitFor(() => expect(s.recovery).toHaveBeenCalledTimes(1));
+    mockCurrentRouteKey = 'settings';
+    s.screen.unmount();
+    s.changeAccount();
+    await act(s.finish);
+    expect(s.controller.getSnapshot().account?.userId).toBe(
+      '40000000-0000-4000-8000-000000000005',
+    );
+    expect(mockReplace).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['key', 'credential'] as const)(
+  'retains the current account and recovery form after %s recovery fails',
+  async (method) => {
+    const s = recoveryNavigation(method);
+    const original = s.controller.getSnapshot().account;
+    s.start();
+    await waitFor(() => expect(s.recovery).toHaveBeenCalledTimes(1));
+    s.fail();
+    await act(s.finish);
+    s.screen.rerender(
+      <IdentityScreen controller={s.controller} managed recoveryOnly />,
+    );
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(s.screen.queryByText('Redirect: /recovery')).toBeNull();
+    expect(s.controller.getSnapshot().account).toEqual(original);
+    expect(s.screen.getByLabelText('Recovery key')).toBeTruthy();
+    expect(s.screen.getByText('Couldn’t connect. Please retry.')).toBeTruthy();
+  },
+);

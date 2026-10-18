@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRuntime } from '../../providers/AppProvider';
-import { useModalIsolation } from '../../../platform/modals/useModalIsolation';
-import { WelcomeView } from './WelcomeView';
-import { welcomeBackgroundColor } from './welcome-artwork';
+import { useRuntime } from '../providers/AppProvider';
+import { useModalIsolation } from '../../platform/modals/useModalIsolation';
+import { AcceptanceView } from './AcceptanceView';
+import { useAcceptanceLinks } from './useAcceptanceLinks';
 
-export function WelcomePreparationCover({
+export function AcceptancePreparationCover({
   preparing,
   attempt,
   onShow,
@@ -19,6 +19,7 @@ export function WelcomePreparationCover({
 }) {
   // Read the root's measured insets before presenting the native modal.
   const insets = useSafeAreaInsets();
+  const { linkError, ...links } = useAcceptanceLinks();
   const { challenges } = useRuntime();
   const state = useSyncExternalStore(
     challenges.subscribe,
@@ -53,16 +54,18 @@ export function WelcomePreparationCover({
         ref={surface}
         style={styles.surface}
         accessibilityViewIsModal
-        testID="welcome-preparation-cover"
+        testID="acceptance-preparation-cover"
       >
-        <WelcomeView
+        <AcceptanceView
           insets={insets}
           busy={!error}
-          error={error}
+          error={linkError || error}
           busyLabel={
-            preparing ? 'Preparing your challenges' : 'Creating your account'
+            preparing ? 'Preparing your challenges' : 'Checking your access'
           }
-          onContinue={onRetry}
+          actionLabel={error ? 'Try again' : 'I Accept'}
+          onAccept={onRetry}
+          {...links}
         />
       </View>
     </Modal>
@@ -70,5 +73,5 @@ export function WelcomePreparationCover({
 }
 
 const styles = StyleSheet.create({
-  surface: { flex: 1, backgroundColor: welcomeBackgroundColor },
+  surface: { flex: 1, backgroundColor: '#FBF7EF' },
 });

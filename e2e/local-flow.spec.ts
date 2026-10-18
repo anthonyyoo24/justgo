@@ -3,7 +3,11 @@ import { sessionResponseSchema, sessionCreateSchema } from '@justgo/contracts';
 import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
-import { leaveAccountScreens } from './support/account-navigation';
+import {
+  leaveAccountScreens,
+  reloadForAccountRecovery,
+} from './support/account-navigation';
+import { acceptFixtureTerms } from './support/acceptance';
 
 async function openAccount(page: Page, catalogReady = true) {
   await page.goto('/recovery');
@@ -15,6 +19,7 @@ async function openAccount(page: Page, catalogReady = true) {
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
+  await acceptFixtureTerms(page);
   const response = await created;
   const body: unknown = await response.json();
   if (!response.ok()) {
@@ -27,7 +32,9 @@ async function openAccount(page: Page, catalogReady = true) {
     );
   }
   const account = sessionResponseSchema.parse(body);
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await leaveAccountScreens(page);
   if (catalogReady)
     await expect(
@@ -244,7 +251,7 @@ test('offline completion and empty Skip survive reload and synchronize through t
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
   await context.setOffline(false);
-  await page.reload();
+  await reloadForAccountRecovery(page);
   await page
     .getByRole('button', { name: 'Recover an existing account', exact: true })
     .click();
@@ -254,7 +261,9 @@ test('offline completion and empty Skip survive reload and synchronize through t
   await page
     .getByRole('button', { name: 'Recover with key', exact: true })
     .click();
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
@@ -608,7 +617,7 @@ test('active challenges hide all page navigation and reset after reload while th
   await page
     .getByRole('button', { name: 'Accept challenge', exact: true })
     .click();
-  await page.reload();
+  await reloadForAccountRecovery(page);
   await page
     .getByRole('button', { name: 'Recover an existing account', exact: true })
     .click();
@@ -616,7 +625,9 @@ test('active challenges hide all page navigation and reset after reload while th
   await page
     .getByRole('button', { name: 'Recover with key', exact: true })
     .click();
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),

@@ -184,6 +184,40 @@ Preserve the explicit Back to Home recovery action for a result route without a
 matching completed attempt. Phase 09 owns this follow-up; native gesture acceptance
 remains open until evidenced.
 
+## October 17 Phase 10 entry and acceptance
+
+Anthony approved the existing Welcome → Continue → navy Terms & Privacy → I Accept flow. Continue only navigates; I Accept creates the no-signup account and saves its accepted versions atomically. Existing-account recovery keeps its identity and requires acceptance only when its own current receipt is missing. Reuse the edited navy Paper design, including narrower headings, reference-sized body text and extra spacing above I Accept. This does not reopen questionnaires, enable analytics, approve final legal publication or authorize any Git/hosting action.
+
+## October 18 acceptance layout and hosted endpoint
+
+Anthony requested removing the acceptance page's account shortcut, shortening the
+save error to “Couldn’t save your acceptance. Please try again.” and making errors
+red. Keep the agreement at normal two-line spacing immediately above the bottom
+I Accept button, with no action below it. Existing Settings/recovery/data-control
+routes remain available through their established navigation.
+
+Anthony explicitly authorized updating the existing hosted test server so it
+serves the acceptance endpoint. This permits the matching API deployment and
+required forward migrations on the existing application-staging infrastructure;
+it does not authorize Git publication, release deployment, legal publication,
+retention scheduling, provider activation or native distribution. The
+[Phase 10 handoff](handoffs/phase-10-acceptance.md) records the rollout evidence.
+
+## October 18 focused verification for routine fixes
+
+Anthony approved focused checks as the default for routine fixes, classified by
+the behavior and boundary changed. A follow-up or handoff edit does not reopen
+phase closeout. The [testing guide](operations/TESTING.md#choosing-checks) owns the
+scope matrix, concrete escalation triggers, coverage and file-move checks; actual
+phase closeout and publication retain their full required gates.
+
+Reuse unchanged instructions, versioned reference documentation and correctly
+configured tools when context and ownership are verified. Keep routine check
+details in task/review records and update durable documentation when behavior,
+invariants, setup or paths change. Preserve regression tests, coverage floors,
+fixture isolation/cleanup, native/device evidence and separate Git permissions.
+Keep heavy checks sequential on the 8 GB Mac.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.

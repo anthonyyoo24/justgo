@@ -1,4 +1,5 @@
 export * from './identity.ts';
+export * from './acceptance.ts';
 export * from './access.ts';
 export * from './data-export.ts';
 export * from './activity/challenges.ts';

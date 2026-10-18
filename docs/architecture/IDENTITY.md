@@ -14,7 +14,8 @@ Migration `0003_transfer_verification.sql` erases legacy plaintext verification 
 - A device session expires after **168 hours (7 days)**. The client renews on foreground/verification when fewer than 24 hours remain. An expired session can recover through its selected credential; a revoked or unknown session requires an explicit recovery action.
 - Renewal proposes and securely saves the next token and ID before sending it. The old token is immediately invalid for ordinary API requests after rotation. Retrying the same rotation can retrieve the same still-active result when the caller proves possession of both tokens. A different replacement is rejected. Other devices remain independent.
 - Recovery credentials are long-lived, independently revocable, and immutable. Revocation does not log out other active device sessions. Device revocation invalidates that device’s sessions; explicit recovery establishes a new device authorization. Account retirement revokes all credentials/sessions and cancels transfers. Tombstones prevent retired/revoked credentials from bootstrapping a new account.
-- Bootstrap serializes on the recovery digest and is idempotent. The client saves a pending intent and then the recovery item before contacting the API. Unknown credentials presented with session kind `recovery` are never retried as `bootstrap`. Failed/lost responses reuse the persisted proposal.
+- Bootstrap serializes on the recovery digest and is idempotent. Fresh native and browser initialization no longer bootstrap automatically: Welcome Continue opens Terms & Privacy, and I Accept persists the bootstrap proof with the accepted versions before transmission. The optional wire `acceptance` field is stored atomically only when bootstrap creates a new account; a credential that resolves an existing account never implies acceptance. The client saves a pending intent and then the recovery item before contacting the API. Unknown credentials presented with session kind `recovery` are never retried as `bootstrap`. Failed/lost responses reuse the persisted proposal.
+- An explicit separate-account choice followed by I Accept may replace a failed recovery or renewal with a fresh bootstrap proof. Preserve the original recovery credentials and account-scoped activity. An uncertain bootstrap still retries its original proof; pending transfer and deletion intents cannot be replaced by this action.
 
 These defaults can be tuned with bounded server environment variables. Changing them requires the relevant expiry/retry tests; it does not require a new product flow.
 
@@ -81,6 +82,12 @@ expiry remains a final bound. No native bridge change or database migration is
 required. Deploy the API update before testing this behavior with a phone connected
 to the hosted test server; an older API rejects the receiver proof and leaves
 cleanup pending.
+
+## Terms & Privacy receipts
+
+Phase 10 adds `GET/PUT /v1/account/acceptance`. Both derive the owner from the current session and use its transaction/owner lock, independently of paid access. Shared contracts define the Terms, Privacy Policy and analytics-scope versions. Server time records acceptance; retrying unchanged versions preserves that time. Migration `0017_account_acceptance` adds the forced-RLS owner table and an account privacy-restriction timestamp. Deletion removes the receipt; a privacy restriction survives reacceptance and never blocks product saving/access. User-requested export includes the receipt and restriction status.
+
+The pending secure bootstrap retains nonsecret accepted versions through lost responses and relaunch; normal confirmed receipts come from the server, not another account’s device state. Phase 11 consumes the shared eligibility rule and the mobile controller’s generation tickets. The server adapter rereads live owner/receipt/restriction for each delivery decision and fails closed on errors; never cache that decision or hold an owner transaction while awaiting a provider. No exporter is enabled.
 
 ## Database boundary
 

@@ -27,6 +27,7 @@ import { createVault } from '../identity/vault';
 import { AccountClient, accountKey } from '../../lib/network/account-client';
 import { createHttpClient } from '../../lib/network/http';
 import { createTelemetry } from '../../lib/telemetry';
+import { AcceptanceController } from '../acceptance/controller';
 
 export function createAppRuntime(
   identity: IdentityController,
@@ -39,6 +40,7 @@ export function createAppRuntime(
     reject: identity.rejectSession,
   });
   const telemetry = createTelemetry();
+  const acceptance = new AcceptanceController(client);
   const activity = new ActivityRuntime(client, storage);
   identity.setAccountDataRemover(activity.deleteAccount);
   const challenges = new ChallengeController(client, {
@@ -55,6 +57,7 @@ export function createAppRuntime(
     client.changeAccount(next);
     activity.changeAccount(next);
     challenges.changeAccount(next);
+    acceptance.changeIdentity(identity.getSnapshot());
     const nextSession = identity.getSnapshot().account?.sessionId ?? null;
     if (nextSession && sessionId !== nextSession)
       activity.resumeAuthentication();
@@ -65,6 +68,7 @@ export function createAppRuntime(
     identity,
     client,
     telemetry,
+    acceptance,
     challenges,
     activity,
     subscribe: () => {
@@ -91,6 +95,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     let online = true;
     const updateEnvironment = () =>
       runtime.activity.setEnvironment({ active, online });
+    runtime.acceptance.setActive(active);
     updateEnvironment();
     const unsubscribe = runtime.subscribe();
     const unsubscribeNetwork = listenToConnectivity((nextOnline) => {
@@ -98,6 +103,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       online = nextOnline;
       updateEnvironment();
       if (!wasOnline && online && active) {
+        void runtime.acceptance.refresh();
         void runtime.identity.retry({
           background: !!runtime.identity.getSnapshot().account,
         });
@@ -107,12 +113,15 @@ export function AppProvider({ children }: PropsWithChildren) {
     void runtime.identity.initialize();
     const subscription = AppState.addEventListener('change', (next) => {
       active = next === 'active';
+      runtime.acceptance.setActive(active);
       updateEnvironment();
       focusManager.setFocused(active);
       if (next !== 'active') {
+        runtime.acceptance.invalidate();
         runtime.identity.hideKey();
         void runtime.identity.cancelTransfer();
       } else {
+        void runtime.acceptance.refresh();
         void runtime.identity.retry({
           background: !!runtime.identity.getSnapshot().account,
         });
@@ -131,6 +140,12 @@ export function AppProvider({ children }: PropsWithChildren) {
       // Parking stops its work and preserves unsaved data for reconnection.
       runtime.activity.changeAccount(null);
       runtime.client.changeAccount(null);
+      runtime.acceptance.changeIdentity({
+        initialized: false,
+        busy: false,
+        account: null,
+        deletionStatus: null,
+      });
     };
   }, [runtime]);
   return (
@@ -153,6 +168,14 @@ export function useIdentity() {
     identity.subscribe,
     identity.getSnapshot,
     identity.getSnapshot,
+  );
+}
+export function useAcceptance() {
+  const { acceptance } = useRuntime();
+  return useSyncExternalStore(
+    acceptance.subscribe,
+    acceptance.getSnapshot,
+    acceptance.getSnapshot,
   );
 }
 export function useAccess() {

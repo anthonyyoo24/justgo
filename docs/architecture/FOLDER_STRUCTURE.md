@@ -22,52 +22,53 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 
 ## Mobile boundaries
 
-| Implemented path                                                 | Owner                                                                        |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| apps/mobile/src/app/                                             | Route files and layouts; composition only.                                   |
-| apps/mobile/src/app/access.tsx                                   | Identity restoration and access gate at `/access`.                           |
-| apps/mobile/src/app/(tabs)/                                      | Home at `/` and Progress, with the shared tab layout.                        |
-| apps/mobile/src/app/(challenge)/                                 | Challenge, Success and reflection routes; no extra navigator/layout.         |
-| apps/mobile/src/app/account/                                     | Static recover, keys, devices, transfer and troubleshooting route adapters.  |
-| apps/mobile/src/app-support/access/                              | Startup/access gate.                                                         |
-| apps/mobile/src/app-support/identity/                            | Identity controller, transport, vault and storage.                           |
-| apps/mobile/src/app-support/identity/account/                    | Account/recovery hub, tools, device transfer and key management.             |
-| apps/mobile/src/app-support/identity/deletion/                   | Durable account-deletion workflow, cleanup and confirmation UI.              |
-| apps/mobile/src/app-support/identity/welcome/                    | Post-deletion/access-waiting welcome and transition preparation.             |
-| apps/mobile/src/app-support/providers/                           | App, account and activity-runtime composition/lifecycle.                     |
-| apps/mobile/src/app-support/fallbacks/                           | Root crash and unknown-link recovery UI.                                     |
-| apps/mobile/src/app-support/saving/                              | App-wide saving/recovery feedback.                                           |
-| apps/mobile/src/features/settings/                               | Settings screen and preference rows.                                         |
-| apps/mobile/src/features/settings/export/                        | Export collection/coordinator and Settings action.                           |
-| apps/mobile/src/features/settings/information/                   | Support/About/legal/social destinations and failure feedback.                |
-| apps/mobile/src/features/challenges/                             | Challenge orchestration and controller.                                      |
-| apps/mobile/src/features/challenges/deck/                        | Venue tabs, artwork, deck cards and deck model.                              |
-| apps/mobile/src/features/challenges/active/                      | Active countdown, modal, native handoff and lifecycle.                       |
-| apps/mobile/src/features/challenges/success/                     | Success screen and presentation.                                             |
-| apps/mobile/src/features/reflections/                            | Post-challenge feeling/text submission and keyboard composition.             |
-| apps/mobile/src/features/progress/                               | Summary/calendar/day-detail screen and query composition.                    |
-| apps/mobile/src/features/progress/calendar/                      | Calendar presentation and loading state.                                     |
-| apps/mobile/src/features/progress/day-details/entries/           | Progressive list, row/details and native/shared entry motion.                |
-| apps/mobile/src/features/progress/day-details/reflection-editor/ | Inline text editor and session orchestration.                                |
-| apps/mobile/src/data/activity/                                   | Shared account-scoped activity repository and domain submissions.            |
-| apps/mobile/src/data/activity/persistence/                       | Persisted journal envelopes and serialized writes.                           |
-| apps/mobile/src/data/activity/sync/                              | Ordered delivery, acknowledgements, transport and retry decisions.           |
-| apps/mobile/src/data/activity/progress/                          | Independent reads, local/backend reconciliation and bounded read cache.      |
-| apps/mobile/src/components/                                      | Reusable UI, including Settings primitives and scalable text.                |
-| apps/mobile/src/lib/                                             | General reusable helpers.                                                    |
-| apps/mobile/src/lib/network/                                     | Validated HTTP, account client, public URL and deadline helpers.             |
-| apps/mobile/src/platform/                                        | Reusable native/web capability groups.                                       |
-| apps/mobile/src/platform/connectivity/                           | Native/web connection observers and tests.                                   |
-| apps/mobile/src/platform/modals/                                 | Native/web modal isolation adapters and tests.                               |
-| apps/mobile/src/platform/export/                                 | Native share/browser download and temporary-file cleanup.                    |
-| apps/mobile/src/platform/haptics/                                | Preference/lifecycle ownership and Pulsar adapters.                          |
-| apps/mobile/src/platform/haptics/completion/                     | Batter default, session-only development override and playback cancellation. |
-| apps/mobile/src/platform/motion/                                 | Installation/system motion preferences.                                      |
-| apps/mobile/src/platform/subscriptions/                          | Native subscription-management presentation boundary.                        |
-| apps/mobile/src/platform/toast/                                  | Native/browser notification adapters.                                        |
-| apps/mobile/src/theme/                                           | Typed design tokens.                                                         |
-| apps/mobile/src/dev/                                             | Guarded presentation fixtures and haptics comparison UI.                     |
-| apps/mobile/src/dev/previews/challenges/                         | Developer-only deck and completed/give-up previews.                          |
+| Implemented path                                                 | Owner                                                                                             |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| apps/mobile/src/app/                                             | Route files and layouts; composition only.                                                        |
+| apps/mobile/src/app/access.tsx                                   | Identity restoration and access gate at `/access`.                                                |
+| apps/mobile/src/app/(tabs)/                                      | Home at `/` and Progress, with the shared tab layout.                                             |
+| apps/mobile/src/app/(challenge)/                                 | Challenge, Success and reflection routes; no extra navigator/layout.                              |
+| apps/mobile/src/app/account/                                     | Static recover, keys, devices, transfer and troubleshooting route adapters.                       |
+| apps/mobile/src/app-support/access/                              | Startup/access gate.                                                                              |
+| apps/mobile/src/app-support/identity/                            | Identity controller, transport, vault and storage.                                                |
+| apps/mobile/src/app-support/identity/account/                    | Account/recovery hub, tools, device transfer and key management.                                  |
+| apps/mobile/src/app-support/identity/deletion/                   | Durable account-deletion workflow, cleanup and confirmation UI.                                   |
+| apps/mobile/src/app-support/identity/welcome/                    | First-use/post-deletion Welcome and entry-to-deck coordination.                                   |
+| apps/mobile/src/app-support/acceptance/                          | Legal acceptance screen/first-deck cover, receipt confirmation and analytics eligibility fencing. |
+| apps/mobile/src/app-support/providers/                           | App, account and activity-runtime composition/lifecycle.                                          |
+| apps/mobile/src/app-support/fallbacks/                           | Root crash and unknown-link recovery UI.                                                          |
+| apps/mobile/src/app-support/saving/                              | App-wide saving/recovery feedback.                                                                |
+| apps/mobile/src/features/settings/                               | Settings screen and preference rows.                                                              |
+| apps/mobile/src/features/settings/export/                        | Export collection/coordinator and Settings action.                                                |
+| apps/mobile/src/features/settings/information/                   | Support/About/legal/social destinations and failure feedback.                                     |
+| apps/mobile/src/features/challenges/                             | Challenge orchestration and controller.                                                           |
+| apps/mobile/src/features/challenges/deck/                        | Venue tabs, artwork, deck cards and deck model.                                                   |
+| apps/mobile/src/features/challenges/active/                      | Active countdown, modal, native handoff and lifecycle.                                            |
+| apps/mobile/src/features/challenges/success/                     | Success screen and presentation.                                                                  |
+| apps/mobile/src/features/reflections/                            | Post-challenge feeling/text submission and keyboard composition.                                  |
+| apps/mobile/src/features/progress/                               | Summary/calendar/day-detail screen and query composition.                                         |
+| apps/mobile/src/features/progress/calendar/                      | Calendar presentation and loading state.                                                          |
+| apps/mobile/src/features/progress/day-details/entries/           | Progressive list, row/details and native/shared entry motion.                                     |
+| apps/mobile/src/features/progress/day-details/reflection-editor/ | Inline text editor and session orchestration.                                                     |
+| apps/mobile/src/data/activity/                                   | Shared account-scoped activity repository and domain submissions.                                 |
+| apps/mobile/src/data/activity/persistence/                       | Persisted journal envelopes and serialized writes.                                                |
+| apps/mobile/src/data/activity/sync/                              | Ordered delivery, acknowledgements, transport and retry decisions.                                |
+| apps/mobile/src/data/activity/progress/                          | Independent reads, local/backend reconciliation and bounded read cache.                           |
+| apps/mobile/src/components/                                      | Reusable UI, including Settings primitives and scalable text.                                     |
+| apps/mobile/src/lib/                                             | General reusable helpers.                                                                         |
+| apps/mobile/src/lib/network/                                     | Validated HTTP, account client, public URL and deadline helpers.                                  |
+| apps/mobile/src/platform/                                        | Reusable native/web capability groups.                                                            |
+| apps/mobile/src/platform/connectivity/                           | Native/web connection observers and tests.                                                        |
+| apps/mobile/src/platform/modals/                                 | Native/web modal isolation adapters and tests.                                                    |
+| apps/mobile/src/platform/export/                                 | Native share/browser download and temporary-file cleanup.                                         |
+| apps/mobile/src/platform/haptics/                                | Preference/lifecycle ownership and Pulsar adapters.                                               |
+| apps/mobile/src/platform/haptics/completion/                     | Batter default, session-only development override and playback cancellation.                      |
+| apps/mobile/src/platform/motion/                                 | Installation/system motion preferences.                                                           |
+| apps/mobile/src/platform/subscriptions/                          | Native subscription-management presentation boundary.                                             |
+| apps/mobile/src/platform/toast/                                  | Native/browser notification adapters.                                                             |
+| apps/mobile/src/theme/                                           | Typed design tokens.                                                                              |
+| apps/mobile/src/dev/                                             | Guarded presentation fixtures and haptics comparison UI.                                          |
+| apps/mobile/src/dev/previews/challenges/                         | Developer-only deck and completed/give-up previews.                                               |
 
 Wire-only `api.ts` modules live with the challenge catalog, Settings export,
 app-support access and shared data/activity/progress reads. Their composing
@@ -142,8 +143,12 @@ exist and keeps the approved mobile responsibility groups in the guide.
 - Moves must update imports, dynamic loaders, Jest/coverage selectors, fixture
   seams, assets, deployment allowlists, scripts and documentation together.
 - Keep move-only work separately reviewable from behavior changes. Use
-  import-aware rewrites and cold web/iOS bundles. Restart an owned Metro with
-  --clear and reload the existing app after moves; exports do not refresh a live
+  import-aware rewrites and the [move checks](../operations/TESTING.md#file-moves-and-bundle-checks):
+  focused import/discovery/packaging checks for small moves, cold web/iOS bundles
+  for large or platform-sensitive moves. Restart an owned Metro with `--clear`
+  and reload the existing app after moves; exports do not refresh a live
   dependency graph.
 - Review complete file lists in touched directories before handoff. Preserve
-  unrelated retained code and all existing coverage/boundary safeguards.
+  unrelated retained code and all existing coverage/boundary safeguards. Keep
+  necessary organization within the task's responsibility; record unrelated
+  cleanup separately instead of expanding a routine fix.

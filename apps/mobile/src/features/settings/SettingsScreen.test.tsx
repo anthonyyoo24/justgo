@@ -9,7 +9,6 @@ import { Linking } from 'react-native';
 import SettingsRoute from '../../app/settings';
 import { SettingsScreen } from './SettingsScreen';
 import { SettingsGroup } from '../../components/settings/SettingsRows';
-import { appleStandardTerms } from './information/legal-links';
 import {
   supportContact,
   featureRequestContact,
@@ -118,19 +117,9 @@ it('renders the actual route with scoped groups, honest pending controls and no 
   const screen = render(<SettingsRoute />);
   expect(
     screen.getAllByRole('header').map((header) => header.props.children),
-  ).toEqual([
-    'Settings',
-    'Preferences',
-    'Account & data',
-    'Privacy',
-    'Support',
-    'About',
-  ]);
+  ).toEqual(['Settings', 'Preferences', 'Account & data', 'Support', 'About']);
   for (const label of ['General analytics', 'Sensitive metadata'])
-    expect(
-      screen.getByLabelText(`${label}. Not available yet.`).props
-        .accessibilityState.disabled,
-    ).toBe(true);
+    expect(screen.queryByText(label)).toBeNull();
   fireEvent.press(screen.getByLabelText('Delete account'));
   expect(mockRouter.push).toHaveBeenCalledWith('/delete-account');
   expect(screen.getByRole('switch', { name: 'Reduce motion' })).toBeEnabled();
@@ -296,7 +285,7 @@ it('returns to the originating screen, or safely goes home when opened directly'
   expect(mockRouter.back).toHaveBeenCalledTimes(1);
   mockRouter.canGoBack.mockReturnValue(false);
   fireEvent.press(screen.getByRole('button', { name: 'Back' }));
-  expect(mockRouter.replace).toHaveBeenCalledWith('/');
+  expect(mockRouter.replace).toHaveBeenCalledWith('/access');
 });
 
 it('uses distinct private email subjects, without account or activity attachments', async () => {
@@ -333,15 +322,14 @@ it('keeps feature requests usable after email opening fails', async () => {
   expect(button.props.accessibilityState.disabled).toBe(false);
 });
 
-it('disables missing policy and opens the existing Apple license destination without subtext', async () => {
+it('keeps missing notices unavailable without substituting an unrelated license', () => {
   const screen = render(<SettingsScreen />);
   expect(
     screen.getByRole('button', { name: 'Privacy policy' }).props
       .accessibilityState.disabled,
   ).toBe(true);
   expect(screen.queryByText('Apple’s standard license agreement')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Terms of use' }));
-  await waitFor(() => expect(openUrl).toHaveBeenCalledWith(appleStandardTerms));
+  expect(screen.getByRole('button', { name: 'Terms of use' })).toBeDisabled();
 });
 
 it('opens configured public legal pages', async () => {

@@ -7,6 +7,11 @@ recorded decisions in force. The phase files own sequencing and approved future 
 Keep phase scope bounded and preserve existing behavior unless the task changes it.
 Directory instructions (especially `apps/mobile/AGENTS.md`) also apply.
 
+Reuse already-read guidance when the checkout, relevant instructions and tool
+versions are unchanged and the context is available. Reread changed or newly
+relevant sections. Verify the current test environment and served code when runtime
+behavior or a running app is in scope.
+
 This file is the shared coding standard for future features and fixes, not only
 cleanup phases. Read [testing guidance](docs/operations/TESTING.md) before code changes for
 the applicable commands and evidence requirements. Keep detailed architecture in
@@ -23,6 +28,12 @@ handoffs; avoid copying competing versions of these rules into every directory.
   `npm run lint`. Broader gates: `npm run check`, `npm run test:coverage`,
   `npm run test:db`, `npm run test:journey`. See
   [testing guidance](docs/operations/TESTING.md) for when each applies.
+- Choose the verification scope before running checks, using the matrix in
+  [TESTING.md](docs/operations/TESTING.md#choosing-checks). Routine fixes default to
+  focused behavior/consumer checks. A follow-up fix or handoff edit does not
+  reopen phase closeout. Expand for a concrete failure, affected boundary/config,
+  explicit owner request or required completion/publication gate; explain the
+  trigger briefly without seeking routine implementation approval.
 
 ## Owner review and Git permissions
 
@@ -88,7 +99,8 @@ paths, upload allowlists, fixture resolution, asset extraction and documentation
 links together; organizing retained code does not authorize its removal.
 
 Use import-aware rewrites rather than replacing arbitrary quoted fragments in
-SQL or data. Verify large moves with cold bundles. Restart the owned running Metro server
+SQL or data. Use the [move checks](docs/operations/TESTING.md#file-moves-and-bundle-checks)
+for small versus large/platform-sensitive moves. Restart the owned running Metro server
 with `--clear` before reloading the existing installed development app: a
 successful separate export does not rebuild that server's live dependency graph.
 Reload the app to clear stale module/asset paths.
@@ -102,6 +114,9 @@ Reload the app to clear stale module/asset paths.
   subfolders without waiting for Anthony to ask. Use judgment rather than a
   fixed file-count threshold; follow the move/verification rules above and keep
   functional changes separately reviewable. Record any necessary deferral.
+  Keep this review brief and include reorganization needed by the current
+  responsibility; record unrelated tidying as follow-up rather than expanding a
+  routine fix.
 - **Choose the owner before creating files.** Identify the product capability or
   supporting responsibility the code serves, then place it with that owner.
 - **Use `src/features/<name>/` for product capabilities.** Examples: Challenges,
@@ -171,7 +186,10 @@ Reload the app to clear stale module/asset paths.
   and coverage floors to make a failing change pass. During each slice, review
   coverage of the affected behavior and important uncovered branches, not only
   the percentage; run the full `npm run test:coverage` gate at phase completion,
-  before publication or when the change directly affects coverage.
+  before publication or when coverage configuration, source inclusion/exclusion
+  rules, critical selectors or thresholds can invalidate the aggregate gate.
+  Ordinary files or branches under unchanged coverage rules use focused coverage
+  when needed, without lowering any floor.
 - After relevant tests pass, test affected UI in the agent's in-app browser
   pane (Codex: Browser Use side panel; Claude Code: built-in browser). Honor
   the owner's browser preference; do not switch to an outside Chrome window when
@@ -190,10 +208,14 @@ Reload the app to clear stale module/asset paths.
 - Journeys must not depend on the time of day or month. Seed dated activity
   inside the browser's intended local day (`e2e/support/seed-times.ts`); CI runs
   in UTC, so a seed counted back from "now" crosses midnight on evening pushes.
-- Before a phase handoff or publication, run `npm run check` (it includes the
-  online Expo doctor and the full test suite, so skip it for routine slices that
-  focused checks cover) and, for backend/shared boundaries or a phase closeout,
-  `npm run test:db` against the dedicated loopback `justgo_test` database.
+- At actual phase closeout or before publication, run `npm run check` (including
+  online Expo Doctor and the full suite). Skip it for routine fixes covered by
+  focused checks unless the verification matrix identifies an escalation trigger.
+  Keep `npm run test:db` against dedicated loopback `justgo_test` for backend/shared
+  protocol or data-boundary changes and phase closeout. A mobile UI/navigation
+  change alone does not alter the server boundary. Do not repeat a passed check
+  already included in a broader command unless its inputs changed or a failure
+  needs investigation.
   Focused `-w <workspace>` checks miss other workspaces: when a slice touches
   `packages/contracts`, a tsconfig, ESLint config or `e2e/support`, also run
   `npm run build:contracts && npm run typecheck` from the root (all workspaces
@@ -222,6 +244,10 @@ Reload the app to clear stale module/asset paths.
   belong in the commit message or PR description. See the
   [October 16 decision](docs/DECISIONS.md#october-16-codebase-assessment-follow-up).
   Do not put secrets, real private reflections or credentials in logs or handoffs.
+- Routine follow-up fixes do not refresh all phase evidence or require a new
+  handoff. Update durable behavior/invariant/setup docs and changed paths as
+  needed; keep routine validation in the task/commit/PR record. Editing a handoff
+  does not itself require phase-wide checks or close an existing open gate.
 - Keep routine screenshots and diagnostic recordings in ignored `.local/`
   storage. Commit visual evidence only when the owner explicitly requests it.
 - Before claiming completion, reconcile the agreed requirements and relevant

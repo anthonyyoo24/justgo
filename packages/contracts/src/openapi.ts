@@ -6,6 +6,10 @@ import * as attempts from './activity/attempts.ts';
 import * as progress from './activity/progress.ts';
 import { accessResponseSchema } from './access.ts';
 import { exportPageSchema } from './data-export.ts';
+import {
+  accountAcceptanceResponseSchema,
+  currentAcceptanceVersionsSchema,
+} from './acceptance.ts';
 
 const json = (schema: z.ZodType) => ({
   'application/json': { schema: z.toJSONSchema(schema) },
@@ -52,7 +56,7 @@ function operation(
 }
 export const openApiDocument = {
   openapi: '3.1.0',
-  info: { title: 'JustGO API', version: '0.7.0' },
+  info: { title: 'JustGO API', version: '0.10.0' },
   components: {
     securitySchemes: {
       deviceSession: {
@@ -63,6 +67,21 @@ export const openApiDocument = {
     },
   },
   paths: {
+    '/v1/account/acceptance': {
+      get: {
+        ...operation(accountAcceptanceResponseSchema),
+        description:
+          'Returns the authenticated account acceptance receipt and analytics restriction state without requiring paid access. Missing receipt or failed confirmation blocks analytics, independently of product saving and access.',
+      },
+      put: {
+        ...operation(
+          accountAcceptanceResponseSchema,
+          currentAcceptanceVersionsSchema,
+        ),
+        description:
+          'Accepts only the current Terms, Privacy Policy and analytics-scope versions. The owner and acceptance time are assigned by the server. An exact retry returns the original receipt; a stale version or client-owned receipt is invalid. Acceptance cannot lift a privacy restriction.',
+      },
+    },
     '/v1/account': {
       delete: {
         ...operation(
@@ -195,7 +214,7 @@ export const openApiDocument = {
           false,
         ),
         description:
-          'Create or recover a session with bootstrap/recovery credentials or transfer claimant proof. The renewal kind requires the current bearer session; all proof material stays in the body or Authorization header.',
+          'Create or recover a session with bootstrap/recovery credentials or transfer claimant proof. The renewal kind requires the current bearer session; all proof material stays in the body or Authorization header. Bootstrap may include current acceptance versions; they are saved atomically only for a newly created account. Recovery never implicitly accepts for an existing account.',
         security: [{}, { deviceSession: [] }],
       },
     },

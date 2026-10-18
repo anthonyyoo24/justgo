@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
+import { acceptFixtureTerms } from './support/acceptance';
 
 async function expectCenteredSpinner(button: Locator, label: string) {
   const spinner = button.getByRole('progressbar', {
@@ -47,10 +48,13 @@ test('a real account renews and opens its challenge catalog', async ({
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
+  await acceptFixtureTerms(page);
   const created = await createdResponse;
   expect(created.ok()).toBe(true);
   const account = sessionResponseSchema.parse(await created.json());
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
 
   await page
     .getByRole('link', { name: 'Troubleshooting', exact: true })
@@ -141,8 +145,11 @@ test('a connected receiving phone confirms transfer, waits for approval and keep
       await phone
         .getByRole('button', { name: 'Create a new account', exact: true })
         .click();
+      await acceptFixtureTerms(phone);
       accounts.push(sessionResponseSchema.parse(await (await creating).json()));
-      await expect(phone.getByText('Connected', { exact: true })).toBeVisible();
+      await expect(
+        phone.getByText('Connected', { exact: true }).filter({ visible: true }),
+      ).toBeVisible();
     }
     const [source, originalReceiver] = accounts;
     expect(source!.userId).not.toBe(originalReceiver!.userId);
@@ -361,8 +368,11 @@ test('leaving receiving transfer cancels its code and returns to the normal conn
     await page
       .getByRole('button', { name: 'Create a new account', exact: true })
       .click();
+    await acceptFixtureTerms(page);
     const original = sessionResponseSchema.parse(await (await creating).json());
-    await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+    await expect(
+      page.getByText('Connected', { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
     const sectionBounds = () =>
       Promise.all(
         ['Account', 'Recovery', 'Devices'].map((name) =>

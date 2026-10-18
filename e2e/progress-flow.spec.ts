@@ -13,7 +13,11 @@ import {
 import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
-import { leaveAccountScreens } from './support/account-navigation';
+import {
+  leaveAccountScreens,
+  reloadForAccountRecovery,
+} from './support/account-navigation';
+import { acceptFixtureTerms } from './support/acceptance';
 import { seedDay, seedStartTimes } from './support/seed-times';
 
 async function account(page: Page) {
@@ -29,11 +33,14 @@ async function account(page: Page) {
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
+  await acceptFixtureTerms(page);
   const proof = sessionCreateSchema.parse((await request).postDataJSON());
   if (proof.kind !== 'bootstrap')
     throw new Error('Expected synthetic bootstrap');
   const created = sessionResponseSchema.parse(await (await response).json());
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
@@ -125,7 +132,7 @@ async function recover(
   page: Page,
   proof: Extract<SessionCreate, { kind: 'bootstrap' }>,
 ) {
-  await page.reload();
+  await reloadForAccountRecovery(page);
   await page
     .getByRole('button', { name: 'Recover an existing account', exact: true })
     .click();
@@ -133,7 +140,9 @@ async function recover(
   await page
     .getByRole('button', { name: 'Recover with key', exact: true })
     .click();
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await leaveAccountScreens(page);
 }
 

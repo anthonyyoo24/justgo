@@ -10,6 +10,7 @@ import {
   AppProvider,
   useAccess,
   useIdentity,
+  useAcceptance,
 } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
@@ -75,9 +76,10 @@ export default function RootLayout() {
 function Navigation() {
   const access = useAccess();
   const identity = useIdentity();
+  const acceptance = useAcceptance();
   const deleted = identity.deletionStatus === 'deleted';
   const awaitingAccess = useWelcomeTransition();
-  const welcome = deleted || awaitingAccess;
+  const welcome = deleted || identity.needsWelcome;
   return (
     <Stack
       screenOptions={{
@@ -89,11 +91,12 @@ function Navigation() {
       }}
     >
       <Stack.Screen name="access" />
+      <Stack.Screen name="acceptance" options={{ gestureEnabled: false }} />
       <Stack.Protected guard={welcome}>
         <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       {/* Removing these routes also removes the deleted account's Back history. */}
-      <Stack.Protected guard={!welcome}>
+      <Stack.Protected guard={!deleted && !awaitingAccess}>
         <Stack.Screen name="settings" />
         <Stack.Screen name="delete-account" />
         <Stack.Screen name="recovery" />
@@ -104,7 +107,12 @@ function Navigation() {
         <Stack.Screen name="account/troubleshooting" />
       </Stack.Protected>
       <Stack.Protected
-        guard={!identity.deletionStatus && !awaitingAccess && access.verified}
+        guard={
+          !identity.deletionStatus &&
+          !awaitingAccess &&
+          access.verified &&
+          acceptance.status === 'accepted'
+        }
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen

@@ -24,13 +24,31 @@ The first dump attempt reached restoration but its text fingerprint comparison d
 
 During maintenance, runtime login was disabled, old runtime connections terminated and its password rotated. Private local/operator files and Vercel secrets were updated; login was restored only for the new credential. This fences existing immutable old deployments without deleting account history or disabling preview protection. Do not rebuild an old branch against the current shared environment: a fresh deployment would receive current credentials and must first pass the coordinated compatibility review.
 
-Unchanged registered migrations 0004–0013 were applied with the separate migration role and verified TLS. The journal now has 14 entries; all original identity counts/fingerprints match. The canonical catalog has 61 active placements, no attempts existed at cutover, and all private tables retain forced RLS. Runtime remains non-superuser, without role/database creation, RLS bypass or migrator/backup membership. An initial migration launch stopped at the existing production rate-key configuration guard before connecting; supplying the private configured key allowed the registered migration runner to succeed.
+Unchanged registered migrations 0004–0013 were applied with the separate migration role and verified TLS. The October 11 journal reached 14 entries; all original identity counts/fingerprints matched. The canonical catalog has 61 active placements, no attempts existed at that cutover, and all private tables retain forced RLS. Runtime remains non-superuser, without role/database creation, RLS bypass or migrator/backup membership. An initial migration launch stopped at the existing production rate-key configuration guard before connecting; supplying the private configured key allowed the registered migration runner to succeed.
 
 Existing Vercel project: `justgo`, scope `anthony-youngshin-yoos-projects`. A protected matching preview was built first: `dpl_8LB4E2puQ784EEZrBRgHR4VYDGSv`. Authenticated readiness passed; missing authorization returned 401 and the old identity route returned 404. Initial readiness during credential/cold-connection turnover returned unavailable, then passed. The older Phase 02 deployment's readiness remains unavailable with its obsolete credential.
 
 **Phone route:** <https://justgo-two.vercel.app>. The existing project's stable production deployment slot hosts the **application staging** API/database for this owner-device preparation. This is deliberate test infrastructure, not the paid/release environment or an App Store release. `APP_ENVIRONMENT=staging` is explicit on that slot. Existing `all_except_custom_domains` protection remains unchanged; generated deployment URLs/previews remain protected. The stable alias accepts normal HTTPS requests while private routes still require verified sessions. No protection bypass is bundled in the app. Verify the intended slot/database before every later deployment; prepare an isolated paid production environment before launch.
 
 The first stable deployment was `dpl_FkoAZFfEnDNE9GP45rvyFiDjixke`. After private owner approval, `dpl_6a3mJC7jFX2FFrupB1skx8217SXJ` served authenticated phone catalog/progress/history requests with 200 responses. The most recent October 11 deployment was `dpl_ENi6zgHhmQwRLuYvBRWHq2csLyuw`, built from the same tested source and current grant configuration on the same stable alias. Public alias readiness returned 200; unauthenticated access and export returned 401. Only 41 allowlisted API/contract/workspace files (about 681 KB) were uploaded; no environment files, fixture scripts, SQL migration directory, local backups, generated iOS projects or mobile source were included.
+
+**Current October 18 state:** Anthony authorized the [Phase 10 endpoint update](phase-10-acceptance.md).
+Ready deployment `dpl_3cqvvSe1xWcM9v7SBJsUYtbf972b` now serves both existing
+aliases, including the phone route, in `yul1` on Node 24. Verified-TLS forward
+migrations 0015–0017 brought the journal to 18 entries after a successful backup
+restore and local rehearsal. All 12 existing app tables were compared under locks
+inside the migration transaction and preserved before COMMIT. The receipt table
+has forced owner RLS and no public/Supabase-client grants. Retention scheduling
+was not enabled and no purge ran. Environment configuration, beta grants/window
+and protection metadata are unchanged.
+
+Live acceptance reads/writes, stale-version rejection, idempotent retries and
+atomic account creation passed with two disposable probe accounts, followed by
+normal API deletion and verified cleanup. Ready/authentication checks passed.
+The current source passed root checks, database/coverage gates, 37 saved journeys,
+web/iOS exports and exported-web smoke; detailed limits and evidence live in the
+Phase 10 handoff. The phone Metro server remains on 8081. No Git publication,
+native build, provider activation or signed-device acceptance was performed.
 
 ## Evidence and phone follow-up
 

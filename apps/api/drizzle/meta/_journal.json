@@ -120,6 +120,13 @@
       "when": 1792195118199,
       "tag": "0016_transfer_delete_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792284307139,
+      "tag": "0017_account_acceptance",
+      "breakpoints": true
     }
   ]
 }
