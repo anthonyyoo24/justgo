@@ -43,6 +43,9 @@ test('the production export loads its assets and supporting routes without API t
   await expect(
     page.getByRole('link', { name: 'Test haptics', exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'Test error reporting', exact: true }),
+  ).toHaveCount(0);
   await page
     .getByRole('link', { name: 'Account & recovery', exact: true })
     .click();

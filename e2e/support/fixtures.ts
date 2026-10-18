@@ -47,6 +47,11 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
   page: async ({ page, fixtureDatabase }, use, testInfo) => {
     // Keep the database fixture alive until screenshot/page teardown completes.
     void fixtureDatabase;
+    // No journey diagnostic may reach a hosted provider. Individual diagnostics
+    // cases fulfill the intercepted request locally to inspect its real SDK payload.
+    await page.route('https://*.sentry.io/**', (route) =>
+      route.abort('blockedbyclient'),
+    );
     await page.route('**/v1/**', async (route) => {
       if (new URL(route.request().url()).origin !== journeyApiUrl) {
         await route.abort('blockedbyclient');

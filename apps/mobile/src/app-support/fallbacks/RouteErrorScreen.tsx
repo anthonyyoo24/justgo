@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { errorReporter } from '../diagnostics/start';
 import type { ErrorBoundaryProps } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -10,7 +12,10 @@ import { colors, typography } from '../../theme/tokens';
  * outside the app providers and must not use their context. The error's message
  * is not shown because it can contain user-entered text.
  */
-export function RouteErrorScreen({ retry }: ErrorBoundaryProps) {
+export function RouteErrorScreen({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    errorReporter.capture(error);
+  }, [error]);
   return (
     <Screen title="Something went wrong">
       <Text accessibilityRole="alert" style={styles.body}>

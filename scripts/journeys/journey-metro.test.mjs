@@ -25,7 +25,7 @@ test('normal and production Metro builds do not enable journey storage injection
     assert.equal(
       load(
         { NODE_ENV },
-        `const {default:metro}=await import('expo/metro-config.js'); console.log(config.resolver.resolveRequest === metro.getDefaultConfig(process.cwd() + '/apps/mobile').resolver.resolveRequest);`,
+        `const context={originModulePath:process.cwd()+'/apps/mobile/src/app-support/providers/AppProvider.tsx',resolveRequest:()=>({type:'sourceFile',filePath:'normal'})}; console.log(config.resolver.resolveRequest(context,'../../data/activity/persistence/storage','web').filePath === 'normal');`,
       ).trim(),
       'true',
     );

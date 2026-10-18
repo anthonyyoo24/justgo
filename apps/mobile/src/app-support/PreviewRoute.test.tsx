@@ -3,6 +3,7 @@ import { render } from '@testing-library/react-native';
 const mockPreviewModuleLoaded = jest.fn();
 const mockPreviewRendered = jest.fn();
 const mockHapticsLoaded = jest.fn();
+const mockDiagnosticsLoaded = jest.fn();
 const mockWelcomeLoaded = jest.fn();
 const mockWelcomeRendered = jest.fn();
 const mockPreviewParams = {
@@ -20,6 +21,11 @@ jest.mock('../dev/previews/WelcomePreview', () => {
       return <Text>Welcome preview</Text>;
     },
   };
+});
+jest.mock('../dev/diagnostics/DiagnosticsPreview', () => {
+  mockDiagnosticsLoaded();
+  const { Text } = require('react-native') as typeof import('react-native');
+  return { DiagnosticsPreview: () => <Text>Diagnostics testing</Text> };
 });
 jest.mock('../dev/haptics/HapticsTestScreen', () => {
   mockHapticsLoaded();
@@ -121,4 +127,16 @@ it('does not load developer fixtures in production and preserves the development
   expect(screen.queryByText('Development preview')).toBeNull();
   expect(mockPreviewModuleLoaded).toHaveBeenCalledTimes(1);
   expect(mockPreviewRendered).toHaveBeenCalledTimes(3);
+});
+
+it('keeps diagnostic fault injection behind the development-only preview guard', () => {
+  mockPreviewParams.mode = 'diagnostics';
+  development.__DEV__ = false;
+  const screen = render(<PreviewRoute />);
+  expect(screen.getByText('Redirect: /')).toBeTruthy();
+  expect(mockDiagnosticsLoaded).not.toHaveBeenCalled();
+  development.__DEV__ = true;
+  screen.rerender(<PreviewRoute />);
+  expect(screen.getByText('Diagnostics testing')).toBeTruthy();
+  expect(mockDiagnosticsLoaded).toHaveBeenCalledTimes(1);
 });

@@ -28,7 +28,15 @@ export async function runJourney({
   // Validate before either migration or fixture server starts. Never print URLs.
   journeyEnvironment(environment);
   await checkPorts();
-  const childEnvironment = { ...environment };
+  const childEnvironment = {
+    ...environment,
+    // The guarded browser fixture exercises the real SDK against an intercepted,
+    // fake ingestion key. Never inherit a developer's live diagnostic destination.
+    EXPO_PUBLIC_SENTRY_ENABLED: 'true',
+    EXPO_PUBLIC_SENTRY_ENVIRONMENT: 'development',
+    EXPO_PUBLIC_SENTRY_DSN:
+      'https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@o123.ingest.us.sentry.io/4512279181459456',
+  };
   // Playwright supplies FORCE_COLOR to its children; omit the conflicting flag.
   delete childEnvironment.NO_COLOR;
   for (const [command, commandArgs] of [
