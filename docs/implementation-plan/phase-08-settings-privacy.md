@@ -60,5 +60,5 @@ Users control recovery, private data and preferences, with authenticated export 
 
 - Phase 08A owns the month-boundary Progress journey correction.
 - Phase 11 owns analytics activation and vendor cleanup; Phase 13 owns legal notices and production Pro backup confirmation.
-- Phase 14 owns hosted forward migrations through 0016, API rollout, retention scheduling, native crash/not-found checks, signed-build capability/accessibility checks and the hosted restore rehearsal.
+- The October 18 owner-authorized Phase 10 rollout applied hosted migrations through 0017 and updated the current test API. Phase 14 retains retention scheduling, native crash/not-found checks, signed-build capability/accessibility checks and the broader hosted restore/deletion rehearsal.
 - See [open-gate owners](../handoffs/phase-08-settings-privacy.md#open-gates).

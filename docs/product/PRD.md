@@ -6,7 +6,7 @@
 **Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.  
 **Updated:** October 15, 2026.
 
-**October 15 acceptance scope (now Phase 10):** One Terms & Privacy onboarding page is approved as the only permission request for the disclosed analytics scope. No analytics on/off controls belong in Settings. Welcome/questionnaire onboarding remains deferred. This is planned behavior; analytics export is currently disabled and Phase 13 legal/publication review remains open.
+**October 15 acceptance scope (now Phase 10):** One Terms & Privacy onboarding page is approved as the only permission request for the disclosed analytics scope. No analytics on/off controls belong in Settings. The existing Welcome leads to acceptance before new-account creation; additional welcome/questionnaire onboarding remains deferred. This is planned behavior; analytics export is currently disabled and Phase 13 legal/publication review remains open.
 
 **Implementation specification:** [TECH_STACK.md](../architecture/TECH_STACK.md).\
 **Implementation plan:** [Stages and handoffs](../implementation-plan/README.md).\
@@ -19,14 +19,14 @@ JustGO helps adults build social confidence through short, real-world social cha
 For the October 9 legal drafts, the owner identified the personal operator as Youngshin Yoo in Canada and proposed adults 18 and older across available App Store countries and regions. Final distribution, eligibility behavior, age rating and regional legal review remain release decisions. The [data inventory and legal review](../legal/LEGAL_REVIEW.md) track the policy assumptions and required follow-up; no new onboarding is approved by these drafts.
 
 ```text
-Planned first use: Credential bootstrap → Terms & Privacy acceptance (if no current receipt) → Verify paid access / Hard paywall → Home
+First use: Welcome → Continue → Terms & Privacy → I Accept creates the account and its receipt → Verify access / Hard paywall → Home
 Returning use: Recover account → Terms & Privacy acceptance (if no current receipt) → Verify access → Hydrate saved activity → Home
 Core loop: Home → Active Challenge → Success → Reflection → Home
 Primary destinations: Home · Progress
 Supporting surfaces: Settings · Calendar day sheet
 ```
 
-The first iOS release includes native paid access, recovery, cloud saves, one Level 1 collection with six venue decks, the in-app timer, Success, optional typed reflections, and the complete Progress screen with its calendar and day sheet. Practice reminders, Levels and their progression rules, additional category filters, custom dictation, and lock-screen timers are deferred. On September 17, Anthony deferred welcome screens and questionnaire onboarding so implementation can focus on the approved core screens. This is a deferral, not permanent removal. Paywall and native subscriptions remain phase 07A; their final designs and offer remain to be specified.
+The first iOS release includes native paid access, recovery, cloud saves, one Level 1 collection with six venue decks, the in-app timer, Success, optional typed reflections, and the complete Progress screen with its calendar and day sheet. Practice reminders, Levels and their progression rules, additional category filters, custom dictation, and lock-screen timers are deferred. On September 17, Anthony deferred welcome screens and questionnaire onboarding so implementation can focus on the approved core screens. The October 17 entry decision reuses the existing Welcome before acceptance; additional welcome/questionnaire steps remain deferred. Paywall and native subscriptions remain phase 07A; their final designs and offer remain to be specified.
 
 Goals:
 
@@ -96,7 +96,7 @@ Explicit interpretation rules:
 
 ### 4.1 No-signup identity and recovery
 
-The first launch creates or recovers an authenticated, persistent app account using secure credentials. No email, SMS, OAuth, or account form is required. Cloud history belongs to that account, not to an installation identifier or store purchase alone.
+The first launch discovers an existing secure account or shows Welcome. Continue opens Terms & Privacy; only I Accept creates a new authenticated, persistent app account and its versioned receipt using secure credentials. No email, SMS, OAuth, or account form is required. Cloud history belongs to that account, not to an installation identifier or store purchase alone.
 
 On supported iPhone paths, a synchronized recovery credential can restore the same account on another iPhone. This depends on platform availability and must not be presented as an unconditional guarantee. Optional recovery-key and existing-device transfer actions provide the fallback described in the tech stack, on iOS at launch. Android and cross-platform recovery are validated when Android is implemented.
 
@@ -106,9 +106,9 @@ Credential access failures show retry/recovery states rather than silently creat
 
 Anthony approved a single Terms & Privacy onboarding page for Phase 10 (approved October 15). Present a short, accurate explanation of phone/cloud saving and the analytics scope, links to Terms of Service and Privacy Policy, and an explicit continuation/acceptance action. This is the only permission request for that analytics scope; remove the planned analytics Settings controls and do not add a post-reflection prompt. Returning users with recorded acceptance do not see the same request again; existing accounts without a receipt also need this page.
 
-Persist acceptance for the correct account with legal/scope versions and time. Unknown acceptance blocks analytics forwarding, not access to recovery/export/deletion or preservation of saved/pending activity. Describe persistent pseudonymous analytics as account-linked, not anonymous/non-identifying; disclose feeling selections and approximate reflection lengths if included. Final copy and regional sufficiency remain Phase 13 review. See the [Phase 10 planning handoff](../handoffs/phase-10-acceptance.md).
+Persist acceptance for the correct account with legal/scope versions and time. Unknown acceptance blocks analytics forwarding, not access to recovery/export/deletion or preservation of saved/pending activity. Describe persistent pseudonymous analytics as account-linked, not anonymous/non-identifying; disclose feeling selections and approximate reflection lengths if included. Final copy and regional sufficiency remain Phase 13 review. See the [Phase 10 handoff](../handoffs/phase-10-acceptance.md).
 
-Welcome screens, questionnaire steps, warming-up copy, branching and questionnaire-progress persistence are deferred by Anthony’s September 17 scope decision. Do not invent them or block phase 03 on them. Revisit whether/when to add them with separate product approval. Secure account bootstrap/recovery remains required behind the scenes and is not a signup or welcome flow.
+Anthony approved reusing the existing Welcome screen before Terms & Privacy on October 17. Continue does not create credentials or a server account; I Accept persists the same bootstrap proof and accepted versions before sending. Uncertain retries reuse that proof. Existing-account recovery stays available and does not create a replacement account or imply acceptance. Additional welcome screens, questionnaires, branching and answer persistence remain deferred.
 
 If broader questionnaire onboarding is scheduled later, settle content/design first and retain the original cloud-save, revision-conflict and relaunch-restoration requirements. No questionnaire tables, answer collection or questionnaire Zustand store are needed now; the separate Terms & Privacy acceptance receipt belongs to Phase 10.
 
@@ -238,7 +238,7 @@ Any storage explanation must describe phone saving, background uploads and crede
 
 Feature requests remain available without paid access and reuse support's private contact flow and configured destination. Distinguish suggestions with an email subject or form request type. Requests contain only what the user deliberately submits; do not automatically attach private reflections, activity history or recovery credentials. Public boards and voting are outside the first-release scope. A failed link opening shares support's existing toast presentation and leaves the action available.
 
-The owner approved five Settings groups on October 9: Preferences, Account & data, Privacy, Support, and About. Support sits directly above About and contains separate Get help and Suggest a feature email-draft actions. About contains the legal links, Rate on the App Store, and Instagram, TikTok and Twitter/X profiles. The owner confirmed the profiles and App Store listing are not ready; their rows stay unavailable until public destinations are configured. The rating action links directly to Write a Review. Link-opening failure shows plain feedback and permits retry; no activity or account payload is appended.
+Phase 10 removes the empty Privacy group with its two unavailable analytics rows, leaving Preferences, Account & data, Support and About from the October 9 grouped Settings design. Support sits directly above About and contains separate Get help and Suggest a feature email-draft actions. About contains the legal links, Rate on the App Store, and Instagram, TikTok and Twitter/X profiles. The owner confirmed the profiles and App Store listing are not ready; their rows stay unavailable until public destinations are configured. The rating action links directly to Write a Review. Link-opening failure shows plain feedback and permits retry; no activity or account payload is appended.
 
 In-app account deletion includes the automatically created no-signup account and associated data. Do not require a support email or call to delete it. Explain any retained data or delayed cleanup. When subscriptions are active, explain that deleting the app account does not cancel billing through Apple, offer subscription management and retain immediate deletion. See [Apple account-deletion guidance](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion).
 
@@ -315,7 +315,7 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 | ID    | Required result                                                                                                                                                                                                                                                                                                |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AC-01 | On iOS, account bootstrap requires no signup form; valid recovery restores only the authorized account. Credential failures cannot create duplicate accounts silently.                                                                                                                                         |
-| AC-02 | Phase 10 adds one Terms & Privacy page with legal links and account-owned versioned acceptance; no analytics Settings switches or later analytics prompt. Welcome/questionnaire onboarding remains deferred.                                                                                                   |
+| AC-02 | Phase 10 adds one Terms & Privacy page with legal links and account-owned versioned acceptance; no analytics Settings switches or later analytics prompt. The existing Welcome leads to acceptance before new-account creation; additional welcome/questionnaire onboarding remains deferred.                  |
 | AC-03 | The hard paywall supports purchase, restore, and honest pending/failed verification; essential recovery, subscription, legal, and data controls remain reachable when unpaid.                                                                                                                                  |
 | AC-04 | Six Level 1 venue decks shuffle once and cycle independently, with order/front/last venue saved per account on this phone. Left/X saves only optional deck preferences; right/heart starts locally. Each Completed action creates one stable UUID; retries cannot duplicate a rep.                             |
 | AC-05 | Home validates nonempty venue catalogs, distinguishes initial loading/failure/offline misses, and keeps downloaded cards usable through refresh failure. Omit level progress.                                                                                                                                  |

@@ -174,7 +174,7 @@ owned by [Phase 07A](../implementation-plan/phase-07a-billing.md). The optional
 Analytics and crash-reporting providers are not installed or enabled. The current
 telemetry helper has an event-name allowlist, account-reset consent and no exporter
 or payload API. [Phase 10](../implementation-plan/phase-10-acceptance.md) owns the
-Terms & Privacy acceptance receipt, [Phase 11](../implementation-plan/phase-11-analytics.md) owns the disclosed events, and [Phase 12](../implementation-plan/phase-12-crash-reporting.md) owns app crash reporting;
+implemented Terms & Privacy acceptance receipt and tested eligibility boundary, [Phase 11](../implementation-plan/phase-11-analytics.md) owns the disclosed events, and [Phase 12](../implementation-plan/phase-12-crash-reporting.md) owns app crash reporting;
 [Phase 13](../implementation-plan/phase-13-legal-documents.md) owns final legal
 notices and public destinations. Questionnaire onboarding, reminders, custom
 dictation, lock-screen display and progression remain deferred; their existence

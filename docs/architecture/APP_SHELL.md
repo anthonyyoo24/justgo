@@ -26,7 +26,7 @@ fixture loader both require `__DEV__`.
 ## Runtime composition and account ownership
 
 `app-support/providers/AppProvider.tsx` composes the identity controller,
-account-scoped client/query cache, telemetry helper, activity runtime and challenge
+account-scoped client/query cache, acceptance controller, telemetry helper, activity runtime and challenge
 controller. It synchronizes account identity before consumers, forwards foreground
 and connectivity changes, and stops account work/listeners during teardown.
 Installation-level Motion and Haptics providers sit outside account/access guards.
@@ -61,6 +61,7 @@ with file watching disabled must be restarted before its bundle proves edits.
 | `/settings`, `/recovery`                                            | Preferences, recovery hub, direct export and support outside paid access        |
 | `/account/recover`, `/account/keys`                                 | Explicit existing-account recovery and recovery-key management                  |
 | `/account/devices`, `/account/transfer`, `/account/troubleshooting` | Device management, transfer and connection tools outside paid access            |
+| `/acceptance`                                                       | Terms/Privacy links and account-owned acceptance, outside paid access           |
 | `/delete-account`, `/welcome`                                       | Durable deletion/cleanup and safe entry after deletion                          |
 | `/preview`                                                          | Guarded development fixtures and haptics tools                                  |
 | Unknown links                                                       | Provider-independent `+not-found` screen with Go home                           |
@@ -68,7 +69,7 @@ with file watching disabled must be restarted before its bundle proves edits.
 The root layout uses `Stack.Protected` for account/access/deletion boundaries.
 Home is the sole owner of `/`. When a product route is inaccessible, the first
 available root screen is `/access`, which restores identity or redirects to
-recovery, deletion or welcome as needed. Static account files own only the listed
+recovery, deletion, welcome or acceptance as needed. Settings header fallback also uses this public gate; a protected Home route can be a no-op before acceptance. Static account files own only the listed
 URLs; unknown account tools and the removed `/export-data` route use not found.
 Challenge, Success and reflection files share a `(challenge)` directory without
 another layout, so the root stack owns their gestures and transitions directly.
@@ -238,11 +239,21 @@ stays mounted through Confirm. The receiving form survives until its request
 settles. Return-key submission, key hiding and explicit revocation confirmation
 remain accessible. Header Back uses history with Settings fallback.
 
-Settings owns Preferences, Account & data, Privacy, Support and About. Support/
+Settings owns Preferences, Account & data, Support and About. Support/
 feature-request actions create private email drafts. Legal/social/rating destinations
-use configured URLs or honest unavailable states. The current analytics rows are
-unavailable and telemetry exports nothing; planned acceptance/analytics changes
-belong to [Phase 10 acceptance](../implementation-plan/phase-10-acceptance.md) and [Phase 11 analytics](../implementation-plan/phase-11-analytics.md).
+use configured URLs or honest unavailable states. Phase 10 removed both analytics rows; telemetry still exports nothing. The acceptance controller reads the authenticated account receipt, fences late responses and captures generation-bound eligibility tickets. Unknown/refreshing confirmation, account changes, recovery operations, backgrounding, deletion and privacy invalidation fail closed for delivery. A previously confirmed current receipt can keep the same account in the app during a failed refresh; it cannot enable analytics without new confirmation. Activity synchronization and paid-access verification do not depend on this controller. Phase 11 must check captured work again immediately before forwarding.
+
+Welcome Continue opts into the new-account preparation handoff and opens acceptance without creating an account. I Accept submits a persisted accepted bootstrap or an owner-scoped receipt write. The acceptance page contains no account shortcut; existing Settings/recovery/data-control routes retain their established navigation. Choosing recovery cancels that handoff, so an accepted recovered account stays in its recovery hub. Replacement-creation routes carry their source owner; remounting cannot turn the resulting account into another creation request.
+
+Welcome has a navigation-only Continue button and no account-creation spinner.
+After acceptance, keep Terms & Privacy mounted and busy until
+`AcceptancePreparationCover` has actually shown. The cover uses the same Terms
+presentation while access and the first deck prepare; only after `onShow` may the
+destination mount underneath. Owner/attempt readiness and two animation frames
+then reveal that same deck. A catalog/asset failure offers Try again for the deck
+without another acceptance or account request. Welcome routing is reserved for
+actual first-use/deleted identity state, never preparation waiting. This prevents
+both the old Welcome-shaped cover and the pre-`onShow` navigation flash.
 
 The direct export action keeps Export my data visible with a spinner and delivers
 CSV/JSON in a ZIP through the native share sheet or browser download. Dismissal

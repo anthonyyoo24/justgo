@@ -140,13 +140,11 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 ## Setup or environment changes
 
-- The hosted test API (`justgo-two.vercel.app`) already serves `DELETE
-/v1/account` (checked October 16). It does not yet have the 4xx change or
-  migration 0016's owner-only transfer DELETE restriction.
-- Apply through forward migration `0016_transfer_delete_owner` on the next
-  authorized hosted update. It makes transfer DELETE owner-only even with a
-  matching code digest; keep already-applied migration 0014 unchanged. The
-  migration runner also applies 0015, but retention scheduling stays deferred.
+- The October 18 owner-authorized [Phase 10 rollout](phase-10-acceptance.md)
+  updated `justgo-two.vercel.app` with the current API, including the 4xx mapping,
+  and applied forward migrations 0015–0017. The owner-only transfer DELETE
+  restriction is verified; migration 0014 remains unchanged. Retention scheduling
+  stays deferred, and the installed cleanup function was not invoked.
 - New API variable `BETA_ACCESS_WINDOW` (JSON `{startsAt, expiresAt}` or `null`);
   configuration rejects it outside `APP_ENVIRONMENT=staging`.
 - Native builds need item-scoped Keychain removal for deletion and the
@@ -162,7 +160,6 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 | Gate                                                                                              | Owner                         | Phase  | Done when                                                                            |
 | ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------ |
-| Redeploy the API with the 4xx mapping and apply migration 0016's transfer DELETE restriction      | Anthony authorizes            | 14     | Forward migrations through 0016 applied; deployment probed                           |
 | Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 14     | Schedule runs on the hosted database; first run's counts recorded                    |
 | Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 13, 14 | Dashboard matches FOUNDATION.md before Phase 13 publishes wording                    |
 | Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                                     |
