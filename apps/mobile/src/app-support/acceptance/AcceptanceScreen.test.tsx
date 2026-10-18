@@ -139,6 +139,49 @@ it('accepts for the connected account without replacing it', async () => {
   expect(mockCreateAcceptedAccount).not.toHaveBeenCalled();
 });
 
+it('announces the initial receipt check separately from saving acceptance', async () => {
+  let finishSaving!: (saved: boolean) => void;
+  const saving = new Promise<boolean>((resolve) => {
+    finishSaving = resolve;
+  });
+  mockAccept.mockReturnValueOnce(saving);
+  connect('loading');
+  const screen = render(<AcceptanceScreen />);
+  expect(
+    screen.getByRole('progressbar', { name: 'Checking your acceptance' }),
+  ).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'I Accept' })).toBeDisabled();
+
+  mockReceipt.status = 'required';
+  screen.rerender(<AcceptanceScreen />);
+  expect(screen.getByRole('button', { name: 'I Accept' })).toBeEnabled();
+  fireEvent.press(screen.getByRole('button', { name: 'I Accept' }));
+  expect(mockAccept).toHaveBeenCalledTimes(1);
+
+  mockReceipt.status = 'loading';
+  mockReceipt.saving = true;
+  screen.rerender(<AcceptanceScreen />);
+  expect(
+    screen.getByRole('progressbar', { name: 'Saving your acceptance' }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByRole('progressbar', { name: 'Checking your acceptance' }),
+  ).toBeNull();
+  expect(screen.getByRole('button', { name: 'I Accept' })).toBeDisabled();
+  fireEvent.press(screen.getByRole('button', { name: 'I Accept' }));
+  expect(mockAccept).toHaveBeenCalledTimes(1);
+  expect(mockCreateAcceptedAccount).not.toHaveBeenCalled();
+
+  await act(async () => {
+    finishSaving(true);
+    await saving;
+  });
+  mockReceipt.status = 'accepted';
+  mockReceipt.saving = false;
+  screen.rerender(<AcceptanceScreen />);
+  expect(screen.getByText('Redirect: /access')).toBeTruthy();
+});
+
 it('reuses the owning account receipt and returns to the public access gate', () => {
   connect('accepted');
   const screen = render(<AcceptanceScreen />);

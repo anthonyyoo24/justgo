@@ -269,6 +269,120 @@ it('persists accepted versions and recovery secret before bootstrap, then retrie
   expect(requests[0]![1]).toEqual(requests[1]![1]);
   expect(relaunched.getSnapshot().account).not.toBeNull();
 });
+it.each(['NETWORK', 'CREDENTIAL_REJECTED'] as const)(
+  'creates an accepted separate account after recovery fails with %s, preserving the recovery credential',
+  async (code) => {
+    const vault = nativeVault();
+    const recoveryKey = secret();
+    const server = connected((path, body) => {
+      if (
+        path === '/sessions' &&
+        (body as { kind: string })?.kind === 'recovery'
+      )
+        throw new IdentityClientError(code);
+    });
+    const controller = new IdentityController(vault, server, random);
+    await controller.initialize();
+    await controller.recoverKey(recoveryKey);
+    expect((await vault.read())!.pending?.kind).toBe('recover');
+    expect(controller.getSnapshot().account).toBeNull();
+
+    await controller.createAcceptedAccount();
+
+    expect(controller.getSnapshot().account).not.toBeNull();
+    expect((await vault.read())!.pending).toBeNull();
+    expect(await vault.credentials()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ secret: recoveryKey }),
+      ]),
+    );
+    const requests = server.calls.mock.calls.filter(
+      ([path]) => path === '/sessions',
+    );
+    expect(requests.map(([, body]) => body.kind)).toEqual([
+      'recovery',
+      'bootstrap',
+    ]);
+    expect(requests[1]![1]).toMatchObject({
+      acceptance: CURRENT_ACCEPTANCE_VERSIONS,
+    });
+    expect(requests[1]![1].credential).not.toBe(recoveryKey);
+    expect(requests[1]![1].sessionId).not.toBe(requests[0]![1].sessionId);
+  },
+);
+
+it('creates an accepted separate account after failed renewal without discarding the original credential', async () => {
+  const vault = nativeVault();
+  const originalUserId = id();
+  const replacementUserId = id();
+  let bootstraps = 0;
+  const server = connected((path, body) => {
+    const input = body as {
+      kind: string;
+      deviceId: string;
+      sessionId: string;
+    };
+    if (path !== '/sessions') return;
+    if (input.kind === 'renewal') throw new IdentityClientError('NETWORK');
+    if (input.kind === 'bootstrap')
+      return {
+        userId: bootstraps++ === 0 ? originalUserId : replacementUserId,
+        deviceId: input.deviceId,
+        sessionId: input.sessionId,
+        expiresAt: expiry(),
+      };
+  });
+  const controller = new IdentityController(vault, server, random);
+  await controller.initialize();
+  await controller.createAcceptedAccount();
+  const originalCredential = (await vault.credentials())[0]!;
+  await controller.renew();
+  expect((await vault.read())!.pending?.kind).toBe('renew');
+  expect(controller.getSnapshot().account?.userId).toBe(originalUserId);
+
+  await controller.createAcceptedAccount();
+
+  expect(controller.getSnapshot().account?.userId).toBe(replacementUserId);
+  expect((await vault.read())!.pending).toBeNull();
+  expect(await vault.credentials()).toContainEqual(originalCredential);
+  const bootstrapRequests = server.calls.mock.calls.filter(
+    ([path, body]) => path === '/sessions' && body?.kind === 'bootstrap',
+  );
+  expect(bootstrapRequests).toHaveLength(2);
+  expect(bootstrapRequests[1]![1]).toMatchObject({
+    acceptance: CURRENT_ACCEPTANCE_VERSIONS,
+  });
+  expect(bootstrapRequests[1]![1].credential).not.toBe(
+    originalCredential.secret,
+  );
+});
+
+it('keeps a pending transfer intact instead of replacing it with an accepted account', async () => {
+  const vault = nativeVault();
+  const server = connected((path, body) => {
+    if (path === '/transfers')
+      return {
+        id: (body as { id: string }).id,
+        expiresAt: expiry(),
+        status: 'waiting',
+        verification: '012345',
+      };
+  });
+  const controller = new IdentityController(vault, server, random);
+  await controller.initialize();
+  await controller.startTransfer();
+  const pending = (await vault.read())!.pending;
+  expect(pending?.kind).toBe('transfer');
+  const calls = server.calls.mock.calls.length;
+
+  await controller.createAcceptedAccount();
+
+  expect((await vault.read())!.pending).toEqual(pending);
+  expect(controller.hasReceivingTransfer()).toBe(true);
+  expect(controller.getSnapshot().account).toBeNull();
+  expect(server.calls).toHaveBeenCalledTimes(calls);
+});
+
 it('does not create an account when secure storage is locked or a credential write fails', async () => {
   const server = connected();
   const locked: CredentialVault = {

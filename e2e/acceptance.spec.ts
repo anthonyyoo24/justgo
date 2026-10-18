@@ -211,6 +211,97 @@ test('Welcome opens the draft explanation before creating an account, then reuse
   ).toHaveCount(0);
 });
 
+for (const scenario of [
+  { path: '/recovery', failure: 'network' },
+  { path: '/account/recover', failure: 'rejected' },
+] as const)
+  test(`a ${scenario.failure} recovery from ${scenario.path} can create an accepted separate account`, async ({
+    page,
+    fixtureDatabase,
+  }) => {
+    const existing = await createUnacceptedAccount(page);
+    const recoveryKey =
+      scenario.failure === 'network'
+        ? existing.proof.credential
+        : randomBytes(32).toString('hex');
+    const sessionsUrl = `${journeyApiUrl}/v1/sessions`;
+    let bootstraps = 0;
+    await page.route(sessionsUrl, async (route) => {
+      const input = sessionCreateSchema.parse(route.request().postDataJSON());
+      if (input.kind === 'bootstrap') bootstraps++;
+      if (scenario.failure === 'network' && input.kind === 'recovery')
+        await route.abort('failed');
+      else await route.continue();
+    });
+    await page.goto(scenario.path);
+    if (scenario.path === '/recovery')
+      await page
+        .getByRole('button', {
+          name: 'Recover an existing account',
+          exact: true,
+        })
+        .click();
+    await page.getByLabel('Recovery key', { exact: true }).fill(recoveryKey);
+    await page
+      .getByRole('button', { name: 'Recover with key', exact: true })
+      .click();
+    await expect(
+      page.getByText(
+        scenario.failure === 'network'
+          ? 'Couldn’t connect. Retry when you’re online; your pending action is saved.'
+          : 'This recovery credential is no longer valid. Try another recovery method.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await page
+      .getByRole('button', {
+        name: 'Create a separate empty account',
+        exact: true,
+      })
+      .click();
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
+    ).toBeVisible();
+    expect(bootstraps).toBe(0);
+    const creating = page.waitForResponse(
+      (response) =>
+        response.url() === sessionsUrl &&
+        response.request().method() === 'POST' &&
+        response.request().postDataJSON().kind === 'bootstrap',
+    );
+    await acceptFixtureTerms(page);
+    const created = await creating;
+    expect(created.ok()).toBe(true);
+    const account = sessionResponseSchema.parse(await created.json());
+    expect(account.userId).not.toBe(existing.account.userId);
+    expect(created.request().postDataJSON().credential).not.toBe(recoveryKey);
+    expect(bootstraps).toBe(1);
+    await expect(page).toHaveURL(/\/recovery\/?$/);
+    await expect(
+      page.getByText('Connected', { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
+    expect(await readReceipt(fixtureDatabase, account.userId)).toEqual([
+      expect.objectContaining(CURRENT_ACCEPTANCE_VERSIONS),
+    ]);
+    expect(await readReceipt(fixtureDatabase, existing.account.userId)).toEqual(
+      [],
+    );
+    const original = await page.request.post(sessionsUrl, {
+      data: {
+        kind: 'recovery',
+        credential: existing.proof.credential,
+        deviceId: randomUUID(),
+        sessionId: randomUUID(),
+        sessionToken: randomBytes(32).toString('hex'),
+      },
+    });
+    expect(original.ok()).toBe(true);
+    expect(sessionResponseSchema.parse(await original.json()).userId).toBe(
+      existing.account.userId,
+    );
+  });
+
 test('an existing account keeps acceptance retryable after an uncertain save without replacing its receipt or activity', async ({
   page,
   fixtureDatabase,
@@ -263,15 +354,30 @@ test('an existing account keeps acceptance retryable after an uncertain save wit
     page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
   ).toBeVisible();
   let writes = 0;
+  let releaseSave!: () => void;
+  const saveGate = new Promise<void>((resolve) => {
+    releaseSave = resolve;
+  });
   await page.route(acceptanceUrl, async (route) => {
     if (route.request().method() === 'PUT' && ++writes === 1) {
       // The server commits, but the phone receives no acknowledgement.
       const response = await route.fetch();
       expect(response.ok()).toBe(true);
+      await saveGate;
       await route.abort('failed');
     } else await route.continue();
   });
-  await acceptFixtureTerms(page);
+  try {
+    await acceptFixtureTerms(page);
+    await expect(
+      page.getByRole('progressbar', { name: 'Saving your acceptance' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('progressbar', { name: 'Checking your acceptance' }),
+    ).toHaveCount(0);
+  } finally {
+    releaseSave();
+  }
   await expect(page.getByRole('alert')).toHaveText(
     'Couldn’t save your acceptance. Please try again.',
   );

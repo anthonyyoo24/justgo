@@ -49,7 +49,10 @@ export function AcceptanceScreen() {
     } else await acceptance.accept();
   };
   const checking =
-    !!state.account && !creatingNew && receipt.status === 'loading';
+    !!state.account &&
+    !creatingNew &&
+    receipt.status === 'loading' &&
+    !receipt.saving;
   return (
     <AcceptanceView
       busy={state.busy || receipt.saving || !state.initialized || accepted}

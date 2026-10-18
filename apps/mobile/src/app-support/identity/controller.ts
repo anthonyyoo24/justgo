@@ -435,9 +435,7 @@ export class IdentityController {
   createAcceptedAccount = () =>
     this.run(async () => {
       const pending = this.data!.pending;
-      if (pending) {
-        if (pending.kind !== 'bootstrap')
-          throw new IdentityClientError('CONFLICT');
+      if (pending?.kind === 'bootstrap') {
         // Retain the original proof after an uncertain response. The explicit
         // tap can update legal versions without creating another account.
         await this.save({
@@ -445,7 +443,14 @@ export class IdentityController {
           pending: { ...pending, acceptance: CURRENT_ACCEPTANCE_VERSIONS },
         });
         await this.resume();
-      } else await this.newAccount(CURRENT_ACCEPTANCE_VERSIONS);
+      } else if (
+        !pending ||
+        pending.kind === 'recover' ||
+        pending.kind === 'renew'
+      ) {
+        // An explicit separate-account choice retains the old credentials.
+        await this.newAccount(CURRENT_ACCEPTANCE_VERSIONS);
+      } else throw new IdentityClientError('CONFLICT');
     });
   private async finish(
     info: SessionResponse,
