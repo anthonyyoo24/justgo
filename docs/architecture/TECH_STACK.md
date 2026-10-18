@@ -171,7 +171,16 @@ owned by [Phase 07A](../implementation-plan/phase-07a-billing.md). The optional
 [Stripe checkout](../proposals/optional-stripe-checkout.md) and future
 [text coach](../proposals/future-text-coach.md) are separate proposals.
 
-Analytics and crash-reporting SDKs are not installed or enabled in the app. Sentry account setup exists (`anthony-corp`, React Native `justgo-mobile`, US region); account setup does not establish delivery, redaction or release acceptance. The current
+Product analytics remains uninstalled and disabled. Sentry React Native 7.11.0
+(Expo 57's supported version, Cocoa 8.58.0) is installed for errors only under
+`anthony-corp` / `justgo-mobile` in the US region. The ordinary app environment
+keeps delivery disabled pending matching notices/provider review and signed-build
+acceptance. Anthony approved minimal Policy-only startup diagnostics before
+onboarding acceptance. Synthetic
+browser delivery and stored IP redaction were verified; native compilation,
+crash/restart delivery and symbolication remain Phase 13 gates. See the
+[diagnostics boundary](APP_SHELL.md#app-error-reporting) and
+[Phase 11 handoff](../handoffs/phase-11-crash-reporting.md). The current
 telemetry helper has an event-name allowlist, account-reset consent and no exporter
 or payload API. [Phase 10](../implementation-plan/phase-10-acceptance.md) owns the
 implemented Terms & Privacy acceptance receipt and tested eligibility boundary, [Phase 14](../implementation-plan/phase-14-analytics.md) owns post-paid-launch analytics and the approved event allowlist, and [Phase 11](../implementation-plan/phase-11-crash-reporting.md) owns app crash reporting;

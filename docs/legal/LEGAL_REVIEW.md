@@ -25,6 +25,15 @@ For Canadian review, begin with the [OPC's meaningful-consent guidance](https://
 
 ## October 15 onboarding acceptance review
 
+Phase 11 now supplies [verified SDK/provider facts](DATA_INVENTORY.md#sentry-diagnostic-boundary)
+and a [handoff](../handoffs/phase-11-crash-reporting.md); ordinary Sentry delivery
+remains disabled. Anthony approved minimal essential diagnostics under the
+Privacy Policy before onboarding acceptance on October 18. Review matching notices
+and applicable requirements for that scope before activation, alongside US
+processing, provider retention, the
+local native crash cache and requests for reports without account linkage. Native
+envelope metadata and event bodies both require signed-build verification.
+
 The owner approved one Terms & Privacy onboarding page as the only permission request for the Phase 14 analytics scope (acceptance implemented in Phase 10), replacing the two planned Settings choices. See the [planning handoff and draft copy](../handoffs/phase-10-acceptance.md). Review whether that experience supports the exact collection in the intended release regions; do not treat a competitor screenshot or agreement to general terms as proof. Keep applicable withdrawal/objection rights and an effective request-handling process in the review even though no Settings switch is planned. If required changes affect the approved experience or distribution, record the issue for the owner rather than silently declaring it resolved.
 
 Launch copy must describe phone plus cloud storage and the reviewed Sentry scope accurately, without implying active PostHog collection. The current acceptance page still contains PostHog/feeling/length wording; Phase 12 owns the reviewed copy and version changes before beta. Phase 14 must revisit notices and accepted versions before post-launch analytics, using the existing page for required reacceptance and never backfilling pre-activation history. Future analytics copy must describe product-analysis purposes and persistent account linkage accurately. The proposed statement about not selling data without permission is draft copy, not authorization for any sale. Material future scope changes and AI-context sharing are outside this acceptance.

@@ -11,6 +11,7 @@ Approved public Privacy Policy/Terms and release-disclosure preparation accurate
 ## Decisions in force
 
 - Dependencies: 08 for verified data-control/retention behavior, 09 for local deck/venue facts, 10 for onboarding acceptance and 11 for Sentry diagnostic collection/provider configuration. Product analytics stays disabled through beta and paid launch; deferred Phase 14 does not block this phase. Review can begin alongside implementation; final notices must describe the verified release behavior.
+- Anthony approved minimal essential Sentry diagnostics under the Privacy Policy before onboarding acceptance on October 18. Review matching notices, provider settings and applicable requirements for that scope before activation; the existing account acceptance receipt does not gate this narrow diagnostics path.
 - Acceptance: PRD §8, AC-15–16 · applicable privacy and iOS release-disclosure acceptance
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 

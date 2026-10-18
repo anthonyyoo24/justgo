@@ -37,6 +37,7 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/app-support/acceptance/                          | Legal acceptance screen/first-deck cover, receipt confirmation and analytics eligibility fencing. |
 | apps/mobile/src/app-support/providers/                           | App, account and activity-runtime composition/lifecycle.                                          |
 | apps/mobile/src/app-support/fallbacks/                           | Root crash and unknown-link recovery UI.                                                          |
+| apps/mobile/src/app-support/diagnostics/                         | Optional Sentry startup, field allowlist and isolated error delivery.                             |
 | apps/mobile/src/app-support/saving/                              | App-wide saving/recovery feedback.                                                                |
 | apps/mobile/src/features/settings/                               | Settings screen and preference rows.                                                              |
 | apps/mobile/src/features/settings/export/                        | Export collection/coordinator and Settings action.                                                |
@@ -67,7 +68,7 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/platform/subscriptions/                          | Native subscription-management presentation boundary.                                             |
 | apps/mobile/src/platform/toast/                                  | Native/browser notification adapters.                                                             |
 | apps/mobile/src/theme/                                           | Typed design tokens.                                                                              |
-| apps/mobile/src/dev/                                             | Guarded presentation fixtures and haptics comparison UI.                                          |
+| apps/mobile/src/dev/                                             | Guarded presentation, haptics and synthetic diagnostics fixtures.                                 |
 | apps/mobile/src/dev/previews/challenges/                         | Developer-only deck and completed/give-up previews.                                               |
 
 Wire-only `api.ts` modules live with the challenge catalog, Settings export,

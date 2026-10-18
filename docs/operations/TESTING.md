@@ -238,6 +238,13 @@ journal failures only for guarded web fixtures; normal/native/production resolut
 cannot load those fault adapters. There are no product UI failure switches or
 production paid-access bypasses.
 
+Journey builds enable the real Sentry SDK with a fixed fake ingestion key and
+intercept all hosted Sentry requests. `diagnostics.spec.ts` inspects scrubbed
+payloads for route errors and unhandled rejections and verifies root recovery even
+when ingestion returns 503. Unit/component suites use the explicit SDK boundary
+mock; those mocks do not establish real SDK or native behavior. Any real-provider
+probe must use disposable synthetic errors only, with ordinary delivery disabled.
+
 The fixture registry owns every created account UUID independently of browser
 requests and response delivery. Teardown deletes only that registry's accounts;
 registry failure fails cleanup instead of trusting browser IDs. Failed creations

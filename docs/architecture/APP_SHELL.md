@@ -116,6 +116,48 @@ eligibility checks verified coverage for the original start rather than today's
 paid status, through its separate injected reader. Neither an unavailable provider
 nor a navigation guard grants production paid access.
 
+## App error reporting
+
+`apps/mobile/index.ts` initializes the optional diagnostics owner before loading
+Expo Router. The provider-independent root ErrorBoundary reports through that
+owner and retains its generic message and Retry action. Reporter and transport
+failures never join product saving, account recovery or access decisions.
+
+The JavaScript `beforeSend` callback rebuilds an allowlisted error, and the custom
+transport repeats that boundary immediately before exporting one event. It drops
+other envelope items, raw messages, arbitrary paths/symbols, user/account IDs,
+headers, URLs, context, breadcrumbs and attachments. Only canonical bundle names,
+numeric locations, debug UUIDs, error handling state, event ID/time and trusted
+app/build/OS/environment metadata survive. Source-mapped development paths are
+discarded; signed-build stack usefulness and symbolication require release proof.
+JS delivery is memory-only, capped at two requests with five-second aborts and a
+one-minute pause after provider/network failures; it has no persistent retry queue.
+
+Native crashes bypass JS callbacks. The reviewed iOS config plugin owns early
+Cocoa initialization and independently reconstructs native events with numeric
+addresses/debug UUIDs and generic reasons. JS uses `autoInitializeNativeSdk: false`
+so it cannot replace that callback. Replay, screenshots, view hierarchy, network
+capture, automatic sessions, logs, tracing and profiling remain disabled. SDK or
+native API additions, including manual attachments, require renewed privacy review.
+Only `SentryCrashIntegration` is enabled natively. Cocoa 8.58 runs global event
+processors after `beforeSend`; its built-in Replay processor stays excluded.
+It also adds envelope trace metadata after the callback: random trace ID, public
+key, release/environment and SDK metadata. Do not add native user/segment/replay
+scope or manual span APIs without reviewing that separate header boundary.
+The native crash cache can retain original crash details locally until the next
+launch; outbound reconstruction is separate from that local capture.
+
+Explicit enabled/DSN/environment settings control JS delivery; native settings are
+baked into the binary and require a rebuild to change. An OTA JS disable does not
+disable native reporting in an already enabled binary. Neither path sets an
+account/device identifier. No account-owned diagnostics queue or identifier needs
+resetting on account changes/deletion. Anthony approved minimal essential
+reporting under the Privacy Policy before onboarding acceptance; account receipts
+do not gate this narrow diagnostics path. Real-user activation stays off until
+Phase 12 completes matching notices/provider review and Phase 13 verifies the
+signed build. See the [field inventory](../legal/DATA_INVENTORY.md#sentry-diagnostic-boundary)
+and [setup/handoff](../handoffs/phase-11-crash-reporting.md).
+
 ## Request policy
 
 The shared HTTP transport validates HTTPS URLs, with HTTP allowed only for

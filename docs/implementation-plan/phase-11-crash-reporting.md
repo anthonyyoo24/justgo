@@ -2,7 +2,7 @@
 
 # Phase 11 — App crash & error reporting
 
-**Status:** Sentry account/project setup ready; SDK integration and reporting remain unimplemented
+**Status:** Implemented locally; reporting scope approved. Notices/activation and signed-build acceptance open. See the [handoff](../handoffs/phase-11-crash-reporting.md).
 
 ## Outcome
 
@@ -11,13 +11,13 @@ Production app crashes and unhandled failures become visible through a configure
 ## Decisions in force
 
 - Dependencies: 08 and 10; reuse the root ErrorBoundary, diagnostic allowlist and account/acceptance boundary wherever the reviewed reporting basis requires it. Deferred Phase 14 product analytics is not a prerequisite.
-- Preserve the original app-reporting requirement [SEC-1]. Anthony selected Sentry before legal finalization and paid launch. The `anthony-corp` organization has a React Native `justgo-mobile` project in the US region; no SDK or app delivery is enabled. Verify plan, retention, reporting fields and privacy basis during integration; final legal review remains Phase 12.
+- Preserve the original app-reporting requirement [SEC-1]. Anthony selected Sentry before legal finalization and paid launch. The `anthony-corp` organization has a React Native `justgo-mobile` project in the US region; the SDK and synthetic delivery are implemented, while ordinary real-user delivery stays disabled pending launch gates. Anthony approved minimal essential diagnostics under the Privacy Policy before onboarding acceptance on October 18. The handoff records field/redaction evidence; verify actual plan/retention and matching notices before activation; final legal review remains Phase 12.
 
 ## Implement
 
 - Add app crash and unhandled-error reporting and connect it to the root ErrorBoundary. Preserve the usable retry/recovery screen and keep reporting failures isolated from startup, product saves, recovery and paid access.
 - Scrub reports to the same allowlist as server logs: never reflection text, feelings, tokens, recovery keys or request bodies. Inspect SDK defaults, breadcrumbs, automatic context and network metadata so they cannot bypass that boundary.
-- Record the configured provider/environment, identifiers, fields, IP handling, region, retention and applicable deletion/privacy-request cleanup in the data inventory. Settle with Phase 12 whether reporting falls under onboarding acceptance or the Privacy Policy alone; do not presume that analytics acceptance authorizes undisclosed diagnostics. If that decision is needed before enabling delivery, resolve it before enabling the provider.
+- Record the configured provider/environment, identifiers, fields, IP handling, region, retention and applicable deletion/privacy-request cleanup in the data inventory. Preserve Anthony's approved minimal essential diagnostics under the Privacy Policy, including startup before onboarding acceptance; the account's acceptance receipt does not gate this narrow reporting. Phase 12 reviews matching notices and applicable requirements before activation. Do not use analytics acceptance to authorize expanded diagnostics.
 - Test a controlled crash/unhandled failure, payload redaction and a provider outage using disposable fixtures. Verify root-boundary recovery and applicable account/eligibility fencing with automated and interactive evidence; distinguish browser, simulator and physical-device results.
 - Update relevant architecture/inventory documentation and carry signed-build reporting acceptance into Phase 13.
 
@@ -28,10 +28,12 @@ Production app crashes and unhandled failures become visible through a configure
 
 ## Ready to hand off when
 
-- [ ] Controlled app crashes/unhandled failures reach the configured provider, and the ErrorBoundary still offers usable recovery.
-- [ ] Payload-exclusion, reviewed eligibility/account handling and provider-outage tests pass; failures do not interrupt product saving or access.
-- [ ] Provider settings, field inventory, privacy basis and applicable cleanup are recorded for Phase 12 without claiming unverified retention or legal sufficiency.
-- [ ] Required phase checks and affected UI verification pass; save a handoff with actual reporting evidence and explicit signed-build/device gates and link it from the index.
+The local implementation evidence below is complete; the Phase 12/13 launch gates remain open.
+
+- [x] Controlled app crashes/unhandled failures reach the configured provider, and the ErrorBoundary still offers usable recovery.
+- [x] Payload-exclusion, reviewed eligibility/account handling and provider-outage tests pass; failures do not interrupt product saving or access.
+- [x] Provider settings, field inventory, privacy basis and applicable cleanup are recorded for Phase 12 without claiming unverified retention or legal sufficiency.
+- [x] Required phase checks and affected UI verification pass; save a handoff with actual reporting evidence and explicit signed-build/device gates and link it from the index.
 
 ## Open gates for Phases 12 and 13
 

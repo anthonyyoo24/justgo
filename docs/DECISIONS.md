@@ -239,6 +239,32 @@ Before Phase 14 activation, review the provider/payloads, update public notices/
 
 Preserve historical decision numbering and ignored evidence paths. The live hosted-test handoff moves to `phase-13-test-server.md`; its rollout evidence and all earlier device/release gates remain unchanged. This reordering does not implement an SDK or runtime copy change, close an acceptance gate, or authorize Git publication, deployment, native build/upload, legal publication or new data delivery.
 
+## October 18 minimal Sentry integration
+
+Install Expo 57's supported Sentry React Native 7.11.0 (Cocoa 8.58.0), keeping
+Expo Doctor validation intact. The app-support diagnostics owner starts before
+Router and independently allowlists JS events at capture and final transport;
+the iOS config plugin separately allowlists native events because Cocoa crashes
+bypass JavaScript callbacks. Keep replay, tracing, logs, sessions, attachments and
+account/user linkage disabled. Preserve generic ErrorBoundary recovery and keep
+provider failure outside product saving/access/recovery.
+
+Synthetic browser delivery and provider-stored redaction are verified. On
+October 18, Anthony approved minimal essential diagnostics under the Privacy
+Policy, including startup before onboarding acceptance. Reporting does not depend
+on the account's Terms & Privacy receipt. Preserve the narrow approved fields:
+app/version, OS version and scrubbed technical stacks; no account ID, stored IP,
+feelings, journal text or breadcrumbs. Phase 12 reviews matching notices and
+applicable requirements before real-user activation; signed-build acceptance stays
+in Phase 13. This owner scope decision does not close those launch gates.
+Account deletion cannot
+identify reports through an app account because no account identifier is sent;
+Phase 12 must review event-based requests/retention without promising linked erasure.
+The [inventory](legal/DATA_INVENTORY.md#sentry-diagnostic-boundary) records exact
+fields, local native cache and provider facts. Native config changes require a
+rebuilt binary; an OTA JS disable does not disable already enabled native capture.
+Signed-build crash/restart, payload inspection and symbolication remain Phase 13.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.
