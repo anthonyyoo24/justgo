@@ -68,6 +68,7 @@ export const users = appSchema
       createdAt: time('created_at').notNull().defaultNow(),
       deletedAt: time('deleted_at'),
       deletionSessionDigest: text('deletion_session_digest'),
+      analyticsRestrictedAt: time('analytics_restricted_at'),
     },
     (t) => [
       maintenance(),
@@ -88,6 +89,27 @@ export const users = appSchema
         using: sql`id = (select justgo.current_user_id())`,
         withCheck: sql`id = (select justgo.current_user_id())`,
       }),
+    ],
+  )
+  .enableRLS();
+export const accountAcceptances = appSchema
+  .table(
+    'account_acceptances',
+    {
+      userId: uuid('user_id')
+        .primaryKey()
+        .references(() => users.id, { onDelete: 'cascade' }),
+      termsVersion: text('terms_version').notNull(),
+      privacyVersion: text('privacy_version').notNull(),
+      analyticsScopeVersion: text('analytics_scope_version').notNull(),
+      acceptedAt: time('accepted_at').notNull().defaultNow(),
+    },
+    (t) => [
+      ...ownerPolicies(),
+      check(
+        'acceptance_versions',
+        sql`${t.termsVersion} ~ '^[a-zA-Z0-9._-]{1,80}$' and ${t.privacyVersion} ~ '^[a-zA-Z0-9._-]{1,80}$' and ${t.analyticsScopeVersion} ~ '^[a-zA-Z0-9._-]{1,80}$'`,
+      ),
     ],
   )
   .enableRLS();

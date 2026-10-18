@@ -30,6 +30,7 @@ const rateBucketKeys = ['identity', 'recovery'].map((lane) =>
 );
 const app = buildApp({
   logger: false,
+  developmentLegalDrafts: true,
   identity: new IdentityService(database.db, {
     // Keep existing limits and isolate this run from prior fixture sessions.
     rateKey: fixtureRateKey,

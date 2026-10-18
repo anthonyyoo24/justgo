@@ -62,7 +62,7 @@ describe('health and readiness', () => {
       await app.close();
     }
   });
-  it.each(['PATCH', 'DELETE'])(
+  it.each(['PUT', 'PATCH', 'DELETE'])(
     'allows %s preflight from the configured app origin only',
     async (method) => {
       const app = buildApp({
@@ -87,7 +87,7 @@ describe('health and readiness', () => {
           'http://localhost:8081',
         );
         expect(allowed.headers['access-control-allow-methods']).toBe(
-          'GET, POST, PATCH, DELETE',
+          'GET, POST, PUT, PATCH, DELETE',
         );
         const denied = await preflight('https://unknown.example');
         expect(denied.headers['access-control-allow-origin']).toBeUndefined();

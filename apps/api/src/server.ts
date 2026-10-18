@@ -13,6 +13,10 @@ const app = buildApp(
   {
     logger: loggerOptions(config.LOG_LEVEL),
     onVercel: process.env.VERCEL === '1',
+    developmentLegalDrafts:
+      config.NODE_ENV === 'development' &&
+      config.APP_ENVIRONMENT !== 'staging' &&
+      !process.env.VERCEL,
     ...(config.APP_ENVIRONMENT === 'staging'
       ? createBetaAccess(
           config.BETA_ACCESS_GRANTS,

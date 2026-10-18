@@ -10,6 +10,9 @@ import { challengeRoutes } from './challenges/routes.js';
 import { progressRoutes } from './progress/routes.js';
 import { ExportService } from './account-export/service.js';
 import { accountExportRoutes } from './account-export/routes.js';
+import { AcceptanceService } from './acceptance/service.js';
+import { acceptanceRoutes } from './acceptance/routes.js';
+import { developmentLegalDraftRoutes } from './acceptance/legal-drafts.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
@@ -40,6 +43,7 @@ export function buildApp(
     onVercel?: boolean;
     entitlementReader?: EntitlementReader;
     uploadEligibilityReader?: UploadEligibilityReader;
+    developmentLegalDrafts?: boolean;
   },
   createServer: typeof Fastify = Fastify,
 ) {
@@ -54,7 +58,7 @@ export function buildApp(
   app.register(helmet);
   app.register(cors, {
     origin: options.origins ?? [],
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     exposedHeaders: ['retry-after'],
     credentials: false,
   });
@@ -66,6 +70,12 @@ export function buildApp(
     healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
   );
   app.get('/openapi.json', async () => openApiDocument);
+  if (
+    options.developmentLegalDrafts &&
+    process.env.NODE_ENV !== 'production' &&
+    !process.env.VERCEL
+  )
+    developmentLegalDraftRoutes(app);
   app.register(
     async (scope) =>
       accessRoutes(
@@ -76,6 +86,12 @@ export function buildApp(
       ),
     { prefix: '/v1' },
   );
+  if (options.identity) {
+    const acceptanceService = new AcceptanceService(options.identity);
+    app.register(async (scope) => acceptanceRoutes(scope, acceptanceService), {
+      prefix: '/v1/account',
+    });
+  }
   if (options.identity)
     app.register(
       async (scope) =>
