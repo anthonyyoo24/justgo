@@ -11,12 +11,17 @@ import {
   useAccess,
   useIdentity,
   useRuntime,
+  useAcceptance,
 } from '../../providers/AppProvider';
 import { WelcomePreparationContext } from './welcome-preparation';
-import { WelcomePreparationCover } from './WelcomePreparationCover';
+import { AcceptancePreparationCover } from '../../acceptance/AcceptancePreparationCover';
 
 const Context = createContext(false);
 export const useWelcomeTransition = () => useContext(Context);
+const EntryContext = createContext<() => void>(() => {});
+export const useBeginWelcomeEntry = () => useContext(EntryContext);
+const CancelEntryContext = createContext<() => void>(() => {});
+export const useCancelWelcomeEntry = () => useContext(CancelEntryContext);
 
 type Handoff = {
   phase: 'normal' | 'welcome' | 'checking' | 'preparing';
@@ -26,22 +31,25 @@ type Handoff = {
   ready: boolean;
 };
 
-/** Keep one welcome surface above account navigation until its first deck paints. */
+/** Keep Terms & Privacy above account navigation until its first deck paints. */
 export function WelcomeTransition({ children }: PropsWithChildren) {
   const identity = useIdentity();
   const access = useAccess();
+  const acceptance = useAcceptance();
   const { challenges } = useRuntime();
   const deleted = identity.deletionStatus === 'deleted';
+  const [entryRequested, setEntryRequested] = useState(false);
+  const needsWelcome = deleted || (identity.needsWelcome && entryRequested);
   const owner = identity.account?.userId ?? null;
   const [handoff, setHandoff] = useState<Handoff>({
-    phase: deleted ? 'welcome' : 'normal',
+    phase: needsWelcome ? 'welcome' : 'normal',
     owner: null,
     attempt: 0,
     shown: false,
     ready: false,
   });
   let next = handoff;
-  if (deleted && handoff.phase !== 'welcome') {
+  if (needsWelcome && handoff.phase !== 'welcome') {
     next = {
       phase: 'welcome',
       owner: null,
@@ -49,9 +57,17 @@ export function WelcomeTransition({ children }: PropsWithChildren) {
       shown: false,
       ready: false,
     };
-  } else if (!deleted && handoff.phase !== 'normal') {
+  } else if (!needsWelcome && handoff.phase !== 'normal') {
     if (!owner || (handoff.owner && handoff.owner !== owner)) {
       next = { ...handoff, phase: 'normal', ready: false };
+    } else if (acceptance.status !== 'accepted') {
+      // Keep acceptance retries visible; preparing the deck must never cover them.
+      if (
+        handoff.phase !== 'welcome' ||
+        handoff.owner !== owner ||
+        handoff.ready
+      )
+        next = { ...handoff, phase: 'welcome', owner, ready: false };
     } else if (handoff.phase === 'welcome' || handoff.phase === 'checking') {
       const phase = access.isPending
         ? 'checking'
@@ -111,46 +127,66 @@ export function WelcomeTransition({ children }: PropsWithChildren) {
   }, [next.phase, next.ready, owner, attempt]);
 
   return (
-    <Context.Provider
-      value={
-        next.phase === 'checking' || (next.phase === 'preparing' && !next.shown)
-      }
+    <CancelEntryContext.Provider
+      value={() => {
+        setEntryRequested(false);
+        setHandoff((current) => ({
+          ...current,
+          phase: 'normal',
+          ready: false,
+        }));
+      }}
     >
-      <WelcomePreparationContext.Provider value={preparation}>
-        <View style={{ flex: 1 }}>
-          <View
-            style={{ flex: 1 }}
-            aria-hidden={covered}
-            accessibilityElementsHidden={covered}
-            importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
-          >
-            {children}
-          </View>
-          {covered && (
-            <WelcomePreparationCover
-              key={owner}
-              preparing={preparing}
-              attempt={attempt}
-              onShow={() =>
-                setHandoff((current) =>
-                  current.owner === owner && !current.shown
-                    ? { ...current, shown: true }
-                    : current,
-                )
-              }
-              onRetry={() => {
-                setHandoff((current) =>
-                  current.owner === owner && current.phase === 'preparing'
-                    ? { ...current, attempt: current.attempt + 1, ready: false }
-                    : current,
-                );
-                // The controller owns network failures; retry the same account.
-                void challenges.refresh();
-              }}
-            />
-          )}
-        </View>
-      </WelcomePreparationContext.Provider>
-    </Context.Provider>
+      <EntryContext.Provider value={() => setEntryRequested(true)}>
+        <Context.Provider
+          value={
+            next.phase === 'checking' ||
+            (next.phase === 'preparing' && !next.shown)
+          }
+        >
+          <WelcomePreparationContext.Provider value={preparation}>
+            <View style={{ flex: 1 }}>
+              <View
+                style={{ flex: 1 }}
+                aria-hidden={covered}
+                accessibilityElementsHidden={covered}
+                importantForAccessibility={
+                  covered ? 'no-hide-descendants' : 'auto'
+                }
+              >
+                {children}
+              </View>
+              {covered && (
+                <AcceptancePreparationCover
+                  key={owner}
+                  preparing={preparing}
+                  attempt={attempt}
+                  onShow={() =>
+                    setHandoff((current) =>
+                      current.owner === owner && !current.shown
+                        ? { ...current, shown: true }
+                        : current,
+                    )
+                  }
+                  onRetry={() => {
+                    setHandoff((current) =>
+                      current.owner === owner && current.phase === 'preparing'
+                        ? {
+                            ...current,
+                            attempt: current.attempt + 1,
+                            ready: false,
+                          }
+                        : current,
+                    );
+                    // The controller owns network failures; retry the same account.
+                    void challenges.refresh();
+                  }}
+                />
+              )}
+            </View>
+          </WelcomePreparationContext.Provider>
+        </Context.Provider>
+      </EntryContext.Provider>
+    </CancelEntryContext.Provider>
   );
 }

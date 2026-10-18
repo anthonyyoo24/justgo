@@ -10,7 +10,11 @@ import {
 import { AppState, Text, type AppStateStatus } from 'react-native';
 import { focusManager, notifyManager } from '@tanstack/react-query';
 import { z } from 'zod';
-import { type AccessResponse, type SessionResponse } from '@justgo/contracts';
+import {
+  CURRENT_ACCEPTANCE_VERSIONS,
+  type AccessResponse,
+  type SessionResponse,
+} from '@justgo/contracts';
 import { accountKey } from '../../lib/network/account-client';
 import { createIdentityApi } from '../identity/api';
 import { IdentityController } from '../identity/controller';
@@ -23,6 +27,7 @@ import {
   useActivityState,
   useIdentity,
   useRuntime,
+  useAcceptance,
 } from './AppProvider';
 
 jest.mock('expo-crypto', () => {
@@ -73,12 +78,14 @@ function Probe() {
   const identity = useIdentity();
   const access = useAccess();
   const activity = useActivityState();
+  const acceptance = useAcceptance();
   return (
     <>
       <Text>{identity.initialized ? 'initialized' : 'starting'}</Text>
       <Text>{identity.account?.userId ?? 'disconnected'}</Text>
       <Text>{access.verified ? 'access verified' : 'access closed'}</Text>
       <Text>{identity.message}</Text>
+      <Text>{`acceptance: ${acceptance.status}`}</Text>
       <Text>
         {activity.repository
           ? `Activity owner: ${activity.repository.accountId}`
@@ -143,6 +150,16 @@ beforeEach(async () => {
       if (path.endsWith('/devices')) return response({ devices: [] });
       if (path.endsWith('/credentials')) return response({ credentials: [] });
       if (path.endsWith('/access')) return response(access);
+      if (path.endsWith('/account/acceptance'))
+        return response({
+          userId,
+          analyticsRestricted: false,
+          receipt: {
+            userId,
+            ...CURRENT_ACCEPTANCE_VERSIONS,
+            acceptedAt: new Date(Date.now() - 1000).toISOString(),
+          },
+        });
       throw new Error(`Unexpected fixture request: ${path}`);
     });
   removeListener = jest.fn();
@@ -463,6 +480,50 @@ it('requires a provider for runtime consumers', () => {
   expect(() => renderHook(() => useRuntime())).toThrow(
     'AppProvider is required',
   );
+});
+
+it('keeps paid access and account activity independent of acceptance-service failure', async () => {
+  const original = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async (input, init) => {
+    if (String(input).endsWith('/account/acceptance'))
+      throw new Error('offline');
+    return original(input, init);
+  });
+  const screen = await mount();
+  await waitFor(() =>
+    expect(screen.getByText('acceptance: error')).toBeTruthy(),
+  );
+  await waitFor(() => expect(screen.getByText('access verified')).toBeTruthy());
+  expect(runtime.activity.getRepository()?.accountId).toBe(userId);
+  expect(
+    runtime.acceptance.capture({
+      userId,
+      occurredAt: new Date().toISOString(),
+    }),
+  ).toBeNull();
+});
+
+it('closes analytics eligibility immediately in background and requires fresh foreground confirmation', async () => {
+  await mount();
+  await waitFor(() =>
+    expect(runtime.acceptance.getSnapshot().confirmed).toBe(true),
+  );
+  const event = { userId, occurredAt: new Date().toISOString() };
+  const ticket = runtime.acceptance.capture(event)!;
+  expect(runtime.acceptance.canDeliver(ticket)).toBe(true);
+  act(() => onAppState('background'));
+  expect(runtime.acceptance.canDeliver(ticket)).toBe(false);
+  await act(async () => onAppState('active'));
+  await waitFor(() =>
+    expect(runtime.acceptance.getSnapshot().confirmed).toBe(true),
+  );
+  expect(runtime.acceptance.canDeliver(ticket)).toBe(false);
+  expect(
+    runtime.acceptance.capture({
+      ...event,
+      occurredAt: new Date().toISOString(),
+    }),
+  ).not.toBeNull();
 });
 
 it('cancels a receiving transfer in the background and retries durable cleanup on reconnection', async () => {

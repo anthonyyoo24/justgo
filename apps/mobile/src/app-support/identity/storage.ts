@@ -5,6 +5,7 @@ import {
   sessionResponseSchema,
   transferStartSchema,
   accountDeletionResponseSchema,
+  acceptanceVersionsSchema,
 } from '@justgo/contracts';
 
 export const credentialSchema = z
@@ -30,6 +31,7 @@ export const deviceStateSchema = z
           credentialId: z.uuid(),
           secret: secretSchema,
           proposal: sessionProposalSchema,
+          acceptance: acceptanceVersionsSchema.optional(),
         }),
         z.object({
           kind: z.literal('recover'),

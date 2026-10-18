@@ -6,7 +6,6 @@ import { SettingsMotionRow } from './SettingsMotionRow';
 import { SettingsHapticsRow } from './SettingsHapticsRow';
 import { SettingsExportRow } from './export/SettingsExportRow';
 import {
-  PendingSettingsRow,
   SettingsGroup,
   SettingsRowContent,
   SettingsActionRow,
@@ -49,11 +48,6 @@ export function SettingsScreen() {
           href="/delete-account"
           chevron
         />
-      </SettingsGroup>
-
-      <SettingsGroup title="Privacy">
-        <PendingSettingsRow icon="analytics" label="General analytics" />
-        <PendingSettingsRow icon="sensitive" label="Sensitive metadata" />
       </SettingsGroup>
 
       <SettingsInformationGroups />

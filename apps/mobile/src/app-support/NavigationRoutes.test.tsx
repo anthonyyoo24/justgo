@@ -18,8 +18,13 @@ let mockSnapshot = {
     busy: false,
     account: { userId: 'synthetic-account' } as { userId: string } | null,
     deletionStatus: null as 'pending' | 'cleanup' | 'deleted' | null,
+    needsWelcome: false,
   },
   access: { verified: true, isPending: false, refetch: jest.fn() },
+  acceptance: {
+    status: 'accepted' as
+      'accepted' | 'loading' | 'required' | 'error' | 'disconnected',
+  },
 };
 const mockListeners = new Set<() => void>();
 jest.mock('expo-font', () => ({ useFonts: () => [true, null] }));
@@ -43,6 +48,7 @@ jest.mock('./providers/AppProvider', () => {
     AppProvider: ({ children }: { children: ReactNode }) => children,
     useIdentity: () => useSnapshot().identity,
     useAccess: () => useSnapshot().access,
+    useAcceptance: () => useSnapshot().acceptance,
   };
 });
 jest.mock('./identity/welcome/WelcomeTransition', () => ({
@@ -68,6 +74,7 @@ jest.mock('../platform/haptics/HapticsPreferencesProvider', () => ({
 const routes = {
   _layout: RootLayout,
   access: AccessRoute,
+  acceptance: () => <Text>Acceptance ready</Text>,
   '(tabs)/_layout': () => <Stack screenOptions={{ animation: 'none' }} />,
   '(tabs)/index': () => <Text>Home ready</Text>,
   '(tabs)/progress': () => <Text>Progress ready</Text>,
@@ -94,8 +101,10 @@ beforeEach(() => {
       busy: false,
       account: { userId: 'synthetic-account' },
       deletionStatus: null,
+      needsWelcome: false,
     },
     access: { verified: true, isPending: false, refetch: jest.fn() },
+    acceptance: { status: 'accepted' },
   };
 });
 
@@ -123,6 +132,7 @@ it.each([
   ['/account/troubleshooting', 'Troubleshooting'],
   ['/settings', 'Settings'],
   ['/recovery', 'Recovery'],
+  ['/delete-account', 'Deletion'],
 ] as const)(
   'keeps %s outside the paid-access guard',
   async (initialUrl, title) => {
@@ -187,6 +197,41 @@ it('removes deleted-account screens from actual navigation history', async () =>
   expect(router.canGoBack()).toBe(false);
   expect(screen.queryByText('Settings ready')).toBeNull();
   expect(screen.queryByText('Home ready')).toBeNull();
+});
+
+it.each(['/', '/challenge', '/success', '/reflection', '/progress'])(
+  'routes %s to acceptance when an existing account lacks the required receipt',
+  async (initialUrl) => {
+    mockSnapshot.acceptance.status = 'required';
+    const navigation = renderRouter(routes, { initialUrl });
+    expect(await screen.findByText('Acceptance ready')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/acceptance');
+    expect(screen.queryByText('Home ready')).toBeNull();
+  },
+);
+
+it.each([
+  ['/settings', 'Settings'],
+  ['/recovery', 'Recovery'],
+  ['/account/recover', 'Recover'],
+  ['/delete-account', 'Deletion'],
+] as const)(
+  'keeps %s reachable before acceptance',
+  async (initialUrl, title) => {
+    mockSnapshot.acceptance.status = 'required';
+    const navigation = renderRouter(routes, { initialUrl });
+    expect(await screen.findByText(`${title} ready`)).toBeTruthy();
+    expect(navigation.getPathname()).toBe(initialUrl);
+  },
+);
+
+it('routes a fresh installation to welcome without silently creating an account', async () => {
+  mockSnapshot.identity.account = null;
+  mockSnapshot.identity.needsWelcome = true;
+  mockSnapshot.acceptance.status = 'disconnected';
+  const navigation = renderRouter(routes, { initialUrl: '/' });
+  expect(await screen.findByText('Welcome ready')).toBeTruthy();
+  expect(navigation.getPathname()).toBe('/welcome');
 });
 
 it.each(['pending', 'cleanup'] as const)(

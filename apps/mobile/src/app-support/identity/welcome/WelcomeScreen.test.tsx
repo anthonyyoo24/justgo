@@ -1,22 +1,25 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import type { IdentityApi } from '../api';
 import { IdentityClientError } from '../api';
 import { IdentityController } from '../controller';
 import { createMemoryVault } from '../storage';
 import { WelcomeScreen } from './WelcomeScreen';
 
-let mockAwaitingAccess = false;
+const mockPush = jest.fn();
+const mockBeginEntry = jest.fn();
 jest.mock('./WelcomeTransition', () => ({
-  useWelcomeTransition: () => mockAwaitingAccess,
+  useBeginWelcomeEntry: () => mockBeginEntry,
 }));
 beforeEach(() => {
-  mockAwaitingAccess = false;
+  mockPush.mockClear();
+  mockBeginEntry.mockClear();
 });
 
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   return {
     Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
+    useRouter: () => ({ push: mockPush }),
   };
 });
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
@@ -28,7 +31,7 @@ jest.mock('expo-crypto', () => ({
   getRandomValues: jest.fn(),
 }));
 
-async function setup() {
+async function setup(deleted = true) {
   let sequence = 1;
   const id = () =>
     `00000000-0000-4000-8000-${(sequence++).toString().padStart(12, '0')}`;
@@ -40,7 +43,7 @@ async function setup() {
     pending: null,
     savedKey: null,
     registration: null,
-    accountDeleted: true,
+    accountDeleted: deleted,
   });
   const bootstrap = jest.fn(async (body: unknown) => {
     const proposal = body as { deviceId: string; sessionId: string };
@@ -88,6 +91,7 @@ it('shows the night-paper welcome copy and only Continue, without recovery or le
   expect(screen.queryAllByRole('link')).toHaveLength(0);
   expect(screen.queryByText('Your account has been deleted.')).toBeNull();
   expect(s.bootstrap).not.toHaveBeenCalled();
+  expect(mockBeginEntry).not.toHaveBeenCalled();
 });
 
 it('keeps welcome ready when a foreground refresh has no account to reconnect', async () => {
@@ -107,59 +111,39 @@ it('keeps welcome ready when a foreground refresh has no account to reconnect', 
   unsubscribe();
 });
 
-it('keeps Continue busy after creation until the first access check finishes', async () => {
+it('leaves Welcome as soon as an account exists without rendering a creation loader', async () => {
   const s = await setup();
   await s.controller.createAccount();
-  mockAwaitingAccess = true;
   const screen = render(<WelcomeScreen controller={s.controller} />);
-  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-  expect(screen.getByLabelText('Creating your account')).toBeTruthy();
-  expect(screen.queryByText('Redirect: /')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  expect(screen.queryByRole('progressbar')).toBeNull();
   expect(s.bootstrap).toHaveBeenCalledTimes(1);
-  mockAwaitingAccess = false;
-  screen.rerender(<WelcomeScreen controller={s.controller} />);
-  expect(screen.getByText('Redirect: /')).toBeTruthy();
+  expect(screen.getByText('Redirect: /access')).toBeTruthy();
 });
 
-it('replaces Continue with a spinner, blocks duplicate requests and routes success through normal access checks', async () => {
+it('opens acceptance on Continue without creating an account or changing the saved identity', async () => {
   const s = await setup();
-  let release!: () => void;
-  const pending = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const success = s.bootstrap.getMockImplementation()!;
-  s.bootstrap.mockImplementation(async (body) => {
-    await pending;
-    return success(body);
-  });
+  const before = await s.vault.read();
   const screen = render(<WelcomeScreen controller={s.controller} />);
-  const button = screen.getByRole('button', { name: 'Continue' });
-  fireEvent.press(button);
-  await waitFor(() => expect(s.bootstrap).toHaveBeenCalledTimes(1));
-  expect(
-    screen.getByRole('progressbar', { name: 'Creating your account' }),
-  ).toBeTruthy();
-  expect(button).toBeDisabled();
-  expect(screen.queryByText('Continue')).toBeNull();
-  fireEvent.press(button);
-  expect(s.bootstrap).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(mockPush).toHaveBeenCalledWith('/acceptance');
+  expect(mockBeginEntry).toHaveBeenCalledTimes(1);
+  expect(mockBeginEntry.mock.invocationCallOrder[0]).toBeLessThan(
+    Number(mockPush.mock.invocationCallOrder[0]),
+  );
+  expect(s.bootstrap).not.toHaveBeenCalled();
   expect(s.controller.getSnapshot().deletionStatus).toBe('deleted');
-  await act(async () => {
-    release();
-    await pending;
-  });
-  await waitFor(() => expect(screen.getByText('Redirect: /')).toBeTruthy());
-  expect((await s.vault.read())?.accountDeleted).toBe(false);
-  screen.unmount();
+  expect(await s.vault.read()).toEqual(before);
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  expect(screen.queryByRole('progressbar')).toBeNull();
 });
 
-it('shows a creation error on welcome and retries the saved proof without creating another account', async () => {
+it('preserves a failed creation proof while sending the user back to acceptance to retry', async () => {
   const s = await setup();
   s.bootstrap.mockRejectedValueOnce(new IdentityClientError('NETWORK'));
+  await s.controller.createAcceptedAccount();
   const screen = render(<WelcomeScreen controller={s.controller} />);
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+  expect(screen.getByRole('alert')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   expect(s.controller.getSnapshot()).toMatchObject({
     deletionStatus: 'deleted',
@@ -167,16 +151,17 @@ it('shows a creation error on welcome and retries the saved proof without creati
     account: null,
   });
   expect((await s.vault.read())?.accountDeleted).toBe(true);
+  const before = await s.vault.read();
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  await waitFor(() => expect(screen.getByText('Redirect: /')).toBeTruthy());
-  expect(s.bootstrap).toHaveBeenCalledTimes(2);
-  expect(s.bootstrap.mock.calls[1]).toEqual(s.bootstrap.mock.calls[0]);
+  expect(mockPush).toHaveBeenCalledWith('/acceptance');
+  expect(s.bootstrap).toHaveBeenCalledTimes(1);
+  expect(await s.vault.read()).toEqual(before);
 });
 
-it('retains the welcome state across a failed replacement and failed relaunch, then resumes the same request', async () => {
+it('retains the welcome state and the same accepted creation proof across a failed relaunch', async () => {
   const s = await setup();
   s.bootstrap.mockRejectedValue(new IdentityClientError('NETWORK'));
-  await s.controller.createAccount();
+  await s.controller.createAcceptedAccount();
   const proof = s.bootstrap.mock.calls[0];
   const reopened = new IdentityController(s.vault, s.api, s.random);
   await reopened.initialize();
@@ -190,4 +175,54 @@ it('retains the welcome state across a failed replacement and failed relaunch, t
   const screen = render(<WelcomeScreen controller={reopened} />);
   expect(screen.getByRole('alert')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(mockPush).toHaveBeenCalledWith('/acceptance');
+  expect(s.bootstrap).toHaveBeenCalledTimes(2);
+});
+
+it('also sends a fresh installation to acceptance before issuing any account request', async () => {
+  const s = await setup(false);
+  expect(s.controller.getSnapshot()).toMatchObject({
+    initialized: true,
+    needsWelcome: true,
+    account: null,
+    deletionStatus: null,
+  });
+  const screen = render(<WelcomeScreen controller={s.controller} />);
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(mockPush).toHaveBeenCalledWith('/acceptance');
+  expect(s.bootstrap).not.toHaveBeenCalled();
+  expect(mockBeginEntry).toHaveBeenCalledTimes(1);
+});
+
+it('blocks Continue while an accepted account creation request is still running', async () => {
+  const s = await setup();
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const success = s.bootstrap.getMockImplementation()!;
+  s.bootstrap.mockImplementation(async (body) => {
+    await pending;
+    return success(body);
+  });
+  let creation!: Promise<void>;
+  await act(async () => {
+    creation = s.controller.createAcceptedAccount();
+    await Promise.resolve();
+  });
+  const screen = render(<WelcomeScreen controller={s.controller} />);
+  const button = screen.getByRole('button', { name: 'Continue' });
+  expect(button).toBeDisabled();
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(screen.getByText('Continue')).toBeTruthy();
+  fireEvent.press(button);
+  expect(mockPush).not.toHaveBeenCalled();
+  expect(mockBeginEntry).not.toHaveBeenCalled();
+  await act(async () => {
+    release();
+    await creation;
+  });
+  expect(s.bootstrap).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('Redirect: /access')).toBeTruthy();
 });

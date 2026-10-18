@@ -7,7 +7,10 @@ let mockIdentity = {
   deletionStatus: null as 'pending' | 'cleanup' | 'deleted' | null,
   busy: false,
   account: null as { userId: string } | null,
+  needsWelcome: false,
 };
+let mockAcceptanceStatus:
+  'accepted' | 'loading' | 'required' | 'error' | 'disconnected' = 'accepted';
 let mockVerified = true;
 let mockPending = false;
 const mockRefreshChallenges = jest.fn(async () => {});
@@ -21,12 +24,13 @@ jest.mock('./providers/AppProvider', () => ({
   AppProvider: ({ children }: { children: ReactNode }) => children,
   useIdentity: () => mockIdentity,
   useAccess: () => ({ verified: mockVerified, isPending: mockPending }),
+  useAcceptance: () => ({ status: mockAcceptanceStatus }),
   useRuntime: () => ({ challenges: { refresh: mockRefreshChallenges } }),
 }));
-jest.mock('./identity/welcome/WelcomePreparationCover', () => ({
-  WelcomePreparationCover: ({ onShow }: { onShow: () => void }) => {
+jest.mock('./acceptance/AcceptancePreparationCover', () => ({
+  AcceptancePreparationCover: ({ onShow }: { onShow: () => void }) => {
     const { View } = require('react-native') as typeof import('react-native');
-    return <View testID="welcome-cover" onLayout={onShow} />;
+    return <View testID="acceptance-cover" onLayout={onShow} />;
   },
 }));
 jest.mock('./saving/SavingFeedback', () => ({
@@ -80,7 +84,13 @@ jest.mock('expo-router', () => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockStackScreenOptions.clear();
-  mockIdentity = { deletionStatus: null, busy: false, account: null };
+  mockIdentity = {
+    deletionStatus: null,
+    busy: false,
+    account: null,
+    needsWelcome: false,
+  };
+  mockAcceptanceStatus = 'accepted';
   mockVerified = true;
   mockPending = false;
 });
@@ -109,7 +119,12 @@ it('removes old account routes after deletion and keeps them removed through rep
   expect(screen.getByText('(tabs)')).toBeTruthy();
   expect(screen.queryByText('welcome')).toBeNull();
   for (const busy of [false, true, false]) {
-    mockIdentity = { deletionStatus: 'deleted', busy, account: null };
+    mockIdentity = {
+      deletionStatus: 'deleted',
+      busy,
+      account: null,
+      needsWelcome: false,
+    };
     screen.rerender(<RootLayout />);
     expect(screen.getByTestId('navigation')).toHaveStyle({
       backgroundColor: '#122E45',
@@ -133,7 +148,12 @@ it('removes old account routes after deletion and keeps them removed through rep
     ])
       expect(screen.queryByText(name)).toBeNull();
   }
-  mockIdentity = { deletionStatus: null, busy: false, account: null };
+  mockIdentity = {
+    deletionStatus: null,
+    busy: false,
+    account: null,
+    needsWelcome: false,
+  };
   mockVerified = false;
   screen.rerender(<RootLayout />);
   expect(screen.queryByText('welcome')).toBeNull();
@@ -147,7 +167,12 @@ it('removes old account routes after deletion and keeps them removed through rep
 it.each(['pending', 'cleanup'] as const)(
   'keeps %s cleanup available while closing product routes despite a stale access result',
   (deletionStatus) => {
-    mockIdentity = { deletionStatus, busy: false, account: null };
+    mockIdentity = {
+      deletionStatus,
+      busy: false,
+      account: null,
+      needsWelcome: false,
+    };
     const screen = render(<RootLayout />);
     expect(screen.getByText('delete-account')).toBeTruthy();
     expect(screen.queryByText('welcome')).toBeNull();
@@ -156,19 +181,28 @@ it.each(['pending', 'cleanup'] as const)(
   },
 );
 
-it('retains the welcome route and background through replacement access loading', () => {
-  mockIdentity = { deletionStatus: 'deleted', busy: false, account: null };
+it('removes Welcome immediately after creation while Terms covers the destination until native onShow', () => {
+  mockIdentity = {
+    deletionStatus: 'deleted',
+    busy: false,
+    account: null,
+    needsWelcome: false,
+  };
   const screen = render(<RootLayout />);
   mockIdentity = {
     deletionStatus: null,
     busy: false,
     account: { userId: 'replacement' },
+    needsWelcome: false,
   };
   mockVerified = false;
   mockPending = true;
   screen.rerender(<RootLayout />);
   expect(
-    screen.getByText('welcome', { includeHiddenElements: true }),
+    screen.queryByText('welcome', { includeHiddenElements: true }),
+  ).toBeNull();
+  expect(
+    screen.getByText('acceptance', { includeHiddenElements: true }),
   ).toBeTruthy();
   expect(
     screen.queryByText('settings', { includeHiddenElements: true }),
@@ -179,18 +213,18 @@ it('retains the welcome route and background through replacement access loading'
   expect(
     screen.getByTestId('navigation', { includeHiddenElements: true }),
   ).toHaveStyle({
-    backgroundColor: '#122E45',
+    backgroundColor: '#F9EFE8',
   });
   mockVerified = true;
   mockPending = false;
   screen.rerender(<RootLayout />);
   expect(
-    screen.getByText('welcome', { includeHiddenElements: true }),
-  ).toBeTruthy();
+    screen.queryByText('welcome', { includeHiddenElements: true }),
+  ).toBeNull();
   expect(
     screen.queryByText('(tabs)', { includeHiddenElements: true }),
   ).toBeNull();
-  fireEvent(screen.getByTestId('welcome-cover'), 'layout');
+  fireEvent(screen.getByTestId('acceptance-cover'), 'layout');
   expect(
     screen.queryByText('welcome', { includeHiddenElements: true }),
   ).toBeNull();
@@ -199,5 +233,45 @@ it('retains the welcome route and background through replacement access loading'
   ).toBeTruthy();
   // The destination mounts under the visible cover before it can be revealed.
   expect(screen.queryByText('(tabs)')).toBeNull();
-  expect(screen.getByTestId('welcome-cover')).toBeTruthy();
+  expect(screen.getByTestId('acceptance-cover')).toBeTruthy();
+});
+
+it.each(['loading', 'required', 'error'] as const)(
+  'closes product routes for %s acceptance while retaining account and data tools',
+  (status) => {
+    mockIdentity.account = { userId: 'existing-account' };
+    mockAcceptanceStatus = status;
+    const screen = render(<RootLayout />);
+    expect(screen.getByText('acceptance')).toBeTruthy();
+    for (const name of [
+      'settings',
+      'recovery',
+      'delete-account',
+      'account/recover',
+      'account/keys',
+    ])
+      expect(screen.getByText(name)).toBeTruthy();
+    for (const name of [
+      '(tabs)',
+      '(challenge)/challenge',
+      '(challenge)/success',
+      '(challenge)/reflection',
+    ])
+      expect(screen.queryByText(name)).toBeNull();
+    mockAcceptanceStatus = 'accepted';
+    screen.rerender(<RootLayout />);
+    expect(screen.getByText('(tabs)')).toBeTruthy();
+  },
+);
+
+it('offers welcome and acceptance on a new installation before any account exists', () => {
+  mockIdentity.needsWelcome = true;
+  mockAcceptanceStatus = 'disconnected';
+  const screen = render(<RootLayout />);
+  expect(screen.getByText('welcome')).toBeTruthy();
+  expect(screen.getByText('acceptance')).toBeTruthy();
+  expect(screen.queryByText('(tabs)')).toBeNull();
+  expect(screen.getByTestId('navigation')).toHaveStyle({
+    backgroundColor: '#122E45',
+  });
 });

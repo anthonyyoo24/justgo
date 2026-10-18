@@ -10,7 +10,7 @@ export function createTelemetry() {
     track(_event: TelemetryEvent): boolean {
       void _event;
       if (consent !== 'granted') return false;
-      // No exporter until privacy choices, event allowlist and vendor setup are approved.
+      // Phase 11 consumes the acceptance boundary; no provider or replay exists here.
       return false;
     },
   };

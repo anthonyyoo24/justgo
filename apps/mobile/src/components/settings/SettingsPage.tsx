@@ -20,7 +20,7 @@ import { ScaledText } from '../typography/ScaledText';
 
 export function SettingsPage({
   title,
-  backHref = '/',
+  backHref = '/access',
   onBack,
   children,
 }: PropsWithChildren<{

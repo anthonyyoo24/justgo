@@ -1,18 +1,28 @@
 import { act, render } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { useEffect } from 'react';
-import { WelcomeTransition, useWelcomeTransition } from './WelcomeTransition';
+import {
+  WelcomeTransition,
+  useWelcomeTransition,
+  useBeginWelcomeEntry,
+  useCancelWelcomeEntry,
+} from './WelcomeTransition';
 import { useWelcomePreparation } from './welcome-preparation';
 
 let mockDeleted: 'deleted' | null = 'deleted';
 let mockAccount: { userId: string } | null = null;
 let mockPending = true;
 let mockVerified = false;
+let mockNeedsWelcome = false;
+let mockAcceptanceStatus: 'accepted' | 'required' | 'loading' | 'error' =
+  'accepted';
 const mockRefresh = jest.fn(async () => undefined);
 let mockCover: { onShow: () => void; onRetry: () => void } | null;
 let mockPreparation: ReturnType<typeof useWelcomePreparation>;
-jest.mock('./WelcomePreparationCover', () => ({
-  WelcomePreparationCover: (props: {
+let mockBeginEntry: ReturnType<typeof useBeginWelcomeEntry>;
+let mockCancelEntry: ReturnType<typeof useCancelWelcomeEntry>;
+jest.mock('../../acceptance/AcceptancePreparationCover', () => ({
+  AcceptancePreparationCover: (props: {
     onShow: () => void;
     onRetry: () => void;
   }) => {
@@ -22,8 +32,13 @@ jest.mock('./WelcomePreparationCover', () => ({
   },
 }));
 jest.mock('../../providers/AppProvider', () => ({
-  useIdentity: () => ({ deletionStatus: mockDeleted, account: mockAccount }),
+  useIdentity: () => ({
+    deletionStatus: mockDeleted,
+    account: mockAccount,
+    needsWelcome: mockNeedsWelcome,
+  }),
   useAccess: () => ({ isPending: mockPending, verified: mockVerified }),
+  useAcceptance: () => ({ status: mockAcceptanceStatus }),
   useRuntime: () => ({ challenges: { refresh: mockRefresh } }),
 }));
 let frames: Map<number, FrameRequestCallback>;
@@ -33,6 +48,8 @@ beforeEach(() => {
   mockAccount = null;
   mockPending = true;
   mockVerified = false;
+  mockNeedsWelcome = false;
+  mockAcceptanceStatus = 'accepted';
   mockCover = null;
   mockRefresh.mockClear();
   frames = new Map();
@@ -56,9 +73,17 @@ function paint() {
 
 function EntryState() {
   const preparation = useWelcomePreparation();
+  const beginEntry = useBeginWelcomeEntry();
+  const cancelEntry = useCancelWelcomeEntry();
   useEffect(() => {
     mockPreparation = preparation;
   }, [preparation]);
+  useEffect(() => {
+    mockBeginEntry = beginEntry;
+  }, [beginEntry]);
+  useEffect(() => {
+    mockCancelEntry = cancelEntry;
+  }, [cancelEntry]);
   return (
     <Text>
       {useWelcomeTransition() ? 'Welcome loading' : 'Account navigation'}
@@ -191,4 +216,91 @@ it('does not cover an existing account or hide a failed access check', () => {
   screen.rerender(entry());
   expect(screen.getByText('Account navigation')).toBeTruthy();
   expect(screen.queryByText('Welcome loading')).toBeNull();
+});
+
+it('keeps missing-receipt and acceptance retries visible before preparing the first deck', () => {
+  const screen = render(entry());
+  mockDeleted = null;
+  mockAccount = { userId: 'new-account' };
+  mockPending = false;
+  mockVerified = true;
+  for (const status of ['loading', 'required', 'error'] as const) {
+    mockAcceptanceStatus = status;
+    screen.rerender(entry());
+    expect(screen.getByText('Account navigation')).toBeTruthy();
+    expect(screen.queryByTestId('cover')).toBeNull();
+    expect(mockPreparation.active).toBe(false);
+  }
+  mockAcceptanceStatus = 'accepted';
+  screen.rerender(entry());
+  expect(screen.getByTestId('cover')).toBeTruthy();
+  act(() => mockCover!.onShow());
+  expect(mockPreparation.active).toBe(true);
+});
+
+it('prepares a fresh installation after explicit welcome continuation and account acceptance', () => {
+  mockDeleted = null;
+  mockNeedsWelcome = true;
+  const screen = render(entry());
+  expect(screen.queryByTestId('cover')).toBeNull();
+  act(() => mockBeginEntry());
+  expect(screen.queryByTestId('cover')).toBeNull();
+  mockNeedsWelcome = false;
+  mockAccount = { userId: 'first-account' };
+  mockAcceptanceStatus = 'required';
+  mockPending = false;
+  mockVerified = true;
+  screen.rerender(entry());
+  expect(screen.queryByTestId('cover')).toBeNull();
+  expect(mockPreparation.active).toBe(false);
+  mockAcceptanceStatus = 'accepted';
+  screen.rerender(entry());
+  expect(screen.getByTestId('cover')).toBeTruthy();
+  act(() => mockCover!.onShow());
+  act(() => mockPreparation.markReady());
+  paint();
+  paint();
+  expect(screen.queryByTestId('cover')).toBeNull();
+});
+
+it('keeps fresh-install recovery on account navigation without starting a welcome deck handoff', () => {
+  mockDeleted = null;
+  mockNeedsWelcome = true;
+  const screen = render(entry());
+  expect(screen.queryByTestId('cover')).toBeNull();
+  mockNeedsWelcome = false;
+  mockAccount = { userId: 'recovered-account' };
+  mockAcceptanceStatus = 'accepted';
+  mockPending = false;
+  mockVerified = true;
+  screen.rerender(entry());
+  expect(screen.getByText('Account navigation')).toBeTruthy();
+  expect(screen.queryByText('Welcome loading')).toBeNull();
+  expect(screen.queryByTestId('cover')).toBeNull();
+  expect(mockPreparation.active).toBe(false);
+  paint();
+  paint();
+  expect(screen.getByText('Account navigation')).toBeTruthy();
+  expect(screen.queryByTestId('cover')).toBeNull();
+});
+
+it('cancels an explicit welcome entry before recovering an already accepted account', () => {
+  mockDeleted = null;
+  mockNeedsWelcome = true;
+  const screen = render(entry());
+  act(() => mockBeginEntry());
+  expect(screen.queryByTestId('cover')).toBeNull();
+  act(() => mockCancelEntry());
+  mockNeedsWelcome = false;
+  mockAccount = { userId: 'recovered-account' };
+  mockAcceptanceStatus = 'accepted';
+  mockPending = false;
+  mockVerified = true;
+  screen.rerender(entry());
+  expect(screen.getByText('Account navigation')).toBeTruthy();
+  expect(screen.queryByTestId('cover')).toBeNull();
+  expect(mockPreparation.active).toBe(false);
+  paint();
+  paint();
+  expect(screen.queryByTestId('cover')).toBeNull();
 });

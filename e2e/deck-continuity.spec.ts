@@ -10,7 +10,11 @@ import type { Page } from '@playwright/test';
 import { z } from 'zod';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
-import { leaveAccountScreens } from './support/account-navigation';
+import {
+  leaveAccountScreens,
+  reloadForAccountRecovery,
+} from './support/account-navigation';
+import { acceptFixtureTerms } from './support/acceptance';
 
 const savedDeckSchema = z.object({
   version: z.literal(1),
@@ -34,13 +38,16 @@ async function createAccount(page: Page) {
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
+  await acceptFixtureTerms(page);
   const proof = sessionCreateSchema.parse((await creating).postDataJSON());
   if (proof.kind !== 'bootstrap')
     throw new Error('Expected disposable bootstrap');
   const response = await created;
   expect(response.ok()).toBe(true);
   const account = sessionResponseSchema.parse(await response.json());
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
@@ -53,7 +60,7 @@ async function recover(
   proof: Extract<SessionCreate, { kind: 'bootstrap' }>,
 ) {
   // Web identity is deliberately memory-only; the phone's deck storage survives.
-  await page.reload();
+  await reloadForAccountRecovery(page);
   await page
     .getByRole('button', { name: 'Recover an existing account', exact: true })
     .click();
@@ -61,7 +68,9 @@ async function recover(
   await page
     .getByRole('button', { name: 'Recover with key', exact: true })
     .click();
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),

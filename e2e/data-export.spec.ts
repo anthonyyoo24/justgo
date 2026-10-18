@@ -5,6 +5,7 @@ import { sessionResponseSchema } from '@justgo/contracts';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
+import { acceptFixtureTerms } from './support/acceptance';
 
 test('Settings exports every cloud page and a pending phone reflection as a usable private ZIP', async ({
   page,
@@ -19,8 +20,11 @@ test('Settings exports every cloud page and a pending phone reflection as a usab
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
+  await acceptFixtureTerms(page);
   const account = sessionResponseSchema.parse(await (await created).json());
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   const cloudIds = Array.from({ length: 51 }, () => randomUUID());
   for (const id of cloudIds)
     await fixtureDatabase.query(
@@ -105,7 +109,10 @@ test('export shows a retryable network failure and downloads only after a fresh 
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await acceptFixtureTerms(page);
+  await expect(
+    page.getByText('Connected', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await leaveAccountScreens(page);
   await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
   const failures = '**/v1/account/export*';

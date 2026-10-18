@@ -1,6 +1,16 @@
 import type { Page } from '@playwright/test';
 import { expect } from './fixtures';
 
+/** Reload the memory-only web identity while retaining the phone's activity storage. */
+export async function reloadForAccountRecovery(page: Page) {
+  await page.reload();
+  await expect(page).toHaveURL(/\/welcome\/?$/);
+  await expect(
+    page.getByRole('button', { name: 'Continue', exact: true }),
+  ).toBeEnabled();
+  await page.goto('/recovery');
+}
+
 // Use the real header navigation without reloading the memory-only web account.
 // Recovery after device revocation can retain another account screen in history.
 export async function leaveAccountScreens(page: Page) {
