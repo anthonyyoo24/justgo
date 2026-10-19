@@ -29,7 +29,18 @@ export function createVault(): CredentialVault {
     kind: 'keychain',
     read: async () => {
       const value = await module().readState();
-      return value === null ? null : deviceStateSchema.parse(JSON.parse(value));
+      if (value === null) return null;
+      const stored: unknown = JSON.parse(value);
+      const state = deviceStateSchema.parse(stored);
+      // Retire old legal metadata without replacing the pending account proof,
+      // recovery credentials, transfer cancellation or deletion safety state.
+      if (
+        state.pending?.kind === 'bootstrap' &&
+        // The successful schema parse above establishes this raw object shape.
+        Object.hasOwn((stored as { pending: object }).pending, 'acceptance')
+      )
+        await module().writeState(JSON.stringify(state));
+      return state;
     },
     write: async (value) => {
       await module().writeState(JSON.stringify(deviceStateSchema.parse(value)));

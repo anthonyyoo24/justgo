@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { attemptSchema } from './activity/attempts.ts';
-import { acceptanceReceiptSchema } from './acceptance.ts';
 
 // Fixed-size pages keep private journal responses within the API response budget.
 export const exportPageQuerySchema = z
@@ -12,7 +11,6 @@ export const exportPageSchema = z
       .object({
         id: z.uuid(),
         createdAt: z.iso.datetime(),
-        acceptance: acceptanceReceiptSchema.nullable().optional(),
         analyticsRestricted: z.boolean().optional(),
       })
       .strict(),

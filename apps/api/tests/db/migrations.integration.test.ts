@@ -540,12 +540,89 @@ describe('Phase 07 expansion, final contraction and disposable restoration', () 
     await migration(17);
     await compareMetadata(17);
     expect(await canonicalRows()).toEqual(normalizedBefore);
+    // Existing legal receipts are deliberately discarded, while every other
+    // table keeps its data, including journal text, live proofs, deleted-owner
+    // tombstones and an independent analytics restriction.
+    const deviceId = randomUUID();
+    const deletedOwner = randomUUID();
+    await admin.query(
+      `INSERT INTO ${schema}.account_acceptances
+        (user_id,terms_version,privacy_version,analytics_scope_version)
+        VALUES ($1,'legacy-terms','legacy-privacy','legacy-scope'),
+               ($2,'legacy-terms','legacy-privacy','legacy-scope')`,
+      [owner, otherOwner],
+    );
+    await admin.query(
+      `UPDATE ${schema}.users SET analytics_restricted_at='2026-10-17T12:00:00Z' WHERE id=$1`,
+      [owner],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.devices (id,user_id) VALUES ($1,$2)`,
+      [deviceId, owner],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.device_sessions (id,user_id,device_id,digest,expires_at)
+       VALUES ($1,$2,$3,repeat('a',64),now()+interval '1 day')`,
+      [randomUUID(), owner, deviceId],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.users (id,deleted_at,deletion_session_digest)
+       VALUES ($1,'2026-10-17T12:00:00Z',repeat('f',64))`,
+      [deletedOwner],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.recovery_credentials (id,user_id,digest,kind,revoked_at)
+       VALUES ($1,$2,repeat('b',64),'key',NULL),
+              ($3,$4,repeat('c',64),'sync','2026-10-17T12:00:00Z')`,
+      [randomUUID(), owner, randomUUID(), deletedOwner],
+    );
+    const preservedTables = [
+      'users',
+      'devices',
+      'device_sessions',
+      'recovery_credentials',
+      'device_transfers',
+      'identity_rate_buckets',
+      'attempts',
+      'attempt_patch_receipts',
+      'challenges',
+      'venue_cards',
+      'levels',
+      'venues',
+    ];
+    const preservedRows = new Map<string, unknown[]>();
+    for (const table of preservedTables)
+      preservedRows.set(
+        table,
+        (
+          await admin.query(
+            `SELECT * FROM ${schema}.${table} t ORDER BY to_jsonb(t)::text`,
+          )
+        ).rows,
+      );
+    await migration(18);
+    await compareMetadata(18);
+    expect(
+      (
+        await admin.query('SELECT to_regclass($1) AS table_name', [
+          `${schema}.account_acceptances`,
+        ])
+      ).rows[0].table_name,
+    ).toBeNull();
+    for (const table of preservedTables)
+      expect(
+        (
+          await admin.query(
+            `SELECT * FROM ${schema}.${table} t ORDER BY to_jsonb(t)::text`,
+          )
+        ).rows,
+      ).toEqual(preservedRows.get(table));
     // Clean installation also applies the complete immutable journal.
     await admin.query(
       `DROP SCHEMA ${schema} CASCADE; CREATE SCHEMA ${schema} AUTHORIZATION justgo_migrator; REVOKE ALL ON SCHEMA ${schema} FROM public; GRANT USAGE ON SCHEMA ${schema} TO justgo_runtime`,
     );
-    for (let index = 0; index <= 17; index++) await migration(index);
-    await compareMetadata(17);
+    for (let index = 0; index <= 18; index++) await migration(index);
+    await compareMetadata(18);
     expect(
       (
         await admin.query(

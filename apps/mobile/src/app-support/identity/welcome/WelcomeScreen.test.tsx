@@ -141,7 +141,7 @@ it('opens acceptance on Continue without creating an account or changing the sav
 it('preserves a failed creation proof while sending the user back to acceptance to retry', async () => {
   const s = await setup();
   s.bootstrap.mockRejectedValueOnce(new IdentityClientError('NETWORK'));
-  await s.controller.createAcceptedAccount();
+  await s.controller.createAccount();
   const screen = render(<WelcomeScreen controller={s.controller} />);
   expect(screen.getByRole('alert')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
@@ -158,10 +158,10 @@ it('preserves a failed creation proof while sending the user back to acceptance 
   expect(await s.vault.read()).toEqual(before);
 });
 
-it('retains the welcome state and the same accepted creation proof across a failed relaunch', async () => {
+it('retains the welcome state and the same account creation proof across a failed relaunch', async () => {
   const s = await setup();
   s.bootstrap.mockRejectedValue(new IdentityClientError('NETWORK'));
-  await s.controller.createAcceptedAccount();
+  await s.controller.createAccount();
   const proof = s.bootstrap.mock.calls[0];
   const reopened = new IdentityController(s.vault, s.api, s.random);
   await reopened.initialize();
@@ -195,7 +195,7 @@ it('also sends a fresh installation to acceptance before issuing any account req
   expect(mockBeginEntry).toHaveBeenCalledTimes(1);
 });
 
-it('blocks Continue while an accepted account creation request is still running', async () => {
+it('blocks Continue while an account creation request is still running', async () => {
   const s = await setup();
   let release!: () => void;
   const pending = new Promise<void>((resolve) => {
@@ -208,7 +208,7 @@ it('blocks Continue while an accepted account creation request is still running'
   });
   let creation!: Promise<void>;
   await act(async () => {
-    creation = s.controller.createAcceptedAccount();
+    creation = s.controller.createAccount();
     await Promise.resolve();
   });
   const screen = render(<WelcomeScreen controller={s.controller} />);

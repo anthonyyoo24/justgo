@@ -3,7 +3,7 @@ import type { JSHandle } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
-import { acceptFixtureTerms } from './support/acceptance';
+import { continueFromTerms } from './support/acceptance';
 
 test('Settings permanently deletes the owned account and retries a lost acknowledgement without resurrecting it', async ({
   page,
@@ -47,7 +47,7 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   const proof = sessionCreateSchema.parse((await creating).postDataJSON());
   const account = sessionResponseSchema.parse(await (await created).json());
   await expect(
@@ -335,7 +335,7 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
       await route.abort('failed');
     } else await route.continue();
   });
-  const accepting = page.getByRole('button', { name: 'I Accept', exact: true });
+  const accepting = page.getByRole('button', { name: 'Continue', exact: true });
   let flashWatcher:
     JSHandle<{ flashed: boolean; observer: MutationObserver }> | undefined;
   try {
@@ -371,7 +371,7 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
       inspect();
       return state;
     });
-    await acceptFixtureTerms(page);
+    await continueFromTerms(page);
     await expect(
       page.getByRole('progressbar', {
         name: 'Creating your account',
@@ -379,7 +379,7 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
       }),
     ).toBeVisible();
     await expect(accepting).toBeDisabled();
-    await expect(accepting.getByText('I Accept', { exact: true })).toHaveCount(
+    await expect(accepting.getByText('Continue', { exact: true })).toHaveCount(
       0,
     );
     releaseCreation();
@@ -394,9 +394,6 @@ test('Settings permanently deletes the owned account and retries a lost acknowle
       page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
     ).toBeVisible();
     await expect(accepting).toBeDisabled();
-    await expect(
-      page.getByRole('button', { name: 'Continue', exact: true }),
-    ).toHaveCount(0);
     await expect(page.getByText('Checking your access…')).toHaveCount(0);
     await expect(
       page.getByRole('button', { name: 'Check access again', exact: true }),

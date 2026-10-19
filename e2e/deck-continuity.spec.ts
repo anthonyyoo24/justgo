@@ -14,7 +14,7 @@ import {
   leaveAccountScreens,
   reloadForAccountRecovery,
 } from './support/account-navigation';
-import { acceptFixtureTerms } from './support/acceptance';
+import { continueFromTerms } from './support/acceptance';
 
 const savedDeckSchema = z.object({
   version: z.literal(1),
@@ -38,7 +38,7 @@ async function createAccount(page: Page) {
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   const proof = sessionCreateSchema.parse((await creating).postDataJSON());
   if (proof.kind !== 'bootstrap')
     throw new Error('Expected disposable bootstrap');

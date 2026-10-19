@@ -6,11 +6,9 @@ import { RouteErrorScreen } from './fallbacks/RouteErrorScreen';
 let mockIdentity = {
   deletionStatus: null as 'pending' | 'cleanup' | 'deleted' | null,
   busy: false,
-  account: null as { userId: string } | null,
+  account: { userId: 'existing-account' } as { userId: string } | null,
   needsWelcome: false,
 };
-let mockAcceptanceStatus:
-  'accepted' | 'loading' | 'required' | 'error' | 'disconnected' = 'accepted';
 let mockVerified = true;
 let mockPending = false;
 const mockRefreshChallenges = jest.fn(async () => {});
@@ -24,7 +22,6 @@ jest.mock('./providers/AppProvider', () => ({
   AppProvider: ({ children }: { children: ReactNode }) => children,
   useIdentity: () => mockIdentity,
   useAccess: () => ({ verified: mockVerified, isPending: mockPending }),
-  useAcceptance: () => ({ status: mockAcceptanceStatus }),
   useRuntime: () => ({ challenges: { refresh: mockRefreshChallenges } }),
 }));
 jest.mock('./acceptance/AcceptancePreparationCover', () => ({
@@ -87,10 +84,9 @@ beforeEach(() => {
   mockIdentity = {
     deletionStatus: null,
     busy: false,
-    account: null,
+    account: { userId: 'existing-account' },
     needsWelcome: false,
   };
-  mockAcceptanceStatus = 'accepted';
   mockVerified = true;
   mockPending = false;
 });
@@ -159,6 +155,7 @@ it('removes old account routes after deletion and keeps them removed through rep
   expect(screen.queryByText('welcome')).toBeNull();
   expect(screen.getByText('settings')).toBeTruthy();
   expect(screen.queryByText('(tabs)')).toBeNull();
+  mockIdentity.account = { userId: 'replacement' };
   mockVerified = true;
   screen.rerender(<RootLayout />);
   expect(screen.getByText('(tabs)')).toBeTruthy();
@@ -236,37 +233,22 @@ it('removes Welcome immediately after creation while Terms covers the destinatio
   expect(screen.getByTestId('acceptance-cover')).toBeTruthy();
 });
 
-it.each(['loading', 'required', 'error'] as const)(
-  'closes product routes for %s acceptance while retaining account and data tools',
-  (status) => {
-    mockIdentity.account = { userId: 'existing-account' };
-    mockAcceptanceStatus = status;
-    const screen = render(<RootLayout />);
-    expect(screen.getByText('acceptance')).toBeTruthy();
-    for (const name of [
-      'settings',
-      'recovery',
-      'delete-account',
-      'account/recover',
-      'account/keys',
-    ])
-      expect(screen.getByText(name)).toBeTruthy();
-    for (const name of [
-      '(tabs)',
-      '(challenge)/challenge',
-      '(challenge)/success',
-      '(challenge)/reflection',
-    ])
-      expect(screen.queryByText(name)).toBeNull();
-    mockAcceptanceStatus = 'accepted';
-    screen.rerender(<RootLayout />);
-    expect(screen.getByText('(tabs)')).toBeTruthy();
-  },
-);
+it('keeps verified existing accounts in the product without a legal receipt guard', () => {
+  mockIdentity.account = { userId: 'existing-account' };
+  const screen = render(<RootLayout />);
+  for (const name of [
+    'settings',
+    'recovery',
+    'delete-account',
+    '(tabs)',
+    '(challenge)/challenge',
+  ])
+    expect(screen.getByText(name)).toBeTruthy();
+});
 
-it('offers welcome and acceptance on a new installation before any account exists', () => {
+it('offers welcome and Terms on a new installation despite stale verified access', () => {
+  mockIdentity.account = null;
   mockIdentity.needsWelcome = true;
-  mockAcceptanceStatus = 'disconnected';
   const screen = render(<RootLayout />);
   expect(screen.getByText('welcome')).toBeTruthy();
   expect(screen.getByText('acceptance')).toBeTruthy();

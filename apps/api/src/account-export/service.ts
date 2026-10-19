@@ -1,7 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { ExportPage } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
-import { readAcceptance } from '../acceptance/model.js';
 import {
   attemptQuery,
   projectAttempt,
@@ -15,10 +14,13 @@ export class ExportService {
   page(token: string, cursor?: string): Promise<ExportPage> {
     return this.identity.withSession(token, async (tx, session) => {
       const userId = session.userId;
-      const acceptance = await readAcceptance(tx, userId);
       const account = (
-        await tx.execute<{ id: string; created_at: Date | string }>(
-          sql`select id,created_at from justgo.users where id=${userId}`,
+        await tx.execute<{
+          id: string;
+          created_at: Date | string;
+          analytics_restricted_at: Date | string | null;
+        }>(
+          sql`select id,created_at,analytics_restricted_at from justgo.users where id=${userId}`,
         )
       ).rows[0]!;
       const devices = (
@@ -40,8 +42,7 @@ export class ExportService {
         account: {
           id: account.id,
           createdAt: new Date(account.created_at).toISOString(),
-          acceptance: acceptance.receipt,
-          analyticsRestricted: acceptance.analyticsRestricted,
+          analyticsRestricted: account.analytics_restricted_at !== null,
         },
         devices: devices.map((device) => ({
           id: device.id,

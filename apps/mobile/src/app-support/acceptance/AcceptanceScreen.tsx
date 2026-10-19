@@ -1,80 +1,61 @@
 import { useEffect } from 'react';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  useAcceptance,
-  useIdentity,
-  useRuntime,
-} from '../providers/AppProvider';
+import { useIdentity, useRuntime } from '../providers/AppProvider';
 import { AcceptanceView } from './AcceptanceView';
 import { useAcceptanceLinks } from './useAcceptanceLinks';
 import { useWelcomeTransition } from '../identity/welcome/WelcomeTransition';
 
 /** Account creation is an explicit action; reading this route cannot create an account. */
 export function AcceptanceScreen() {
-  const { identity, acceptance } = useRuntime();
+  const { identity } = useRuntime();
   const state = useIdentity();
-  const receipt = useAcceptance();
   const router = useRouter();
   const params = useLocalSearchParams<{
     returnTo?: string;
     create?: string;
     from?: string;
   }>();
-  const { linkError, ...links } = useAcceptanceLinks();
+  const { linkError, clearLinkError, ...links } = useAcceptanceLinks();
   const awaitingPreparation = useWelcomeTransition();
   const creatingNew =
     params.create === 'new' &&
     (!state.account || state.account.userId === params.from);
   const pendingDeletion =
     state.deletionStatus === 'pending' || state.deletionStatus === 'cleanup';
-  const accepted =
-    !pendingDeletion &&
-    !!state.account &&
-    !creatingNew &&
-    receipt.userId === state.account.userId &&
-    receipt.status === 'accepted';
+  const connected = !pendingDeletion && !!state.account && !creatingNew;
   useEffect(() => {
-    if (accepted && !awaitingPreparation && params.returnTo === 'recovery')
+    if (connected && !awaitingPreparation && params.returnTo === 'recovery')
       router.dismissTo('/recovery');
-  }, [accepted, awaitingPreparation, params.returnTo, router]);
+  }, [connected, awaitingPreparation, params.returnTo, router]);
   if (pendingDeletion) return <Redirect href="/delete-account" />;
-  if (accepted && !awaitingPreparation)
+  if (connected && !awaitingPreparation)
     return params.returnTo === 'recovery' ? null : <Redirect href="/access" />;
 
-  const accept = async () => {
-    if (state.busy || !state.initialized || receipt.saving || accepted) return;
+  const continueToApp = async () => {
+    if (state.busy || !state.initialized || connected) return;
+    // A previous or pending document opening must not mask account feedback.
+    clearLinkError();
     if (creatingNew || !identity.getSnapshot().account) {
       // Identity owns persistence, network errors and exact-proof retries.
-      await identity.createAcceptedAccount();
-    } else await acceptance.accept();
+      await identity.createAccount();
+    }
   };
-  const checking =
-    !!state.account &&
-    !creatingNew &&
-    receipt.status === 'loading' &&
-    !receipt.saving;
   return (
     <AcceptanceView
-      busy={state.busy || receipt.saving || !state.initialized || accepted}
-      checking={checking}
+      busy={state.busy || !state.initialized || connected}
       busyLabel={
-        accepted
-          ? 'Preparing your challenges'
-          : state.busy
-            ? 'Creating your account'
-            : 'Saving your acceptance'
+        connected ? 'Preparing your challenges' : 'Creating your account'
       }
       error={
         linkError ||
-        receipt.message ||
         (state.message === 'Your account has been deleted.' ||
         state.message === 'Your account is connected.'
           ? ''
           : state.message)
       }
       {...links}
-      onAccept={() => {
-        void accept();
+      onContinue={() => {
+        void continueToApp();
       }}
     />
   );

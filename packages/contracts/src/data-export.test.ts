@@ -35,6 +35,15 @@ describe('private data export contract', () => {
     expect(
       exportPageSchema.safeParse({
         ...data,
+        account: {
+          ...data.account,
+          acceptance: { termsVersion: 'legacy' },
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      exportPageSchema.safeParse({
+        ...data,
         devices: [
           {
             id: data.account.id,

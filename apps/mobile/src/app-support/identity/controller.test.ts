@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { CURRENT_ACCEPTANCE_VERSIONS } from '@justgo/contracts';
 import type { HttpMethod } from '../../lib/network/http';
 import { IdentityController } from './controller';
 import { IdentityClientError, type IdentityApi } from './api';
@@ -95,7 +94,7 @@ it('restores the saved account and preserves unconfirmed cancellation metadata t
   });
   const first = new IdentityController(vault, server, random);
   await first.initialize();
-  await first.createAcceptedAccount();
+  await first.createAccount();
   const info = first.getSnapshot().account;
   const abandoned = { id: id(), secret: secret() };
   await vault.add(abandoned);
@@ -210,7 +209,7 @@ it('requires user-entered verification, preserves a rejected inspection and clea
   });
   const controller = new IdentityController(nativeVault(), server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   await controller.inspectTransfer(code);
   expect(controller.getSnapshot().inspection).not.toHaveProperty(
     'verification',
@@ -234,7 +233,7 @@ it('requires user-entered verification, preserves a rejected inspection and clea
   expect(controller.getSnapshot().message).toContain('Transfer approved');
 });
 
-it('persists accepted versions and recovery secret before bootstrap, then retries the same proof after a lost response and relaunch', async () => {
+it('persists the recovery proof before bootstrap and retries it unchanged after a lost response and relaunch without legal metadata', async () => {
   const vault = nativeVault();
   let attempts = 0;
   const server = connected(async (path, body) => {
@@ -243,9 +242,8 @@ it('persists accepted versions and recovery secret before bootstrap, then retrie
       (body as { kind: string })?.kind === 'bootstrap'
     ) {
       expect((await vault.read())!.pending?.kind).toBe('bootstrap');
-      expect((await vault.read())!.pending).toMatchObject({
-        acceptance: CURRENT_ACCEPTANCE_VERSIONS,
-      });
+      expect((await vault.read())!.pending).not.toHaveProperty('acceptance');
+      expect(body).not.toHaveProperty('acceptance');
       expect((await vault.credentials())[0]!.secret).toBe(
         (body as { credential: string }).credential,
       );
@@ -254,7 +252,7 @@ it('persists accepted versions and recovery secret before bootstrap, then retrie
   });
   const first = new IdentityController(vault, server, random);
   await first.initialize();
-  await first.createAcceptedAccount();
+  await first.createAccount();
   expect(first.getSnapshot().account).toBeNull();
   expect(first.getSnapshot().hasPending).toBe(true);
   const relaunched = new IdentityController(vault, server, random);
@@ -263,14 +261,12 @@ it('persists accepted versions and recovery secret before bootstrap, then retrie
     (call) => call[0] === '/sessions' && call[1]?.kind === 'bootstrap',
   );
   expect(requests).toHaveLength(2);
-  expect(requests[0]![1]).toMatchObject({
-    acceptance: CURRENT_ACCEPTANCE_VERSIONS,
-  });
+  expect(requests[0]![1]).not.toHaveProperty('acceptance');
   expect(requests[0]![1]).toEqual(requests[1]![1]);
   expect(relaunched.getSnapshot().account).not.toBeNull();
 });
 it.each(['NETWORK', 'CREDENTIAL_REJECTED'] as const)(
-  'creates an accepted separate account after recovery fails with %s, preserving the recovery credential',
+  'creates a separate account after recovery fails with %s, preserving the recovery credential',
   async (code) => {
     const vault = nativeVault();
     const recoveryKey = secret();
@@ -287,7 +283,7 @@ it.each(['NETWORK', 'CREDENTIAL_REJECTED'] as const)(
     expect((await vault.read())!.pending?.kind).toBe('recover');
     expect(controller.getSnapshot().account).toBeNull();
 
-    await controller.createAcceptedAccount();
+    await controller.createAccount();
 
     expect(controller.getSnapshot().account).not.toBeNull();
     expect((await vault.read())!.pending).toBeNull();
@@ -303,15 +299,13 @@ it.each(['NETWORK', 'CREDENTIAL_REJECTED'] as const)(
       'recovery',
       'bootstrap',
     ]);
-    expect(requests[1]![1]).toMatchObject({
-      acceptance: CURRENT_ACCEPTANCE_VERSIONS,
-    });
+    expect(requests[1]![1]).not.toHaveProperty('acceptance');
     expect(requests[1]![1].credential).not.toBe(recoveryKey);
     expect(requests[1]![1].sessionId).not.toBe(requests[0]![1].sessionId);
   },
 );
 
-it('creates an accepted separate account after failed renewal without discarding the original credential', async () => {
+it('creates a separate account after failed renewal without discarding the original credential', async () => {
   const vault = nativeVault();
   const originalUserId = id();
   const replacementUserId = id();
@@ -334,13 +328,13 @@ it('creates an accepted separate account after failed renewal without discarding
   });
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   const originalCredential = (await vault.credentials())[0]!;
   await controller.renew();
   expect((await vault.read())!.pending?.kind).toBe('renew');
   expect(controller.getSnapshot().account?.userId).toBe(originalUserId);
 
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
 
   expect(controller.getSnapshot().account?.userId).toBe(replacementUserId);
   expect((await vault.read())!.pending).toBeNull();
@@ -349,15 +343,13 @@ it('creates an accepted separate account after failed renewal without discarding
     ([path, body]) => path === '/sessions' && body?.kind === 'bootstrap',
   );
   expect(bootstrapRequests).toHaveLength(2);
-  expect(bootstrapRequests[1]![1]).toMatchObject({
-    acceptance: CURRENT_ACCEPTANCE_VERSIONS,
-  });
+  expect(bootstrapRequests[1]![1]).not.toHaveProperty('acceptance');
   expect(bootstrapRequests[1]![1].credential).not.toBe(
     originalCredential.secret,
   );
 });
 
-it('keeps a pending transfer intact instead of replacing it with an accepted account', async () => {
+it('keeps a pending transfer intact instead of replacing it with a new account', async () => {
   const vault = nativeVault();
   const server = connected((path, body) => {
     if (path === '/transfers')
@@ -375,7 +367,7 @@ it('keeps a pending transfer intact instead of replacing it with an accepted acc
   expect(pending?.kind).toBe('transfer');
   const calls = server.calls.mock.calls.length;
 
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
 
   expect((await vault.read())!.pending).toEqual(pending);
   expect(controller.hasReceivingTransfer()).toBe(true);
@@ -403,7 +395,7 @@ it('does not create an account when secure storage is locked or a credential wri
   };
   const failingController = new IdentityController(failing, server, random);
   await failingController.initialize();
-  await failingController.createAcceptedAccount();
+  await failingController.createAccount();
   expect(server.calls).not.toHaveBeenCalled();
 });
 it('resumes a stored bootstrap intent if interrupted before adding the Keychain item', async () => {
@@ -419,7 +411,7 @@ it('resumes a stored bootstrap intent if interrupted before adding the Keychain 
   const server = connected();
   const interrupted = new IdentityController(vault, server, random);
   await interrupted.initialize();
-  await interrupted.createAcceptedAccount();
+  await interrupted.createAccount();
   const intent = (await vault.read())!.pending;
   fail = false;
   const resumed = new IdentityController(vault, server, random);
@@ -475,7 +467,7 @@ it('late iCloud credentials cannot replace the active account on refresh', async
   );
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   const info = controller.getSnapshot().account;
   await vault.add({ id: id(), secret: secret() });
   await controller.refresh();
@@ -508,7 +500,7 @@ it('coordinates concurrent renewal and preserves a pending rotation across a los
   });
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   const old = (await vault.read())!.session!.token;
   await Promise.all([controller.renew(), controller.renew()]);
   await controller.retry();
@@ -528,7 +520,7 @@ it('a revoked session stays unverified until explicit recovery with a new device
   });
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   const old = (await vault.read())!;
   await controller.refresh();
   expect(controller.getSnapshot().account).toBeNull();
@@ -554,7 +546,7 @@ it('keeps state unverified when a successful response cannot be saved; retry kee
   const server = connected();
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   expect(controller.getSnapshot().account).toBeNull();
   fail = false;
   await controller.retry();
@@ -573,7 +565,7 @@ it('browser preview is opt-in and has no persisted account after a new vault is 
   );
   await controller.initialize();
   expect(server.calls).not.toHaveBeenCalled();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   expect(controller.getSnapshot().account).not.toBeNull();
   expect(await createMemoryVault().read()).toBeNull();
 });
@@ -603,7 +595,7 @@ it('can replace a recovery key revoked from another device without reusing the r
   });
   const controller = new IdentityController(vault, server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   await controller.saveKey();
   const first = controller.getSnapshot().key;
   keys[0]!.revokedAt = new Date().toISOString();
@@ -621,7 +613,7 @@ it('coordinates request-driven recovery for an expired session without clearing 
   });
   const controller = new IdentityController(nativeVault(), server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   const current = controller.currentSession()!;
   expired = true;
   const accounts: (string | null)[] = [];
@@ -676,7 +668,7 @@ it('retries a timed-out recovery with the saved proposal and ignores a late resp
     });
     const controller = new IdentityController(vault, server, random);
     await controller.initialize();
-    await controller.createAcceptedAccount();
+    await controller.createAccount();
     const original = controller.currentSession()!;
     expired = true;
     const first = expect(
@@ -720,7 +712,7 @@ it('releases a refresh waiting on busy identity work without leaving a stale wai
     });
     const controller = new IdentityController(vault, server, random);
     await controller.initialize();
-    await controller.createAcceptedAccount();
+    await controller.createAccount();
     const old = controller.currentSession()!;
     hang = true;
     const busy = controller.refresh();
@@ -767,7 +759,7 @@ it('serializes a late native write and rereads its saved intent before retry', a
     });
     const controller = new IdentityController(vault, server, random);
     await controller.initialize();
-    await controller.createAcceptedAccount();
+    await controller.createAccount();
     delay = true;
     const first = controller.renew();
     await jest.advanceTimersByTimeAsync(10_001);
@@ -824,7 +816,7 @@ it('retries a transfer during its visible visit without changing claimant proof'
   });
   const first = new IdentityController(vault, server, random);
   await first.initialize();
-  await first.createAcceptedAccount();
+  await first.createAccount();
   await first.startTransfer();
   const saved = (await vault.read())!.pending;
   expect(saved?.kind).toBe('transfer');
@@ -865,7 +857,7 @@ it('revokes credentials and devices with explicit bodyless DELETE resource reque
   });
   const controller = new IdentityController(nativeVault(), server, random);
   await controller.initialize();
-  await controller.createAcceptedAccount();
+  await controller.createAccount();
   const keyId = id();
   await controller.revokeCredential(keyId);
   const account = controller.getSnapshot().account!;

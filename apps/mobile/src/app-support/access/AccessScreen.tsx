@@ -2,18 +2,13 @@ import { Redirect } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../../components/Screen';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import {
-  useAccess,
-  useIdentity,
-  useAcceptance,
-} from '../providers/AppProvider';
+import { useAccess, useIdentity } from '../providers/AppProvider';
 import { NavigationLink, SettingsLink } from '../../components/NavigationLink';
 import { colors, spacing, typography } from '../../theme/tokens';
 import { useWelcomeTransition } from '../identity/welcome/WelcomeTransition';
 export function AccessScreen() {
   const identity = useIdentity();
   const access = useAccess();
-  const acceptance = useAcceptance();
   const awaitingWelcomeAccess = useWelcomeTransition();
   if (identity.deletionStatus === 'deleted' || identity.needsWelcome)
     return <Redirect href="/welcome" />;
@@ -29,8 +24,7 @@ export function AccessScreen() {
       </Screen>
     );
   if (!identity.account) return <Redirect href="/recovery" />;
-  if (awaitingWelcomeAccess || acceptance.status !== 'accepted')
-    return <Redirect href="/acceptance" />;
+  if (awaitingWelcomeAccess) return <Redirect href="/acceptance" />;
   if (access.verified) return <Redirect href="/(tabs)" />;
   return (
     <Screen title="JustGO" accessory={<SettingsLink />}>

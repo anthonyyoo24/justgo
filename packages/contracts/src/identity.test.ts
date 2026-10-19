@@ -67,6 +67,12 @@ describe('session resource creation proofs', () => {
         sessionCreateSchema.safeParse({ ...request, userId: proposal.deviceId })
           .success,
       ).toBe(false);
+      expect(
+        sessionCreateSchema.safeParse({
+          ...request,
+          acceptance: { termsVersion: 'legacy', acceptedAt: '2026-10-17' },
+        }).success,
+      ).toBe(false);
       const secretKey =
         'credential' in request
           ? 'credential'
@@ -133,6 +139,16 @@ describe('session resource creation proofs', () => {
       { deviceSession: [] },
     ]);
   });
+});
+
+it('publishes no legal agreement endpoint or bootstrap receipt fields', () => {
+  expect(Object.keys(openApiDocument.paths)).not.toContain(
+    '/v1/account/acceptance',
+  );
+  const body = JSON.stringify(
+    openApiDocument.paths['/v1/sessions'].post.requestBody,
+  );
+  expect(body).not.toMatch(/acceptance|termsVersion|privacyVersion|acceptedAt/);
 });
 
 it('requires a complete receiving proposal or the strict approving-account code body', () => {

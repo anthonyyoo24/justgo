@@ -120,7 +120,7 @@ const pendingTransfer = async (vault: CredentialVault) => {
 it('keeps the previous session and credentials until approval completes, then cancels without disconnecting', async () => {
   const fixture = setup();
   await fixture.controller.initialize();
-  await fixture.controller.createAcceptedAccount();
+  await fixture.controller.createAccount();
   const original = fixture.controller.getSnapshot().account;
   const credentials = await fixture.vault.credentials();
   await fixture.controller.startTransfer();
@@ -147,7 +147,7 @@ it('keeps the previous session and credentials until approval completes, then ca
 it('cancels a persisted transfer on relaunch instead of resuming it', async () => {
   const fixture = setup();
   await fixture.controller.initialize();
-  await fixture.controller.createAcceptedAccount();
+  await fixture.controller.createAccount();
   const original = fixture.controller.getSnapshot().account;
   await fixture.controller.startTransfer();
   const pending = await pendingTransfer(fixture.vault);
@@ -169,7 +169,7 @@ it('cancels a persisted transfer on relaunch instead of resuming it', async () =
 it('persists failed cleanup, restores the account and retries cancellation after restart', async () => {
   const fixture = setup();
   await fixture.controller.initialize();
-  await fixture.controller.createAcceptedAccount();
+  await fixture.controller.createAccount();
   const original = fixture.controller.getSnapshot().account;
   await fixture.controller.startTransfer();
   fixture.controls.failCancellation = true;
@@ -210,7 +210,7 @@ it('fences a late start response and waits for an in-progress native write befor
   };
   const fixture = setup(vault);
   await fixture.controller.initialize();
-  await fixture.controller.createAcceptedAccount();
+  await fixture.controller.createAccount();
   const original = fixture.controller.getSnapshot().account;
   const starting = fixture.controller.startTransfer();
   await entered;
@@ -231,7 +231,7 @@ it('does not let a late start or claim response revive a cancelled transfer', as
   for (const stage of ['start', 'claim'] as const) {
     const fixture = setup();
     await fixture.controller.initialize();
-    await fixture.controller.createAcceptedAccount();
+    await fixture.controller.createAccount();
     const original = fixture.controller.getSnapshot().account;
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
@@ -263,7 +263,7 @@ it('does not let a late start or claim response revive a cancelled transfer', as
 it('reconciles an already-redeemed session when server completion wins cancellation', async () => {
   const fixture = setup();
   await fixture.controller.initialize();
-  await fixture.controller.createAcceptedAccount();
+  await fixture.controller.createAccount();
   await fixture.controller.startTransfer();
   const pending = await pendingTransfer(fixture.vault);
   fixture.controls.cancelStatus = 'redeemed';
@@ -288,7 +288,7 @@ it('reconciles an already-redeemed session when server completion wins cancellat
 it('excludes an abandoned legacy credential and recovers the one unambiguous previous account', async () => {
   const fixture = setup();
   await fixture.controller.initialize();
-  await fixture.controller.createAcceptedAccount();
+  await fixture.controller.createAccount();
   await fixture.controller.startTransfer();
   const pending: TransferIntent = await pendingTransfer(fixture.vault);
   await fixture.vault.add({
@@ -351,7 +351,7 @@ it('reconciles a completed session whose native storage write finishes after lea
   };
   const fixture = setup(vault);
   await fixture.controller.initialize();
-  await fixture.controller.createAcceptedAccount();
+  await fixture.controller.createAccount();
   await fixture.controller.startTransfer();
   hold = true;
   const finishing = fixture.controller.redeemTransfer();
@@ -373,7 +373,7 @@ it.each(['SESSION_EXPIRED', 'SESSION_REVOKED'] as const)(
   async (code) => {
     const fixture = setup();
     await fixture.controller.initialize();
-    await fixture.controller.createAcceptedAccount();
+    await fixture.controller.createAccount();
     const original = fixture.controller.getSnapshot().account;
     await fixture.controller.startTransfer();
     fixture.controls.cancelStatus = 'redeemed';
@@ -389,7 +389,7 @@ it.each(['SESSION_EXPIRED', 'SESSION_REVOKED'] as const)(
 it('retains the old account recovery key on cancellation and clears it only after switching accounts', async () => {
   const fixture = setup();
   await fixture.controller.initialize();
-  await fixture.controller.createAcceptedAccount();
+  await fixture.controller.createAccount();
   const savedKey = {
     id: '10000000-0000-4000-8000-000000000001',
     secret: 'a'.repeat(64),
@@ -413,7 +413,7 @@ it.each(['TRANSFER_PENDING', 'CREDENTIAL_REJECTED'] as const)(
   async (code) => {
     const fixture = setup();
     await fixture.controller.initialize();
-    await fixture.controller.createAcceptedAccount();
+    await fixture.controller.createAccount();
     const original = fixture.controller.getSnapshot().account;
     const credentials = await fixture.vault.credentials();
     await fixture.controller.startTransfer();

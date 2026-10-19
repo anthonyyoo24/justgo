@@ -85,6 +85,12 @@ describe('authenticated data export on the real restricted database role', () =>
     expect(first.headers['cache-control']).toBe('no-store');
     const page = exportPageSchema.parse(first.json());
     expect(page.account.id).toBe(a.userId);
+    expect(Object.keys(page.account).sort()).toEqual([
+      'analyticsRestricted',
+      'createdAt',
+      'id',
+    ]);
+    expect(page.account.analyticsRestricted).toBe(false);
     expect(page.devices.map((d) => d.id)).toEqual([a.deviceId]);
     expect(page.attempts.map((x) => x.id)).toEqual(ids.slice(0, 50));
     expect(page.attempts[0]).toMatchObject({
@@ -124,10 +130,15 @@ describe('authenticated data export on the real restricted database role', () =>
     const a = await account();
     const deviceId = randomUUID();
     await admin.query(
+      'update justgo.users set analytics_restricted_at=now() where id=$1',
+      [a.userId],
+    );
+    await admin.query(
       'insert into justgo.devices (user_id,id,revoked_at) values ($1,$2,now())',
       [a.userId, deviceId],
     );
     const page = exportPageSchema.parse((await request(a.sessionToken)).json());
+    expect(page.account.analyticsRestricted).toBe(true);
     expect(page.attempts).toEqual([]);
     expect(page.nextCursor).toBeNull();
     expect(page.devices.find((d) => d.id === deviceId)?.revokedAt).toEqual(

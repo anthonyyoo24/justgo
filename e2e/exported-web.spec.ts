@@ -65,7 +65,7 @@ test('the production export loads its assets and supporting routes without API t
     page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'I Accept', exact: true }),
+    page.getByRole('button', { name: 'Continue', exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
   expect(failedAssets).toEqual([]);

@@ -15,7 +15,6 @@ import type {
   SessionResponse,
   TransferStart,
 } from '@justgo/contracts';
-import { writeAcceptance } from '../acceptance/model.js';
 
 type Tx = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
 type Row = Record<string, unknown>;
@@ -245,8 +244,6 @@ export class IdentityService {
         const userId = this.options.newUserId?.() ?? randomUUID();
         await context(tx, 'app.user_id', userId);
         await tx.execute(sql`insert into justgo.users (id) values (${userId})`);
-        if (input.acceptance)
-          await writeAcceptance(tx, userId, input.acceptance);
         credential = (await one<CredentialRow>(
           tx,
           sql`insert into justgo.recovery_credentials (id,user_id,digest,kind) values (${randomUUID()},${userId},${hash},'sync') returning *`,
