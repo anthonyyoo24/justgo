@@ -1,51 +1,62 @@
-# JustGO Terms of Use Draft
+# Terms of Use — approved text, unpublished
 
-**Review draft prepared October 9, 2026. Not approved for publication.** The proposed approach uses Apple's standard app license plus concise JustGO service terms. Review their interaction and regional consumer requirements before publication; this draft does not replace Apple's EULA or establish that all worldwide obligations are satisfied.
+<!-- legal-version: 2026-10-18-launch-candidate -->
+<!-- publication-status: owner-approved -->
+<!-- effective-date: pending -->
 
-**Effective date:** [Set when the reviewed terms are published]
+Prepared October 18, 2026 and revised October 19 after reviewing How We Feel and Stoic as writing references. The text reflects JustGO's own free-beta behavior; competitor terms do not establish its legal sufficiency. Anthony approved this text on October 19, 2026. It remains unpublished, with the effective date pending publication. The [review record](LEGAL_REVIEW.md) owns eligibility, regional/Apple EULA review and publication gates. Paid billing remains inactive; paid-offer terms are a separate pre-paid-launch update. The static site renders only the marked public text and keeps review metadata in the source files.
 
-## Operator and eligibility
+<!-- public:start -->
 
-JustGO is operated by Youngshin Yoo in Canada. Contact [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com) for support.
+# Terms of Use
 
-JustGO is intended for users aged 18 and older in countries and regions where the service is available. [REVIEW: Confirm contractual capacity, how eligibility is communicated, and any required regional restrictions.]
+## About JustGO
 
-## The service and app license
+JustGO is operated by Youngshin Yoo in Ontario, Canada. Contact [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com) for support or questions about these terms.
 
-JustGO provides practice challenges, a timer, optional reflections and a private Progress record. It does not provide medical diagnosis, treatment or emergency services. Choose activities that are appropriate for your circumstances and respect other people's boundaries.
+You must be at least 18 to use JustGO. The app offers everyday social challenges, a timer, optional feelings and written reflections, and a private record of your activity in Progress.
 
-The iOS app license is governed by [Apple's standard End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) unless a reviewed custom agreement is supplied. [REVIEW: Confirm that these service terms work with that license, including the proposed minimum age.]
+Choose activities suited to your circumstances and respect other people's boundaries. JustGO does not provide medical advice, diagnosis, treatment or emergency services.
 
-## Your account and content
+## The app license
 
-An account is created without requiring an email login. Keep recovery keys and device access secure. A store purchase alone does not prove ownership of another account's private history.
+[Apple's standard End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) governs your license to the iOS app. These terms explain the JustGO service and your account alongside that license. Nothing in these terms takes away consumer or privacy rights that applicable law protects.
 
-You retain ownership of the content you submit. You allow us and our service providers to process it to provide the saving, synchronization and recovery described in the Privacy Policy. [REVIEW: Confirm the necessary scope of this permission and link the final published policy.]
+## Your account
 
-Do not try to access another user's private data, misuse recovery or payment processes, or interfere with the service.
+JustGO uses an account to save your activity without requiring an email address, password or social login. Protect your phone, recovery keys and account access. Keep recovery keys private and do not email them to us.
+
+Do not try to enter someone else's account, misuse account recovery or interfere with the service's security or operation.
+
+## Your content
+
+Your reflections and other submitted content remain yours. You allow JustGO and its authorized service providers to save, transmit and process that content as needed to display and synchronize your activity, recover your history, and let you export or delete your data. The [Privacy Policy](/privacy/) explains where that information goes and how long it is kept.
+
+You can skip both feelings and written reflections. Other users cannot browse your journal through their JustGO accounts.
 
 ## Saving and availability
 
-Uploaded records can be recovered through the account's recovery methods. Activity that has not uploaded may remain only on the original phone. Availability and successful recovery depend on network, device and service conditions; the app explains relevant saving failures.
+Submitted activity is saved on your phone and uploaded to your account. A change waiting to upload may exist only on the phone where you made it. Account recovery on another phone restores uploaded history; it cannot retrieve changes that have not uploaded from the original phone. Unsubmitted text and unfinished challenges are not backed up to your account.
 
-## Free beta and paid subscriptions
+Network, device and service conditions can affect saving, availability and recovery. Settings → Export my data lets you keep a separate copy of your saved records. Keep that file private.
 
-During a free beta, eligible testers can use the app without purchasing a subscription. [REVIEW: State the actual beta period or ending notice and what happens to access and saved records when testing ends.]
+We may change or interrupt the service for security, maintenance or operational reasons. We will explain material changes where reasonably possible and give any notice required by applicable law.
 
-[REVIEW: Include the following paid-subscription wording only when paid billing is activated.]
+## Free beta
 
-Paid subscriptions are purchased through Apple's App Store. Before you confirm a purchase, the purchase screen shows what access is included, the price, billing period and any trial conditions. Subscriptions renew automatically unless canceled through Apple. You can manage or cancel a subscription through your Apple account settings. Refund requests follow Apple's process and applicable consumer rights.
+The beta is free for eligible testers. Access to challenges may change or end during testing. Ending challenge access does not itself delete your account. While the service is available, account recovery, export and deletion do not require challenge access or a purchase.
 
-Deleting the app or your JustGO account does not cancel an Apple subscription. [REVIEW: Verify restore, management and deletion behavior and insert any additional required subscription disclosures.]
+Paid subscriptions are not active in this beta. If we introduce paid access, we will explain the offer and applicable terms before you choose to purchase. These beta terms do not authorize a charge.
 
-## Privacy and closing your account
+## Privacy and account deletion
 
-The Privacy Policy explains account data, phone/cloud journal storage, enabled service providers and retention. Phase 10 implements one Terms & Privacy acceptance page and account-owned receipt. Product analytics remains disabled through paid launch. Phase 12 reviews the launch wording/versions and actual Sentry collection; Phase 14 must review notices and current scope acceptance before any post-launch analytics activation, using the existing page for required reacceptance without separate analytics Settings switches or prompts. [REVIEW: Insert the public URL and reconcile the launch copy with the actual implementation and applicable consent requirements before publication.]
+The [Privacy Policy](/privacy/) explains phone and cloud storage, service providers, retention and your privacy choices.
 
-You can delete your account through [verified Settings path]. [REVIEW: Publish this statement only after deletion, revocation and cleanup are verified. Describe any delayed cleanup consistently with the policy.]
+Choose Delete account in Settings to delete your cloud journal and close the account. JustGO also removes the account's data from the current phone; if that cleanup is interrupted, the app lets you retry it. We keep limited security records to prevent old account credentials from recreating a deleted account, as explained in the Privacy Policy.
 
-## Changes and consumer rights
+Removing the app alone does not delete your cloud account. Account deletion cannot remotely erase an exported file or data saved on another offline device.
 
-[REVIEW: Finalize service-change notices, termination, governing law and dispute provisions with appropriate regional review. Do not add blanket liability waivers or remove mandatory local consumer rights.]
+## Changes and questions
 
-If we materially change these terms, we will provide the notice or agreement process required by applicable law.
+For material changes, we will provide any notice or choice required by applicable law. Contact us using the email address above if you have a concern about JustGO or these terms.
+<!-- public:end -->

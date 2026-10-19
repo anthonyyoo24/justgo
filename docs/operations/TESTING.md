@@ -46,9 +46,16 @@ cleanup and changed-directory review pass, finish without optional extra checks.
 | `npm run test:coverage`                | All-source workspace coverage, including database suites, then combined floors                            |
 | `npm run test:journey`                 | Saved actual-app/API/database browser and repository journeys                                             |
 | `npm run test:migrations`              | Standalone preservation/restoration rehearsal                                                             |
+| `npm run build:legal`                  | Build local static legal candidates; `-- --production` refuses unapproved source/date metadata            |
 | `npm run export:web -w @justgo/mobile` | Cold web export                                                                                           |
 | `npm run test:exported-web`            | Smoke the existing production web export without API/database traffic                                     |
 | `npm run export:ios -w @justgo/mobile` | Cold iOS JavaScript/assets export                                                                         |
+
+Legal-reader regressions run with `node --test sites/legal/*.test.mjs` and are included
+in `test:architecture`. The public Markdown blocks, independent document labels, link
+safety and approval/date checks are verified without a hosted deployment. The
+local static output still needs an in-app browser readability/navigation check;
+that is separate from anonymous HTTPS phone verification after publication.
 
 Pass `-- --runTestsByPath src/...test.tsx` to the mobile test script, or
 `-- path/to/test.ts` to API/contracts Vitest scripts, for focused tests. A slice
