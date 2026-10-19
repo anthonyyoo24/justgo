@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 18, 2026. The [October 18 sequencing decision](#october-18-crash-reporting-before-launch-and-analytics-deferral) owns the current phase map. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 15 decision below supersedes the two-choice analytics plan. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 19, 2026. The [October 18 sequencing decision](#october-18-crash-reporting-before-launch-and-analytics-deferral) owns the current phase map. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -264,6 +264,130 @@ The [inventory](legal/DATA_INVENTORY.md#sentry-diagnostic-boundary) records exac
 fields, local native cache and provider facts. Native config changes require a
 rebuilt binary; an OTA JS disable does not disable already enabled native capture.
 Signed-build crash/restart, payload inspection and symbolication remain Phase 13.
+
+## October 18 Phase 12 operator clarification
+
+Anthony confirmed the personal operator is Youngshin Yoo in Ontario, Canada.
+The existing owner-selected temporary support/privacy email remains the draft
+contact. No public address, telephone or final domain was supplied by this confirmation.
+
+Anthony asked what Supabase Pro means. The current organization was verified on
+Free; the earlier seven-day backup target applies only to a configured Pro project.
+No upgrade was purchased or authorized and no current seven-day backup guarantee
+is established. Phase 12 must settle the final promised configuration before
+publication, with actual infrastructure/restore acceptance retained in Phase 13.
+Local legal candidates and a hosting preview do not constitute content approval,
+worldwide legal clearance, provider activation or publication permission.
+
+## October 19 Phase 12 API description review
+
+The authorized Phase 12 technical review retains `/openapi.json` [SEC-4]. The
+static description contains public contracts, not account data or credentials.
+The app's authentication and account-ownership checks protect records independently
+of whether their route shapes are documented. No API route, deployment protection
+or access policy changed; normal owner patch review still applies. This technical
+decision is not publication, deployment or merge permission.
+
+## October 19 Phase 12 public drafts and local protection review
+
+Anthony asked for a JustGO-specific public draft informed by How We Feel and
+Stoic, followed by the remaining Phase 12 work. Use their readable topic structure
+and separation of journal, technical data and optional processing; retain JustGO's
+own phone-and-cloud model, export/deletion behavior and disabled analytics/crash
+delivery. Competitor policies are design references, not evidence of JustGO's
+practices or legal sufficiency. Internal test plans, provider tiers and unresolved
+review notes stay outside public text. Content review and hosting authorization
+remain separate from drafting.
+
+The SEC-5 technical review retains the existing iOS Data Protection baseline.
+AsyncStorage adds no app-controlled journal encryption; no MMKV migration or
+additional vault was selected or implemented. The earlier blanket recommendation
+to require a second lock before beta was too strong: no specific gap has yet been
+established that requires one. Phase 13's existing signed-build storage acceptance
+must inspect the actual file-protection class and backup exclusion, including
+failure behavior. A concrete finding can require remediation; an extra vault is
+not automatically a release prerequisite or a new owner risk-acceptance question.
+This does not claim end-to-end cloud encryption or protection of an unlocked app.
+
+## October 19 legal-site address choice
+
+Anthony selected Vercel hosting with its automatically assigned `.vercel.app`
+address for the legal reader; no custom domain is needed now. This settles the
+host/address preference. The actual project address is assigned on deployment;
+final document content/effective date approval and publication verification remain
+open. The source approval metadata stays pending until the text is approved.
+
+The initial portfolio/free-beta direction does not remove the planned later
+payment phase. Review commercial hosting eligibility before a commercial rollout,
+rather than waiting for paying users. No paid plan, domain purchase or provider
+agreement acceptance is authorized by the address choice. Existing pre-real-user
+hosting/data-processing and regional release conditions remain recorded in the
+[legal review](legal/LEGAL_REVIEW.md).
+
+## October 19 legal-text approval and worldwide target
+
+Anthony approved the drafted Privacy Policy and Terms. Record their source
+metadata as owner-approved without changing the approved public wording. The
+current version identifiers remain candidates until publication finalization;
+the effective date and actual public URLs are not yet set. No provider is enabled
+and no plan purchase or agreement acceptance is authorized by content approval.
+
+Anthony also confirmed worldwide availability for the first App Store release.
+This settles the target territories, not the remaining regional/provider review,
+trader/contact requirements or signed-build evidence. Keep those conditions open
+with their existing owners. The selected legal host remains Vercel with a generated
+`.vercel.app` address; do not ask for content approval or a domain choice again.
+
+Anthony confirmed paid access from the first public App Store release. Preserve
+the existing sequence: free TestFlight beta, then 07A payment activation and
+Phase 13 paid release acceptance. Do not reinterpret the portfolio direction as a
+free public App Store launch. Commercial hosting eligibility must be resolved
+before that rollout; this answer does not authorize a plan purchase. Paid notices,
+offer/renewal/cancellation information and billing disclosures remain the existing
+07A/13 pre-launch gates. Public trader contact details for EU distribution have
+not been supplied or approved for publication. Anthony confirmed they are not ready
+yet. Keep obtaining suitable contacts and Apple's verification open before EU App
+Store distribution; do not infer permission to publish a home address or private
+phone number, or ask for those details again while their availability is unchanged.
+
+## October 19 publication deferred until hosting is ready
+
+Anthony chose to wait until closer to launch to pay for hosting and keep the legal
+website local for now. Preserve the approved public text, Vercel-generated address
+choice, worldwide target and paid-first App Store sequence. Do not deploy the site,
+upgrade a plan, invent public URLs or set an effective publication date now.
+
+Publication, anonymous HTTPS/link verification, final legal version/date setup and
+the matching API/mobile rollout remain explicit open work for Phase 13 launch
+preparation when Anthony is ready to start hosting. Current content approval does
+not need to be requested again; materially changed paid/vendor disclosures still
+need review before use. The native/provider/regional release conditions remain
+open, including EU trader contacts that are not ready yet. This defers publication,
+not those requirements, and does not authorize a future paid purchase automatically.
+
+After the development app could not save acceptance, Anthony explicitly approved
+updating the existing test server on October 19. This authorizes the matching
+candidate API/contracts deployment to the existing phone API address and disposable
+acceptance verification. It does not publish the legal website, finalize effective
+dates, upgrade hosting, authorize Git publication or distribute a native build.
+The [Phase 12 handoff](handoffs/phase-12-legal-documents.md) records the verified
+test-server repair; the public release rollout remains open.
+
+## October 19 Terms links without acceptance recording
+
+Anthony rejected the legal receipt/version system and requested ordinary Terms/Privacy links and Continue-based account creation. Do not record document views, agreement dates or accepted versions, call a legal-acceptance API, or force existing accounts through reacceptance. This supersedes the earlier October 15/17/18 receipt, accepted-scope and eligibility-ticket design and the earlier October 19 matching-version repair.
+
+Keep ordinary account/session creation and exact-proof retries, recovery, access checks, journal saving and deletion safeguards. Strip legacy legal metadata without resetting credentials. Forward migration 0018 removes only the legal receipt table; independent analytics restrictions and activity/deletion acknowledgements remain. The requested removal includes retiring the existing test-server receipt implementation and its stored legal records; public legal hosting and paid upgrades remain deferred. Git publication and native distribution retain their separate permissions.
+
+Product analytics and ordinary Sentry delivery stay disabled. Phase 14 must review any future collection and permission design separately; the normal Continue action or historical receipt cannot authorize it, and the removed tracking/gating system must not be silently reintroduced.
+
+## October 19 plain Privacy and Terms pages
+
+Anthony requested removal of the legal reader's approval/preview banner, internal version and pending-date display, Legal landing page and top tabs. Keep two document pages with footer cross-links; the base address renders Privacy directly. Source metadata and publication checks remain internal, and the public text no longer refers to version/date information appearing above. Hosting remains local under the existing publication deferral.
+
+## October 19 concise Terms and Privacy entry copy
+
+Anthony requested removal of the onboarding Analytics section, Sentry paragraph and development-release notice, with the data summary informed by the supplied How We Feel Paper reference. Paper MCP inspection confirms that reference describes device-only saving and active non-identifying research usage, which differ from JustGO. Anthony later chose to retain the existing cloud storage; the entry text explicitly describes uploads for account recovery, optional feelings/reflections and the no-sale assurance. The full Privacy Policy remains linked, with the explicit encryption-status sentence omitted at his request. The internal inventory retains the actual technical protection facts. No data flow, diagnostics/analytics activation, account behavior or legal publication changes follow from this copy edit.
 
 ## Open and settled product decisions
 

@@ -5,7 +5,7 @@
 **Status:** Implemented locally; reporting scope approved. Notices/activation and
 signed-build acceptance remain open. [Plan](../implementation-plan/phase-11-crash-reporting.md).
 Depends on [Settings/privacy](phase-08-settings-privacy.md) and
-[account acceptance](phase-10-acceptance.md). Product analytics remains deferred.
+[Terms & Privacy entry](phase-10-acceptance.md). Product analytics remains deferred.
 
 ## Decisions and why
 
@@ -15,7 +15,7 @@ Depends on [Settings/privacy](phase-08-settings-privacy.md) and
   options. Native crashes do not pass through JavaScript `beforeSend`.
 - Anthony approved minimal essential diagnostics under the Privacy Policy on
   October 18, including startup before onboarding acceptance. The implementation
-  already supports this independently of account receipts. Keep ordinary delivery
+  already supports this without legal receipts or document-view tracking. Keep ordinary delivery
   disabled until Phase 12 completes matching notices/provider review and Phase 13
   verifies the signed build; those gates remain separate from the owner scope choice.
 
