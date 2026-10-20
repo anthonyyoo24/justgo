@@ -178,19 +178,19 @@ keeps delivery disabled pending matching notices/provider review and signed-buil
 acceptance. Anthony approved the minimal Policy-only startup scope before app
 entry; this is not permission collected through Continue or document viewing. Synthetic
 browser delivery and stored IP redaction were verified; native compilation,
-crash/restart delivery and symbolication remain Phase 13 gates. See the
+crash/restart delivery and symbolication remain Phase 14 gates. See the
 [diagnostics boundary](APP_SHELL.md#app-error-reporting) and
 [Phase 11 handoff](../handoffs/phase-11-crash-reporting.md). The current
 telemetry helper has an event-name allowlist, account-reset consent and no exporter
 or payload API. [Phase 10](../implementation-plan/phase-10-acceptance.md) owns the
 Terms & Privacy entry links and ordinary account-creation Continue, with no legal
 view/acceptance receipts or version-driven navigation.
-[Phase 14](../implementation-plan/phase-14-analytics.md) owns post-paid-launch
+[Phase 15](../implementation-plan/phase-15-analytics.md) owns post-paid-launch
 analytics and the approved event allowlist, and
 [Phase 11](../implementation-plan/phase-11-crash-reporting.md) owns app crash reporting;
 [Phase 12](../implementation-plan/phase-12-legal-documents.md) owns final legal
 notices, document labels and public destinations. Product analytics stays disabled
-through beta and paid launch. Phase 14 must review its actual permission/collection
+through beta and paid launch. Phase 15 must review its actual permission/collection
 design before activation; Continue and historical legal receipts grant no analytics
 permission, and the removed tracking/version gates must not be restored by
 assumption. Historical migration 0017 remains; migration 0018 drops only its legal

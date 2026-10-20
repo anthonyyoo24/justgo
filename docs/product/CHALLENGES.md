@@ -91,14 +91,14 @@ created under server-verifiable coverage. Saved/pending activity keeps its accou
 owner. Recovery and always-available account/data controls remain reachable.
 Production paid access remains unavailable until provider verification is connected.
 The current staging beta admission and its separate offline limits are recorded in
-the [test-server handoff](../handoffs/phase-13-test-server.md).
+the [test-server handoff](../handoffs/phase-14-test-server.md).
 
 Before billing, exercise the real loop with disposable local/test entitlement
 fixtures. Presentation previews make no domain writes and cannot become a
 production access bypass. Apple membership, signing and the installed development
 build are recorded in [APPLE_SETUP.md](../operations/APPLE_SETUP.md); a successful
 build does not establish two-iPhone recovery, native accessibility or release
-acceptance. Retain those gates in [Phase 13](../implementation-plan/phase-13-release.md).
+acceptance. Retain those gates in [Phase 14](../implementation-plan/phase-14-release.md).
 
 ## Subtext writing guidance
 

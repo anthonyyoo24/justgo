@@ -60,6 +60,6 @@ Anthony selected Vercel with its generated `.vercel.app` address and approved th
 public text on October 19, then chose to keep the website local and wait to pay for
 hosting until closer to launch. No custom domain is needed now. The actual project
 URL and effective date/version finalization remain pending. Resume hosting setup,
-publication and anonymous HTTPS/link checks in Phase 13 preparation when he is
+publication and anonymous HTTPS/link checks in Phase 14 preparation when he is
 ready; no paid upgrade is authorized now. Keep the API's protected previews and
 guarded development draft routes unchanged.

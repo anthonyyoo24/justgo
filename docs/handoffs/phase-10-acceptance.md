@@ -17,7 +17,7 @@ The October 19 owner decision replaces the earlier receipt system with ordinary 
 
 ## Invariants to preserve
 
-Continue is an account-creation action, not permission for future analytics. Product analytics remains disabled; Phase 14 must review the actual collection/permission design before activation and must not silently restore the rejected tracking or gating system. Independent analytics restrictions never grant permission.
+Continue is an account-creation action, not permission for future analytics. Product analytics remains disabled; Phase 15 must review the actual collection/permission design before activation and must not silently restore the rejected tracking or gating system. Independent analytics restrictions never grant permission.
 
 Account creation remains explicit and idempotent. Preserve recovery, account isolation, synchronization, export/deletion, timeout/duplicate guards and ordinary access verification. Activity PATCH acknowledgements and account-deletion confirmations are unrelated safety records and remain intact.
 
@@ -39,6 +39,6 @@ Focused mobile tests cover ordinary Continue, links without account mutations, e
 
 `npm run check` passed, including fresh online Expo Doctor, all workspace/journey types, lint, formatting, tooling and workspace tests. Full `npm run test:coverage` passed every global and critical floor, including the database and migration rehearsal. All 43 saved journeys passed. Cold web/iOS JavaScript exports and the independent exported-web smoke passed. A separate in-app side-panel walkthrough opened both documents with zero accounts created, then reached usable Challenges after Continue; its disposable local account and rate buckets were removed. The phone Metro server was restarted with `--lan --clear` against the updated test API and local static reader.
 
-Browser/component/export checks do not establish native Keychain behavior, physical-phone links, VoiceOver or signed-build acceptance; these remain Phase 13 gates. Anthony still needs to reload the installed development app for the current bundle.
+Browser/component/export checks do not establish native Keychain behavior, physical-phone links, VoiceOver or signed-build acceptance; these remain Phase 14 gates. Anthony still needs to reload the installed development app for the current bundle.
 
-Phase 12/13 still own public notices/hosting, applicable provider/regional review, final paid-stage disclosures and signed release acceptance. No Git publication, provider activation, paid upgrade, native distribution or App Store submission is authorized by this handoff.
+Phase 12/14 still own public notices/hosting, applicable provider/regional review, final paid-stage disclosures and signed release acceptance. No Git publication, provider activation, paid upgrade, native distribution or App Store submission is authorized by this handoff.

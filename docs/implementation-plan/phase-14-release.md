@@ -1,6 +1,6 @@
-<a id="phase-13"></a>
+<a id="phase-14"></a>
 
-# Phase 13 — Release validation & launch
+# Phase 14 — Release validation & launch
 
 **Status:** Hosted owner-device prerequisite ready; beta/release acceptance not started
 
@@ -10,7 +10,7 @@ A free TestFlight beta validates the complete core product; payment activation a
 
 ## Decisions in force
 
-- Dependencies: 08–12 for the free beta checkpoint; 08–12 and accepted 07A for paid launch. Phase 14 product analytics follows paid launch and is not a release prerequisite.
+- Dependencies: 08–13 for the free beta checkpoint; 08–13 and accepted 07A for paid launch. Phase 15 product analytics follows paid launch and is not a release prerequisite.
 - October 19 owner clarification: the first public App Store release includes paid access. The earlier free checkpoint is TestFlight beta; there is no new free public App Store launch in the plan. Resolve commercial hosting eligibility and paid notices before rollout, without treating this choice as paid-plan purchase authorization.
 - October 20 owner directions: exclude EU App Store countries and, by his later explicit reply, the UK, Norway, Iceland and Liechtenstein from the initial release. Preserve other intended availability; do not add further exclusions by assumption. Actual country settings and Apple's trader-status declaration remain release tasks, with EU public contact verification deferred until any EU expansion.
 - Acceptance: PRD AC-01–06, 08–11, 13–17 · applicable iOS tech acceptance
@@ -23,12 +23,12 @@ A free TestFlight beta validates the complete core product; payment activation a
 - Define authenticated, server-authorized free tester access in an isolated non-production environment, including coverage for offline use and synchronization. Keep real identity/ownership boundaries, preserve tester history and plan how beta access ends or transitions when payments launch. Do not deploy the local fixture server or rely on a client premium switch. Purchases remain disabled and the beta explains that access is free during testing.
 - Resume the owner-deferred Phase 12 legal-site publication when Anthony is ready to start hosting. Use the approved text and selected Vercel-generated address, resolve applicable hosting terms/plan, finalize effective dates/versions, publish and verify anonymous HTTPS access, then configure/test the app's real legal links and ordinary account flow before distribution. No paid upgrade is authorized yet. Reconcile any changed paid/vendor wording before release; do not request approval of unchanged October 19 text again.
 - The later October 19 owner direction removes legal receipts/version gates entirely. Verify ordinary Continue, direct legal links and absence of legal tracking in the actual release build; the existing test-server removal is recorded in the Phase 10 handoff. This does not close public hosting or signed-device acceptance.
-- Finish Phases 08–12 and run the applicable core-product/privacy/recovery/accessibility acceptance checks on the actual signed iOS build and physical devices. Keep native/Keychain/storage, valuable-data recovery and environment-isolation gates explicit; a browser export is not sufficient evidence. Verify Sentry reporting/redaction, the Terms & Privacy entry and ordinary Continue flow, absence of analytics Settings switches and approved public notices/disclosure preparation against the actual beta build. Confirm product analytics remains disabled and launch entry copy accurately describes the enabled services.
+- Finish Phases 08–13 and run the applicable core-product/privacy/recovery/accessibility acceptance checks on the actual signed iOS build and physical devices. Keep native/Keychain/storage, valuable-data recovery and environment-isolation gates explicit; a browser export is not sufficient evidence. Verify Sentry reporting/redaction, the Terms & Privacy entry and ordinary Continue flow, absence of analytics Settings switches and approved public notices/disclosure preparation against the actual beta build. Confirm product analytics remains disabled and launch entry copy accurately describes the enabled services.
 - Inspect the installed journal's actual iOS file-protection class and backup exclusion, including failure behavior [SEC-5]. The Phase 12 assessment retains the existing Data Protection baseline; no additional vault/MMKV migration is required absent a concrete finding. Preserve Keychain isolation, pending local data, recovery and deletion safeguards while verifying it.
 - Deploy the matching reviewed API/schema to the test environment, verify backup/restoration and old-client compatibility/cutover, and prepare an EAS-signed build, beta review information, support contact and tester instructions. Obtain separate build/upload/distribution authorization where required by the repository's native-build and release rules. External testers need Apple's TestFlight beta review.
-- Before admitting real testers, implement and verify the selected journal API arrangement from the [hosting assessment](../legal/LEGAL_REVIEW.md#hosting-recommendation-without-provider-contact). Supabase Edge Functions is a researched alternative with a moderate runtime/HTTP port, not an approved migration. Pro alone does not clear Vercel's sensitive-data restriction. Preserve JustGO's opt-out and the owner's no-contact direction. Verify actual payload/log/recovery-copy handling; do not infer Hobby DPA coverage, zero Free-provider copies or purchase/deployment authorization.
-- Before affected availability, complete the [specific regional proposal](../legal/LEGAL_REVIEW.md#prepared-consumer-health-supplement): review the short distinct health notice/link, operate verified request/appeal handling and evidence processor deletion and recovery-copy expiry, including Washington's six-month limit. Existing active deletion is implemented; the remaining backup/restore and support evidence is specified in the review. Keep long-lived credential safeguards and assess retained-field necessity. UK/non-EU EEA expansion remains deferred. Add supported provider-protection wording; do not invent contacts or restore legal receipts. New public wording/navigation still needs the existing owner review.
-- Collect feedback and resolve beta-blocking issues. Record the build/commit, tester access policy, device evidence and remaining paid-only checks in the Phase 13 handoff. A beta does not establish paid-launch acceptance.
+- Before real testers, verify Phase 13's local-journal cutover: feelings/text and their derivatives stay out of API/diagnostic/analytics payloads, completion sync remains correct, and legacy cloud copies have an approved preservation/removal path. Keep Vercel for the reduced API scope unless the resulting assessment identifies a remaining issue; Supabase Edge Functions is an alternative, not an assumed migration. Preserve JustGO's opt-out and no-contact direction. Verify commercial-plan eligibility separately; no purchase or deployment is authorized here.
+- Complete Phase 13's revised privacy/provider assessment against verified local processing, manual backup files and remaining cloud data. Reassess the prepared cloud-journal health supplement before choosing any extra public policy link; it is not automatically a launch requirement unchanged. Keep appropriate request/appeal, support, provider-protection and legacy-copy deletion/expiry handling. Preserve country exclusions, long-lived credential safeguards and absence of legal receipts. Review changed public text before publication.
+- Collect feedback and resolve beta-blocking issues. Record the build/commit, tester access policy, device evidence and remaining paid-only checks in the Phase 14 handoff. A beta does not establish paid-launch acceptance.
 - Before the beta build, complete the Expo SDK 58 / React Native 0.88 upgrade as its own native-upgrade task, with a new signed development build and a device recheck of affected native behavior [STK-2].
 - Re-review the Phase 11 native Sentry privacy plugin when the supported SDK/Cocoa version changes during that upgrade. Preserve both payload allowlists and verify signed-build crash/restart delivery, native envelope headers and event bodies, source maps/dSYMs and cached-crash release attribution; browser delivery does not establish these gates.
 - Set the app icon and splash in `app.config.ts` from the existing `assets/icon.png` and `assets/splash-icon.png`, embed Inter through the `expo-font` config plugin, and keep the splash visible until fonts and providers are ready [RTR-5].
@@ -54,18 +54,18 @@ Put the production database on the Supabase Pro plan and confirm 7-day daily bac
 
 ## Keep out
 
-- No unmeasured million-user claim, overdue launch blockers, incompatible native changes through an OTA update or additional feature scope during stabilization. Haptics implementation and its first physical acceptance belong to Phase 08; Phase 13 rechecks the accepted feature on the release build.
+- No unmeasured million-user claim, overdue launch blockers, incompatible native changes through an OTA update or additional feature scope during stabilization. Haptics implementation and its first physical acceptance belong to Phase 08; Phase 14 rechecks the accepted feature on the release build.
 - Do not count Stripe or the future coach toward MVP readiness.
 
 ## Ready to hand off when
 
 - [ ] Phase 08 haptics acceptance is recorded and the accepted feedback/preference still work on the signed beta/release build.
-- [ ] Phase 09 app continuity, Phase 10 acceptance, Phase 11 crash reporting and Phase 12 approved public notices/disclosure preparation have linked acceptance; verify final bundle/disclosures and reconcile 07A billing changes before paid launch. Product analytics is disabled on beta and paid builds, with matching acceptance/public wording; its measurement/provider gates remain deferred to Phase 14.
+- [ ] Phase 09 app continuity, Phase 10 acceptance, Phase 11 crash reporting and Phase 12 approved public notices/disclosure preparation have linked acceptance; verify final bundle/disclosures and reconcile 07A billing changes before paid launch. Product analytics is disabled on beta and paid builds, with matching acceptance/public wording; its measurement/provider gates remain deferred to Phase 15.
 - [ ] All launch PRD criteria (AC-01–06, AC-08–11, AC-13–17) and applicable iOS tech checks have linked passing evidence; no unresolved launch-blocking product decisions.
 - [ ] Capacity, recovery/restore, security/privacy, rollback and device coverage meet documented release targets; limitations have explicit disposition.
 - [ ] Store/release checklist, operational ownership and handoffs are complete; authorized release and post-release smoke results are recorded before marking launch complete.
 - [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 13
+## Open gates for Phase 14
 
 All unchecked acceptance items in this phase remain release gates until evidenced; beta acceptance does not establish paid-launch acceptance.

@@ -101,7 +101,7 @@ server-deletion confirmation are product-safety records and remain unchanged.
 The deletion confirmation must still be saved before phone cleanup so interrupted
 cleanup can resume without restoring a deleted account.
 
-Product analytics remains disabled through beta and paid launch. Phase 14 must
+Product analytics remains disabled through beta and paid launch. Phase 15 must
 review its actual permission and collection design before activation; neither
 Continue nor any old legal receipt authorizes it. A retained analytics restriction
 can only limit processing, and must never be treated as permission. Do not silently

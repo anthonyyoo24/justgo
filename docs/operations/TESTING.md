@@ -341,7 +341,7 @@ fixture safeguards and coverage floors until a native replacement proves equival
 actual-app/API/database cases and its authorized commit's hosted gate. Retain the
 Maestro launch smoke (`APP_ID=... npm run test:native -w @justgo/mobile`) and relevant
 manual simulator checks meanwhile. Device/staging gates belong in
-[Phase 13](../implementation-plan/phase-13-release.md) and the applicable handoffs.
+[Phase 14](../implementation-plan/phase-14-release.md) and the applicable handoffs.
 
 ## File moves and bundle checks
 

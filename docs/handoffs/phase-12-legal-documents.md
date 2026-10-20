@@ -2,15 +2,27 @@
 
 ## Summary and status
 
-**Status:** Approved local text and verified local implementation prepared;
-publication/paid hosting are owner-deferred until closer to launch. Public-hosting
-acceptance and applicable regional/provider release conditions remain open. The
+**Status:** Local legal preparation handed off; publication/paid hosting remain
+owner-deferred. Phase 13 implements local feelings/text and manual iCloud Drive
+backup/restore, then updates the notices against verified behavior. Phase 14 owns
+public-hosting acceptance and the remaining applicable release conditions. The
 [phase plan](../implementation-plan/phase-12-legal-documents.md) owns acceptance.
 Depends on the implemented boundaries and evidence in
 [08](phase-08-settings-privacy.md), [09](phase-09-app-continuity.md),
 [10](phase-10-acceptance.md) and [11](phase-11-crash-reporting.md).
 
 ## Decisions and why
+
+October 20 storage decision: Anthony accepts that account recovery alone will
+not recover local feelings/text and selected manual backup and restore through
+iCloud Drive. The new Phase 13 owns durable storage, safe legacy-content cutover,
+backup/import and matching privacy changes. Automatic iCloud sync and AI stay
+out. Current app/approved policy still describe cloud saving until implementation.
+The existing Supabase API-hosting alternative and health supplement below are
+retained research for the cloud model, not prerequisites to implement unchanged.
+Reassess the reduced data flow in Phase 13; preserve general hosting/support and
+legacy-copy obligations for Phase 14. This planning handoff does not establish
+that uploads stopped or that public/native acceptance passed.
 
 Anthony confirmed Youngshin Yoo in Ontario, Canada. Retain the existing temporary
 privacy/support email. No public address, phone, domain, regional restriction,
@@ -25,7 +37,7 @@ The October 20 Apple assessment retains the standard EULA with supplementary
 service Terms, 18+ and the individual-operator implementation assumption. The
 Terms now explicitly give Apple's license precedence for any app-license
 conflict. No established need for incorporation, a custom EULA or new age/identity
-collection was found. Actual eligibility/rating/App Store setup remain Phase 13;
+collection was found. Actual eligibility/rating/App Store setup remain Phase 14;
 this is a reasoned assessment rather than guaranteed approval. Apple's expected
 equivalent-provider-protection statement is prepared conditionally in the review
 record and must not become a public assurance until the arrangements support it.
@@ -45,7 +57,7 @@ it does not imply public hosting/content approval.
 
 The SEC-5 assessment retains iOS Data Protection as the current baseline. The
 earlier blanket recommendation for a second lock before beta was too strong; no
-concrete finding currently requires an added vault. Phase 13 must inspect actual
+concrete finding currently requires an added vault. Phase 14 must inspect actual
 signed-build file protection and backup exclusion/failure behavior and remediate
 a specific gap if found. No MMKV migration or additional vault was implemented.
 
@@ -81,7 +93,7 @@ a specific gap if found. No MMKV migration or additional vault was implemented.
   validation, safe links and production-build checks remain in place.
 - The [disclosure worksheet](../legal/RELEASE_DISCLOSURES.md) prepares App Privacy,
   age/operator/support/EULA information and preserves actual signed-binary/App
-  Store submission gates in Phase 13. [LEGAL_REVIEW](../legal/LEGAL_REVIEW.md)
+  Store submission gates in Phase 14. [LEGAL_REVIEW](../legal/LEGAL_REVIEW.md)
   records current Apple/regulator research and concrete publication blockers.
 
 ## Invariants to preserve
@@ -89,7 +101,7 @@ a specific gap if found. No MMKV migration or additional vault was implemented.
 Saving, synchronization, recovery, export, deletion and access verification remain
 independent of vendor failures. No user journal data or account identifier goes to
 Sentry; ordinary delivery remains off. No PostHog exporter or historical backfill
-exists. The removed legal receipt helper is not an activation policy. Phase 14 must review
+exists. The removed legal receipt helper is not an activation policy. Phase 15 must review
 its actual permission/collection design before any delivery and must not silently
 restore the rejected tracking or gating mechanism. Continue and old receipts are
 not authorization. Independent privacy restrictions remain preserved.
@@ -174,11 +186,11 @@ publication remain open. Review applicable plan/data-processing terms before rea
 use; no paid upgrade is authorized.
 
 The first public App Store release is paid, as Anthony confirmed October 19. Keep
-the free TestFlight beta → 07A billing → Phase 13 paid launch sequence. A portfolio
+the free TestFlight beta → 07A billing → Phase 14 paid launch sequence. A portfolio
 purpose does not create an additional free public release. The October 20 owner
 directions exclude EU App Store countries, the UK, Norway, Iceland and
 Liechtenstein initially, so public EU trader contact
-verification is deferred until any EU expansion. Phase 13 must apply/verify the
+verification is deferred until any EU expansion. Phase 14 must apply/verify the
 country selection and complete Apple's trader-status declaration. This changes
 the release target only; no App Store settings or private contacts were published.
 
@@ -219,29 +231,29 @@ the review. No host change, code/data migration, purchase or deployment was made
 The restore checklist now distinguishes accessible daily backups from provider
 recovery copies and keeps a stale restore closed until the current deletion and
 revocation ledger has been reconciled and tested. The independent ledger recovery
-arrangement and synthetic stale-snapshot rehearsal remain Phase 13 evidence.
+arrangement and synthetic stale-snapshot rehearsal remain Phase 14 evidence.
 
 Anthony chose to wait to pay for hosting and keep the website local. The source
 text is approved; the reader displays only the documents and keeps review metadata in source. Leave
 effective dates pending and preserve publication, public URL/link checks and the
-release link/app verification in Phase 13 preparation when he is ready for hosting.
+release link/app verification in Phase 14 preparation when he is ready for hosting.
 Per-account accepted-version rollout is no longer part of the design. No legal-site
 deployment or paid upgrade is authorized now. This explicit publication deferral does
 not close the separate provider/regional/native conditions.
 
 ## Open gates
 
-| Gate                              | Owner / phase                                                                    | Required result                                                                                                                                                                                                                                                                                                                                |
-| --------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Signed journal protection [SEC-5] | Release owner / 13                                                               | Verify the actual file-protection class and backup exclusion/failure behavior. Retain the current OS-backed baseline absent a concrete gap; no automatic vault requirement.                                                                                                                                                                    |
-| Distribution and contacts         | Anthony with applicable reviewer / 12; release owner / 13                        | Initial paid target excludes EU countries, the UK, Norway, Iceland and Liechtenstein; apply/verify actual App Store availability and trader declaration. EU contacts and UK/non-EU EEA requirements are deferred until expansion. Preserve 18+ without invented identity collection.                                                           |
-| Operator/EULA/rating              | Release owner / 13                                                               | Phase 12 assessment retains individual operator, 18+ and standard EULA with supplementary Terms. Verify actual product eligibility, license selection and rating/override; no incorporation or new identity collection is presumed.                                                                                                            |
-| Regional requirements             | Implementation owner / 12–13; Anthony reviews new public text                    | Prepare the distinct consumer-health notice, verified request/appeal handling and processor/backup deletion evidence specified in the review. Keep credential safeguards and assess retained-field necessity. UK/non-EU EEA expansion remains deferred. No receipt system is introduced.                                                       |
-| Provider/logs/backups/support     | Implementation owner / 12–13; Anthony selects hosting and operates/assigns inbox | Assess the Supabase API alternative before a migration choice; Pro alone does not clear Vercel journal processing. Preserve no-contact/opt-out directions. Verify provider-copy expiry, independently recoverable deletion ledger, stale-restore rehearsal and the existing support-retention operation. No purchase or deployment authorized. |
-| Sentry activation                 | Anthony with applicable reviewer / 12; release owner / 13                        | Resolve basis/device-access rules, DPA, trial/ingestion retention and identifiable report requests; review updated enabled-reporting policy, then signed crash/payload/cache/symbol/outage acceptance before delivery.                                                                                                                         |
-| Content and public hosting        | Anthony / Phase 13 preparation                                                   | Owner-deferred until ready for hosting. Preserve text approval, finalize dates/versions, publish to the selected Vercel-generated address and verify anonymous HTTPS/app links. No current upgrade/legal-site deployment authorization.                                                                                                        |
-| Actual release disclosures        | Release owner / 13                                                               | Verify signed privacy manifests/required-reason APIs, ATT/tracking, native links/accessibility and final App Store entries.                                                                                                                                                                                                                    |
-| Paid and future analytics scope   | 07A/13, then 14                                                                  | Update notices/offer/providers/labels before paid launch; future analytics requires a separately reviewed permission/collection design, with no history backfill or assumed Continue permission.                                                                                                                                               |
+| Gate                              | Owner / phase                                                     | Required result                                                                                                                                                                                                                                                                      |
+| --------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Signed journal protection [SEC-5] | Release owner / 14                                                | Verify the actual file-protection class and backup exclusion/failure behavior. Retain the current OS-backed baseline absent a concrete gap; no automatic vault requirement.                                                                                                          |
+| Distribution and contacts         | Anthony with applicable reviewer / 12; release owner / 14         | Initial paid target excludes EU countries, the UK, Norway, Iceland and Liechtenstein; apply/verify actual App Store availability and trader declaration. EU contacts and UK/non-EU EEA requirements are deferred until expansion. Preserve 18+ without invented identity collection. |
+| Operator/EULA/rating              | Release owner / 14                                                | Phase 12 assessment retains individual operator, 18+ and standard EULA with supplementary Terms. Verify actual product eligibility, license selection and rating/override; no incorporation or new identity collection is presumed.                                                  |
+| Regional requirements             | Implementation owner / 13–14; Anthony reviews changed public text | Phase 13 reassesses the local journal/manual files and residual online data; prepare only the resulting applicable notices/request handling. Legacy cloud deletion obligations remain until satisfied. Expansion stays deferred.                                                     |
+| Provider/logs/backups/support     | Implementation owner / 13–14; Anthony operates/assigns inbox      | Verify reduced Vercel/Supabase processing after Phase 13; API migration is an alternative. Preserve opt-out/no-contact directions. Verify legacy-copy expiry, cloud deletion-ledger restore and the existing support procedure. No purchase or deployment authorized.                |
+| Sentry activation                 | Anthony with applicable reviewer / 12; release owner / 14         | Resolve basis/device-access rules, DPA, trial/ingestion retention and identifiable report requests; review updated enabled-reporting policy, then signed crash/payload/cache/symbol/outage acceptance before delivery.                                                               |
+| Content and public hosting        | Anthony / Phase 14 preparation                                    | Owner-deferred until ready for hosting. Preserve text approval, finalize dates/versions, publish to the selected Vercel-generated address and verify anonymous HTTPS/app links. No current upgrade/legal-site deployment authorization.                                              |
+| Actual release disclosures        | Release owner / 14                                                | Verify signed privacy manifests/required-reason APIs, ATT/tracking, native links/accessibility and final App Store entries.                                                                                                                                                          |
+| Paid and future analytics scope   | 07A/14, then 15                                                   | Update notices/offer/providers/labels before paid launch; future analytics requires a separately reviewed permission/collection design, with no history backfill or assumed Continue permission.                                                                                     |
 
 ## Verification
 

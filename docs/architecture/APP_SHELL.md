@@ -105,7 +105,7 @@ URL with the protected `/` can be a no-op when access is unavailable.
 owner transaction to an entitlement reader. The default provider returns
 unavailable. Explicit application staging can compose operator-approved free beta
 grants with start/expiry/revocation and earlier-start coverage; client requests
-cannot grant access. [The beta setup](../handoffs/phase-13-test-server.md) owns its
+cannot grant access. [The beta setup](../handoffs/phase-14-test-server.md) owns its
 environment and release limits.
 
 Mobile polls every 30 seconds and accepts a server verification for at most
@@ -158,7 +158,7 @@ account/device identifier. No account-owned diagnostics queue or identifier need
 resetting on account changes/deletion. Anthony approved minimal essential
 reporting under the Privacy Policy before entry into the app. The legal reader
 records no agreement or permission. Real-user activation stays off until
-Phase 12 completes matching notices/provider review and Phase 13 verifies the
+Phase 12 completes matching notices/provider review and Phase 14 verifies the
 signed build. See the [field inventory](../legal/DATA_INVENTORY.md#sentry-diagnostic-boundary)
 and [setup/handoff](../handoffs/phase-11-crash-reporting.md).
 
@@ -292,7 +292,7 @@ rows; telemetry still exports nothing. Terms/Privacy links share failure-aware
 opening, with no document-view or legal-acceptance recording. There is no acceptance
 controller, receipt request or per-account document-version navigation. Activity
 synchronization and paid-access verification depend on identity/access boundaries.
-Phase 14 must review its actual permission and collection design before enabling
+Phase 15 must review its actual permission and collection design before enabling
 analytics; Continue, document views and historical receipts grant no analytics
 permission and must not be used to restore the rejected tracking mechanism.
 

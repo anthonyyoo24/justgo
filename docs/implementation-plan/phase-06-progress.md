@@ -30,10 +30,10 @@ Users can view the full Progress summary/calendar and read day details and saved
 
 - [x] The full Progress summary/calendar and tappable day sheet match the clarified references in local browser/simulator checks, with honest empty/error states and no Day note block.
 - [x] Streaks, monthly totals and ordered day entries pass midnight, DST, travel, missing feedback and multi-completion cases.
-- [x] Saved reflection reading and text-editing scope is agreed and implemented; verify automatic paging beyond 20 day entries and local sheet scrolling/close/accessibility labels. Carry physical-iPhone VoiceOver, text scaling and gesture acceptance to Phase 13.
+- [x] Saved reflection reading and text-editing scope is agreed and implemented; verify automatic paging beyond 20 day entries and local sheet scrolling/close/accessibility labels. Carry physical-iPhone VoiceOver, text scaling and gesture acceptance to Phase 14.
 - [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 13
+## Open gates for Phase 14
 
 - Physical-iPhone VoiceOver, scalable text, sheet gestures, keyboard and paging on representative days.
 - Integrated staging/API acceptance and earlier dependency gates.

@@ -16,7 +16,7 @@ Depends on [Settings/privacy](phase-08-settings-privacy.md) and
 - Anthony approved minimal essential diagnostics under the Privacy Policy on
   October 18, including startup before onboarding acceptance. The implementation
   already supports this without legal receipts or document-view tracking. Keep ordinary delivery
-  disabled until Phase 12 completes matching notices/provider review and Phase 13
+  disabled until Phase 12 completes matching notices/provider review and Phase 14
   verifies the signed build; those gates remain separate from the owner scope choice.
 
 ## Behavior that changed
@@ -85,9 +85,9 @@ use only disposable synthetic errors. No real account/reflection content was sen
 | ------------------------------------------- | -------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Approved diagnostics notices and activation | Anthony / legal reviewer               | 12, before activation | Review the approved minimal Policy-only startup diagnostics, reconcile notices/versions and provider settings, then enable after signed-build acceptance. |
 | Provider retention and privacy requests     | Anthony / legal reviewer               | 12                    | Verify actual subscription/retention and request/deletion process; disclose US processing and local native crash cache.                                   |
-| Native build, redaction and recovery        | Release implementation owner           | 13                    | Compile the reviewed plugin, crash/restart a signed iOS build, inspect native and JS exports, verify exclusions and usable recovery.                      |
-| Symbolication and release identity          | Release implementation owner / Anthony | 13                    | Supply private upload credential and verify matching JS source maps/native dSYMs for the actual signed build, including cached crashes after upgrade.     |
-| Release/provider outage and operations      | Release implementation owner           | 13                    | Verify signed-build outage/offline behavior, version changes, monitoring/alerts and operational quotas.                                                   |
+| Native build, redaction and recovery        | Release implementation owner           | 14                    | Compile the reviewed plugin, crash/restart a signed iOS build, inspect native and JS exports, verify exclusions and usable recovery.                      |
+| Symbolication and release identity          | Release implementation owner / Anthony | 14                    | Supply private upload credential and verify matching JS source maps/native dSYMs for the actual signed build, including cached crashes after upgrade.     |
+| Release/provider outage and operations      | Release implementation owner           | 14                    | Verify signed-build outage/offline behavior, version changes, monitoring/alerts and operational quotas.                                                   |
 
 ## Final verification
 

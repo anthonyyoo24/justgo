@@ -46,6 +46,6 @@ Venue decks shuffle once per account on this phone and resume with their saved o
 
 - Phase 09 still requires its smallest-supported iPhone software-keyboard/large-text check and actual Success/Reflection gesture checks. Browser/component evidence passes but does not establish native behavior; no new deferral is approved. See the [handoff](../handoffs/phase-09-app-continuity.md#open-gates).
 
-## Open gates for Phase 13
+## Open gates for Phase 14
 
 - Recheck persistence, Reflection keyboard/accessibility and native navigation on the signed beta/release build; preserve earlier device gates until evidenced.
