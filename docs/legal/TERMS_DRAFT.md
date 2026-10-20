@@ -4,7 +4,7 @@
 <!-- publication-status: owner-approved -->
 <!-- effective-date: pending -->
 
-Prepared October 18, 2026 and revised October 19 after reviewing How We Feel and Stoic as writing references. The text reflects JustGO's own free-beta behavior; competitor terms do not establish its legal sufficiency. Anthony approved this text on October 19, 2026. It remains unpublished, with the effective date pending publication. The [review record](LEGAL_REVIEW.md) owns eligibility, regional/Apple EULA review and publication gates. Paid billing remains inactive; paid-offer terms are a separate pre-paid-launch update. The static site renders only the marked public text and keeps review metadata in the source files.
+Prepared October 18, 2026 and revised October 19 after reviewing How We Feel and Stoic as writing references. The text reflects JustGO's own free-beta behavior; competitor terms do not establish its legal sufficiency. Anthony approved this text on October 19, 2026. The October 20 review clarifies the existing supplementary relationship to Apple's standard license under his authorization to finish the remaining fixes. It remains unpublished, with the effective date pending publication. The [review record](LEGAL_REVIEW.md) owns eligibility, regional/Apple EULA review and publication gates. Paid billing remains inactive; paid-offer terms are a separate pre-paid-launch update. The static site renders only the marked public text and keeps review metadata in the source files.
 
 <!-- public:start -->
 
@@ -20,7 +20,7 @@ Choose activities suited to your circumstances and respect other people's bounda
 
 ## The app license
 
-[Apple's standard End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) governs your license to the iOS app. These terms explain the JustGO service and your account alongside that license. Nothing in these terms takes away consumer or privacy rights that applicable law protects.
+[Apple's standard End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) governs your license to the iOS app. These terms supplement that agreement for the JustGO service and your account; they do not replace it. If these terms conflict with Apple's standard agreement about the app license, Apple's agreement governs. Nothing in these terms takes away consumer or privacy rights that applicable law protects.
 
 ## Your account
 

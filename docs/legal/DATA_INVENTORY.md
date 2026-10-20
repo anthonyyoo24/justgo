@@ -9,7 +9,7 @@ Prepared October 9 and reconciled October 18–20, 2026 for the Privacy Policy, 
 | Operator                    | Youngshin Yoo, acting personally, Ontario, Canada. Operator confirmed October 9; province confirmed during Phase 12.                                                                                  |
 | Privacy and support contact | anthonyyoo24@gmail.com, selected by the owner as the temporary contact.                                                                                                                               |
 | Intended distribution       | Initial paid App Store release excludes EU countries, as directed October 20. Other intended storefronts retain applicable regional review; actual availability must be set and verified in Phase 13. |
-| Intended minimum age        | 18. Proposed by the owner October 9; eligibility wording, enforcement and the App Store rating require review.                                                                                        |
+| Intended minimum age        | 18. October 20 review retains the wording without new birth-date/ID collection; actual App Store questionnaire and higher override remain Phase 13.                                                   |
 | Public contact address      | Not supplied. Review applicable address/representative requirements for the intended regions; do not assume a home address must be published.                                                         |
 
 The app's random account identifier is persistent and links records to an account. A no-signup account is not the same as anonymous data. The absence of an email login does not make uploaded journal records uncollected. The Terms & Privacy page presents readable notices without recording views or acceptance or requiring per-account document-version checks.
@@ -56,7 +56,16 @@ Recovering an account on another phone restores uploaded history. It cannot rest
 | Upstash QStash                                                     | Billing delivery design/checkpoint; not active in Settings                                                                    | Minimal billing job references and delivery metadata. Verify actual retained payloads and logs when billing resumes.                                                                                                                                                                                                                                       |
 | AI coach, Stripe checkout, Android, reminders and custom dictation | Outside the first-release scope                                                                                               | Reassess the policy and consent before any later addition. No current journal-to-AI disclosure or reminder permission should be implied.                                                                                                                                                                                                                   |
 
-Evidence: October 18 read-only Supabase project/organization connector results; [foundation environment and providers](../operations/FOUNDATION.md), [Phase 08 acceptance](../handoffs/phase-08-settings-privacy.md), [Phase 07A checkpoint and sequencing](../implementation-plan/phase-07a-billing.md#phase-07a), [analytics design](../architecture/TECH_STACK.md#9-analytics-and-sensitive-data) and [current telemetry stub](../../apps/mobile/src/lib/telemetry.ts). These observations do not establish a production region/plan, accepted provider agreement or a completed production audit. The October 18 Vercel side-panel read showed Hobby and no configured drain. Published [Vercel runtime-log limits](https://vercel.com/docs/logs/runtime#limits) are one hour on Hobby, one day on Pro and thirty days with Observability Plus; verify the eventual launch configuration and separate edge/firewall/provider retention before selecting a public period.
+Evidence: October 18 read-only Supabase project/organization connector results, with Free/Canada Central rechecked October 20; [foundation environment and providers](../operations/FOUNDATION.md), [Phase 08 acceptance](../handoffs/phase-08-settings-privacy.md), [Phase 07A checkpoint and sequencing](../implementation-plan/phase-07a-billing.md#phase-07a), [analytics design](../architecture/TECH_STACK.md#9-analytics-and-sensitive-data) and [current telemetry stub](../../apps/mobile/src/lib/telemetry.ts). These observations do not establish a production region/plan, accepted provider agreement or a completed production audit. The October 18 Vercel side-panel read showed Hobby and no configured drain. Published [Vercel runtime-log limits](https://vercel.com/docs/logs/runtime#limits) are one hour on Hobby, one day on Pro and thirty days with Observability Plus; verify the eventual launch configuration and separate edge/firewall/provider retention before selecting a public period.
+
+October 20 Vercel settings still show Hobby. Team-wide model-training sharing
+was enabled; JustGO's narrower project-specific control was then disabled, saved
+and verified after reload. Team settings/other projects were left alone. The
+control concerns future code/chat sharing and does not establish journal-payload
+exclusion. IP visibility remains enabled for the dashboard/drains; this does not
+prove a drain exists. No private request logs were read. The
+[provider review](LEGAL_REVIEW.md#hosting-agreements-and-recovery-copies) records
+the precise coverage/sensitive-data question and an unsent provider inquiry.
 
 ## Sentry diagnostic boundary
 
@@ -109,15 +118,18 @@ approved target into a current guarantee. See [Supabase backup documentation](ht
 
 ## App Store disclosure preparation
 
-October 19 provider-terms review: Supabase's standard Terms incorporates its DPA;
+October 20 provider-terms review: Supabase's standard Terms §7(b) incorporates its DPA;
 do not require a separate signature solely because no PDF was found. Vercel's DPA
 processor scope names Pro/Enterprise, so coverage for the observed Hobby setup and
-the actual journal scope needs clarification before real-user hosting. Free
+the actual journal scope needs clarification before real-user hosting. Its
+sensitive-data restriction is a separate question that buying Pro alone does not
+settle. Supabase's DPA conditionally permits sensitive data subject to required
+notices/explicit consent; the free plan itself is not a commercial-use prohibition. Free
 Supabase lacks included daily backups but can retain paused-project recovery
 copies for up to a year. Plan backup access is not a guarantee of every provider
 copy's expiry. Published Free API/database log retention is one day. The
 [legal review](LEGAL_REVIEW.md#hosting-agreements-and-recovery-copies) records the
-primary sources and remaining account/configuration checks; none were changed.
+primary sources and remaining checks; only the project-specific opt-out above changed.
 
 The [release-disclosure worksheet](RELEASE_DISCLOSURES.md) owns proposed Apple
 categories, linkage/purpose answers, rating/operator/contact metadata and signed-build

@@ -410,6 +410,30 @@ Hobby and its Supabase organization on Free; discussing Pro does not authorize
 an upgrade. Both services support multiple projects, with additional Supabase
 projects incurring their own compute costs on paid organizations.
 
+## October 20 Phase 12 provider review and project data-sharing opt-out
+
+The bounded Apple/regional/provider review is recorded in
+[LEGAL_REVIEW](legal/LEGAL_REVIEW.md). Retain 18+, the current individual-operator
+implementation assumption and Apple's standard EULA with supplementary service
+Terms; the license relationship is clarified without a custom EULA or new identity
+collection. Actual App Review eligibility remains Phase 13.
+
+JustGO's Vercel Project Settings → Data Preferences had future model-training
+sharing enabled. It was disabled for **JustGO alone**, saved and verified after
+reload. Team defaults and the owner's other projects were left alone. This
+control concerns future code/chat sharing and does not prove journal-request
+payloads are excluded from every secondary use. No service was activated, plan
+purchased, contract accepted or message sent.
+
+Vercel's processor/sensitive-data scope remains unresolved independently of
+paid-plan eligibility. The exact privacy/contracts inquiry is prepared and unsent.
+UK/non-EU EEA remain intended unless Anthony explicitly changes that choice;
+the specific bases/representative/transfer requirements and Washington health-data
+classification are recorded before affected availability. No additional territory
+restriction, new consent workflow or legal receipt was introduced. Keep public
+hosting deferred and ordinary diagnostics/analytics disabled under the existing
+decisions. Only supported provider/regional assertions may enter public text.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.

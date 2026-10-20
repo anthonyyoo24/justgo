@@ -4,7 +4,7 @@ Phase [12](../implementation-plan/phase-12-legal-documents.md) owns legal text, 
 
 ## Current review package
 
-Prepared October 18 and revised October 20, 2026: [inventory](DATA_INVENTORY.md), [Privacy Policy candidate](PRIVACY_POLICY_DRAFT.md), [Terms candidate](TERMS_DRAFT.md), [release-disclosure worksheet](RELEASE_DISCLOSURES.md) and the [local static site](../../sites/legal/README.md). October 9 drafting/research is retained in the initial source history and primary references below. The October 18 pass reconciles it with Phases 08–11; the October 19 pass adapts the public presentation after competitor research. October 20 records the owner-directed EU exclusion and a read-only plan recheck, without changing public processing claims or enabling services.
+Prepared October 18 and revised October 20, 2026: [inventory](DATA_INVENTORY.md), [Privacy Policy candidate](PRIVACY_POLICY_DRAFT.md), [Terms candidate](TERMS_DRAFT.md), [release-disclosure worksheet](RELEASE_DISCLOSURES.md) and the [local static site](../../sites/legal/README.md). October 9 drafting/research is retained in the initial source history and primary references below. The October 18 pass reconciles it with Phases 08–11; the October 19 pass adapts the public presentation after competitor research. October 20 records the owner-directed EU exclusion, current provider terms/settings and bounded Apple/regional assessments. The only public-text adjustment in this review clarifies the existing supplementary relationship to Apple's standard license; processing claims and service activation remain unchanged.
 
 Youngshin Yoo confirmed Ontario, Canada on October 18. The existing temporary public privacy/support contact is anthonyyoo24@gmail.com (owner-selected October 9). The intended audience remains adults 18+. Anthony's October 20 direction excludes EU countries from the initial paid App Store release, superseding the October 19 worldwide target; applicable review for actual distribution and processing remains open. No public address, telephone or representative has been supplied. Do not infer permission to publish a home address. On October 19 Anthony selected Vercel with an automatically assigned `.vercel.app` address; a custom domain is not needed now. Anthony approved both public documents on October 19; the effective date, final version identifiers and actual published URLs remain pending.
 
@@ -34,26 +34,23 @@ regional, provider and native conditions remain open before their dependent rele
 
 ## Review outcomes and remaining conditions
 
-| Topic                            | Verified basis / recommendation                                                                                                                                                                                                                                                                                                                                                                                                                                   | Owner and required boundary                                                                           |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Operator and contact             | Ontario and personal operator confirmed; retain existing email. Confirm any required service/business address and contact details.                                                                                                                                                                                                                                                                                                                                | Anthony / Phase 12 before publication                                                                 |
-| Distribution and regional rights | The initial paid release excludes EU App Store countries by October 20 direction. Review the applicable laws, purposes, journal/feeling sensitivity, rights, representatives and transfers for actual distribution and processing, including remaining intended non-EU markets. The generic rights paragraph is not a completed regional assessment; storefront exclusion alone does not settle legal scope.                                                      | Anthony with applicable legal/privacy reviewer / Phase 12 before territorial publication/availability |
-| Individual developer             | Reflections/feelings are optional and nonclinical. This supports, but does not settle, whether Apple §5.1.1(ix)'s legal-entity rule applies. Do not declare incorporation required solely because users can write private text.                                                                                                                                                                                                                                   | Anthony / Phase 12 assessment; Phase 13 App Review eligibility gate                                   |
-| EU trader contacts               | Deferred for the initial release because the owner excluded EU App Store countries October 20. Phase 13 still completes Apple's trader-status declaration and verifies actual country settings. Before any EU expansion, reassess trader status and verify public address or P.O. Box, telephone and email where required. No private contacts or storefront changes are inferred.                                                                                | Anthony / Phase 13 declaration/availability; EU contacts before any EU expansion                      |
-| Age / EULA                       | Preserve 18+ without new birth-date/ID collection. Review supplementary service Terms with Apple's standard EULA and local mandatory rights. Apple requires a higher rating override when the EULA minimum exceeds the calculated rating.                                                                                                                                                                                                                         | Anthony / Phase 12 content; Phase 13 actual questionnaire/override                                    |
-| Sentry lawful basis              | Owner-approved narrow startup scope is a product choice, not user consent or a legal exemption. Document necessity/balancing and applicable objection rights if relying on legitimate interests; separately assess EU/UK device storage/access rules. Otherwise choose consent-based collection or keep it disabled. No new prompt or silent scope change was implemented.                                                                                        | Anthony with applicable reviewer / Phase 12 before real-user activation; signed-build gate remains 13 |
-| Sentry agreements/retention      | Side-panel observations: US region; Business trial with 13 days remaining; no payment method; DPA shows “Review and Accept”; aggregated identifying-data reuse off. No agreement was accepted. Verify applicable trial/ingestion retention, agreement/transfer terms, provider backups and request handling before activating. Intended future Free/Developer status does not establish current retention.                                                        | Anthony / Phase 12; no real-user delivery until resolved                                              |
-| API/database/logs                | Supabase connector confirms current test project Canada Central on Free. Recorded API function is Montréal. Vercel side-panel settings show Hobby and a Drains page offering the first drain only after upgrade. Published Hobby runtime-log retention is one hour. Final beta/production configuration, edge/firewall logs, provider agreements/subprocessors and other retention still need verification. Policy assertions cannot substitute for these checks. | Anthony / Phase 12 before publishing the promised configuration; Phase 13 actual infrastructure       |
-| Backups                          | Owner asked what Pro means on October 18; upgrade remains unconfirmed. Free has no included automatic daily Supabase backups; this does not exclude provider recovery copies. The earlier 7-day Pro proposal is conditional; do not promise it or buy a plan. Restricted manual operational copies also need a removal rule and restore controls.                                                                                                                 | Anthony / Phase 12 backup decision before final wording; Phase 13 actual setup/restore acceptance     |
-| Permanent security records       | Actual deletion retains pseudonymous account/credential identifiers, dates and digests permanently, without journal content. Review necessity/proportionality and request handling; do not call these anonymous or promise all account data disappears.                                                                                                                                                                                                           | Anthony / Phase 12 review; Phase 08 mechanics preserved                                               |
-| Support                          | Existing decision is removal after 12 months unless a request remains open; verify the inbox process and any specific legal hold.                                                                                                                                                                                                                                                                                                                                 | Anthony / Phase 12 operational process                                                                |
-| Public API description [SEC-4]   | Resolved by the Phase 12 technical review: retain static `/openapi.json`. It describes contracts and contains no account records or credentials; authentication/ownership remain the boundary. Hiding it would not establish access security. No API behavior changed.                                                                                                                                                                                            | Resolved engineering assessment / Phase 12; preserve access checks                                    |
-| Local journal [SEC-5]            | Retain iOS Data Protection as the current baseline. AsyncStorage adds no separate vault; no concrete finding currently establishes a need for one. The earlier blanket pre-beta vault recommendation is withdrawn. Inspect the actual signed build's file-protection class and backup exclusion/failure behavior; remediate a specific gap if found rather than presupposing a new storage system.                                                                | Resolved Phase 12 assessment; existing native storage verification / Phase 13                         |
-| Public content/hosting           | Vercel with its generated `.vercel.app` address was selected October 19. Public text was approved October 19. Anthony deferred publication/paid hosting until closer to launch; effective-date/version finalization, actual project setup and verified public URLs remain open in Phase 13 preparation. No custom domain, paid plan or deployment was created.                                                                                                    | Anthony / Phase 12 after concrete review                                                              |
+| Topic                          | October 20 outcome                                                                                                                                                                                                                                                                                            | Remaining action / owner                                                                                                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operator, age and app license  | Ontario personal operator/email and 18+ are settled. Standard Apple EULA plus supplementary service Terms retained, with license precedence clarified. No established reason to require incorporation, birth-date collection or a custom EULA now.                                                            | Phase 13 verifies the real product description, default-EULA selection, rating questionnaire/override and Apple's eligibility decision.                                                                  |
+| Regional scope                 | Canadian subject matter is substantially covered. UK and non-EU EEA remain in the intended territory set; their basis/representative/transfer requirements are not covered by excluding EU storefronts. Washington consumer-health classification also needs a focused assessment if US availability remains. | Anthony chooses whether to retain UK/non-EU EEA; applicable privacy reviewer resolves the specific issues below before affected availability. No territory was silently removed.                         |
+| Provider protection            | Supabase's DPA is incorporated without a stated Free-plan exclusion. Vercel's published DPA names Pro/Enterprise and restricts sensitive data. A paid upgrade alone does not settle journal suitability.                                                                                                      | Anthony authorizes the drafted Vercel inquiry, then the response determines the eligible arrangement before real-user hosting. Add Apple's equivalent-provider-protection statement only when supported. |
+| Provider data use              | JustGO's project-specific model-training sharing was disabled October 20 and verified after reload. Team defaults/other projects were left alone. The opt-out concerns future code/chat sharing; journal-payload exclusion is not established. IP visibility remains enabled.                                 | Preserve JustGO's opt-out. Actual payload, security-log and recovery-copy scope still needs the provider answer; no global preference decision is needed for this fix.                                   |
+| Retention, backups and support | The public policy accurately describes permanent pseudonymous security markers, purpose-based recovery copies and the owner-selected 12-month support rule. The security rationale and a support procedure are recorded below. No universal backup expiry was verified.                                       | Before users: Anthony confirms inbox operation; Phase 13 implements the selected backup/removal/restore controls. Supabase Pro remains the recorded paid-launch target, without purchase authorization.  |
+| Sentry                         | Ordinary delivery remains off and the public policy says so. The narrow startup product scope does not settle lawful basis, DPA acceptance, ingestion retention or device-access rules.                                                                                                                       | Resolve these only before activation, including a matching policy update and Phase 13 signed-build checks. Disabled reporting does not require activating Sentry to finish local legal work.             |
+| EU trader contacts             | Deferred by the owner's initial EU exclusion. No home address or phone is inferred.                                                                                                                                                                                                                           | Phase 13 completes Apple's declaration and actual storefront settings; verify public trader contacts before any EU expansion.                                                                            |
+| Public API description [SEC-4] | Engineering assessment resolved: retain static `/openapi.json`; it contains contracts, not private records or credentials.                                                                                                                                                                                    | Preserve authentication/ownership checks. No API behavior changed.                                                                                                                                       |
+| Local journal [SEC-5]          | Engineering assessment resolved: retain iOS Data Protection. No concrete finding requires a second vault or MMKV migration.                                                                                                                                                                                   | Phase 13 inspects actual signed-build file protection and backup behavior, then remediates any specific gap.                                                                                             |
+| Public hosting                 | Text approved, Vercel-generated address chosen, publication/paid hosting explicitly deferred.                                                                                                                                                                                                                 | Phase 13 preparation finalizes dates/URLs and verifies public HTTPS/app links when Anthony resumes hosting. No deployment or purchase authorized.                                                        |
 
 ## Apple and regulator research
 
-Primary guidance checked October 9 and rechecked October 18, 2026:
+Primary guidance checked October 9 and rechecked October 18; the Apple/license,
+age and focused regional assessments below were refreshed October 20, 2026:
 
 - [Apple App Review §5.1.1](https://developer.apple.com/app-store/review/guidelines/#data-collection-and-storage): accessible in-app/metadata policy; collection/use, sharing, equivalent provider protection, retention/deletion, consent and withdrawal. §5.1.1(ii)'s exception requires compliance with the applicable law, not merely calling diagnostics essential. §5.1.1(ix) addresses sensitive-information/legal-entity eligibility.
 - [Apple security](https://developer.apple.com/app-store/review/guidelines/#data-security) and [App Transport Security](https://developer.apple.com/news/?id=jxky8h89): protect user data and hosted connections. These sources do not prescribe a Canada-only hosting vendor or a universal additional journal-vault implementation.
@@ -67,10 +64,105 @@ Primary guidance checked October 9 and rechecked October 18, 2026:
 
 [Termly](https://termly.io/products/privacy-policy-generator/) and [iubenda](https://www.iubenda.com/en/privacy-and-cookie-policy-generator/) remain optional drafting resources from the earlier review. No generator output, competitor screenshot or general Terms acceptance establishes App Store approval or worldwide sufficiency.
 
+### Apple assessment
+
+October 20 assessment: retain Apple's standard EULA, supplementary service Terms,
+18+ audience and the current individual-operator implementation assumption. The
+Terms now expressly preserve Apple's precedence for the app license. No direct
+conflict was found in the existing service/content/deletion provisions. This is a
+reasoned compatibility assessment, not an App Review eligibility determination.
+Optional, nonclinical entries support the current approach; §5.1.1(ix) does not
+provide a journal-specific bright line that conclusively clears this app or
+automatically requires incorporation. Actual rating/override and App Store setup
+remain Phase 13 tasks; no new identity collection or custom EULA is needed now.
+
+Section 5.1.1(i) also expects the policy to confirm comparable protection by
+receiving third parties. The provider list alone does not say that. After the
+actual arrangements support it, add and review this narrow public statement:
+
+> We require service providers that handle personal information for us to protect
+> it consistently with this policy and applicable requirements.
+
+Do not insert that assurance while Vercel's processor/sensitive-data scope remains
+unresolved. It is a conditional publication correction, not a current safeguard
+or permission to accept a provider agreement.
+
+### Regional assessment
+
+The October 20 review narrows the remaining questions; it does not certify every
+non-EU country. No additional territory restriction was applied.
+
+- **Canada:** the policy covers the operator/contact, optional cloud journal,
+  purposes, recipients, foreign processing, retention and controls. OPC
+  [meaningful-consent guidance](https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/appropriate-handling-of-personal-information/collecting-personal-information-and-consent/consent/gl_omc_201805/)
+  requires a contextual sensitivity assessment. The prominent upload notice,
+  optional fields and deliberate submission are relevant; they do not conclusively
+  settle every sensitive use. A first-submission notice is a possible narrow fix
+  if the assessment identifies a gap, not an approved new checkbox or receipt
+  system. [Cross-border guidance](https://www.priv.gc.ca/en/privacy-topics/airports-and-borders/gl_dab_090127/)
+  allows accountable outsourcing for the disclosed purpose; Canada-only hosting
+  and separate transfer consent are not universal requirements. Existing named
+  operator/email is the contact; no rule identified here establishes a universal
+  need to publish a home address.
+- **UK / non-EU EEA:** the UK, Norway, Iceland and Liechtenstein remain intended.
+  [UK territorial scope](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/personal-information-what-is-it/who-does-the-uk-gdpr-apply-to/)
+  and [EEA GDPR incorporation](https://www.efta.int/media-resources/news/general-data-protection-regulation-gdpr-entered-force-eea)
+  mean EU exclusion alone does not settle these markets. If targeting rules
+  apply, the ongoing journal service is difficult to classify as only occasional
+  processing for the representative exception. Resolve any required UK/EEA
+  representative, purpose-specific lawful bases and actual transfer safeguards
+  before that availability. The generic rights paragraph is not sufficient for
+  the [required privacy information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/the-right-to-be-informed/what-privacy-information-should-we-provide/).
+  A contract basis for requested storage does not replace a separate condition
+  where submitted text reveals [special-category information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/special-category-data/what-are-the-conditions-for-processing/).
+  Do not invent bases/representative contacts or restore legal tracking. Anthony
+  can instead explicitly narrow initial storefronts; that choice is still open.
+- **United States:** no known facts establish current CCPA business-threshold
+  applicability; indie size is not a universal exemption from every privacy law.
+  Washington's [consumer-health definitions](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.010)
+  can reach small businesses and linkable mental-health information. Classify the
+  actual social-challenge positioning, feeling question and journal use before
+  US availability. If applicable, [RCW 19.373.020](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.020)
+  requires a distinct consumer-health privacy policy/link; the current two-page
+  reader does not establish that requirement is met. Requested-service and
+  processor exceptions in [§.030](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.030)
+  mean a consent database or sale permission is not an automatic consequence.
+  App Store country settings cannot exclude Washington alone. Nevada's
+  [health-data provisions](https://www.leg.state.nv.us/NRS/NRS-603A.html)
+  use a different health-status purpose test; no health profiling is relevant
+  but does not establish blanket clearance.
+
+The specific professional/legal judgment still needed is sensitive-journal
+consent and territorial classification, including Washington health-data scope
+and UK/non-EU EEA requirements if retained. Research alone cannot supply a
+representative appointment, a provider exception or a legal opinion. No new
+personal details, paid service or data-collection workflow was introduced.
+
+### Retained security records
+
+The implementation retains account/credential identifiers, relevant timestamps
+and digests so old recovery material cannot recreate a deleted account. Recovery
+credentials are long-lived; expiring the markers on an arbitrary calendar date
+would remove that protection. The deletion timestamp/session digest also makes a
+lost-response retry return the same deletion outcome. See the
+[identity boundary](../architecture/IDENTITY.md#iphone-storage-and-browser-preview)
+and [deletion implementation](../../apps/api/src/identity/delete-account.ts).
+No journal content is retained in these markers, and the runtime cannot delete
+them. These facts support the engineering purpose, not a claim that permanent
+personal-data retention is automatically proportionate in every jurisdiction.
+
+Preserve the current approved safeguard. Before real users, assess the retained
+fields and continuing necessity with the sensitive-data review above. If the
+credential/bootstrap protocol is later retired, review whether the corresponding
+markers can be removed without resurrection or restore risk. No expiry rule,
+scheduled review already in operation or schema change is claimed here.
+
 ## Hosting agreements and recovery copies
 
-Official terms reviewed October 19 clarify the actual questions rather than
-assuming every provider needs a separately signed PDF:
+Official terms rechecked October 20 clarify the actual questions rather than
+assuming every provider needs a separately signed PDF. Vercel's Terms page is
+updated October 19; its DPA is dated March 17, effective March 31. Supabase's
+current DPA is dated August 1, 2026.
 
 - The separate legal reader can use Vercel's automatically assigned
   [`.vercel.app` domain](https://vercel.com/docs/domains/working-with-domains);
@@ -80,24 +172,35 @@ assuming every provider needs a separately signed PDF:
   not establish eligibility for a future paid app's legal site. Clarify that
   applicability or select hosting that permits the intended use before choosing
   the public destination; no upgrade or hosting purchase is authorized.
-- [Supabase Terms §8](https://supabase.com/terms) incorporates its
+- [Supabase Terms §7(b)](https://supabase.com/terms) incorporates its
   [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum).
   The DPA forms part of the agreement and §12.2 gives agreement acceptance the
   effect of signing applicable SCCs. Confirm the actual customer/applicable
   account terms; a missing separate signature alone is not an established gap.
-- [Vercel Terms §10.1](https://vercel.com/legal/terms) incorporates its
+  The DPA has no stated Free-plan exclusion. Section 4 permits sensitive-data
+  processing subject to lawful handling, notices and necessary explicit consent;
+  it does not establish that JustGO's current notice resolves every sensitive
+  submission. HIPAA-defined protected health information needs a separate BAA;
+  an ordinary consumer journal is not automatically subject to HIPAA.
+- [Vercel Terms §11.1](https://vercel.com/legal/terms) incorporates its
   [DPA](https://vercel.com/legal/dpa), but that DPA's processor application
   expressly covers Enterprise and Pro customers. The observed Hobby plan cannot
   be marked covered from incorporation alone. Clarify the applicable processor
   arrangement and Schedule 1's sensitive-data restriction for the actual journal
-  scope before real-user hosting. This is not a finding that every generic
-  reflection is prohibited or an automatic authorization to buy Pro.
+  scope before real-user hosting. Request-body transit is processing even when
+  the database is elsewhere. A generic optional reflection is not automatically
+  a special category, but users can reveal health, beliefs or other sensitive
+  information. Buying Pro alone does not settle the restriction.
 - Vercel's [March 2026 terms explanation](https://vercel.com/changelog/updates-to-terms-of-service-march-2026)
   describes model-training use on Hobby/trials and an opt-out. Its listed scope
   includes code/agent chats, deployment errors and aggregate traffic statistics;
-  it does not establish that journal text is used for training. The actual
-  account setting has not been verified. Review it before release rather than
-  promising an unverified opt-out.
+  it does not establish that journal text is used for training. October 20
+  side-panel team settings initially showed sharing enabled. JustGO's own
+  Project Settings → Data Preferences also showed **Improve models with this
+  project’s data** enabled. The narrower project opt-out was saved and verified
+  disabled after reload; team settings and other projects were left alone. The
+  official FAQ supports this project-level control. It prevents future sharing
+  within that control's scope, not past use or all provider system-data use.
 - [Supabase pricing](https://supabase.com/pricing) lists API/database log retention
   as one day on Free and seven days on Pro; Vercel's published Hobby runtime-log
   limit is one hour. These are specific log products, not an expiry promise for
@@ -109,10 +212,55 @@ assuming every provider needs a separately signed PDF:
   no daily-backup entitlement with no provider copies. The candidate uses
   purpose-based recovery-copy wording and makes no fixed expiry promise.
 
-No contract was accepted, account setting changed, plan upgraded or production
-configuration established by this review. Applicable hosting terms/scope and
+Supabase DPA §11.2's 30-day export-request window concerns agreement termination,
+not expiry of a deleted user's rows in a continuing project. The published backup
+access periods likewise do not establish every recovery copy's expiry. The public
+purpose-based wording remains appropriate; the actual restore/removal process is
+still required before users rely on it. Keep operator exports access-restricted,
+give them a purpose/expiry, and reconcile deletions/revocations before reopening a
+restored database. No new backup service or purchase was selected.
+
+Montréal API functions and Canada Central database hosting do not establish
+Canada-only processing: provider support, network/security processing and recovery
+copies have separate scopes. October 20 Vercel Security & Privacy also shows IP
+visibility enabled in its dashboard and drains; that is a visibility setting, not
+proof of a configured drain or a universal retention period. No request logs or
+private journal records were inspected.
+
+The only account-setting change was JustGO's project-specific model-training
+opt-out. No contract was accepted, plan upgraded or production configuration
+established by this review. Applicable hosting terms/scope and
 recovery-copy handling remain concrete pre-real-user deployment conditions; they
 are not closed by a draft policy or a local test pass.
+
+### Vercel clarification prepared for the owner
+
+The following message is ready to send to **privacy@vercel.com**, published in
+Vercel's [Privacy Notice contact section](https://vercel.com/legal/privacy-notice#contact-us),
+after explicit owner authorization. Ask that team to route the scope/exception
+question to an authorized privacy/contracts contact; ordinary support tickets
+are paid-plan access, so no Hobby ticket entitlement is assumed. It was **not
+sent**. It includes only the service design, with no journal samples, credentials,
+account records or personal user data.
+
+> JustGO is an adult consumer app for everyday social challenges, with optional
+> feeling selections and free-text private reflections. It provides no diagnosis,
+> treatment or health profiling. Its authenticated API would run on Vercel and
+> pass submitted content to a separate Supabase PostgreSQL database. Application
+> logs exclude request bodies and journal content. Users could nevertheless write
+> about health, beliefs or other sensitive subjects.
+>
+> 1. Does this use fit DPA Schedule 1 §6.1? If not, is there an available agreement
+>    or supported arrangement that permits it?
+> 2. Which plan and processor terms cover that arrangement? The current test team
+>    uses Hobby; we understand upgrading to Pro alone may not settle data scope.
+> 3. What request-body, security-log and recovery-copy processing/retention applies,
+>    including after a deletion request? Can journal request payloads enter any
+>    secondary use, including model training, and which controls prevent that?
+
+Do not admit real testers on an assumed answer. If Vercel cannot cover this scope,
+evaluate another API host without changing the journal's storage model by default.
+This condition does not prevent local development or synthetic tests.
 
 ## Competitor research and adaptation
 
