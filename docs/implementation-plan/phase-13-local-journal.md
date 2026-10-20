@@ -55,8 +55,7 @@ included.
    Keep completion retries, totals, streaks and recovery intact. Update shared
    contracts, routes, OpenAPI, server projections and exports together. After
    cutover, no private text, feelings or content-derived fields enter JustGO API
-   requests, diagnostics, analytics or AI. Refresh guarded development legal-copy
-   references to the new phase map during this implementation.
+   requests, diagnostics, analytics or AI.
 3. **Preserve existing entries before cloud removal.** Inventory the legacy
    server/local representation using synthetic fixtures first. Plan authenticated
    account-owned migration of any existing cloud entries, including records
