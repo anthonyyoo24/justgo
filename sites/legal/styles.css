@@ -1,0 +1,150 @@
+:root {
+  color-scheme: light;
+  --ink: #102c41;
+  --muted: #526170;
+  --paper: #fbf7ef;
+  --line: #d8d5cd;
+  --focus: #8b1e32;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 5px;
+  border-radius: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  z-index: 1;
+  top: 0.5rem;
+  left: 1rem;
+  transform: translateY(-200%);
+  padding: 0.4rem 0.8rem;
+  background: var(--paper);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.site-header,
+main,
+footer {
+  width: min(100% - 3rem, 760px);
+  margin-inline: auto;
+}
+
+.site-header {
+  padding-block: 1.6rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  text-decoration: none;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+}
+
+nav a {
+  padding-block: 0.3rem;
+  font-size: 0.89rem;
+}
+
+footer {
+  color: var(--muted);
+}
+
+main {
+  padding-block: 2.4rem 3rem;
+  overflow-wrap: break-word;
+}
+
+h1,
+h2,
+h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+h1 {
+  margin: 0 0 1.5rem;
+  font-size: clamp(2rem, 5vw, 2.7rem);
+  letter-spacing: -0.035em;
+}
+
+h2 {
+  margin: 2.4rem 0 0.85rem;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  margin: 1.8rem 0 0.7rem;
+  font-size: 1.15rem;
+}
+
+p,
+ul,
+ol {
+  margin: 0 0 1.2rem;
+}
+
+li + li {
+  margin-top: 0.5rem;
+}
+
+footer {
+  padding-block: 1.5rem 2.5rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.84rem;
+}
+
+footer p {
+  margin-bottom: 0.4rem;
+}
+
+@media (max-width: 380px) {
+  .site-header,
+  main,
+  footer {
+    width: calc(100% - 2rem);
+  }
+
+  .site-header {
+    padding-block: 1rem;
+  }
+}

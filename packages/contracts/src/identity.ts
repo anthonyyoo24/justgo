@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { currentAcceptanceVersionsSchema } from './acceptance.ts';
 
 // 32 cryptographically random bytes, represented as lowercase hex. Never a user password.
 export const secretSchema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -39,12 +38,7 @@ export const transferProofSchema = z
 // One session resource, with the proof required by each creation mechanism.
 // These wire kinds are independent of the device's persisted pending-intent kinds.
 export const sessionCreateSchema = z.discriminatedUnion('kind', [
-  bootstrapSchema
-    .extend({
-      kind: z.literal('bootstrap'),
-      acceptance: currentAcceptanceVersionsSchema.optional(),
-    })
-    .strict(),
+  bootstrapSchema.extend({ kind: z.literal('bootstrap') }).strict(),
   bootstrapSchema.extend({ kind: z.literal('recovery') }).strict(),
   renewSchema.extend({ kind: z.literal('renewal') }).strict(),
   transferProofSchema.extend({ kind: z.literal('transfer') }).strict(),

@@ -2,8 +2,8 @@ import type { Page } from '@playwright/test';
 import { expect } from './fixtures';
 import { journeyApiUrl, journeyAppUrl } from './environment';
 
-/** Accept only the isolated fixture's draft documents, never live legal terms. */
-export async function acceptFixtureTerms(page: Page) {
+/** Continue only through isolated fixture documents and the fenced local account API. */
+export async function continueFromTerms(page: Page) {
   await expect(page).toHaveURL(
     (url) => url.origin === journeyAppUrl && url.pathname === '/acceptance',
   );
@@ -18,5 +18,5 @@ export async function acceptFixtureTerms(page: Page) {
       'href',
       `${journeyApiUrl}/legal/${path}`,
     );
-  await page.getByRole('button', { name: 'I Accept', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
 }

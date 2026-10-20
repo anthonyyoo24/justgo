@@ -5,7 +5,7 @@ import { sessionResponseSchema } from '@justgo/contracts';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
-import { acceptFixtureTerms } from './support/acceptance';
+import { continueFromTerms } from './support/acceptance';
 
 test('Settings exports every cloud page and a pending phone reflection as a usable private ZIP', async ({
   page,
@@ -20,7 +20,7 @@ test('Settings exports every cloud page and a pending phone reflection as a usab
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   const account = sessionResponseSchema.parse(await (await created).json());
   await expect(
     page.getByText('Connected', { exact: true }).filter({ visible: true }),
@@ -78,6 +78,9 @@ test('Settings exports every cloud page and a pending phone reflection as a usab
     }[];
   };
   expect(json.account.id).toBe(account.userId);
+  expect(json.account).not.toHaveProperty('acceptance');
+  expect(json.account).not.toHaveProperty('termsVersion');
+  expect(json.account).not.toHaveProperty('privacyVersion');
   expect(json.attempts.map((x) => x.id).sort()).toEqual(cloudIds.sort());
   expect(json.localChanges).toHaveLength(1);
   expect(json.localChanges[0]).toMatchObject({
@@ -109,7 +112,7 @@ test('export shows a retryable network failure and downloads only after a fresh 
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   await expect(
     page.getByText('Connected', { exact: true }).filter({ visible: true }),
   ).toBeVisible();

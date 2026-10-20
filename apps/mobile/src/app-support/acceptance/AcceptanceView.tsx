@@ -18,34 +18,30 @@ import { colors, fontFamilies, layout } from '../../theme/tokens';
 
 export function AcceptanceView({
   busy = false,
-  checking = false,
   error = '',
-  busyLabel = 'Saving your acceptance',
-  actionLabel = 'I Accept',
+  busyLabel = 'Creating your account',
+  actionLabel = 'Continue',
   insets: measuredInsets,
-  legalNotice,
   termsUrl,
   privacyUrl,
-  onAccept,
+  onContinue,
   onOpenTerms,
   onOpenPrivacy,
 }: {
   busy?: boolean;
-  checking?: boolean;
   error?: string;
   busyLabel?: string;
   actionLabel?: string;
   insets?: EdgeInsets;
-  legalNotice?: string | undefined;
   termsUrl?: string | undefined;
   privacyUrl?: string | undefined;
-  onAccept: () => void;
+  onContinue: () => void;
   onOpenTerms: () => void;
   onOpenPrivacy: () => void;
 }) {
   const inheritedInsets = useSafeAreaInsets();
   const insets = measuredInsets ?? inheritedInsets;
-  const pending = busy || checking;
+  const pending = busy;
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
@@ -96,15 +92,10 @@ export function AcceptanceView({
               Your data is yours
             </Text>
             <Text style={styles.paragraph}>
-              Your activity and reflections are saved on your phone and to your
-              private JustGO account. We won’t sell your data without your
-              permission.
-            </Text>
-            <Text style={styles.paragraph}>
-              We use account-linked app-usage information, feeling selections
-              and approximate reflection lengths through PostHog to improve
-              JustGO. A random identifier links this information to your
-              account. Your written reflections are never sent to analytics.
+              Your saved activity, feelings and reflections are uploaded to your
+              JustGO account so you can recover your history on another device.
+              Feelings and reflections are optional. We don’t sell your personal
+              information.
             </Text>
           </View>
           <View style={styles.spacer} />
@@ -119,11 +110,6 @@ export function AcceptanceView({
               </Text>
             )}
             <View style={styles.legalCopy}>
-              {!!legalNotice && (
-                <Text style={[styles.paragraph, styles.legalNotice]}>
-                  {legalNotice}
-                </Text>
-              )}
               <Text style={styles.paragraph}>
                 {'By continuing, you agree to our\n'}
                 <LegalLink
@@ -145,7 +131,7 @@ export function AcceptanceView({
               accessibilityLabel={actionLabel}
               accessibilityState={{ disabled: pending, busy: pending }}
               disabled={pending}
-              onPress={onAccept}
+              onPress={onContinue}
               style={({ pressed }) => [
                 styles.button,
                 pressed && styles.pressed,
@@ -156,9 +142,7 @@ export function AcceptanceView({
                   color={colors.white}
                   accessible
                   accessibilityRole="progressbar"
-                  accessibilityLabel={
-                    checking ? 'Checking your acceptance' : busyLabel
-                  }
+                  accessibilityLabel={busyLabel}
                 />
               ) : (
                 <Text style={styles.buttonLabel}>{actionLabel}</Text>
@@ -270,7 +254,6 @@ const styles = StyleSheet.create({
   spacer: { flexGrow: 1, minHeight: 18 },
   footer: { gap: 28 },
   legalCopy: { flexShrink: 0 },
-  legalNotice: { marginBottom: 12 },
   linkLabel: {
     ...bodyFont,
     color: colors.ink,

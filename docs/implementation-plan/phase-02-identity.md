@@ -33,7 +33,7 @@ A real account survives supported recovery paths, without exposing another perso
 - [x] Two-user API/database isolation passes under the actual runtime role; Keychain configuration and fallback limitations are recorded.
 - [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 13
+## Open gates for Phase 14
 
 - Physical-iPhone reinstall, delayed/disabled iCloud synchronization, recovery-key/transfer, concurrent-device and credential-revocation acceptance.
 - Valuable-data external testing must not precede accepted recovery and identity isolation.

@@ -92,27 +92,6 @@ export const users = appSchema
     ],
   )
   .enableRLS();
-export const accountAcceptances = appSchema
-  .table(
-    'account_acceptances',
-    {
-      userId: uuid('user_id')
-        .primaryKey()
-        .references(() => users.id, { onDelete: 'cascade' }),
-      termsVersion: text('terms_version').notNull(),
-      privacyVersion: text('privacy_version').notNull(),
-      analyticsScopeVersion: text('analytics_scope_version').notNull(),
-      acceptedAt: time('accepted_at').notNull().defaultNow(),
-    },
-    (t) => [
-      ...ownerPolicies(),
-      check(
-        'acceptance_versions',
-        sql`${t.termsVersion} ~ '^[a-zA-Z0-9._-]{1,80}$' and ${t.privacyVersion} ~ '^[a-zA-Z0-9._-]{1,80}$' and ${t.analyticsScopeVersion} ~ '^[a-zA-Z0-9._-]{1,80}$'`,
-      ),
-    ],
-  )
-  .enableRLS();
 export const devices = appSchema
   .table(
     'devices',

@@ -14,8 +14,6 @@ let mockAccount: { userId: string } | null = null;
 let mockPending = true;
 let mockVerified = false;
 let mockNeedsWelcome = false;
-let mockAcceptanceStatus: 'accepted' | 'required' | 'loading' | 'error' =
-  'accepted';
 const mockRefresh = jest.fn(async () => undefined);
 let mockCover: { onShow: () => void; onRetry: () => void } | null;
 let mockPreparation: ReturnType<typeof useWelcomePreparation>;
@@ -38,7 +36,6 @@ jest.mock('../../providers/AppProvider', () => ({
     needsWelcome: mockNeedsWelcome,
   }),
   useAccess: () => ({ isPending: mockPending, verified: mockVerified }),
-  useAcceptance: () => ({ status: mockAcceptanceStatus }),
   useRuntime: () => ({ challenges: { refresh: mockRefresh } }),
 }));
 let frames: Map<number, FrameRequestCallback>;
@@ -49,7 +46,6 @@ beforeEach(() => {
   mockPending = true;
   mockVerified = false;
   mockNeedsWelcome = false;
-  mockAcceptanceStatus = 'accepted';
   mockCover = null;
   mockRefresh.mockClear();
   frames = new Map();
@@ -218,27 +214,7 @@ it('does not cover an existing account or hide a failed access check', () => {
   expect(screen.queryByText('Welcome loading')).toBeNull();
 });
 
-it('keeps missing-receipt and acceptance retries visible before preparing the first deck', () => {
-  const screen = render(entry());
-  mockDeleted = null;
-  mockAccount = { userId: 'new-account' };
-  mockPending = false;
-  mockVerified = true;
-  for (const status of ['loading', 'required', 'error'] as const) {
-    mockAcceptanceStatus = status;
-    screen.rerender(entry());
-    expect(screen.getByText('Account navigation')).toBeTruthy();
-    expect(screen.queryByTestId('cover')).toBeNull();
-    expect(mockPreparation.active).toBe(false);
-  }
-  mockAcceptanceStatus = 'accepted';
-  screen.rerender(entry());
-  expect(screen.getByTestId('cover')).toBeTruthy();
-  act(() => mockCover!.onShow());
-  expect(mockPreparation.active).toBe(true);
-});
-
-it('prepares a fresh installation after explicit welcome continuation and account acceptance', () => {
+it('prepares a fresh installation after Continue creates the account and access is verified', () => {
   mockDeleted = null;
   mockNeedsWelcome = true;
   const screen = render(entry());
@@ -247,13 +223,8 @@ it('prepares a fresh installation after explicit welcome continuation and accoun
   expect(screen.queryByTestId('cover')).toBeNull();
   mockNeedsWelcome = false;
   mockAccount = { userId: 'first-account' };
-  mockAcceptanceStatus = 'required';
   mockPending = false;
   mockVerified = true;
-  screen.rerender(entry());
-  expect(screen.queryByTestId('cover')).toBeNull();
-  expect(mockPreparation.active).toBe(false);
-  mockAcceptanceStatus = 'accepted';
   screen.rerender(entry());
   expect(screen.getByTestId('cover')).toBeTruthy();
   act(() => mockCover!.onShow());
@@ -270,7 +241,6 @@ it('keeps fresh-install recovery on account navigation without starting a welcom
   expect(screen.queryByTestId('cover')).toBeNull();
   mockNeedsWelcome = false;
   mockAccount = { userId: 'recovered-account' };
-  mockAcceptanceStatus = 'accepted';
   mockPending = false;
   mockVerified = true;
   screen.rerender(entry());
@@ -284,7 +254,7 @@ it('keeps fresh-install recovery on account navigation without starting a welcom
   expect(screen.queryByTestId('cover')).toBeNull();
 });
 
-it('cancels an explicit welcome entry before recovering an already accepted account', () => {
+it('cancels an explicit welcome entry before recovering an existing account', () => {
   mockDeleted = null;
   mockNeedsWelcome = true;
   const screen = render(entry());
@@ -293,7 +263,6 @@ it('cancels an explicit welcome entry before recovering an already accepted acco
   act(() => mockCancelEntry());
   mockNeedsWelcome = false;
   mockAccount = { userId: 'recovered-account' };
-  mockAcceptanceStatus = 'accepted';
   mockPending = false;
   mockVerified = true;
   screen.rerender(entry());

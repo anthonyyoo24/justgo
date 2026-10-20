@@ -21,10 +21,6 @@ let mockSnapshot = {
     needsWelcome: false,
   },
   access: { verified: true, isPending: false, refetch: jest.fn() },
-  acceptance: {
-    status: 'accepted' as
-      'accepted' | 'loading' | 'required' | 'error' | 'disconnected',
-  },
 };
 const mockListeners = new Set<() => void>();
 jest.mock('expo-font', () => ({ useFonts: () => [true, null] }));
@@ -48,7 +44,6 @@ jest.mock('./providers/AppProvider', () => {
     AppProvider: ({ children }: { children: ReactNode }) => children,
     useIdentity: () => useSnapshot().identity,
     useAccess: () => useSnapshot().access,
-    useAcceptance: () => useSnapshot().acceptance,
   };
 });
 jest.mock('./identity/welcome/WelcomeTransition', () => ({
@@ -104,7 +99,6 @@ beforeEach(() => {
       needsWelcome: false,
     },
     access: { verified: true, isPending: false, refetch: jest.fn() },
-    acceptance: { status: 'accepted' },
   };
 });
 
@@ -199,14 +193,19 @@ it('removes deleted-account screens from actual navigation history', async () =>
   expect(screen.queryByText('Home ready')).toBeNull();
 });
 
-it.each(['/', '/challenge', '/success', '/reflection', '/progress'])(
-  'routes %s to acceptance when an existing account lacks the required receipt',
-  async (initialUrl) => {
-    mockSnapshot.acceptance.status = 'required';
+it.each([
+  ['/', 'Home'],
+  ['/challenge', 'Challenge'],
+  ['/success', 'Success'],
+  ['/reflection', 'Reflection'],
+  ['/progress', 'Progress'],
+] as const)(
+  'opens %s for a verified account without legal confirmation',
+  async (initialUrl, title) => {
     const navigation = renderRouter(routes, { initialUrl });
-    expect(await screen.findByText('Acceptance ready')).toBeTruthy();
-    expect(navigation.getPathname()).toBe('/acceptance');
-    expect(screen.queryByText('Home ready')).toBeNull();
+    expect(await screen.findByText(`${title} ready`)).toBeTruthy();
+    expect(navigation.getPathname()).toBe(initialUrl);
+    expect(screen.queryByText('Acceptance ready')).toBeNull();
   },
 );
 
@@ -216,9 +215,8 @@ it.each([
   ['/account/recover', 'Recover'],
   ['/delete-account', 'Deletion'],
 ] as const)(
-  'keeps %s reachable before acceptance',
+  'keeps %s reachable without legal confirmation',
   async (initialUrl, title) => {
-    mockSnapshot.acceptance.status = 'required';
     const navigation = renderRouter(routes, { initialUrl });
     expect(await screen.findByText(`${title} ready`)).toBeTruthy();
     expect(navigation.getPathname()).toBe(initialUrl);
@@ -228,7 +226,6 @@ it.each([
 it('routes a fresh installation to welcome without silently creating an account', async () => {
   mockSnapshot.identity.account = null;
   mockSnapshot.identity.needsWelcome = true;
-  mockSnapshot.acceptance.status = 'disconnected';
   const navigation = renderRouter(routes, { initialUrl: '/' });
   expect(await screen.findByText('Welcome ready')).toBeTruthy();
   expect(navigation.getPathname()).toBe('/welcome');

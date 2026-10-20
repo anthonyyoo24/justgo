@@ -1,6 +1,6 @@
 # Phase 07.3 — Local challenge and reflection experience
 
-**October 6 checkpoint and next phase:** The original implementation is saved at `7a74a90`, the active-flow/native investigation at `1048372`, and the saving-spinner follow-up at `25e2f8c`. The three saving-spinner PNG targets were not present in the October 6 cleanup checkout; their historical artifact gap is recorded in the [cleanup handoff](project-folder-cleanup.md). Anthony requested a separate [07.3A native testing migration](../implementation-plan/phase-07-api-offline.md#phase-07-3a); 07.3A is deferred to Phase 13 and is not a prerequisite for 07.4 or 07.5. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) records browser-only code and retained coverage. Both final review-fix hosted runs passed at `cc3f0f2`, and the owner merged PR #16 at `6bccfde`. No testing migration has been implemented; native/device acceptance remains open.
+**October 6 checkpoint and next phase:** The original implementation is saved at `7a74a90`, the active-flow/native investigation at `1048372`, and the saving-spinner follow-up at `25e2f8c`. The three saving-spinner PNG targets were not present in the October 6 cleanup checkout; their historical artifact gap is recorded in the [cleanup handoff](project-folder-cleanup.md). Anthony requested a separate [07.3A native testing migration](../implementation-plan/phase-07-api-offline.md#phase-07-3a); 07.3A is deferred to Phase 14 and is not a prerequisite for 07.4 or 07.5. The [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md) records browser-only code and retained coverage. Both final review-fix hosted runs passed at `cc3f0f2`, and the owner merged PR #16 at `6bccfde`. No testing migration has been implemented; native/device acceptance remains open.
 
 ## Snapshot
 
@@ -412,7 +412,7 @@ merge was performed for this follow-up, and Phase 08/device acceptance stays ope
 - Commands use scoped `DEVELOPER_DIR` with installed Xcode; no global developer
   selection, reinstall, keys/history reset or reflection text entry occurred.
   VoiceOver, physical-iPhone, broader lifecycle/storage and owner gesture acceptance
-  remain assigned to Anthony / Phase 13. The macOS Screenshot selection overlay
+  remain assigned to Anthony / Phase 14. The macOS Screenshot selection overlay
   was closed at the owner's request; all background recorders were stopped.
 - Ignored `.local/phase-08-completion-flicker/` contains diagnostic/final videos,
   extracted timestamped frames and `prepared-success-*` verification logs. No visual
@@ -493,7 +493,7 @@ completion change above is retained. No Git publication or native build occurred
   manual button/recording checks are distinct from saved journeys and device gates.
 - Scoped Xcode selection reused the installed simulator app without reinstalling,
   resetting keys/history or entering reflection text. Evidence and logs remain
-  ignored under `.local/phase-08-accept-flicker/`. Owner acceptance and Phase 08/14
+  ignored under `.local/phase-08-accept-flicker/`. Owner acceptance and Phase 08/15
   release gates remain open; this fix does not complete Settings or native billing.
 
 ## Remaining work and risks
@@ -503,17 +503,17 @@ completion change above is retained. No Git publication or native build occurred
 | Native AsyncStorage completion/reflection saving, termination/relaunch, storage-failure recovery and native connectivity; compatible simulator binary is now installed. | Anthony / native verification, evidence required before 07.2/07.3 native acceptance.                                  |
 | Native background/lock/resume countdown, keyboard + covering modal toast, VoiceOver announcements/dismissal/focus, safe areas, scalable text and reduced motion.        | Anthony / native verification after compatible build; retain 07.3 exit gates.                                         |
 | Memory-only accepted content is lost if the process terminates before phone/cloud saving.                                                                               | Approved product limitation from 07.2; honest warning implemented. Never treat memory as durable.                     |
-| Saved native journey/CI migration and retirement of browser-only testing support, with existing useful coverage preserved.                                              | Phase 07.3A is deferred to Phase 13; resume from its native-testing checkpoint.                                       |
+| Saved native journey/CI migration and retirement of browser-only testing support, with existing useful coverage preserved.                                              | Phase 07.3A is deferred to Phase 14; resume from its native-testing checkpoint.                                       |
 | Local/backend Progress overlay/reconciliation, canonical reads, limited current-month/today offline cache, history edits and rollover.                                  | Phase 07.4 is implemented; its Progress/history handoff owns remaining acceptance.                                    |
 | Destructive legacy API/schema removal, full product-doc reconciliation and full hosted journey acceptance.                                                              | Phase 07.5 is implemented; its cutover/acceptance handoff owns remaining release gates.                               |
 | Verified native billing/subscription coverage and unchanged access policy’s provider integration.                                                                       | Phase 07A.                                                                                                            |
 | Hosted CI for the current review-fix revision and owner code review.                                                                                                    | The owner authorized this review-fix push. Verify its exact hosted head; owner acceptance/merge approval remain open. |
-| Earlier physical-device/staging/release gates.                                                                                                                          | Original phase handoffs / Phase 13.                                                                                   |
+| Earlier physical-device/staging/release gates.                                                                                                                          | Original phase handoffs / Phase 14.                                                                                   |
 
 ## Next phase: read this first
 
 Review this local diff and the remaining native evidence before accepting 07.3. Do not silently relabel the native gates complete. Publication/PR and merge need separate explicit permission under [AGENTS.md](../../AGENTS.md).
 
-07.3A is deferred to Phase 13 and is not a prerequisite for 07.4 or 07.5. Resume its bounded native smoke from the [testing checkpoint](phase-07-3a-testing-checkpoint.md), [plan](../implementation-plan/phase-07-api-offline.md#phase-07-3a) and [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md). Preserve useful lower-level and fixture regressions; verify native replacements and hosted CI before retiring browser-only support. Keep outstanding native/device acceptance explicit.
+07.3A is deferred to Phase 14 and is not a prerequisite for 07.4 or 07.5. Resume its bounded native smoke from the [testing checkpoint](phase-07-3a-testing-checkpoint.md), [plan](../implementation-plan/phase-07-api-offline.md#phase-07-3a) and [removal assessment](../checks/phase-07-3a-browser-testing-assessment.md). Preserve useful lower-level and fixture regressions; verify native replacements and hosted CI before retiring browser-only support. Keep outstanding native/device acceptance explicit.
 
 07.4 and 07.5 are implemented; their [Progress](phase-07-4-progress-history.md) and [normalization](phase-07-5-cutover-acceptance.md) handoffs own remaining acceptance and release gates. Preserve the 07.1 canonical contracts, 07.2 aggregate fence/version/recovery rules and this runtime boundary. Consume `useJournal` / `useActivityState` rather than constructing another repository/sender, retain the covering-sheet notice/host and editor newer-input/account fencing, and keep billing/support work in its assigned phases.

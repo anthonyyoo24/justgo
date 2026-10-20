@@ -11,7 +11,6 @@ import {
   useAccess,
   useIdentity,
   useRuntime,
-  useAcceptance,
 } from '../../providers/AppProvider';
 import { WelcomePreparationContext } from './welcome-preparation';
 import { AcceptancePreparationCover } from '../../acceptance/AcceptancePreparationCover';
@@ -35,7 +34,6 @@ type Handoff = {
 export function WelcomeTransition({ children }: PropsWithChildren) {
   const identity = useIdentity();
   const access = useAccess();
-  const acceptance = useAcceptance();
   const { challenges } = useRuntime();
   const deleted = identity.deletionStatus === 'deleted';
   const [entryRequested, setEntryRequested] = useState(false);
@@ -60,14 +58,6 @@ export function WelcomeTransition({ children }: PropsWithChildren) {
   } else if (!needsWelcome && handoff.phase !== 'normal') {
     if (!owner || (handoff.owner && handoff.owner !== owner)) {
       next = { ...handoff, phase: 'normal', ready: false };
-    } else if (acceptance.status !== 'accepted') {
-      // Keep acceptance retries visible; preparing the deck must never cover them.
-      if (
-        handoff.phase !== 'welcome' ||
-        handoff.owner !== owner ||
-        handoff.ready
-      )
-        next = { ...handoff, phase: 'welcome', owner, ready: false };
     } else if (handoff.phase === 'welcome' || handoff.phase === 'checking') {
       const phase = access.isPending
         ? 'checking'

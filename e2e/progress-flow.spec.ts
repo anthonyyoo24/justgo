@@ -17,7 +17,7 @@ import {
   leaveAccountScreens,
   reloadForAccountRecovery,
 } from './support/account-navigation';
-import { acceptFixtureTerms } from './support/acceptance';
+import { continueFromTerms } from './support/acceptance';
 import { seedDay, seedStartTimes } from './support/seed-times';
 
 async function account(page: Page) {
@@ -33,7 +33,7 @@ async function account(page: Page) {
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   const proof = sessionCreateSchema.parse((await request).postDataJSON());
   if (proof.kind !== 'bootstrap')
     throw new Error('Expected synthetic bootstrap');

@@ -98,7 +98,6 @@ async function removeFixtureAccounts(database: Pool) {
     await database.query('begin');
     try {
       for (const table of [
-        'account_acceptances',
         'attempt_patch_receipts',
         'attempts',
         'device_transfers',

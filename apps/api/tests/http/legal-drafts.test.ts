@@ -25,6 +25,31 @@ describe('local development legal destinations', () => {
           'Development draft — not final release documents.',
         );
         expect(response.body).toContain('noindex,nofollow');
+        expect(response.body).toContain('Phase 12 owns legal review');
+        expect(response.body).toContain(
+          'JustGO does not record document views or legal agreement.',
+        );
+        expect(response.body).not.toContain('analytics-scope versions');
+        if (path === 'privacy') {
+          expect(response.body).toContain(
+            'Product analytics stays disabled through beta and paid launch.',
+          );
+          expect(response.body).toContain(
+            'Reading legal documents does not authorize future analytics.',
+          );
+          expect(response.body).toContain(
+            'When enabled, Sentry processes minimal crash reports in the United States',
+          );
+          expect(response.body).toContain(
+            'Exported reports exclude your account ID, feelings, written reflections and breadcrumbs.',
+          );
+          expect(response.body).toContain('Ordinary delivery remains disabled');
+          expect(response.body).toContain(
+            'Pending uploads remain only on the original phone',
+          );
+          expect(response.body).not.toContain('PostHog');
+          expect(response.body).not.toContain('reflection-length categories');
+        }
       }
     } finally {
       await app.close();

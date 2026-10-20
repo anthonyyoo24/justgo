@@ -7,7 +7,7 @@ import {
   leaveAccountScreens,
   reloadForAccountRecovery,
 } from './support/account-navigation';
-import { acceptFixtureTerms } from './support/acceptance';
+import { continueFromTerms } from './support/acceptance';
 
 async function openAccount(page: Page, catalogReady = true) {
   await page.goto('/recovery');
@@ -19,7 +19,7 @@ async function openAccount(page: Page, catalogReady = true) {
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   const response = await created;
   const body: unknown = await response.json();
   if (!response.ok()) {

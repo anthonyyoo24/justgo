@@ -7,29 +7,34 @@ export function useAcceptanceLinks() {
   const legal = getLegalLinks();
   const [linkError, setLinkError] = useState('');
   const mounted = useRef(true);
+  const request = useRef(0);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      request.current += 1;
     };
   }, []);
-  const open = async (url: string | null, label: string) => {
+  const clearLinkError = () => {
+    request.current += 1;
     setLinkError('');
+  };
+  const open = async (url: string | null, label: string) => {
+    clearLinkError();
+    const currentRequest = request.current;
     try {
       if (!url) throw new Error('Unconfigured legal destination');
       await Linking.openURL(url);
     } catch {
-      if (mounted.current)
+      if (mounted.current && currentRequest === request.current)
         setLinkError(`Couldn’t open the ${label}. Please try again.`);
     }
   };
   return {
     linkError,
+    clearLinkError,
     termsUrl: legal.terms ?? undefined,
     privacyUrl: legal.privacy ?? undefined,
-    legalNotice: legal.development
-      ? 'Development legal drafts — not final release documents.'
-      : undefined,
     onOpenTerms: () => {
       // Opening failures are handled above, including late native responses.
       void open(legal.terms, 'Terms of Service');

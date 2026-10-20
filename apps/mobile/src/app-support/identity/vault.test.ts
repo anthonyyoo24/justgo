@@ -188,3 +188,106 @@ it('uses an isolated, nonpersistent, validated vault on web without loading nati
   await expect(createVault().credentials()).resolves.toEqual([]);
   expect(requireOptionalNativeModule).not.toHaveBeenCalled();
 });
+
+function legacyBootstrapState() {
+  return {
+    ...state,
+    selectedId: credential.id,
+    accountDeleted: false,
+    ignoredCredentialIds: [credential.id],
+    cancelledTransfers: [],
+    savedKey: { ...credential, registered: true },
+    registration: credential,
+    pending: {
+      kind: 'bootstrap' as const,
+      credentialId: credential.id,
+      secret: credential.secret,
+      proposal: {
+        deviceId: state.deviceId,
+        sessionId: '00000000-0000-4000-8000-000000000002',
+        sessionToken: 'b'.repeat(64),
+      },
+      acceptance: {
+        termsVersion: 'legacy-unused',
+        privacyVersion: 'legacy-unused',
+        analyticsScopeVersion: 'legacy-unused',
+      },
+    },
+  };
+}
+
+it('removes only legacy bootstrap legal metadata and durably preserves the original recovery proof', async () => {
+  const stored = legacyBootstrapState();
+  native.readState.mockResolvedValue(JSON.stringify(stored));
+  const clean = {
+    ...stored,
+    pending: {
+      kind: stored.pending.kind,
+      credentialId: stored.pending.credentialId,
+      secret: stored.pending.secret,
+      proposal: stored.pending.proposal,
+    },
+  };
+  const vault = createVault();
+  await expect(vault.read()).resolves.toEqual(clean);
+  expect(native.writeState).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(native.writeState.mock.calls[0]![0])).toEqual(clean);
+  await expect(vault.credentials()).resolves.toEqual([credential]);
+  expect(native.addCredential).not.toHaveBeenCalled();
+  expect(native.removeCredential).not.toHaveBeenCalled();
+});
+
+it('fails safely when stripping legacy legal metadata cannot be persisted, then retries without changing credentials', async () => {
+  const stored = legacyBootstrapState();
+  const locked = new Error('Keychain locked');
+  native.readState.mockResolvedValue(JSON.stringify(stored));
+  native.writeState.mockRejectedValueOnce(locked);
+  const vault = createVault();
+  await expect(vault.read()).rejects.toBe(locked);
+  expect(native.addCredential).not.toHaveBeenCalled();
+  expect(native.removeCredential).not.toHaveBeenCalled();
+  await expect(vault.credentials()).resolves.toEqual([credential]);
+  const clean = await vault.read();
+  expect(clean?.pending).not.toHaveProperty('acceptance');
+  expect(clean?.pending).toMatchObject({
+    credentialId: stored.pending.credentialId,
+    secret: stored.pending.secret,
+    proposal: stored.pending.proposal,
+  });
+  expect(native.writeState).toHaveBeenCalledTimes(2);
+  expect(native.writeState.mock.calls[0]![0]).toBe(
+    native.writeState.mock.calls[1]![0],
+  );
+});
+
+it('leaves a clean bootstrap proof unchanged without another native write', async () => {
+  const stored = legacyBootstrapState();
+  const clean = {
+    ...stored,
+    pending: {
+      kind: stored.pending.kind,
+      credentialId: stored.pending.credentialId,
+      secret: stored.pending.secret,
+      proposal: stored.pending.proposal,
+    },
+  };
+  native.readState.mockResolvedValue(JSON.stringify(clean));
+  await expect(createVault().read()).resolves.toEqual(clean);
+  expect(native.writeState).not.toHaveBeenCalled();
+});
+
+it('does not rewrite a recovery intent or replace its device proof', async () => {
+  const stored = legacyBootstrapState();
+  const recovery = {
+    ...stored,
+    pending: {
+      kind: 'recover',
+      credentialId: credential.id,
+      proposal: stored.pending.proposal,
+    },
+  };
+  native.readState.mockResolvedValue(JSON.stringify(recovery));
+  await expect(createVault().read()).resolves.toEqual(recovery);
+  expect(native.writeState).not.toHaveBeenCalled();
+  expect(native.removeCredential).not.toHaveBeenCalled();
+});

@@ -1,10 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { AccessScreen } from './AccessScreen';
-import {
-  useAccess,
-  useIdentity,
-  useAcceptance,
-} from '../providers/AppProvider';
+import { useAccess, useIdentity } from '../providers/AppProvider';
 let mockWelcomePending = false;
 jest.mock('../identity/welcome/WelcomeTransition', () => ({
   useWelcomeTransition: () => mockWelcomePending,
@@ -12,7 +8,6 @@ jest.mock('../identity/welcome/WelcomeTransition', () => ({
 jest.mock('../providers/AppProvider', () => ({
   useAccess: jest.fn(),
   useIdentity: jest.fn(),
-  useAcceptance: jest.fn(),
 }));
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
@@ -25,10 +20,8 @@ jest.mock('expo-router', () => {
 });
 const access = useAccess as jest.Mock;
 const identity = useIdentity as jest.Mock;
-const acceptance = useAcceptance as jest.Mock;
 beforeEach(() => {
   mockWelcomePending = false;
-  acceptance.mockReturnValue({ status: 'accepted' });
   identity.mockReturnValue({
     initialized: true,
     busy: false,
@@ -36,31 +29,26 @@ beforeEach(() => {
   });
 });
 
-it.each(['loading', 'required', 'error'])(
-  'sends %s acceptance to its page despite verified paid access',
-  (status) => {
-    acceptance.mockReturnValue({ status });
-    access.mockReturnValue({ verified: true });
-    const screen = render(<AccessScreen />);
-    expect(screen.getByText('Redirect: /acceptance')).toBeTruthy();
-    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
-  },
-);
+it('admits a connected account with verified access without a legal receipt boundary', () => {
+  access.mockReturnValue({ verified: true });
+  const screen = render(<AccessScreen />);
+  expect(screen.getByText('Redirect: /(tabs)')).toBeTruthy();
+  expect(screen.queryByText('Redirect: /acceptance')).toBeNull();
+});
 
-it('sends a fresh installation to welcome before account creation or acceptance checks', () => {
+it('sends a fresh installation to welcome before account creation', () => {
   identity.mockReturnValue({
     initialized: true,
     busy: false,
     account: null,
     needsWelcome: true,
   });
-  acceptance.mockReturnValue({ status: 'disconnected' });
   access.mockReturnValue({ verified: false });
   const screen = render(<AccessScreen />);
   expect(screen.getByText('Redirect: /welcome')).toBeTruthy();
   expect(screen.queryByText('Redirect: /recovery')).toBeNull();
 });
-it('keeps an accepted replacement on Terms while its preparation cover is opening', () => {
+it('keeps a new replacement on Terms while its preparation cover is opening', () => {
   mockWelcomePending = true;
   access.mockReturnValue({ isPending: true, verified: false });
   const screen = render(<AccessScreen />);

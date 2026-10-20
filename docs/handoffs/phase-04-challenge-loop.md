@@ -96,7 +96,7 @@ its entitlement adapter. Environment names include `DATABASE_URL`,
 `MIGRATION_DATABASE_URL` and `EXPO_PUBLIC_API_URL`, without committed values.
 
 Apply registered forward migrations in order; do not edit historical migrations
-or reset shared activity. The later [test-server handoff](phase-13-test-server.md)
+or reset shared activity. The later [test-server handoff](phase-14-test-server.md)
 records hosted migration through 0013 and identity preservation. The current
 [Phase 08 open gates](phase-08-settings-privacy.md#open-gates) own the remaining
 hosted rollout; the original Phase 04 staging requirement is not a request to
@@ -108,9 +108,9 @@ build and acceptance evidence.
 
 | Gate                                                                       | Owner                                               | Required phase          | Done when                                                                                                                       |
 | -------------------------------------------------------------------------- | --------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Native/physical challenge touch, interruption and accessibility acceptance | Implementation owner and Anthony                    | 13                      | First/repeated gestures, Reduce Motion, VoiceOver, large text and background/lock behavior verified on the beta/release surface |
-| Earlier identity and app-shell device matrix                               | Anthony and implementation owner                    | 13                      | Two-iPhone recovery/reinstall, Keychain account preservation and relevant shell accessibility evidence recorded                 |
-| Coordinated current staging and release acceptance                         | Implementation owner, Anthony authorizes deployment | 13                      | Current API/mobile/schema and preserved history verified under Phase 08/test-server rollout gates                               |
+| Native/physical challenge touch, interruption and accessibility acceptance | Implementation owner and Anthony                    | 14                      | First/repeated gestures, Reduce Motion, VoiceOver, large text and background/lock behavior verified on the beta/release surface |
+| Earlier identity and app-shell device matrix                               | Anthony and implementation owner                    | 14                      | Two-iPhone recovery/reinstall, Keychain account preservation and relevant shell accessibility evidence recorded                 |
+| Coordinated current staging and release acceptance                         | Implementation owner, Anthony authorizes deployment | 14                      | Current API/mobile/schema and preserved history verified under Phase 08/test-server rollout gates                               |
 | Paid-access provider acceptance                                            | Billing implementation owner and Anthony            | 07A, before paid launch | Provider-backed purchase/restore/expiry policy passes the billing and release gates                                             |
 
 ## Final verification

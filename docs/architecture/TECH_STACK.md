@@ -175,17 +175,28 @@ Product analytics remains uninstalled and disabled. Sentry React Native 7.11.0
 (Expo 57's supported version, Cocoa 8.58.0) is installed for errors only under
 `anthony-corp` / `justgo-mobile` in the US region. The ordinary app environment
 keeps delivery disabled pending matching notices/provider review and signed-build
-acceptance. Anthony approved minimal Policy-only startup diagnostics before
-onboarding acceptance. Synthetic
+acceptance. Anthony approved the minimal Policy-only startup scope before app
+entry; this is not permission collected through Continue or document viewing. Synthetic
 browser delivery and stored IP redaction were verified; native compilation,
-crash/restart delivery and symbolication remain Phase 13 gates. See the
+crash/restart delivery and symbolication remain Phase 14 gates. See the
 [diagnostics boundary](APP_SHELL.md#app-error-reporting) and
 [Phase 11 handoff](../handoffs/phase-11-crash-reporting.md). The current
 telemetry helper has an event-name allowlist, account-reset consent and no exporter
 or payload API. [Phase 10](../implementation-plan/phase-10-acceptance.md) owns the
-implemented Terms & Privacy acceptance receipt and tested eligibility boundary, [Phase 14](../implementation-plan/phase-14-analytics.md) owns post-paid-launch analytics and the approved event allowlist, and [Phase 11](../implementation-plan/phase-11-crash-reporting.md) owns app crash reporting;
+Terms & Privacy entry links and ordinary account-creation Continue, with no legal
+view/acceptance receipts or version-driven navigation.
+[Phase 15](../implementation-plan/phase-15-analytics.md) owns post-paid-launch
+analytics and the approved event allowlist, and
+[Phase 11](../implementation-plan/phase-11-crash-reporting.md) owns app crash reporting;
 [Phase 12](../implementation-plan/phase-12-legal-documents.md) owns final legal
-notices, launch acceptance wording/versions and public destinations. Product analytics stays disabled through beta and paid launch; later activation requires reviewed notices and current account-owned acceptance. Questionnaire onboarding, reminders, custom
+notices, document labels and public destinations. Product analytics stays disabled
+through beta and paid launch. Phase 15 must review its actual permission/collection
+design before activation; Continue and historical legal receipts grant no analytics
+permission, and the removed tracking/version gates must not be restored by
+assumption. Historical migration 0017 remains; migration 0018 drops only its legal
+receipt table and preserves the independent analytics restriction marker. Activity
+acknowledgements and durable account-deletion confirmations remain.
+Questionnaire onboarding, reminders, custom
 dictation, lock-screen display and progression remain deferred; their existence
 in a plan must not be read as installed dependencies, tables or behavior.
 

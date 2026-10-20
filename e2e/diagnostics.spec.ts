@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
-import { acceptFixtureTerms } from './support/acceptance';
+import { continueFromTerms } from './support/acceptance';
 
 const ingestion =
   'https://o123.ingest.us.sentry.io/api/4512279181459456/envelope/';
@@ -18,7 +18,7 @@ async function openDiagnostics(page: Page, providerStatus = 200) {
   });
   await page.goto('/welcome');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();

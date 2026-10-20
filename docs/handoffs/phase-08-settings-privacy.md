@@ -50,7 +50,7 @@ identity retention function; and the October 16 pre-merge stability fixes.
 - **Free-beta admission:** `BETA_ACCESS_WINDOW` (staging only) admits any account
   during a configured interval; explicit `BETA_ACCESS_GRANTS` still take
   precedence (October 16). TestFlight controls who can install.
-- **Monitoring** moved to the Phase 13 free beta using existing tools; Phase 08
+- **Monitoring** moved to the Phase 14 free beta using existing tools; Phase 08
   keeps only diagnostic redaction (October 16).
 - **API client errors:** on `/v1/`, any 4xx without its own code keeps its status
   with `INVALID_REQUEST`; only failures without a client status become
@@ -152,7 +152,7 @@ identity retention function; and the October 16 pre-merge stability fixes.
   October 12 signed build predates these capabilities. Anthony's reported
   Phase 08 physical acceptance is recorded in
   [DECISIONS.md](../DECISIONS.md#october-16-codebase-assessment-follow-up);
-  Phase 13 must verify the capabilities in the actual beta/release build.
+  Phase 14 must verify the capabilities in the actual beta/release build.
 - Journeys accept `JUSTGO_JOURNEY_API_PORT` and `JUSTGO_JOURNEY_APP_PORT` (defaults
   3000/8081). The root `check:static` script is what CI runs before coverage.
 
@@ -160,12 +160,12 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 | Gate                                                                                              | Owner                         | Phase  | Done when                                                                            |
 | ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------ |
-| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 13     | Schedule runs on the hosted database; first run's counts recorded                    |
-| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 12, 13 | Dashboard matches FOUNDATION.md before Phase 12 publishes wording                    |
+| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 14     | Schedule runs on the hosted database; first run's counts recorded                    |
+| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 12, 14 | Dashboard matches FOUNDATION.md before Phase 14 publishes the verified wording       |
 | Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                                     |
-| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 13     | Simulator or device check                                                            |
-| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 13     | Paid-launch checkpoint                                                               |
-| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–14  | See [Phase 13](../implementation-plan/phase-13-release.md#phase-13) and Phase 14/07A |
+| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 14     | Simulator or device check                                                            |
+| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 14     | Paid-launch checkpoint                                                               |
+| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–15  | See [Phase 14](../implementation-plan/phase-14-release.md#phase-14) and Phase 15/07A |
 
 ## Final verification
 

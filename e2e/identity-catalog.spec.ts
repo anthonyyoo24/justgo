@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import { leaveAccountScreens } from './support/account-navigation';
-import { acceptFixtureTerms } from './support/acceptance';
+import { continueFromTerms } from './support/acceptance';
 
 async function expectCenteredSpinner(button: Locator, label: string) {
   const spinner = button.getByRole('progressbar', {
@@ -48,7 +48,7 @@ test('a real account renews and opens its challenge catalog', async ({
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   const created = await createdResponse;
   expect(created.ok()).toBe(true);
   const account = sessionResponseSchema.parse(await created.json());
@@ -145,7 +145,7 @@ test('a connected receiving phone confirms transfer, waits for approval and keep
       await phone
         .getByRole('button', { name: 'Create a new account', exact: true })
         .click();
-      await acceptFixtureTerms(phone);
+      await continueFromTerms(phone);
       accounts.push(sessionResponseSchema.parse(await (await creating).json()));
       await expect(
         phone.getByText('Connected', { exact: true }).filter({ visible: true }),
@@ -368,7 +368,7 @@ test('leaving receiving transfer cancels its code and returns to the normal conn
     await page
       .getByRole('button', { name: 'Create a new account', exact: true })
       .click();
-    await acceptFixtureTerms(page);
+    await continueFromTerms(page);
     const original = sessionResponseSchema.parse(await (await creating).json());
     await expect(
       page.getByText('Connected', { exact: true }).filter({ visible: true }),

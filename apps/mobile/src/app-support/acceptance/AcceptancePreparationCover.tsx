@@ -19,7 +19,7 @@ export function AcceptancePreparationCover({
 }) {
   // Read the root's measured insets before presenting the native modal.
   const insets = useSafeAreaInsets();
-  const { linkError, ...links } = useAcceptanceLinks();
+  const { linkError, clearLinkError, ...links } = useAcceptanceLinks();
   const { challenges } = useRuntime();
   const state = useSyncExternalStore(
     challenges.subscribe,
@@ -63,8 +63,11 @@ export function AcceptancePreparationCover({
           busyLabel={
             preparing ? 'Preparing your challenges' : 'Checking your access'
           }
-          actionLabel={error ? 'Try again' : 'I Accept'}
-          onAccept={onRetry}
+          actionLabel={error ? 'Try again' : 'Continue'}
+          onContinue={() => {
+            clearLinkError();
+            onRetry();
+          }}
           {...links}
         />
       </View>

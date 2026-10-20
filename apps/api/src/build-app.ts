@@ -10,9 +10,7 @@ import { challengeRoutes } from './challenges/routes.js';
 import { progressRoutes } from './progress/routes.js';
 import { ExportService } from './account-export/service.js';
 import { accountExportRoutes } from './account-export/routes.js';
-import { AcceptanceService } from './acceptance/service.js';
-import { acceptanceRoutes } from './acceptance/routes.js';
-import { developmentLegalDraftRoutes } from './acceptance/legal-drafts.js';
+import { developmentLegalDraftRoutes } from './http/legal-drafts.js';
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
@@ -86,12 +84,6 @@ export function buildApp(
       ),
     { prefix: '/v1' },
   );
-  if (options.identity) {
-    const acceptanceService = new AcceptanceService(options.identity);
-    app.register(async (scope) => acceptanceRoutes(scope, acceptanceService), {
-      prefix: '/v1/account',
-    });
-  }
   if (options.identity)
     app.register(
       async (scope) =>

@@ -33,7 +33,7 @@ A completed attempt can have optional private feedback and typed reflection text
 - [ ] Real iPhone text entry, keyboard avoidance, long input, dismissal and screen-reader behavior pass; no custom microphone prompt or Dictate control is shipped.
 - [x] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
 
-## Open gates for Phase 13
+## Open gates for Phase 14
 
 - Physical-iPhone long text entry, software-keyboard layout, dismissal, screen-reader behavior and staging integration.
 - Preserve typed reflection and completion credit across storage/network failure.

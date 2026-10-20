@@ -10,7 +10,6 @@ import {
   AppProvider,
   useAccess,
   useIdentity,
-  useAcceptance,
 } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
@@ -76,7 +75,6 @@ export default function RootLayout() {
 function Navigation() {
   const access = useAccess();
   const identity = useIdentity();
-  const acceptance = useAcceptance();
   const deleted = identity.deletionStatus === 'deleted';
   const awaitingAccess = useWelcomeTransition();
   const welcome = deleted || identity.needsWelcome;
@@ -109,9 +107,10 @@ function Navigation() {
       <Stack.Protected
         guard={
           !identity.deletionStatus &&
+          !welcome &&
+          !!identity.account &&
           !awaitingAccess &&
-          access.verified &&
-          acceptance.status === 'accepted'
+          access.verified
         }
       >
         <Stack.Screen name="(tabs)" />

@@ -2,42 +2,43 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { strFromU8, unzipSync } from 'fflate';
 import type { Page } from '@playwright/test';
-import type { Pool } from 'pg';
 import {
-  accountAcceptanceResponseSchema,
-  CURRENT_ACCEPTANCE_VERSIONS,
   sessionCreateSchema,
   sessionResponseSchema,
   type SessionCreate,
 } from '@justgo/contracts';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
-import { acceptFixtureTerms } from './support/acceptance';
+import { continueFromTerms } from './support/acceptance';
 import { leaveAccountScreens } from './support/account-navigation';
 
-const acceptanceUrl = `${journeyApiUrl}/v1/account/acceptance`;
 type Bootstrap = Extract<SessionCreate, { kind: 'bootstrap' }>;
+const sessionsUrl = `${journeyApiUrl}/v1/sessions`;
 
-async function readReceipt(database: Pool, userId: string) {
-  const result = await database.query<{
-    userId: string;
-    termsVersion: string;
-    privacyVersion: string;
-    analyticsScopeVersion: string;
-    acceptedAt: Date;
-  }>(
-    `select user_id as "userId", terms_version as "termsVersion",
-      privacy_version as "privacyVersion", analytics_scope_version as "analyticsScopeVersion",
-      accepted_at as "acceptedAt" from justgo.account_acceptances where user_id=$1`,
-    [userId],
-  );
-  return result.rows.map((row) => ({
-    ...row,
-    acceptedAt: row.acceptedAt.toISOString(),
-  }));
+function observeLegalRequests(page: Page) {
+  const requests: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/v1/account/acceptance')
+      requests.push(`${request.method()} ${request.url()}`);
+  });
+  return requests;
 }
 
-async function createUnacceptedAccount(page: Page) {
+function bootstrapProof(value: unknown): Bootstrap {
+  expect(value).not.toHaveProperty('acceptance');
+  expect(Object.keys(value as object).sort()).toEqual([
+    'credential',
+    'deviceId',
+    'kind',
+    'sessionId',
+    'sessionToken',
+  ]);
+  const proof = sessionCreateSchema.parse(value);
+  if (proof.kind !== 'bootstrap') throw new Error('Expected fixture bootstrap');
+  return proof;
+}
+
+async function createFixtureAccount(page: Page) {
   const proof: Bootstrap = {
     kind: 'bootstrap',
     credential: randomBytes(32).toString('hex'),
@@ -45,9 +46,7 @@ async function createUnacceptedAccount(page: Page) {
     sessionId: randomUUID(),
     sessionToken: randomBytes(32).toString('hex'),
   };
-  const response = await page.request.post(`${journeyApiUrl}/v1/sessions`, {
-    data: proof,
-  });
+  const response = await page.request.post(sessionsUrl, { data: proof });
   expect(response.ok()).toBe(true);
   return { proof, account: sessionResponseSchema.parse(await response.json()) };
 }
@@ -81,10 +80,11 @@ async function recoverFromKey(page: Page, proof: Bootstrap) {
   return account;
 }
 
-test('Welcome opens the draft explanation before creating an account, then reuses its confirmed versions after recovery', async ({
+test('Welcome presents direct documents without account mutations, then Continue creates an ordinary account without legal tracking', async ({
   page,
   fixtureDatabase,
 }) => {
+  const legalRequests = observeLegalRequests(page);
   const mutations: string[] = [];
   page.on('request', (request) => {
     if (
@@ -98,7 +98,22 @@ test('Welcome opens the draft explanation before creating an account, then reuse
   await expect(
     page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
   ).toBeVisible();
+  await expect(page.getByText(/^Your saved activity/)).toContainText(
+    'are uploaded to your JustGO account',
+  );
+  await expect(page.getByText(/^Your saved activity/)).toContainText(
+    'Feelings and reflections are optional.',
+  );
+  await expect(
+    page.getByRole('heading', { name: 'Analytics', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(
+      /Sentry|Development legal drafts|not final release documents/i,
+    ),
+  ).toHaveCount(0);
   expect(mutations).toEqual([]);
+  expect(legalRequests).toEqual([]);
   for (const viewport of [
     { width: 320, height: 611 },
     { width: 390, height: 844 },
@@ -113,7 +128,7 @@ test('Welcome opens the draft explanation before creating an account, then reuse
       name: 'Privacy Policy',
       exact: true,
     });
-    const accept = page.getByRole('button', { name: 'I Accept', exact: true });
+    const accept = page.getByRole('button', { name: 'Continue', exact: true });
     await expect(accept).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Account options', exact: true }),
@@ -158,50 +173,39 @@ test('Welcome opens the draft explanation before creating an account, then reuse
     }
   }
   expect(mutations).toEqual([]);
+  expect(legalRequests).toEqual([]);
   const creating = page.waitForRequest(
-    (request) =>
-      request.url() === `${journeyApiUrl}/v1/sessions` &&
-      request.method() === 'POST',
+    (request) => request.url() === sessionsUrl && request.method() === 'POST',
   );
   const created = page.waitForResponse(
     (response) =>
-      response.url() === `${journeyApiUrl}/v1/sessions` &&
-      response.request().method() === 'POST',
+      response.url() === sessionsUrl && response.request().method() === 'POST',
   );
-  await acceptFixtureTerms(page);
-  const proof = sessionCreateSchema.parse((await creating).postDataJSON());
-  if (proof.kind !== 'bootstrap') throw new Error('Expected fixture bootstrap');
-  expect(proof.acceptance).toEqual(CURRENT_ACCEPTANCE_VERSIONS);
+  await continueFromTerms(page);
+  const proof = bootstrapProof((await creating).postDataJSON());
   const response = await created;
   expect(response.ok()).toBe(true);
   const account = sessionResponseSchema.parse(await response.json());
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
-  const receipt = await readReceipt(fixtureDatabase, account.userId);
-  expect(receipt).toEqual([
-    {
-      userId: account.userId,
-      ...CURRENT_ACCEPTANCE_VERSIONS,
-      acceptedAt: expect.any(String),
-    },
-  ]);
+  const retiredTable = await fixtureDatabase.query<{ name: string | null }>(
+    "select to_regclass('justgo.account_acceptances') as name",
+  );
+  expect(retiredTable.rows).toEqual([{ name: null }]);
+  expect(legalRequests).toEqual([]);
 
-  // Web credentials are memory-only; this reaches the server receipt after recovery.
+  // Preview credentials are memory-only; recovery exercises the existing account independently of legal receipts.
   await page.goto('/recovery');
-  const recovered = await recoverFromKey(page, proof);
-  expect(recovered.userId).toBe(account.userId);
+  expect((await recoverFromKey(page, proof)).userId).toBe(account.userId);
   await leaveAccountScreens(page);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'I Accept', exact: true }),
+    page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
   ).toHaveCount(0);
-  expect(await readReceipt(fixtureDatabase, account.userId)).toEqual(receipt);
-  expect(mutations.filter((path) => path === '/v1/account/acceptance')).toEqual(
-    [],
-  );
+  expect(legalRequests).toEqual([]);
   await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
   await expect(
     page.getByText('General analytics', { exact: true }),
@@ -215,20 +219,22 @@ for (const scenario of [
   { path: '/recovery', failure: 'network' },
   { path: '/account/recover', failure: 'rejected' },
 ] as const)
-  test(`a ${scenario.failure} recovery from ${scenario.path} can create an accepted separate account`, async ({
+  test(`a ${scenario.failure} recovery from ${scenario.path} can explicitly create a separate account without legal metadata`, async ({
     page,
-    fixtureDatabase,
   }) => {
-    const existing = await createUnacceptedAccount(page);
+    const legalRequests = observeLegalRequests(page);
+    const existing = await createFixtureAccount(page);
     const recoveryKey =
       scenario.failure === 'network'
         ? existing.proof.credential
         : randomBytes(32).toString('hex');
-    const sessionsUrl = `${journeyApiUrl}/v1/sessions`;
     let bootstraps = 0;
     await page.route(sessionsUrl, async (route) => {
       const input = sessionCreateSchema.parse(route.request().postDataJSON());
-      if (input.kind === 'bootstrap') bootstraps++;
+      if (input.kind === 'bootstrap') {
+        bootstrapProof(route.request().postDataJSON());
+        bootstraps++;
+      }
       if (scenario.failure === 'network' && input.kind === 'recovery')
         await route.abort('failed');
       else await route.continue();
@@ -270,7 +276,7 @@ for (const scenario of [
         response.request().method() === 'POST' &&
         response.request().postDataJSON().kind === 'bootstrap',
     );
-    await acceptFixtureTerms(page);
+    await continueFromTerms(page);
     const created = await creating;
     expect(created.ok()).toBe(true);
     const account = sessionResponseSchema.parse(await created.json());
@@ -281,12 +287,7 @@ for (const scenario of [
     await expect(
       page.getByText('Connected', { exact: true }).filter({ visible: true }),
     ).toBeVisible();
-    expect(await readReceipt(fixtureDatabase, account.userId)).toEqual([
-      expect.objectContaining(CURRENT_ACCEPTANCE_VERSIONS),
-    ]);
-    expect(await readReceipt(fixtureDatabase, existing.account.userId)).toEqual(
-      [],
-    );
+    expect(legalRequests).toEqual([]);
     const original = await page.request.post(sessionsUrl, {
       data: {
         kind: 'recovery',
@@ -302,24 +303,65 @@ for (const scenario of [
     );
   });
 
-test('an existing account keeps acceptance retryable after an uncertain save without replacing its receipt or activity', async ({
+test('Continue retries a committed bootstrap after a lost response with the same proof and no legal write', async ({
+  page,
+}) => {
+  const legalRequests = observeLegalRequests(page);
+  const proofs: Bootstrap[] = [];
+  let committedUser: string | undefined;
+  await page.route(sessionsUrl, async (route) => {
+    proofs.push(bootstrapProof(route.request().postDataJSON()));
+    if (proofs.length === 1) {
+      const committed = await route.fetch();
+      expect(committed.ok()).toBe(true);
+      committedUser = sessionResponseSchema.parse(
+        await committed.json(),
+      ).userId;
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  await page.goto('/welcome');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await continueFromTerms(page);
+  await expect(page.getByRole('alert')).toHaveText(
+    'Couldn’t connect. Retry when you’re online; your pending action is saved.',
+  );
+  await expect(page.getByRole('alert')).toHaveCSS('color', 'rgb(139, 30, 50)');
+  await expect(
+    page.getByRole('button', { name: 'Continue', exact: true }),
+  ).toBeEnabled();
+  const created = page.waitForResponse(
+    (response) =>
+      response.url() === sessionsUrl && response.request().method() === 'POST',
+  );
+  await continueFromTerms(page);
+  expect(sessionResponseSchema.parse(await (await created).json()).userId).toBe(
+    committedUser,
+  );
+  await expect(
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+  ).toBeVisible();
+  expect(proofs).toHaveLength(2);
+  expect(proofs[1]).toEqual(proofs[0]);
+  expect(legalRequests).toEqual([]);
+});
+
+test('a recovered account can export its existing history and reach deletion or challenges without legal reads or writes', async ({
   page,
   fixtureDatabase,
 }) => {
-  const existing = await createUnacceptedAccount(page);
-  await page.goto('/recovery');
-  const recovered = await recoverFromKey(page, existing.proof);
-  expect(recovered.userId).toBe(existing.account.userId);
+  const legalRequests = observeLegalRequests(page);
+  const existing = await createFixtureAccount(page);
   await fixtureDatabase.query(
     `insert into justgo.attempts
-      (user_id,id,venue_id,challenge_id,level_id,started_at,activity_date,legacy_display_time_zone,reflection_text,reflection_revision)
-      select $1,$2,v.venue_id,c.id,c.level_id,'2024-11-03T05:30:00Z','2024-11-03','America/Toronto',$3,1
-      from justgo.venue_cards v join justgo.challenges c on c.id=v.challenge_id order by v.position limit 1`,
-    [existing.account.userId, randomUUID(), 'Disposable acceptance history.'],
+    (user_id,id,venue_id,challenge_id,level_id,started_at,activity_date,legacy_display_time_zone,reflection_text,reflection_revision)
+    select $1,$2,v.venue_id,c.id,c.level_id,'2024-11-03T05:30:00Z','2024-11-03','America/Toronto',$3,1
+    from justgo.venue_cards v join justgo.challenges c on c.id=v.challenge_id order by v.position limit 1`,
+    [existing.account.userId, randomUUID(), 'Disposable recovered history.'],
   );
-  // Account tools remain on their existing screens; acceptance has no account shortcut.
-  expect(await readReceipt(fixtureDatabase, existing.account.userId)).toEqual(
-    [],
+  await page.goto('/recovery');
+  expect((await recoverFromKey(page, existing.proof)).userId).toBe(
+    existing.account.userId,
   );
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(
@@ -329,14 +371,13 @@ test('an existing account keeps acceptance retryable after an uncertain save wit
   await page
     .getByRole('button', { name: 'Export my data', exact: true })
     .click();
-  const downloadPath = await (await downloading).path();
-  expect(downloadPath).not.toBeNull();
-  const exported = unzipSync(await readFile(downloadPath!));
-  const data = JSON.parse(strFromU8(exported['data.json']!)) as {
-    account: { id: string };
-    attempts: unknown[];
-  };
+  const path = await (await downloading).path();
+  expect(path).not.toBeNull();
+  const data = JSON.parse(
+    strFromU8(unzipSync(await readFile(path!))['data.json']!),
+  ) as { account: { id: string }; attempts: unknown[] };
   expect(data.account.id).toBe(existing.account.userId);
+  expect(data.account).not.toHaveProperty('acceptance');
   expect(data.attempts).toHaveLength(1);
   await page.getByRole('link', { name: 'Delete account', exact: true }).click();
   await expect(
@@ -346,111 +387,45 @@ test('an existing account keeps acceptance retryable after an uncertain save wit
   await page
     .getByRole('link', { name: 'Account & recovery', exact: true })
     .click();
-  await expect(
-    page.getByText('Connected', { exact: true }).filter({ visible: true }),
-  ).toBeVisible();
   await leaveAccountScreens(page);
   await expect(
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+  ).toBeVisible();
+  await expect(
     page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
-  ).toBeVisible();
-  let writes = 0;
-  let releaseSave!: () => void;
-  const saveGate = new Promise<void>((resolve) => {
-    releaseSave = resolve;
-  });
-  await page.route(acceptanceUrl, async (route) => {
-    if (route.request().method() === 'PUT' && ++writes === 1) {
-      // The server commits, but the phone receives no acknowledgement.
-      const response = await route.fetch();
-      expect(response.ok()).toBe(true);
-      await saveGate;
-      await route.abort('failed');
-    } else await route.continue();
-  });
-  try {
-    await acceptFixtureTerms(page);
-    await expect(
-      page.getByRole('progressbar', { name: 'Saving your acceptance' }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('progressbar', { name: 'Checking your acceptance' }),
-    ).toHaveCount(0);
-  } finally {
-    releaseSave();
-  }
-  await expect(page.getByRole('alert')).toHaveText(
-    'Couldn’t save your acceptance. Please try again.',
-  );
-  await expect(page.getByRole('alert')).toHaveCSS('color', 'rgb(139, 30, 50)');
-  await expect(page).toHaveURL(/\/acceptance$/);
-  await expect(
-    page.getByRole('button', { name: 'I Accept', exact: true }),
-  ).toBeEnabled();
-  await expect(
-    page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toHaveCount(0);
-  const receipt = await readReceipt(fixtureDatabase, existing.account.userId);
-  expect(receipt).toHaveLength(1);
-  await acceptFixtureTerms(page);
-  await expect(
-    page.getByRole('button', { name: 'Accept challenge', exact: true }),
-  ).toBeVisible();
-  expect(writes).toBe(2);
-  expect(await readReceipt(fixtureDatabase, existing.account.userId)).toEqual(
-    receipt,
-  );
-  const history = await fixtureDatabase.query(
-    'select reflection_text from justgo.attempts where user_id=$1',
-    [existing.account.userId],
-  );
-  expect(history.rows).toEqual([
-    { reflection_text: 'Disposable acceptance history.' },
-  ]);
+  expect(legalRequests).toEqual([]);
 });
 
-test('switching from an accepted account to an existing unaccepted account cannot reuse the first receipt', async ({
+test('switching accounts restores the selected owner directly without legal confirmation or creating another account', async ({
   page,
-  fixtureDatabase,
 }) => {
+  const legalRequests = observeLegalRequests(page);
   await page.goto('/recovery');
   const created = page.waitForResponse(
     (response) =>
-      response.url() === `${journeyApiUrl}/v1/sessions` &&
-      response.request().method() === 'POST',
+      response.url() === sessionsUrl && response.request().method() === 'POST',
   );
   await page
     .getByRole('button', { name: 'Create a new account', exact: true })
     .click();
-  await acceptFixtureTerms(page);
+  await continueFromTerms(page);
   const first = sessionResponseSchema.parse(await (await created).json());
-  await expect(page).toHaveURL(/\/recovery\/?$/);
   await expect(
     page.getByText('Connected', { exact: true }).filter({ visible: true }),
   ).toBeVisible();
-  const firstReceipt = await readReceipt(fixtureDatabase, first.userId);
-  expect(firstReceipt).toHaveLength(1);
-  const other = await createUnacceptedAccount(page);
+  const other = await createFixtureAccount(page);
   expect(other.account.userId).not.toBe(first.userId);
-  const otherState = accountAcceptanceResponseSchema.parse(
-    await (
-      await page.request.get(acceptanceUrl, {
-        headers: { authorization: `Bearer ${other.proof.sessionToken}` },
-      })
-    ).json(),
-  );
-  expect(otherState.receipt).toBeNull();
   await page.getByRole('link', { name: 'Recovery keys', exact: true }).click();
-  const recovered = await recoverFromKey(page, other.proof);
-  expect(recovered.userId).toBe(other.account.userId);
+  expect((await recoverFromKey(page, other.proof)).userId).toBe(
+    other.account.userId,
+  );
   await leaveAccountScreens(page);
   await expect(
-    page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+    page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
   ).toHaveCount(0);
-  expect(await readReceipt(fixtureDatabase, other.account.userId)).toEqual([]);
-  expect(await readReceipt(fixtureDatabase, first.userId)).toEqual(
-    firstReceipt,
-  );
+  expect(legalRequests).toEqual([]);
 });

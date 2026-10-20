@@ -71,9 +71,8 @@ it('retains Terms through access and deck preparation, with a deck-only retry af
   expect(
     screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
   ).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'I Accept' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   expect(screen.getByRole('header', { name: 'Terms & Privacy' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
   expect(screen.queryByText('A little courage.\nEvery day.')).toBeNull();
   fireEvent(screen.UNSAFE_getByType(Modal), 'show');
   expect(onShow).toHaveBeenCalledTimes(1);
@@ -113,7 +112,7 @@ it('times out stalled assets after 15 seconds and gives a retry attempt its full
   expect(props.onRetry).toHaveBeenCalledTimes(1);
   screen.rerender(<AcceptancePreparationCover {...props} attempt={1} />);
   expect(screen.queryByRole('alert')).toBeNull();
-  expect(screen.getByRole('button', { name: 'I Accept' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   act(() => jest.advanceTimersByTime(14_999));
   expect(screen.queryByRole('alert')).toBeNull();
   act(() => jest.advanceTimersByTime(1));
@@ -173,7 +172,7 @@ it('uses the root’s measured insets on the first modal layout without doubling
   );
 });
 
-it('preserves legal-link failure feedback while the accepted account is preparing', async () => {
+it('preserves legal-link failure feedback while the new account is preparing', async () => {
   const screen = render(
     <AcceptancePreparationCover
       preparing={false}
@@ -188,6 +187,32 @@ it('preserves legal-link failure feedback while the accepted account is preparin
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Couldn’t open the Terms of Service. Please try again.',
   );
-  expect(screen.getByRole('button', { name: 'I Accept' })).toBeDisabled();
-  expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+});
+
+it('restores the preparation error when retrying after a document failure', async () => {
+  mockState = {
+    ...mockState,
+    loading: false,
+    error:
+      'Your challenges couldn’t load. Check your connection and try again.',
+  };
+  const onRetry = jest.fn();
+  const screen = render(
+    <AcceptancePreparationCover
+      preparing
+      attempt={0}
+      onShow={jest.fn()}
+      onRetry={onRetry}
+    />,
+  );
+  await act(async () => {
+    fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Couldn’t open the Terms of Service. Please try again.',
+  );
+  fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  expect(onRetry).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('alert')).toHaveTextContent(mockState.error);
 });
