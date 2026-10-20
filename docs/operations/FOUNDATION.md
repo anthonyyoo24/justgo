@@ -74,22 +74,23 @@ Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 5
 
 ## Backup restore checklist
 
-Use this for any restore of a hosted database from a Supabase backup or point-in-time recovery. A restore must never bring back a deleted account or a revoked credential ([October 16 decision](../DECISIONS.md#october-16-codebase-assessment-follow-up)). Backups follow the Supabase plan's default retention, so deleted data leaves backups within that period. **Backup retention: 7 days**, chosen by Anthony on October 16 as the Supabase Pro plan default ([Supabase backups](https://supabase.com/docs/guides/platform/backups)). It applies only once the database is on Pro: Free projects, such as the current $0 test project, get no Supabase backups. Confirm the production project's plan and dashboard value before Phase 12 publishes the policy wording. The hosted rehearsal of this checklist is a Phase 13 paid-launch gate.
+Use this for any restore of a hosted database from a Supabase backup or point-in-time recovery. A restore must never bring back a deleted journal or allow a revoked credential ([October 16 decision](../DECISIONS.md#october-16-codebase-assessment-follow-up)). **Seven accessible daily backups on Pro** remains Anthony's selected target, not the current Free project's configuration or an expiry guarantee for every provider recovery copy ([Supabase backups](https://supabase.com/docs/guides/platform/backups)). Free has no included automatic daily backups, but [paused-project recovery](https://supabase.com/docs/guides/platform/free-project-pausing) can retain a recoverable copy for up to a year. Verify the selected plan, actual recovery-copy deletion/expiry and any operator exports before publishing retention claims. The [legal review](../legal/LEGAL_REVIEW.md#specific-deletion-and-publication-preparation) records the separate consumer-health deletion requirement. The synthetic stale-snapshot/deletion/isolated-restore rehearsal remains a Phase 13 gate; no customer-data restore is authorized here.
 
 Before restoring:
 
 1. Stop API writes and note the backup's timestamp. Writes other accounts made after that timestamp are not recovered by this checklist.
 2. With the migration role, save the deletions made since the backup to restricted operator storage, never the repository, logs or tickets: every `justgo.users` row with `deleted_at` set (`id`, `created_at`, `deleted_at`, `deletion_session_digest`) and every `justgo.recovery_credentials` row with `revoked_at` set (`id`, `user_id`, `digest`, `kind`, `revoked_at`). Taking all of them, not only those after the timestamp, is simplest and safe.
+   If the current ledger cannot be recovered after a disaster, do not reopen an older snapshot that may lack later deletions/revocations. This checklist does not itself establish an independently recoverable ledger; Phase 13 must evidence that recovery arrangement.
 
 Restore and reapply:
 
 3. Restore into an isolated environment (a new project or branch), never over the live database, with no API pointed at it.
-4. In one reviewed migration-role transaction, apply the saved deletions again, exactly as `apps/api/src/identity/delete-account.ts` does. For each deleted account, delete its attempt patch receipts, attempts, transfers, sessions and devices, and set `deleted_at` and `deletion_session_digest` from the saved row; insert the user row if the account is newer than the backup. Then make every saved credential revoked: insert missing rows and set `revoked_at` on restored rows that are still active.
+4. Apply the current registered forward migrations to the isolated database before reconciliation. In one reviewed migration-role transaction, apply the saved deletions again, exactly as `apps/api/src/identity/delete-account.ts` does. For each deleted account, delete its attempt patch receipts, attempts, transfers, sessions and devices, clear `analytics_restricted_at`, and set `deleted_at` and `deletion_session_digest` from the saved row; insert the user row if the account is newer than the backup. Then make every saved credential revoked: insert missing rows and set `revoked_at` on restored rows that are still active.
 
 Before reopening the app:
 
-5. Confirm in the restored database that every saved account has `deleted_at` set and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
-6. Only then point the API at the restored database and reopen writes. Confirm that one deleted disposable account's recovery proof is rejected through the API before announcing the restore.
+5. Confirm in the restored database that every saved account has `deleted_at` set, `analytics_restricted_at` cleared and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
+6. Using an API restricted to the isolated environment, confirm that deleted disposable accounts' old recovery proofs are rejected and their journal data is absent. Only after these checks pass may the operator point the normal API at the restored database and reopen writes. This prevents a public recovery window during verification.
 
 ## API deployment and diagnostics
 

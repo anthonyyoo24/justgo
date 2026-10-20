@@ -34,18 +34,18 @@ regional, provider and native conditions remain open before their dependent rele
 
 ## Review outcomes and remaining conditions
 
-| Topic                          | October 20 outcome                                                                                                                                                                                                                                                            | Remaining action / owner                                                                                                                                                                                                   |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Operator, age and app license  | Ontario personal operator/email and 18+ are settled. Standard Apple EULA plus supplementary service Terms retained, with license precedence clarified. No established reason to require incorporation, birth-date collection or a custom EULA now.                            | Phase 13 verifies the real product description, default-EULA selection, rating questionnaire/override and Apple's eligibility decision.                                                                                    |
-| Regional scope                 | Canadian subject matter is substantially covered. The owner explicitly excludes EU countries, the UK, Norway, Iceland and Liechtenstein initially. Washington consumer-health classification remains a focused assessment for US availability.                                | Phase 13 applies/verifies those exclusions. UK/non-EU EEA bases/representatives/transfers are deferred until expansion; applicable privacy review for actual processing remains.                                           |
-| Provider protection            | Supabase's DPA is incorporated without a stated Free-plan exclusion. Vercel's published DPA names Pro/Enterprise and restricts sensitive data. A paid upgrade alone does not settle journal suitability.                                                                      | Anthony declined the Vercel email October 20. Keep the draft unsent unless later explicitly authorized; hosting suitability remains open before real users. Add Apple's provider-protection statement only when supported. |
-| Provider data use              | JustGO's project-specific model-training sharing was disabled October 20 and verified after reload. Team defaults/other projects were left alone. The opt-out concerns future code/chat sharing; journal-payload exclusion is not established. IP visibility remains enabled. | Preserve JustGO's opt-out. Actual payload, security-log and recovery-copy scope still needs the provider answer; no global preference decision is needed for this fix.                                                     |
-| Retention, backups and support | The public policy accurately describes permanent pseudonymous security markers, purpose-based recovery copies and the owner-selected 12-month support rule. The security rationale and a support procedure are recorded below. No universal backup expiry was verified.       | Before users: Anthony confirms inbox operation; Phase 13 implements the selected backup/removal/restore controls. Supabase Pro remains the recorded paid-launch target, without purchase authorization.                    |
-| Sentry                         | Ordinary delivery remains off and the public policy says so. The narrow startup product scope does not settle lawful basis, DPA acceptance, ingestion retention or device-access rules.                                                                                       | Resolve these only before activation, including a matching policy update and Phase 13 signed-build checks. Disabled reporting does not require activating Sentry to finish local legal work.                               |
-| EU trader contacts             | Deferred by the owner's initial EU exclusion. No home address or phone is inferred.                                                                                                                                                                                           | Phase 13 completes Apple's declaration and actual storefront settings; verify public trader contacts before any EU expansion.                                                                                              |
-| Public API description [SEC-4] | Engineering assessment resolved: retain static `/openapi.json`; it contains contracts, not private records or credentials.                                                                                                                                                    | Preserve authentication/ownership checks. No API behavior changed.                                                                                                                                                         |
-| Local journal [SEC-5]          | Engineering assessment resolved: retain iOS Data Protection. No concrete finding requires a second vault or MMKV migration.                                                                                                                                                   | Phase 13 inspects actual signed-build file protection and backup behavior, then remediates any specific gap.                                                                                                               |
-| Public hosting                 | Text approved, Vercel-generated address chosen, publication/paid hosting explicitly deferred.                                                                                                                                                                                 | Phase 13 preparation finalizes dates/URLs and verifies public HTTPS/app links when Anthony resumes hosting. No deployment or purchase authorized.                                                                          |
+| Topic                          | October 20 outcome                                                                                                                                                                                                                                                            | Remaining action / owner                                                                                                                                                                                                      |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operator, age and app license  | Ontario personal operator/email and 18+ are settled. Standard Apple EULA plus supplementary service Terms retained, with license precedence clarified. No established reason to require incorporation, birth-date collection or a custom EULA now.                            | Phase 13 verifies the real product description, default-EULA selection, rating questionnaire/override and Apple's eligibility decision.                                                                                       |
+| Regional scope                 | Product review found ordinary social practice without health scoring. Unrestricted submitted text can nevertheless reveal health. Conservative consumer-health handling is recommended for US journal submissions; a supplement and request procedure are prepared below.     | Implementation owner prepares the specific controls; Phase 13 verifies provider deletion and applies the settled country exclusions. Adding a distinct health-policy link needs owner review of the prepared proposal.        |
+| Provider protection            | Supabase's incorporated DPA contemplates sensitive data. Vercel Pro addresses commercial/DPA eligibility but retains its sensitive-data restriction; its HIPAA exception is not a general consumer-journal exception.                                                         | Implementation owner assesses Supabase-hosted API compatibility as an alternative before seeking a migration decision. No contact or purchase is needed for that assessment; no migration is selected.                        |
+| Provider data use              | JustGO's project-specific model-training sharing was disabled October 20 and verified after reload. Team defaults/other projects were left alone. The opt-out concerns future code/chat sharing; journal-payload exclusion is not established. IP visibility remains enabled. | Preserve the opt-out. Map actual processing/logging/recovery copies for the chosen API host. Research cannot invent a Vercel exception; the alternative assessment does not depend on contacting Vercel.                      |
+| Retention, backups and support | Active deletion and retryable phone cleanup are implemented. Recovery-copy expiry and actual inbox operation are unverified. The approved source overstates control over provider-copy removal; a replacement is prepared below.                                              | Implementation owner verifies provider deletion/expiry and rehearses restoration in Phase 13. Anthony operates or assigns the support inbox before users; the existing 12-month choice does not need another policy decision. |
+| Sentry                         | Ordinary delivery remains off and the public policy says so. The narrow startup product scope does not settle lawful basis, DPA acceptance, ingestion retention or device-access rules.                                                                                       | Resolve these only before activation, including a matching policy update and Phase 13 signed-build checks. Disabled reporting does not require activating Sentry to finish local legal work.                                  |
+| EU trader contacts             | Deferred by the owner's initial EU exclusion. No home address or phone is inferred.                                                                                                                                                                                           | Phase 13 completes Apple's declaration and actual storefront settings; verify public trader contacts before any EU expansion.                                                                                                 |
+| Public API description [SEC-4] | Engineering assessment resolved: retain static `/openapi.json`; it contains contracts, not private records or credentials.                                                                                                                                                    | Preserve authentication/ownership checks. No API behavior changed.                                                                                                                                                            |
+| Local journal [SEC-5]          | Engineering assessment resolved: retain iOS Data Protection. No concrete finding requires a second vault or MMKV migration.                                                                                                                                                   | Phase 13 inspects actual signed-build file protection and backup behavior, then remediates any specific gap.                                                                                                                  |
+| Public hosting                 | Text approved, Vercel-generated address chosen, publication/paid hosting explicitly deferred.                                                                                                                                                                                 | Phase 13 preparation finalizes dates/URLs and verifies public HTTPS/app links when Anthony resumes hosting. No deployment or purchase authorized.                                                                             |
 
 ## Apple and regulator research
 
@@ -98,11 +98,13 @@ an answer. No App Store setting was changed.
 - **Canada:** the policy covers the operator/contact, optional cloud journal,
   purposes, recipients, foreign processing, retention and controls. OPC
   [meaningful-consent guidance](https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/appropriate-handling-of-personal-information/collecting-personal-information-and-consent/consent/gl_omc_201805/)
-  requires a contextual sensitivity assessment. The prominent upload notice,
-  optional fields and deliberate submission are relevant; they do not conclusively
-  settle every sensitive use. A first-submission notice is a possible narrow fix
-  if the assessment identifies a gap, not an approved new checkbox or receipt
-  system. [Cross-border guidance](https://www.priv.gc.ca/en/privacy-topics/airports-and-borders/gl_dab_090127/)
+  requires a contextual sensitivity assessment. For the current requested cloud
+  journal, the prominent notice explicitly identifies uploaded activity, feelings
+  and reflections; fields are optional and submission is deliberate. The bounded
+  assessment supports that notice plus the voluntary save action for this disclosed
+  purpose. No new checkbox or receipt system is proposed. This does not authorize
+  unrelated profiling, advertising or future AI use. Phase 13 verifies the actual
+  notice/save flow on the signed build. [Cross-border guidance](https://www.priv.gc.ca/en/privacy-topics/airports-and-borders/gl_dab_090127/)
   allows accountable outsourcing for the disclosed purpose; Canada-only hosting
   and separate transfer consent are not universal requirements. Existing named
   operator/email is the contact; no rule identified here establishes a universal
@@ -122,27 +124,80 @@ an answer. No App Store setting was changed.
   Do not invent bases/representative contacts or restore legal tracking. Review
   these requirements before any proposed expansion; the initial exclusion choice
   is settled.
-- **United States:** no known facts establish current CCPA business-threshold
-  applicability; indie size is not a universal exemption from every privacy law.
-  Washington's [consumer-health definitions](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.010)
-  can reach small businesses and linkable mental-health information. Classify the
-  actual social-challenge positioning, feeling question and journal use before
-  US availability. If applicable, [RCW 19.373.020](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.020)
-  requires a distinct consumer-health privacy policy/link; the current two-page
-  reader does not establish that requirement is met. Requested-service and
-  processor exceptions in [§.030](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.030)
-  mean a consent database or sale permission is not an automatic consequence.
-  App Store country settings cannot exclude Washington alone. Nevada's
-  [health-data provisions](https://www.leg.state.nv.us/NRS/NRS-603A.html)
-  use a different health-status purpose test; no health profiling is relevant
-  but does not establish blanket clearance.
+- **United States:** the [PRD](../product/PRD.md), challenge catalog and reflection
+  flow describe social practice, five retrospective worse/same/better choices and
+  optional free text. There is no clinical score, diagnosis, HealthKit collection
+  or health-based personalization. Ordinary completions and generic feeling
+  choices are not automatically health records. However, linked free text can
+  directly reveal mental or physical health under Washington's
+  [definitions](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.010).
+  **Recommended disposition:** handle submitted journal content conservatively
+  under consumer-health protections without inspecting users' writing to classify
+  it. This is a product risk assessment, not a finding that every entry is health
+  data or an owner-approved new product feature. The concrete proposal follows.
+  Necessary saving explicitly requested by the user has a
+  [requested-service exception](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.030);
+  purpose-limited processors are separately treated in the definitions. This does
+  not itself require legal receipts, a blanket checkbox or removal of cloud saving.
+  Nevada's [different health-status purpose test](https://www.leg.state.nv.us/NRS/NRS-603A.html)
+  is less clearly triggered without health inference; apply the same protective
+  handling to health-revealing submissions rather than claiming an exemption.
+  No known facts establish a [CCPA applicability threshold](https://www.cppa.ca.gov/faq.html).
+  Reassess on material business/scale changes. Separately, California's
+  [mobile-policy guidance](https://oag.ca.gov/news/press-releases/attorney-general-kamala-d-harris-launches-new-tool-help-consumers-report)
+  applies beyond those thresholds: finalize the effective date, explain how
+  changed policies are announced, and describe actual cross-service tracking.
+  No such tracking is implemented; do not invent a Do Not Track mechanism.
 
-The specific professional/legal judgment still needed is sensitive-journal
-consent and territorial classification, including Washington health-data scope
-for current intended US availability. UK/non-EU EEA requirements are deferred
-until a proposed expansion. Research alone cannot supply a
-representative appointment, a provider exception or a legal opinion. No new
-personal details, paid service or data-collection workflow was introduced.
+These research and drafting tasks belong to the implementation owner, not to
+Anthony as unanswered legal questions. Provider retention facts still require
+evidence, and a new hosting arrangement or public page needs the existing owner
+review. UK/non-EU EEA requirements remain deferred until proposed expansion.
+
+### Prepared consumer-health supplement
+
+**Washington-specific proposal for owner review; not published or added to navigation.** Washington
+[RCW 19.373.020](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.020)
+requires its notice to have a prominent homepage link; the Attorney General's
+[guidance](https://www.atg.wa.gov/protecting-washingtonians-personal-health-data-and-privacy)
+explains the distinct-policy requirement. This is the specific reason to propose
+one additional link despite the earlier preference for only Privacy and Terms.
+The following text must use the final supported providers before publication:
+
+> **Consumer Health Data Privacy Notice**
+>
+> JustGO is operated by Youngshin Yoo in Ontario, Canada. When you choose to save
+> them, we collect your feeling selection and written reflection. Your writing may
+> contain information about your physical or mental health. Associated challenge,
+> venue category, date and account information connects an entry to your history.
+> The source is information you submit through JustGO.
+>
+> We use this information to save, display, synchronize, recover, export and delete
+> the journal you request. JustGO does not diagnose your health or use journal
+> content for advertising. We do not sell it or share it with affiliates or
+> non-service partners. Vercel currently runs the API and Supabase stores the
+> database; they process submissions to provide those services.
+>
+> You may leave feelings and reflections blank. Settings provides Export my data
+> and Delete account. For access, correction, deletion, withdrawal of collection
+> permission or information about recipients, email anthonyyoo24@gmail.com. We
+> verify account authority without asking you to email recovery secrets. To
+> appeal a request decision, reply with “Privacy appeal”. If an appeal is denied,
+> we explain why and provide the Washington Attorney General's complaint route.
+
+The provider sentence above must match the final API host; it is a review
+candidate, not clearance of the current Vercel arrangement. No fixed recovery-copy deadline enters public
+text until a supported deletion path is evidenced. The request procedure below
+must be operational before publishing its promises. This proposal does not
+activate diagnostics, analytics, AI or a new consent-recording mechanism.
+
+The quoted notice is Washington-specific. Applying the same conservative approach
+in Nevada also needs the [NRS 603A.495 notice topics and .515–.520 procedure](https://www.leg.state.nv.us/NRS/NRS-603A.html):
+the implementation owner prepares those adaptations, including active deletion
+within 30 days after authentication and Nevada Attorney General contacts after
+a denied appeal. The Washington paragraph alone does not establish Nevada
+coverage, and the general request-response period does not replace that deletion
+deadline. No regional drafting question is assigned to Anthony.
 
 ### Retained security records
 
@@ -156,9 +211,14 @@ and [deletion implementation](../../apps/api/src/identity/delete-account.ts).
 No journal content is retained in these markers, and the runtime cannot delete
 them. These facts support the engineering purpose, not a claim that permanent
 personal-data retention is automatically proportionate in every jurisdiction.
+Removing an old credential marker could allow a revoked proof to bootstrap a new
+empty account; it does not by itself restore the deleted journal. Keep this
+distinction when explaining the protection.
 
-Preserve the current approved safeguard. Before real users, assess the retained
-fields and continuing necessity with the sensitive-data review above. If the
+Current disposition: retain the approved limited security records for the
+specific credential-reuse and deletion-retry functions above; no arbitrary expiry
+is introduced. The implementation owner must reassess when those functions or
+the credential protocol change. If the
 credential/bootstrap protocol is later retired, review whether the corresponding
 markers can be removed without resurrection or restore risk. No expiry rule,
 scheduled review already in operation or schema change is claimed here.
@@ -215,16 +275,130 @@ current DPA is dated August 1, 2026.
   [Supabase's backup documentation](https://supabase.com/docs/guides/platform/backups),
   but [paused Free projects](https://supabase.com/docs/guides/platform/free-project-pausing)
   can be recovered for up to a year from retained provider backups. Do not equate
-  no daily-backup entitlement with no provider copies. The candidate uses
-  purpose-based recovery-copy wording and makes no fixed expiry promise.
+  no daily-backup entitlement with no provider copies. The candidate makes no
+  fixed expiry promise, but its claim that we remove provider-controlled copies
+  when no longer needed goes beyond verified operator control.
 
 Supabase DPA §11.2's 30-day export-request window concerns agreement termination,
 not expiry of a deleted user's rows in a continuing project. The published backup
-access periods likewise do not establish every recovery copy's expiry. The public
-purpose-based wording remains appropriate; the actual restore/removal process is
-still required before users rely on it. Keep operator exports access-restricted,
+access periods likewise do not establish every recovery copy's expiry. Replace the
+unsupported removal assurance in the unpublished policy before publication; the
+candidate below does not replace the actual deletion requirement. Keep operator exports access-restricted,
 give them a purpose/expiry, and reconcile deletions/revocations before reopening a
 restored database. No new backup service or purchase was selected.
+
+Supabase's October 6 [data residency/deletion FAQ](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq)
+also ties backup retention to the plan and describes project deletion within
+30 days. That is useful provider evidence, but whole-project deletion is not a
+per-account erasure process for an ongoing shared database. Confirm the actual
+configured backup/expiry path and operator exports; do not use either the
+termination window or whole-project deletion as the journal-row deadline.
+
+### Hosting recommendation without provider contact
+
+The research establishes a usable distinction: Supabase's DPA expressly
+contemplates sensitive submissions subject to the customer's safeguards;
+Vercel's standard Pro DPA prohibits sensitive Customer Data. Do not mark Pro
+alone suitable for unrestricted private journals or describe this as a confirmed
+violation by every ordinary reflection. Anthony declined contact; no provider
+answer is being awaited as the only way forward.
+
+Vercel does publish a [HIPAA arrangement](https://vercel.com/kb/guide/hipaa-compliance-guide-vercel)
+and a [BAA that amends the service agreement](https://vercel.com/legal/baa).
+It is for covered entities/business associates and HIPAA-defined PHI, not a
+blanket consumer-journal exception. JustGO's facts do not establish that status;
+do not recommend buying the add-on or treating ordinary Enterprise as clearance.
+
+**Recommended alternative to assess:** iPhone → Supabase Edge Functions → the
+existing private Supabase database. Official documentation supports
+[API routing](https://supabase.com/docs/guides/functions/routing),
+[Postgres connections](https://supabase.com/docs/guides/functions/connect-to-postgres)
+and [custom handler authentication](https://supabase.com/docs/guides/functions/auth).
+This can retain server-readable cloud saving, accounts and recovery without
+passing journal bodies through Vercel. It is an engineering option, not a selected
+host, completed migration or claim that DPA compliance is automatic. Vercel can
+separately host public static legal pages on an eligible commercial plan.
+
+The implementation owner must assess the actual Fastify/Node runtime port,
+database driver/transaction compatibility, custom session authorization, request
+and export limits, logging and execution region before presenting a migration
+decision. Keep the restricted runtime role, transaction-local ownership and
+locking; never replace them with a public service-role endpoint or move database
+credentials onto the phone. A runtime port requires its own focused verification
+and staging approval; this research does not authorize a deployment or purchase.
+
+Read-only code assessment finds a **moderate runtime/HTTP port**, not a settings
+toggle. Fastify lifecycle/plugins, Pino and the pinned Node dependencies need an
+Edge Runtime proof. Services can retain the private schema, contracts, custom
+identity, SQL and recovery rules. The current adapter is `pg` with Drizzle's
+`node-postgres`, so test it before assuming Postgres.js is a drop-in replacement.
+Exports are already paged JSON; the phone creates the ZIP.
+
+Two concrete traps must be covered: custom opaque bearer tokens need verified
+handler-owned authentication rather than the default Supabase-JWT gate, and the
+mobile client's absolute `/v1/` URLs would discard a `/functions/v1/...` base
+path. Preserve the existing origin/path fence and trusted-address rate limits.
+The [runtime limits](https://supabase.com/docs/guides/functions/limits), package
+bundling, verified TLS/transactions and explicit
+[Canada Central invocation](https://supabase.com/docs/guides/functions/regional-invocation)
+need evidence; default execution follows the caller and is not automatically in
+the database region.
+
+Before choosing migration, prove a local isolated slice against the dedicated
+test database: bootstrap/retry, authenticated save/PATCH, paged export and
+delete/retry, with cross-account denial, transaction rollback, concurrent writes,
+oversized input and redacted errors. No code or data migration was performed in
+this assessment. Hosted gateway/region/TLS proof follows only after the hosting
+choice and deployment authorization.
+
+### Specific deletion and publication preparation
+
+The remaining tasks are concrete implementation/operations checks:
+
+1. Record the selected processor agreement and actual configuration against
+   purpose-limited processing, access restrictions, request assistance and
+   deletion obligations ([Washington processor requirements](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.060)).
+   Supabase's incorporated DPA covers these subjects; verify the actual account
+   terms and recovery-copy path rather than requiring a separate PDF by default.
+2. Inventory database recovery copies, any journal-bearing API copies and
+   operator exports. For covered health submissions, [RCW 19.373.040](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.040)
+   requires recipient deletion notices and permits backup deletion delay of no
+   more than six months after authentication. Tombstone replay prevents restored
+   active access but is not proof that archived content has been erased. Obtain
+   documented expiry/deletion evidence before affected use; an accessible
+   seven-day backup list or paid-plan name alone is insufficient.
+3. Rehearse a stale synthetic snapshot followed by deletion and isolated restore.
+   Reapply current migrations and the preserved deletion/revocation ledger;
+   verify deleted journals stay absent and old recovery proofs fail before
+   reopening. If the newer ledger is unavailable, keep the service closed. See
+   the corrected [restore checklist](../operations/FOUNDATION.md#backup-restore-checklist).
+4. Operate the request/support procedure below. Immediate active-service deletion
+   and retryable local cleanup already have regression and hosted synthetic
+   evidence; do not rebuild them or call them an unanswered legal question.
+   Scheduled expired-transfer/rate-bucket cleanup remains a separate Phase 13
+   setup task, not the mechanism that deletes journals.
+
+Prepared corrections for the unpublished policy, alongside the health supplement:
+
+- Replace the recovery-copy paragraph with: “Provider-controlled recovery copies
+  may temporarily contain older information and follow the provider's retention
+  processes. Before returning a restored service to use, we reconcile deletion
+  and revocation records so deleted journals do not return to active use.”
+- Describe current-phone deletion as removing the account's local journal copies
+  and matching credentials. Do not imply remotely wiping exports, offline phones
+  or every temporary file; an interrupted ZIP export can leave an app-cache copy
+  until the next export.
+- Explain that revised policies are published at the Privacy Policy address and
+  that material changes receive an in-app notice before the changed processing.
+  Configure that notice before making the promise; no email list exists.
+- State accurately that JustGO does not use cross-service advertising tracking,
+  and review any independently collected provider traffic data against the final
+  hosting agreement before asserting that no third party tracks it.
+
+These are prepared revisions, not approval to publish changed content. Keep the
+existing effective date pending and source approval history intact. The current
+approved block is unchanged by this research; review the prepared changes when
+resuming publication rather than requesting approval of unchanged text again.
 
 Montréal API functions and Canada Central database hosting do not establish
 Canada-only processing: provider support, network/security processing and recovery
@@ -317,6 +491,11 @@ actual Gmail inbox remains unverified:
    manual help, verify account authority through an appropriate secure process;
    never request a recovery key or session secret by email. A report cannot be
    treated as verified solely because someone supplies an account identifier.
+   If a manual request cannot be verified through existing authenticated controls,
+   arrange a secure authenticated support route before acting; do not invent an
+   operational verification capability or collect recovery secrets as a shortcut.
+   Requests can concern narrower deletion, stopping optional collection or
+   recipient information, not only whole-account deletion.
 3. Record the action and response, then mark the request closed. For any necessary
    legal hold or ongoing request, record the reason, owner and next review date;
    keep an exception only while needed.
@@ -325,9 +504,26 @@ actual Gmail inbox remains unverified:
    retention. Remove operator-controlled copies and check Gmail Trash expiry;
    preserve the policy's distinction between active data and provider recovery
    copies. Review exceptions again at the next monthly pass.
+5. For Washington-covered requests, track 45 days from receipt; authentication
+   does not restart or extend that clock. A justified one-time extension of up to
+   45 additional days needs notice within the initial period. Give written reasons for
+   refusals and accept appeals through the same inbox with “Privacy appeal”.
+   Decide appeals within 45 days and include the
+   [Attorney General complaint route](https://www.atg.wa.gov/file-complaint)
+   when denied. These periods come from [RCW 19.373.040](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.040),
+   not a new worldwide response guarantee. Keep the provider deletion/expiry
+   record with the request, without copying journal content into the support log.
+6. For Nevada-covered requests, track active deletion within 30 days of
+   authentication separately from the general request clock. Follow
+   [NRS 603A.510–.520](https://www.leg.state.nv.us/NRS/NRS-603A.html) for responses
+   and appeals and provide [Nevada Attorney General contact information](https://ag.nv.gov/Contact/Contact/)
+   after a denied appeal. Apply the stricter six-month backup target where the
+   same submission is handled under the Washington proposal; Nevada's longer
+   permitted backup delay does not relax the Washington condition.
 
-Anthony must confirm the inbox owner/process and the secure route for manual
-requests before claiming this operational gate has passed. No inbox access,
+The implementation owner prepares and verifies any authenticated manual-request
+route. Anthony confirms who monitors the inbox and performs the prepared
+procedure before claiming inbox operation has passed. No inbox access,
 message deletion, outbound email or recurring automation was performed here.
 
 ## Sentry activation notice and request process

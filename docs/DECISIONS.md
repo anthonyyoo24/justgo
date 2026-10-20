@@ -441,6 +441,15 @@ owner's explicit choices, new consent workflow or legal receipt was introduced. 
 hosting deferred and ordinary diagnostics/analytics disabled under the existing
 decisions. Only supported provider/regional assertions may enter public text.
 
+Later public-source and product-specific research in the same review prepares
+conservative consumer-health handling, a short supplemental notice and concrete
+request/deletion checks instead of leaving regional classification as an owner
+research assignment. It also assesses Supabase Edge Functions as an alternative
+API host while retaining the existing private database and cloud journal. These
+are implementation recommendations for review: no storage redesign, hosting
+migration, new public navigation or purchase is selected. The existing no-contact,
+publication and country decisions remain in force.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.
