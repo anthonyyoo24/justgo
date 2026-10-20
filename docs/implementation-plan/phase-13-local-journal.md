@@ -24,6 +24,13 @@ included.
   verifying the reduced processing against their applicable terms. The earlier
   Supabase Edge Functions migration is an alternative if a concrete remaining
   hosting problem requires it, not a prerequisite or selected migration.
+- Storage direction: use SQLite through `expo-sqlite` for private journal entries
+  and their account/challenge/date context. Keep preferences and replaceable
+  activity caches in AsyncStorage, and account secrets in the existing Keychain
+  adapter. Verify the SDK-compatible SQLite version, transactional/crash behavior
+  and native development-build requirements before implementation. SQLite is not
+  installed by this planning change; there is no fixed cloud-storage allowance
+  for the journal, and phone-full handling remains required.
 - Existing activity architecture still describes the running cloud model. Update
   it at phase completion; do not claim uploads stopped merely because this plan
   exists. Phase 14 owns public hosting, final signed-release verification and

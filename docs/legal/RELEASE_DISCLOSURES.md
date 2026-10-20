@@ -4,6 +4,10 @@ Prepared October 18 and reconciled October 19–20, 2026 for Phase 12 owner/rele
 
 ## App Privacy worksheet
 
+These categories describe the current cloud implementation. Phase 13 must revise
+them after verifying local feelings/text storage, manual backup/restore and the
+remaining online data; this plan does not establish that uploads have stopped.
+
 Apple's [definitions and exemptions](https://developer.apple.com/app-store/app-privacy-details/) govern the final answers. Cloud synchronization is collection even when no analytics operates. A no-signup random account ID is still linked account data.
 
 | Actual data                                                                      | Proposed Apple category                                                                           | Purpose/linkage and remaining check                                                                                                                               |
