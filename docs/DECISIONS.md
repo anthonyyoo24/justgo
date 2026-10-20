@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 19, 2026. The [October 18 sequencing decision](#october-18-crash-reporting-before-launch-and-analytics-deferral) owns the current phase map. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 20, 2026. The [October 18 sequencing decision](#october-18-crash-reporting-before-launch-and-analytics-deferral) owns the current phase map. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -388,6 +388,27 @@ Anthony requested removal of the legal reader's approval/preview banner, interna
 ## October 19 concise Terms and Privacy entry copy
 
 Anthony requested removal of the onboarding Analytics section, Sentry paragraph and development-release notice, with the data summary informed by the supplied How We Feel Paper reference. Paper MCP inspection confirms that reference describes device-only saving and active non-identifying research usage, which differ from JustGO. Anthony later chose to retain the existing cloud storage; the entry text explicitly describes uploads for account recovery, optional feelings/reflections and the no-sale assurance. The full Privacy Policy remains linked, with the explicit encryption-status sentence omitted at his request. The internal inventory retains the actual technical protection facts. No data flow, diagnostics/analytics activation, account behavior or legal publication changes follow from this copy edit.
+
+## October 20 initial App Store release excludes the EU
+
+Anthony directed that the initial App Store release exclude the European Union
+for now. This replaces the October 19 worldwide target with the intended
+non-EU storefronts, while preserving paid access from the first public release.
+Do not extend the exclusion to the UK or other non-EU countries by assumption.
+
+Phase 13 must apply and verify the country selection in App Store Connect;
+no storefront setting or app distribution was changed by this documentation
+update. The EU public trader address/phone gate applies before a future EU
+expansion, rather than blocking this initial release. Apple's trader-status
+declaration and the applicable privacy/eligibility review for actual distribution
+and processing remain release tasks. Storefront exclusion alone is not a blanket
+exemption from privacy law.
+
+No hosting upgrade, purchase, publication or provider activation follows from
+this decision. October 20 read-only checks still show the JustGO Vercel team on
+Hobby and its Supabase organization on Free; discussing Pro does not authorize
+an upgrade. Both services support multiple projects, with additional Supabase
+projects incurring their own compute costs on paid organizations.
 
 ## Open and settled product decisions
 
