@@ -4,13 +4,13 @@ Prepared October 9 and reconciled October 18–20, 2026 for the Privacy Policy, 
 
 ## Operator and intended audience
 
-| Item                        | Current decision                                                                                                                                                                                      |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Operator                    | Youngshin Yoo, acting personally, Ontario, Canada. Operator confirmed October 9; province confirmed during Phase 12.                                                                                  |
-| Privacy and support contact | anthonyyoo24@gmail.com, selected by the owner as the temporary contact.                                                                                                                               |
-| Intended distribution       | Initial paid App Store release excludes EU countries, as directed October 20. Other intended storefronts retain applicable regional review; actual availability must be set and verified in Phase 13. |
-| Intended minimum age        | 18. October 20 review retains the wording without new birth-date/ID collection; actual App Store questionnaire and higher override remain Phase 13.                                                   |
-| Public contact address      | Not supplied. Review applicable address/representative requirements for the intended regions; do not assume a home address must be published.                                                         |
+| Item                        | Current decision                                                                                                                                                                                                                         |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operator                    | Youngshin Yoo, acting personally, Ontario, Canada. Operator confirmed October 9; province confirmed during Phase 12.                                                                                                                     |
+| Privacy and support contact | anthonyyoo24@gmail.com, selected by the owner as the temporary contact.                                                                                                                                                                  |
+| Intended distribution       | Initial paid App Store release excludes EU countries, the UK, Norway, Iceland and Liechtenstein by October 20 directions. Other intended storefronts retain applicable review; actual availability must be set and verified in Phase 13. |
+| Intended minimum age        | 18. October 20 review retains the wording without new birth-date/ID collection; actual App Store questionnaire and higher override remain Phase 13.                                                                                      |
+| Public contact address      | Not supplied. Review applicable address/representative requirements for the intended regions; do not assume a home address must be published.                                                                                            |
 
 The app's random account identifier is persistent and links records to an account. A no-signup account is not the same as anonymous data. The absence of an email login does not make uploaded journal records uncollected. The Terms & Privacy page presents readable notices without recording views or acceptance or requiring per-account document-version checks.
 
@@ -65,7 +65,7 @@ control concerns future code/chat sharing and does not establish journal-payload
 exclusion. IP visibility remains enabled for the dashboard/drains; this does not
 prove a drain exists. No private request logs were read. The
 [provider review](LEGAL_REVIEW.md#hosting-agreements-and-recovery-copies) records
-the precise coverage/sensitive-data question and an unsent provider inquiry.
+the precise coverage/sensitive-data question and a provider inquiry the owner declined to send October 20. It remains unsent unless later explicitly authorized; the hosting condition remains open.
 
 ## Sentry diagnostic boundary
 

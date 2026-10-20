@@ -4,9 +4,9 @@ Phase [12](../implementation-plan/phase-12-legal-documents.md) owns legal text, 
 
 ## Current review package
 
-Prepared October 18 and revised October 20, 2026: [inventory](DATA_INVENTORY.md), [Privacy Policy candidate](PRIVACY_POLICY_DRAFT.md), [Terms candidate](TERMS_DRAFT.md), [release-disclosure worksheet](RELEASE_DISCLOSURES.md) and the [local static site](../../sites/legal/README.md). October 9 drafting/research is retained in the initial source history and primary references below. The October 18 pass reconciles it with Phases 08–11; the October 19 pass adapts the public presentation after competitor research. October 20 records the owner-directed EU exclusion, current provider terms/settings and bounded Apple/regional assessments. The only public-text adjustment in this review clarifies the existing supplementary relationship to Apple's standard license; processing claims and service activation remain unchanged.
+Prepared October 18 and revised October 20, 2026: [inventory](DATA_INVENTORY.md), [Privacy Policy candidate](PRIVACY_POLICY_DRAFT.md), [Terms candidate](TERMS_DRAFT.md), [release-disclosure worksheet](RELEASE_DISCLOSURES.md) and the [local static site](../../sites/legal/README.md). October 9 drafting/research is retained in the initial source history and primary references below. The October 18 pass reconciles it with Phases 08–11; the October 19 pass adapts the public presentation after competitor research. October 20 records the owner-directed EU/UK/non-EU EEA exclusions, declined Vercel email, current provider terms/settings and bounded Apple/regional assessments. The only public-text adjustment in this review clarifies the existing supplementary relationship to Apple's standard license; processing claims and service activation remain unchanged.
 
-Youngshin Yoo confirmed Ontario, Canada on October 18. The existing temporary public privacy/support contact is anthonyyoo24@gmail.com (owner-selected October 9). The intended audience remains adults 18+. Anthony's October 20 direction excludes EU countries from the initial paid App Store release, superseding the October 19 worldwide target; applicable review for actual distribution and processing remains open. No public address, telephone or representative has been supplied. Do not infer permission to publish a home address. On October 19 Anthony selected Vercel with an automatically assigned `.vercel.app` address; a custom domain is not needed now. Anthony approved both public documents on October 19; the effective date, final version identifiers and actual published URLs remain pending.
+Youngshin Yoo confirmed Ontario, Canada on October 18. The existing temporary public privacy/support contact is anthonyyoo24@gmail.com (owner-selected October 9). The intended audience remains adults 18+. Anthony's October 20 directions exclude EU countries, the UK, Norway, Iceland and Liechtenstein from the initial paid App Store release, superseding the October 19 worldwide target; applicable review for actual distribution and processing remains open. No public address, telephone or representative has been supplied. Do not infer permission to publish a home address. On October 19 Anthony selected Vercel with an automatically assigned `.vercel.app` address; a custom domain is not needed now. Anthony approved both public documents on October 19; the effective date, final version identifiers and actual published URLs remain pending.
 
 Terms and Privacy retain their document labels independently of account behavior. Anthony’s later October 19 direction removes all document-view/agreement receipts, accepted-version persistence and legal acceptance APIs. Continue performs ordinary account creation. Historical agreement records are removed through forward migration 0018 without changing journal or identity data. Public publication/effective dates remain pending; a document label is not a per-user acceptance record.
 
@@ -16,8 +16,8 @@ Anthony confirmed paid access from the first public App Store release on October
 The approved text describes the earlier free beta; 07A/13 must update it for the
 actual paid offer, billing processing and enabled providers before store launch.
 Commercial hosting must be eligible before that rollout, not after customers
-arrive. The initial release excludes EU App Store countries by the October 20
-owner decision. Apple's trader-status declaration remains required; verified
+arrive. The initial release excludes EU App Store countries, the UK, Norway,
+Iceland and Liechtenstein by the October 20 owner directions. Apple's trader-status declaration remains required; verified
 public EU trader contacts are deferred until any later EU expansion. Apple permits
 an address or P.O. box plus phone/email for individual traders; paid access and
 intended commercialization are relevant to the owner's trader self-assessment.
@@ -34,18 +34,18 @@ regional, provider and native conditions remain open before their dependent rele
 
 ## Review outcomes and remaining conditions
 
-| Topic                          | October 20 outcome                                                                                                                                                                                                                                                                                            | Remaining action / owner                                                                                                                                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Operator, age and app license  | Ontario personal operator/email and 18+ are settled. Standard Apple EULA plus supplementary service Terms retained, with license precedence clarified. No established reason to require incorporation, birth-date collection or a custom EULA now.                                                            | Phase 13 verifies the real product description, default-EULA selection, rating questionnaire/override and Apple's eligibility decision.                                                                  |
-| Regional scope                 | Canadian subject matter is substantially covered. UK and non-EU EEA remain in the intended territory set; their basis/representative/transfer requirements are not covered by excluding EU storefronts. Washington consumer-health classification also needs a focused assessment if US availability remains. | Anthony chooses whether to retain UK/non-EU EEA; applicable privacy reviewer resolves the specific issues below before affected availability. No territory was silently removed.                         |
-| Provider protection            | Supabase's DPA is incorporated without a stated Free-plan exclusion. Vercel's published DPA names Pro/Enterprise and restricts sensitive data. A paid upgrade alone does not settle journal suitability.                                                                                                      | Anthony authorizes the drafted Vercel inquiry, then the response determines the eligible arrangement before real-user hosting. Add Apple's equivalent-provider-protection statement only when supported. |
-| Provider data use              | JustGO's project-specific model-training sharing was disabled October 20 and verified after reload. Team defaults/other projects were left alone. The opt-out concerns future code/chat sharing; journal-payload exclusion is not established. IP visibility remains enabled.                                 | Preserve JustGO's opt-out. Actual payload, security-log and recovery-copy scope still needs the provider answer; no global preference decision is needed for this fix.                                   |
-| Retention, backups and support | The public policy accurately describes permanent pseudonymous security markers, purpose-based recovery copies and the owner-selected 12-month support rule. The security rationale and a support procedure are recorded below. No universal backup expiry was verified.                                       | Before users: Anthony confirms inbox operation; Phase 13 implements the selected backup/removal/restore controls. Supabase Pro remains the recorded paid-launch target, without purchase authorization.  |
-| Sentry                         | Ordinary delivery remains off and the public policy says so. The narrow startup product scope does not settle lawful basis, DPA acceptance, ingestion retention or device-access rules.                                                                                                                       | Resolve these only before activation, including a matching policy update and Phase 13 signed-build checks. Disabled reporting does not require activating Sentry to finish local legal work.             |
-| EU trader contacts             | Deferred by the owner's initial EU exclusion. No home address or phone is inferred.                                                                                                                                                                                                                           | Phase 13 completes Apple's declaration and actual storefront settings; verify public trader contacts before any EU expansion.                                                                            |
-| Public API description [SEC-4] | Engineering assessment resolved: retain static `/openapi.json`; it contains contracts, not private records or credentials.                                                                                                                                                                                    | Preserve authentication/ownership checks. No API behavior changed.                                                                                                                                       |
-| Local journal [SEC-5]          | Engineering assessment resolved: retain iOS Data Protection. No concrete finding requires a second vault or MMKV migration.                                                                                                                                                                                   | Phase 13 inspects actual signed-build file protection and backup behavior, then remediates any specific gap.                                                                                             |
-| Public hosting                 | Text approved, Vercel-generated address chosen, publication/paid hosting explicitly deferred.                                                                                                                                                                                                                 | Phase 13 preparation finalizes dates/URLs and verifies public HTTPS/app links when Anthony resumes hosting. No deployment or purchase authorized.                                                        |
+| Topic                          | October 20 outcome                                                                                                                                                                                                                                                            | Remaining action / owner                                                                                                                                                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operator, age and app license  | Ontario personal operator/email and 18+ are settled. Standard Apple EULA plus supplementary service Terms retained, with license precedence clarified. No established reason to require incorporation, birth-date collection or a custom EULA now.                            | Phase 13 verifies the real product description, default-EULA selection, rating questionnaire/override and Apple's eligibility decision.                                                                                    |
+| Regional scope                 | Canadian subject matter is substantially covered. The owner explicitly excludes EU countries, the UK, Norway, Iceland and Liechtenstein initially. Washington consumer-health classification remains a focused assessment for US availability.                                | Phase 13 applies/verifies those exclusions. UK/non-EU EEA bases/representatives/transfers are deferred until expansion; applicable privacy review for actual processing remains.                                           |
+| Provider protection            | Supabase's DPA is incorporated without a stated Free-plan exclusion. Vercel's published DPA names Pro/Enterprise and restricts sensitive data. A paid upgrade alone does not settle journal suitability.                                                                      | Anthony declined the Vercel email October 20. Keep the draft unsent unless later explicitly authorized; hosting suitability remains open before real users. Add Apple's provider-protection statement only when supported. |
+| Provider data use              | JustGO's project-specific model-training sharing was disabled October 20 and verified after reload. Team defaults/other projects were left alone. The opt-out concerns future code/chat sharing; journal-payload exclusion is not established. IP visibility remains enabled. | Preserve JustGO's opt-out. Actual payload, security-log and recovery-copy scope still needs the provider answer; no global preference decision is needed for this fix.                                                     |
+| Retention, backups and support | The public policy accurately describes permanent pseudonymous security markers, purpose-based recovery copies and the owner-selected 12-month support rule. The security rationale and a support procedure are recorded below. No universal backup expiry was verified.       | Before users: Anthony confirms inbox operation; Phase 13 implements the selected backup/removal/restore controls. Supabase Pro remains the recorded paid-launch target, without purchase authorization.                    |
+| Sentry                         | Ordinary delivery remains off and the public policy says so. The narrow startup product scope does not settle lawful basis, DPA acceptance, ingestion retention or device-access rules.                                                                                       | Resolve these only before activation, including a matching policy update and Phase 13 signed-build checks. Disabled reporting does not require activating Sentry to finish local legal work.                               |
+| EU trader contacts             | Deferred by the owner's initial EU exclusion. No home address or phone is inferred.                                                                                                                                                                                           | Phase 13 completes Apple's declaration and actual storefront settings; verify public trader contacts before any EU expansion.                                                                                              |
+| Public API description [SEC-4] | Engineering assessment resolved: retain static `/openapi.json`; it contains contracts, not private records or credentials.                                                                                                                                                    | Preserve authentication/ownership checks. No API behavior changed.                                                                                                                                                         |
+| Local journal [SEC-5]          | Engineering assessment resolved: retain iOS Data Protection. No concrete finding requires a second vault or MMKV migration.                                                                                                                                                   | Phase 13 inspects actual signed-build file protection and backup behavior, then remediates any specific gap.                                                                                                               |
+| Public hosting                 | Text approved, Vercel-generated address chosen, publication/paid hosting explicitly deferred.                                                                                                                                                                                 | Phase 13 preparation finalizes dates/URLs and verifies public HTTPS/app links when Anthony resumes hosting. No deployment or purchase authorized.                                                                          |
 
 ## Apple and regulator research
 
@@ -90,7 +90,10 @@ or permission to accept a provider agreement.
 ### Regional assessment
 
 The October 20 review narrows the remaining questions; it does not certify every
-non-EU country. No additional territory restriction was applied.
+remaining intended country. The owner subsequently excluded the UK, Norway,
+Iceland and Liechtenstein initially; their expansion requirements below are
+retained for later review, not initial-release territory decisions still awaiting
+an answer. No App Store setting was changed.
 
 - **Canada:** the policy covers the operator/contact, optional cloud journal,
   purposes, recipients, foreign processing, retention and controls. OPC
@@ -104,7 +107,8 @@ non-EU country. No additional territory restriction was applied.
   and separate transfer consent are not universal requirements. Existing named
   operator/email is the contact; no rule identified here establishes a universal
   need to publish a home address.
-- **UK / non-EU EEA:** the UK, Norway, Iceland and Liechtenstein remain intended.
+- **UK / non-EU EEA — deferred expansion:** the owner explicitly excluded the UK,
+  Norway, Iceland and Liechtenstein initially in his October 20 reply.
   [UK territorial scope](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/personal-information-what-is-it/who-does-the-uk-gdpr-apply-to/)
   and [EEA GDPR incorporation](https://www.efta.int/media-resources/news/general-data-protection-regulation-gdpr-entered-force-eea)
   mean EU exclusion alone does not settle these markets. If targeting rules
@@ -115,8 +119,9 @@ non-EU country. No additional territory restriction was applied.
   the [required privacy information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/the-right-to-be-informed/what-privacy-information-should-we-provide/).
   A contract basis for requested storage does not replace a separate condition
   where submitted text reveals [special-category information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/special-category-data/what-are-the-conditions-for-processing/).
-  Do not invent bases/representative contacts or restore legal tracking. Anthony
-  can instead explicitly narrow initial storefronts; that choice is still open.
+  Do not invent bases/representative contacts or restore legal tracking. Review
+  these requirements before any proposed expansion; the initial exclusion choice
+  is settled.
 - **United States:** no known facts establish current CCPA business-threshold
   applicability; indie size is not a universal exemption from every privacy law.
   Washington's [consumer-health definitions](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.010)
@@ -134,7 +139,8 @@ non-EU country. No additional territory restriction was applied.
 
 The specific professional/legal judgment still needed is sensitive-journal
 consent and territorial classification, including Washington health-data scope
-and UK/non-EU EEA requirements if retained. Research alone cannot supply a
+for current intended US availability. UK/non-EU EEA requirements are deferred
+until a proposed expansion. Research alone cannot supply a
 representative appointment, a provider exception or a legal opinion. No new
 personal details, paid service or data-collection workflow was introduced.
 
@@ -235,9 +241,11 @@ are not closed by a draft policy or a local test pass.
 
 ### Vercel clarification prepared for the owner
 
-The following message is ready to send to **privacy@vercel.com**, published in
-Vercel's [Privacy Notice contact section](https://vercel.com/legal/privacy-notice#contact-us),
-after explicit owner authorization. Ask that team to route the scope/exception
+Anthony declined permission to email Vercel on October 20. The following draft
+is retained **unsent**; do not contact Vercel unless he later explicitly authorizes
+it. Declining contact does not resolve the provider-suitability condition. The
+potential destination is **privacy@vercel.com**, published in Vercel's
+[Privacy Notice contact section](https://vercel.com/legal/privacy-notice#contact-us). If later authorized, ask that team to route the scope/exception
 question to an authorized privacy/contracts contact; ordinary support tickets
 are paid-plan access, so no Hobby ticket entitlement is assumed. It was **not
 sent**. It includes only the service design, with no journal samples, credentials,

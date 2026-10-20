@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 20, 2026. The [October 18 sequencing decision](#october-18-crash-reporting-before-launch-and-analytics-deferral) owns the current phase map. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 20, 2026. The [October 18 sequencing decision](#october-18-crash-reporting-before-launch-and-analytics-deferral) owns the current phase map. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -391,10 +391,14 @@ Anthony requested removal of the onboarding Analytics section, Sentry paragraph 
 
 ## October 20 initial App Store release excludes the EU
 
-Anthony directed that the initial App Store release exclude the European Union
-for now. This replaces the October 19 worldwide target with the intended
-non-EU storefronts, while preserving paid access from the first public release.
-Do not extend the exclusion to the UK or other non-EU countries by assumption.
+Anthony first directed that the initial App Store release exclude the European
+Union. In his later October 20 reply, he explicitly also excluded the United
+Kingdom, Norway, Iceland and Liechtenstein for now. This replaces the October 19
+worldwide target while preserving paid access from the first public release.
+Other intended storefronts retain their applicable review; no additional exclusion
+is inferred. The UK/non-EU EEA expansion requirements are deferred until those
+markets are reconsidered, without treating storefront exclusion as a blanket
+privacy-law exemption.
 
 Phase 13 must apply and verify the country selection in App Store Connect;
 no storefront setting or app distribution was changed by this documentation
@@ -427,10 +431,13 @@ purchased, contract accepted or message sent.
 
 Vercel's processor/sensitive-data scope remains unresolved independently of
 paid-plan eligibility. The exact privacy/contracts inquiry is prepared and unsent.
-UK/non-EU EEA remain intended unless Anthony explicitly changes that choice;
-the specific bases/representative/transfer requirements and Washington health-data
-classification are recorded before affected availability. No additional territory
-restriction, new consent workflow or legal receipt was introduced. Keep public
+Anthony declined permission to email Vercel on October 20. Keep the draft; do not
+send it unless he later explicitly authorizes contact. This does not resolve or
+waive the hosting condition before real users. His same reply excludes the UK,
+Norway, Iceland and Liechtenstein initially; the related bases/representative/
+transfer review is deferred until expansion. Washington health-data classification
+remains recorded before US availability. No territory restriction beyond the
+owner's explicit choices, new consent workflow or legal receipt was introduced. Keep public
 hosting deferred and ordinary diagnostics/analytics disabled under the existing
 decisions. Only supported provider/regional assertions may enter public text.
 

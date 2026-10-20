@@ -154,7 +154,9 @@ The October 20 published-terms review confirms Supabase Terms §7(b) incorporate
 its DPA without a stated Free-plan exclusion, while Vercel Terms §11.1 incorporates
 a processor DPA naming Pro/Enterprise. Vercel also restricts sensitive data;
 request-body transit counts as processing, so upgrading alone does not settle
-journal suitability. An exact provider inquiry is prepared but unsent. No claim
+journal suitability. An exact provider inquiry is prepared, but Anthony declined
+permission to send it October 20. Keep it unsent unless later explicitly
+authorized; hosting suitability remains open before real users. No claim
 that every ordinary reflection is prohibited was made. Free Supabase lacks
 included daily backups but can retain paused-project recovery copies; the
 candidate makes no fixed expiry promise. Agreement-termination export windows
@@ -165,15 +167,17 @@ Vercel can supply the legal reader's `.vercel.app` address without a custom-doma
 purchase. Anthony selected that Vercel-generated address on October 19 after
 clarifying the initial portfolio/free-beta direction and later payment phase.
 Anthony then approved both public texts and initially confirmed the worldwide App
-Store target. On October 20 he excluded EU App Store countries for the initial
-paid release. The actual public URLs, final publication versions/effective date and
+Store target. On October 20 he excluded EU App Store countries and later
+explicitly added the UK, Norway, Iceland and Liechtenstein to the initial
+exclusions. The actual public URLs, final publication versions/effective date and
 publication remain open. Review applicable plan/data-processing terms before real-user or commercial
 use; no paid upgrade is authorized.
 
 The first public App Store release is paid, as Anthony confirmed October 19. Keep
 the free TestFlight beta → 07A billing → Phase 13 paid launch sequence. A portfolio
 purpose does not create an additional free public release. The October 20 owner
-decision excludes EU App Store countries initially, so public EU trader contact
+directions exclude EU App Store countries, the UK, Norway, Iceland and
+Liechtenstein initially, so public EU trader contact
 verification is deferred until any EU expansion. Phase 13 must apply/verify the
 country selection and complete Apple's trader-status declaration. This changes
 the release target only; no App Store settings or private contacts were published.
@@ -194,11 +198,11 @@ sensitive-submission consent and permanent security-marker necessity still
 requiring contextual assessment. The markers protect long-lived recovery proofs
 and deletion retries; do not expire them arbitrarily or imply public disclosure
 alone proves proportionality. The prepared support process still needs owner-run
-operation before users. UK/non-EU EEA remain intended despite EU exclusion, so
-purpose-specific bases, applicable representatives and transfer wording need
-resolution if retained. Washington consumer-health classification is the focused
+operation before users. Anthony's later October 20 reply explicitly excludes the
+UK, Norway, Iceland and Liechtenstein initially; purpose-specific bases, applicable
+representatives and transfer wording are deferred until proposed expansion. Washington consumer-health classification is the focused
 US question; small size and nonclinical positioning do not alone settle it.
-No extra territory exclusion, checkbox, receipt, public home address or provider
+No further territory exclusion, checkbox, receipt, public home address or provider
 assurance was invented. The [review record](../legal/LEGAL_REVIEW.md) contains
 primary sources, the conditional public wording and exact owner/provider actions.
 
@@ -212,17 +216,17 @@ not close the separate provider/regional/native conditions.
 
 ## Open gates
 
-| Gate                              | Owner / phase                                             | Required result                                                                                                                                                                                                                                                                                                                   |
-| --------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Signed journal protection [SEC-5] | Release owner / 13                                        | Verify the actual file-protection class and backup exclusion/failure behavior. Retain the current OS-backed baseline absent a concrete gap; no automatic vault requirement.                                                                                                                                                       |
-| Distribution and contacts         | Anthony with applicable reviewer / 12; release owner / 13 | Initial paid target excludes EU countries; apply/verify actual App Store availability and trader declaration. Review applicable regional requirements. EU public contacts are deferred until EU expansion. Preserve intended 18+ without invented identity collection.                                                            |
-| Operator/EULA/rating              | Release owner / 13                                        | Phase 12 assessment retains individual operator, 18+ and standard EULA with supplementary Terms. Verify actual product eligibility, license selection and rating/override; no incorporation or new identity collection is presumed.                                                                                               |
-| Regional requirements             | Anthony with applicable reviewer / 12; release owner / 13 | Settle sensitive-journal consent/security-record necessity and Washington health-data classification; retain or explicitly narrow UK/non-EU EEA, resolving bases/representatives/transfers if retained. No worldwide clearance is claimed.                                                                                        |
-| Provider/logs/backups/support     | Anthony / 12–13                                           | Authorize/resolve the prepared Vercel data-scope inquiry and preserve JustGO's verified project-specific opt-out; add supported provider-protection wording. Verify actual retention, chosen backup/restore/removal controls and support operation before users. Pro alone does not settle journal scope; no purchase authorized. |
-| Sentry activation                 | Anthony with applicable reviewer / 12; release owner / 13 | Resolve basis/device-access rules, DPA, trial/ingestion retention and identifiable report requests; review updated enabled-reporting policy, then signed crash/payload/cache/symbol/outage acceptance before delivery.                                                                                                            |
-| Content and public hosting        | Anthony / Phase 13 preparation                            | Owner-deferred until ready for hosting. Preserve text approval, finalize dates/versions, publish to the selected Vercel-generated address and verify anonymous HTTPS/app links. No current upgrade/legal-site deployment authorization.                                                                                           |
-| Actual release disclosures        | Release owner / 13                                        | Verify signed privacy manifests/required-reason APIs, ATT/tracking, native links/accessibility and final App Store entries.                                                                                                                                                                                                       |
-| Paid and future analytics scope   | 07A/13, then 14                                           | Update notices/offer/providers/labels before paid launch; future analytics requires a separately reviewed permission/collection design, with no history backfill or assumed Continue permission.                                                                                                                                  |
+| Gate                              | Owner / phase                                             | Required result                                                                                                                                                                                                                                                                                                 |
+| --------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signed journal protection [SEC-5] | Release owner / 13                                        | Verify the actual file-protection class and backup exclusion/failure behavior. Retain the current OS-backed baseline absent a concrete gap; no automatic vault requirement.                                                                                                                                     |
+| Distribution and contacts         | Anthony with applicable reviewer / 12; release owner / 13 | Initial paid target excludes EU countries, the UK, Norway, Iceland and Liechtenstein; apply/verify actual App Store availability and trader declaration. EU contacts and UK/non-EU EEA requirements are deferred until expansion. Preserve 18+ without invented identity collection.                            |
+| Operator/EULA/rating              | Release owner / 13                                        | Phase 12 assessment retains individual operator, 18+ and standard EULA with supplementary Terms. Verify actual product eligibility, license selection and rating/override; no incorporation or new identity collection is presumed.                                                                             |
+| Regional requirements             | Anthony with applicable reviewer / 12; release owner / 13 | Settle sensitive-journal consent/security-record necessity and Washington health-data classification before affected availability. UK/non-EU EEA bases/representatives/transfers are deferred until proposed expansion. No worldwide clearance is claimed.                                                      |
+| Provider/logs/backups/support     | Anthony / 12–13                                           | Owner declined the prepared Vercel email; keep it unsent unless later explicitly authorized. Hosting suitability remains open before real users. Preserve JustGO's opt-out; verify supported provider wording, actual retention, backup/restore/removal controls and support operation. No purchase authorized. |
+| Sentry activation                 | Anthony with applicable reviewer / 12; release owner / 13 | Resolve basis/device-access rules, DPA, trial/ingestion retention and identifiable report requests; review updated enabled-reporting policy, then signed crash/payload/cache/symbol/outage acceptance before delivery.                                                                                          |
+| Content and public hosting        | Anthony / Phase 13 preparation                            | Owner-deferred until ready for hosting. Preserve text approval, finalize dates/versions, publish to the selected Vercel-generated address and verify anonymous HTTPS/app links. No current upgrade/legal-site deployment authorization.                                                                         |
+| Actual release disclosures        | Release owner / 13                                        | Verify signed privacy manifests/required-reason APIs, ATT/tracking, native links/accessibility and final App Store entries.                                                                                                                                                                                     |
+| Paid and future analytics scope   | 07A/13, then 14                                           | Update notices/offer/providers/labels before paid launch; future analytics requires a separately reviewed permission/collection design, with no history backfill or assumed Continue permission.                                                                                                                |
 
 ## Verification
 
