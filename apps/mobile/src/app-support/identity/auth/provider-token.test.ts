@@ -79,6 +79,8 @@ it('uses configured Google audience clients and its ID token, with no provider A
     iosClientId: 'ios-client',
     offlineAccess: false,
   });
+  expect(getRandomValues).not.toHaveBeenCalled();
+  expect(digestStringAsync).not.toHaveBeenCalled();
 });
 it('handles Google cancellation and missing ID tokens without calling managed Auth', async () => {
   jest
@@ -90,6 +92,31 @@ it('handles Google cancellation and missing ID tokens without calling managed Au
     data: { idToken: null },
   } as Awaited<ReturnType<typeof GoogleSignin.signIn>>);
   await expect(nativeProviderToken('google')).rejects.toMatchObject({
+    code: 'AUTH',
+  });
+});
+it.each([
+  'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID',
+  'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID',
+])('rejects missing %s before opening Google UI', async (key) => {
+  delete process.env[key];
+  await expect(nativeProviderToken('google')).rejects.toMatchObject({
+    code: 'CONFIGURATION',
+  });
+  expect(GoogleSignin.configure).not.toHaveBeenCalled();
+  expect(GoogleSignin.signIn).not.toHaveBeenCalled();
+});
+it('handles the original Google SDK cancellation exception without producing a credential', async () => {
+  jest.mocked(GoogleSignin.signIn).mockRejectedValueOnce({
+    code: 'SIGN_IN_CANCELLED',
+  });
+  expect(await nativeProviderToken('google')).toBeNull();
+});
+it('rejects an Apple response without an ID token instead of passing an empty token to managed Auth', async () => {
+  jest.mocked(Apple.signInAsync).mockResolvedValueOnce({
+    identityToken: null,
+  } as Awaited<ReturnType<typeof Apple.signInAsync>>);
+  await expect(nativeProviderToken('apple')).rejects.toMatchObject({
     code: 'AUTH',
   });
 });
