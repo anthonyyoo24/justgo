@@ -84,6 +84,16 @@ admission. Challenge starts require fresh verified access; saved local Progress
 remains available offline or signed out. Pending account deletion removes product
 routes from Back history until required cleanup finishes.
 
+The separate Apple/Google sign-in page keeps the selected button disabled with a
+centered spinner through native authorization, owner adoption, access verification
+and challenge preparation. It opens Challenges directly once the verified owner's
+repository and selected deck are usable. Cancelled/failed authorization restores
+the button; catalog failure offers retry without repeating provider login. Real
+access denial/unavailability still uses the access page. Handoff results are fenced
+by route focus, canonical owner and app session, and owner-authenticated Data
+returns skip challenge admission. Explicit provider entry cancels the Terms cover,
+including after deletion; later guest Continue retains its normal preparation.
+
 Welcome transition keeps Terms above navigation until the first selected collection's
 deck paints. Catalog preparation and unfinished challenge state key off the active
 collection, including guest/signed-out owners, rather than requiring a session.

@@ -1,8 +1,8 @@
 import {
   Redirect,
   useFocusEffect,
+  useIsFocused,
   useLocalSearchParams,
-  useRouter,
 } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -14,11 +14,12 @@ import { colors, spacing, typography } from '../../../theme/tokens';
 import { useAcceptanceLinks } from '../../acceptance/useAcceptanceLinks';
 import { ProviderButtons } from '../auth/ProviderButtons';
 import type { SignInProvider } from '../auth/types';
+import { useCancelWelcomeEntry } from '../welcome/WelcomeTransition';
+import { useSignInHandoff } from './useSignInHandoff';
 
 export function ProviderSignInScreen() {
   const { identity } = useRuntime();
   const state = useIdentity();
-  const router = useRouter();
   const params = useLocalSearchParams<{
     provider?: string;
     returnTo?: string;
@@ -26,36 +27,54 @@ export function ProviderSignInScreen() {
   }>();
   const parsedOwner = z.uuid().safeParse(params.ownerId);
   const expectedOwnerId = parsedOwner.success ? parsedOwner.data : undefined;
-  const destination = params.returnTo === 'data' ? '/data' : '/access';
+  const returnToData = params.returnTo === 'data';
+  const focused = useIsFocused();
+  const handoff = useSignInHandoff(focused, returnToData);
+  const cancelWelcomeEntry = useCancelWelcomeEntry();
   const links = useAcceptanceLinks();
   const provider =
     params.provider === 'apple' || params.provider === 'google'
       ? params.provider
       : undefined;
   const [signInError, setSignInError] = useState('');
+  const [pendingProvider, setPendingProvider] = useState<SignInProvider | null>(
+    null,
+  );
   const visit = useRef<object | null>(null);
+  const submitting = useRef<object | null>(null);
   useFocusEffect(
     useCallback(() => {
-      visit.current = { provider, expectedOwnerId, destination };
+      visit.current = { provider, expectedOwnerId, returnToData };
       setSignInError('');
+      setPendingProvider(null);
       return () => {
         visit.current = null;
       };
-    }, [provider, expectedOwnerId, destination]),
+    }, [provider, expectedOwnerId, returnToData]),
   );
   if (!('signIn' in identity)) return <Redirect href="/recovery" />;
-  if (state.account) return <Redirect href={destination} />;
+  if (handoff.destination) return <Redirect href={handoff.destination} />;
   const guest = 'collectionKind' in state && state.collectionKind === 'guest';
   const signIn = async (selected: SignInProvider) => {
     const submittedVisit = visit.current;
+    if (!submittedVisit || submitting.current === submittedVisit || state.busy)
+      return;
     setSignInError('');
     links.clearLinkError();
+    if (state.account) {
+      handoff.retry();
+      return;
+    }
+    submitting.current = submittedVisit;
+    cancelWelcomeEntry();
+    setPendingProvider(selected);
     await identity.signIn(selected, expectedOwnerId ? { expectedOwnerId } : {});
+    if (submitting.current === submittedVisit) submitting.current = null;
     // The controller keeps durable work; feedback belongs only to this visit.
-    if (!submittedVisit || submittedVisit !== visit.current) return;
+    if (submittedVisit !== visit.current) return;
+    setPendingProvider(null);
     const result = identity.getSnapshot();
-    if (result.account) router.replace(destination);
-    else setSignInError(result.message);
+    if (!result.account) setSignInError(result.message);
   };
   return (
     <SettingsPage
@@ -85,13 +104,20 @@ export function ProviderSignInScreen() {
         <ProviderButtons
           provider={provider}
           disabled={state.busy || !state.initialized}
+          busyProvider={
+            pendingProvider ??
+            (state.account && !handoff.error
+              ? (provider ?? state.provider ?? 'apple')
+              : null)
+          }
+          retry={!!handoff.error}
           onSignIn={(selected) => {
             void signIn(selected);
           }}
         />
-        {!!(signInError || links.linkError) && (
+        {!!(signInError || links.linkError || handoff.error) && (
           <Text accessibilityRole="alert" style={styles.error}>
-            {links.linkError || signInError}
+            {links.linkError || signInError || handoff.error}
           </Text>
         )}
         <View style={styles.links}>

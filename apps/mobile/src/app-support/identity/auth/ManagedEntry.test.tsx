@@ -14,6 +14,7 @@ import AuthCallbackRoute from '../../../app/auth/callback';
 let mockController: ManagedIdentityController;
 let mockProvider = 'apple';
 let mockFocused = true;
+const mockAccess = { verified: false, isPending: true, isFetching: true };
 const mockRouter = {
   push: jest.fn(),
   replace: jest.fn(),
@@ -21,8 +22,11 @@ const mockRouter = {
   canGoBack: () => false,
 };
 const mockBegin = jest.fn();
+const mockCancelEntry = jest.fn();
 jest.mock('../../providers/AppProvider', () => ({
   useRuntime: () => ({ identity: mockController }),
+  useAccess: () => mockAccess,
+  useJournal: () => null,
   useIdentity: () => {
     const React = require('react') as typeof import('react');
     return React.useSyncExternalStore(
@@ -35,6 +39,7 @@ jest.mock('../../providers/AppProvider', () => ({
 jest.mock('../welcome/WelcomeTransition', () => ({
   useBeginWelcomeEntry: () => mockBegin,
   useWelcomeTransition: () => false,
+  useCancelWelcomeEntry: () => mockCancelEntry,
 }));
 jest.mock('../../../lib/legal-links', () => ({
   getLegalLinks: () => ({
@@ -47,6 +52,7 @@ jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   return {
     useRouter: () => mockRouter,
+    useIsFocused: () => mockFocused,
     useLocalSearchParams: () => ({ provider: mockProvider }),
     useFocusEffect: (effect: () => void | (() => void)) => {
       const focused = mockFocused;
@@ -183,6 +189,38 @@ it.each(['apple', 'google'])(
       ),
     );
     expect(signIn).toHaveBeenCalledWith(provider, {});
+  },
+);
+
+it.each(['apple', 'google'] as const)(
+  'keeps %s loading inside its button until native authorization is cancelled',
+  async (provider) => {
+    const { auth } = await setup();
+    let cancel: () => void = () => {};
+    auth.signIn = jest.fn(
+      () =>
+        new Promise<null>((resolve) => {
+          cancel = () => resolve(null);
+        }),
+    );
+    mockProvider = provider;
+    const label = `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`;
+    const screen = render(<ProviderSignInScreen />);
+    await act(async () =>
+      fireEvent.press(screen.getByRole('button', { name: label })),
+    );
+    expect(
+      screen.getByRole('button', { name: label, busy: true }),
+    ).toBeDisabled();
+    expect(screen.getByRole('progressbar')).toBeTruthy();
+    expect(screen.queryByText(label)).toBeNull();
+    expect(screen.queryByText('Redirect: /access')).toBeNull();
+    expect(mockCancelEntry).toHaveBeenCalledTimes(1);
+    await act(async () => cancel());
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(screen.getByRole('button', { name: label })).toBeEnabled();
+    expect(screen.getByText(label)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   },
 );
 

@@ -297,3 +297,29 @@ it('cancels an explicit welcome entry before recovering an existing account', ()
   paint();
   expect(screen.queryByTestId('cover')).toBeNull();
 });
+
+it('lets provider loading suppress the post-deletion Terms cover while later guest Continue still prepares normally', () => {
+  const screen = render(entry());
+  act(() => mockBeginEntry());
+  act(() => mockCancelEntry());
+  mockDeleted = null;
+  mockAccount = { userId: 'provider-account' };
+  screen.rerender(entry());
+  expect(screen.queryByTestId('cover')).toBeNull();
+  expect(screen.getByText('Account navigation')).toBeTruthy();
+  mockDeleted = 'deleted';
+  mockAccount = null;
+  screen.rerender(entry());
+  act(() => mockBeginEntry());
+  mockDeleted = null;
+  mockCollectionId = 'next-guest';
+  mockPending = false;
+  mockVerified = true;
+  screen.rerender(entry());
+  expect(screen.getByTestId('cover')).toBeTruthy();
+  act(() => mockCover!.onShow());
+  act(() => mockPreparation.markReady());
+  paint();
+  paint();
+  expect(screen.queryByTestId('cover')).toBeNull();
+});
