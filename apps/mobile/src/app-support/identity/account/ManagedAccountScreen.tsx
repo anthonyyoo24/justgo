@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { useIdentity, useRuntime } from '../../providers/AppProvider';
+import { useRuntime } from '../../providers/AppProvider';
+import { DeleteAccountConfirmation } from '../deletion/DeleteAccountConfirmation';
+import { useAccountDeletionDialog } from '../deletion/useAccountDeletionDialog';
 import { SettingsPage } from '../../../components/settings/SettingsPage';
 import {
   SettingsActionRow,
@@ -15,7 +17,7 @@ import { colors, radii, spacing, typography } from '../../../theme/tokens';
 
 export function ManagedAccountScreen() {
   const { identity } = useRuntime();
-  const state = useIdentity();
+  const { state, pending, open, dialog } = useAccountDeletionDialog();
   const router = useRouter();
   const reduceMotion = useReduceMotion();
   const [confirming, setConfirming] = useState(false);
@@ -42,7 +44,7 @@ export function ManagedAccountScreen() {
             }
             value={linkedProviders.includes(provider)}
             busy={state.busy}
-            disabled={state.busy || !state.initialized}
+            disabled={state.busy || pending || !state.initialized}
             reduceMotion={reduceMotion}
             onValueChange={(connected) => {
               if (!state.account) {
@@ -60,52 +62,58 @@ export function ManagedAccountScreen() {
           />
         ))}
       </SettingsGroup>
-      {state.account && (
+      {(state.account || pending) && (
         <View style={styles.card}>
-          {confirming && (
+          {state.account && confirming && (
             <Text style={styles.message}>
               Log out? Your saved data stays on this phone and account sync
               stops.
             </Text>
           )}
-          <SettingsActionRow
-            icon="logout"
-            label={confirming ? 'Confirm log out' : 'Log out'}
-            disabled={state.busy}
-            onPress={() => {
-              if (!confirming) {
-                setConfirming(true);
-                return;
-              }
-              setConfirming(false);
-              void identity.signOut();
-            }}
-          />
-          {confirming && (
-            <SettingsActionRow
-              icon="back"
-              label="Cancel"
-              disabled={state.busy}
-              onPress={() => setConfirming(false)}
-            />
+          {state.account && (
+            <>
+              <SettingsActionRow
+                icon="logout"
+                label={confirming ? 'Confirm log out' : 'Log out'}
+                disabled={state.busy || pending}
+                onPress={() => {
+                  if (!confirming) {
+                    setConfirming(true);
+                    return;
+                  }
+                  setConfirming(false);
+                  void identity.signOut();
+                }}
+              />
+              {confirming && (
+                <SettingsActionRow
+                  icon="back"
+                  label="Cancel"
+                  disabled={state.busy || pending}
+                  onPress={() => setConfirming(false)}
+                />
+              )}
+              <SettingsRowDivider />
+            </>
           )}
-          <SettingsRowDivider />
           <SettingsActionRow
             icon="delete"
             label="Delete account"
             destructive
             disabled={state.busy}
-            href="/delete-account"
-            chevron
+            onPress={() => {
+              setConfirming(false);
+              open();
+            }}
           />
         </View>
       )}
-      {!!state.message && (
+      {!!state.message && !dialog && (
         <Text accessibilityRole="alert" style={styles.message}>
           {state.message}
         </Text>
       )}
-      {state.hasPending && (
+      {state.hasPending && !pending && (
         <View style={styles.card}>
           <SettingsActionRow
             icon="account"
@@ -117,6 +125,7 @@ export function ManagedAccountScreen() {
           />
         </View>
       )}
+      {dialog && <DeleteAccountConfirmation {...dialog} />}
     </SettingsPage>
   );
 }

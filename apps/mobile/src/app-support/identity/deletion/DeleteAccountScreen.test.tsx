@@ -114,12 +114,13 @@ afterEach(async () => {
 });
 it('opens a centered confirmation, cancels safely and requires a fresh explicit delete', () => {
   const s = render(<DeleteAccountRoute />);
-  expect(preloadWelcomeArtwork).toHaveBeenCalledTimes(1);
+  expect(preloadWelcomeArtwork).not.toHaveBeenCalled();
   expect(s.getByText(/This cannot be undone/)).toBeTruthy();
   expect(s.getByText(/in associated iCloud copies/)).toBeTruthy();
   expect(s.queryByText(/enabled iCloud copy/)).toBeNull();
   expect(s.queryByLabelText('Delete your account?')).toBeNull();
   fireEvent.press(s.getByLabelText('Continue to deletion'));
+  expect(preloadWelcomeArtwork).toHaveBeenCalledTimes(1);
   expect(s.getByLabelText('Delete your account?')).toHaveProp(
     'role',
     'alertdialog',
@@ -130,7 +131,7 @@ it('opens a centered confirmation, cancels safely and requires a fresh explicit 
   );
   expect(
     s.getByText(
-      'Your account, progress and journal on this phone, in JustGO’s cloud and in associated iCloud copies will be permanently deleted. Downloaded files you saved elsewhere remain under your control.',
+      'Your account, progress and journal on this phone, in JustGO’s cloud and in associated iCloud copies will be permanently deleted. Downloaded files you saved elsewhere remain under your control.\n\nDeleting your account does not cancel an App Store subscription. Manage subscriptions separately in your device’s Settings.',
     ),
   ).toBeTruthy();
   expect(mockDelete).not.toHaveBeenCalled();

@@ -302,6 +302,7 @@ function DataSession() {
           <SettingsActionRow
             icon="delete"
             label="Delete all my data"
+            destructive
             busy={busy === 'delete'}
             disabled={busy !== null}
             onPress={() => {

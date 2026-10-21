@@ -304,7 +304,7 @@ Account shows a Login methods group with Apple/Google logos and switches driven 
 verified linked identities. There is no separate signed-in status sentence. An off
 switch signs in when signed out, or links that method when signed in. An on switch
 requests unlinking; removing the last login method is rejected with feedback.
-Log out is separate and Delete account is red. Old key/code/device routes redirect
+Log out is separate. Old key/code/device routes redirect
 there. Sign-out keeps the same local journal; there is no View guest data action.
 Actions preserve accessible names while busy and show retryable errors.
 
@@ -328,8 +328,12 @@ Descriptions live in action flows instead of paragraphs beneath every Settings r
 Download and Import use matching down/up tray icons; iCloud uses a cloud with a
 circular arrow. An unavailable iCloud switch shows its configuration, platform or
 Apple-account reason rather than silently ignoring taps. Delete all sits at the
-bottom. Both deletion flows reuse `components/modals/DestructiveConfirmation`,
-with their own consequence text and retry behavior. It preserves modal input and
+bottom. Both deletion rows use red labels and trash icons, omit chevrons and open
+their confirmation modal directly on the current page. Both flows reuse
+`components/modals/DestructiveConfirmation`, with their own consequence text and
+retry behavior. The Account modal retains the subscription warning. The
+`/delete-account` route remains available for deep links and interrupted cleanup;
+normal Account deletion does not navigate there. The modal preserves input and
 accessibility isolation, busy dismissal protection and large-text action layout.
 Native download uses the share sheet; the browser downloads directly. Import uses
 DocumentPicker/Files or the web file chooser, validates before preview/commit and

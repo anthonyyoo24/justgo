@@ -535,7 +535,9 @@ does not authorize moving a former owner's entries into another person's account
 
 Account will contain Login methods with branded Apple/Google rows and switches
 that show the actual connected methods, followed by Log out and Delete account.
-Do not add a separate connected-status sentence/block. Delete account text is red.
+Do not add a separate connected-status sentence/block. Both deletion rows use red
+text and trash icons, with no chevron, and open their confirmation modal directly
+on the current page instead of adding an intermediate deletion page.
 Data will contain iCloud Sync, Download my data, Import data and Delete all my data
 at the bottom, with matching cloud/circular-arrow, down-arrow/tray and up-arrow/tray
 icons. Reuse the existing account-deletion confirmation modal presentation for

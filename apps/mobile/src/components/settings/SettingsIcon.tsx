@@ -32,7 +32,13 @@ export type SettingsIconName =
 
 // Native outline icons reconstructed for the raster F1 reference's visual style.
 // They are decorative; each row supplies its own accessible name.
-export function SettingsIcon({ name }: { name: SettingsIconName }) {
+export function SettingsIcon({
+  name,
+  color = colors.ink,
+}: {
+  name: SettingsIconName;
+  color?: string;
+}) {
   if (name === 'apple' || name === 'google')
     return <ProviderLogo provider={name} />;
   const paths: Record<Exclude<SettingsIconName, 'apple' | 'google'>, string> = {
@@ -73,7 +79,7 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
           cx={12}
           cy={12}
           r={9}
-          stroke={colors.ink}
+          stroke={color}
           strokeWidth={1.4}
           fill="none"
         />
@@ -83,7 +89,7 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
           cx={12}
           cy={7}
           r={4}
-          stroke={colors.ink}
+          stroke={color}
           strokeWidth={1.4}
           fill="none"
         />
@@ -95,7 +101,7 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
           width={18}
           height={16}
           rx={2}
-          stroke={colors.ink}
+          stroke={color}
           strokeWidth={1.4}
           fill="none"
         />
@@ -107,7 +113,7 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
           width={name === 'haptics' ? 10 : 14}
           height={18}
           rx={2}
-          stroke={colors.ink}
+          stroke={color}
           strokeWidth={1.4}
           fill="none"
         />
@@ -115,7 +121,7 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
       <Path
         d={paths[name]}
         fill="none"
-        stroke={colors.ink}
+        stroke={color}
         strokeWidth={1.4}
         strokeLinecap="round"
         strokeLinejoin="round"

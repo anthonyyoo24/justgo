@@ -145,17 +145,21 @@ behavior only; real provider acceptance remains in slice 6.
 **Complexity: low. Owners:** `identity/account`, `features/settings/data` and shared
 settings components. Depend on the state and transition rules from slices 1–2.
 
-| Account page, in order                                              | Data page, in order                                 |
-| ------------------------------------------------------------------- | --------------------------------------------------- |
-| Login methods: Apple logo/name/switch, then Google logo/name/switch | iCloud Sync: cloud with circular arrow, plus switch |
-| Log out, when signed in                                             | Download my data: downward arrow with tray          |
-| Delete account, with red text, when an account is available         | Import data: matching upward arrow with tray        |
-|                                                                     | Delete all my data at the bottom                    |
+| Account page, in order                                                     | Data page, in order                                 |
+| -------------------------------------------------------------------------- | --------------------------------------------------- |
+| Login methods: Apple logo/name/switch, then Google logo/name/switch        | iCloud Sync: cloud with circular arrow, plus switch |
+| Log out, when signed in                                                    | Download my data: downward arrow with tray          |
+| Delete account, with red text and trash icon, when an account is available | Import data: matching upward arrow with tray        |
+|                                                                            | Delete all my data at the bottom                    |
 
 Use the existing JustGO typography, spacing and icon system with the reference
 organization. Do not add profile/friend-code features from the reference. Remove
 the generic Signed in/On this phone block, Link Apple/Google rows, View guest data
 and redundant descriptions. Keep necessary disclosure/errors in the action flow.
+Both deletion actions use red labels and trash icons, omit chevrons and open the
+shared confirmation modal directly on their current page. Keep the account
+subscription warning in the modal and retain the standalone deletion route for
+interrupted cleanup and existing deep links.
 An unavailable iCloud control must give a visible short reason or open an
 explanation when tapped; it must not appear silently broken.
 

@@ -137,6 +137,9 @@ it('shows only the requested data controls without extra journal sections', () =
   expect(screen.getByRole('switch', { name: 'iCloud Sync' })).toBeTruthy();
   for (const label of ['Download my data', 'Import data', 'Delete all my data'])
     expect(screen.getByRole('button', { name: label })).toBeTruthy();
+  expect(screen.getByText('Delete all my data')).toHaveStyle({
+    color: '#B3261E',
+  });
   for (const label of [
     'Back up journal',
     'Restore journal',
