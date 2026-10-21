@@ -9,7 +9,7 @@ gates belong in the [handoff index](../handoffs/README.md). Phase 13's optional
 accounts and cloud sync describe the local implementation candidate; hosted
 services and installed clients retain earlier behavior until separately approved
 rollout. [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) lists the
-provider, live-session grants and server-only deletion prerequisites.
+provider, private live-session helper and server-only deletion prerequisites.
 
 ## Workspaces and runtimes
 

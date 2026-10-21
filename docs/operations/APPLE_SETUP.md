@@ -25,25 +25,32 @@ Started September 17, 2026. Owner: **Anthony**. **October 11 verification:** The
 
 **October 21 revised development binary:** Anthony authorized [967b34cf](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/967b34cf-7a97-4268-88b7-5a2c77dc2feb), which finished successfully. The downloaded signed IPA includes SQLite, DocumentPicker, Keychain, the CloudKit module, Apple Authentication, SecureStore and Google Sign-In. It preserves the existing bundle ID/team and registered iPhone; EAS enabled Sign in with Apple and refreshed the existing ad hoc profile. Fresh `npm run check` passed, including Expo Doctor 21/21. This is a guest/data-controls testing binary: actual provider configuration, Google's native URL scheme and CloudKit container/entitlements remain pending and will require another compatible native configuration/build. Native compilation does not establish provider or iCloud behavior. The development server uses the matching local LAN API with bounded staging guest admission; hosted services were not updated. Install over the existing app to preserve phone data. Installation and physical acceptance remain open.
 
-The inspected IPA reports `cloudKitConfigured=false`. It also predates the current
-native page `revision` / `resetIfUnchanged` bridge used for safe guest-copy
-handover. The current local implementation therefore requires a compatible
-rebuild before that native acceptance can run; JavaScript refresh alone cannot
-update this protocol. The build/check results above describe the earlier binary,
-not acceptance of the current changes.
+The earlier IPA reports `cloudKitConfigured=false` and predates the current
+native conditional-reset bridge. It is superseded for login testing by the
+configured build below; CloudKit capability/device acceptance remains separate.
+
+**Configured provider build:** The authorized internal development build
+[87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab)
+succeeded October 21. Signed IPA inspection confirms the existing bundle/team,
+registered iPhone, Sign in with Apple entitlement, exact Google reversed-client
+URL scheme, Apple/Google modules, SecureStore, SQLite, Files/Keychain and current
+`resetIfUnchanged` bridge. The native providers, public development inputs and
+matching staged API are configured. Its CloudKit container remains unconfigured;
+this build does not establish working iCloud Sync. Install over the existing app,
+then use the restarted Metro server on the same Wi-Fi. Real sign-in, installation,
+secure storage and logout/deletion acceptance remain open.
 
 ## Revised Phase 13 native prerequisites
 
 Reuse the existing app, team and Expo project. Follow
 [ACCOUNT_SYNC_SETUP.md](ACCOUNT_SYNC_SETUP.md) for exact public Auth/Google/CloudKit
-environment names, Supabase provider/manual-link setup, narrow live-session grants
-and server-only Auth deletion capability. The October 21 read-only audit found
-Apple/Google providers disabled, hosted migrations 0019–0023 unapplied, live Auth
-grants missing and local/EAS public Auth, Google and iCloud inputs absent. The
-October 21 authorized build updated Apple sign-in signing/provisioning; it did not
-activate those cloud services. Provider/container configuration, hosted cutover
-and the next native signing/build/upload remain external actions requiring their
-existing owner authorization.
+environment names, Supabase provider/manual-link setup, private live-session
+capability and server-only Auth deletion. The subsequent authorized rollout
+supersedes the earlier missing-provider/grant audit: native Apple/Google are enabled,
+0019–0023 applied, restricted-runtime readiness passes, and matching local/EAS
+public Auth/Google inputs are present. Real provider/device acceptance remains
+required. CloudKit configuration and any later signing/build changes retain their
+existing owner authorization boundaries.
 
 For native Apple sign-in, enable Supabase's Apple provider with
 `com.anthonyyoo.justgo` as an accepted client ID/token audience and preserve team
@@ -99,8 +106,8 @@ latter also removes the JustGO account/Auth profile. Neither removes the user's
 Apple/Google account. User-saved files remain under the user's control after app
 deletion.
 
-Next steps: Complete the authorized provider/native setup and produce a compatible
-build before real OAuth/iCloud acceptance. Install over the existing app to
+Next steps: Accept the configured build's real OAuth flows on the phone, then
+complete the separate CloudKit setup and device matrix before iCloud acceptance. Install over the existing app to
 preserve phone data, and connect to the matching API/development server. Developer
 Mode was verified on the earlier installed build. An API address change alone is
 delivered through JavaScript and does not require a native build; the CloudKit

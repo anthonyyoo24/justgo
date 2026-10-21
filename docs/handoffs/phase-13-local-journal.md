@@ -2,13 +2,13 @@
 
 ## Status
 
-The October 21 continuity and Account/Data revision is implemented locally.
-Local automated checks and the grouped in-app walkthrough pass. Real Apple/Google
-configuration, hosted cutover, a compatible signed build and physical iCloud/device acceptance remain
-open. Existing installed builds and hosted services retain earlier behavior.
-The [plan](../implementation-plan/phase-13-local-journal.md) owns remaining scope;
-[DECISIONS.md](../DECISIONS.md#october-21-journal-continuity-and-accountdata-settings)
-records the approved behavior. No Git publication or hosted/provider change ran.
+The October 21 continuity/Settings revision and working-login setup are implemented.
+Native Apple/Google providers, the protected staging database/API cutover and a
+configured signed development build are ready for owner testing. Real phone
+sign-in/continuity/revocation/deletion and separate iCloud setup/device acceptance
+remain open. The [plan](../implementation-plan/phase-13-local-journal.md) owns
+remaining scope and [decisions](../DECISIONS.md#october-21-native-provider-rollout-and-hosted-session-checks)
+record the provider-specific choices. No Git push, PR or merge ran.
 
 ## Implemented behavior
 
@@ -71,72 +71,89 @@ owners, checks live sessions and preserves legacy proof/deletion compatibility.
 
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) and
 [APPLE_SETUP.md](../operations/APPLE_SETUP.md) contain the concrete setup sequence.
-The read-only October 21 audit found Apple/Google disabled, hosted migrations
-0019–0023 unapplied, narrow Auth-session grants missing, and mobile/API/EAS managed
-Auth/Google/iCloud configuration incomplete. Existing project, bundle and team
-identity must be retained. Native-only Apple uses the bundle audience; browser
-Apple setup is separate. No hosted grant, provider, container or deployment changed.
+The authorized rollout supersedes the earlier read-only setup gaps. Supabase
+Apple/Google and manual linking are enabled in the existing staging project.
+Google uses project `justgo-512319`, web+iPhone clients, External/Testing and the
+owner test email with only openid/profile/email scopes. Its original iOS SDK
+requires the expressly approved Google-only nonce exception; Apple validation
+stays on. Browser OAuth is separate and unaccepted.
 
-The approved [967b34cf development build](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/967b34cf-7a97-4268-88b7-5a2c77dc2feb)
-contains the native modules and Apple sign-in entitlement but has no configured
-CloudKit container or Google native URL scheme. It predates the new conditional
-CloudKit reset bridge and is not acceptance of this revision. A further configured
-signed build is required. Fresh Expo validation also required local SDK 57 patch
-updates to Expo 57.0.31 and Router 57.0.29; device acceptance remains open.
+A protected hosted snapshot was restored on loopback and forward-rehearsed before
+registered 0019–0023 ran. The live wrapper locked users first and verified all
+preserved data and exact schema/history before COMMIT. History is 24 registered
+hashes; accounts/history/phone writing were preserved, and the hosted old journal
+inventory was empty. Registered migrations remain immutable.
+
+Hosted direct Auth-schema grants are unsupported. The versioned private
+postgres-owned boolean helper now supplies exact live-session checks to runtime.
+Actual restricted-role schema/helper readiness and nonexistent-session rejection
+pass over verified TLS; it cannot read/write Auth records directly. Supabase's
+security advisor reports no findings. The matching API deployment
+`dpl_HmREmiNREfSTiW6uC5GpjWFrbqkr` is active at `https://justgo-two.vercel.app`:
+ready=200, missing managed authentication=401, retired legacy administration=404,
+and staged guest admission remains verified. The server admin key was validated
+without exporting users; the operator Auth-cleanup command completed with zero
+pending work. Real provider erasure/revocation acceptance remains open; no hosted
+retry schedule was installed.
+
+Configured internal build [87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab)
+succeeded. Signed IPA inspection verifies the existing bundle/team/registered
+phone, Apple entitlement, Google URL scheme, required modules/secure storage and
+current conditional CloudKit reset bridge. CloudKit is still unconfigured.
+Matching public inputs are in local/EAS development configuration. Cache-cleared
+Metro's actual native bundle uses the staged API/Auth/Google inputs and contains
+no actual server admin secret. Unpublished legal pages use a separate local LAN
+reader; they were not published on the staged API. Install over the existing app
+and keep phone/Mac on the same Wi-Fi.
 
 The shared modal lives in `components/modals`, shared provider artwork in
 `components/auth`, portable archives in `data/backup`, and cloud handover beside
 its coordinator in `data/cloud`. Adapter pairs and tests remain beside their
-owners. Complete changed-directory file lists were reviewed; no further moves
-were needed. Registered migrations remain immutable; the server-only legacy
-reflection reset preserves accounts, completed history and all phone writing.
+owners. Obsolete legacy presentation/tests were removed and old URLs redirect to
+Account. Retained controller/vault/proof consumers preserve existing-owner and
+pending-deletion compatibility. The private helper readiness and versioned
+operator SQL have separate database/operator owners. Complete changed-directory
+file lists were reviewed; no further moves were needed.
 
 ## Verification
 
 Verified October 21 with pinned Node 24/npm 11 and heavy checks sequentially:
 
-- Full `npm run check` passed: online Expo Doctor 21/21, root/workspace/journey
-  typechecks, lint (zero errors; 176 existing warnings), formatting, 259 tooling
-  tests, 136 API unit tests, 1,450 mobile tests and 35 contract tests.
-- Full coverage passed every all-source and critical floor. Mobile: 88.14% branches /
-  94.68% lines; API: 88.07% / 96.06%; contracts: 100% / 100%. API coverage included
-  223 unit/database cases. Dedicated `test:db` also passed 86 integration tests
-  plus the migration/restoration rehearsal against loopback `justgo_test`.
-- All 35 saved app/API/database journeys passed after the SDK patches. Cold web
-  and iOS JavaScript/assets exports passed with `--clear --max-workers 1`;
-  production-web smoke passed with no API traffic. These are bundles, not a signed
-  native build.
-- The final visual review corrected two remaining old explanatory sentences in
-  entry/account-deletion UI. Their 33 focused component tests, five saved entry /
-  deletion journeys and scoped lint/formatting passed afterward. The final text was
-  also checked in the restarted browser app; these wording-only changes do not
-  establish new native or hosted evidence.
-- Swift CloudKit core typechecking and Expo-wrapper syntax parsing passed against
-  the installed iPhoneOS SDK. They do not establish linkage, entitlements, schema
-  or real two-device synchronization.
+- Final full `npm run check`: online Expo Doctor 21/21, root/workspace/journey
+  typechecks, lint with zero errors (176 existing warnings), formatting, 259 tooling
+  tests, 180 API unit tests, 1,402 mobile tests and 35 contract tests.
+- Full mobile/contracts coverage remained valid after cleanup; updated API coverage
+  passed 272 tests. All aggregate/critical floors pass: mobile 88.27% branches /
+  94.43% lines, API 88.59% / 96.22%, contracts 100% / 100%.
+- Dedicated `test:db`: 91 integration cases plus registered migration/restoration
+  rehearsal. Five transactional operator cases cover real SQL helper ownership,
+  privileges, exact session/subject, strict expiry/null and unsafe tampering.
+- All 11 affected saved entry/identity/deletion journey cases passed. One stale
+  logout-footer expectation was corrected; its returning-provider case passed on
+  rerun. This is distinct from real provider/device evidence.
+- Cold web/iOS JavaScript exports and production-web no-API-traffic smoke passed.
+  The grouped side-panel review verified current Account/provider entry pages,
+  Welcome buttons and an old recovery-key URL redirect using a fresh anonymous
+  static origin without hosted credentials or account creation.
+- Hosted snapshot restore/forward/live preservation and actual runtime readiness
+  checks passed as described above. Signed IPA/module/config inspection passed;
+  installation and real provider flows remain unverified.
 
-The grouped 1280×720 in-app walkthrough used a fresh guarded fixture build and
-run-owned synthetic Google account on loopback `justgo_test`. It verified the
-same written entry after first sign-in/logout, returning login, connected switches
-and last-method protection, Account/Data layout and icons, both cancellation/focus
-paths, unavailable iCloud feedback, and authentication before signed-out import.
-The resolved legal/API origin was the separate loopback fixture server. No browser
-console errors appeared; the run-owned account/data and servers were removed.
-This walkthrough is separate from saved regression journeys and device evidence.
-
-Changed-document formatting, local links, whitespace and complete changed-directory
-file lists were reviewed. Public legal text remains an unpublished candidate.
+Setup/architecture/plan/decision documents and local links were reconciled.
+Screenshots, QR and operator proofs remain ignored. Public legal text remains an
+unpublished candidate. Device mocks, browser checks and binary inspection do not
+establish native OAuth, private storage protection or CloudKit behavior.
 
 ## Open acceptance gates
 
-| Gate                                          | Owner and completion point                                                           | Required evidence                                                                                                                                                                    |
-| --------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Apple/Google and managed Auth setup           | Anthony authorizes external setup; implementation owner verifies before distribution | Real clients/audiences, manual linking, narrow live-session grants, hidden email, cancellation/refresh/revocation, unlink and returning data.                                        |
-| Compatible signed build and device storage/UI | Anthony authorizes build; implementation owner verifies before beta                  | New CloudKit bridge, native modules/entitlements, secure session storage, SQLite interruption/full storage/protection, Files/share cleanup, accessible phone layout and both modals. |
-| Real iCloud synchronization                   | Implementation owner with required devices, before enabled beta claims               | Private schema/container/profile, two-device offline/conflict/reset/deletion, full storage and Apple-account changes, including sync off → delete → on.                              |
-| Hosted migration and old-client cutover       | Anthony plus release owner before testers                                            | Authorized 0019–0023 and matching API/client, narrow old-private reset, existing-owner migration, Auth cleanup operations, revocation and deletion-aware restore.                    |
-| Public notices/provider/retention             | Anthony plus privacy/release owner before public distribution                        | Review updated unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending.                                        |
-| Inherited Phases 02–12 and billing/release    | Respective Phase 14/07A owners                                                       | Remaining accessibility, diagnostics activation, purchases/guest paid admission, hosted CI and release evidence.                                                                     |
+| Gate                                          | Owner and completion point                                             | Required evidence                                                                                                                                                                                                      |
+| --------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Apple/Google and managed Auth setup           | Implementation owner with Anthony on the phone, before distribution    | Configuration/private-helper checks are complete; still verify real hidden email, cancellation/refresh/revocation, link/unlink and returning data on the phone.                                                        |
+| Compatible signed build and device storage/UI | Anthony authorizes build; implementation owner verifies before beta    | New CloudKit bridge, native modules/entitlements, secure session storage, SQLite interruption/full storage/protection, Files/share cleanup, accessible phone layout and both modals.                                   |
+| Real iCloud synchronization                   | Implementation owner with required devices, before enabled beta claims | Private schema/container/profile, two-device offline/conflict/reset/deletion, full storage and Apple-account changes, including sync off → delete → on.                                                                |
+| Hosted migration and old-client cutover       | Anthony plus release owner before testers                              | 0019–0023, protected rehearsal and matching staged API are complete; still verify real existing-phone owner migration, Auth erasure/revocation, incompatible-client retirement and deletion-aware recovery acceptance. |
+| Public notices/provider/retention             | Anthony plus privacy/release owner before public distribution          | Review updated unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending.                                                                          |
+| Inherited Phases 02–12 and billing/release    | Respective Phase 14/07A owners                                         | Remaining accessibility, diagnostics activation, purchases/guest paid admission, hosted CI and release evidence.                                                                                                       |
 
 Local migration, mocks and browser tests do not establish hosted deletion, native
 storage protection, real OAuth or CloudKit. Phase 13 remains open at these gates.

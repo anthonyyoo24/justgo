@@ -2,9 +2,10 @@
 
 # Phase 13 — Local data, optional accounts and cloud sync
 
-**Status:** October 21 continuity/Settings revision implemented and verified locally.
-Real-provider configuration, a further compatible
-signed build, CloudKit/device acceptance and hosted rollout remain open. The
+**Status:** October 21 continuity/Settings revision and working-login setup implemented.
+Native providers, protected hosted database/API cutover and the configured signed
+build are ready for owner testing. Real phone/provider acceptance and separate
+CloudKit setup/device acceptance remain open. The
 [handoff](../handoffs/phase-13-local-journal.md) records current evidence and gates.
 
 ## Outcome
@@ -23,7 +24,7 @@ uploads without switching the user to a different journal.
 - The [October 20 optional-account decision](../DECISIONS.md#october-20-optional-accounts-and-cloud-sync) supersedes the earlier local-only/manual-backup phase scope. Dependencies and remaining release gates from Phases 07–12 continue to apply.
 - The [October 21 continuity and Settings decision](../DECISIONS.md#october-21-journal-continuity-and-accountdata-settings) supersedes the optional guest-merge choice and permanent guest-collection selector. It also fixes the Account/Data organization, provider switches and deletion-modal requirements. Keep these connected changes within Phase 13 and implement the slices below in order.
 - How We Feel's [privacy policy](https://howwefeel.web.app/privacy) distinguishes account-free local recording from account-user collection, including journal/check-in data. Its [captured login screen](https://mobbin.com/screens/5fc47e96-a36f-44eb-8fc3-d43871b3c121) describes cloud synchronization, its [data screen](https://mobbin.com/screens/0cc34b3f-9377-43e6-baac-23cf75ead256) groups iCloud Sync/download/import/deletion, and its [account screen](https://mobbin.com/screens/b4a6e18c-938d-40a7-99d3-94e873778bf0) preserves local data after logout. These sources do not establish its internal implementation, initial guest upload/merge rules or the relationship between its account sync and iCloud toggle. The rules below are JustGO implementation rules for those gaps, not claims about How We Feel.
-- Use managed Supabase Auth with native Apple/Google sign-in; keep the existing Fastify API, PostgreSQL database and strict owner isolation. Supabase currently hosts the database only; introducing Supabase Auth is a real identity migration.
+- Use managed Supabase Auth with native Apple/Google sign-in; keep the existing Fastify API, PostgreSQL database and strict owner isolation. The authorized staging rollout now includes Supabase Auth; canonical ownership and existing-phone proof migration remain explicit boundaries.
 - iCloud Sync means actual optional synchronization through the user's Apple iCloud account. It is separate from signing into JustGO and from downloading a manual snapshot. Its default is off. Do not ship a toggle backed only by Keychain credential synchronization or a one-time file export.
 - Keep analytics, crash delivery and AI activation outside this change. Never include journal content or auth secrets in diagnostics or test artifacts. Preserve country exclusions, access/billing safeguards and ordinary Terms/Privacy links without legal-view/agreement receipts.
 - Hosted configuration/migrations/deployment, Git publication, paid purchases and native signing/build/upload retain their existing separate authorization boundaries. This plan does not enable any provider or change hosted data.
@@ -232,17 +233,19 @@ guest source. Run affected database suites and saved backup/deletion journeys.
 and restricted actions; implementation owner for configuration/runbook preparation,
 native integration and verification. Coordinate with Phase 14 release ownership.
 
-The October 21 development binary contains the native modules. Real OAuth setup,
-Google's native URL scheme and CloudKit container/entitlements remain unfinished.
-The present iCloud switch is not accepted as functional. Follow
+Configured development build [87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab)
+contains the native modules, Apple entitlement and Google URL scheme. Native
+providers and the compatible staged API/database are configured. Real phone OAuth
+acceptance and CloudKit container/entitlements remain unfinished. The iCloud
+switch is not accepted as functional. Follow
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) and the
 [rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
 The [working-login execution checklist](../operations/ACCOUNT_SYNC_SETUP.md#execution-checklist-working-apple-and-google-login)
 expands the provider work below into ordered steps: audit retained recovery code,
 configure providers, coordinate the API/database, build the configured app, verify
 real phone login/data continuity, then remove obsolete recovery consumers.
-This remains Phase 13 work; the checklist adds no new product flow or claim of
-completed provider, hosted or device setup.
+This remains Phase 13 work. The handoff records completed provider/hosted/build
+setup separately from the still-open phone and iCloud acceptance gates.
 
 1. Prepare the exact Apple/Google OAuth, Supabase Auth and private CloudKit
    configuration against the existing bundle/team identity. Recheck SDK/provider

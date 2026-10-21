@@ -568,6 +568,37 @@ unavailable cleanup stays pending. Preserve the earlier server-only legacy-refle
 reset scope and all separate publication, hosted configuration and native build
 permissions. The handoff distinguishes local evidence from open external gates.
 
+## October 21 native provider rollout and hosted session checks
+
+Anthony authorized implementation of the working-login checklist, console access,
+Google policy acceptance, creation of JustGO's web/iPhone OAuth clients and the
+Google-only Skip nonce checks setting required by the pinned original iOS SDK.
+Apple retains native nonce validation and permits missing email because the app
+requests no Apple email/name scopes. Browser OAuth remains separate from the
+native ID-token flows. No paid SDK, billing upgrade, Git publication or public
+release was authorized by this setup.
+
+The existing staging Supabase project, Apple team/bundle, Vercel app and Expo
+project are reused. Migrations 0019–0023 ran only after a protected snapshot,
+restoration/forward rehearsal and transaction-internal preservation comparisons.
+The approved old-server-only journal reset excludes accounts, challenge history
+and phone storage; hosted inventory had no old attempt/reflection rows to erase.
+
+Hosted Supabase does not support direct Auth-schema grants to custom roles.
+Follow its [private-helper guidance](https://supabase.com/kb/troubleshooting/permission-errors-when-granting-custom-roles-access-to-the-auth-schema):
+a versioned, postgres-owned, unexposed helper returns only the exact verified
+session/subject's live boolean. Fixed empty search path, runtime-only execution,
+no direct Auth access and fail-closed body/owner/effective-permission readiness
+preserve live logout/revocation checks without granting the API an administrator
+role. Keep app-schema migrations immutable and manage this provider-owned
+capability through reviewed versioned operator SQL.
+
+Retire the obsolete recovery UI and fallback branches, retaining existing-owner
+proof/vault reads and pending legacy deletion until supported installations finish
+migration/cleanup. The configured signed build and successful automated/staging
+readiness checks do not establish real phone login, hard Auth deletion or working
+iCloud. Those acceptance gates remain explicit in Phase 13.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.

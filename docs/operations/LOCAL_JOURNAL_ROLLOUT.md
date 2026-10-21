@@ -2,8 +2,9 @@
 
 Phase 13 implements a local candidate for optional Apple/Google accounts, local
 guest use, signed-in JustGO synchronization, optional CloudKit and complete data
-controls. This revision does not deploy hosted changes, configure providers or
-distribute a new native binary. Follow [account setup](ACCOUNT_SYNC_SETUP.md) and retain the
+controls. The authorized October 21 staging rollout applied migrations 0019–0023,
+configured native providers and submitted the configured internal iPhone build.
+Follow [account setup](ACCOUNT_SYNC_SETUP.md) for current API/build status and retain the
 [Phase 14](../implementation-plan/phase-14-release.md) acceptance gates.
 
 ## Coordinated rollout
@@ -19,7 +20,7 @@ distribute a new native binary. Follow [account setup](ACCOUNT_SYNC_SETUP.md) an
 3. Obtain authorization for the actual hosted cutover. The earlier server-only reset
    excludes accounts, challenge history and all phone data. Verify scope/counts before
    executing it; local migration tests are not evidence of hosted removal.
-4. Configure Supabase Auth, Apple/Google clients, narrow live-session grants and
+4. Configure Supabase Auth, Apple/Google clients, the private live-session helper and
    CloudKit as documented. Keep server admin credentials off the phone. Match
    client/API enablement; do not ship working-looking provider buttons without setup.
 5. Prepare a separately authorized signed native build containing Google/Apple Auth,

@@ -140,7 +140,13 @@ make a focused run pass.
 The root coverage command builds contracts, runs workspaces sequentially and
 enforces [coverage-thresholds.json](../../scripts/quality/coverage-thresholds.json).
 API coverage includes unit/database suites and the migration rehearsal, so prepare
-the same local database first. Individual workspace coverage scripts generate
+the same local database first. The private Auth-session helper integration also
+requires `JUSTGO_TEST_ADMIN_DATABASE_URL` for a `postgres` connection to loopback
+`justgo_test`, with SSL disabled. New `db:local` environments and shared CI database
+jobs supply it; existing local `.env` files need that test-only value added.
+The test refuses occupied Auth/helper schemas, executes the actual operator SQL
+inside a rollback-only fixture transaction and never targets hosted Auth. Never
+deploy this test operator URL on Vercel or mobile. Individual workspace coverage scripts generate
 reports; the root command applies the combined gate. Reports are ignored generated
 output under `coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
 Jest uses Istanbul; Vitest's V8 provider is pinned with its Vitest version.

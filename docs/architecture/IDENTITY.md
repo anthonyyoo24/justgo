@@ -2,11 +2,11 @@
 
 Phase 13 adds local guest collections and optional Apple/Google accounts through
 Supabase Auth. Fastify remains the trusted boundary for JustGO data; mobile does
-not access private PostgreSQL tables directly. This describes the local
-implementation candidate. Hosted migrations, provider configuration and signed
-device acceptance require the separately approved rollout in
-[ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md). Earlier hosted
-services and installed clients keep their existing behavior until that rollout.
+not access private PostgreSQL tables directly. The authorized staging rollout
+applied migrations 0019–0023 and configured native Apple/Google Auth. Current setup
+and remaining signed-device acceptance are recorded in
+[ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md). Public release and
+iCloud acceptance remain separate.
 
 ## Guest and account transitions
 
@@ -50,10 +50,14 @@ belongs to the collection that accepted it.
 
 Native Apple and Google sign-in produce provider ID tokens for
 `@supabase/supabase-js`. Apple uses a random nonce, sending its SHA-256 form to
-Apple and the original to Auth. The original Google iOS SDK owns its OAuth request;
-the client does not disable provider nonce checks. The development web adapter
-uses PKCE and an allowlisted callback. Provider setup and device acceptance are
-separate from guarded browser fixtures.
+Apple and the original to Auth; Apple nonce validation stays enabled. The pinned
+original Google iOS wrapper neither accepts nor returns its SDK-generated nonce.
+Supabase's [documented iOS setup](https://supabase.com/docs/guides/auth/social-login/auth-google#ios-configuration)
+therefore requires Google-only Skip nonce checks, explicitly authorized for this
+integration. Auth still verifies token signatures and configured client audiences;
+never invent a nonce or apply this exception to Apple. The development web adapter
+uses PKCE and an allowlisted callback; real browser OAuth is separate configuration.
+Guarded browser fixtures do not establish native provider behavior.
 
 The API verifies each bearer through Supabase Auth's get-user endpoint, then
 checks issuer, expiry, authenticated audience/role, subject and session ID against
@@ -67,8 +71,15 @@ Every owner operation also checks the matching live `auth.sessions` row,
 `not_after`, the registered JustGO app session, local revocation and the canonical
 owner's deletion state. Verification I/O happens before the short database
 transaction; live session and owner state are checked again under the owner lock.
-Missing Auth-schema privileges fail readiness rather than silently omitting the
-check. See [Supabase session semantics](https://supabase.com/docs/guides/auth/sessions).
+Hosted Supabase does not support direct Auth-schema grants to custom roles.
+A versioned, postgres-owned `justgo_auth_private.is_live_session_v1(uuid,uuid)`
+helper exposes only the exact verified session/subject's live boolean, using a
+fixed empty search path and fully qualified Auth objects. Only `justgo_runtime`
+may use/execute this private capability; it cannot read Auth records directly.
+Readiness checks the executable body, ownership, security settings, effective
+privileges and managed application schema, failing closed on mismatch. See
+[Supabase session semantics](https://supabase.com/docs/guides/auth/sessions) and
+[the supported private-helper pattern](https://supabase.com/kb/troubleshooting/permission-errors-when-granting-custom-roles-access-to-the-auth-schema).
 
 | Resource                                       | Behavior                                                                                                                      |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -186,6 +197,13 @@ Apple/Google sign-in, iCloud or signed-device security evidence.
 
 ## Internal legacy migration compatibility
 
+The installed app removes the old recovery-key/device/transfer presentation and
+routes old URLs to Account. Welcome, acceptance and Account use the managed
+controller directly. Retain the legacy controller only for pending legacy
+deletion and its shared snapshot type; retain proof renewal, frozen exchange
+proofs, linked-owner markers and secure-vault reads until supported existing
+installations finish migration/cleanup. Managed SecureStore tokens remain required.
+
 Managed rollout disables public key/code/device/transfer administration and old
 bootstrap/transfer creation. It temporarily retains `GET /v1/sessions/current`
 and recovery/renewal forms of `POST /v1/sessions` so a phone with existing secure
@@ -232,9 +250,10 @@ supplies one transaction for all owner operations. Set transaction-local context
 only after trusted verification; never accept a request owner ID, use session-level
 `SET` or query on another connection. Private `justgo` tables enable and force RLS,
 with narrow runtime grants and separate migrator maintenance. No grants go to
-Supabase `anon`, `authenticated` or `PUBLIC`, and no security-definer shortcut is
-introduced. Managed Auth requires only the additional read privileges listed in
-[setup](../operations/ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
+Supabase `anon`, `authenticated` or `PUBLIC`. The narrowly scoped private
+Auth-session helper is the only new definer-rights capability; it returns no
+records and changes no data. It does not alter application-table RLS. See the
+[operator setup](../operations/ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
 
 Database-backed ten-minute rate buckets use separate HMAC domains for identity,
 recovery and managed Auth. The managed/ordinary identity limit is 120 per address;
