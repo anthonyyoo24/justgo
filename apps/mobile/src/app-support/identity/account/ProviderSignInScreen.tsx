@@ -1,4 +1,10 @@
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  Redirect,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 import { useIdentity, useRuntime } from '../../providers/AppProvider';
@@ -22,16 +28,34 @@ export function ProviderSignInScreen() {
   const expectedOwnerId = parsedOwner.success ? parsedOwner.data : undefined;
   const destination = params.returnTo === 'data' ? '/data' : '/access';
   const links = useAcceptanceLinks();
-  if (!('signIn' in identity)) return <Redirect href="/recovery" />;
-  if (state.account) return <Redirect href={destination} />;
   const provider =
     params.provider === 'apple' || params.provider === 'google'
       ? params.provider
       : undefined;
+  const [signInError, setSignInError] = useState('');
+  const visit = useRef<object | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      visit.current = { provider, expectedOwnerId, destination };
+      setSignInError('');
+      return () => {
+        visit.current = null;
+      };
+    }, [provider, expectedOwnerId, destination]),
+  );
+  if (!('signIn' in identity)) return <Redirect href="/recovery" />;
+  if (state.account) return <Redirect href={destination} />;
   const guest = 'collectionKind' in state && state.collectionKind === 'guest';
   const signIn = async (selected: SignInProvider) => {
+    const submittedVisit = visit.current;
+    setSignInError('');
+    links.clearLinkError();
     await identity.signIn(selected, expectedOwnerId ? { expectedOwnerId } : {});
-    if (identity.getSnapshot().account) router.replace(destination);
+    // The controller keeps durable work; feedback belongs only to this visit.
+    if (!submittedVisit || submittedVisit !== visit.current) return;
+    const result = identity.getSnapshot();
+    if (result.account) router.replace(destination);
+    else setSignInError(result.message);
   };
   return (
     <SettingsPage
@@ -65,9 +89,9 @@ export function ProviderSignInScreen() {
             void signIn(selected);
           }}
         />
-        {!!(state.message || links.linkError) && (
+        {!!(signInError || links.linkError) && (
           <Text accessibilityRole="alert" style={styles.error}>
-            {links.linkError || state.message}
+            {links.linkError || signInError}
           </Text>
         )}
         <View style={styles.links}>

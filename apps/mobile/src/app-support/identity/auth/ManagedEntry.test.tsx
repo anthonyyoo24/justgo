@@ -5,7 +5,7 @@ import {
   managedIdentityStateSchema,
   type ManagedIdentityState,
 } from './managed-state';
-import type { ManagedAuth } from './types';
+import { ProviderAuthError, type ManagedAuth } from './types';
 import { WelcomeScreen } from '../welcome/WelcomeScreen';
 import { AcceptanceScreen } from '../../acceptance/AcceptanceScreen';
 import { ProviderSignInScreen } from '../account/ProviderSignInScreen';
@@ -13,6 +13,7 @@ import AuthCallbackRoute from '../../../app/auth/callback';
 
 let mockController: ManagedIdentityController;
 let mockProvider = 'apple';
+let mockFocused = true;
 const mockRouter = {
   push: jest.fn(),
   replace: jest.fn(),
@@ -42,10 +43,17 @@ jest.mock('../../../lib/legal-links', () => ({
   }),
 }));
 jest.mock('expo-router', () => {
+  const React = require('react') as typeof import('react');
   const { Text } = require('react-native') as typeof import('react-native');
   return {
     useRouter: () => mockRouter,
     useLocalSearchParams: () => ({ provider: mockProvider }),
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      const focused = mockFocused;
+      React.useEffect(() => {
+        if (focused) return effect();
+      }, [effect, focused]);
+    },
     Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
     Link: ({ children }: { children: React.ReactNode }) => children,
   };
@@ -108,11 +116,12 @@ async function setup(parkedOwner?: string) {
       `10000000-0000-4000-8000-${(id++).toString().padStart(12, '0')}`,
   });
   await mockController.initialize();
-  return { api };
+  return { api, auth };
 }
 beforeEach(() => {
   jest.clearAllMocks();
   mockProvider = 'apple';
+  mockFocused = true;
 });
 afterEach(() => mockController?.dispose());
 
@@ -176,6 +185,71 @@ it.each(['apple', 'google'])(
     expect(signIn).toHaveBeenCalledWith(provider, {});
   },
 );
+
+it.each([
+  ['google', 'apple'],
+  ['apple', 'google'],
+])(
+  'does not carry a failed %s sign-in into %s or a later visit',
+  async (from, to) => {
+    const { auth } = await setup();
+    auth.signIn = jest
+      .fn()
+      .mockRejectedValue(new ProviderAuthError('CONFIGURATION'));
+    mockProvider = from;
+    const screen = render(<ProviderSignInScreen />);
+    const pressSignIn = async (provider: string) => {
+      await act(async () =>
+        fireEvent.press(
+          screen.getByRole('button', {
+            name: `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`,
+          }),
+        ),
+      );
+    };
+    await pressSignIn(from);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Sign-in isn’t configured in this build yet. You can continue on this phone.',
+    );
+    mockProvider = to;
+    screen.rerender(<ProviderSignInScreen />);
+    expect(screen.queryByRole('alert')).toBeNull();
+    await pressSignIn(to);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Sign-in isn’t configured in this build yet. You can continue on this phone.',
+    );
+    mockFocused = false;
+    screen.rerender(<ProviderSignInScreen />);
+    mockFocused = true;
+    screen.rerender(<ProviderSignInScreen />);
+    expect(screen.queryByRole('alert')).toBeNull();
+    auth.signIn = jest.fn().mockResolvedValue(null);
+    await pressSignIn(to);
+    expect(screen.queryByRole('alert')).toBeNull();
+  },
+);
+
+it('ignores a late provider failure after leaving the sign-in visit', async () => {
+  const { auth } = await setup();
+  let rejectSignIn: (error: Error) => void = () => {};
+  auth.signIn = jest.fn(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectSignIn = reject;
+      }),
+  );
+  const screen = render(<ProviderSignInScreen />);
+  await act(async () =>
+    fireEvent.press(screen.getByRole('button', { name: 'Sign in with Apple' })),
+  );
+  mockFocused = false;
+  screen.rerender(<ProviderSignInScreen />);
+  await act(async () => rejectSignIn(new ProviderAuthError('CONFIGURATION')));
+  mockFocused = true;
+  screen.rerender(<ProviderSignInScreen />);
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+});
 
 it('lets an incomplete web callback restart provider sign-in after a consumed or failed PKCE exchange', async () => {
   await setup();

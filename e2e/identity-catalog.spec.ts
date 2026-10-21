@@ -27,7 +27,7 @@ async function signOut(page: Page) {
   }
 }
 
-test('failed provider sign-in stays on its separate page and leaves no Account connection footer', async ({
+test('provider sign-in failures reset between visits and leave no Account connection footer', async ({
   page,
 }) => {
   await continueAsGuest(page);
@@ -42,7 +42,7 @@ test('failed provider sign-in stays on its separate page and leaves no Account c
       }),
     }),
   );
-  for (const provider of ['Apple', 'Google']) {
+  for (const provider of ['Google', 'Apple', 'Apple', 'Google']) {
     await page.getByRole('switch', { name: provider, exact: true }).click();
     await expect(page).toHaveURL(
       new RegExp(`/account/sign-in\\?provider=${provider.toLowerCase()}$`),
@@ -53,6 +53,7 @@ test('failed provider sign-in stays on its separate page and leaves no Account c
         exact: true,
       }),
     ).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
     await page
       .getByRole('button', { name: `Sign in with ${provider}`, exact: true })
       .click();
