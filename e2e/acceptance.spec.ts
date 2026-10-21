@@ -173,11 +173,9 @@ test('a returning provider account skips legal tracking and reopens the same sav
   await page
     .getByRole('button', { name: 'Confirm log out', exact: true })
     .click();
-  await expect(
-    page.getByText('Signed out. Your saved data remains on this phone.', {
-      exact: true,
-    }),
-  ).toBeVisible();
+  const google = page.getByRole('switch', { name: 'Google', exact: true });
+  await expect(google).not.toBeChecked();
+  await expect(google).toBeEnabled();
   const returning = await signInFixture(page, {
     provider: 'google',
     subjectHandle: account.subjectHandle,

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
-import { ManagedAccountScreen } from './ManagedAccountScreen';
+import RecoveryRoute from '../../../app/recovery';
 import { ProviderLogo } from '../../../components/auth/ProviderLogo';
 
 const mockRouter = {
@@ -73,7 +73,7 @@ beforeEach(() => {
 it('shows two branded login switches while signed out without a separate guest or status section', () => {
   mockState.collectionKind = 'account';
   mockState.linkedProviders = ['google']; // Retained metadata never implies a current login.
-  const screen = render(<ManagedAccountScreen />);
+  const screen = render(<RecoveryRoute />);
   expect(screen.getByRole('header', { name: 'Login methods' })).toBeTruthy();
   for (const label of ['Apple', 'Google']) {
     expect(screen.getByRole('switch', { name: label })).toHaveProp(
@@ -110,7 +110,7 @@ it('shows two branded login switches while signed out without a separate guest o
 it('reflects verified connections and delegates connect/disconnect without optimistic status changes', () => {
   mockState.account = { userId: 'owner' };
   mockState.linkedProviders = ['google'];
-  const screen = render(<ManagedAccountScreen />);
+  const screen = render(<RecoveryRoute />);
   expect(screen.getByRole('switch', { name: 'Apple' })).toHaveProp(
     'accessibilityState',
     expect.objectContaining({ checked: false }),
@@ -132,7 +132,7 @@ it('reflects verified connections and delegates connect/disconnect without optim
     expect.objectContaining({ checked: true }),
   );
   mockState.linkedProviders = ['google', 'apple'];
-  screen.rerender(<ManagedAccountScreen />);
+  screen.rerender(<RecoveryRoute />);
   expect(screen.getByRole('switch', { name: 'Apple' })).toHaveProp(
     'accessibilityState',
     expect.objectContaining({ checked: true }),
@@ -142,7 +142,7 @@ it('reflects verified connections and delegates connect/disconnect without optim
 it('shows separate logout and red deletion actions, preserving explicit logout confirmation', () => {
   mockState.account = { userId: 'owner' };
   mockState.linkedProviders = ['apple'];
-  const screen = render(<ManagedAccountScreen />);
+  const screen = render(<RecoveryRoute />);
   expect(screen.getByRole('button', { name: 'Delete account' })).toBeTruthy();
   expect(screen.queryByRole('link', { name: 'Delete account' })).toBeNull();
   expect(screen.getByText('Delete account')).toHaveStyle({ color: '#B3261E' });
@@ -159,7 +159,7 @@ it('disables operations while busy and keeps failure/last-method feedback contex
   mockState.account = { userId: 'owner' };
   mockState.linkedProviders = ['apple'];
   mockState.busy = true;
-  const screen = render(<ManagedAccountScreen />);
+  const screen = render(<RecoveryRoute />);
   fireEvent.press(screen.getByRole('switch', { name: 'Google' }));
   expect(mockIdentity.linkProvider).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'Delete account' })).toBeDisabled();
@@ -167,7 +167,7 @@ it('disables operations while busy and keeps failure/last-method feedback contex
   mockState.message =
     'Keep one login method connected. Use Log out to end this session.';
   mockState.hasPending = true;
-  screen.rerender(<ManagedAccountScreen />);
+  screen.rerender(<RecoveryRoute />);
   expect(screen.getByRole('alert')).toHaveTextContent(mockState.message);
   expect(screen.queryByRole('button', { name: 'Retry connection' })).toBeNull();
 });
@@ -179,7 +179,7 @@ it.each(['guest', 'account'] as const)(
     mockState.hasPending = true;
     mockState.message =
       'Sign-in isn’t configured in this build yet. You can continue on this phone.';
-    const screen = render(<ManagedAccountScreen />);
+    const screen = render(<RecoveryRoute />);
     expect(screen.queryByText(mockState.message)).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(
@@ -202,7 +202,7 @@ it.each(['guest', 'account'] as const)(
 
 it('opens account deletion directly in the shared modal and cancels without navigating or deleting', () => {
   mockState.account = { userId: 'owner' };
-  const screen = render(<ManagedAccountScreen />);
+  const screen = render(<RecoveryRoute />);
   expect(screen.queryByLabelText('Delete your account?')).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
   const dialog = within(screen.getByLabelText('Delete your account?'));
@@ -224,7 +224,7 @@ it('confirms deletion from Account and keeps a failure inside its modal', async 
   mockIdentity.deleteAccount.mockImplementationOnce(async () => {
     mockState.message = message;
   });
-  const screen = render(<ManagedAccountScreen />);
+  const screen = render(<RecoveryRoute />);
   fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
   const dialog = within(screen.getByLabelText('Delete your account?'));
   await act(async () =>
@@ -240,7 +240,7 @@ it('keeps a pending deletion available after the authenticated account is cleare
   mockState.deletionStatus = 'cleanup';
   mockState.hasPending = true;
   mockState.message = 'Secure storage is unavailable.';
-  const screen = render(<ManagedAccountScreen />);
+  const screen = render(<RecoveryRoute />);
   let dialog = within(screen.getByLabelText('Delete your account?'));
   expect(
     dialog.getByText(/Finish clearing this phone’s account data/),
@@ -261,11 +261,11 @@ it('keeps a pending deletion available after the authenticated account is cleare
 
 it('closes a confirmation when the selected account changes', () => {
   mockState.account = { userId: 'owner' };
-  const screen = render(<ManagedAccountScreen />);
+  const screen = render(<RecoveryRoute />);
   fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
   mockState.account = { userId: 'other-owner' };
   act(() => mockIdentityListeners.forEach((listener) => listener()));
-  screen.rerender(<ManagedAccountScreen />);
+  screen.rerender(<RecoveryRoute />);
   expect(screen.queryByLabelText('Delete your account?')).toBeNull();
   expect(mockIdentity.deleteAccount).not.toHaveBeenCalled();
 });

@@ -5,24 +5,22 @@ import type { LinkProps } from 'expo-router';
 import { AcceptanceScreen } from './AcceptanceScreen';
 
 const owner = '00000000-0000-4000-8000-000000000001';
-const otherOwner = '00000000-0000-4000-8000-000000000002';
 let mockIdentity = {
   initialized: true,
+  needsWelcome: true,
   busy: false,
   account: null as { userId: string } | null,
   deletionStatus: null as 'pending' | 'cleanup' | 'deleted' | null,
   message: '',
 };
-let mockParams: { returnTo?: string; create?: string; from?: string } = {};
 let mockLegal = {
   terms: 'https://justgo.example/terms' as string | null,
   privacy: 'https://justgo.example/privacy' as string | null,
   development: false,
 };
-const mockCreateAccount = jest.fn(async () => undefined);
+const mockContinueAsGuest = jest.fn(async () => undefined);
 const mockNavigate = jest.fn();
 const mockAccess = jest.fn(() => ({ verified: false, isPending: true }));
-const mockRouter = { dismissTo: jest.fn() };
 let mockAwaitingPreparation = false;
 
 jest.mock('../identity/welcome/WelcomeTransition', () => ({
@@ -35,7 +33,7 @@ jest.mock('../providers/AppProvider', () => ({
   useRuntime: () => ({
     identity: {
       getSnapshot: () => mockIdentity,
-      createAccount: mockCreateAccount,
+      continueAsGuest: mockContinueAsGuest,
     },
   }),
 }));
@@ -48,8 +46,6 @@ jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   const { Text } = require('react-native') as typeof import('react-native');
   return {
-    useLocalSearchParams: () => mockParams,
-    useRouter: () => mockRouter,
     Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
     Link: ({ children, asChild, href, onPress, ...props }: LinkProps) =>
       asChild ? (
@@ -76,12 +72,12 @@ beforeEach(() => {
   mockAwaitingPreparation = false;
   mockIdentity = {
     initialized: true,
+    needsWelcome: true,
     busy: false,
     account: null,
     deletionStatus: null,
     message: '',
   };
-  mockParams = {};
   mockLegal = {
     terms: 'https://justgo.example/terms',
     privacy: 'https://justgo.example/privacy',
@@ -93,12 +89,13 @@ afterEach(() => jest.restoreAllMocks());
 
 function connect(userId = owner) {
   mockIdentity.account = { userId };
+  mockIdentity.needsWelcome = false;
 }
 
-it('shows direct document links without mutations and creates an account only after Continue', async () => {
+it('shows direct document links without mutations and enters guest mode only after Continue', async () => {
   const screen = render(<AcceptanceScreen />);
   expect(screen.getByRole('header', { name: 'Terms & Privacy' })).toBeTruthy();
-  expect(mockCreateAccount).not.toHaveBeenCalled();
+  expect(mockContinueAsGuest).not.toHaveBeenCalled();
   expect(Linking.openURL).not.toHaveBeenCalled();
   for (const name of ['Terms of Service', 'Privacy Policy']) {
     fireEvent.press(screen.getByRole('link', { name }), {
@@ -106,32 +103,21 @@ it('shows direct document links without mutations and creates an account only af
     });
   }
   await waitFor(() => expect(Linking.openURL).toHaveBeenCalledTimes(2));
-  expect(mockCreateAccount).not.toHaveBeenCalled();
+  expect(mockContinueAsGuest).not.toHaveBeenCalled();
   expect(mockNavigate).not.toHaveBeenCalled();
   expect(screen.queryByText('Account & data')).toBeNull();
   expect(screen.queryByText('Account & recovery')).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  await waitFor(() => expect(mockCreateAccount).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mockContinueAsGuest).toHaveBeenCalledTimes(1));
 });
 
-it('sends an existing connected account through the access gate without legal checks or creating another account', () => {
+it('sends an existing account through the access gate without changing its collection', () => {
   connect();
   const screen = render(<AcceptanceScreen />);
   expect(screen.getByText('Redirect: /access')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
-  expect(mockCreateAccount).not.toHaveBeenCalled();
+  expect(mockContinueAsGuest).not.toHaveBeenCalled();
   expect(mockAccess).not.toHaveBeenCalled();
-});
-
-it('dismisses to the existing recovery hub once without replacing it', () => {
-  connect();
-  mockParams = { returnTo: 'recovery' };
-  const screen = render(<AcceptanceScreen />);
-  expect(mockRouter.dismissTo).toHaveBeenCalledWith('/recovery');
-  expect(screen.toJSON()).toBeNull();
-  screen.rerender(<AcceptanceScreen />);
-  expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1);
-  expect(mockCreateAccount).not.toHaveBeenCalled();
 });
 
 it('keeps Continue busy until the native deck preparation cover is shown', () => {
@@ -145,53 +131,26 @@ it('keeps Continue busy until the native deck preparation cover is shown', () =>
   ).toBeTruthy();
   expect(screen.queryByText('Redirect: /access')).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  expect(mockCreateAccount).not.toHaveBeenCalled();
+  expect(mockContinueAsGuest).not.toHaveBeenCalled();
   mockAwaitingPreparation = false;
   screen.rerender(<AcceptanceScreen />);
   expect(screen.getByText('Redirect: /access')).toBeTruthy();
 });
 
-it('retains the current owner until Continue explicitly creates a separate account', async () => {
-  connect();
-  mockParams = { create: 'new', from: owner, returnTo: 'recovery' };
-  const screen = render(<AcceptanceScreen />);
-  expect(screen.getByRole('header', { name: 'Terms & Privacy' })).toBeTruthy();
-  expect(mockIdentity.account?.userId).toBe(owner);
-  expect(mockCreateAccount).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  await waitFor(() => expect(mockCreateAccount).toHaveBeenCalledTimes(1));
-  screen.rerender(<AcceptanceScreen />);
-  expect(mockRouter.dismissTo).not.toHaveBeenCalled();
-  connect(otherOwner);
-  screen.rerender(<AcceptanceScreen />);
-  expect(mockRouter.dismissTo).toHaveBeenCalledWith('/recovery');
-  expect(screen.toJSON()).toBeNull();
-});
-
-it('reuses the newly created account after a route remount instead of creating another replacement', () => {
-  connect(otherOwner);
-  mockParams = { create: 'new', from: owner, returnTo: 'recovery' };
-  const screen = render(<AcceptanceScreen />);
-  expect(mockRouter.dismissTo).toHaveBeenCalledWith('/recovery');
-  expect(screen.toJSON()).toBeNull();
-  expect(mockCreateAccount).not.toHaveBeenCalled();
-});
-
 it.each(['pending', 'cleanup'] as const)(
-  'prioritizes %s deletion over navigation and account creation',
+  'prioritizes %s deletion over navigation and guest entry',
   (status) => {
     connect();
     mockIdentity.deletionStatus = status;
     const screen = render(<AcceptanceScreen />);
     expect(screen.getByText('Redirect: /delete-account')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
-    expect(mockCreateAccount).not.toHaveBeenCalled();
-    expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+    expect(mockContinueAsGuest).not.toHaveBeenCalled();
   },
 );
 
-it.each(['initialization', 'creation'] as const)(
-  'blocks duplicate creation during %s',
+it.each(['initialization', 'guest entry'] as const)(
+  'blocks guest entry during %s',
   (pending) => {
     if (pending === 'initialization') mockIdentity.initialized = false;
     else mockIdentity.busy = true;
@@ -199,20 +158,20 @@ it.each(['initialization', 'creation'] as const)(
     const button = screen.getByRole('button', { name: 'Continue' });
     expect(button).toBeDisabled();
     expect(
-      screen.getByRole('progressbar', { name: 'Creating your account' }),
+      screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
     ).toBeTruthy();
     fireEvent.press(button);
-    expect(mockCreateAccount).not.toHaveBeenCalled();
+    expect(mockContinueAsGuest).not.toHaveBeenCalled();
   },
 );
 
-it('keeps failed account creation retryable without adding account controls', async () => {
+it('keeps failed guest entry retryable without adding account controls', async () => {
   mockIdentity.message = 'Couldn’t connect. Please try again.';
   const screen = render(<AcceptanceScreen />);
   expect(screen.getByRole('alert')).toHaveTextContent(mockIdentity.message);
   expect(screen.queryByRole('button', { name: 'Account options' })).toBeNull();
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  await waitFor(() => expect(mockCreateAccount).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mockContinueAsGuest).toHaveBeenCalledTimes(1));
 });
 
 it('keeps first-use and post-deletion entry free of account controls', () => {
@@ -225,7 +184,7 @@ it('keeps first-use and post-deletion entry free of account controls', () => {
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
 });
 
-it('opens development documents without release notices and reports link failures without native details or account mutations', async () => {
+it('opens development documents without release notices and reports link failures without native details or identity mutations', async () => {
   mockLegal.development = true;
   jest
     .mocked(Linking.openURL)
@@ -250,7 +209,7 @@ it('opens development documents without release notices and reports link failure
     expect(Linking.openURL).toHaveBeenLastCalledWith(mockLegal.privacy),
   );
   expect(screen.queryByRole('alert')).toBeNull();
-  expect(mockCreateAccount).not.toHaveBeenCalled();
+  expect(mockContinueAsGuest).not.toHaveBeenCalled();
 });
 
 it('reports an unavailable document while preserving Continue', async () => {
@@ -263,11 +222,11 @@ it('reports an unavailable document while preserving Continue', async () => {
     ),
   );
   expect(Linking.openURL).not.toHaveBeenCalled();
-  expect(mockCreateAccount).not.toHaveBeenCalled();
+  expect(mockContinueAsGuest).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
 });
 
-it('clears an earlier document error before account creation and preserves creation failures', async () => {
+it('clears an earlier document error before guest entry and preserves entry failures', async () => {
   mockLegal.terms = null;
   const screen = render(<AcceptanceScreen />);
   fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
@@ -278,13 +237,13 @@ it('clears an earlier document error before account creation and preserves creat
   );
   fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
-  expect(mockCreateAccount).toHaveBeenCalledTimes(1);
+  expect(mockContinueAsGuest).toHaveBeenCalledTimes(1);
   mockIdentity.message = 'Couldn’t connect. Please try again.';
   screen.rerender(<AcceptanceScreen />);
   expect(screen.getByRole('alert')).toHaveTextContent(mockIdentity.message);
 });
 
-it.each(['account creation', 'another document'] as const)(
+it.each(['guest entry', 'another document'] as const)(
   'ignores an earlier document failure after starting %s',
   async (nextAction) => {
     let reject!: (reason: Error) => void;
@@ -296,7 +255,7 @@ it.each(['account creation', 'another document'] as const)(
     fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }), {
       preventDefault: jest.fn(),
     });
-    if (nextAction === 'account creation') {
+    if (nextAction === 'guest entry') {
       fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
       mockIdentity.message = 'Couldn’t connect. Please try again.';
       screen.rerender(<AcceptanceScreen />);
@@ -312,7 +271,7 @@ it.each(['account creation', 'another document'] as const)(
       reject(new Error('late native detail'));
       await Promise.resolve();
     });
-    if (nextAction === 'account creation')
+    if (nextAction === 'guest entry')
       expect(screen.getByRole('alert')).toHaveTextContent(mockIdentity.message);
     else expect(screen.queryByRole('alert')).toBeNull();
   },
