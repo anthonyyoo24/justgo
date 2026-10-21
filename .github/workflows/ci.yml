@@ -70,6 +70,7 @@ jobs:
     env: &database-test-env
       DATABASE_URL: postgresql://justgo_runtime:runtime-ci-only@localhost:5432/justgo_test
       MIGRATION_DATABASE_URL: postgresql://justgo_migrator:migration-ci-only@localhost:5432/justgo_test
+      JUSTGO_TEST_ADMIN_DATABASE_URL: postgresql://postgres:local-ci-only@localhost:5432/justgo_test
       DATABASE_SSL: disable
       JUSTGO_PG_BIN: /usr/lib/postgresql/17/bin
     services: &postgres-service

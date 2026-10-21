@@ -95,6 +95,10 @@ test('database and journey prerequisites share isolated roles without ignored en
     jobs.database,
     /justgo_migrator:migration-ci-only@localhost:5432\/justgo_test/,
   );
+  assert.match(
+    jobs.database,
+    /JUSTGO_TEST_ADMIN_DATABASE_URL: postgresql:\/\/postgres:local-ci-only@localhost:5432\/justgo_test/,
+  );
   assert.match(jobs.database, /DATABASE_SSL: disable/);
   assert.match(jobs.journeys, /^ {4}env: \*database-test-env$/m);
   assert.match(jobs.journeys, /^ {4}services: \*postgres-service$/m);

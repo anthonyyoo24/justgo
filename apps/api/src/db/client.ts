@@ -3,6 +3,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Config } from '../config.js';
+import { checkManagedSessionHelper } from './managed-session-check.js';
 
 export function poolOptions(config: Config): PoolConfig {
   if (!config.DATABASE_URL) throw new Error('Database is not configured');
@@ -72,14 +73,101 @@ export async function checkDatabase(pool: Pool): Promise<void> {
     throw new Error('Database readiness check failed');
 }
 
-/** Managed Auth fails closed until the reviewed, column-only live-session grant exists. */
+const managedRelations = {
+  users: {
+    columns: {
+      data_epoch: ['integer', true],
+      data_deleted_at: ['timestamp with time zone', false],
+    },
+    grants: ['select', 'insert', 'update'],
+  },
+  managed_auth_accounts: {
+    columns: { auth_user_id: ['uuid', true], user_id: ['uuid', true] },
+    grants: ['select', 'insert'],
+  },
+  managed_auth_sessions: {
+    columns: {
+      id: ['uuid', true],
+      auth_user_id: ['uuid', true],
+      user_id: ['uuid', true],
+      device_id: ['uuid', true],
+      expires_at: ['timestamp with time zone', true],
+      revoked_at: ['timestamp with time zone', false],
+    },
+    grants: ['select', 'insert', 'update'],
+  },
+  journal_versions: {
+    columns: {
+      user_id: ['uuid', true],
+      version_id: ['uuid', true],
+      attempt_id: ['uuid', true],
+      parents: ['uuid[]', true],
+      feeling_scale_version: ['integer', true],
+      reflection: ['jsonb', true],
+      context: ['jsonb', false],
+    },
+    grants: ['select', 'insert', 'delete'],
+  },
+  deleted_completion_ids: {
+    columns: { user_id: ['uuid', true], attempt_id: ['uuid', true] },
+    grants: ['select', 'insert'],
+  },
+  managed_auth_deletions: {
+    columns: {
+      user_id: ['uuid', true],
+      auth_user_id: ['uuid', true],
+      requested_at: ['timestamp with time zone', true],
+      completed_at: ['timestamp with time zone', false],
+    },
+    grants: ['select', 'insert', 'update'],
+  },
+} as const;
+
+type ManagedRelation = {
+  name: string;
+  kind: string;
+  rls: boolean;
+  forced: boolean;
+  columns: Record<string, [string, boolean]>;
+  select: boolean;
+  insert: boolean;
+  update: boolean;
+  delete: boolean;
+};
+
+/** Probe the deployed managed schema as the runtime role, without reading private rows. */
 export async function checkManagedAuthDatabase(pool: Pool): Promise<void> {
-  const result = await pool.query<{ available: boolean }>(`select
-    has_schema_privilege(current_user,'auth','USAGE')
-    and has_column_privilege(current_user,'auth.sessions','id','SELECT')
-    and has_column_privilege(current_user,'auth.sessions','user_id','SELECT')
-    and has_column_privilege(current_user,'auth.sessions','not_after','SELECT')
-    as available`);
-  if (!result.rows[0]?.available)
+  const schema = await pool.query<ManagedRelation>(
+    `select c.relname as name,c.relkind as kind,
+      c.relrowsecurity as rls,c.relforcerowsecurity as forced,
+      jsonb_object_agg(a.attname,jsonb_build_array(format_type(a.atttypid,a.atttypmod),a.attnotnull)) as columns,
+      has_table_privilege(current_user,c.oid,'SELECT') as select,
+      has_table_privilege(current_user,c.oid,'INSERT') as insert,
+      has_table_privilege(current_user,c.oid,'UPDATE') as update,
+      has_table_privilege(current_user,c.oid,'DELETE') as delete
+    from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    join pg_attribute a on a.attrelid=c.oid and a.attnum>0 and not a.attisdropped
+    where n.nspname='justgo' and c.relname=any($1::text[])
+    group by c.oid`,
+    [Object.keys(managedRelations)],
+  );
+  if (
+    !Object.entries(managedRelations).every(([name, expected]) => {
+      const relation = schema.rows.find((row) => row.name === name);
+      return (
+        relation?.kind === 'r' &&
+        relation.rls &&
+        relation.forced &&
+        expected.grants.every((grant) => relation[grant]) &&
+        Object.entries(expected.columns).every(
+          ([column, [type, notNull]]) =>
+            relation.columns?.[column]?.[0] === type &&
+            relation.columns[column]?.[1] === notNull,
+        )
+      );
+    })
+  )
     throw new Error('Managed Auth database readiness check failed');
+  // Hosted Auth ACLs are internal; only the audited private capability is used.
+  await checkManagedSessionHelper(pool);
 }
