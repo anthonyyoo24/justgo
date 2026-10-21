@@ -35,14 +35,21 @@ it('shows the data summary and document links without analytics, Sentry or devel
   ).toBeTruthy();
   expect(
     screen.getByText(
-      /Your saved activity, feelings and reflections are uploaded to your JustGO account/,
+      /You can use JustGO without signing in. Your challenge history, feelings and reflections stay on this phone/,
     ),
   ).toBeTruthy();
   expect(
     screen.getByText(
-      /Feelings and reflections are optional. We don’t sell your personal information/,
+      /If you choose to sign in, your account data syncs through JustGO’s cloud service/,
     ),
   ).toBeTruthy();
+  expect(
+    screen.getByText(/first sign-in includes the entries you’ve saved/),
+  ).toBeTruthy();
+  expect(
+    screen.getByText(/Your journal remains available when you log out/),
+  ).toBeTruthy();
+  expect(screen.queryByText(/choose whether to add/)).toBeNull();
   expect(
     screen.queryByText(/Sentry|Analytics|PostHog|Development legal drafts/i),
   ).toBeNull();
@@ -55,13 +62,13 @@ it('shows the data summary and document links without analytics, Sentry or devel
 it('keeps both legal actions usable while saving and blocks duplicate account creation', () => {
   const props = actions();
   const screen = render(
-    <AcceptanceView {...props} busy busyLabel="Creating your account" />,
+    <AcceptanceView {...props} busy busyLabel="Preparing your challenges" />,
   );
   const accept = screen.getByRole('button', { name: 'Continue' });
   expect(accept).toBeDisabled();
   expect(accept.props.accessibilityState.busy).toBe(true);
   expect(
-    screen.getByRole('progressbar', { name: 'Creating your account' }),
+    screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
   ).toBeTruthy();
   fireEvent.press(accept);
   expect(props.onContinue).not.toHaveBeenCalled();
@@ -76,7 +83,7 @@ it('restores Continue after account creation is no longer busy', () => {
   const screen = render(<AcceptanceView {...props} busy />);
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   expect(
-    screen.getByRole('progressbar', { name: 'Creating your account' }),
+    screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
   ).toBeTruthy();
   screen.rerender(<AcceptanceView {...props} />);
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();

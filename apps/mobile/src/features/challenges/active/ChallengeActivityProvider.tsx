@@ -25,11 +25,14 @@ const Context = createContext<Activity | null>(null);
 
 /** Share unfinished activity across Home and its native route, only in memory. */
 export function ChallengeActivityProvider({ children }: PropsWithChildren) {
-  const { account } = useIdentity();
+  const identity = useIdentity();
+  const owner =
+    identity.account?.userId ??
+    ('collectionId' in identity && typeof identity.collectionId === 'string'
+      ? identity.collectionId
+      : null);
   return (
-    <AccountActivity key={account?.userId ?? 'disconnected'}>
-      {children}
-    </AccountActivity>
+    <AccountActivity key={owner ?? 'disconnected'}>{children}</AccountActivity>
   );
 }
 

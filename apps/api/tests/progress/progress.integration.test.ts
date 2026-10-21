@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import {
   type AccessResponse,
-  type ProgressDayResponse,
+  type CompletionProgressDayResponse,
   type ProgressSummary,
 } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
@@ -158,7 +158,7 @@ describe('owner-scoped Progress history', () => {
     ).toBe(1);
   });
 
-  it('orders and pages starts exactly, keeps historical travel/DST dates frozen and returns only inline submissions', async () => {
+  it('orders and pages starts exactly, keeps historical travel/DST dates frozen and omits retained private submissions', async () => {
     const a = await account();
     const date = '2024-11-03';
     const ids = [
@@ -184,7 +184,7 @@ describe('owner-scoped Progress history', () => {
       `/v1/attempts?date=${date}&limit=1`,
     );
     expect(first.statusCode, first.body).toBe(200);
-    const page1 = first.json() as ProgressDayResponse;
+    const page1 = first.json() as CompletionProgressDayResponse;
     expect(page1).toMatchObject({
       date,
       totalReps: 4,
@@ -193,7 +193,6 @@ describe('owner-scoped Progress history', () => {
     expect(page1.entries[0]).not.toHaveProperty('elapsedSeconds');
     expect(page1.entries[0]).toMatchObject({
       id: ids[0],
-      reflection: null,
       startTimeZone: null,
       displayTimeZone: 'America/Toronto',
       levelId: 'level-1',
@@ -205,34 +204,33 @@ describe('owner-scoped Progress history', () => {
       a.sessionToken,
       `/v1/attempts?date=${date}&limit=1&cursor=${page1.nextCursor}`,
     );
-    const page2 = second.json() as ProgressDayResponse;
+    const page2 = second.json() as CompletionProgressDayResponse;
+    expect(second.body).not.toContain('Saved note');
+    expect(page2.entries[0]).not.toHaveProperty('reflection');
     expect(page2.entries[0]).toMatchObject({
       id: ids[1],
-      reflection: {
-        feeling: 'a_little_better',
-        text: 'Saved note',
-        revision: 6,
-      },
     });
     const third = await request(
       a.sessionToken,
       `/v1/attempts?date=${date}&limit=1&cursor=${page2.nextCursor}`,
     );
-    const page3 = third.json() as ProgressDayResponse;
+    const page3 = third.json() as CompletionProgressDayResponse;
     expect(page3.entries[0]).toMatchObject({
       id: ids[2],
-      reflection: null,
     });
     expect(page3.nextCursor).not.toBeNull();
     const fourth = await request(
       a.sessionToken,
       `/v1/attempts?date=${date}&limit=1&cursor=${page3.nextCursor}`,
     );
-    expect((fourth.json() as ProgressDayResponse).entries[0]).toMatchObject({
+    expect(
+      (fourth.json() as CompletionProgressDayResponse).entries[0],
+    ).toMatchObject({
       id: ids[3],
-      reflection: null,
     });
-    expect((fourth.json() as ProgressDayResponse).nextCursor).toBeNull();
+    expect(
+      (fourth.json() as CompletionProgressDayResponse).nextCursor,
+    ).toBeNull();
     const month = await request(
       a.sessionToken,
       '/v1/progress/calendar?month=2024-11',

@@ -8,9 +8,9 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { AccessibilityInfo, AppState } from 'react-native';
-import { MotionContext } from './motion';
+import { MotionContext, motionPreferenceKey } from './motion';
 
-export const motionPreferenceKey = 'justgo:reduce-motion:v1';
+export { motionPreferenceKey } from './motion';
 export type MotionStorage = Pick<typeof AsyncStorage, 'getItem' | 'setItem'>;
 
 // This accessibility preference belongs to the installation, independently of
@@ -85,8 +85,7 @@ export function MotionPreferencesProvider({
 
   const setReduced = useCallback(
     async (enabled: boolean) => {
-      if (!alive.current || loading || systemReduced !== false || busy.current)
-        return;
+      if (!alive.current || loading || busy.current) return;
       busy.current = true;
       const currentGeneration = generation.current;
       setSaving(true);
@@ -105,13 +104,14 @@ export function MotionPreferencesProvider({
         }
       }
     },
-    [loading, adapter, systemReduced],
+    [loading, adapter],
   );
   const value = useMemo(
     () => ({
       // A phone-level preference always wins. Avoid initial moving frames while
       // either accessibility settings or the saved preference are still loading.
       reduceMotion: loading || systemReduced !== false || requested,
+      requestedReduceMotion: requested,
       systemReduced,
       loading,
       saving,

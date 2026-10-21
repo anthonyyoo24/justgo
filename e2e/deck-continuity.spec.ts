@@ -1,20 +1,12 @@
 import {
   challengeCardSchema,
-  sessionCreateSchema,
-  sessionResponseSchema,
   venueSchema,
-  type SessionCreate,
   type Venue,
 } from '@justgo/contracts';
 import type { Page } from '@playwright/test';
 import { z } from 'zod';
 import { test, expect } from './support/fixtures';
-import { journeyApiUrl } from './support/environment';
-import {
-  leaveAccountScreens,
-  reloadForAccountRecovery,
-} from './support/account-navigation';
-import { continueFromTerms } from './support/acceptance';
+import { signInFixture } from './support/managed-account';
 
 const savedDeckSchema = z.object({
   version: z.literal(1),
@@ -25,56 +17,32 @@ const savedDeckSchema = z.object({
 
 async function createAccount(page: Page) {
   await page.goto('/recovery');
-  const creating = page.waitForRequest(
-    (request) =>
-      request.url() === `${journeyApiUrl}/v1/sessions` &&
-      request.method() === 'POST',
-  );
-  const created = page.waitForResponse(
-    (response) =>
-      response.url() === `${journeyApiUrl}/v1/sessions` &&
-      response.request().method() === 'POST',
-  );
-  await page
-    .getByRole('button', { name: 'Create a new account', exact: true })
-    .click();
-  await continueFromTerms(page);
-  const proof = sessionCreateSchema.parse((await creating).postDataJSON());
-  if (proof.kind !== 'bootstrap')
-    throw new Error('Expected disposable bootstrap');
-  const response = await created;
-  expect(response.ok()).toBe(true);
-  const account = sessionResponseSchema.parse(await response.json());
-  await expect(
-    page.getByText('Connected', { exact: true }).filter({ visible: true }),
-  ).toBeVisible();
-  await leaveAccountScreens(page);
-  await expect(
-    page.getByRole('button', { name: 'Accept challenge', exact: true }),
-  ).toBeVisible();
-  return { ...account, proof };
+  const signOut = page.getByRole('button', { name: 'Log out', exact: true });
+  const signIn = page.getByRole('switch', {
+    name: 'Apple',
+    exact: true,
+  });
+  // Both states use the same switch; hydration enables it after restoring identity.
+  await expect(signIn).toBeEnabled();
+  if (await signOut.isVisible()) {
+    await signOut.click();
+    await page
+      .getByRole('button', { name: 'Confirm log out', exact: true })
+      .click();
+    await expect(signIn).toBeEnabled();
+  }
+  return signInFixture(page, { subjectHandle: null });
 }
-
-async function recover(
-  page: Page,
-  proof: Extract<SessionCreate, { kind: 'bootstrap' }>,
-) {
-  // Web identity is deliberately memory-only; the phone's deck storage survives.
-  await reloadForAccountRecovery(page);
+async function recover(page: Page, subjectHandle: string) {
+  await page.goto('/recovery');
+  await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Recover an existing account', exact: true })
-    .click();
-  await page.getByLabel('Recovery key', { exact: true }).fill(proof.credential);
-  await page
-    .getByRole('button', { name: 'Recover with key', exact: true })
+    .getByRole('button', { name: 'Confirm log out', exact: true })
     .click();
   await expect(
-    page.getByText('Connected', { exact: true }).filter({ visible: true }),
-  ).toBeVisible();
-  await leaveAccountScreens(page);
-  await expect(
-    page.getByRole('button', { name: 'Accept challenge', exact: true }),
-  ).toBeVisible();
+    page.getByRole('switch', { name: 'Apple', exact: true }),
+  ).toBeEnabled();
+  await signInFixture(page, { subjectHandle });
 }
 
 async function frontCard(page: Page) {
@@ -166,7 +134,7 @@ test('saved venue decks resume their rotated front cards after reload and stay s
   const saved = await savedDeck(page, account.userId);
   expect(saved?.orders.streets?.[0]).toBe(streets.id);
 
-  await recover(page, account.proof);
+  await recover(page, account.subjectHandle);
   await expect(
     page.getByRole('tab', { name: 'Gym', exact: true }),
   ).toHaveAttribute('aria-selected', 'true');
@@ -194,7 +162,7 @@ test('saved venue decks resume their rotated front cards after reload and stay s
   await expectSavedFront(page, other.userId, 'streets', otherFront.id);
   expect(await savedDeck(page, account.userId)).toEqual(saved);
 
-  await recover(page, account.proof);
+  await recover(page, account.subjectHandle);
   await expect(
     page.getByRole('tab', { name: 'Gym', exact: true }),
   ).toHaveAttribute('aria-selected', 'true');

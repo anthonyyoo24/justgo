@@ -18,6 +18,7 @@ import type {
   ProgressCalendar,
   ProgressDayResponse,
 } from '@justgo/contracts';
+import { memoryLocalJournal } from '../local-journal';
 import { AccountRepository } from '../../src/data/activity/repository';
 import {
   MemoryStorage,
@@ -106,6 +107,7 @@ async function repository(accountId = owner) {
   const repo = new AccountRepository({
     accountId,
     storage,
+    localJournal: memoryLocalJournal(accountId, storage),
     transport,
     today,
     timeZone: zone,

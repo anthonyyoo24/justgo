@@ -1,6 +1,6 @@
 import {
-  attemptResultSchema,
-  patchAttemptResponseSchema,
+  completionAttemptResultSchema,
+  createAttemptSchema,
   type Attempt,
   type CreateAttempt,
   type PatchAttempt,
@@ -24,21 +24,24 @@ export function createJournalTransport(
   return {
     create: async (body, signal) => {
       if (!client.ownsAccount(accountId)) throw new ApiError('ACCOUNT_CHANGED');
-      return (
-        await client.request('/v1/attempts', attemptResultSchema, {
+      // Runtime validation prevents accidentally passing a local record, private
+      // fields, or content-derived metadata into the HTTP request.
+      const input = createAttemptSchema.safeParse(body);
+      if (!input.success) throw new ApiError('INVALID_REQUEST');
+      const response = await client.request(
+        '/v1/attempts',
+        completionAttemptResultSchema,
+        {
           method: 'POST',
-          body,
+          body: input.data,
           signal,
-        })
-      ).attempt;
+        },
+      );
+      return { ...response.attempt, reflection: null };
     },
-    patch: async (id, body, signal) => {
+    patch: async () => {
       if (!client.ownsAccount(accountId)) throw new ApiError('ACCOUNT_CHANGED');
-      return client.request(`/v1/attempts/${id}`, patchAttemptResponseSchema, {
-        method: 'PATCH',
-        body,
-        signal,
-      });
+      throw new ApiError('PRIVATE_JOURNAL_LOCAL');
     },
   };
 }

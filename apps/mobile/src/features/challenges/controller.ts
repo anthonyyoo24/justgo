@@ -65,6 +65,7 @@ export class ChallengeController {
       repository: () => AccountRepository | null;
       id?: () => string;
       random?: () => number;
+      readCatalog?: (signal: AbortSignal) => Promise<Catalog>;
     },
   ) {
     this.id = options.id ?? randomUUID;
@@ -155,7 +156,8 @@ export class ChallengeController {
             });
           return;
         }
-        const catalog = await readChallengeCatalog(this.client, abort.signal);
+        const catalog = await (this.options.readCatalog?.(abort.signal) ??
+          readChallengeCatalog(this.client, abort.signal));
         if (generation !== this.generation) return;
         if (!this.adoptCatalog(catalog)) throw new Error('INVALID_CATALOG');
         await repository.cacheCatalog(catalog);

@@ -8,6 +8,43 @@ import { useWelcomeTransition } from '../identity/welcome/WelcomeTransition';
 /** Account creation is an explicit action; reading this route cannot create an account. */
 export function AcceptanceScreen() {
   const { identity } = useRuntime();
+  return 'continueAsGuest' in identity ? (
+    <GuestAcceptanceScreen />
+  ) : (
+    <LegacyAcceptanceScreen />
+  );
+}
+
+function GuestAcceptanceScreen() {
+  const { identity } = useRuntime();
+  const state = useIdentity();
+  const { linkError, clearLinkError, ...links } = useAcceptanceLinks();
+  const awaitingPreparation = useWelcomeTransition();
+  if (state.deletionStatus === 'pending' || state.deletionStatus === 'cleanup')
+    return <Redirect href="/delete-account" />;
+  const entered = !state.needsWelcome && state.deletionStatus !== 'deleted';
+  if (entered && !awaitingPreparation) return <Redirect href="/access" />;
+  return (
+    <AcceptanceView
+      busy={state.busy || !state.initialized || entered}
+      error={
+        linkError ||
+        (state.message === 'Your account has been deleted.'
+          ? ''
+          : state.message)
+      }
+      {...links}
+      onContinue={() => {
+        clearLinkError();
+        if ('continueAsGuest' in identity && !state.busy && state.initialized)
+          void identity.continueAsGuest();
+      }}
+    />
+  );
+}
+
+function LegacyAcceptanceScreen() {
+  const { identity } = useRuntime();
   const state = useIdentity();
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -37,7 +74,7 @@ export function AcceptanceScreen() {
     clearLinkError();
     if (creatingNew || !identity.getSnapshot().account) {
       // Identity owns persistence, network errors and exact-proof retries.
-      await identity.createAccount();
+      if ('createAccount' in identity) await identity.createAccount();
     }
   };
   return (

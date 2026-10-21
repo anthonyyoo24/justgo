@@ -11,6 +11,7 @@ import { useWelcomePreparation } from './welcome-preparation';
 
 let mockDeleted: 'deleted' | null = 'deleted';
 let mockAccount: { userId: string } | null = null;
+let mockCollectionId: string | null = null;
 let mockPending = true;
 let mockVerified = false;
 let mockNeedsWelcome = false;
@@ -33,6 +34,7 @@ jest.mock('../../providers/AppProvider', () => ({
   useIdentity: () => ({
     deletionStatus: mockDeleted,
     account: mockAccount,
+    collectionId: mockCollectionId,
     needsWelcome: mockNeedsWelcome,
   }),
   useAccess: () => ({ isPending: mockPending, verified: mockVerified }),
@@ -43,6 +45,7 @@ let sequence: number;
 beforeEach(() => {
   mockDeleted = 'deleted';
   mockAccount = null;
+  mockCollectionId = null;
   mockPending = true;
   mockVerified = false;
   mockNeedsWelcome = false;
@@ -232,6 +235,27 @@ it('prepares a fresh installation after Continue creates the account and access 
   paint();
   paint();
   expect(screen.queryByTestId('cover')).toBeNull();
+});
+
+it('reveals the prepared guest deck after Continue without a signed-in account', () => {
+  mockDeleted = null;
+  mockNeedsWelcome = true;
+  const screen = render(entry());
+  act(() => mockBeginEntry());
+  mockNeedsWelcome = false;
+  mockCollectionId = 'local-guest';
+  mockPending = false;
+  mockVerified = true;
+  screen.rerender(entry());
+  expect(screen.getByTestId('cover')).toBeTruthy();
+  act(() => mockCover!.onShow());
+  expect(mockPreparation.active).toBe(true);
+  act(() => mockPreparation.markReady());
+  paint();
+  paint();
+  expect(screen.queryByTestId('cover')).toBeNull();
+  expect(screen.getByText('Account navigation')).toBeTruthy();
+  expect(mockAccount).toBeNull();
 });
 
 it('keeps fresh-install recovery on account navigation without starting a welcome deck handoff', () => {

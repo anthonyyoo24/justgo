@@ -29,6 +29,19 @@ if (process.env.JUSTGO_JOURNEY_FIXTURES === '1') {
     if (
       platform === 'web' &&
       context.originModulePath ===
+        path.join(
+          configRoot,
+          'src/app-support/identity/auth/create-managed-identity.ts',
+        ) &&
+      moduleName === './managed-auth'
+    )
+      return {
+        type: 'sourceFile',
+        filePath: path.join(configRoot, 'test-support/journey-managed-auth.ts'),
+      };
+    if (
+      platform === 'web' &&
+      context.originModulePath ===
         path.join(configRoot, 'src/app-support/providers/AppProvider.tsx') &&
       moduleName === '../../data/activity/persistence/storage'
     ) {
@@ -37,6 +50,19 @@ if (process.env.JUSTGO_JOURNEY_FIXTURES === '1') {
         filePath: path.join(configRoot, 'test-support/journey-storage.ts'),
       };
     }
+    if (
+      platform === 'web' &&
+      context.originModulePath ===
+        path.join(configRoot, 'src/data/journal/factory.ts') &&
+      moduleName === './storage'
+    )
+      return {
+        type: 'sourceFile',
+        filePath: path.join(
+          configRoot,
+          'test-support/journey-local-journal.ts',
+        ),
+      };
     return normalResolve
       ? normalResolve(context, moduleName, platform)
       : context.resolveRequest(context, moduleName, platform);

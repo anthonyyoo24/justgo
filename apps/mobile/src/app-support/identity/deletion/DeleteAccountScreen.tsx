@@ -27,19 +27,20 @@ export function DeleteAccountScreen() {
             <>
               <Text style={styles.body}>
                 Permanently delete your JustGO account, completed challenges,
-                feelings and reflections. This includes activity still waiting
-                to upload from this phone.
+                feelings and reflections on this phone, in JustGO’s cloud and in
+                associated iCloud copies. This includes completions still
+                waiting to upload. Files you downloaded to Files or iCloud Drive
+                remain under your control.
               </Text>
               <Text style={styles.body}>
-                All devices lose access, and recovery keys and transfer codes
-                stop working. This cannot be undone. You can export your data
-                from Settings first.
+                All signed-in devices lose access. This cannot be undone. You
+                can download your data from Settings → Data first.
               </Text>
               <Text style={styles.body}>
-                Limited security records remain to block old recovery keys.
-                Restricted backups may retain copies until they expire. Files
-                you exported and copies on offline devices are not erased by
-                this action.
+                Limited security records remain to prevent restoring deleted
+                accounts. Restricted backups may retain copies until they
+                expire. Files you exported and copies on offline devices are not
+                erased by this action.
               </Text>
               <Text style={styles.body}>
                 Deleting your account does not cancel an Apple subscription. You

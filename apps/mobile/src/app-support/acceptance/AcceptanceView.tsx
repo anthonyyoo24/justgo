@@ -19,7 +19,7 @@ import { colors, fontFamilies, layout } from '../../theme/tokens';
 export function AcceptanceView({
   busy = false,
   error = '',
-  busyLabel = 'Creating your account',
+  busyLabel = 'Preparing your challenges',
   actionLabel = 'Continue',
   insets: measuredInsets,
   termsUrl,
@@ -92,10 +92,12 @@ export function AcceptanceView({
               Your data is yours
             </Text>
             <Text style={styles.paragraph}>
-              Your saved activity, feelings and reflections are uploaded to your
-              JustGO account so you can recover your history on another device.
-              Feelings and reflections are optional. We don’t sell your personal
-              information.
+              You can use JustGO without signing in. Your challenge history,
+              feelings and reflections stay on this phone. If you choose to sign
+              in, your account data syncs through JustGO’s cloud service. Your
+              first sign-in includes the entries you’ve saved on this phone.
+              Your journal remains available when you log out. We don’t sell
+              your personal information.
             </Text>
           </View>
           <View style={styles.spacer} />

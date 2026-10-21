@@ -7,6 +7,10 @@ import { createDatabase, checkDatabase } from '../src/db/client.js';
 import { readConfig } from '../src/config.js';
 import { IdentityService } from '../src/identity/service.js';
 import {
+  FixtureProviders,
+  fixtureProviderRoutes,
+} from './fixture-providers.js';
+import {
   journeyApiUrl,
   journeyAppUrl,
 } from '../../../e2e/support/environment.js';
@@ -19,11 +23,12 @@ if (
 )
   throw new Error('Challenge fixtures require local justgo_test');
 const database = createDatabase(config);
+const providers = new FixtureProviders();
 // Only this server can allocate cleanup-owned accounts. Requests cannot nominate IDs.
 const allocatedAccounts = new Set<string>();
 const fixtureRateKey = `local-challenge-fixtures:${randomUUID()}`;
 // The loopback server owns only these two buckets; never expose its HMAC secret.
-const rateBucketKeys = ['identity', 'recovery'].map((lane) =>
+const rateBucketKeys = ['identity', 'recovery', 'managed-auth'].map((lane) =>
   createHmac('sha256', fixtureRateKey)
     .update(`${lane}:127.0.0.1`)
     .digest('hex'),
@@ -35,6 +40,9 @@ const app = buildApp({
     // Keep existing limits and isolate this run from prior fixture sessions.
     rateKey: fixtureRateKey,
     rateLimit: 300,
+    managedAuthVerifier: providers.verify,
+    managedLiveSessionReader: providers.live,
+    managedAuthDeletion: providers.erase,
     newUserId: () => {
       const id = randomUUID();
       allocatedAccounts.add(id);
@@ -44,11 +52,19 @@ const app = buildApp({
   origins: [journeyAppUrl, journeyAppUrl.replace('127.0.0.1', 'localhost')],
   checkDatabase: () => checkDatabase(database.pool),
   uploadEligibilityReader: async () => 'eligible',
+  guestAccessReader: async () => ({
+    status: 'verified',
+    checkedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+  }),
   entitlementReader: async () => ({
     status: 'verified',
     checkedAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 3600000).toISOString(),
   }),
+});
+app.register(async (scope) => fixtureProviderRoutes(scope, providers), {
+  prefix: '/__fixtures',
 });
 app.get('/__fixtures/accounts', async () => ({
   userIds: [...allocatedAccounts],

@@ -29,6 +29,7 @@ export function identityRoutes(
   app: FastifyInstance,
   service: IdentityService,
   onVercel = false,
+  legacyIdentityEnabled = true,
 ) {
   app.addHook('onRequest', async (request) => {
     // The connection address is authoritative; arbitrary forwarding headers are not trusted.
@@ -64,6 +65,11 @@ export function identityRoutes(
     },
     async (request) => {
       const data = parse(sessionCreateSchema, request.body);
+      if (
+        !legacyIdentityEnabled &&
+        (data.kind === 'bootstrap' || data.kind === 'transfer')
+      )
+        throw new ApiError('CREDENTIAL_REJECTED', 410);
       let session;
       switch (data.kind) {
         case 'bootstrap':
@@ -85,6 +91,8 @@ export function identityRoutes(
   app.get('/sessions/current', async (request) =>
     sessionResponseSchema.parse(await service.me(bearer(request))),
   );
+  // Existing-proof recovery/renewal remains while unlinked installations migrate.
+  if (!legacyIdentityEnabled) return;
   app.get('/devices', async (request) =>
     devicesResponseSchema.parse(await service.listDevices(bearer(request))),
   );

@@ -1,499 +1,239 @@
-import type { Locator } from '@playwright/test';
-import { sessionResponseSchema } from '@justgo/contracts';
-import { randomUUID } from 'node:crypto';
+import type { Page } from '@playwright/test';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
-import { leaveAccountScreens } from './support/account-navigation';
-import { continueFromTerms } from './support/acceptance';
+import {
+  completeChallenge,
+  continueAsGuest,
+  signInFixture,
+} from './support/managed-account';
+import { localJournalEntries } from './support/journal';
 
-async function expectCenteredSpinner(button: Locator, label: string) {
-  const spinner = button.getByRole('progressbar', {
-    name: `${label} in progress`,
-  });
-  await expect(spinner).toBeVisible();
-  await expect(button).toBeDisabled();
-  await expect(button.getByText(label, { exact: true })).toHaveCount(0);
-  const [buttonBox, spinnerBox] = await Promise.all([
-    button.boundingBox(),
-    spinner.boundingBox(),
-  ]);
-  expect(buttonBox).not.toBeNull();
-  expect(spinnerBox).not.toBeNull();
-  expect(
-    Math.abs(
-      spinnerBox!.x +
-        spinnerBox!.width / 2 -
-        (buttonBox!.x + buttonBox!.width / 2),
+async function signOut(page: Page) {
+  await page.goto('/recovery');
+  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await expect(
+    page.getByText(
+      'Log out? Your saved data stays on this phone and account sync stops.',
+      { exact: true },
     ),
-  ).toBeLessThan(1.5);
-  expect(
-    Math.abs(
-      spinnerBox!.y +
-        spinnerBox!.height / 2 -
-        (buttonBox!.y + buttonBox!.height / 2),
-    ),
-  ).toBeLessThan(1.5);
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Confirm log out', exact: true })
+    .click();
+  await expect(
+    page.getByText('Signed out. Your saved data remains on this phone.', {
+      exact: true,
+    }),
+  ).toBeVisible();
 }
 
-test('a real account renews and opens its challenge catalog', async ({
+test('provider login, logout and returning login preserve local history and isolate different account collections', async ({
   page,
   fixtureDatabase,
 }) => {
-  await page.goto('/recovery');
-  const createdResponse = page.waitForResponse(
-    (response) =>
-      response.url() === `${journeyApiUrl}/v1/sessions` &&
-      response.request().method() === 'POST',
-  );
-  await page
-    .getByRole('button', { name: 'Create a new account', exact: true })
-    .click();
-  await continueFromTerms(page);
-  const created = await createdResponse;
-  expect(created.ok()).toBe(true);
-  const account = sessionResponseSchema.parse(await created.json());
-  await expect(
-    page.getByText('Connected', { exact: true }).filter({ visible: true }),
-  ).toBeVisible();
-
-  await page
-    .getByRole('link', { name: 'Troubleshooting', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Troubleshooting', exact: true }),
-  ).toBeVisible();
-  const recoveryLink = page.getByRole('link', {
-    name: 'Recover an existing account',
-    exact: true,
-  });
-  await expect(recoveryLink).toBeEnabled();
-  await expect(recoveryLink).toHaveAttribute('href', '/account/recover');
-  // Background refresh can replace the disabled row during navigation. Wait for
-  // usable controls, then retry fresh measurements instead of asserting one frame.
+  const first = await signInFixture(page, { provider: 'apple' });
+  await completeChallenge(page, 'Disposable first account writing');
   await expect
     .poll(
-      async () => {
-        const labels = await Promise.all(
-          [
-            'Refresh account',
-            'Renew this session',
-            'Recover an existing account',
-          ].map((name) =>
-            page
-              .getByText(name, { exact: true })
-              .filter({ visible: true })
-              .boundingBox(),
-          ),
-        );
-        if (!labels.every((label) => label !== null)) return Infinity;
-        const leftEdges = labels.map((label) => label.x);
-        return Math.max(...leftEdges) - Math.min(...leftEdges);
-      },
-      { message: 'All three troubleshooting labels are visible and aligned' },
+      async () =>
+        (
+          await fixtureDatabase.query(
+            'select count(*)::int as n from justgo.attempts where user_id=$1',
+            [first.userId],
+          )
+        ).rows[0].n,
     )
-    .toBeLessThan(1);
-  await recoveryLink.press('Enter');
-  await expect(page.getByLabel('Recovery key', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  const renewedResponse = page.waitForResponse(
-    (response) =>
-      response.url() === `${journeyApiUrl}/v1/sessions` &&
-      response.request().method() === 'POST',
-  );
-  await page
-    .getByRole('button', { name: 'Renew this session', exact: true })
-    .click();
-  const renewed = await renewedResponse;
-  expect(renewed.ok()).toBe(true);
-  const renewal = sessionResponseSchema.parse(await renewed.json());
-  expect(renewal.userId).toBe(account.userId);
-  expect(renewal.sessionId).not.toBe(account.sessionId);
-
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await leaveAccountScreens(page);
-  await expect(
-    page.getByText('Find a challenge', { exact: true }),
-  ).toBeVisible();
+    .toBe(1);
+  await expect
+    .poll(
+      async () =>
+        (
+          await fixtureDatabase.query(
+            'select count(*)::int as n from justgo.journal_versions where user_id=$1',
+            [first.userId],
+          )
+        ).rows[0].n,
+    )
+    .toBe(1);
+  await page.reload();
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
-  await page.getByRole('tab', { name: 'Progress', exact: true }).click();
+  const oldEntries = await localJournalEntries(page, first.userId);
+  expect(oldEntries).toHaveLength(1);
+  await signOut(page);
+  const revoked = await page.request.get(`${journeyApiUrl}/v1/auth/session`, {
+    headers: { authorization: `Bearer ${first.token}` },
+  });
+  expect(revoked.status()).toBe(401);
+  expect(await localJournalEntries(page, first.userId)).toEqual(oldEntries);
+  await page.goto('/progress');
   await expect(page.getByText('Total reps', { exact: true })).toBeVisible();
-
-  const records = await fixtureDatabase.query<{ count: string }>(
-    'select count(*)::text as count from justgo.attempts where user_id=$1',
-    [account.userId],
+  const signedOut = await page.evaluate(
+    () =>
+      JSON.parse(
+        localStorage.getItem('justgo.identity.managed.v1') ?? '{}',
+      ) as { collection: { id: string }; account: unknown },
   );
-  expect(records.rows[0]?.count).toBe('0');
-});
+  expect(signedOut).toMatchObject({
+    collection: { id: first.userId },
+    account: null,
+  });
 
-test('a connected receiving phone confirms transfer, waits for approval and keeps both account histories separate', async ({
-  page,
-  context,
-  fixtureDatabase,
-}) => {
-  const receiver = await context.newPage();
-  try {
-    const accounts = [];
-    for (const phone of [page, receiver]) {
-      await phone.goto('/recovery');
-      const creating = phone.waitForResponse(
-        (response) =>
-          response.url() === `${journeyApiUrl}/v1/sessions` &&
-          response.request().method() === 'POST',
-      );
-      await phone
-        .getByRole('button', { name: 'Create a new account', exact: true })
-        .click();
-      await continueFromTerms(phone);
-      accounts.push(sessionResponseSchema.parse(await (await creating).json()));
-      await expect(
-        phone.getByText('Connected', { exact: true }).filter({ visible: true }),
-      ).toBeVisible();
-    }
-    const [source, originalReceiver] = accounts;
-    expect(source!.userId).not.toBe(originalReceiver!.userId);
-    const histories = accounts.map((account, index) => ({
-      userId: account.userId,
-      id: randomUUID(),
-      text: `Disposable transfer history ${index + 1}`,
-    }));
-    for (const history of histories)
+  const second = await signInFixture(page, {
+    provider: 'google',
+    subjectHandle: null,
+  });
+  expect(second.userId).not.toBe(first.userId);
+  await page.goto('/progress');
+  await expect(page.getByText('Total reps', { exact: true })).toBeVisible();
+  expect(await localJournalEntries(page, second.userId)).toEqual([]);
+  expect(await localJournalEntries(page, first.userId)).toEqual(oldEntries);
+  expect(
+    (
       await fixtureDatabase.query(
-        `insert into justgo.attempts
-        (user_id,id,venue_id,challenge_id,level_id,started_at,activity_date,legacy_display_time_zone,reflection_feeling,reflection_text,reflection_revision)
-        select $1,$2,v.venue_id,c.id,c.level_id,'2024-11-03T05:30:00Z','2024-11-03','America/Toronto','a_little_better',$3,1
-        from justgo.venue_cards v join justgo.challenges c on c.id=v.challenge_id order by v.position limit 1`,
-        [history.userId, history.id, history.text],
-      );
-
-    await page
-      .getByRole('link', { name: 'Move to another phone', exact: true })
-      .click();
-    await expect(
-      page.getByText(/Recovery keys → Recover an existing account/),
-    ).toBeVisible();
-    await receiver.getByRole('button', { name: 'Back', exact: true }).click();
-    await expect(receiver).toHaveURL(/\/settings$/);
-    await receiver
-      .getByRole('link', { name: 'Account & recovery', exact: true })
-      .click();
-    await receiver
-      .getByRole('link', { name: 'Recovery keys', exact: true })
-      .click();
-    await receiver
-      .getByRole('link', { name: 'Recover an existing account', exact: true })
-      .click();
-    const transferButton = receiver.getByRole('button', {
-      name: 'Transfer from another device',
-      exact: true,
-    });
-    await transferButton.click();
-    await expect(
-      receiver.getByText(/Transfer an account from another device/),
-    ).toBeVisible();
-    await receiver.getByRole('button', { name: 'Cancel', exact: true }).click();
-    const originalSession = await fixtureDatabase.query(
-      'select revoked_at from justgo.device_sessions where id=$1 and user_id=$2',
-      [originalReceiver!.sessionId, originalReceiver!.userId],
-    );
-    expect(originalSession.rows).toEqual([{ revoked_at: null }]);
-    await expect(
-      receiver.getByText(/Transfer an account from another device/),
-    ).toHaveCount(0);
-
-    const transferIds: string[] = [];
-    let releaseStart!: () => void,
-      enteredStart!: () => void,
-      handledStart!: () => void;
-    const startGate = new Promise<void>((resolve) => {
-      releaseStart = resolve;
-    });
-    const startSeen = new Promise<void>((resolve) => {
-      enteredStart = resolve;
-    });
-    const startHandled = new Promise<void>((resolve) => {
-      handledStart = resolve;
-    });
-    await receiver.route(`${journeyApiUrl}/v1/transfers`, async (route) => {
-      const body = JSON.parse(route.request().postData()!) as { id: string };
-      transferIds.push(body.id);
-      if (transferIds.length === 1) {
-        enteredStart();
-        await startGate;
-        try {
-          await route.abort('internetdisconnected');
-        } finally {
-          handledStart();
-        }
-      } else await route.continue();
-    });
-    await transferButton.click();
-    await receiver
-      .getByRole('button', { name: 'Confirm', exact: true })
-      .click();
-    try {
-      await startSeen;
-      const confirm = receiver.getByRole('button', {
-        name: 'Confirm',
-        exact: true,
-      });
-      await expectCenteredSpinner(confirm, 'Confirm');
-      await expect(
-        receiver.getByLabel('Recovery key', { exact: true }),
-      ).toBeVisible();
-      await expect(receiver.getByRole('progressbar')).toHaveCount(1);
-      await expect(receiver.getByText(/Enter this transfer code/)).toHaveCount(
-        0,
-      );
-    } finally {
-      releaseStart();
-      await startHandled;
-    }
-    await expect(
-      receiver.getByText(/Couldn’t connect/).filter({ visible: true }),
-    ).toBeVisible();
-    await receiver
-      .getByRole('button', { name: 'Retry connection', exact: true })
-      .filter({ visible: true })
-      .click();
-    const code = receiver
-      .getByText(/^[A-F0-9]{4}(?:-[A-F0-9]{4}){3}$/)
-      .filter({ visible: true });
-    const digits = receiver.getByText(/^\d{6}$/).filter({ visible: true });
-    await expect(code).toBeVisible();
-    await expect(digits).toBeVisible();
-    expect(transferIds).toHaveLength(2);
-    expect(transferIds[1]).toBe(transferIds[0]);
-    await receiver
-      .getByRole('button', { name: 'Check approval & finish', exact: true })
-      .filter({ visible: true })
-      .click();
-    await expect(
-      receiver.getByText(/Waiting for approval/).filter({ visible: true }),
-    ).toBeVisible();
-    await page
-      .getByLabel('Transfer code', { exact: true })
-      .fill(await code.innerText());
-    let releaseInspection!: () => void,
-      enteredInspection!: () => void,
-      handledInspection!: () => void;
-    const inspectionGate = new Promise<void>((resolve) => {
-      releaseInspection = resolve;
-    });
-    const inspectionSeen = new Promise<void>((resolve) => {
-      enteredInspection = resolve;
-    });
-    const inspectionHandled = new Promise<void>((resolve) => {
-      handledInspection = resolve;
-    });
-    await page.route(
-      `${journeyApiUrl}/v1/transfer-inspections`,
-      async (route) => {
-        enteredInspection();
-        await inspectionGate;
-        try {
-          await route.continue();
-        } finally {
-          handledInspection();
-        }
-      },
-    );
-    const reviewButton = page.getByRole('button', {
-      name: 'Review transfer',
-      exact: true,
-    });
-    await reviewButton.click();
-    try {
-      await inspectionSeen;
-      await expectCenteredSpinner(reviewButton, 'Review transfer');
-    } finally {
-      releaseInspection();
-      await inspectionHandled;
-    }
-
-    await page
-      .getByLabel('Verification digits', { exact: true })
-      .fill(await digits.innerText());
-    await page
-      .getByRole('button', { name: 'Approve this device', exact: true })
-      .click();
-    await expect(page.getByText(/Transfer approved/)).toBeVisible();
-    const finishing = receiver.waitForResponse(
-      (response) =>
-        response.url() === `${journeyApiUrl}/v1/sessions` &&
-        response.request().method() === 'POST',
-    );
-    await receiver
-      .getByRole('button', { name: 'Check approval & finish', exact: true })
-      .filter({ visible: true })
-      .click();
-    const recovered = sessionResponseSchema.parse(
-      await (await finishing).json(),
-    );
-    expect(recovered.userId).toBe(source!.userId);
-    expect(recovered.deviceId).not.toBe(source!.deviceId);
-    await expect(receiver).toHaveURL(/\/recovery$/);
-    await expect(
-      receiver
-        .getByText('Connected', { exact: true })
-        .filter({ visible: true }),
-    ).toBeVisible();
-    for (const history of histories) {
-      const saved = await fixtureDatabase.query(
-        'select id,reflection_text from justgo.attempts where user_id=$1',
-        [history.userId],
-      );
-      expect(saved.rows).toEqual([
-        { id: history.id, reflection_text: history.text },
-      ]);
-    }
-  } finally {
-    await receiver.close();
-  }
+        'select count(*)::int as n from justgo.attempts where user_id=$1',
+        [second.userId],
+      )
+    ).rows[0].n,
+  ).toBe(0);
+  await signOut(page);
+  const returned = await signInFixture(page, {
+    provider: 'apple',
+    subjectHandle: first.subjectHandle,
+  });
+  expect(returned.userId).toBe(first.userId);
+  expect(returned.sessionId).not.toBe(first.sessionId);
+  expect(await localJournalEntries(page, first.userId)).toEqual(oldEntries);
+  await expect(
+    page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
+  ).toHaveCount(0);
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select count(*)::int as n from justgo.managed_auth_accounts where user_id=any($1::uuid[])',
+        [[first.userId, second.userId]],
+      )
+    ).rows[0].n,
+  ).toBe(2);
 });
 
-test('leaving receiving transfer cancels its code and returns to the normal connected account hub', async ({
+test('a remotely revoked provider session blocks cloud writes while keeping its owner’s phone history readable', async ({
   page,
   fixtureDatabase,
 }) => {
-  const createdTransfers: string[] = [];
-  try {
-    await page.goto('/recovery');
-    const creating = page.waitForResponse(
-      (r) =>
-        r.url() === `${journeyApiUrl}/v1/sessions` &&
-        r.request().method() === 'POST',
-    );
-    await page
-      .getByRole('button', { name: 'Create a new account', exact: true })
-      .click();
-    await continueFromTerms(page);
-    const original = sessionResponseSchema.parse(await (await creating).json());
-    await expect(
-      page.getByText('Connected', { exact: true }).filter({ visible: true }),
-    ).toBeVisible();
-    const sectionBounds = () =>
-      Promise.all(
-        ['Account', 'Recovery', 'Devices'].map((name) =>
-          page.getByRole('heading', { name, exact: true }).boundingBox(),
-        ),
-      );
-    const originalBounds = await sectionBounds();
-    for (const bounds of originalBounds) expect(bounds).not.toBeNull();
-    const expectStableHub = async () => {
-      await expect(page).toHaveURL(/\/recovery$/);
-      await expect(
-        page.getByRole('heading', { name: 'Account', exact: true }),
-      ).toBeVisible();
-      await page.evaluate(
-        () =>
-          new Promise<void>((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-          ),
-      );
-      expect(await sectionBounds()).toEqual(originalBounds);
-      await expect(page.getByRole('alert')).toHaveCount(0);
-    };
-    const openReceiver = async () => {
-      await page
-        .getByRole('link', { name: 'Recovery keys', exact: true })
-        .click();
-      await page
-        .getByRole('link', { name: 'Recover an existing account', exact: true })
-        .click();
-    };
-    const start = async () => {
-      await page
-        .getByRole('button', {
-          name: 'Transfer from another device',
-          exact: true,
-        })
-        .click();
-      const starting = page.waitForResponse(
-        (r) =>
-          r.url() === `${journeyApiUrl}/v1/transfers` &&
-          r.request().method() === 'POST',
-      );
-      await page.getByRole('button', { name: 'Confirm', exact: true }).click();
-      const id = ((await (await starting).json()) as { id: string }).id;
-      createdTransfers.push(id);
-      await expect(
-        page.getByText(/^\d{6}$/).filter({ visible: true }),
-      ).toBeVisible();
-      return id;
-    };
-    await openReceiver();
-    const abandonedId = await start();
-    let releaseCancellation!: () => void, cancellationEntered!: () => void;
-    const cancellationGate = new Promise<void>((resolve) => {
-      releaseCancellation = resolve;
-    });
-    const cancellationSeen = new Promise<void>((resolve) => {
-      cancellationEntered = resolve;
-    });
-    await page.route(
-      `${journeyApiUrl}/v1/transfers/${abandonedId}`,
-      async (route) => {
-        cancellationEntered();
-        await cancellationGate;
-        await route.continue();
-      },
-    );
-    const cancelling = page.waitForResponse(
-      (r) =>
-        r.url() === `${journeyApiUrl}/v1/transfers/${abandonedId}` &&
-        r.request().method() === 'DELETE',
-    );
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    try {
-      await cancellationSeen;
-      await expectStableHub();
-    } finally {
-      releaseCancellation();
-      await cancelling;
-    }
-    const cancelled = await cancelling;
-    expect(cancelled.status()).toBe(200);
-    expect(await cancelled.json()).toEqual({ status: 'cancelled' });
-    await expectStableHub();
+  const account = await signInFixture(page);
+  await completeChallenge(page, 'Disposable revoked account writing');
+  const entries = await localJournalEntries(page, account.userId);
+  await fixtureDatabase.query(
+    'update justgo.managed_auth_sessions set revoked_at=now() where id=$1 and user_id=$2',
+    [account.sessionId, account.userId],
+  );
+  await page.reload();
+  await page.goto('/recovery');
+  await expect(
+    page.getByRole('switch', { name: 'Apple', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Log out', exact: true }),
+  ).toHaveCount(0);
+  await page.goto('/progress');
+  await expect(page.getByText('Total reps', { exact: true })).toBeVisible();
+  expect(await localJournalEntries(page, account.userId)).toEqual(entries);
+  const returned = await signInFixture(page, {
+    subjectHandle: account.subjectHandle,
+  });
+  expect(returned.userId).toBe(account.userId);
+  expect(returned.sessionId).not.toBe(account.sessionId);
+});
+
+test('guest writing remains the same journal through automatic sign-in, logout and returning sign-in', async ({
+  page,
+  fixtureDatabase,
+}) => {
+  const guestId = await continueAsGuest(page);
+  await completeChallenge(page, 'Disposable continuity writing');
+  const guestEntries = await localJournalEntries(page, guestId);
+  expect(guestEntries).toHaveLength(1);
+  const account = await signInFixture(page);
+  const merged = await localJournalEntries(page, account.userId);
+  expect(merged).toHaveLength(1);
+  expect(merged[0]?.id).toBe(guestEntries[0]?.id);
+  expect(merged[0]?.accountId).toBe(account.userId);
+  expect(await localJournalEntries(page, guestId)).toEqual([]);
+  await signOut(page);
+  await expect(
+    page.getByRole('button', { name: 'View guest data', exact: true }),
+  ).toHaveCount(0);
+  expect(await localJournalEntries(page, account.userId)).toEqual(merged);
+  await page.reload();
+  await page.goto('/progress');
+  await expect(page.getByText('Total reps', { exact: true })).toBeVisible();
+  const returned = await signInFixture(page, {
+    subjectHandle: account.subjectHandle,
+  });
+  expect(returned.userId).toBe(account.userId);
+  expect(await localJournalEntries(page, account.userId)).toEqual(merged);
+  await expect
+    .poll(
+      async () =>
+        (
+          await fixtureDatabase.query(
+            'select count(*)::int as n from justgo.attempts where user_id=$1',
+            [account.userId],
+          )
+        ).rows[0].n,
+    )
+    .toBe(1);
+});
+
+test('login switches reflect verified linking and unlinking while protecting the last method', async ({
+  page,
+}) => {
+  await signInFixture(page, { provider: 'apple' });
+  await page.goto('/recovery');
+  const apple = page.getByRole('switch', { name: 'Apple', exact: true });
+  const google = page.getByRole('switch', { name: 'Google', exact: true });
+  await expect(apple).toBeChecked();
+  await expect(google).not.toBeChecked();
+  await google.click();
+  await expect(google).toBeChecked();
+  await apple.click();
+  await expect(apple).not.toBeChecked();
+  await google.click();
+  await expect(google).toBeChecked();
+  await expect(
+    page.getByText(
+      'Keep one login method connected. Use Log out to sign out on this phone.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+});
+
+test('retired key, code and transfer URLs return to the managed Account page', async ({
+  page,
+}) => {
+  await continueAsGuest(page);
+  for (const path of [
+    '/account/recover',
+    '/account/keys',
+    '/account/devices',
+    '/account/transfer',
+    '/account/troubleshooting',
+  ]) {
+    await page.goto(path);
     await expect(page).toHaveURL(/\/recovery$/);
     await expect(
-      page.getByRole('link', { name: 'Move to another phone', exact: true }),
+      page.getByRole('heading', { name: 'Account', exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByText(/^\d{6}$/).filter({ visible: true }),
-    ).toHaveCount(0);
-    const rows = await fixtureDatabase.query(
-      'select cancelled_at,redeemed_at from justgo.device_transfers where id=$1',
-      [abandonedId],
+    await expect(page.getByLabel('Recovery key', { exact: true })).toHaveCount(
+      0,
     );
-    expect(rows.rows).toHaveLength(1);
-    expect(rows.rows[0].cancelled_at).not.toBeNull();
-    expect(rows.rows[0].redeemed_at).toBeNull();
-    const sessions = await fixtureDatabase.query(
-      'select revoked_at from justgo.device_sessions where id=$1 and user_id=$2',
-      [original.sessionId, original.userId],
+    await expect(page.getByLabel('Transfer code', { exact: true })).toHaveCount(
+      0,
     );
-    expect(sessions.rows).toEqual([{ revoked_at: null }]);
-    await openReceiver();
-    await expect(
-      page.getByText(/^\d{6}$/).filter({ visible: true }),
-    ).toHaveCount(0);
-    const nextId = await start();
-    expect(nextId).not.toBe(abandonedId);
-    const nextCancellation = page.waitForResponse(
-      (r) =>
-        r.url() === `${journeyApiUrl}/v1/transfers/${nextId}` &&
-        r.request().method() === 'DELETE',
+    await expect(page.getByText('Recovery keys', { exact: true })).toHaveCount(
+      0,
     );
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    expect((await nextCancellation).status()).toBe(200);
-  } finally {
-    for (const id of createdTransfers)
-      await fixtureDatabase.query(
-        'delete from justgo.device_transfers where id=$1 and user_id is null',
-        [id],
-      );
   }
 });

@@ -33,6 +33,7 @@ export function createQueryClient() {
 export class AccountClient {
   private epoch = 0;
   private accountId: string | null = null;
+  private collectionId: string | null = null;
   private inflight = new Set<AbortController>();
   private renewal: Promise<AccountSession> | null = null;
   private renewalDeadline: Deadline | null = null;
@@ -44,6 +45,7 @@ export class AccountClient {
   changeAccount(userId: string | null) {
     if (this.accountId === userId) return;
     this.accountId = userId;
+    this.collectionId = userId;
     this.epoch++;
     this.inflight.forEach((controller) => controller.abort());
     this.inflight.clear();
@@ -57,6 +59,42 @@ export class AccountClient {
     return (
       this.accountId === userId && this.session.current()?.userId === userId
     );
+  }
+  changeCollection(collectionId: string | null) {
+    if (this.collectionId === collectionId) return;
+    this.collectionId = collectionId;
+    this.epoch++;
+    this.inflight.forEach((controller) => controller.abort());
+    this.inflight.clear();
+    void this.queries.cancelQueries();
+    this.queries.clear();
+  }
+  ownsCollection(collectionId: string): boolean {
+    return this.collectionId === collectionId;
+  }
+  async requestGuest<T>(
+    path: '/v1/guest/access' | '/v1/guest/challenges',
+    schema: z.ZodType<T>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    if (!this.collectionId) throw new ApiError('UNAUTHORIZED');
+    const epoch = this.epoch;
+    const controller = new AbortController();
+    const cancel = () => controller.abort();
+    signal?.addEventListener('abort', cancel, { once: true });
+    if (signal?.aborted) cancel();
+    this.inflight.add(controller);
+    try {
+      const result = await this.http.request(path, schema, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      if (epoch !== this.epoch) throw new ApiError('ACCOUNT_CHANGED');
+      return result;
+    } finally {
+      signal?.removeEventListener('abort', cancel);
+      this.inflight.delete(controller);
+    }
   }
   async request<T>(
     path: string,

@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 20, 2026. The [October 20 local-journal decision](#october-20-local-journal-and-manual-backup-phase) owns the current phase map and supersedes the earlier release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 20, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -479,6 +479,92 @@ automatically publishing the prepared health supplement. Phase 14 retains
 remaining publication, plan eligibility, support, backup and release evidence.
 No purchase, provider contact, public deployment, Git publication or native build
 is authorized by this planning change.
+
+## October 20 optional accounts and cloud sync
+
+After reviewing How We Feel's data/account screens and privacy policy, Anthony
+selected the same visible product approach: account-free local use, optional
+Apple/Google sign-in, signed-in cloud storage of challenge history and private
+journal entries, an iCloud Sync toggle, Download my data, Import data and Delete
+all my data. Logout retains local data. Replace the custom recovery-key and
+transfer-code interface; preserve existing writing and account ownership during
+migration. The earlier approved reset applied only to old server reflections,
+not existing phone journals, accounts or challenge history.
+
+This supersedes the earlier Phase 13 prohibition on all future private uploads
+and its exclusion of automatic iCloud sync/provider sign-in. It does not discard
+the durable local journal, offline behavior, import validation or conflict/data
+isolation safeguards already implemented. Add a dedicated signed-in journal sync
+boundary rather than replaying retired private queues or blindly reverting the
+phase. Preserve no-private-content diagnostics and analytics/AI activation gates.
+
+The revised [Phase 13 plan](implementation-plan/phase-13-local-journal.md) uses
+managed Supabase Auth with native Apple/Google adapters, the existing API/private
+PostgreSQL boundary and optional private CloudKit synchronization. The precise
+relationship between How We Feel's account cloud storage and its iCloud toggle,
+and its initial guest-data migration rules, are not established by the researched
+sources. The plan explicitly labels JustGO's proposed rules for these gaps.
+
+Reopen Phase 13 acceptance. Its earlier handoff evidence describes the previous
+local-journal baseline only. Revise implemented architecture/product/privacy
+sources after the new behavior is verified, with clear local-versus-cloud copy
+before account upload. Native capabilities/builds, Apple/Google provider setup,
+hosted changes, publication and paid purchases retain their separate permissions.
+No production configuration, hosted data, authentication or release behavior is
+changed by this planning update.
+
+The initial optional-account implementation follows explicit first-sign-in guest merge, retained owner-bound
+local collections after logout, and optional CloudKit off by default. Welcome now
+places “Sign in with Apple” and “Sign in with Google” with their logos above guest
+Continue. A stable deletion intent plus server epochs/CloudKit generations prevents
+retrying a lost acknowledgement from deleting new data. One full-data download/import
+includes history and writing; possession of a file does not authenticate an account.
+These rules describe JustGO, not inferred How We Feel internals. Real provider and
+CloudKit setup/build/hosting acceptance remain separately gated.
+
+## October 21 journal continuity and Account/Data Settings
+
+Anthony clarified that the same journal must remain visible and editable before
+sign-in, after sign-in and after logout. A permanent View guest data action and a
+separate guest-journal experience are unwanted. Supersede the optional first-login
+merge choice above: disclose account cloud storage before sign-in, then adopt the
+phone's unowned writing automatically when sign-in succeeds. Returning to the
+same account reconciles its local edits and cloud history together. Preserve
+different-account ownership, conflicting writing and existing phone data; this
+does not authorize moving a former owner's entries into another person's account.
+
+Account will contain Login methods with branded Apple/Google rows and switches
+that show the actual connected methods, followed by Log out and Delete account.
+Do not add a separate connected-status sentence/block. Delete account text is red.
+Data will contain iCloud Sync, Download my data, Import data and Delete all my data
+at the bottom, with matching cloud/circular-arrow, down-arrow/tray and up-arrow/tray
+icons. Reuse the existing account-deletion confirmation modal presentation for
+both destructive actions, retaining their distinct wording and behavior.
+
+Keep both deletion actions: deleting data retains the JustGO account/login methods;
+deleting the account also removes JustGO account access and its associated data.
+Neither deletes the person's Apple/Google account or their exported files. Keep
+one full-data download/import flow. Finish actual iCloud configuration and native
+verification within Phase 13; until available, explain why the control cannot be
+enabled instead of leaving it silently unresponsive.
+
+Anthony requested a written plan before implementation. The revised
+[Phase 13 sequence](implementation-plan/phase-13-local-journal.md#implementation-sequence)
+orders continuity/migration, verified provider switches, page layout, shared
+confirmations, backup/deletion reconciliation, external setup/device acceptance
+and final verification/documentation. It specifies implementation defaults for
+provider disconnect/last-method protection and authentication inside account-owned
+import/deletion flows. These details describe JustGO behavior, not verified How We Feel internals.
+
+Anthony then authorized implementation. The revision adopts unowned phone writing
+automatically after the sign-in disclosure and retires the source only after a
+durable account copy. Older optional-merge installations require a disclosed
+re-login before adopting parked writing. Account-owned import authenticates before
+opening the file picker; the user chooses the file after returning to Data.
+Previously associated iCloud copies remain deletion targets when sync is off;
+unavailable cleanup stays pending. Preserve the earlier server-only legacy-reflection
+reset scope and all separate publication, hosted configuration and native build
+permissions. The handoff distinguishes local evidence from open external gates.
 
 ## Open and settled product decisions
 

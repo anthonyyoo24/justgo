@@ -66,7 +66,7 @@ it('keeps unavailable access closed and offers retry and recovery without a welc
   });
   const screen = render(<AccessScreen />);
   expect(screen.getByText('We can’t verify access yet.')).toBeTruthy();
-  expect(screen.getByText('Account & recovery')).toBeTruthy();
+  expect(screen.getByText('Account')).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: 'Check access again' }));
   expect(refetch).toHaveBeenCalledTimes(1);
   expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
@@ -166,3 +166,28 @@ it('shows pending access and prevents duplicate retries while the check is runni
   fireEvent.press(retry);
   expect(refetch).not.toHaveBeenCalled();
 });
+
+it.each(['guest', 'signed-out'] as const)(
+  'keeps %s local history reachable offline while challenge access is unavailable',
+  (mode) => {
+    identity.mockReturnValue({
+      initialized: true,
+      busy: false,
+      account: null,
+      collectionId: 'local-owner',
+      mode,
+      needsWelcome: false,
+    });
+    access.mockReturnValue({
+      verified: false,
+      isPending: false,
+      isError: true,
+      refetch: jest.fn(),
+    });
+    const screen = render(<AccessScreen />);
+    expect(screen.getByText('View saved history')).toBeTruthy();
+    expect(screen.queryByText('Redirect: /recovery')).toBeNull();
+    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
+    expect(screen.getByText('We can’t verify access yet.')).toBeTruthy();
+  },
+);

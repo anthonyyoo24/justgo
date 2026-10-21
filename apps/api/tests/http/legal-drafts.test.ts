@@ -45,9 +45,16 @@ describe('local development legal destinations', () => {
           );
           expect(response.body).toContain('Ordinary delivery remains disabled');
           expect(response.body).toContain(
-            'Pending uploads remain only on the original phone',
+            'New feelings and written reflections are saved locally on your phone',
           );
           expect(response.body).not.toContain('PostHog');
+          expect(response.body).toContain(
+            'Account recovery alone does not restore the local journal.',
+          );
+          expect(response.body).toContain(
+            'Existing cloud journal copies remain available',
+          );
+          expect(response.body).toContain('Each file is a snapshot');
           expect(response.body).not.toContain('reflection-length categories');
         }
       }

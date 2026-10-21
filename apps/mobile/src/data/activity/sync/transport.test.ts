@@ -9,81 +9,112 @@ import {
   uuid,
 } from '../../../../test-support/journal';
 
-it('uses canonical create/PATCH contracts, coordinates session renewal and fences the original owner', async () => {
+const completion = () => ({ ...attempt(), reflection: undefined });
+const json = (value: unknown, status = 200) =>
+  new Response(JSON.stringify(value), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+it('sends strict completion metadata, coordinates renewal and retires private writes without HTTP', async () => {
   let session = { userId: owner, token: 'old' };
   const renew = jest.fn(
     async () => (session = { ...session, token: 'renewed' }),
   );
   const fetcher = jest.fn(async (_url, init) => {
     if (init.headers.authorization === 'Bearer old')
-      return new Response(
-        JSON.stringify({ code: 'SESSION_EXPIRED', requestId: 'fixture' }),
-        { headers: { 'Content-Type': 'application/json' }, status: 401 },
-      );
-    const body = JSON.parse(init.body);
-    return new Response(
-      JSON.stringify(
-        init.method === 'PATCH'
-          ? {
-              attempt: {
-                ...attempt(),
-                reflection: { feeling: null, text: 'Fixture', revision: 1 },
-              },
-              acknowledgement: {
-                submissionId: body.submissionId,
-                appliedRevision: 1,
-              },
-            }
-          : { attempt: attempt() },
-      ),
-      { headers: { 'Content-Type': 'application/json' } },
-    );
+      return json({ code: 'SESSION_EXPIRED', requestId: 'fixture' }, 401);
+    return json({ attempt: completion() });
   });
   const client = new AccountClient(
     createHttpClient('https://api.example.test', fetcher),
-    { current: () => session, renew, reject: jest.fn() },
+    {
+      current: () => session,
+      renew,
+      reject: jest.fn(),
+    },
   );
   client.changeAccount(owner);
   try {
     const transport = createJournalTransport(client, owner);
-    const controller = new AbortController();
-    const results = await Promise.all([
-      transport.create(input(), controller.signal),
-      transport.create(input(), controller.signal),
-    ]);
-    expect(results).toEqual([attempt(), attempt()]);
+    const signal = new AbortController().signal;
+    expect(
+      await Promise.all([
+        transport.create(input(), signal),
+        transport.create(input(), signal),
+      ]),
+    ).toEqual([attempt(), attempt()]);
     expect(renew).toHaveBeenCalledTimes(1);
-    await transport.patch(
-      uuid(1),
-      {
-        submissionId: uuid(101),
-        expectedReflectionRevision: 0,
-        reflection: { text: 'Fixture' },
-      },
-      controller.signal,
-    );
-    expect(fetcher.mock.calls.at(-1)?.[0]).toBe(
-      `https://api.example.test/v1/attempts/${uuid(1)}`,
-    );
-    expect(fetcher.mock.calls.at(-1)?.[1].method).toBe('PATCH');
-    session = { userId: otherOwner, token: 'other' };
-    client.changeAccount(otherOwner);
+    for (const [, init] of fetcher.mock.calls) {
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body)).toEqual(input());
+      expect(init.body).not.toContain('reflection');
+    }
     const count = fetcher.mock.calls.length;
-    await expect(
-      transport.create(input(), controller.signal),
-    ).rejects.toMatchObject({ code: 'ACCOUNT_CHANGED' });
     await expect(
       transport.patch(
         uuid(1),
         {
           submissionId: uuid(101),
           expectedReflectionRevision: 0,
-          reflection: { text: 'Fixture' },
+          reflection: { text: 'Private fixture' },
         },
-        controller.signal,
+        signal,
+      ),
+    ).rejects.toMatchObject({ code: 'PRIVATE_JOURNAL_LOCAL' });
+    await expect(
+      transport.create(
+        { ...input(), reflection: { text: 'Private fixture' } } as ReturnType<
+          typeof input
+        >,
+        signal,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    expect(fetcher).toHaveBeenCalledTimes(count);
+    session = { userId: otherOwner, token: 'other' };
+    client.changeAccount(otherOwner);
+    await expect(transport.create(input(), signal)).rejects.toMatchObject({
+      code: 'ACCOUNT_CHANGED',
+    });
+    await expect(
+      transport.patch(
+        uuid(1),
+        {
+          submissionId: uuid(101),
+          expectedReflectionRevision: 0,
+          reflection: { text: 'Private fixture' },
+        },
+        signal,
       ),
     ).rejects.toMatchObject({ code: 'ACCOUNT_CHANGED' });
     expect(fetcher).toHaveBeenCalledTimes(count);
+  } finally {
+    client.changeAccount(null);
+  }
+});
+
+it('rejects private completion responses and exposes no cloud journal download', async () => {
+  const response: unknown = { attempt: attempt() };
+  const fetcher = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>(
+    async () => json(response),
+  );
+  const client = new AccountClient(
+    createHttpClient('https://api.example.test', fetcher),
+    {
+      current: () => ({ userId: owner, token: 'session' }),
+      renew: jest.fn(),
+      reject: jest.fn(),
+    },
+  );
+  client.changeAccount(owner);
+  try {
+    const transport = createJournalTransport(client, owner),
+      signal = new AbortController().signal;
+    await expect(transport.create(input(), signal)).rejects.toMatchObject({
+      code: 'UNAVAILABLE',
+    });
+    expect(transport).not.toHaveProperty('legacy');
+    expect(fetcher).toHaveBeenCalledTimes(1);
   } finally {
     client.changeAccount(null);
   }

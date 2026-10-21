@@ -271,8 +271,42 @@ test('repository public sources use document labels and exclude review records a
       html,
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
-  assert.match(output.get('privacy/index.html'), /Sentry/);
-  assert.match(output.get('privacy/index.html'), /analytics is disabled/i);
+  for (const documentSource of [privacySource, termsSource]) {
+    const document = parseDocument(documentSource);
+    assert.equal(document.status, 'owner-review-required');
+    assert.equal(document.effectiveDate, 'pending');
+    assert.equal(document.version, '2026-10-20-managed-sync-candidate');
+  }
+  const privacy = output.get('privacy/index.html');
+  const terms = output.get('terms/index.html');
+  assert.match(privacy, /does not create a JustGO server account/);
+  assert.match(
+    privacy,
+    /feelings and reflection text synchronize with your JustGO account/,
+  );
+  assert.match(privacy, /Before signing in with Apple or Google, we explain/);
+  assert.match(
+    privacy,
+    /first successful sign-in automatically adds existing phone entries/,
+  );
+  assert.match(privacy, /keeps the same saved journal visible and editable/);
+  assert.match(privacy, /private CloudKit database/);
+  assert.match(privacy, /off by default/);
+  assert.match(privacy, /Each file is a snapshot/);
+  assert.match(privacy, /not password protected by JustGO/);
+  assert.match(privacy, /possession of a file does not authenticate you/);
+  assert.match(terms, /restorable snapshot/);
+  assert.match(terms, /Delete all my data/);
+  assert.match(terms, /Delete account/);
+  assert.doesNotMatch(
+    privacy,
+    /Back up journal|Restore journal|Recover earlier journal|This export cannot be restored/,
+  );
+  assert.match(privacy, /Sentry/);
+  assert.match(
+    privacy,
+    /Product analytics and ordinary automatic crash reporting are disabled/,
+  );
   assert.throws(
     () => renderSite({ privacySource, termsSource, production: true }),
     /requires explicit owner approval and an effective date/,

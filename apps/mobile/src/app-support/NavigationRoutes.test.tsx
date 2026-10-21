@@ -10,6 +10,7 @@ import {
 } from 'expo-router/testing-library';
 import RootLayout from '../app/_layout';
 import AccessRoute from '../app/access';
+import HomeRoute from '../app/(tabs)/index';
 import NotFoundRoute from '../app/+not-found';
 
 let mockSnapshot = {
@@ -17,6 +18,8 @@ let mockSnapshot = {
     initialized: true,
     busy: false,
     account: { userId: 'synthetic-account' } as { userId: string } | null,
+    collectionId: 'synthetic-account' as string | null,
+    collectionKind: 'account' as 'guest' | 'account',
     deletionStatus: null as 'pending' | 'cleanup' | 'deleted' | null,
     needsWelcome: false,
   },
@@ -57,6 +60,10 @@ jest.mock('../features/challenges/active/ChallengeActivityProvider', () => ({
   ChallengeActivityProvider: ({ children }: { children: ReactNode }) =>
     children,
 }));
+jest.mock('../features/challenges/ChallengeScreen', () => {
+  const { Text } = require('react-native') as typeof import('react-native');
+  return { ChallengeScreen: () => <Text>Home ready</Text> };
+});
 jest.mock('../platform/motion/MotionPreferencesProvider', () => ({
   MotionPreferencesProvider: ({ children }: { children: ReactNode }) =>
     children,
@@ -71,7 +78,7 @@ const routes = {
   access: AccessRoute,
   acceptance: () => <Text>Acceptance ready</Text>,
   '(tabs)/_layout': () => <Stack screenOptions={{ animation: 'none' }} />,
-  '(tabs)/index': () => <Text>Home ready</Text>,
+  '(tabs)/index': HomeRoute,
   '(tabs)/progress': () => <Text>Progress ready</Text>,
   '(challenge)/challenge': () => <Text>Challenge ready</Text>,
   '(challenge)/success': () => <Text>Success ready</Text>,
@@ -81,7 +88,10 @@ const routes = {
   'account/devices': () => <Text>Devices ready</Text>,
   'account/transfer': () => <Text>Transfer ready</Text>,
   'account/troubleshooting': () => <Text>Troubleshooting ready</Text>,
+  'account/sign-in': () => <Text>Sign in ready</Text>,
+  'auth/callback': () => <Text>Callback ready</Text>,
   settings: () => <Text>Settings ready</Text>,
+  data: () => <Text>Data ready</Text>,
   recovery: () => <Text>Recovery ready</Text>,
   'delete-account': () => <Text>Deletion ready</Text>,
   welcome: () => <Text>Welcome ready</Text>,
@@ -95,6 +105,8 @@ beforeEach(() => {
       initialized: true,
       busy: false,
       account: { userId: 'synthetic-account' },
+      collectionId: 'synthetic-account',
+      collectionKind: 'account',
       deletionStatus: null,
       needsWelcome: false,
     },
@@ -108,13 +120,74 @@ it('opens Home at the sole root URL when access is verified', async () => {
   expect(navigation.getPathname()).toBe('/');
 });
 
-it.each(['/', '/challenge', '/success', '/reflection', '/progress'])(
+it.each(['/challenge', '/success', '/reflection'])(
   'falls back from %s to /access when access is unavailable',
   async (initialUrl) => {
     mockSnapshot.access.verified = false;
     const navigation = renderRouter(routes, { initialUrl });
     expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
     expect(navigation.getPathname()).toBe('/access');
+  },
+);
+
+it('keeps the Home URL available while preventing challenge admission with stale access', async () => {
+  mockSnapshot.access.verified = false;
+  const navigation = renderRouter(routes, { initialUrl: '/' });
+  expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
+  expect(navigation.getPathname()).toBe('/');
+  expect(screen.queryByText('Home ready')).toBeNull();
+});
+
+it.each(['guest', 'account'] as const)(
+  'keeps the %s local collection readable while signed out and offline',
+  async (collectionKind) => {
+    mockSnapshot.identity.account = null;
+    mockSnapshot.identity.collectionKind = collectionKind;
+    mockSnapshot.access.verified = false;
+    const navigation = renderRouter(routes, { initialUrl: '/progress' });
+    expect(await screen.findByText('Progress ready')).toBeTruthy();
+    act(() => router.push('/settings'));
+    expect(await screen.findByText('Settings ready')).toBeTruthy();
+    act(() => router.push('/challenge'));
+    expect(await screen.findByText('Settings ready')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/settings');
+    expect(screen.queryByText('Challenge ready')).toBeNull();
+    act(() => router.replace('/'));
+    expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
+    expect(screen.queryByText('Home ready')).toBeNull();
+  },
+);
+
+it.each(['guest', 'account'] as const)(
+  'preserves a cold %s history link while saved identity is loading offline',
+  async (collectionKind) => {
+    mockSnapshot.identity = {
+      ...mockSnapshot.identity,
+      initialized: false,
+      account: null,
+      collectionId: null,
+      needsWelcome: true,
+    };
+    mockSnapshot.access.verified = false;
+    const navigation = renderRouter(routes, { initialUrl: '/progress' });
+    expect(screen.getByLabelText('Loading saved data')).toBeTruthy();
+    expect(screen.queryByText('Welcome ready')).toBeNull();
+    act(() => {
+      mockSnapshot = {
+        ...mockSnapshot,
+        identity: {
+          ...mockSnapshot.identity,
+          initialized: true,
+          needsWelcome: false,
+          collectionId: 'saved-local-collection',
+          collectionKind,
+        },
+      };
+      for (const listener of mockListeners) listener();
+    });
+    expect(await screen.findByText('Progress ready')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/progress');
+    expect(screen.queryByText('We can’t verify access yet.')).toBeNull();
   },
 );
 
@@ -125,6 +198,9 @@ it.each([
   ['/account/transfer', 'Transfer'],
   ['/account/troubleshooting', 'Troubleshooting'],
   ['/settings', 'Settings'],
+  ['/data', 'Data'],
+  ['/account/sign-in', 'Sign in'],
+  ['/auth/callback', 'Callback'],
   ['/recovery', 'Recovery'],
   ['/delete-account', 'Deletion'],
 ] as const)(
@@ -163,7 +239,10 @@ it.each([
   'leaves an unknown URL through the access gate (verified=%s, account=%s)',
   async (verified, hasAccount, destination, pathname) => {
     mockSnapshot.access.verified = verified;
-    if (!hasAccount) mockSnapshot.identity.account = null;
+    if (!hasAccount) {
+      mockSnapshot.identity.account = null;
+      mockSnapshot.identity.collectionId = null;
+    }
     const navigation = renderRouter(routes, { initialUrl: '/unknown-route' });
     fireEvent.press(await screen.findByRole('button', { name: 'Go home' }));
     expect(await screen.findByText(destination)).toBeTruthy();

@@ -11,3 +11,6 @@ const names = [
 export const env = Object.fromEntries(
   names.map((name) => [name, process.env[name]]),
 );
+// This module is selected only after Metro validates the disposable loopback
+// database and API. The normal virtual environment never receives this marker.
+env.EXPO_PUBLIC_JUSTGO_JOURNEY_FIXTURE = '1';

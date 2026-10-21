@@ -31,14 +31,14 @@ test('the production export loads its assets and supporting routes without API t
   });
   await page.goto('/recovery');
   await expect(
-    page.getByRole('button', { name: 'Create a new account', exact: true }),
+    page.getByRole('switch', { name: 'Apple', exact: true }),
   ).toBeVisible();
   await page.goto('/settings');
   await expect(
     page.getByRole('heading', { name: 'Settings', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Export my data', exact: true }),
+    page.getByRole('link', { name: 'Data', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Test haptics', exact: true }),
@@ -46,11 +46,9 @@ test('the production export loads its assets and supporting routes without API t
   await expect(
     page.getByRole('link', { name: 'Test error reporting', exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByRole('link', { name: 'Account & recovery', exact: true })
-    .click();
+  await page.getByRole('link', { name: 'Account', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: 'Create a new account', exact: true }),
+    page.getByRole('switch', { name: 'Google', exact: true }),
   ).toBeVisible();
   await page.goto('/no-such-export-route');
   await expect(

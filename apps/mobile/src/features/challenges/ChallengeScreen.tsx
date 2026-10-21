@@ -22,8 +22,13 @@ import { NativeChallengeHandoff } from './active/NativeChallengeHandoff';
  * provider separately scopes the in-memory challenge to the same identity.
  */
 export function ChallengeScreen() {
-  const { account } = useIdentity();
-  return <ChallengeFlow key={account?.userId ?? 'disconnected'} />;
+  const identity = useIdentity();
+  const owner =
+    identity.account?.userId ??
+    ('collectionId' in identity && typeof identity.collectionId === 'string'
+      ? identity.collectionId
+      : null);
+  return <ChallengeFlow key={owner ?? 'disconnected'} />;
 }
 /**
  * Compose the memory-owned deck and active surface with local-save navigation.
@@ -32,7 +37,12 @@ export function ChallengeScreen() {
  */
 function ChallengeFlow() {
   const { challenges } = useRuntime();
-  const { account } = useIdentity();
+  const identity = useIdentity();
+  const owner =
+    identity.account?.userId ??
+    ('collectionId' in identity && typeof identity.collectionId === 'string'
+      ? identity.collectionId
+      : null);
   const repository = useJournal();
   const preparation = useWelcomePreparation();
   const { active, onAction, finish, clear, presentedStart } =
@@ -49,9 +59,9 @@ function ChallengeFlow() {
   const wasFocused = useRef(focused);
   const router = useRouter();
   useEffect(() => {
-    if (focused && account && repository?.accountId === account.userId)
+    if (focused && owner && repository?.accountId === owner)
       void challenges.refresh();
-  }, [focused, account, repository, challenges]);
+  }, [focused, owner, repository, challenges]);
   useEffect(() => {
     if (!focused) {
       wasFocused.current = false;
@@ -82,7 +92,7 @@ function ChallengeFlow() {
   const venue = venues.find((v) => v.id === state.selected)!;
   // iOS keeps the departed card while its native active route opens. Changing
   // the key on focus loss remounts a resting deck and flashes that card again.
-  const deckIdentity = `${account?.userId}:${venue.id}`;
+  const deckIdentity = `${owner}:${venue.id}`;
   return (
     <>
       <ChallengeLayout title="Find a challenge" fillContent>

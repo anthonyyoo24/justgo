@@ -1,6 +1,9 @@
 import { ReflectionController } from './controller';
 import { AccountRepository } from '../../data/activity/repository';
-import { ApiError } from '../../lib/network/http';
+import {
+  memoryJournalBackend,
+  memoryLocalJournal,
+} from '../../../test-support/local-journal';
 import {
   MemoryStorage,
   backend,
@@ -24,6 +27,7 @@ beforeEach(async () => {
   repository = new AccountRepository({
     accountId: owner,
     storage,
+    localJournal: memoryLocalJournal(owner, storage),
     transport,
     today,
     timeZone: zone,
@@ -58,6 +62,7 @@ it.each([false, true])(
     repository = new AccountRepository({
       accountId: owner,
       storage,
+      localJournal: memoryLocalJournal(owner, storage),
       transport,
       today,
       timeZone: zone,
@@ -86,22 +91,16 @@ it.each([false, true])(
   },
 );
 
-it('reconciles hydration completed between construction and subscription, including rejected writing', async () => {
+it('reconciles saved local writing when hydration finishes before subscription', async () => {
   await repository.submitReflection(uuid(1), uuid(8), {
     text: 'Rejected writing',
   });
-  const journal = structuredClone(repository.store.getState().journal);
-  const patch = journal.operations.find(
-    (operation) => operation.kind === 'patch',
-  )!;
-  patch.state = 'rejected';
-  patch.code = 'INVALID_REQUEST';
-  storage.values.set(`justgo:v1:${owner}:journal`, JSON.stringify(journal));
   controller.dispose();
   repository.dispose();
   repository = new AccountRepository({
     accountId: owner,
     storage,
+    localJournal: memoryLocalJournal(owner, storage),
     transport,
     today,
     timeZone: zone,
@@ -116,10 +115,9 @@ it('reconciles hydration completed between construction and subscription, includ
     text: 'Rejected writing',
     editing: true,
   });
-  expect(controller.getSnapshot().error).toMatch(/wasn’t accepted/);
+  expect(controller.getSnapshot().error).toBeNull();
   await controller.submit();
-  expect(controller.getSnapshot().error).toMatch(/unchanged submission/);
-  expect(finished).not.toHaveBeenCalled();
+  expect(finished).toHaveBeenCalledTimes(1);
 });
 it('keeps typing private and skips an empty reflection exactly once', async () => {
   controller.setText('  ');
@@ -166,7 +164,7 @@ it('coalesces dirty-close saves and preserves text typed during a slow write', a
   controller.setText('First');
   controller.close();
   const block = deferred<void>();
-  storage.blocked = block;
+  memoryJournalBackend(storage).beforeCommit = () => block.promise;
   const first = controller.submit();
   expect(controller.submit()).toBe(first);
   controller.close();
@@ -189,7 +187,7 @@ it.each(['account change', 'unmount'])(
   async (boundary) => {
     controller.setText('First');
     const block = deferred<void>();
-    storage.blocked = block;
+    memoryJournalBackend(storage).beforeCommit = () => block.promise;
     const work = controller.submit();
     if (boundary === 'account change') current = false;
     else controller.dispose();
@@ -248,48 +246,29 @@ it('retains input after a refused submission and allows a corrected retry', asyn
   expect(submit).toHaveBeenCalledTimes(2);
   expect(finished).toHaveBeenCalledTimes(1);
 });
-it('retains rejected writing, refuses unchanged Save, and submits a changed correction through the repository', async () => {
-  const patch = jest
-    .spyOn(transport, 'patch')
-    .mockRejectedValueOnce(
-      new ApiError('INVALID_REQUEST', 'fixture-reference'),
-    );
+it('retains input on phone-full failure, then retries locally without sending a private request', async () => {
+  const patch = jest.spyOn(transport, 'patch');
+  const database = memoryJournalBackend(storage);
+  database.failCommit = true;
   controller.setFeeling('a_lot_better');
-  controller.setText('Rejected writing');
+  controller.setText('Retained writing');
+  await controller.submit();
+  expect(finished).not.toHaveBeenCalled();
+  expect(controller.getSnapshot()).toMatchObject({
+    text: 'Retained writing',
+    submitting: false,
+  });
+  expect(controller.getSnapshot().error).toMatch(/Free some storage/);
+  database.failCommit = false;
   await controller.submit();
   repository.setEnvironment({ active: true, online: true });
   await repository.synchronize();
-  expect(
-    repository.store
-      .getState()
-      .journal.operations.some(
-        (op) => op.kind === 'patch' && op.state === 'rejected',
-      ),
-  ).toBe(true);
-  controller.dispose();
-  finished.mockClear();
-  controller = new ReflectionController(repository, uuid(1), finished, {
-    id: () => uuid(3),
-  });
-  controller.connect();
-  expect(controller.getSnapshot()).toMatchObject({
-    text: 'Rejected writing',
-    feeling: 'a_lot_better',
-  });
-  expect(controller.getSnapshot().error).toMatch(/wasn’t accepted/);
-  const submit = jest.spyOn(repository, 'submitReflection');
-  await controller.submit();
-  expect(submit).not.toHaveBeenCalled();
-  expect(finished).not.toHaveBeenCalled();
-  expect(controller.getSnapshot().error).toMatch(/unchanged submission/);
-  controller.setText('Corrected writing');
-  await controller.submit();
-  await repository.synchronize();
   expect(finished).toHaveBeenCalledTimes(1);
-  expect(patch).toHaveBeenCalledTimes(2);
-  expect(transport.records.get(uuid(1))?.reflection).toMatchObject({
-    text: 'Corrected writing',
+  expect(patch).not.toHaveBeenCalled();
+  expect(repository.getAttempt(uuid(1))?.reflection).toMatchObject({
+    text: 'Retained writing',
     feeling: 'a_lot_better',
     revision: 1,
   });
+  expect(transport.records.get(uuid(1))?.reflection).toBeNull();
 });

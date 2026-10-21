@@ -38,7 +38,11 @@ export function WelcomeTransition({ children }: PropsWithChildren) {
   const deleted = identity.deletionStatus === 'deleted';
   const [entryRequested, setEntryRequested] = useState(false);
   const needsWelcome = deleted || (identity.needsWelcome && entryRequested);
-  const owner = identity.account?.userId ?? null;
+  const owner =
+    identity.account?.userId ??
+    ('collectionId' in identity && typeof identity.collectionId === 'string'
+      ? identity.collectionId
+      : null);
   const [handoff, setHandoff] = useState<Handoff>({
     phase: needsWelcome ? 'welcome' : 'normal',
     owner: null,

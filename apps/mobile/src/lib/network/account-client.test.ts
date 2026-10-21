@@ -50,6 +50,51 @@ const failure = (code: string) => ({
   ok: false,
   json: async () => ({ code, requestId: 'safe-id' }),
 });
+it('allows only anonymous reads for a selected guest collection without account credentials', async () => {
+  const fetcher = jest.fn(async () => ok());
+  const { client } = setup(fetcher);
+  client.changeAccount(null);
+  await expect(
+    client.requestGuest('/v1/guest/access', okSchema),
+  ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  client.changeCollection('local-guest');
+  client.changeCollection('local-guest');
+  expect(client.ownsCollection('local-guest')).toBe(true);
+  expect(client.ownsAccount('local-guest')).toBe(false);
+  await expect(
+    client.requestGuest('/v1/guest/access', okSchema),
+  ).resolves.toEqual({ ok: true });
+  const options = (fetcher.mock.calls as unknown[][])[0]![1] as RequestInit;
+  expect(options.method).toBe('GET');
+  expect(new Headers(options.headers).has('authorization')).toBe(false);
+  await expect(
+    client.request('/v1/journal-sync', okSchema),
+  ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+it('aborts guest reads when their collection changes or the caller cancels', async () => {
+  let finish!: (result: ReturnType<typeof ok>) => void;
+  const fetcher = jest.fn(
+    () =>
+      new Promise<ReturnType<typeof ok>>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const { client } = setup(fetcher);
+  client.changeAccount(null);
+  client.changeCollection('guest-a');
+  const result = client
+    .requestGuest('/v1/guest/challenges', okSchema)
+    .catch((error: unknown) => error);
+  client.changeCollection('guest-b');
+  finish(ok());
+  expect(await result).toMatchObject({ code: 'CANCELLED' });
+  const controller = new AbortController();
+  controller.abort();
+  await expect(
+    client.requestGuest('/v1/guest/access', okSchema, controller.signal),
+  ).rejects.toMatchObject({ code: 'CANCELLED' });
+  expect(client.ownsCollection('guest-a')).toBe(false);
+});
 it('accepts encoded read query parameters only within the API origin and v1 path', async () => {
   const fetcher = jest.fn(async (url: string) => {
     expect(url).toContain('/v1/progress?');

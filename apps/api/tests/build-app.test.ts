@@ -1,10 +1,11 @@
 import { Writable } from 'node:stream';
 import pino from 'pino';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { Pool } from 'pg';
 import { buildApp } from '../src/build-app.js';
 import { readConfig } from '../src/config.js';
 import { loggerOptions } from '../src/http/diagnostics.js';
-import { poolOptions } from '../src/db/client.js';
+import { poolOptions, checkManagedAuthDatabase } from '../src/db/client.js';
 
 describe('health and readiness', () => {
   it('stays live when the database is unavailable and never exposes the error', async () => {
@@ -99,6 +100,33 @@ describe('health and readiness', () => {
 });
 
 describe('safe operational configuration', () => {
+  it('keeps managed Auth disabled until explicitly enabled with matching public configuration', () => {
+    expect(readConfig({}).MANAGED_AUTH_ENABLED).toBe(false);
+    expect(() => readConfig({ MANAGED_AUTH_ENABLED: 'true' })).toThrow(
+      'Managed Auth requires',
+    );
+    expect(() =>
+      readConfig({ SUPABASE_URL: 'https://example.supabase.co' }),
+    ).toThrow('must include');
+    expect(
+      readConfig({
+        MANAGED_AUTH_ENABLED: 'true',
+        SUPABASE_URL: 'https://example.supabase.co',
+        SUPABASE_PUBLISHABLE_KEY: 'public',
+        SUPABASE_AUTH_SECRET_KEY:
+          'server-only-fixture-secret-key-32-characters',
+      }).MANAGED_AUTH_ENABLED,
+    ).toBe(true);
+  });
+  it('requires the live Auth session read grant before reporting managed readiness', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ available: true }] });
+    const pool = { query } as unknown as Pool;
+    await expect(checkManagedAuthDatabase(pool)).resolves.toBeUndefined();
+    query.mockResolvedValue({ rows: [{ available: false }] });
+    await expect(checkManagedAuthDatabase(pool)).rejects.toThrow(
+      'readiness check failed',
+    );
+  });
   it('rejects production without a database and remote plaintext connections', () => {
     expect(() => readConfig({ NODE_ENV: 'production' })).toThrow();
     expect(() =>

@@ -71,3 +71,15 @@ export async function checkDatabase(pool: Pool): Promise<void> {
   if (!row?.role_ok || !row.foundation_ok)
     throw new Error('Database readiness check failed');
 }
+
+/** Managed Auth fails closed until the reviewed, column-only live-session grant exists. */
+export async function checkManagedAuthDatabase(pool: Pool): Promise<void> {
+  const result = await pool.query<{ available: boolean }>(`select
+    has_schema_privilege(current_user,'auth','USAGE')
+    and has_column_privilege(current_user,'auth.sessions','id','SELECT')
+    and has_column_privilege(current_user,'auth.sessions','user_id','SELECT')
+    and has_column_privilege(current_user,'auth.sessions','not_after','SELECT')
+    as available`);
+  if (!result.rows[0]?.available)
+    throw new Error('Managed Auth database readiness check failed');
+}

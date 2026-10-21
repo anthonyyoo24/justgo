@@ -14,7 +14,15 @@ import type {
   SessionProposal,
   SessionResponse,
   TransferStart,
+  ManagedSessionRequest,
+  ManagedSessionResponse,
 } from '@justgo/contracts';
+import {
+  ManagedIdentityService,
+  type ManagedLiveSessionReader,
+} from './managed-service.js';
+import type { ManagedAuthVerifier } from './managed-verifier.js';
+import type { ManagedAuthDeletion } from './managed-deletion.js';
 
 type Tx = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
 type Row = Record<string, unknown>;
@@ -72,8 +80,15 @@ export type IdentityOptions = {
   rateKey: string;
   // Trusted server-side allocation seam; never supplied by an HTTP caller.
   newUserId?: () => string;
+  managedAuthVerifier?: ManagedAuthVerifier;
+  managedLiveSessionReader?: ManagedLiveSessionReader;
+  managedAuthDeletion?: ManagedAuthDeletion;
 };
+export type AuthenticatedSession = SessionResponse &
+  Partial<Pick<ManagedSessionResponse, 'authUserId' | 'dataEpoch'>>;
 export class IdentityService {
+  readonly managed?: ManagedIdentityService;
+  readonly managedAuthDeletion: ManagedAuthDeletion | undefined;
   private readonly sessionHours: number;
   private readonly transferMinutes: number;
   constructor(
@@ -82,6 +97,21 @@ export class IdentityService {
   ) {
     this.sessionHours = options.sessionHours ?? 168;
     this.transferMinutes = options.transferMinutes ?? 10;
+    this.managedAuthDeletion = options.managedAuthDeletion;
+    if (options.managedAuthVerifier)
+      this.managed = new ManagedIdentityService(
+        db,
+        options.managedAuthVerifier,
+        async (tx, token, linkedOwner) => {
+          const row = await this.findSession(tx, token);
+          // A replay confirms a link already owned by the verified Auth subject;
+          // revoked legacy material never authorizes a new mapping.
+          if (row.user_id !== linkedOwner) await this.active(tx, row);
+          return row.user_id;
+        },
+        options.managedLiveSessionReader,
+        options.newUserId,
+      );
   }
   // Durable, atomic, shared across API instances. Never store raw addresses or bearer secrets.
   async rateLimit(
@@ -148,8 +178,12 @@ export class IdentityService {
   }
   async withSession<T>(
     token: string,
-    work: (tx: Tx, session: SessionResponse) => Promise<T>,
+    work: (tx: Tx, session: AuthenticatedSession) => Promise<T>,
   ): Promise<T> {
+    if (token.includes('.')) {
+      if (!this.managed) throw new ApiError('UNAUTHORIZED');
+      return this.managed.withSession(token, work);
+    }
     return this.db.transaction(async (tx) => {
       const row = await this.findSession(tx, token);
       await this.active(tx, row);
@@ -161,6 +195,31 @@ export class IdentityService {
     token: string,
     work: (tx: Tx, userId: string, deletedAt: Date | null) => Promise<T>,
   ): Promise<T> {
+    if (token.includes('.')) {
+      const receipt = () =>
+        this.db.transaction(async (tx) => {
+          await context(tx, 'app.session_digest', digest(token));
+          const row = await one<{ id: string; deleted_at: Date }>(
+            tx,
+            sql`select id,deleted_at from justgo.users where deletion_session_digest=${digest(token)} and deleted_at is not null`,
+          );
+          if (!row) return undefined;
+          await context(tx, 'app.user_id', row.id);
+          return { value: await work(tx, row.id, row.deleted_at) };
+        });
+      const previous = await receipt();
+      if (previous) return previous.value;
+      if (!this.managed) throw new ApiError('UNAUTHORIZED');
+      try {
+        return await this.managed.withSession(token, (tx, session) =>
+          work(tx, session.userId, null),
+        );
+      } catch (error) {
+        const committed = await receipt();
+        if (committed) return committed.value;
+        throw error;
+      }
+    }
     return this.db.transaction(async (tx) => {
       const hash = digest(token);
       await context(tx, 'app.session_digest', hash);
@@ -192,6 +251,10 @@ export class IdentityService {
         return work(tx, committed.id, committed.deleted_at);
       }
     });
+  }
+  exchangeManaged(token: string, input: ManagedSessionRequest) {
+    if (!this.managed) throw new ApiError('UNAVAILABLE', 503);
+    return this.managed.exchange(token, input);
   }
   private async issue(
     tx: Tx,
@@ -259,7 +322,12 @@ export class IdentityService {
     });
   }
   me(token: string) {
-    return this.withSession(token, async (_tx, session) => session);
+    return this.withSession(token, async (_tx, session) => ({
+      userId: session.userId,
+      deviceId: session.deviceId,
+      sessionId: session.sessionId,
+      expiresAt: session.expiresAt,
+    }));
   }
   async renew(
     token: string,

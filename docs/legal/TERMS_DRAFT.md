@@ -1,10 +1,10 @@
-# Terms of Use — approved text, unpublished
+# Terms of Use — managed sync candidate, unpublished
 
-<!-- legal-version: 2026-10-18-launch-candidate -->
-<!-- publication-status: owner-approved -->
+<!-- legal-version: 2026-10-20-managed-sync-candidate -->
+<!-- publication-status: owner-review-required -->
 <!-- effective-date: pending -->
 
-Prepared October 18, 2026 and revised October 19 after reviewing How We Feel and Stoic as writing references. The text reflects JustGO's own free-beta behavior; competitor terms do not establish its legal sufficiency. Anthony approved this text on October 19, 2026. The October 20 review clarifies the existing supplementary relationship to Apple's standard license under his authorization to finish the remaining fixes. It remains unpublished, with the effective date pending publication. The [review record](LEGAL_REVIEW.md) owns eligibility, regional/Apple EULA review and publication gates. Paid billing remains inactive; paid-offer terms are a separate pre-paid-launch update. The static site renders only the marked public text and keeps review metadata in the source files.
+Technical wording reconciled October 21, 2026 for the revised Phase 13 local candidate. Optional managed accounts, private cloud synchronization, CloudKit and unified data controls materially supersede the earlier reviewed text. Fresh owner review is required; effective date and public hosting remain pending. The [review record](LEGAL_REVIEW.md) owns provider, regional and signed-release conditions. No deployment or provider activation is authorized by this document. Paid billing is inactive and needs its separate offer/terms update before paid launch.
 
 <!-- public:start -->
 
@@ -14,49 +14,49 @@ Prepared October 18, 2026 and revised October 19 after reviewing How We Feel and
 
 JustGO is operated by Youngshin Yoo in Ontario, Canada. Contact [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com) for support or questions about these terms.
 
-You must be at least 18 to use JustGO. The app offers everyday social challenges, a timer, optional feelings and written reflections, and a private record of your activity in Progress.
-
-Choose activities suited to your circumstances and respect other people's boundaries. JustGO does not provide medical advice, diagnosis, treatment or emergency services.
+You must be at least 18 to use JustGO. The app offers everyday social challenges, a timer, optional feelings and reflections, and a private record of your activity in Progress. Choose activities suited to your circumstances and respect other people’s boundaries. JustGO does not provide medical advice, diagnosis, treatment or emergency services.
 
 ## The app license
 
-[Apple's standard End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) governs your license to the iOS app. These terms supplement that agreement for the JustGO service and your account; they do not replace it. If these terms conflict with Apple's standard agreement about the app license, Apple's agreement governs. Nothing in these terms takes away consumer or privacy rights that applicable law protects.
+[Apple’s standard End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) governs your license to the iOS app. These terms supplement it for the JustGO service and optional account. If they conflict about the app license, Apple’s standard agreement governs. Nothing here takes away consumer or privacy rights protected by applicable law.
 
-## Your account
+## Guest use and optional accounts
 
-JustGO uses an account to save your activity without requiring an email address, password or social login. Protect your phone, recovery keys and account access. Keep recovery keys private and do not email them to us.
+You can continue without signing in and keep your journal on your phone. Before optional Sign in with Apple or Sign in with Google, the app explains that completed challenges, feelings and reflections will synchronize with a JustGO account. Your first successful sign-in automatically adds existing phone entries that do not belong to another JustGO account. Data already associated with another account stays separate.
 
-Do not try to enter someone else's account, misuse account recovery or interfere with the service's security or operation.
+Protect your phone, provider account and sign-in access. Do not enter someone else’s account, misuse recovery or interfere with the service’s security. Restoring a purchase or possessing a data file does not authenticate a JustGO account. Signing out stops JustGO account synchronization and keeps the same journal visible and editable on the phone; signing back into the same account synchronizes changes saved while signed out. Account settings show verified Apple and Google login methods. You can connect or disconnect a method while keeping at least one available.
 
 ## Your content
 
-Your reflections and other submitted content remain yours. You allow JustGO and its authorized service providers to save, transmit and process that content as needed to display and synchronize your activity, recover your history, and let you export or delete your data. The [Privacy Policy](/privacy/) explains where that information goes and how long it is kept.
+Your reflections and other content remain yours. You allow JustGO to process them on the phone and, when you choose account sign-in or iCloud Sync, through the corresponding service to save, display, synchronize, preserve differing versions, download, import and delete them as requested. The [Privacy Policy](/privacy/) explains providers, retention and these separate choices.
 
-You can skip both feelings and written reflections. Other users cannot browse your journal through their JustGO accounts.
+You can skip feelings and reflections. Other users cannot browse your journal through their own JustGO accounts. Private account access is not a promise of end-to-end encryption or immunity from every storage or security risk.
 
-## Saving and availability
+## Saving, files and availability
 
-Submitted activity is saved on your phone and uploaded to your account. A change waiting to upload may exist only on the phone where you made it. Account recovery on another phone restores uploaded history; it cannot retrieve changes that have not uploaded from the original phone. Unsubmitted text and unfinished challenges are not backed up to your account.
+A saved item waiting to synchronize may exist only on its original phone. Data saved without an account remains on the phone unless you choose account sign-in after the cloud-storage explanation, enable iCloud Sync or deliberately save or share a file. Optional iCloud Sync uses your private Apple CloudKit database and is separate from JustGO account sign-in, iCloud Drive files and iPhone system backup. It is off by default and depends on available Apple configuration, storage and connectivity. Turning it off stops synchronization without deleting the existing app-managed iCloud copy.
 
-Network, device and service conditions can affect saving, availability and recovery. Settings → Export my data lets you keep a separate copy of your saved records. Keep that file private.
+Settings → Data → Download my data creates a restorable snapshot of the selected collection’s saved history, journal and preferences. Signed-in account downloads first synchronize with the service; signed-out downloads include only the phone’s saved account data and may omit newer cloud changes. The ZIP contains readable private content and is not password protected by JustGO. Choose a protected destination and keep it secure. Later edits require another download. Unsaved text and unfinished challenges are excluded.
 
-We may change or interrupt the service for security, maintenance or operational reasons. We will explain material changes where reasonably possible and give any notice required by applicable law.
+Import data validates a supported file and asks you to confirm. Account-owned files require sign-in to the same account. Guest files may be added to the selected collection. Duplicate stable completion IDs do not add extra reps, and differing writing is preserved rather than silently replaced. Imports may synchronize with the signed-in account and enabled iCloud copy. Older journal-only files are not complete account backups and cannot recover credentials or recreate a deleted account.
 
-## Free beta
+Losing a phone, removing the app or clearing its data can lose unsynchronized information without a usable backup. Network, storage, provider and device conditions affect saving and recovery. We may change or interrupt the service for security, maintenance or operational reasons and will provide any notice required by applicable law.
 
-The beta is free for eligible testers. Access to challenges may change or end during testing. Ending challenge access does not itself delete your account. While the service is available, account recovery, export and deletion do not require challenge access or a purchase.
+## Free beta and paid access
 
-Paid subscriptions are not active in this beta. If we introduce paid access, we will explain the offer and applicable terms before you choose to purchase. These beta terms do not authorize a charge.
+The beta is free for eligible testers. Access to new challenges may change or end. Losing challenge access does not itself delete your saved collection. Local history, account sign-in and data controls remain reachable independently of paid challenge admission, while online operations still need a working service and authorized account.
 
-## Privacy and account deletion
+Paid subscriptions are inactive in this beta. Before introducing paid access, we will explain the offer and applicable terms. These beta terms do not authorize a charge.
 
-The [Privacy Policy](/privacy/) explains phone and cloud storage, service providers, retention and your privacy choices.
+## Data deletion and ending an account
 
-Choose Delete account in Settings to delete your cloud journal and close the account. JustGO also removes the account's data from the current phone; if that cleanup is interrupted, the app lets you retry it. We keep limited security records to prevent old account credentials from recreating a deleted account, as explained in the Privacy Policy.
+Settings → Data → Delete all my data asks for confirmation, then removes the selected journal's saved history, feelings and reflections from the phone, signed-in JustGO account and previously associated app-managed iCloud copies, even if iCloud Sync is now off. It keeps the account and login methods. Account-owned cloud deletion requires sign-in. You can later deliberately import a valid backup. Deletion is reconciled before a device resumes synchronization.
 
-Removing the app alone does not delete your cloud account. Account deletion cannot remotely erase an exported file or data saved on another offline device.
+Settings → Account → Delete account asks for confirmation, then closes the account, deletes its active cloud history and journal, removes its managed authentication account, revokes account sessions, and clears that owner’s local collection, sign-in credentials, app-controlled temporary files and previously associated app-managed iCloud copies, even if iCloud Sync is now off. Interrupted deletion or cleanup can be retried. If the associated Apple account or iCloud service is unavailable, cleanup remains pending until it can be retried. Limited security records remain to prevent deleted accounts and revoked access from becoming active again, as explained in the Privacy Policy. The same pending-cleanup behavior applies to Delete all my data.
+
+Neither deletion action deletes your Apple or Google account or cancels an Apple subscription. Removing the app does not close the cloud account. Data deletion cannot immediately erase a disconnected device or files you saved to Files, iCloud Drive or another destination. Those copies remain under your control, and provider backups follow their separate retention processes.
 
 ## Changes and questions
 
-For material changes, we will provide any notice or choice required by applicable law. Contact us using the email address above if you have a concern about JustGO or these terms.
+The [Privacy Policy](/privacy/) explains our information handling and choices. For material changes, we provide any notice or choice required by applicable law. Contact us at the address above with questions or concerns.
 <!-- public:end -->

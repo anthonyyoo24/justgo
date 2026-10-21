@@ -116,6 +116,8 @@ it('opens a centered confirmation, cancels safely and requires a fresh explicit 
   const s = render(<DeleteAccountRoute />);
   expect(preloadWelcomeArtwork).toHaveBeenCalledTimes(1);
   expect(s.getByText(/This cannot be undone/)).toBeTruthy();
+  expect(s.getByText(/in associated iCloud copies/)).toBeTruthy();
+  expect(s.queryByText(/enabled iCloud copy/)).toBeNull();
   expect(s.queryByLabelText('Delete your account?')).toBeNull();
   fireEvent.press(s.getByLabelText('Continue to deletion'));
   expect(s.getByLabelText('Delete your account?')).toHaveProp(
@@ -128,7 +130,7 @@ it('opens a centered confirmation, cancels safely and requires a fresh explicit 
   );
   expect(
     s.getByText(
-      'Your account, progress, feelings and reflections will be permanently deleted. You won’t be able to recover this account.',
+      'Your account, progress and journal on this phone, in JustGO’s cloud and in associated iCloud copies will be permanently deleted. Downloaded files you saved elsewhere remain under your control.',
     ),
   ).toBeTruthy();
   expect(mockDelete).not.toHaveBeenCalled();
@@ -358,7 +360,7 @@ it('keeps the warning unchanged through server deletion and local cleanup until 
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));
   const warning = s.getByText(
-    /Your account, progress, feelings and reflections/,
+    /Your account, progress and journal on this phone/,
   ).props.children;
   fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
   for (const deletionStatus of ['pending', 'cleanup'] as const) {
@@ -405,7 +407,7 @@ it('explains failed cleanup after the attempt stops and retains that copy during
     dialog.getByText(/Finish clearing this phone’s account data/),
   ).toBeTruthy();
   expect(
-    dialog.queryByText(/Your account, progress, feelings and reflections/),
+    dialog.queryByText(/Your account, progress and journal on this phone/),
   ).toBeNull();
   expect(dialog.queryByRole('alert')).toBeNull();
   expect(

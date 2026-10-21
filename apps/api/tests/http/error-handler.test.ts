@@ -89,6 +89,27 @@ describe('versioned API request errors', () => {
     },
   );
 
+  it.each(['application/json', 'application/xml'])(
+    'retires private writes before parsing or database work (%s)',
+    async (contentType) => {
+      const { app, transaction } = setup();
+      try {
+        const response = await app.inject({
+          method: 'PATCH',
+          url: '/v1/attempts/not-an-id',
+          headers: { 'content-type': contentType },
+          payload: '{' + privateValue.repeat(4000),
+        });
+        expect(response.statusCode).toBe(410);
+        expect(response.json().code).toBe('PRIVATE_JOURNAL_LOCAL');
+        expect(response.body).not.toContain(privateValue);
+        expect(transaction).not.toHaveBeenCalled();
+      } finally {
+        await app.close();
+      }
+    },
+  );
+
   it('rejects a missing bearer before domain I/O', async () => {
     const { app, transaction } = setup();
     try {

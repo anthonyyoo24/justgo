@@ -45,6 +45,23 @@ export function progressCalendar(
   month: string,
   remote?: CalendarRead,
 ): ProgressCalendar | undefined {
+  if (state.dataMode && state.dataMode !== 'legacy') {
+    const days = new Map<string, number>();
+    for (const attempt of eligible(state, Object.keys(state.journal.records)))
+      if (attempt.activityDate.slice(0, 7) === month)
+        days.set(
+          attempt.activityDate,
+          (days.get(attempt.activityDate) ?? 0) + 1,
+        );
+    return {
+      month,
+      monthlyReps: [...days.values()].reduce((sum, count) => sum + count, 0),
+      activeDays: days.size,
+      days: [...days]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, reps]) => ({ date, reps })),
+    };
+  }
   const baseline =
     month === state.period.today.slice(0, 7)
       ? currentCalendar(state)
@@ -77,6 +94,30 @@ export function progressCalendar(
 export function progressMetrics(
   state: JournalState,
 ): ProgressMetrics | undefined {
+  if (state.dataMode && state.dataMode !== 'legacy') {
+    const attempts = eligible(state, Object.keys(state.journal.records));
+    const dates = [
+      ...new Set(attempts.map((attempt) => attempt.activityDate)),
+    ].sort();
+    let bestStreak = 0;
+    let run = 0;
+    let previous: string | undefined;
+    for (const date of dates) {
+      run = previous && shiftDay(previous, 1) === date ? run + 1 : 1;
+      bestStreak = Math.max(bestStreak, run);
+      previous = date;
+    }
+    const dateSet = new Set(dates);
+    let date = dateSet.has(state.period.today)
+      ? state.period.today
+      : shiftDay(state.period.today, -1);
+    let currentStreak = 0;
+    while (dateSet.has(date)) {
+      currentStreak++;
+      date = shiftDay(date, -1);
+    }
+    return { totalReps: attempts.length, currentStreak, bestStreak };
+  }
   const summary = state.journal.summary;
   if (!summary) return undefined;
   const additions = eligible(state, state.journal.summaryAdditions);
@@ -127,16 +168,23 @@ export function progressDay(
   state: JournalState,
   date: string,
   remote?: ProgressDayResponse,
-): ProgressDayResponse | undefined {
+): (ProgressDayResponse & { repCountKnown: boolean }) | undefined {
   const isToday = date === state.period.today;
-  if (!isToday && !state.online) return undefined;
+  const durableHistory = state.dataMode && state.dataMode !== 'legacy';
+  const localEntries = Object.values(state.localEntries ?? {}).filter(
+    (entry) => entry.activityDate === date,
+  );
+  if (!durableHistory && !isToday && !state.online && !localEntries.length)
+    return undefined;
   const cached = state.journal.today;
   const baseline =
     isToday &&
     cached?.data.date === date &&
     cached.timeZone === state.period.timeZone
       ? cached.data
-      : remote;
+      : state.online
+        ? remote
+        : undefined;
   const rows = new Map<string, Attempt>(
     baseline?.entries.map((a) => [a.id, a]) ?? [],
   );
@@ -160,12 +208,20 @@ export function progressDay(
           : record.attempt,
       );
   }
-  if (!baseline && !rows.size) return undefined;
+  for (const entry of localEntries) rows.set(entry.id, entry);
+  if (!durableHistory && !baseline && !rows.size) return undefined;
   const calendar = progressCalendar(state, date.slice(0, 7));
+  const completionCount = Object.values(state.journal.records).filter(
+    (record) => !record.rejected && record.attempt.activityDate === date,
+  ).length;
   return {
     date,
+    // Restored journal entries do not establish a completion count. Keep count
+    // provenance local to this projection so the UI can distinguish unknown
+    // from a known zero without changing completion/API arithmetic.
+    repCountKnown: !!baseline || !!calendar || completionCount > 0,
     totalReps: Math.max(
-      rows.size,
+      completionCount,
       calendar?.days.find((d) => d.date === date)?.reps ??
         baseline?.totalReps ??
         0,

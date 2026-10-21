@@ -476,3 +476,22 @@ it('applies a saved preference to the actual Progress shimmer and stops it on li
   expect(screen.result.current.shimmer).toBeNull();
   expect(stop).toHaveBeenCalledTimes(1);
 });
+
+it('restores the app preference durably while preserving an enabled phone-level motion override', async () => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+  const storage = memoryStorage('true');
+  const screen = renderHook(useMotionPreferences, {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <MotionPreferencesProvider storage={storage}>
+        {children}
+      </MotionPreferencesProvider>
+    ),
+  });
+  await waitFor(() => expect(screen.result.current.loading).toBe(false));
+  await act(async () => screen.result.current.setReduced(false));
+  expect(storage.setItem).toHaveBeenCalledWith(motionPreferenceKey, 'false');
+  expect(screen.result.current.requestedReduceMotion).toBe(false);
+  expect(screen.result.current.reduceMotion).toBe(true);
+});

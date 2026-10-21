@@ -19,6 +19,12 @@ export const attemptSchema = z
   })
   .strict();
 export type Attempt = z.infer<typeof attemptSchema>;
+// Private journal fields belong only to the device/local display model.
+export const completionAttemptSchema = attemptSchema.omit({ reflection: true });
+export type CompletionAttempt = z.infer<typeof completionAttemptSchema>;
+export const completionAttemptResultSchema = z
+  .object({ attempt: completionAttemptSchema })
+  .strict();
 export const createAttemptSchema = z
   .object({
     id: z.uuid(),
@@ -26,6 +32,7 @@ export const createAttemptSchema = z
     venue: venueSchema,
     startedAt: z.iso.datetime().refine((date) => !date.startsWith('0000-')),
     startTimeZone: timeZoneSchema,
+    expectedEpoch: z.number().int().nonnegative().optional(),
   })
   .strict();
 export type CreateAttempt = z.infer<typeof createAttemptSchema>;

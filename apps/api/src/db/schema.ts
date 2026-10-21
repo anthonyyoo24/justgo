@@ -12,7 +12,9 @@ import {
   check,
   pgPolicy,
   boolean,
+  jsonb,
 } from 'drizzle-orm/pg-core';
+import type { Reflection, CompletionAttempt } from '@justgo/contracts';
 
 // Private schema. Tables, indexes and their RLS policies arrive with each feature.
 export const appSchema = pgSchema('justgo');
@@ -36,7 +38,7 @@ const catalogPolicies = () => [
   pgPolicy('catalog_read', {
     for: 'select',
     to: 'justgo_runtime',
-    using: sql`(select justgo.current_user_id()) is not null`,
+    using: sql`(select justgo.current_user_id()) is not null or current_setting('app.guest_catalog',true) = 'on'`,
   }),
 ];
 const identityPolicies = (setting: string) => [
@@ -69,6 +71,8 @@ export const users = appSchema
       deletedAt: time('deleted_at'),
       deletionSessionDigest: text('deletion_session_digest'),
       analyticsRestrictedAt: time('analytics_restricted_at'),
+      dataEpoch: integer('data_epoch').notNull().default(0),
+      dataDeletedAt: time('data_deleted_at'),
     },
     (t) => [
       maintenance(),
@@ -311,6 +315,7 @@ export const attempts = appSchema
       activityDate: text('activity_date').notNull(),
       startTimeZone: text('start_time_zone'),
       legacyDisplayTimeZone: text('legacy_display_time_zone'),
+      instructionSnapshot: text('instruction_snapshot'),
       reflectionFeeling: text('reflection_feeling'),
       reflectionText: text('reflection_text'),
       reflectionRevision: integer('reflection_revision').notNull().default(0),
@@ -371,5 +376,102 @@ export const attemptPatchReceipts = appSchema
       check('attempt_patch_revision', sql`${t.appliedRevision} > 0`),
       ...ownerPolicies(),
     ],
+  )
+  .enableRLS();
+
+// Only a verified Auth subject can discover its canonical owner before owner context is set.
+export const managedAuthAccounts = appSchema
+  .table(
+    'managed_auth_accounts',
+    {
+      authUserId: uuid('auth_user_id').primaryKey(),
+      userId: uuid('user_id')
+        .notNull()
+        .references(() => users.id),
+    },
+    (t) => [
+      uniqueIndex('managed_auth_owner_uq').on(t.userId),
+      maintenance(),
+      pgPolicy('verified_subject_access', {
+        to: 'justgo_runtime',
+        using: sql`auth_user_id = nullif(current_setting('app.auth_user_id',true),'')::uuid`,
+        withCheck: sql`auth_user_id = nullif(current_setting('app.auth_user_id',true),'')::uuid and user_id = (select justgo.current_user_id())`,
+      }),
+    ],
+  )
+  .enableRLS();
+
+export const managedAuthSessions = appSchema
+  .table(
+    'managed_auth_sessions',
+    {
+      id: uuid().primaryKey(),
+      authUserId: uuid('auth_user_id')
+        .notNull()
+        .references(() => managedAuthAccounts.authUserId),
+      userId: uuid('user_id')
+        .notNull()
+        .references(() => users.id),
+      deviceId: uuid('device_id').notNull(),
+      expiresAt: time('expires_at').notNull(),
+      revokedAt: time('revoked_at'),
+    },
+    (t) => [
+      index('managed_sessions_owner_idx').on(t.userId),
+      ...ownerPolicies(),
+    ],
+  )
+  .enableRLS();
+
+export const journalVersions = appSchema
+  .table(
+    'journal_versions',
+    {
+      userId: uuid('user_id').notNull(),
+      versionId: uuid('version_id').notNull(),
+      attemptId: uuid('attempt_id').notNull(),
+      parents: uuid('parents').array().notNull(),
+      feelingScaleVersion: integer('feeling_scale_version').notNull(),
+      reflection: jsonb('reflection').$type<Reflection>().notNull(),
+      context: jsonb('context').$type<CompletionAttempt>(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.userId, t.versionId] }),
+      foreignKey({ columns: [t.userId], foreignColumns: [users.id] }),
+      index('journal_versions_attempt_idx').on(t.userId, t.attemptId),
+      check('journal_version_scale', sql`${t.feelingScaleVersion}=1`),
+      ...ownerPolicies(),
+    ],
+  )
+  .enableRLS();
+
+export const deletedCompletionIds = appSchema
+  .table(
+    'deleted_completion_ids',
+    {
+      userId: uuid('user_id')
+        .notNull()
+        .references(() => users.id),
+      attemptId: uuid('attempt_id').notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.userId, t.attemptId] }),
+      ...ownerPolicies(),
+    ],
+  )
+  .enableRLS();
+
+export const managedAuthDeletions = appSchema
+  .table(
+    'managed_auth_deletions',
+    {
+      userId: uuid('user_id')
+        .primaryKey()
+        .references(() => users.id),
+      authUserId: uuid('auth_user_id').notNull(),
+      requestedAt: time('requested_at').notNull().defaultNow(),
+      completedAt: time('completed_at'),
+    },
+    () => ownerPolicies(),
   )
   .enableRLS();

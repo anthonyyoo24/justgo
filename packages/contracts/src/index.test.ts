@@ -34,6 +34,7 @@ it('documents only canonical product resources after the final cutover', () => {
       /challenges|attempts|progress|reflections/.test(path),
     ),
   ).toEqual([
+    '/v1/guest/challenges',
     '/v1/challenges',
     '/v1/attempts',
     '/v1/attempts/{id}',

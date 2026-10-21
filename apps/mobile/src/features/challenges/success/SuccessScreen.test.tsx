@@ -7,6 +7,7 @@ import {
 } from '../../../../test-support/journal';
 let mockId: string | undefined;
 let mockAccount: object | null;
+let mockCollectionId: string | null;
 const mockGetAttempt = jest.fn();
 const mockRuntime = {
   challenges: {
@@ -22,12 +23,13 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('../../../app-support/providers/AppProvider', () => ({
   useRuntime: () => mockRuntime,
-  useIdentity: () => ({ account: mockAccount }),
+  useIdentity: () => ({ account: mockAccount, collectionId: mockCollectionId }),
   useJournal: () => ({ accountId: mockOwner, getAttempt: mockGetAttempt }),
 }));
 beforeEach(() => {
   mockId = uuid(1);
   mockAccount = { userId: mockOwner };
+  mockCollectionId = null;
   mockGetAttempt.mockReturnValue(attempt());
   mockRouter.replace.mockClear();
   mockRuntime.challenges.dismissSuccess.mockClear();
@@ -41,6 +43,19 @@ it('celebrates a local completion and continues without an HTTP lookup', () => {
     params: { attemptId: uuid(1) },
   });
   expect(mockRuntime.challenges.dismissSuccess).not.toHaveBeenCalled();
+});
+it('continues a guest completion from its matching collection and rejects another collection', () => {
+  mockAccount = null;
+  mockCollectionId = mockOwner;
+  const screen = render(<SuccessScreen />);
+  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(mockRouter.replace).toHaveBeenCalledWith({
+    pathname: '/reflection',
+    params: { attemptId: uuid(1) },
+  });
+  mockCollectionId = uuid(99);
+  screen.rerender(<SuccessScreen />);
+  expect(screen.queryByText('That’s a win!')).toBeNull();
 });
 it('does not show a different attempt or the old account result', () => {
   mockId = uuid(2);
