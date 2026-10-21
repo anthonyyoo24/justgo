@@ -237,6 +237,12 @@ Google's native URL scheme and CloudKit container/entitlements remain unfinished
 The present iCloud switch is not accepted as functional. Follow
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) and the
 [rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
+The [working-login execution checklist](../operations/ACCOUNT_SYNC_SETUP.md#execution-checklist-working-apple-and-google-login)
+expands the provider work below into ordered steps: audit retained recovery code,
+configure providers, coordinate the API/database, build the configured app, verify
+real phone login/data continuity, then remove obsolete recovery consumers.
+This remains Phase 13 work; the checklist adds no new product flow or claim of
+completed provider, hosted or device setup.
 
 1. Prepare the exact Apple/Google OAuth, Supabase Auth and private CloudKit
    configuration against the existing bundle/team identity. Recheck SDK/provider
