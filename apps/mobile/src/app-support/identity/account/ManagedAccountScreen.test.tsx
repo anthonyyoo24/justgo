@@ -169,11 +169,36 @@ it('disables operations while busy and keeps failure/last-method feedback contex
   mockState.hasPending = true;
   screen.rerender(<ManagedAccountScreen />);
   expect(screen.getByRole('alert')).toHaveTextContent(mockState.message);
-  act(() =>
-    fireEvent.press(screen.getByRole('button', { name: 'Retry connection' })),
-  );
-  expect(mockIdentity.retry).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole('button', { name: 'Retry connection' })).toBeNull();
 });
+
+it.each(['guest', 'account'] as const)(
+  'keeps failed sign-in feedback off the signed-out Account page for a %s collection',
+  (collectionKind) => {
+    mockState.collectionKind = collectionKind;
+    mockState.hasPending = true;
+    mockState.message =
+      'Sign-in isn’t configured in this build yet. You can continue on this phone.';
+    const screen = render(<ManagedAccountScreen />);
+    expect(screen.queryByText(mockState.message)).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Retry connection' }),
+    ).toBeNull();
+    for (const provider of ['apple', 'google'] as const) {
+      fireEvent.press(
+        screen.getByRole('switch', {
+          name: provider === 'apple' ? 'Apple' : 'Google',
+        }),
+      );
+      expect(mockRouter.push).toHaveBeenLastCalledWith({
+        pathname: '/account/sign-in',
+        params: { provider },
+      });
+    }
+    expect(mockIdentity.retry).not.toHaveBeenCalled();
+  },
+);
 
 it('opens account deletion directly in the shared modal and cancels without navigating or deleting', () => {
   mockState.account = { userId: 'owner' };

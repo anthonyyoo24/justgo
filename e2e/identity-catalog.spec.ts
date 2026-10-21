@@ -20,12 +20,56 @@ async function signOut(page: Page) {
   await page
     .getByRole('button', { name: 'Confirm log out', exact: true })
     .click();
-  await expect(
-    page.getByText('Signed out. Your saved data remains on this phone.', {
-      exact: true,
-    }),
-  ).toBeVisible();
+  for (const provider of ['Apple', 'Google']) {
+    const method = page.getByRole('switch', { name: provider, exact: true });
+    await expect(method).not.toBeChecked();
+    await expect(method).toBeEnabled();
+  }
 }
+
+test('failed provider sign-in stays on its separate page and leaves no Account connection footer', async ({
+  page,
+}) => {
+  await continueAsGuest(page);
+  await page.goto('/recovery');
+  await page.route(`${journeyApiUrl}/__fixtures/provider-sessions`, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        code: 'UNAVAILABLE',
+        requestId: 'fixture-sign-in-failure',
+      }),
+    }),
+  );
+  for (const provider of ['Apple', 'Google']) {
+    await page.getByRole('switch', { name: provider, exact: true }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/account/sign-in\\?provider=${provider.toLowerCase()}$`),
+    );
+    await expect(
+      page.getByRole('heading', {
+        name: 'Keep your data with your account',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole('button', { name: `Sign in with ${provider}`, exact: true })
+      .click();
+    await expect(page.getByRole('alert')).toHaveText(
+      'Couldn’t finish connecting. Please try again. Your saved data was kept.',
+    );
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(page).toHaveURL(/\/recovery$/);
+    await expect(
+      page.getByRole('switch', { name: provider, exact: true }),
+    ).not.toBeChecked();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Retry connection', exact: true }),
+    ).toHaveCount(0);
+  }
+});
 
 test('provider login, logout and returning login preserve local history and isolate different account collections', async ({
   page,

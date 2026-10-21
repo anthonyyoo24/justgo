@@ -108,22 +108,10 @@ export function ManagedAccountScreen() {
           />
         </View>
       )}
-      {!!state.message && !dialog && (
+      {!!state.message && (state.account || pending) && !dialog && (
         <Text accessibilityRole="alert" style={styles.message}>
           {state.message}
         </Text>
-      )}
-      {state.hasPending && !pending && (
-        <View style={styles.card}>
-          <SettingsActionRow
-            icon="account"
-            label="Retry connection"
-            disabled={state.busy}
-            onPress={() => {
-              void identity.retry();
-            }}
-          />
-        </View>
       )}
       {dialog && <DeleteAccountConfirmation {...dialog} />}
     </SettingsPage>

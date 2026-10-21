@@ -307,6 +307,9 @@ requests unlinking; removing the last login method is rejected with feedback.
 Log out is separate. Old key/code/device routes redirect
 there. Sign-out keeps the same local journal; there is no View guest data action.
 Actions preserve accessible names while busy and show retryable errors.
+Sign-in failures stay on the separate provider-entry page. The signed-out Account
+page omits connection messages and the generic Retry connection button. Signed-in
+provider-action feedback and pending account-deletion retries remain available.
 
 Settings keeps Preferences, Account & data, Support and About. Account & data contains
 only Account and Data links. Support actions open private email drafts; legal/social
