@@ -1,6 +1,6 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { createDataBackup } from '../../../data/backup/data-backup';
-import { DestructiveConfirmation } from '../../../components/modals/DestructiveConfirmation';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 import { Modal } from 'react-native';
 import { SettingsDataScreen } from './SettingsDataScreen';
 import { pickBackupFile } from '../../../platform/backup/backup-file';
@@ -311,7 +311,7 @@ it('uses the shared modal and cancels safely through its button or native dismis
       'aria-modal',
       true,
     );
-    const staleConfirm = screen.UNSAFE_getByType(DestructiveConfirmation).props
+    const staleConfirm = screen.UNSAFE_getByType(ConfirmationModal).props
       .onConfirm as () => void;
     if (dismiss === 'button')
       fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
@@ -335,7 +335,7 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
   expect(dialog.getByRole('alert')).toBeTruthy();
   const deletion = deferred<void>();
   mockActivity.deleteAllData.mockReturnValueOnce(deletion.promise);
-  const callbacks = screen.UNSAFE_getByType(DestructiveConfirmation).props as {
+  const callbacks = screen.UNSAFE_getByType(ConfirmationModal).props as {
     onConfirm: () => void;
     onCancel: () => void;
   };

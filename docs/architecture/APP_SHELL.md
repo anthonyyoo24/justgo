@@ -345,11 +345,15 @@ circular arrow. An unavailable iCloud switch shows its configuration, platform o
 Apple-account reason rather than silently ignoring taps. Delete all sits at the
 bottom. Both deletion rows use red labels and trash icons, omit chevrons and open
 their confirmation modal directly on the current page. Both flows reuse
-`components/modals/DestructiveConfirmation`, with their own consequence text and
+`components/modals/ConfirmationModal` with destructive styling, their own consequence text and
 retry behavior. The Account modal retains the subscription warning. The
 `/delete-account` route remains available for deep links and interrupted cleanup;
 normal Account deletion does not navigate there. The modal preserves input and
 accessibility isolation, busy dismissal protection and large-text action layout.
+Log out uses the same modal with neutral Cancel/Log out actions, leaving the
+Account layout fixed. Its spinner stays visible until controller-confirmed logout
+finishes, including after the local account is fenced. Failures remain in the
+modal for retry. Route, owner and session changes dismiss stale confirmations.
 Native download uses the share sheet; the browser downloads directly. Import uses
 DocumentPicker/Files or the web file chooser, validates before preview/commit and
 preserves current differing writing. It accepts the full-data backup, adding real

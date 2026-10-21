@@ -171,7 +171,8 @@ test('a returning provider account skips legal tracking and reopens the same sav
   await page.goto('/recovery');
   await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Confirm log out', exact: true })
+    .getByRole('alertdialog', { name: 'Log out?', exact: true })
+    .getByRole('button', { name: 'Log out', exact: true })
     .click();
   const google = page.getByRole('switch', { name: 'Google', exact: true });
   await expect(google).not.toBeChecked();

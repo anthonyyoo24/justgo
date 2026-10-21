@@ -7,7 +7,7 @@ import {
   useJournal,
   useRuntime,
 } from '../../../app-support/providers/AppProvider';
-import { DestructiveConfirmation } from '../../../components/modals/DestructiveConfirmation';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 import { SettingsPage } from '../../../components/settings/SettingsPage';
 import {
   SettingsActionRow,
@@ -315,7 +315,8 @@ function DataSession() {
         </View>
       </View>
       {confirmDelete !== null && (
-        <DestructiveConfirmation
+        <ConfirmationModal
+          destructive
           title={
             deletionPending && busy !== 'delete'
               ? 'Finish deleting saved data?'

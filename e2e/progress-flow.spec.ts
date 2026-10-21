@@ -204,7 +204,8 @@ test('complete historical pages stay available offline after sync and logout kee
   await page.goto('/recovery');
   await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Confirm log out', exact: true })
+    .getByRole('alertdialog', { name: 'Log out?', exact: true })
+    .getByRole('button', { name: 'Log out', exact: true })
     .click();
   await expect(
     page.getByRole('switch', { name: 'Apple', exact: true }),

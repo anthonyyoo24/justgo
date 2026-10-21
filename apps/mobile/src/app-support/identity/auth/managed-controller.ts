@@ -627,8 +627,9 @@ export class ManagedIdentityController {
       throw new ApiError('UNAUTHORIZED');
     return session;
   };
-  signOut = () =>
-    this.run(async () => {
+  signOut = async () => {
+    let finished = false;
+    await this.run(async () => {
       await this.load();
       this.networkBlocked = true;
       this.publish({ account: null, mode: 'signed-out', linkedProviders: [] });
@@ -641,7 +642,11 @@ export class ManagedIdentityController {
         pendingLink: null,
       });
       await this.finishLogout();
+      finished = true;
     });
+    // A fenced local account is not proof that persistence and revocation finished.
+    return finished;
+  };
   private async finishLogout() {
     this.publish({ account: null, mode: 'signed-out', linkedProviders: [] });
     if (!this.providerSession)

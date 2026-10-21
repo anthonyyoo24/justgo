@@ -1,9 +1,10 @@
-import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useRuntime } from '../../providers/AppProvider';
 import { DeleteAccountConfirmation } from '../deletion/DeleteAccountConfirmation';
 import { useAccountDeletionDialog } from '../deletion/useAccountDeletionDialog';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
+import { useLogoutDialog } from './useLogoutDialog';
 import { SettingsPage } from '../../../components/settings/SettingsPage';
 import {
   SettingsActionRow,
@@ -20,7 +21,7 @@ export function ManagedAccountScreen() {
   const { state, pending, open, dialog } = useAccountDeletionDialog();
   const router = useRouter();
   const reduceMotion = useReduceMotion();
-  const [confirming, setConfirming] = useState(false);
+  const logout = useLogoutDialog();
   if (!('signIn' in identity)) return null;
   const connected = 'linkedProviders' in state ? state.linkedProviders : null;
   const linkedProviders =
@@ -64,35 +65,14 @@ export function ManagedAccountScreen() {
       </SettingsGroup>
       {(state.account || pending) && (
         <View style={styles.card}>
-          {state.account && confirming && (
-            <Text style={styles.message}>
-              Log out? Your saved data stays on this phone and account sync
-              stops.
-            </Text>
-          )}
           {state.account && (
             <>
               <SettingsActionRow
                 icon="logout"
-                label={confirming ? 'Confirm log out' : 'Log out'}
+                label="Log out"
                 disabled={state.busy || pending}
-                onPress={() => {
-                  if (!confirming) {
-                    setConfirming(true);
-                    return;
-                  }
-                  setConfirming(false);
-                  void identity.signOut();
-                }}
+                onPress={logout.open}
               />
-              {confirming && (
-                <SettingsActionRow
-                  icon="back"
-                  label="Cancel"
-                  disabled={state.busy || pending}
-                  onPress={() => setConfirming(false)}
-                />
-              )}
               <SettingsRowDivider />
             </>
           )}
@@ -101,19 +81,28 @@ export function ManagedAccountScreen() {
             label="Delete account"
             destructive
             disabled={state.busy}
-            onPress={() => {
-              setConfirming(false);
-              open();
-            }}
+            onPress={open}
           />
         </View>
       )}
-      {!!state.message && (state.account || pending) && !dialog && (
-        <Text accessibilityRole="alert" style={styles.message}>
-          {state.message}
-        </Text>
-      )}
+      {!!state.message &&
+        (state.account || pending) &&
+        !dialog &&
+        !logout.dialog && (
+          <Text accessibilityRole="alert" style={styles.message}>
+            {state.message}
+          </Text>
+        )}
       {dialog && <DeleteAccountConfirmation {...dialog} />}
+      {logout.dialog && (
+        <ConfirmationModal
+          {...logout.dialog}
+          title="Log out?"
+          message="Your saved data will stay on this phone. Account syncing will stop until you sign in again."
+          confirmLabel="Log out"
+          progressLabel="Logging out"
+        />
+      )}
     </SettingsPage>
   );
 }

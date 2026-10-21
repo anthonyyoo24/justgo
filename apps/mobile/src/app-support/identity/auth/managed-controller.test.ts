@@ -308,7 +308,7 @@ it('fences uploads immediately on offline logout, retains local ownership and re
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
   ctx.setFailure(new ApiError('NETWORK'));
-  await ctx.controller.signOut();
+  expect(await ctx.controller.signOut()).toBe(false);
   expect(ctx.controller.currentSession()).toBeNull();
   expect(ctx.controller.getSnapshot()).toMatchObject({
     mode: 'signed-out',
@@ -335,7 +335,7 @@ it('never treats another signed-out account collection as guest data to merge', 
   ctx.controller.setGuestDataMerger(merge);
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
-  await ctx.controller.signOut();
+  expect(await ctx.controller.signOut()).toBe(true);
   merge.mockClear();
   ctx.auth.signIn.mockResolvedValueOnce({ ...session, authUserId: uuid(41) });
   ctx.setAccount({ ...account, authUserId: uuid(41), userId: uuid(51) });
@@ -487,13 +487,14 @@ it('keeps a signout storage failure fenced from all subsequent authenticated req
   await ctx.controller.initialize();
   await ctx.controller.signIn('google');
   ctx.storage.write.mockRejectedValueOnce(new ProviderAuthError('STORAGE'));
-  await ctx.controller.signOut();
+  expect(await ctx.controller.signOut()).toBe(false);
   expect(ctx.controller.currentSession()).toBeNull();
   expect(ctx.controller.getSnapshot()).toMatchObject({
     mode: 'signed-out',
     account: null,
     collectionId: account.userId,
   });
+  expect(await ctx.controller.signOut()).toBe(true);
 });
 
 it('finishes an existing legacy deletion receipt without any bootstrap or provider account creation', async () => {

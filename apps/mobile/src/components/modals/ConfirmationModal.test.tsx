@@ -1,6 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { Dimensions, Modal, View } from 'react-native';
-import { DestructiveConfirmation } from './DestructiveConfirmation';
+import { ConfirmationModal } from './ConfirmationModal';
+import { colors } from '../../theme/tokens';
 import { useModalIsolation } from '../../platform/modals/useModalIsolation';
 
 const originalWindow = Dimensions.get('window');
@@ -20,6 +21,7 @@ const props = {
   busy: false,
   disabled: false,
   error: null,
+  destructive: true,
   onCancel: cancel,
   onConfirm: confirm,
 };
@@ -28,7 +30,7 @@ beforeEach(() => {
 });
 afterEach(() => act(() => Dimensions.set({ window: originalWindow })));
 it('retains modal isolation, device safe areas and accessible destructive actions', () => {
-  const screen = render(<DestructiveConfirmation {...props} />);
+  const screen = render(<ConfirmationModal {...props} />);
   expect(useModalIsolation).toHaveBeenCalledWith(
     expect.objectContaining({ current: expect.anything() }),
   );
@@ -57,7 +59,7 @@ it('retains modal isolation, device safe areas and accessible destructive action
 });
 it('stacks the actions at larger font sizes and guards native dismissal while busy', () => {
   act(() => Dimensions.set({ window: { ...originalWindow, fontScale: 2 } }));
-  const screen = render(<DestructiveConfirmation {...props} busy />);
+  const screen = render(<ConfirmationModal {...props} busy />);
   expect(screen.getByRole('button', { name: 'Cancel' })).toHaveStyle({
     width: '100%',
   });
@@ -73,4 +75,24 @@ it('stacks the actions at larger font sizes and guards native dismissal while bu
   fireEvent.press(screen.getByRole('button', { name: props.confirmLabel }));
   expect(cancel).not.toHaveBeenCalled();
   expect(confirm).not.toHaveBeenCalled();
+});
+
+it('uses the normal action color for logout, including its loading indicator', () => {
+  const screen = render(
+    <ConfirmationModal {...props} destructive={false} confirmLabel="Log out" />,
+  );
+  expect(screen.getByText('Log out')).toHaveStyle({ color: colors.ink });
+  screen.rerender(
+    <ConfirmationModal
+      {...props}
+      destructive={false}
+      confirmLabel="Log out"
+      progressLabel="Logging out"
+      busy
+    />,
+  );
+  expect(screen.getByRole('progressbar', { name: 'Logging out' })).toHaveProp(
+    'color',
+    colors.ink,
+  );
 });

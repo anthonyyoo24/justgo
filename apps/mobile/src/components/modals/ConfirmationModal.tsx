@@ -23,9 +23,10 @@ type ConfirmationProps = {
   disabled: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  destructive?: boolean;
 };
 
-export function DestructiveConfirmation(props: ConfirmationProps) {
+export function ConfirmationModal(props: ConfirmationProps) {
   // Read the existing window's insets before presenting the native modal.
   const insets = useSafeAreaInsets();
   return (
@@ -63,6 +64,7 @@ function ConfirmationContent({
   disabled,
   onCancel,
   onConfirm,
+  destructive = false,
 }: ConfirmationProps) {
   const surface = useRef<View>(null);
   const stacked = useWindowDimensions().fontScale > 1.3;
@@ -115,18 +117,19 @@ function ConfirmationContent({
           accessibilityRole="button"
           accessibilityLabel={confirmLabel}
           accessibilityState={{ disabled: busy || disabled, busy }}
+          aria-busy={busy}
           disabled={busy || disabled}
           onPress={onConfirm}
           style={({ pressed }) => [
             styles.action,
             stacked && styles.stackedAction,
-            stacked ? styles.stackedDelete : styles.delete,
+            stacked ? styles.stackedConfirm : styles.confirm,
             pressed && styles.pressed,
           ]}
         >
           {busy ? (
             <ActivityIndicator
-              color="#B3261E"
+              color={destructive ? '#B3261E' : colors.ink}
               accessible
               accessibilityRole="progressbar"
               accessibilityLabel={progressLabel}
@@ -134,7 +137,7 @@ function ConfirmationContent({
           ) : (
             <Text
               maxFontSizeMultiplier={2}
-              style={[styles.actionLabel, styles.destructive]}
+              style={[styles.actionLabel, destructive && styles.destructive]}
             >
               {confirmLabel}
             </Text>
@@ -192,11 +195,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   stackedAction: { flex: 0, width: '100%' },
-  delete: {
+  confirm: {
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderLeftColor: colors.border,
   },
-  stackedDelete: {
+  stackedConfirm: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DestructiveConfirmation } from '../../../components/modals/DestructiveConfirmation';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 
 type ConfirmationProps = {
   busy: boolean;
@@ -20,8 +20,9 @@ export function DeleteAccountConfirmation({
   if (!props.busy && cleanupInstructions !== cleanup)
     setCleanupInstructions(cleanup);
   return (
-    <DestructiveConfirmation
+    <ConfirmationModal
       {...props}
+      destructive
       title="Delete your account?"
       message={
         cleanupInstructions

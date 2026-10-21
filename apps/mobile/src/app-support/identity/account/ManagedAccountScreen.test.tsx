@@ -1,6 +1,8 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import RecoveryRoute from '../../../app/recovery';
 import { ProviderLogo } from '../../../components/auth/ProviderLogo';
+import { colors } from '../../../theme/tokens';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 
 const mockRouter = {
   push: jest.fn(),
@@ -22,7 +24,8 @@ const mockIdentity = {
 };
 const mockIdentityListeners = new Set<() => void>();
 let mockState = {
-  account: null as { userId: string } | null,
+  account: null as { userId: string; sessionId?: string } | null,
+  collectionId: 'owner',
   linkedProviders: [] as ('apple' | 'google')[],
   initialized: true,
   busy: false,
@@ -58,8 +61,14 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockIdentity.deleteAccount.mockResolvedValue(undefined);
   mockIdentity.retry.mockResolvedValue(undefined);
+  mockIdentity.signOut.mockImplementation(async () => {
+    mockState.account = null;
+    mockState.hasPending = false;
+    return true;
+  });
   mockState = {
     account: null,
+    collectionId: 'owner',
     linkedProviders: [],
     initialized: true,
     busy: false,
@@ -139,21 +148,143 @@ it('reflects verified connections and delegates connect/disconnect without optim
   );
 });
 
-it('shows separate logout and red deletion actions, preserving explicit logout confirmation', () => {
-  mockState.account = { userId: 'owner' };
+it('opens logout in the shared modal, cancels without signing out and closes after success', async () => {
+  mockState.account = { userId: 'owner', sessionId: 'session' };
   mockState.linkedProviders = ['apple'];
   const screen = render(<RecoveryRoute />);
   expect(screen.getByRole('button', { name: 'Delete account' })).toBeTruthy();
   expect(screen.queryByRole('link', { name: 'Delete account' })).toBeNull();
   expect(screen.getByText('Delete account')).toHaveStyle({ color: '#B3261E' });
   fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  let dialog = within(screen.getByLabelText('Log out?'));
+  expect(
+    dialog.getByText(
+      'Your saved data will stay on this phone. Account syncing will stop until you sign in again.',
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByText('Confirm log out')).toBeNull();
+  expect(dialog.getByText('Log out')).toHaveStyle({ color: colors.ink });
   expect(mockIdentity.signOut).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+  fireEvent.press(dialog.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByLabelText('Log out?')).toBeNull();
   expect(mockIdentity.signOut).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Confirm log out' }));
+  dialog = within(screen.getByLabelText('Log out?'));
+  await act(async () =>
+    fireEvent.press(dialog.getByRole('button', { name: 'Log out' })),
+  );
   expect(mockIdentity.signOut).toHaveBeenCalledTimes(1);
+  expect(screen.queryByLabelText('Log out?')).toBeNull();
 });
+
+it('holds the modal and disables repeated logout and cancellation while logout is in flight', async () => {
+  mockState.account = { userId: 'owner', sessionId: 'session' };
+  let finish = () => {};
+  mockIdentity.signOut.mockImplementationOnce(() => {
+    mockState.account = null;
+    mockState.hasPending = true;
+    return new Promise<boolean>((resolve) => {
+      finish = () => {
+        mockState.hasPending = false;
+        resolve(true);
+      };
+    });
+  });
+  const screen = render(<RecoveryRoute />);
+  fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  const dialog = within(screen.getByLabelText('Log out?'));
+  fireEvent.press(dialog.getByRole('button', { name: 'Log out' }));
+  act(() => mockIdentityListeners.forEach((listener) => listener()));
+  expect(dialog.getByRole('progressbar', { name: 'Logging out' })).toBeTruthy();
+  expect(dialog.queryByText('Log out')).toBeNull();
+  expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  fireEvent.press(dialog.getByRole('button', { name: 'Log out' }));
+  fireEvent.press(dialog.getByRole('button', { name: 'Cancel' }));
+  expect(mockIdentity.signOut).toHaveBeenCalledTimes(1);
+  await act(async () => finish());
+  expect(screen.queryByLabelText('Log out?')).toBeNull();
+});
+
+it('keeps logout failure in the modal and retries after the local account is already fenced', async () => {
+  mockState.account = { userId: 'owner', sessionId: 'session' };
+  mockIdentity.signOut.mockImplementationOnce(async () => {
+    mockState.account = null;
+    mockState.hasPending = true;
+    mockState.message = 'Couldn’t connect. Please try again.';
+    return false;
+  });
+  const screen = render(<RecoveryRoute />);
+  fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  const dialog = within(screen.getByLabelText('Log out?'));
+  await act(async () =>
+    fireEvent.press(dialog.getByRole('button', { name: 'Log out' })),
+  );
+  expect(dialog.getByRole('alert')).toHaveTextContent(
+    'Couldn’t connect. Please try again.',
+  );
+  expect(screen.getAllByRole('alert')).toHaveLength(1);
+  expect(dialog.getByRole('button', { name: 'Log out' })).toBeEnabled();
+  await act(async () =>
+    fireEvent.press(dialog.getByRole('button', { name: 'Log out' })),
+  );
+  expect(mockIdentity.signOut).toHaveBeenCalledTimes(2);
+  expect(screen.queryByLabelText('Log out?')).toBeNull();
+});
+
+it('does not mistake a cleared account for successful logout when saving the logout operation fails', async () => {
+  mockState.account = { userId: 'owner', sessionId: 'session' };
+  mockIdentity.signOut.mockImplementationOnce(async () => {
+    mockState.account = null;
+    mockState.hasPending = false;
+    mockState.message = 'Account storage is unavailable.';
+    return false;
+  });
+  const screen = render(<RecoveryRoute />);
+  fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  const dialog = within(screen.getByLabelText('Log out?'));
+  await act(async () =>
+    fireEvent.press(dialog.getByRole('button', { name: 'Log out' })),
+  );
+  act(() => mockIdentityListeners.forEach((listener) => listener()));
+  expect(dialog.getByRole('alert')).toHaveTextContent(
+    'Account storage is unavailable.',
+  );
+  expect(dialog.getByRole('button', { name: 'Log out' })).toBeEnabled();
+});
+
+it('recovers unexpected logout rejection without leaking exception details', async () => {
+  mockState.account = { userId: 'owner', sessionId: 'session' };
+  mockIdentity.signOut.mockRejectedValueOnce(new Error('private details'));
+  const screen = render(<RecoveryRoute />);
+  fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  const dialog = within(screen.getByLabelText('Log out?'));
+  await act(async () =>
+    fireEvent.press(dialog.getByRole('button', { name: 'Log out' })),
+  );
+  expect(dialog.getByRole('alert')).toHaveTextContent(
+    'Couldn’t log out. Please try again.',
+  );
+  expect(screen.queryByText('private details')).toBeNull();
+});
+
+it.each(['owner', 'session'] as const)(
+  'closes stale logout confirmation after an account %s change',
+  (change) => {
+    mockState.account = { userId: 'owner', sessionId: 'session' };
+    const screen = render(<RecoveryRoute />);
+    fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+    const staleConfirm = screen.UNSAFE_getByType(ConfirmationModal).props
+      .onConfirm as () => void;
+    mockState.account =
+      change === 'owner'
+        ? { userId: 'other-owner', sessionId: 'other-session' }
+        : { userId: 'owner', sessionId: 'other-session' };
+    act(() => mockIdentityListeners.forEach((listener) => listener()));
+    expect(screen.queryByLabelText('Log out?')).toBeNull();
+    act(staleConfirm);
+    expect(mockIdentity.signOut).not.toHaveBeenCalled();
+  },
+);
 
 it('disables operations while busy and keeps failure/last-method feedback contextual', () => {
   mockState.account = { userId: 'owner' };
