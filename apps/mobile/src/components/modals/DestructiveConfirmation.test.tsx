@@ -15,7 +15,7 @@ const confirm = jest.fn();
 const props = {
   title: 'Delete saved data?',
   message: 'Your account and downloaded files remain.',
-  confirmLabel: 'Delete all my data',
+  confirmLabel: 'Delete',
   progressLabel: 'Deleting saved data',
   busy: false,
   disabled: false,

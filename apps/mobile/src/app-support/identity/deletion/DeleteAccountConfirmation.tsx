@@ -28,7 +28,7 @@ export function DeleteAccountConfirmation({
           ? 'Your account has been deleted. Finish clearing this phone’s account data and sign-in credentials.'
           : 'Your account, progress and journal on this phone, in JustGO’s cloud and in associated iCloud copies will be permanently deleted. Downloaded files you saved elsewhere remain under your control.\n\nDeleting your account does not cancel an App Store subscription. Manage subscriptions separately in your device’s Settings.'
       }
-      confirmLabel="Delete account"
+      confirmLabel="Delete"
       progressLabel="Deleting account"
     />
   );

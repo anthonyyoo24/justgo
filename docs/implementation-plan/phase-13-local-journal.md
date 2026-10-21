@@ -180,7 +180,8 @@ modal presentation in `src/components`. Extract only the common presentation fro
 - Replace the inline Data confirmation with the same modal used for account
   deletion. Preserve safe-area layout, background isolation, accessibility/focus,
   Cancel, destructive confirmation, busy state and retry/error feedback.
-- Use action-specific titles, consequences and confirm labels. Delete all my data
+- Use action-specific titles and consequences, with Cancel and Delete buttons in
+  both modals. Delete all my data
   keeps the account; Delete account removes it. Opening/cancelling a modal performs
   no deletion. Repeated taps cannot start competing operations.
 - Keep durable pending-deletion state independent of modal mounting/dismissal and

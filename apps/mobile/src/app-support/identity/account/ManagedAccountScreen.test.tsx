@@ -203,7 +203,7 @@ it('confirms deletion from Account and keeps a failure inside its modal', async 
   fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
   const dialog = within(screen.getByLabelText('Delete your account?'));
   await act(async () =>
-    fireEvent.press(dialog.getByRole('button', { name: 'Delete account' })),
+    fireEvent.press(dialog.getByRole('button', { name: 'Delete' })),
   );
   expect(mockIdentity.deleteAccount).toHaveBeenCalledTimes(1);
   expect(dialog.getByRole('alert')).toHaveTextContent(message);
@@ -228,7 +228,7 @@ it('keeps a pending deletion available after the authenticated account is cleare
   fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
   dialog = within(screen.getByLabelText('Delete your account?'));
   await act(async () =>
-    fireEvent.press(dialog.getByRole('button', { name: 'Delete account' })),
+    fireEvent.press(dialog.getByRole('button', { name: 'Delete' })),
   );
   expect(mockIdentity.retry).toHaveBeenCalledTimes(1);
   expect(mockIdentity.deleteAccount).not.toHaveBeenCalled();

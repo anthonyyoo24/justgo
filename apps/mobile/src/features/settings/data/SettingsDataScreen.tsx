@@ -322,7 +322,7 @@ function DataSession() {
               : 'Delete all saved data?'
           }
           message="Your challenge history, feelings and reflections on this phone, in your JustGO account and in associated iCloud copies will be deleted. Your account, login methods and downloaded files remain. This cannot be undone."
-          confirmLabel="Delete all my data"
+          confirmLabel="Delete"
           progressLabel="Deleting saved data"
           busy={busy === 'delete'}
           disabled={busy !== null}

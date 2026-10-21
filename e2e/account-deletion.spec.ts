@@ -86,7 +86,7 @@ test('managed account deletion preserves confirmation focus, survives a lost ack
   );
   await deleteAction.click();
   await confirmation
-    .getByRole('button', { name: 'Delete account', exact: true })
+    .getByRole('button', { name: 'Delete', exact: true })
     .click();
   await expect(confirmation.getByRole('alert')).toHaveText(
     'Account deletion is unavailable right now. Your account has not been deleted.',
@@ -133,7 +133,7 @@ test('managed account deletion preserves confirmation focus, survives a lost ack
   try {
     await deleteAction.click();
     const deleteButton = confirmation.getByRole('button', {
-      name: 'Delete account',
+      name: 'Delete',
       exact: true,
     });
     await deleteButton.click();

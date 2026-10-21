@@ -170,13 +170,13 @@ it('rejects callbacks from a canceled confirmation after reopening for the same 
   act(stale.onCancel);
   expect(mockDelete).not.toHaveBeenCalled();
   expect(s.getByLabelText('Delete your account?')).toBeTruthy();
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   expect(mockDelete).toHaveBeenCalledTimes(1);
 });
 it('keeps failure feedback inside confirmation and fences it from another account', async () => {
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   expect(mockDelete).toHaveBeenCalledTimes(1);
   expect(s.getByLabelText('Delete your account?')).toBeTruthy();
   mockState = {
@@ -189,7 +189,7 @@ it('keeps failure feedback inside confirmation and fences it from another accoun
   expect(
     within(s.getByLabelText('Delete your account?')).getByRole('alert'),
   ).toHaveTextContent('Recover your account before trying again.');
-  expect(s.getByRole('button', { name: 'Delete account' })).toBeDisabled();
+  expect(s.getByRole('button', { name: 'Delete' })).toBeDisabled();
   mockState = { ...mockState, account: { userId: 'other' } };
   rerender(s);
   expect(s.queryByText('Recover your account before trying again.')).toBeNull();
@@ -265,7 +265,7 @@ it.each(['pending', 'cleanup'] as const)(
     mockState = { ...mockState, account: null, deletionStatus: status };
     const s = render(<DeleteAccountRoute />);
     expect(s.getByLabelText('Delete your account?')).toBeTruthy();
-    fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+    fireEvent.press(s.getByRole('button', { name: 'Delete' }));
     expect(mockRetry).toHaveBeenCalledTimes(1);
     expect(s.getByRole('button', { name: 'Cancel' })).toBeDisabled();
     expect(s.queryByLabelText('Connect account')).toBeNull();
@@ -297,13 +297,13 @@ it('replaces the delete label with a spinner and prevents dismissal throughout t
   fireEvent.press(s.getByLabelText('Continue to deletion'));
   const staleCancel = s.UNSAFE_getByType(DeleteAccountConfirmation).props
     .onCancel as () => void;
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   const dialog = within(s.getByLabelText('Delete your account?'));
-  expect(dialog.queryByText('Delete account')).toBeNull();
+  expect(dialog.queryByText('Delete')).toBeNull();
   expect(
     dialog.getByRole('progressbar', { name: 'Deleting account' }),
   ).toBeTruthy();
-  expect(dialog.getByRole('button', { name: 'Delete account' })).toBeDisabled();
+  expect(dialog.getByRole('button', { name: 'Delete' })).toBeDisabled();
   expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
   act(() => {
     staleCancel();
@@ -326,7 +326,7 @@ it('replaces the delete label with a spinner and prevents dismissal throughout t
 it('shows failures only below the modal copy, clears them on retry and closes after successful cleanup', async () => {
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   mockState = {
     ...mockState,
     account: null,
@@ -339,8 +339,8 @@ it('shows failures only below the modal copy, clears them on retry and closes af
   expect(dialog.getByRole('alert')).toHaveTextContent(mockState.message);
   expect(dialog.getByRole('alert')).toHaveStyle({ color: '#B3261E' });
   expect(s.getAllByRole('alert')).toHaveLength(1);
-  expect(dialog.getByRole('button', { name: 'Delete account' })).toBeEnabled();
-  fireEvent.press(dialog.getByRole('button', { name: 'Delete account' }));
+  expect(dialog.getByRole('button', { name: 'Delete' })).toBeEnabled();
+  fireEvent.press(dialog.getByRole('button', { name: 'Delete' }));
   expect(mockRetry).toHaveBeenCalledTimes(1);
   expect(mockDelete).toHaveBeenCalledTimes(1);
   expect(s.queryByRole('alert')).toBeNull();
@@ -363,7 +363,7 @@ it('keeps the warning unchanged through server deletion and local cleanup until 
   const warning = s.getByText(
     /Your account, progress and journal on this phone/,
   ).props.children;
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   for (const deletionStatus of ['pending', 'cleanup'] as const) {
     mockState = { ...mockState, account: null, busy: true, deletionStatus };
     rerender(s);
@@ -386,7 +386,7 @@ it('keeps the warning unchanged through server deletion and local cleanup until 
 it('explains failed cleanup after the attempt stops and retains that copy during retry', async () => {
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   mockState = {
     ...mockState,
     account: null,
@@ -402,7 +402,7 @@ it('explains failed cleanup after the attempt stops and retains that copy during
     dialog.getByText(/Finish clearing this phone’s account data/),
   ).toBeTruthy();
   expect(dialog.getByRole('alert')).toHaveTextContent(mockState.message);
-  fireEvent.press(dialog.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(dialog.getByRole('button', { name: 'Delete' }));
   expect(mockRetry).toHaveBeenCalledTimes(1);
   expect(
     dialog.getByText(/Finish clearing this phone’s account data/),
@@ -419,7 +419,7 @@ it('explains failed cleanup after the attempt stops and retains that copy during
 it('keeps an old-build preflight error in the modal without adding page feedback', async () => {
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   mockState = {
     ...mockState,
     message: 'Update JustGO to delete your account securely.',
@@ -449,7 +449,7 @@ it('can dismiss and reopen a pending error without losing the durable retry', ()
   expect(
     within(s.getByLabelText('Delete your account?')).getByRole('alert'),
   ).toHaveTextContent(mockState.message);
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   expect(mockRetry).toHaveBeenCalledTimes(1);
   expect(mockDelete).not.toHaveBeenCalled();
 });
@@ -457,7 +457,7 @@ it('can dismiss and reopen a pending error without losing the durable retry', ()
 it('ignores an old request completion after another account opens a fresh modal', async () => {
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   mockState = {
     ...mockState,
     account: { userId: 'other' },
@@ -477,14 +477,14 @@ it('contains an unexpected request rejection and leaves a retryable modal error'
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));
   await act(async () =>
-    fireEvent.press(s.getByRole('button', { name: 'Delete account' })),
+    fireEvent.press(s.getByRole('button', { name: 'Delete' })),
   );
   expect(
     within(s.getByLabelText('Delete your account?')).getByRole('alert'),
   ).toHaveTextContent(
     'Couldn’t finish deleting your account. Please try again.',
   );
-  expect(s.getByRole('button', { name: 'Delete account' })).toBeEnabled();
+  expect(s.getByRole('button', { name: 'Delete' })).toBeEnabled();
 });
 
 it('opens a restored deletion after slow hydration and presents its cleanup state inside the modal', () => {
@@ -512,7 +512,7 @@ it('opens a restored deletion after slow hydration and presents its cleanup stat
 it('discards a request completion after navigation blur', async () => {
   const s = render(<DeleteAccountRoute />);
   fireEvent.press(s.getByLabelText('Continue to deletion'));
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   act(() => mockFocusCleanup?.());
   await act(async () => finishDelete?.());
   expect(s.queryByLabelText('Delete your account?')).toBeNull();
@@ -526,7 +526,7 @@ it('rejects queued callbacks from the preceding attempt after an error appears',
     onConfirm: () => void;
     onCancel: () => void;
   };
-  fireEvent.press(s.getByRole('button', { name: 'Delete account' }));
+  fireEvent.press(s.getByRole('button', { name: 'Delete' }));
   mockState = {
     ...mockState,
     account: null,

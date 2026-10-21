@@ -261,7 +261,7 @@ it('deletes only after an explicit confirmation, retaining the account and separ
   fireEvent.press(
     within(
       screen.getByLabelText(/deleting saved data\?|Delete all saved data\?/),
-    ).getByRole('button', { name: 'Delete all my data' }),
+    ).getByRole('button', { name: 'Delete' }),
   );
   await screen.findByText(
     'All saved data was deleted. Your account and downloaded files were kept.',
@@ -289,7 +289,7 @@ it('shows durable unfinished deletion on reopening and resumes it while import r
   fireEvent.press(
     within(
       screen.getByLabelText(/deleting saved data\?|Delete all saved data\?/),
-    ).getByRole('button', { name: 'Delete all my data' }),
+    ).getByRole('button', { name: 'Delete' }),
   );
   await screen.findByText(
     'All saved data was deleted. Your account and downloaded files were kept.',
@@ -327,7 +327,7 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
   const screen = render(<SettingsDataScreen />);
   fireEvent.press(screen.getByRole('button', { name: 'Delete all my data' }));
   const dialog = within(screen.getByLabelText('Delete all saved data?'));
-  fireEvent.press(dialog.getByRole('button', { name: 'Delete all my data' }));
+  fireEvent.press(dialog.getByRole('button', { name: 'Delete' }));
   await screen.findByText(
     'Deletion is unfinished. Please try again to finish deleting your saved data.',
   );
@@ -346,9 +346,7 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
   });
   expect(mockActivity.deleteAllData).toHaveBeenCalledTimes(2);
   expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  expect(
-    dialog.getByRole('button', { name: 'Delete all my data' }),
-  ).toBeDisabled();
+  expect(dialog.getByRole('button', { name: 'Delete' })).toBeDisabled();
   expect(
     dialog.getByRole('progressbar', { name: 'Deleting saved data' }),
   ).toBeTruthy();
@@ -365,7 +363,7 @@ it('authenticates before deleting an account journal while signed out', () => {
   fireEvent.press(
     within(screen.getByLabelText('Delete all saved data?')).getByRole(
       'button',
-      { name: 'Delete all my data' },
+      { name: 'Delete' },
     ),
   );
   expect(mockRouter.push).toHaveBeenCalledWith({
