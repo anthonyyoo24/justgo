@@ -14,6 +14,7 @@ import {
   iCloudError,
   type ICloudCollection,
   type ICloudErrorCode,
+  type ICloudPurgePage,
   type ICloudSync,
   type ICloudValue,
 } from '../../platform/icloud/model';
@@ -29,6 +30,7 @@ import {
 } from './icloud-records';
 import { isAncestor, versionHeads } from './versions';
 import { handoverGuestCopy } from './icloud-handover';
+import { iCloudWriteBatches } from './icloud-batches';
 
 const LIMIT = 50_000;
 const metadataSchema = z
@@ -521,12 +523,12 @@ export class ICloudDataCoordinator {
       throw new ICloudError('INVALID_DATA');
     // Version IDs and original ancestry are durable before any uncertain save.
     await this.save(metadata);
-    for (let index = 0; index < upload.length; index += ICLOUD_PAGE_LIMIT) {
+    for (const records of iCloudWriteBatches(upload)) {
       this.check(epoch);
       const response = await this.cloud.write({
         collection: this.collection,
         generation: remote.generation,
-        records: upload.slice(index, index + ICLOUD_PAGE_LIMIT),
+        records,
       });
       this.check(epoch);
       if (response.generation !== remote.generation)
@@ -612,13 +614,32 @@ export class ICloudDataCoordinator {
     const cursors = new Set<string>();
     const purgeGeneration = metadata.generation;
     if (!purgeGeneration) throw new ICloudError('INVALID_DATA');
+    let restartedCursor = false;
     while (true) {
       this.check(epoch);
-      const page = await this.cloud.purge({
-        collection: this.collection,
-        generation: purgeGeneration,
-        ...(metadata.purgeCursor ? { cursor: metadata.purgeCursor } : {}),
-      });
+      let page: ICloudPurgePage;
+      try {
+        page = await this.cloud.purge({
+          collection: this.collection,
+          generation: purgeGeneration,
+          ...(metadata.purgeCursor ? { cursor: metadata.purgeCursor } : {}),
+        });
+      } catch (error) {
+        this.check(epoch);
+        if (
+          iCloudError(error).code !== 'CURSOR_EXPIRED' ||
+          !metadata.purgeCursor ||
+          restartedCursor
+        )
+          throw error;
+        // The reset/closure is already durable. Restart only physical cleanup,
+        // retaining that generation and bounding cursor recovery to one retry.
+        metadata.purgeCursor = null;
+        await this.save(metadata);
+        restartedCursor = true;
+        cursors.clear();
+        continue;
+      }
       this.check(epoch);
       if (page.generation !== metadata.generation || cursors.has(page.cursor))
         throw new ICloudError('INVALID_DATA');

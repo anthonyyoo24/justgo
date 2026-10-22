@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { createStore } from 'zustand/vanilla';
 import { SettingsICloudRow } from './SettingsICloudRow';
 import { ICloudError, type ICloudStatus } from '../../../platform/icloud/model';
@@ -111,6 +111,82 @@ it('reports quota failures without claiming successful sync and permits a real r
   await waitFor(() =>
     expect(mockCoordinator.synchronize).toHaveBeenCalledTimes(2),
   );
+});
+it('retries a failed first enable only after another explicit opt-in', async () => {
+  mockToggle.mockRejectedValueOnce(new ICloudError('UNAVAILABLE'));
+  const screen = render(
+    <SettingsICloudRow disabled={false} onBusyChange={jest.fn()} />,
+  );
+  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
+  fireEvent.press(screen.getByRole('switch'));
+  fireEvent.press(screen.getByRole('button', { name: 'Turn on iCloud Sync' }));
+  const retry = await screen.findByRole('button', {
+    name: 'Retry iCloud Sync',
+  });
+  fireEvent.press(retry);
+  expect(mockToggle).toHaveBeenCalledTimes(1);
+  expect(mockCoordinator.synchronize).not.toHaveBeenCalled();
+  await act(async () => {
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Turn on iCloud Sync' }),
+    );
+  });
+  await waitFor(() =>
+    expect(mockCoordinator.synchronize).toHaveBeenCalledTimes(1),
+  );
+  expect(mockToggle.mock.calls).toEqual([[true], [true]]);
+});
+it('requires another explicit opt-in after an Apple-account change disables sync', async () => {
+  mockCoordinator.synchronize.mockImplementationOnce(async () => {
+    mockStatus = {
+      ...mockStatus,
+      enabled: false,
+      accountToken: 'b'.repeat(64),
+    };
+    throw new ICloudError('ACCOUNT_CHANGED');
+  });
+  const screen = render(
+    <SettingsICloudRow disabled={false} onBusyChange={jest.fn()} />,
+  );
+  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
+  fireEvent.press(screen.getByRole('switch'));
+  fireEvent.press(screen.getByRole('button', { name: 'Turn on iCloud Sync' }));
+  await screen.findByText(
+    'Your iCloud account changed. Review your iCloud account and turn sync on again.',
+  );
+  fireEvent.press(screen.getByRole('button', { name: 'Retry iCloud Sync' }));
+  expect(mockToggle).toHaveBeenCalledTimes(1);
+  expect(mockCoordinator.synchronize).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Turn on iCloud Sync' }),
+    );
+  });
+  await waitFor(() =>
+    expect(mockCoordinator.synchronize).toHaveBeenCalledTimes(2),
+  );
+  expect(mockToggle.mock.calls).toEqual([[true], [true]]);
+});
+it('retries a failed disable without requesting opt-in or synchronizing', async () => {
+  mockStatus = { ...mockStatus, enabled: true };
+  mockToggle.mockRejectedValueOnce(new ICloudError('UNAVAILABLE'));
+  const screen = render(
+    <SettingsICloudRow disabled={false} onBusyChange={jest.fn()} />,
+  );
+  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
+  fireEvent.press(screen.getByRole('switch'));
+  const retry = await screen.findByRole('button', {
+    name: 'Retry iCloud Sync',
+  });
+  await act(async () => {
+    fireEvent.press(retry);
+  });
+  await waitFor(() => expect(mockToggle).toHaveBeenCalledTimes(2));
+  expect(mockToggle.mock.calls).toEqual([[false], [false]]);
+  expect(mockCoordinator.synchronize).not.toHaveBeenCalled();
+  expect(
+    screen.queryByRole('button', { name: 'Turn on iCloud Sync' }),
+  ).toBeNull();
 });
 it('requires an explicit clear-before-sync action after deletion elsewhere', async () => {
   mockCoordinator.store.setState({

@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 export const ICLOUD_PAGE_LIMIT = 50;
 export const ICLOUD_VALUE_LIMIT = 65_536;
+// Leave room for CloudKit's native record metadata and the atomic root update.
+export const ICLOUD_WRITE_BYTE_LIMIT = 1_000_000;
 export const ICLOUD_PREFERENCE_KEY = 'justgo:icloud:v1';
+
+export const iCloudUtf8Bytes = (value: string) =>
+  // Count surrogate pairs without relying on native TextEncoder availability.
+  encodeURIComponent(value).replace(/%[A-F\d]{2}/gi, 'x').length;
 
 export const iCloudCollectionSchema = z.union([
   z.literal('guest'),
@@ -18,12 +24,7 @@ export const iCloudValueSchema = z
   .refine(({ value }) => {
     try {
       JSON.parse(value);
-      // UTF-8 bytes, including surrogate pairs; do not depend on native-only
-      // TextEncoder support when checking values before crossing the bridge.
-      return (
-        encodeURIComponent(value).replace(/%[A-F\d]{2}/gi, 'x').length <=
-        ICLOUD_VALUE_LIMIT
-      );
+      return iCloudUtf8Bytes(value) <= ICLOUD_VALUE_LIMIT;
     } catch {
       return false;
     }

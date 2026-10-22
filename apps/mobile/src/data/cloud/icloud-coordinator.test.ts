@@ -10,6 +10,8 @@ import {
   type ICloudData,
 } from './icloud-records';
 import {
+  ICLOUD_PAGE_LIMIT,
+  ICLOUD_WRITE_BYTE_LIMIT,
   ICloudError,
   type ICloudSync,
   type ICloudValue,
@@ -323,6 +325,56 @@ it('resumes handover cleanup without repeating target adoption and retains sourc
   expect(remote.transport.reset).toHaveBeenCalledTimes(1);
 });
 
+it('restarts an expired persisted handover purge cursor without repeating adoption or resetting new writing', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await repository.complete(input(), card);
+  await sync.synchronize();
+  const imported = jest.fn<
+    Promise<void>,
+    [Awaited<ReturnType<AccountRepository['snapshotData']>>]
+  >(async () => {});
+  jest
+    .mocked(remote.transport.purge)
+    .mockResolvedValueOnce({
+      generation: uuid(901),
+      cursor: 'old-handover-page',
+      hasMore: true,
+    })
+    .mockRejectedValueOnce(new ICloudError('UNAVAILABLE'));
+  await expect(sync.handoverGuest(otherOwner, imported)).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  const page = await remote.transport.read({ collection: 'guest' });
+  await remote.transport.write({
+    collection: 'guest',
+    generation: page.generation,
+    records: [
+      {
+        id: uuid(700),
+        value: JSON.stringify(completionData('guest', attempt(2))),
+      },
+    ],
+  });
+  jest
+    .mocked(remote.transport.purge)
+    .mockRejectedValueOnce(new ICloudError('CURSOR_EXPIRED'));
+  const resumed = setup(remote, owner, 'guest', storage);
+  await resumed.sync.handoverGuest(otherOwner, imported);
+  const requests = jest.mocked(remote.transport.purge).mock.calls;
+  expect(requests.slice(-2).map(([request]) => request)).toEqual([
+    {
+      collection: 'guest',
+      generation: page.generation,
+      cursor: 'old-handover-page',
+    },
+    { collection: 'guest', generation: page.generation },
+  ]);
+  expect(imported).toHaveBeenCalledTimes(1);
+  expect(remote.transport.reset).toHaveBeenCalledTimes(1);
+  expect([...remote.records().keys()]).toEqual([uuid(700)]);
+  expect(remote.generations.size).toBe(1);
+});
+
 it('deletes previously synced data with the toggle off and keeps deletion retries stable', async () => {
   const { repository, sync, remote } = setup();
   await repository.complete(input(), card);
@@ -520,6 +572,49 @@ it('uses bounded pages and restores guest data into another phone own guest coll
   expect(first.remote.records().size).toBe(54);
 });
 
+it('delivers large valid writing in byte-bounded batches with durable IDs after a lost acknowledgement', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await repository.restoreJournal(
+    Array.from({ length: 50 }, (_, index) =>
+      journalEntry(owner, {
+        ...attempt(index + 1),
+        instruction: '界'.repeat(10_000),
+        reflection: {
+          feeling: null,
+          text: '界'.repeat(10_000),
+          revision: 1,
+        },
+      }),
+    ),
+  );
+  remote.loseNextAcknowledgement();
+  await expect(sync.synchronize()).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  const metadata = JSON.parse(
+    storage.values.get(`justgo:v1:${owner}:icloud-sync:guest`)!,
+  ) as { versions: Record<string, { id: string }> };
+  const durableIds = Object.values(metadata.versions).map(({ id }) => id);
+  expect(durableIds).toHaveLength(50);
+  expect(remote.records().size).toBeLessThan(50);
+  await sync.synchronize();
+  const calls = jest.mocked(remote.transport.write).mock.calls;
+  expect(calls.length).toBeGreaterThan(1);
+  for (const [request] of calls) {
+    expect(request.records.length).toBeLessThanOrEqual(ICLOUD_PAGE_LIMIT);
+    expect(
+      Buffer.byteLength(JSON.stringify(request.records), 'utf8'),
+    ).toBeLessThanOrEqual(ICLOUD_WRITE_BYTE_LIMIT);
+    for (const { id } of request.records) expect(durableIds).toContain(id);
+  }
+  const deliveredIds = calls.flatMap(([request]) =>
+    request.records.map(({ id }) => id),
+  );
+  expect(new Set(deliveredIds).size).toBe(50);
+  expect(deliveredIds).toHaveLength(50);
+  expect([...remote.records().keys()].sort()).toEqual(durableIds.sort());
+});
+
 it('advances known writing to a remote descendant and preserves concurrent writing as alternatives', async () => {
   const first = setup();
   await first.repository.complete(input(), card);
@@ -627,6 +722,107 @@ it('persists reset before erasing and resumes physical cleanup after a failure w
   expect(JSON.parse(storage.values.get(key)!)).toMatchObject({
     deleting: false,
     cleanup: false,
+  });
+});
+
+it.each(['data', 'account'] as const)(
+  'restarts an expired persisted %s deletion cursor while retaining the original fence',
+  async (kind) => {
+    const collection = `account:${owner}` as const;
+    const { repository, sync, remote, storage } = setup(
+      undefined,
+      owner,
+      collection,
+    );
+    await repository.observeDataEpoch(0);
+    await repository.complete(input(), card);
+    await sync.synchronize();
+    jest
+      .mocked(remote.transport.purge)
+      .mockResolvedValueOnce({
+        generation: uuid(901),
+        cursor: 'old-deletion-page',
+        hasMore: true,
+      })
+      .mockRejectedValueOnce(new ICloudError('UNAVAILABLE'));
+    const remove = (coordinator: ICloudDataCoordinator) =>
+      kind === 'data'
+        ? coordinator.deleteData(uuid(750))
+        : coordinator.deleteAccount();
+    await expect(remove(sync)).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+    expect(
+      JSON.parse(
+        storage.values.get(`justgo:v1:${owner}:icloud-sync:${collection}`)!,
+      ),
+    ).toMatchObject({
+      generation: uuid(901),
+      cleanup: true,
+      purgeCursor: 'old-deletion-page',
+    });
+    jest
+      .mocked(remote.transport.purge)
+      .mockRejectedValueOnce(new ICloudError('CURSOR_EXPIRED'));
+    const resumed = setup(remote, owner, collection, storage);
+    await remove(resumed.sync);
+    expect(
+      jest
+        .mocked(remote.transport.purge)
+        .mock.calls.slice(-2)
+        .map(([request]) => request),
+    ).toEqual([
+      { collection, generation: uuid(901), cursor: 'old-deletion-page' },
+      { collection, generation: uuid(901) },
+    ]);
+    expect(remote.transport.reset).toHaveBeenCalledTimes(
+      kind === 'data' ? 1 : 0,
+    );
+    expect(remote.transport.close).toHaveBeenCalledTimes(
+      kind === 'account' ? 1 : 0,
+    );
+    expect((await resumed.repository.snapshotData()).attempts).toEqual([]);
+    expect(
+      JSON.parse(
+        storage.values.get(`justgo:v1:${owner}:icloud-sync:${collection}`)!,
+      ),
+    ).toMatchObject({
+      generation: uuid(901),
+      cleanup: false,
+      purgeCursor: null,
+      closed: kind === 'account',
+    });
+  },
+);
+
+it('bounds repeated purge cursor expiry without repeating the deletion reset', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await repository.complete(input(), card);
+  await sync.synchronize();
+  jest
+    .mocked(remote.transport.purge)
+    .mockResolvedValueOnce({
+      generation: uuid(901),
+      cursor: 'first-page',
+      hasMore: true,
+    })
+    .mockRejectedValueOnce(new ICloudError('CURSOR_EXPIRED'))
+    .mockResolvedValueOnce({
+      generation: uuid(901),
+      cursor: 'second-page',
+      hasMore: true,
+    })
+    .mockRejectedValueOnce(new ICloudError('CURSOR_EXPIRED'));
+  await expect(sync.deleteData(uuid(751))).rejects.toMatchObject({
+    code: 'CURSOR_EXPIRED',
+  });
+  expect(remote.transport.purge).toHaveBeenCalledTimes(4);
+  expect(remote.transport.reset).toHaveBeenCalledTimes(1);
+  expect(
+    JSON.parse(storage.values.get(`justgo:v1:${owner}:icloud-sync:guest`)!),
+  ).toMatchObject({
+    generation: uuid(901),
+    deleting: true,
+    cleanup: true,
+    purgeCursor: 'second-page',
   });
 });
 

@@ -43,6 +43,7 @@ export function SettingsICloudRow({
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryEnabled, setRetryEnabled] = useState<boolean | null>(null);
   useEffect(() => {
     let alive = true;
     const refresh = () => {
@@ -77,6 +78,7 @@ export function SettingsICloudRow({
       if (!owner || busy || disabled || !client.ownsCollection(owner)) return;
       setBusy(true);
       setError(null);
+      setRetryEnabled(null);
       setConfirm(false);
       try {
         await iCloudSync.setEnabled(enabled);
@@ -90,6 +92,7 @@ export function SettingsICloudRow({
       } catch (failure) {
         if (client.ownsCollection(owner)) {
           setError(messageFor(failure));
+          setRetryEnabled(enabled);
           try {
             setStatus(await iCloudSync.status());
           } catch {
@@ -183,7 +186,10 @@ export function SettingsICloudRow({
             label="Retry iCloud Sync"
             disabled={disabled || busy}
             onPress={() => {
-              void run(status?.enabled ?? false);
+              if (retryEnabled !== false && !status?.enabled) {
+                setError(null);
+                setConfirm(true);
+              } else void run(retryEnabled ?? true);
             }}
           />
         </View>
