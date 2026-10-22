@@ -87,12 +87,6 @@ actor ICloudStore {
     guard enabled, capturedEpoch == epoch else { throw ICloudFailure.disabled }
   }
 
-  private func generation(_ root: CKRecord) throws -> String {
-    guard root.recordType == "JustGoCollection", let value = root["generation"] as? String,
-          UUID(uuidString: value) != nil else { throw ICloudFailure.invalidData }
-    return value
-  }
-
   private func root(_ zone: CKRecordZone.ID, io: CloudKitIO, lease: Int) async throws -> CKRecord {
     let id = CKRecord.ID(recordName: "collection", zoneID: zone)
     if let root = try await io.fetch([id], lease: lease)[id] { return root }
@@ -115,12 +109,12 @@ actor ICloudStore {
     let (io, zone, capturedEpoch, lease) = try await context(collection)
     try await io.ensureZone(zone, lease: lease)
     let before = try await root(zone, io: io, lease: lease)
-    let generation = try generation(before)
+    let generation = try iCloudGeneration(before)
     guard let revision = before.recordChangeTag else { throw ICloudFailure.unavailable }
     let token = try ICloudCursor.decode(cursor, collection: collection, generation: generation)
     let page = try await io.changes(zone, token: token, lease: lease)
     let after = try await root(zone, io: io, lease: lease)
-    guard try self.generation(after) == generation else { throw ICloudFailure.staleGeneration }
+    guard try iCloudGeneration(after) == generation else { throw ICloudFailure.staleGeneration }
     guard after.recordChangeTag == revision else { throw ICloudFailure.conflict }
     try check(capturedEpoch)
     let values: [[String: String]] = try page.records.compactMap { record in
@@ -149,29 +143,19 @@ actor ICloudStore {
           Set(values.map { $0.id.lowercased() }).count == values.count else { throw ICloudFailure.invalidData }
     try values.forEach { try $0.validate() }
     let (io, zone, capturedEpoch, lease) = try await context(collection)
-    let root = try await root(zone, io: io, lease: lease)
-    guard (root["closed"] as? NSNumber)?.boolValue != true else { throw ICloudFailure.collectionDeleted }
-    guard try generation(root) == expectedGeneration else { throw ICloudFailure.staleGeneration }
-    let ids = values.map { CKRecord.ID(recordName: expectedGeneration + ":" + $0.id.lowercased(), zoneID: zone) }
-    let existing = try await io.fetch(ids, lease: lease)
-    var records = [CKRecord]()
-    for (value, id) in zip(values, ids) {
-      if let old = existing[id] {
-        guard old.recordType == "JustGoValue", old["generation"] as? String == expectedGeneration,
-              old["itemId"] as? String == value.id.lowercased(),
-              old.encryptedValues["value"] as? String == value.value else { throw ICloudFailure.conflict }
-      } else {
-        let record = CKRecord(recordType: "JustGoValue", recordID: id)
-        record["generation"] = expectedGeneration as NSString
-        record["itemId"] = value.id.lowercased() as NSString
-        record.encryptedValues["value"] = value.value as NSString
-        records.append(record)
-      }
-    }
-    // Every upload compares the root change tag in the same atomic custom-zone
-    // transaction. A reset racing this write makes the complete batch fail.
-    root["revision"] = UUID().uuidString as NSString
-    try await io.modify(saving: [root] + records, lease: lease)
+    let writer = ICloudWriter(
+      expectedGeneration: expectedGeneration,
+      loadRoot: {
+        try self.check(capturedEpoch)
+        let (_, _, currentEpoch, currentLease) = try await self.context(collection)
+        guard currentEpoch == capturedEpoch, currentLease == lease else { throw ICloudFailure.disabled }
+        return try await self.root(zone, io: io, lease: lease)
+      },
+      fetch: { ids in try await io.fetch(ids, lease: lease) },
+      save: { records in try await io.modify(saving: records, lease: lease) },
+      check: { try self.check(capturedEpoch) }
+    )
+    try await writer.write(values)
     try check(capturedEpoch)
     return try iCloudJSON(["generation": expectedGeneration])
   }
@@ -180,7 +164,7 @@ actor ICloudStore {
     let (io, zone, capturedEpoch, lease) = try await context(collection)
     let root = try await root(zone, io: io, lease: lease)
     guard (root["closed"] as? NSNumber)?.boolValue != true else { throw ICloudFailure.collectionDeleted }
-    guard try generation(root) == expectedGeneration else { throw ICloudFailure.staleGeneration }
+    guard try iCloudGeneration(root) == expectedGeneration else { throw ICloudFailure.staleGeneration }
     if let expectedRevision {
       guard !expectedRevision.isEmpty, expectedRevision.utf8.count <= 1024 else { throw ICloudFailure.invalidData }
       guard root.recordChangeTag == expectedRevision else { throw ICloudFailure.conflict }
@@ -198,7 +182,7 @@ actor ICloudStore {
     guard collection.hasPrefix("account:") else { throw ICloudFailure.invalidData }
     let (io, zone, capturedEpoch, lease) = try await context(collection)
     let root = try await root(zone, io: io, lease: lease)
-    let current = try generation(root)
+    let current = try iCloudGeneration(root)
     if (root["closed"] as? NSNumber)?.boolValue == true {
       try check(capturedEpoch)
       return try iCloudJSON(["generation": current])
@@ -220,7 +204,7 @@ actor ICloudStore {
   func purge(_ collection: String, expectedGeneration: String, cursor: String?) async throws -> String {
     let (io, zone, capturedEpoch, lease) = try await context(collection)
     let root = try await root(zone, io: io, lease: lease)
-    guard try generation(root) == expectedGeneration else { throw ICloudFailure.staleGeneration }
+    guard try iCloudGeneration(root) == expectedGeneration else { throw ICloudFailure.staleGeneration }
     let token = try ICloudCursor.decode(cursor, collection: collection, generation: expectedGeneration)
     let page = try await io.changes(zone, token: token, lease: lease)
     let ids = page.records.filter {
@@ -231,7 +215,7 @@ actor ICloudStore {
       try await io.modify(saving: [root], deleting: ids, lease: lease)
     }
     let current = try await self.root(zone, io: io, lease: lease)
-    guard try generation(current) == expectedGeneration else { throw ICloudFailure.staleGeneration }
+    guard try iCloudGeneration(current) == expectedGeneration else { throw ICloudFailure.staleGeneration }
     try check(capturedEpoch)
     return try iCloudJSON(["generation": expectedGeneration,
                            "cursor": ICloudCursor.encode(page.token, collection: collection, generation: expectedGeneration),

@@ -27,14 +27,22 @@ enum ICloudFailure: String, Error, LocalizedError {
     case .permissionFailure, .managedAccountRestricted: return .restricted
     case .serverRecordChanged, .batchRequestFailed: return .conflict
     case .changeTokenExpired: return .cursorExpired
+    case .limitExceeded: return .invalidData
     case .partialFailure:
       let failures = error.partialErrorsByItemID?.values.map(sanitized) ?? []
-      for known in [ICloudFailure.quotaExceeded, .notAuthenticated, .restricted, .conflict] {
+      for known in [ICloudFailure.quotaExceeded, .notAuthenticated, .restricted, .cursorExpired, .invalidData, .conflict] {
         if failures.contains(known) { return known }
       }
       return .unavailable
     default: return .unavailable
     }
+  }
+
+  static func isLimitExceeded(_ error: Error) -> Bool {
+    guard let error = error as? CKError, sanitized(error) == .invalidData else { return false }
+    if error.code == .limitExceeded { return true }
+    guard error.code == .partialFailure else { return false }
+    return error.partialErrorsByItemID?.values.contains(where: isLimitExceeded) ?? false
   }
 }
 
@@ -79,6 +87,12 @@ struct ICloudCursor: Codable {
 
 func iCloudHash(_ value: String) -> String {
   SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
+}
+
+func iCloudGeneration(_ root: CKRecord) throws -> String {
+  guard root.recordType == "JustGoCollection", let value = root["generation"] as? String,
+        UUID(uuidString: value) != nil else { throw ICloudFailure.invalidData }
+  return value
 }
 
 func iCloudJSON(_ value: [String: Any]) throws -> String {

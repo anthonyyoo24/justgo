@@ -121,6 +121,9 @@ actor CloudKitIO {
       }
       operation.fetchRecordZoneChangesResultBlock = { result in
         if let error = failure.value { continuation.resume(throwing: error); return }
+        if let page = zoneResult.value, case .failure(let error) = page {
+          continuation.resume(throwing: error); return
+        }
         if case .failure(let error) = result { continuation.resume(throwing: error); return }
         guard let page = zoneResult.value else { continuation.resume(throwing: ICloudFailure.unavailable); return }
         continuation.resume(with: page)
