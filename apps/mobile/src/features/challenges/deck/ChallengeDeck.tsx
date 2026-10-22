@@ -43,6 +43,7 @@ import {
 import { VenueArt, PaperTexture, LowerFlourish } from './VenueArt';
 import {
   challengeScale,
+  challengeDeckStage,
   panelOutline,
   challengeDisplayFont,
 } from '../challenge-design';
@@ -83,7 +84,6 @@ export function ChallengeDeck({
 }) {
   const { width } = useWindowDimensions();
   const scale = challengeScale(width);
-  const frame = cardFrame(scale);
   const motion = useSharedValue(restingMotion(turn));
   const locked = useSharedValue(false);
   const busy = useRef(false),
@@ -239,7 +239,7 @@ export function ChallengeDeck({
           style={[
             styles.stage,
             {
-              height: frame.height + 30 * scale,
+              height: challengeDeckStage.height * scale,
               width: 292 * scale,
               marginBottom: 17 * scale + 8,
             },
@@ -551,7 +551,11 @@ export function ChallengeCard({
   );
 }
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, alignItems: 'center', paddingTop: 18 },
+  container: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingTop: challengeDeckStage.paddingTop,
+  },
   stage: {
     flexShrink: 0,
     width: '100%',
