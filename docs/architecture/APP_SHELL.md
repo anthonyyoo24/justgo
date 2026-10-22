@@ -298,8 +298,12 @@ access on reduced viewports; focus scrolling honors effective Reduce Motion.
 
 `ProgressScreen` owns selected date/editor coordination; independent read hooks
 accept repository data. `ProgressView` composes the calendar, day sheet and entry
-rows. The day-details group keeps sheet/motion, entry expansion and reflection
-editor responsibilities together. `ConnectedDayReflectionEditor` owns draft
+rows. The day-details group keeps the sheet, entry expansion and reflection
+editor responsibilities together. Shared `platform/modals/useSheetMotion` owns
+calendar/iCloud panel entry, exit and interruption: the full-screen backdrop appears
+immediately, while only the panel moves (280 ms in, 220 ms out). Covering native
+modals use no system slide animation. Reduce Motion settles the panel immediately.
+`ConnectedDayReflectionEditor` owns draft
 subscriptions so typing updates stay inside the active editor.
 
 `DayEntryList` initially mounts eight rows, fills ahead of scrolling and requests
@@ -356,8 +360,29 @@ hydration before mounting protected routes, preserving cold saved-history links.
 Data contains iCloud Sync, Download my data, Import data and Delete all my data.
 Descriptions live in action flows instead of paragraphs beneath every Settings row.
 Download and Import use matching down/up tray icons; iCloud uses a cloud with a
-circular arrow. An unavailable iCloud switch shows its configuration, platform or
-Apple-account reason rather than silently ignoring taps. Delete all sits at the
+circular arrow. While its initial status is unknown, the row shows a neutral
+loading indicator. The switch mounts directly in the confirmed on/off position
+without an activation animation; later value changes keep their normal motion.
+Tapping an unavailable iCloud switch opens its configuration,
+platform or Apple-account explanation in the sheet with Start Syncing disabled.
+Enabling available iCloud Sync opens the peach `ICloudSyncSheet`, with
+live disclosure text, decorative cloud/cards artwork, X and Start Syncing.
+The artwork has a fixed height for the viewport and cannot flex smaller when
+feedback appears. An always-present message area reserves two scaled text lines
+below it; concise shared copy fits standard phone text sizes without truncation.
+Larger accessibility text may wrap further and remains available through scrolling.
+Its backdrop stays fixed while the panel uses the same motion as calendar day details.
+Opening or dismissing it does not enable sync. Start Syncing retains the sheet
+with a centered spinner through the existing native/coordinator operation. The
+toggle stays off until first sync succeeds. Sync errors and retry stay inside the
+sheet; the Data row never expands with an error or Retry iCloud Sync action.
+Remote deletion replaces the sheet action with explicit Clear older copy and sync,
+preserving its clear-before-sync safeguard. Missing-zone/encrypted-data-reset
+recovery uses the same action and a concise explanation; closing the sheet leaves
+phone writing intact. A bridge too old for guarded reads gets a build-update
+message inside the sheet. Consent is scoped to the route visit,
+collection and Apple account through the final preference write.
+Turning an enabled switch off remains direct. Delete all sits at the
 bottom. Both deletion rows use red labels and trash icons, omit chevrons and open
 their confirmation modal directly on the current page. Both flows reuse
 `components/modals/ConfirmationModal` with destructive styling, their own consequence text and

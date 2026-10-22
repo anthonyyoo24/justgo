@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 20, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 22, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -598,6 +598,33 @@ proof/vault reads and pending legacy deletion until supported installations fini
 migration/cleanup. The configured signed build and successful automated/staging
 readiness checks do not establish real phone login, hard Auth deletion or working
 iCloud. Those acceptance gates remain explicit in Phase 13.
+
+## October 22 iCloud recovery and scoped Phase 13 closeout
+
+Anthony requested completing guarded iCloud recovery and the local closeout, and
+explicitly skipped the remaining manual checks: offline-save/reconnect, all
+second-device/Apple-account-change cases, extended Apple/Google continuity and
+account-isolation cases, and native Download/Import/deletion acceptance. Preserve
+these as owner-deferred and unverified before release, under Anthony, the
+implementation owner and the Phase 14 release owner. The single-phone upload,
+sync-off isolation and re-enable/restart catch-up checks already passed; skipped
+cases do not inherit those passes.
+
+Known missing CloudKit collections must fail closed during ordinary reads. An
+explicit recovery action may establish a durable reset fence, without replacing
+a live collection. Keep the phone's older writing until the user confirms recovery
+and durable clearing intent is recorded. Preserve pending deletion, closure,
+handover, current account ownership and server deletion epochs. The new native
+bridge needs a compatible signed build and physical recovery acceptance; the
+installed quota-fix binary does not establish that behavior.
+
+For this scoped closeout Anthony requested focused checks of the changed
+recovery/native, adapter/coordinator and UI boundaries, avoiding unrelated or
+repeated full-phase suites. Record current focused results separately from earlier
+full-suite evidence. This does not change coverage thresholds or remove the
+applicable publication/release checks, privacy approval/publication, signed-device
+or hosted CI gates. Local implementation closeout does not mean production
+release acceptance and does not authorize a Git push, PR, merge or public release.
 
 ## Open and settled product decisions
 

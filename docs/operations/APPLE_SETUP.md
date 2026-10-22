@@ -43,16 +43,37 @@ secure storage and logout/deletion acceptance remain open.
 ## Revised Phase 13 native prerequisites
 
 **Configured iCloud testing binary:** The internal development build
-[ae5bf713](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/ae5bf713-8265-440d-b4f1-23bc135eec5b)
+[1a1174d6](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/1a1174d6-160a-48ef-8a0e-4ffccfbc1590)
 finished successfully. Downloaded IPA/signature inspection confirms the approved
 container, `CloudKit` service, Production environment and matching provisioning
 permissions for the registered iPhone. The current native writer/conditional-reset
 bridge, Apple/Google providers, Google URL scheme, secure session storage,
 SQLite, Files and Keychain are present. The code signature verifies. This build
-supersedes the provider-only binary for iCloud testing. Install over the existing
-app and reconnect to the restarted development server. Actual iCloud opt-in,
-relaunch, offline/two-device/account-change/quota/deletion evidence remains open;
-successful compilation and entitlement inspection do not establish sync behavior.
+also collects individual CloudKit save/delete failures so storage-quota errors
+can reach the concise storage-full message. Its compiled callback imports differ
+from the previous iCloud binary; registered devices and Keychain access are preserved.
+Fresh `npm run check` and all 23 native Swift regressions passed before that
+build. It is installed on Anthony's phone. Actual upload/readback matched one
+challenge/journal pair; with sync off, a new pair stayed only on the phone while
+the existing cloud pair remained. After re-enabling, restarting and saving another
+entry, all three local challenge/journal pairs matched iCloud. The actual
+storage-full condition also reached the concise iCloud-full message. These checks
+do not establish the deferred offline/multi-device/account-change/deletion matrix.
+
+**Recovery bridge requires another native build:** Current source adds guarded
+missing-collection recovery with a durable reset fence. Build `1a1174d6` predates
+that bridge. Create a compatible signed binary, inspect the retained
+container/environment/provider capabilities, and verify actual reset/missing-zone
+recovery before release. An OTA or development-server JavaScript update cannot
+add the bridge. Recovery must not replace a live collection or clear phone writing
+before the explicit confirmation and durable clearing intent.
+
+Anthony explicitly deferred the remaining manual offline/reconnect, two-device,
+extended provider-continuity and native Download/Import/deletion checks from the
+October 22 local closeout. These remain unverified pre-release gates with Anthony,
+the implementation owner and Phase 14 release owner. Current closeout verification
+is limited to affected recovery/native/adapter/coordinator/UI checks at his
+request; earlier broad checks do not become fresh evidence for the new bridge.
 
 **Configured private iCloud:** Anthony approved assigning
 `iCloud.com.anthonyyoo.justgo` to the existing App ID/team. The iCloud capability
@@ -139,9 +160,11 @@ latter also removes the JustGO account/Auth profile. Neither removes the user's
 Apple/Google account. User-saved files remain under the user's control after app
 deletion.
 
-Next steps: Accept the configured build's real OAuth flows on the phone, then
-complete the separate CloudKit setup and device matrix before iCloud acceptance. Install over the existing app to
-preserve phone data, and connect to the matching API/development server. Developer
+Next steps before release: create the compatible recovery build and verify its
+physical flow, then complete the owner-deferred provider/native/iCloud matrix.
+Container/schema setup and the named single-phone sync checks above are complete.
+Install over the existing app to preserve phone data, and connect to the matching
+API/development server. Developer
 Mode was verified on the earlier installed build. An API address change alone is
 delivered through JavaScript and does not require a native build; the CloudKit
 bridge/capability changes above do. See the [Expo device-build walkthrough](https://docs.expo.dev/tutorial/eas/ios-development-build-for-devices/).

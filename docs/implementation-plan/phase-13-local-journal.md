@@ -2,12 +2,14 @@
 
 # Phase 13 — Local data, optional accounts and cloud sync
 
-**Status:** October 21 continuity/Settings revision and working-login setup implemented.
-Native providers, protected hosted database/API cutover and private CloudKit
-container/schema setup are implemented. Anthony confirmed successful provider
-login on the phone; extended provider/device acceptance and actual iCloud sync
-acceptance remain open. The
-[handoff](../handoffs/phase-13-local-journal.md) records current evidence and gates.
+**Status:** Locally implemented and verified for owner review; release acceptance
+remains open. Native providers, protected hosted database/API cutover, private CloudKit
+setup and guarded missing-collection recovery are implemented. Anthony confirmed
+phone login, and actual single-phone CloudKit upload, sync-off isolation and
+re-enable/restart catch-up have been verified. Anthony deferred the remaining
+manual checks; the recovery bridge still needs a compatible native build and
+device acceptance. The [handoff](../handoffs/phase-13-local-journal.md) distinguishes
+verified behavior, owner deferrals and pre-release gates.
 
 ## Outcome
 
@@ -23,6 +25,7 @@ uploads without switching the user to a different journal.
 ## Decisions and reference boundaries
 
 - The [October 20 optional-account decision](../DECISIONS.md#october-20-optional-accounts-and-cloud-sync) supersedes the earlier local-only/manual-backup phase scope. Dependencies and remaining release gates from Phases 07–12 continue to apply.
+- The [October 22 scoped-closeout decision](../DECISIONS.md#october-22-icloud-recovery-and-scoped-phase-13-closeout) defers remaining manual acceptance checks and limits this closeout to focused recovery checks; those deferrals do not establish release acceptance.
 - The [October 21 continuity and Settings decision](../DECISIONS.md#october-21-journal-continuity-and-accountdata-settings) supersedes the optional guest-merge choice and permanent guest-collection selector. It also fixes the Account/Data organization, provider switches and deletion-modal requirements. Keep these connected changes within Phase 13 and implement the slices below in order.
 - How We Feel's [privacy policy](https://howwefeel.web.app/privacy) distinguishes account-free local recording from account-user collection, including journal/check-in data. Its [captured login screen](https://mobbin.com/screens/5fc47e96-a36f-44eb-8fc3-d43871b3c121) describes cloud synchronization, its [data screen](https://mobbin.com/screens/0cc34b3f-9377-43e6-baac-23cf75ead256) groups iCloud Sync/download/import/deletion, and its [account screen](https://mobbin.com/screens/b4a6e18c-938d-40a7-99d3-94e873778bf0) preserves local data after logout. These sources do not establish its internal implementation, initial guest upload/merge rules or the relationship between its account sync and iCloud toggle. The rules below are JustGO implementation rules for those gaps, not claims about How We Feel.
 - Use managed Supabase Auth with native Apple/Google sign-in; keep the existing Fastify API, PostgreSQL database and strict owner isolation. The authorized staging rollout now includes Supabase Auth; canonical ownership and existing-phone proof migration remain explicit boundaries.
@@ -69,8 +72,9 @@ An archive never serves as a login credential.
 
 ## Implementation sequence
 
-Slices 1–5 are implemented locally. Slice 6 remains open for authorized external
-setup and device evidence; slice 7 records the local verification and handoff.
+Slices 1–5 and guarded missing-collection recovery are implemented locally.
+Slice 6 records completed setup/single-phone evidence and owner-deferred device
+gates; slice 7 closes out local work with focused verification and the handoff.
 Finish and verify each coherent slice before building dependent work on it. Keep one implementation owner for
 continuity/auth/deletion; bounded independent reviews or icon work can use other
 agents. Run heavy checks sequentially on the owner's Mac. No per-slice approval is
@@ -234,13 +238,13 @@ guest source. Run affected database suites and saved backup/deletion journeys.
 and restricted actions; implementation owner for configuration/runbook preparation,
 native integration and verification. Coordinate with Phase 14 release ownership.
 
-Configured development build [87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab)
-contains the native modules, Apple entitlement and Google URL scheme. Native
-providers and the compatible staged API/database are configured, and Anthony
-confirmed phone login. The approved iCloud container/schema is now configured;
-its subsequent signed binary and extended phone acceptance are recorded in the
-setup/handoff documents. The iCloud switch is not accepted as functional until
-actual phone sync passes. Follow
+Installed development build [1a1174d6](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/1a1174d6-160a-48ef-8a0e-4ffccfbc1590)
+contains the configured native providers, Apple entitlement, Google URL scheme
+and private CloudKit/quota bridge. Anthony confirmed phone login. Single-phone
+upload/readback, sync-off isolation and re-enable/restart catch-up have passed;
+they do not establish the deferred multi-device/recovery/deletion matrix. The new
+missing-collection recovery bridge is not in this installed build and requires a
+compatible native rebuild before device acceptance. Follow
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) and the
 [rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
 The [working-login execution checklist](../operations/ACCOUNT_SYNC_SETUP.md#execution-checklist-working-apple-and-google-login)
@@ -304,20 +308,28 @@ checks; independent native and TypeScript audits cover separate boundaries.
       checks, then create the compatible EAS development build. Download and
       inspect the signed IPA for the exact container/environment and current
       native bridge; provide the installation link and QR code.
-- [ ] On the first physical iPhone, install over the existing app, verify iCloud
-      availability and explicit opt-in, save disposable entries, relaunch and
-      retry offline/reconnect. Turning sync off must keep local entries and the
-      existing cloud copy. Record actual device errors and fix them before
-      accepting the toggle as functional.
-- [ ] On two physical devices using the same Apple iCloud account, verify guest
-      and signed-in restoration, new edits in both directions, concurrent changes,
-      logout/returning login, Apple-account changes and both deletion actions.
-      Verify sync off -> delete -> on, unavailable/full storage and interrupted
-      handover/reset retries cannot restore erased data or mix account owners.
-- [ ] Before release, the implementation owner must design and verify explicit
-      recovery after an Apple encrypted-data key reset or an externally deleted
-      private zone. Current behavior fails closed as unavailable and preserves
-      phone writing; automatic zone recreation must not bypass deletion fences.
+- [x] On the first physical iPhone, verify availability, explicit opt-in,
+      real disposable challenge/journal upload and canonical content readback.
+      Verify off retains the local/cloud copies without uploading a new entry,
+      then re-enable/restart and verify all three local challenge/journal pairs
+      match iCloud. Storage-full feedback was also observed on this phone.
+- [ ] **Owner-deferred, unverified before release:** finish the single-phone
+      offline-save/reconnect case. Anthony explicitly skipped this remaining
+      step on October 22; implementation owner and Anthony retain acceptance.
+- [ ] **Owner-deferred, unverified before release:** use two physical devices to
+      verify guest/account restoration, edits in both directions, conflicts,
+      Apple-account changes and deletion propagation. Include sync off -> delete
+      -> on, interrupted handover/reset and owner-isolation cases. Implementation
+      owner coordinates with Anthony and the Phase 14 release owner.
+- [x] Implement guarded recovery after an Apple encrypted-data reset or externally
+      deleted private zone. Ordinary reads preserve phone writing and report the
+      missing known collection. Explicit recovery establishes a durable reset
+      fence; only the confirmed recovery flow may clear the phone's older copy.
+      Never replace a live collection or bypass server deletion epochs, closing,
+      pending deletion or handover. See [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) for the invariants.
+- [ ] Build the compatible native recovery bridge and verify the recovery/reset
+      flow on a physical device before release. The installed build predates it;
+      automated/native package checks do not close this gate.
 - [x] Reconcile setup, architecture and handoff evidence together. Distinguish
       console setup, automated tests, signed-build inspection and physical-device
       evidence; retain any unavailable device gate with its owner and next step.
@@ -332,17 +344,29 @@ from guest local use and optional personal iCloud copies. Reassess the actual
 Vercel/Supabase private-data processing and reopened provider/retention conditions;
 do not retain clearance assumptions based on completion-only traffic.
 
-Run focused tests during each slice. At revised phase closeout, run root `check`,
-full coverage, dedicated-loopback `test:db`, affected saved app/API/database
-journeys and cold platform exports/smoke under [TESTING.md](../operations/TESTING.md).
-Use one grouped in-app walkthrough after UI tests. Keep Apple/Google real-provider,
-iCloud multi-device, native storage/logout/deletion and hosted acceptance distinct
-from mocks/browser results. Retain device/hosting gates until evidenced.
+Run focused tests during each slice. For the October 22 scoped closeout,
+Anthony explicitly requested only checks related to the recovery/native bridge,
+adapter/coordinator and affected UI changes, with no unrelated or repeated broad
+phase suites. Record those current results separately from earlier full-phase
+checks. Use one grouped in-app walkthrough after affected UI tests. This does not
+refresh aggregate coverage, full-suite, database, export or hosted CI evidence.
+Before publication/release, the release owner still runs the applicable broader
+gates in [TESTING.md](../operations/TESTING.md).
+
+Anthony also explicitly deferred the remaining offline/reconnect test, all
+second-device/Apple-account-change cases, extended Apple/Google continuity and
+account-isolation cases, and physical Download/Import/deletion checks. Keep these
+named and unverified under Anthony, the implementation owner and the Phase 14
+release owner; no manual run is required to finish this scoped implementation
+closeout. The new recovery bridge still needs a compatible signed build and
+physical acceptance. Public privacy approval/publication remains pending. Local
+closeout does not mean the candidate is accepted for production release.
 
 ## Acceptance requirements
 
-These are the revised acceptance targets. Checked items establish local automated
-and browser behavior only; real provider/device requirements remain separate. Preserve
+These are the revised acceptance targets. Checked implementation items establish
+local automated/browser behavior; the single-phone item explicitly records actual
+physical evidence. Other provider/device requirements remain separate. Preserve
 existing beta/subscription access rules, billing identity and the deferred Phase
 07A activation boundary throughout the work.
 
@@ -354,9 +378,12 @@ existing beta/subscription access rules, billing identity and the deferred Phase
 - [x] Both deletion actions reuse the existing modal presentation with distinct wording, cancellation, accessibility and durable busy/error/retry behavior.
 - [x] One Download/Import flow covers all supported history, writing and preferences, including signed-out behavior and correct-owner authentication when needed.
 - [x] Signed-in sync remains authenticated, durable and account-isolated; both deletion actions remove promised copies without source/stale-device resurrection.
-- [ ] Real Apple/Google flows and the configured signed build pass native session, return-login, revocation and deletion cases.
-- [ ] iCloud toggle performs real optional sync and passes two-device/account-change/full-storage/deletion cases; unavailable states visibly explain themselves.
-- [x] Product, architecture, privacy and release documents match verified behavior; required checks pass and remaining gates have explicit owners.
+- [ ] **Owner-deferred before release:** extended real Apple/Google session, return-login, revocation, linking/unlinking, account-isolation and deletion cases. Basic phone login is confirmed.
+- [x] Single-phone iCloud upload/readback, sync-off isolation, re-enable/restart catch-up and storage-full feedback are verified.
+- [ ] **Owner-deferred before release:** offline/reconnect, two-device/account-change and native Download/Import/deletion cases.
+- [ ] The new guarded recovery bridge has a compatible signed build and actual recovery/reset device acceptance.
+- [x] Documents distinguish current implementation, earlier evidence and owner-deferred release gates; public privacy approval/publication remains pending.
+- [x] Focused recovery closeout checks pass and are recorded in the handoff.
 
 ## Primary implementation references
 

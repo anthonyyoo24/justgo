@@ -140,9 +140,19 @@ unavailable or changed accounts leave cleanup retryable. Web reports unsupported
 not simulate native acceptance. Apple account changes fail closed rather than
 uploading to a new iCloud owner silently.
 
+First activation saves off before temporarily allowing the coordinator to sync.
+Only a complete successful pass can persist the version-2 enabled preference;
+failure, account/visit changes or cancellation leave it off. Maintenance cannot
+borrow a pending activation. Earlier enabled preferences have no success proof
+and migrate to off without deleting any records. Verified enabled choices survive
+later transient background failures; their errors remain inside the Settings sheet.
+
 Uploads are bounded by both record count and serialized UTF-8 bytes. The native
 writer splits oversized batches finitely and refetches the root/change tag before
 every atomic attempt; successful partial delivery retains immutable IDs for retry.
+Collect per-record save/delete failures together with the final operation failure
+before sanitizing errors. A quota rejection must retain `QUOTA_EXCEEDED` so Settings
+can explain that the user's iCloud storage is full; unknown failures stay unavailable.
 Expired CloudKit cursors restart reads. For deletion and guest handover, restart
 only physical cleanup once per invocation and persist the cleared cursor first;
 retain the original fenced generation, reset/closure intent and accepted adoption.
@@ -154,11 +164,34 @@ iCloud records without deleting fresh local history. A signed-out collection can
 adopt a verified newer iCloud epoch; a signed-in unexpected future epoch fails for
 reconciliation. Permanent account closure markers fence later uploads. Reset
 uncertainty requires an explicit user decision. Lost reset acknowledgements retry
-the original operation rather than deleting newer records. Apple encrypted-data
-key resets or externally deleted zones currently fail closed as unavailable;
-there is no automatic zone recreation/re-upload recovery, which could lose the
-deletion fence. Preserve local writing and complete the recovery design and real
-two-device conflicts/full-storage/reset checks before release acceptance.
+the original operation rather than deleting newer records.
+
+Guarded native reads check zone existence before creation. A known generation or
+the native Apple-account/collection history marker prevents a missing zone/root
+from being mistaken for an empty first-use collection. `zoneNotFound` (including
+Apple's encrypted-data-reset key) and `userDeletedZone` become the sanitized
+`ZONE_RECOVERY_REQUIRED` code. Writes, reset, closure and purge never create a
+missing root. An older bridge without guarded reads cannot sync a known generation;
+Settings explains that a newer build is required.
+
+Explicit recovery can create only an absent root/zone, never delete or replace a
+live one. It writes the existing INT64 `wasReset` field as 2 (external recovery),
+preserving the earlier 0/1 wire meanings and requiring no schema addition. Normal
+resets retain this recovery marker. Every stale or unknown guest/account replica
+requires confirmation before clearing and joining that recovered generation.
+Check this before stale-epoch replacement or resumed replacement cleanup can
+retain old phone writing. Persist clearing intent before clearing; lost responses
+reuse the same recovered generation and preserve newer cloud writing. Pending
+closure/deletion/cleanup/replacement or guest handover cannot enter ordinary zone
+recovery. Account server epochs and associated Apple-account cleanup remain in
+force; authenticated current server data may repopulate after the confirmed clear.
+
+If all local history is erased and Apple returns only plain `zoneNotFound`, first
+use cannot be distinguished from a historical deletion. Do not claim recovery
+protection for that unknowable history. Native reset behavior is documented by
+[Apple's reset-error key](https://developer.apple.com/documentation/cloudkit/ckerroruserdidresetencrypteddatakey).
+A compatible signed recovery build and physical reset acceptance remain open;
+Anthony deferred the other remaining manual cases in the Phase 13 plan.
 
 ## Download, import and deletion
 
