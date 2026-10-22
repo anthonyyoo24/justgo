@@ -327,6 +327,9 @@ Settings keeps Preferences, Account & data, Support and About. Account & data co
 only Account and Data links. Support actions open private email drafts; legal/social
 links use configured URLs or honest unavailable states. No legal-view/agreement
 receipts or analytics switches are introduced; diagnostics/analytics stay gated.
+The shared `SettingsPage` keeps its safe-area title and Back button above the
+scrollable body, preserving navigation while longer pages scroll. Header and body
+share the same content width and enlarged-text layout rules.
 
 Welcome's branded Apple and Google buttons appear above Continue. Continue opens
 Terms & Privacy, then selects a local guest collection. It creates no account.

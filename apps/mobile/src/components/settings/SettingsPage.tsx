@@ -33,41 +33,42 @@ export function SettingsPage({
   const expanded = fontScale > 1.3;
   return (
     <SafeAreaView style={styles.safe}>
+      <View style={[styles.column, styles.headerContainer]}>
+        <View style={[styles.header, expanded && styles.expandedHeader]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            accessibilityHint="Return to the previous screen"
+            onPress={
+              onBack ??
+              (() =>
+                router.canGoBack() ? router.back() : router.replace(backHref))
+            }
+            style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+          >
+            <SettingsIcon name="back" />
+          </Pressable>
+          <ScaledText
+            accessibilityRole="header"
+            maxFontSizeMultiplier={2}
+            style={[
+              styles.title,
+              expanded && styles.expandedTitle,
+              expanded && width < 360 && styles.narrowTitle,
+            ]}
+          >
+            {title}
+          </ScaledText>
+          {!expanded && <View style={styles.headerSlot} />}
+        </View>
+      </View>
       <ScrollView
+        style={styles.scrollViewport}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <View style={styles.content}>
-          <View style={[styles.header, expanded && styles.expandedHeader]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              accessibilityHint="Return to the previous screen"
-              onPress={
-                onBack ??
-                (() =>
-                  router.canGoBack() ? router.back() : router.replace(backHref))
-              }
-              style={({ pressed }) => [styles.back, pressed && styles.pressed]}
-            >
-              <SettingsIcon name="back" />
-            </Pressable>
-            <ScaledText
-              accessibilityRole="header"
-              maxFontSizeMultiplier={2}
-              style={[
-                styles.title,
-                expanded && styles.expandedTitle,
-                expanded && width < 360 && styles.narrowTitle,
-              ]}
-            >
-              {title}
-            </ScaledText>
-            {!expanded && <View style={styles.headerSlot} />}
-          </View>
-          {children}
-        </View>
+        <View style={[styles.column, styles.content]}>{children}</View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -75,12 +76,19 @@ export function SettingsPage({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.successCanvas },
+  scrollViewport: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: 'center' },
-  content: {
+  column: {
     width: '100%',
     maxWidth: layout.maxContentWidth,
     paddingHorizontal: spacing.lg,
+  },
+  headerContainer: {
+    alignSelf: 'center',
     paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+  },
+  content: {
     paddingBottom: spacing.xl,
     gap: spacing.xl,
   },
