@@ -21,7 +21,7 @@ configuration, automated evidence and real phone acceptance remain distinct.
 | Public app configuration | Matching seven public Auth/Google/API inputs configured in local development and the existing EAS development environment. Server-only Auth configuration uses Vercel secret/environment storage.                                                                                                                                                                          |
 | Native build             | Configured internal build [87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab) succeeded. Signed IPA inspection confirms bundle/team, registered phone, Apple entitlement, Google URL scheme, secure storage and current conditional CloudKit bridge. Installation and real provider acceptance remain open. |
 | Staging API              | Matching deployment `dpl_HmREmiNREfSTiW6uC5GpjWFrbqkr` is active at `https://justgo-two.vercel.app`. `/ready` returns 200/ready; managed routes reject missing authentication and legacy administration is absent. Actual restricted-role helper/schema checks and absent-session rejection pass; security advisor reports no findings.                                    |
-| iCloud native setup      | Container/capabilities and physical acceptance remain open. Provider login does not enable or establish working iCloud Sync.                                                                                                                                                                                                                                               |
+| iCloud native setup      | `iCloud.com.anthonyyoo.justgo` is assigned to the existing App ID/team. The encrypted private record schema is deployed in Development and Production; local/EAS development configuration uses Production for the ad hoc build. Signed-build inspection and physical acceptance remain separate. Provider login does not enable iCloud Sync.                              |
 
 ## Execution checklist: working Apple and Google login
 
@@ -340,11 +340,39 @@ fixture providers. The guarded loopback fixture allocates its own principals and
 sessions in dedicated `justgo_test`; it establishes no real Apple/Google evidence.
 
 iCloud is separately opt-in and off by default. Its native configuration uses
-`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER=iCloud.<approved-container>`, the existing
-Apple team and private CloudKit capabilities. This is independent of JustGO
+`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER=iCloud.com.anthonyyoo.justgo` paired with
+`ICLOUD_CONTAINER_ENVIRONMENT=Production` for the internal ad hoc build, the existing
+Apple team and private CloudKit capabilities. Both values are public build metadata.
+The EAS development environment and local phone configuration contain this pair;
+configure preview/production explicitly before their builds. Unconfigured local
+builds omit iCloud entitlements, and `development-simulator` ignores inherited
+device CloudKit inputs. This is independent of JustGO
 provider login. Follow [APPLE_SETUP.md](APPLE_SETUP.md) and retain physical
 multi-device, account-change, quota, toggle-off and deletion gates. A Files share
 to iCloud Drive is a manual snapshot, not the iCloud Sync toggle.
+
+The approved container is assigned only to `com.anthonyyoo.justgo` under team
+`NPDYTJS425`. Its schema is deployed in Development and Production:
+
+| Record type        | Field                    | CloudKit type    |
+| ------------------ | ------------------------ | ---------------- |
+| `JustGoCollection` | `generation`, `revision` | String           |
+| `JustGoCollection` | `wasReset`, `closed`     | Int(64)          |
+| `JustGoValue`      | `generation`, `itemId`   | String           |
+| `JustGoValue`      | `value`                  | Encrypted String |
+
+There are no custom query indexes or public `_world`/`_icloud` grants for these
+types. The bridge uses private custom zones; deploying schema does not copy any
+user records. Create `value` as Encrypted String from the beginning. Keep the
+signed environment consistent with the deployed schema and inspect the final IPA.
+
+The pinned DocumentPicker automatic plugin removes the environment entitlement
+when its separate CloudDocuments integration is off. The focused
+`with-icloud-environment.cjs` mod restores the validated CloudKit environment after
+the entitlement pipeline; do not enable `usesIcloudStorage` merely to compensate,
+because that changes service/container entitlements to CloudDocuments. App-config
+tests exercise both plugins together and introspection must retain `CloudKit`,
+the approved container, the environment and the Apple sign-in entitlement.
 
 The local implementation remembers previously used iCloud copies. Guest-to-account
 handover reads any associated guest copy before retiring it; deletion also cleans
@@ -356,11 +384,17 @@ Retry against the associated account without uploading another owner's writing.
 
 The current handover requires the native page `revision` and `resetIfUnchanged`
 bridge, which conditionally retires only the source version actually read. The
-October 21 IPA predates this bridge revision and must be rebuilt with the current
-module and approved CloudKit configuration. A missing bridge or unavailable
+earlier `967b34cf` IPA predates this bridge revision; the provider build includes
+it but lacks CloudKit configuration. Use the subsequent configured iCloud build
+recorded in [APPLE_SETUP.md](APPLE_SETUP.md). A missing bridge or unavailable
 configuration must remain an explicit unsupported/pending state, not a simulated
 successful sync. Include concurrent-write and lost-response retries in native
 acceptance.
+
+Apple encrypted-data key resets or externally removed private zones currently
+return unavailable and retain phone writing. Before release, the implementation
+owner must design/test explicit recovery that preserves deletion fences; do not
+automatically recreate and re-upload a collection after these errors.
 
 ## Pending Auth erasure operations
 

@@ -42,6 +42,38 @@ secure storage and logout/deletion acceptance remain open.
 
 ## Revised Phase 13 native prerequisites
 
+**Configured iCloud testing binary:** The internal development build
+[ae5bf713](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/ae5bf713-8265-440d-b4f1-23bc135eec5b)
+finished successfully. Downloaded IPA/signature inspection confirms the approved
+container, `CloudKit` service, Production environment and matching provisioning
+permissions for the registered iPhone. The current native writer/conditional-reset
+bridge, Apple/Google providers, Google URL scheme, secure session storage,
+SQLite, Files and Keychain are present. The code signature verifies. This build
+supersedes the provider-only binary for iCloud testing. Install over the existing
+app and reconnect to the restarted development server. Actual iCloud opt-in,
+relaunch, offline/two-device/account-change/quota/deletion evidence remains open;
+successful compilation and entitlement inspection do not establish sync behavior.
+
+**Configured private iCloud:** Anthony approved assigning
+`iCloud.com.anthonyyoo.justgo` to the existing App ID/team. The iCloud capability
+with CloudKit is saved, and the existing ad hoc provisioning profile was
+regenerated for the registered phone without replacing the distribution
+certificate. `JustGoCollection` and `JustGoValue` are deployed in both Development
+and Production; `JustGoValue.value` is Encrypted String. The app writes private
+custom zones only, with no public read/create grants for these types.
+
+Local phone and EAS development configuration pair
+`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER=iCloud.com.anthonyyoo.justgo` with
+`ICLOUD_CONTAINER_ENVIRONMENT=Production`. The internal ad hoc build uses the
+Production schema; a local Xcode development signing task would need Development
+instead. These environments have separate records. The fixture simulator profile
+does not inherit device CloudKit access. The focused native config mod preserves
+the environment after DocumentPicker's automatic entitlement mod while keeping
+the service `CloudKit`; do not enable unrelated CloudDocuments storage to work
+around that plugin. Generated config verifies this pair alongside the existing
+Apple entitlement and Google URL scheme. Final signed IPA inspection and real
+device acceptance are separate evidence.
+
 Reuse the existing app, team and Expo project. Follow
 [ACCOUNT_SYNC_SETUP.md](ACCOUNT_SYNC_SETUP.md) for exact public Auth/Google/CloudKit
 environment names, Supabase provider/manual-link setup, private live-session
@@ -65,7 +97,8 @@ The native config adds Apple sign-in, SecureStore, the original Google Sign-In
 plugin when its approved reversed-client URL scheme is configured, and a focused
 private CloudKit module. Configure the approved iCloud container and its private
 database capabilities under the existing team using
-`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER`. Verify the container association,
+`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER` paired with
+`ICLOUD_CONTAINER_ENVIRONMENT=Development|Production`. Verify the container association,
 `JustGoCollection`/`JustGoValue` record schema and matching development/production
 CloudKit environment. Confirm generated iCloud container/CloudKit entitlements
 and the provisioning profile, including Sign in with Apple/iCloud, before

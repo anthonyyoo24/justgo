@@ -140,14 +140,25 @@ unavailable or changed accounts leave cleanup retryable. Web reports unsupported
 not simulate native acceptance. Apple account changes fail closed rather than
 uploading to a new iCloud owner silently.
 
+Uploads are bounded by both record count and serialized UTF-8 bytes. The native
+writer splits oversized batches finitely and refetches the root/change tag before
+every atomic attempt; successful partial delivery retains immutable IDs for retry.
+Expired CloudKit cursors restart reads. For deletion and guest handover, restart
+only physical cleanup once per invocation and persist the cleared cursor first;
+retain the original fenced generation, reset/closure intent and accepted adoption.
+Never repeat a deletion reset merely to recover pagination.
+
 Generation-based conditional writes, stable reset IDs and per-account data epochs
 prevent stale devices restoring deleted data. A newer JustGO epoch replaces stale
 iCloud records without deleting fresh local history. A signed-out collection can
 adopt a verified newer iCloud epoch; a signed-in unexpected future epoch fails for
 reconciliation. Permanent account closure markers fence later uploads. Reset
 uncertainty requires an explicit user decision. Lost reset acknowledgements retry
-the original operation rather than deleting newer records. Real CloudKit schema,
-entitlements, two-device conflicts/full-storage/reset behavior remain release gates.
+the original operation rather than deleting newer records. Apple encrypted-data
+key resets or externally deleted zones currently fail closed as unavailable;
+there is no automatic zone recreation/re-upload recovery, which could lose the
+deletion fence. Preserve local writing and complete the recovery design and real
+two-device conflicts/full-storage/reset checks before release acceptance.
 
 ## Download, import and deletion
 

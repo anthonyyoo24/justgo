@@ -3,9 +3,10 @@
 # Phase 13 — Local data, optional accounts and cloud sync
 
 **Status:** October 21 continuity/Settings revision and working-login setup implemented.
-Native providers, protected hosted database/API cutover and the configured signed
-build are ready for owner testing. Real phone/provider acceptance and separate
-CloudKit setup/device acceptance remain open. The
+Native providers, protected hosted database/API cutover and private CloudKit
+container/schema setup are implemented. Anthony confirmed successful provider
+login on the phone; extended provider/device acceptance and actual iCloud sync
+acceptance remain open. The
 [handoff](../handoffs/phase-13-local-journal.md) records current evidence and gates.
 
 ## Outcome
@@ -235,9 +236,11 @@ native integration and verification. Coordinate with Phase 14 release ownership.
 
 Configured development build [87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab)
 contains the native modules, Apple entitlement and Google URL scheme. Native
-providers and the compatible staged API/database are configured. Real phone OAuth
-acceptance and CloudKit container/entitlements remain unfinished. The iCloud
-switch is not accepted as functional. Follow
+providers and the compatible staged API/database are configured, and Anthony
+confirmed phone login. The approved iCloud container/schema is now configured;
+its subsequent signed binary and extended phone acceptance are recorded in the
+setup/handoff documents. The iCloud switch is not accepted as functional until
+actual phone sync passes. Follow
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) and the
 [rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
 The [working-login execution checklist](../operations/ACCOUNT_SYNC_SETUP.md#execution-checklist-working-apple-and-google-login)
@@ -271,6 +274,53 @@ setup separately from the still-open phone and iCloud acceptance gates.
 **Exit evidence:** the actual configured build and device results, distinct from
 mock/browser checks. If a setup/device dependency is unavailable, keep its named
 gate open; an unresponsive switch or successful native compilation is not acceptance.
+
+#### iCloud execution checklist
+
+Anthony authorized this checklist and iCloud implementation, including the
+required Apple setup and compatible internal iPhone build. Keep the existing
+Apple team `NPDYTJS425`, bundle `com.anthonyyoo.justgo` and Expo project. Git
+publication, public distribution and purchases retain their separate permissions.
+One implementation owner coordinates code/configuration and sequential heavy
+checks; independent native and TypeScript audits cover separate boundaries.
+
+- [x] Audit the current Swift CloudKit bridge and TypeScript lifecycle/collection
+      coordinator. Fix concrete readiness, restore, concurrency, account-change
+      or deletion defects with focused regression tests before external setup.
+- [x] Inspect Apple Developer and CloudKit access. Reuse an appropriate existing
+      container or register `iCloud.com.anthonyyoo.justgo` under the existing team,
+      associate only the JustGO app, and enable CloudKit private-database access.
+      Complete any required interactive Apple authentication with the owner.
+- [x] Configure the exact container identifier in the app/build environment.
+      Verify generated Info.plist, CloudKit entitlements, signing profile and
+      development/production environment agree. Preserve existing Apple/Google
+      login configuration, secure storage and phone data.
+- [x] Prepare the `JustGoCollection` and `JustGoValue` record schema from the
+      actual native fields. Verify the environment used by the signed internal
+      build has that schema; deploy schema changes when required without copying
+      private records or enabling public access.
+- [x] Run affected adapter/coordinator/configuration tests and saved data/deletion
+      journeys. Run fresh online Expo validation and the required native-build
+      checks, then create the compatible EAS development build. Download and
+      inspect the signed IPA for the exact container/environment and current
+      native bridge; provide the installation link and QR code.
+- [ ] On the first physical iPhone, install over the existing app, verify iCloud
+      availability and explicit opt-in, save disposable entries, relaunch and
+      retry offline/reconnect. Turning sync off must keep local entries and the
+      existing cloud copy. Record actual device errors and fix them before
+      accepting the toggle as functional.
+- [ ] On two physical devices using the same Apple iCloud account, verify guest
+      and signed-in restoration, new edits in both directions, concurrent changes,
+      logout/returning login, Apple-account changes and both deletion actions.
+      Verify sync off -> delete -> on, unavailable/full storage and interrupted
+      handover/reset retries cannot restore erased data or mix account owners.
+- [ ] Before release, the implementation owner must design and verify explicit
+      recovery after an Apple encrypted-data key reset or an externally deleted
+      private zone. Current behavior fails closed as unavailable and preserves
+      phone writing; automatic zone recreation must not bypass deletion fences.
+- [x] Reconcile setup, architecture and handoff evidence together. Distinguish
+      console setup, automated tests, signed-build inspection and physical-device
+      evidence; retain any unavailable device gate with its owner and next step.
 
 ### 7. Reconcile documents, verify and hand off
 

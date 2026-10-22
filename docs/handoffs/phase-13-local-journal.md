@@ -2,11 +2,10 @@
 
 ## Status
 
-The October 21 continuity/Settings revision and working-login setup are implemented.
-Native Apple/Google providers, the protected staging database/API cutover and a
-configured signed development build are ready for owner testing. Real phone
-sign-in/continuity/revocation/deletion and separate iCloud setup/device acceptance
-remain open. The [plan](../implementation-plan/phase-13-local-journal.md) owns
+The October 21 continuity/Settings revision, working-login setup and private
+iCloud container/schema setup are implemented. Anthony confirmed successful
+phone login. Extended provider continuity/revocation/deletion and actual iCloud
+device acceptance remain open. The [plan](../implementation-plan/phase-13-local-journal.md) owns
 remaining scope and [decisions](../DECISIONS.md#october-21-native-provider-rollout-and-hosted-session-checks)
 record the provider-specific choices. No Git push, PR or merge ran.
 
@@ -99,12 +98,43 @@ retry schedule was installed.
 Configured internal build [87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab)
 succeeded. Signed IPA inspection verifies the existing bundle/team/registered
 phone, Apple entitlement, Google URL scheme, required modules/secure storage and
-current conditional CloudKit reset bridge. CloudKit is still unconfigured.
+current conditional CloudKit reset bridge. That provider build lacks iCloud
+configuration and is superseded for iCloud testing by the configured build below.
 Matching public inputs are in local/EAS development configuration. Cache-cleared
 Metro's actual native bundle uses the staged API/Auth/Google inputs and contains
 no actual server admin secret. Unpublished legal pages use a separate local LAN
 reader; they were not published on the staged API. Install over the existing app
 and keep phone/Mac on the same Wi-Fi.
+
+The approved `iCloud.com.anthonyyoo.justgo` container is now assigned to the
+existing App ID/team. Private `JustGoCollection`/`JustGoValue` schema is deployed
+in Development and Production, with Encrypted String journal payloads and no
+public read/create grants on these record types. Local/EAS development inputs
+select Production for ad hoc signing; the existing phone provisioning profile
+was regenerated. The config plugin retains this environment after DocumentPicker
+without adding CloudDocuments access. Provider sign-in and app identity remain
+configured.
+
+Configured iCloud build
+[ae5bf713](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/ae5bf713-8265-440d-b4f1-23bc135eec5b)
+finished successfully. Downloaded signed IPA inspection verifies the exact
+container, CloudKit/Production entitlements, matching provisioning permissions,
+existing bundle/team/registered phone and current native writer/reset bridge.
+Existing Apple/Google/secure storage/SQLite/Files/Keychain modules and the Google
+URL scheme remain present; signature verification passes. The installation page
+offers Install, and the supplied QR decodes to this build. Install over the
+existing app, then reconnect to the restarted development server. Phone iCloud
+acceptance is awaiting Anthony's result; two-device/error/deletion gates remain
+open.
+
+Native and JS uploads now have byte/count budgets. Native size retries preserve
+fresh atomic generation fencing; durable cleanup can recover an expired cursor
+without repeating deletion reset/closure or accepted guest adoption. Settings
+retry preserves the intended enable/disable operation and opt-in. The dependency-free
+Swift test target is separate from pod sources/uploads and has a required macOS
+CI producer. Apple encrypted-data key reset/external zone removal currently fails
+closed as unavailable; explicit recovery that retains deletion fences is an open
+implementation-owner release task, recorded in the plan.
 
 The shared modal lives in `components/modals`, shared provider artwork in
 `components/auth`, portable archives in `data/backup`, and cloud handover beside
@@ -117,7 +147,8 @@ file lists were reviewed; no further moves were needed.
 
 ## Verification
 
-Verified October 21 with pinned Node 24/npm 11 and heavy checks sequentially:
+Earlier Phase 13 candidate verification used pinned Node 24/npm 11 and sequential
+heavy checks:
 
 - Final full `npm run check`: online Expo Doctor 21/21, root/workspace/journey
   typechecks, lint with zero errors (176 existing warnings), formatting, 259 tooling
@@ -143,6 +174,17 @@ Setup/architecture/plan/decision documents and local links were reconciled.
 Screenshots, QR and operator proofs remain ignored. Public legal text remains an
 unpublished candidate. Device mocks, browser checks and binary inspection do not
 establish native OAuth, private storage protection or CloudKit behavior.
+
+The subsequent iCloud follow-up passed native Swift regressions, affected
+adapter/coordinator/runtime/Settings and config/plugin-chain tests, required-job
+tooling regressions, the saved backup/import and account-deletion journeys,
+mobile typechecks, lint, formatting, online Doctor and a cold iOS bundle export.
+Generated native config and the restarted phone Metro bundle use the approved
+container/Production environment and retain the staged API/provider inputs.
+A grouped isolated side-panel check verified the disabled web iCloud row and its
+visible platform explanation without creating server accounts. These focused
+checks do not refresh the earlier full phase/coverage evidence. The new macOS CI
+job remains unverified on GitHub until an authorized push runs it.
 
 ## Open acceptance gates
 
