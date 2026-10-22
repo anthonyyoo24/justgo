@@ -190,7 +190,7 @@ If all local history is erased and Apple returns only plain `zoneNotFound`, firs
 use cannot be distinguished from a historical deletion. Do not claim recovery
 protection for that unknowable history. Native reset behavior is documented by
 [Apple's reset-error key](https://developer.apple.com/documentation/cloudkit/ckerroruserdidresetencrypteddatakey).
-A compatible signed recovery build and physical reset acceptance remain open;
+Installation of the compatible recovery build and physical reset acceptance remain open;
 Anthony deferred the other remaining manual cases in the Phase 13 plan.
 
 ## Download, import and deletion

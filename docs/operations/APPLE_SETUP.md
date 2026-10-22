@@ -60,13 +60,23 @@ entry, all three local challenge/journal pairs matched iCloud. The actual
 storage-full condition also reached the concise iCloud-full message. These checks
 do not establish the deferred offline/multi-device/account-change/deletion matrix.
 
-**Recovery bridge requires another native build:** Current source adds guarded
-missing-collection recovery with a durable reset fence. Build `1a1174d6` predates
-that bridge. Create a compatible signed binary, inspect the retained
-container/environment/provider capabilities, and verify actual reset/missing-zone
-recovery before release. An OTA or development-server JavaScript update cannot
-add the bridge. Recovery must not replace a live collection or clear phone writing
-before the explicit confirmation and durable clearing intent.
+**Recovery build available; installation/device acceptance open:** Development
+build [3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05), from source `b6c75d5`, finished successfully on October 22 at
+23:11:58 UTC. Fresh online Expo Doctor passes 21/21. The downloaded IPA's signature
+verifies; inspection confirms bundle `com.anthonyyoo.justgo`, team `NPDYTJS425`,
+container `iCloud.com.anthonyyoo.justgo`, CloudKit/Production, registered-phone
+provisioning, retained Keychain access, Apple entitlement and Google URL scheme.
+The full provisioning profile is unchanged from the installed `1a1174d6` binary.
+The actual Mach-O contains the `readGuarded` bridge and `ZONE_RECOVERY_REQUIRED`
+code. Expo shows Succeeded with Install available, and the supplied QR was decoded
+and verified against this exact build's installation URL.
+
+Build `1a1174d6` remains the binary for the earlier installed-phone evidence and
+predates recovery. Install `3cbc873a` over the existing app, then verify actual
+reset/missing-zone recovery before release. An OTA or development-server
+JavaScript update cannot add the bridge. Recovery must not replace a live
+collection or clear phone writing before the explicit confirmation and durable
+clearing intent. Binary inspection does not establish physical recovery behavior.
 
 Anthony explicitly deferred the remaining manual offline/reconnect, two-device,
 extended provider-continuity and native Download/Import/deletion checks from the
@@ -160,7 +170,7 @@ latter also removes the JustGO account/Auth profile. Neither removes the user's
 Apple/Google account. User-saved files remain under the user's control after app
 deletion.
 
-Next steps before release: create the compatible recovery build and verify its
+Next steps before release: install the inspected recovery build and verify its
 physical flow, then complete the owner-deferred provider/native/iCloud matrix.
 Container/schema setup and the named single-phone sync checks above are complete.
 Install over the existing app to preserve phone data, and connect to the matching

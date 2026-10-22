@@ -7,8 +7,8 @@ remains open. Native providers, protected hosted database/API cutover, private C
 setup and guarded missing-collection recovery are implemented. Anthony confirmed
 phone login, and actual single-phone CloudKit upload, sync-off isolation and
 re-enable/restart catch-up have been verified. Anthony deferred the remaining
-manual checks; the recovery bridge still needs a compatible native build and
-device acceptance. The [handoff](../handoffs/phase-13-local-journal.md) distinguishes
+manual checks; the compatible recovery build is available and inspected, while
+installation and physical recovery acceptance remain open. The [handoff](../handoffs/phase-13-local-journal.md) distinguishes
 verified behavior, owner deferrals and pre-release gates.
 
 ## Outcome
@@ -243,8 +243,9 @@ contains the configured native providers, Apple entitlement, Google URL scheme
 and private CloudKit/quota bridge. Anthony confirmed phone login. Single-phone
 upload/readback, sync-off isolation and re-enable/restart catch-up have passed;
 they do not establish the deferred multi-device/recovery/deletion matrix. The new
-missing-collection recovery bridge is not in this installed build and requires a
-compatible native rebuild before device acceptance. Follow
+missing-collection recovery bridge is in the inspected development build
+[3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05), available for installation. Actual recovery acceptance remains open.
+Follow
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) and the
 [rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
 The [working-login execution checklist](../operations/ACCOUNT_SYNC_SETUP.md#execution-checklist-working-apple-and-google-login)
@@ -327,9 +328,12 @@ checks; independent native and TypeScript audits cover separate boundaries.
       fence; only the confirmed recovery flow may clear the phone's older copy.
       Never replace a live collection or bypass server deletion epochs, closing,
       pending deletion or handover. See [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) for the invariants.
-- [ ] Build the compatible native recovery bridge and verify the recovery/reset
-      flow on a physical device before release. The installed build predates it;
-      automated/native package checks do not close this gate.
+- [x] Create and inspect the compatible native recovery build [3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05) from
+      source `b6c75d5`. Signed IPA inspection confirms the recovery bridge and
+      retained app/container/provider capabilities; online Expo Doctor passes.
+- [ ] Install that build and verify the recovery/reset flow on a physical device
+      before release. Earlier single-phone evidence is from `1a1174d6` and does
+      not accept recovery; automated/native package checks do not close this gate.
 - [x] Reconcile setup, architecture and handoff evidence together. Distinguish
       console setup, automated tests, signed-build inspection and physical-device
       evidence; retain any unavailable device gate with its owner and next step.
@@ -358,8 +362,8 @@ second-device/Apple-account-change cases, extended Apple/Google continuity and
 account-isolation cases, and physical Download/Import/deletion checks. Keep these
 named and unverified under Anthony, the implementation owner and the Phase 14
 release owner; no manual run is required to finish this scoped implementation
-closeout. The new recovery bridge still needs a compatible signed build and
-physical acceptance. Public privacy approval/publication remains pending. Local
+closeout. The inspected signed recovery build is available; installation and
+physical recovery acceptance remain open. Public privacy approval/publication remains pending. Local
 closeout does not mean the candidate is accepted for production release.
 
 ## Acceptance requirements
@@ -381,7 +385,8 @@ existing beta/subscription access rules, billing identity and the deferred Phase
 - [ ] **Owner-deferred before release:** extended real Apple/Google session, return-login, revocation, linking/unlinking, account-isolation and deletion cases. Basic phone login is confirmed.
 - [x] Single-phone iCloud upload/readback, sync-off isolation, re-enable/restart catch-up and storage-full feedback are verified.
 - [ ] **Owner-deferred before release:** offline/reconnect, two-device/account-change and native Download/Import/deletion cases.
-- [ ] The new guarded recovery bridge has a compatible signed build and actual recovery/reset device acceptance.
+- [x] The new guarded recovery bridge has a compatible signed build, [3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05), with verified app/container/provider capabilities.
+- [ ] The recovery build is installed and passes actual recovery/reset device acceptance.
 - [x] Documents distinguish current implementation, earlier evidence and owner-deferred release gates; public privacy approval/publication remains pending.
 - [x] Focused recovery closeout checks pass and are recorded in the handoff.
 
