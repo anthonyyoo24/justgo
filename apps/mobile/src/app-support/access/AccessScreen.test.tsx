@@ -146,26 +146,85 @@ it.each([
     identity.mockReturnValue(state);
     access.mockReturnValue({ verified: false });
     const screen = render(<AccessScreen />);
-    expect(screen.getByLabelText('Connecting your account')).toBeTruthy();
+    expect(screen.getByLabelText('Loading JustGO')).toBeTruthy();
     expect(screen.queryByText('Redirect: /recovery')).toBeNull();
   },
 );
 
-it('shows pending access and prevents duplicate retries while the check is running', () => {
-  const refetch = jest.fn();
-  access.mockReturnValue({
-    verified: false,
-    isPending: true,
-    isFetching: true,
-    refetch,
-  });
+it.each([true, false])(
+  'keeps pending access quiet with an account=%s',
+  (hasAccount) => {
+    if (!hasAccount)
+      identity.mockReturnValue({
+        initialized: true,
+        busy: false,
+        account: null,
+        collectionId: 'local-owner',
+        needsWelcome: false,
+      });
+    const refetch = jest.fn();
+    access.mockReturnValue({
+      verified: false,
+      isPending: true,
+      isFetching: true,
+      refetch,
+    });
+    const screen = render(<AccessScreen />);
+    expect(screen.getByLabelText('Loading JustGO')).toBeTruthy();
+    expect(screen.queryByText('Checking your access…')).toBeNull();
+    expect(screen.queryByText('Checking access for this phone.')).toBeNull();
+    expect(screen.queryByText('Your account is connected.')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Check access again' }),
+    ).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.queryByText('Account')).toBeNull();
+    expect(screen.queryByText('Preview app screens')).toBeNull();
+    expect(screen.queryByText('View saved history')).toBeNull();
+    expect(refetch).not.toHaveBeenCalled();
+  },
+);
+
+it('opens the app after pending access succeeds without showing the recovery page', () => {
+  access.mockReturnValue({ verified: false, isPending: true });
   const screen = render(<AccessScreen />);
-  expect(screen.getByText('Checking your access…')).toBeTruthy();
-  const retry = screen.getByRole('button', { name: 'Check access again' });
-  expect(retry).toBeDisabled();
-  fireEvent.press(retry);
-  expect(refetch).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Loading JustGO')).toBeTruthy();
+  access.mockReturnValue({
+    verified: true,
+    isPending: false,
+    isFetching: true,
+  });
+  screen.rerender(<AccessScreen />);
+  expect(screen.getByText('Redirect: /(tabs)')).toBeTruthy();
+  expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
+  expect(screen.queryByText('We can’t verify access yet.')).toBeNull();
 });
+
+it.each([
+  { data: { status: 'unpaid' }, title: 'Your next step awaits.' },
+  { isError: true, title: 'We can’t verify access yet.' },
+])(
+  'restores recovery actions when pending access settles: $title',
+  (result) => {
+    const refetch = jest.fn();
+    access.mockReturnValue({ verified: false, isPending: true, refetch });
+    const screen = render(<AccessScreen />);
+    expect(screen.getByLabelText('Loading JustGO')).toBeTruthy();
+    access.mockReturnValue({
+      verified: false,
+      isPending: false,
+      refetch,
+      ...result,
+    });
+    screen.rerender(<AccessScreen />);
+    expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
+    expect(screen.getByText(result.title)).toBeTruthy();
+    expect(screen.getByText('Account')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Check access again' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Redirect: /(tabs)')).toBeNull();
+  },
+);
 
 it.each(['guest', 'signed-out'] as const)(
   'keeps %s local history reachable offline while challenge access is unavailable',

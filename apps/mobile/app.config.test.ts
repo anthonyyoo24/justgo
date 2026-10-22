@@ -32,6 +32,19 @@ describe('Expo project configuration', () => {
     expect(config.experiments.typedRoutes).toBe(true);
   });
 
+  it('uses the approved mark and cream for the native launch screen', () => {
+    const { default: config } = require('./app.config');
+    expect(config.plugins).toContainEqual([
+      'expo-splash-screen',
+      {
+        backgroundColor: '#F9EFE8',
+        image: './assets/brand/justgo-mark.png',
+        imageWidth: 194,
+        resizeMode: 'contain',
+      },
+    ]);
+  });
+
   it('requires explicit valid reporting configuration and installs native privacy after Sentry', () => {
     process.env.EXPO_PUBLIC_SENTRY_ENABLED = 'true';
     expect(() => require('./app.config')).toThrow('Sentry reporting requires');

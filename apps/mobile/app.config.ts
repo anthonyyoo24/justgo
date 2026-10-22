@@ -95,6 +95,15 @@ const config: ExpoConfig = {
     'expo-dev-client',
     'expo-font',
     'expo-image',
+    [
+      'expo-splash-screen',
+      {
+        backgroundColor: '#F9EFE8',
+        image: './assets/brand/justgo-mark.png',
+        imageWidth: 194,
+        resizeMode: 'contain',
+      },
+    ],
     'expo-apple-authentication',
     ['expo-secure-store', { faceIDPermission: false }],
     ...(iCloudContainer

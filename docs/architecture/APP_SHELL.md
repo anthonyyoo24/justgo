@@ -84,6 +84,18 @@ admission. Challenge starts require fresh verified access; saved local Progress
 remains available offline or signed out. Pending account deletion removes product
 routes from Back history until required cleanup finishes.
 
+Fonts, saved-collection hydration and the first challenge-access request use a
+static navy GO mark on cream, without visible text, a spinner or animation. The
+bundled transparent mark and its 194-point contained image frame match the native
+`expo-splash-screen` configuration. Home sends pending admission to `/access`
+outside the tab scene so startup stays centered in the full screen. Loading has
+an accessible busy label. Native launch configuration requires a rebuilt binary
+and release-build/device verification; a browser preview cannot establish it.
+Pending access does not show account status, recovery actions or development-preview links.
+Settled denial/unavailability keeps the access recovery page; access loading does
+not cover Progress, Settings or Data, and background refresh does not hide a
+verified challenge screen.
+
 The separate Apple/Google sign-in page keeps the selected button disabled with a
 centered spinner through native authorization, owner adoption, access verification
 and challenge preparation. It opens Challenges directly once the verified owner's
