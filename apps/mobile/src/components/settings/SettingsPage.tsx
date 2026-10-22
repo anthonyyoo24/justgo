@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     alignSelf: 'center',
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.sm,
   },
   content: {
     paddingBottom: spacing.xl,

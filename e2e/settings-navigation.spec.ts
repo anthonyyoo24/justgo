@@ -20,6 +20,11 @@ test('Settings keeps its title and Back button fixed while scrolling to the last
   ]);
   if (!initialTitle || !initialBack || !initialSection)
     throw new Error('Settings navigation must be measurable');
+  const headerBottom = Math.max(
+    initialTitle.y + initialTitle.height,
+    initialBack.y + initialBack.height,
+  );
+  expect(Math.abs(initialSection.y - headerBottom - 16)).toBeLessThanOrEqual(1);
   const lastRow = page.getByRole('button', {
     name: 'Terms of use',
     exact: true,
