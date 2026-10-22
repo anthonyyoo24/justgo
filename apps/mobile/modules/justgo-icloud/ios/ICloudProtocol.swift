@@ -2,6 +2,22 @@ import CloudKit
 import CryptoKit
 import Foundation
 
+// CloudKit stores this existing field as INT64. Values 0/1 keep their original
+// meaning; 2 is a reset fence created by explicit external-zone recovery.
+enum ICloudResetMarker: Int {
+  case none = 0
+  case appDeletion = 1
+  case externalRecovery = 2
+}
+
+func iCloudWasRecovered(_ root: CKRecord) -> Bool {
+  (root["wasReset"] as? NSNumber)?.intValue == ICloudResetMarker.externalRecovery.rawValue
+}
+
+func iCloudMarkReset(_ root: CKRecord) {
+  root["wasReset"] = NSNumber(value: (iCloudWasRecovered(root) ? ICloudResetMarker.externalRecovery : .appDeletion).rawValue)
+}
+
 enum ICloudFailure: String, Error, LocalizedError {
   case unavailable = "UNAVAILABLE"
   case notConfigured = "NOT_CONFIGURED"
@@ -15,6 +31,7 @@ enum ICloudFailure: String, Error, LocalizedError {
   case invalidData = "INVALID_DATA"
   case cursorExpired = "CURSOR_EXPIRED"
   case collectionDeleted = "COLLECTION_DELETED"
+  case zoneRecoveryRequired = "ZONE_RECOVERY_REQUIRED"
 
   var errorDescription: String? { "JUSTGO_ICLOUD_" + rawValue }
 
@@ -28,9 +45,10 @@ enum ICloudFailure: String, Error, LocalizedError {
     case .serverRecordChanged, .batchRequestFailed: return .conflict
     case .changeTokenExpired: return .cursorExpired
     case .limitExceeded: return .invalidData
+    case .zoneNotFound, .userDeletedZone: return .zoneRecoveryRequired
     case .partialFailure:
       let failures = error.partialErrorsByItemID?.values.map(sanitized) ?? []
-      for known in [ICloudFailure.quotaExceeded, .notAuthenticated, .restricted, .cursorExpired, .invalidData, .conflict] {
+      for known in [ICloudFailure.quotaExceeded, .notAuthenticated, .restricted, .zoneRecoveryRequired, .cursorExpired, .invalidData, .conflict] {
         if failures.contains(known) { return known }
       }
       return .unavailable

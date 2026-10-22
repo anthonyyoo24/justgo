@@ -14,6 +14,33 @@ struct ICloudChanges {
   let hasMore: Bool
 }
 
+func installICloudModifyResultBlocks(
+  on operation: CKModifyRecordsOperation,
+  completion: @escaping (Result<Void, Error>) -> Void
+) {
+  let failures = OperationValues<[Error]>([])
+  let completed = OperationValues(false)
+  operation.perRecordSaveBlock = { _, result in
+    if case .failure(let error) = result { failures.value.append(error) }
+  }
+  operation.perRecordDeleteBlock = { _, result in
+    if case .failure(let error) = result { failures.value.append(error) }
+  }
+  operation.modifyRecordsResultBlock = { result in
+    guard !completed.value else { return }
+    completed.value = true
+    guard !failures.value.isEmpty else { completion(result); return }
+    if case .failure(let error) = result { failures.value.append(error) }
+    // The terminal callback follows all record callbacks. Preserve every cause,
+    // including atomic batch placeholders, so quota wins and size retry retains
+    // the underlying CloudKit codes. Only the sanitized result crosses to JS.
+    let errors = Dictionary(uniqueKeysWithValues: failures.value.enumerated().map {
+      (AnyHashable($0.offset), $0.element)
+    })
+    completion(.failure(CKError(.partialFailure, userInfo: [CKPartialErrorsByItemIDKey: errors])))
+  }
+}
+
 actor CloudKitIO {
   private let database: CKDatabase
   private var epoch = 0
@@ -59,6 +86,35 @@ actor CloudKitIO {
     }
   }
 
+  func zoneExists(_ id: CKRecordZone.ID, lease: Int) async throws -> Bool {
+    let operation = CKFetchRecordZonesOperation(recordZoneIDs: [id])
+    let found = OperationValues<Bool?>(nil)
+    let failure = OperationValues<Error?>(nil)
+    return try await perform(operation, lease: lease) { continuation in
+      operation.perRecordZoneResultBlock = { _, result in
+        switch result {
+        case .success: found.value = true
+        case .failure(let error):
+          let cloud = error as? CKError
+          if cloud?.code != .zoneNotFound ||
+              (cloud?.userInfo[CKErrorUserDidResetEncryptedDataKey] as? NSNumber)?.boolValue == true {
+            failure.value = error
+          } else { found.value = false }
+        }
+      }
+      operation.fetchRecordZonesResultBlock = { result in
+        if let error = failure.value { continuation.resume(throwing: error); return }
+        if case .failure(let error) = result,
+           (error as? CKError)?.code != .partialFailure,
+           (error as? CKError)?.code != .zoneNotFound {
+          continuation.resume(throwing: error); return
+        }
+        guard let exists = found.value else { continuation.resume(throwing: ICloudFailure.unavailable); return }
+        continuation.resume(returning: exists)
+      }
+    }
+  }
+
   func fetch(_ ids: [CKRecord.ID], lease: Int) async throws -> [CKRecord.ID: CKRecord] {
     guard ids.count <= 50 else { throw ICloudFailure.invalidData }
     let operation = CKFetchRecordsOperation(recordIDs: ids)
@@ -92,7 +148,7 @@ actor CloudKitIO {
     operation.savePolicy = .ifServerRecordUnchanged
     operation.isAtomic = true
     let _: Void = try await perform(operation, lease: lease) { continuation in
-      operation.modifyRecordsResultBlock = { result in continuation.resume(with: result) }
+      installICloudModifyResultBlocks(on: operation) { result in continuation.resume(with: result) }
     }
   }
 

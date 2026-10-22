@@ -10,7 +10,9 @@ it('never offers CloudKit sync on the web', async () => {
     status: 'unsupported',
     enabled: false,
   });
-  await expect(iCloudSync.setEnabled(true)).rejects.toMatchObject({
+  await expect(
+    iCloudSync.setEnabled(true, async () => {}),
+  ).rejects.toMatchObject({
     code: 'UNSUPPORTED',
   });
 });

@@ -35,6 +35,14 @@ public final class JustGoICloudModule: Module {
       do { return try await self.store.read(collection, cursor: cursor) }
       catch { throw ICloudFailure.sanitized(error) }
     }
+    AsyncFunction("readGuarded") { (collection: String, cursor: String?, generation: String?) async throws -> String in
+      do { return try await self.store.read(collection, cursor: cursor, expectedGeneration: generation) }
+      catch { throw ICloudFailure.sanitized(error) }
+    }
+    AsyncFunction("recover") { (collection: String) async throws -> String in
+      do { return try await self.store.recover(collection) }
+      catch { throw ICloudFailure.sanitized(error) }
+    }
     AsyncFunction("write") { (collection: String, generation: String, records: String) async throws -> String in
       do { return try await self.store.write(collection, expectedGeneration: generation, encodedRecords: records) }
       catch { throw ICloudFailure.sanitized(error) }

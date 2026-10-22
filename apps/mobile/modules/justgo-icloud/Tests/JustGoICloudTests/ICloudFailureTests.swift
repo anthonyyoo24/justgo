@@ -45,4 +45,13 @@ final class ICloudFailureTests: XCTestCase {
     XCTAssertEqual(ICloudFailure.sanitized(error), .unavailable)
     XCTAssertEqual(ICloudFailure.sanitized(error).errorDescription, "JUSTGO_ICLOUD_UNAVAILABLE")
   }
+
+  func testDeletedZonesAndEncryptedResetSurviveNestedPartialFailure() {
+    for error in [CKError(.zoneNotFound), CKError(.userDeletedZone), CKError(.zoneNotFound, userInfo: [CKErrorUserDidResetEncryptedDataKey: NSNumber(value: true)])] {
+      let nested = CKError(.partialFailure, userInfo: [CKPartialErrorsByItemIDKey: [zone: error]])
+      XCTAssertEqual(ICloudFailure.sanitized(error), .zoneRecoveryRequired)
+      XCTAssertEqual(ICloudFailure.sanitized(nested), .zoneRecoveryRequired)
+    }
+    XCTAssertEqual(ICloudFailure.sanitized(CKError(.networkFailure)), .unavailable)
+  }
 }

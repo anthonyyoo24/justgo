@@ -55,6 +55,7 @@ export const iCloudPageSchema = iCloudGenerationSchema
   .extend({
     revision: z.string().min(1).max(1024).nullable().default(null),
     wasReset: z.boolean(),
+    recovered: z.boolean().optional(),
     closed: z.boolean(),
     records: z.array(iCloudValueSchema).max(ICLOUD_PAGE_LIMIT),
     cursor: z.string().min(1).max(32_768),
@@ -73,6 +74,8 @@ export const iCloudPurgePageSchema = iCloudGenerationSchema
 export type ICloudPurgePage = z.infer<typeof iCloudPurgePageSchema>;
 export const iCloudPreferenceSchema = z
   .object({
+    // Version 1 enabled native access before the first sync completed.
+    version: z.union([z.literal(1), z.literal(2)]).default(1),
     enabled: z.boolean(),
     accountToken: iCloudStatusSchema.shape.accountToken,
   })
@@ -94,6 +97,7 @@ const errorCodes = [
   'RESET_CONFIRMATION_REQUIRED',
   'COLLECTION_DELETED',
   'HANDOVER_PENDING',
+  'ZONE_RECOVERY_REQUIRED',
 ] as const;
 export type ICloudErrorCode = (typeof errorCodes)[number];
 export class ICloudError extends Error {
@@ -120,7 +124,13 @@ export function iCloudError(error: unknown): ICloudError {
 
 export interface ICloudSync {
   status(): Promise<ICloudStatus>;
-  setEnabled(enabled: boolean): Promise<void>;
+  setEnabled(enabled: false): Promise<void>;
+  /** Persist on only after this fenced first synchronization succeeds. */
+  setEnabled(
+    enabled: true,
+    synchronize: () => Promise<void>,
+    isCurrent?: () => boolean,
+  ): Promise<void>;
   /** Pinned access for explicit migration/deletion, without enabling background sync. */
   withMaintenance?(
     accountToken: string,
@@ -129,7 +139,11 @@ export interface ICloudSync {
   read(input: {
     collection: ICloudCollection;
     cursor?: string;
+    expectedGeneration?: string;
   }): Promise<ICloudPage>;
+  recover?(input: {
+    collection: ICloudCollection;
+  }): Promise<{ generation: string }>;
   write(input: {
     collection: ICloudCollection;
     generation: string;

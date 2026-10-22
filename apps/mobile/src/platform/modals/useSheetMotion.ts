@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, useWindowDimensions } from 'react-native';
-import { useReduceMotion } from '../../../platform/motion/motion';
 
-// Own modal entry/exit and interruption separately from paging and reflection UI.
-export function useDaySheetMotion(date: string | null, onClose: () => void) {
-  const reduceMotion = useReduceMotion();
+// Animate only the panel; its full-screen backdrop is a stationary sibling.
+export function useSheetMotion(
+  visible: boolean,
+  onClose: () => void,
+  reduceMotion: boolean,
+) {
   const { height } = useWindowDimensions();
   const [offset] = useState(() => new Animated.Value(height));
   const [backdropVisible, setBackdropVisible] = useState(true);
@@ -13,7 +15,7 @@ export function useDaySheetMotion(date: string | null, onClose: () => void) {
   const alive = useRef(true);
 
   useEffect(() => {
-    if (reduceMotion && date !== null) {
+    if (reduceMotion && visible) {
       offset.stopAnimation();
       if (closing.current) {
         closing.current = false;
@@ -23,7 +25,7 @@ export function useDaySheetMotion(date: string | null, onClose: () => void) {
         offset.setValue(0);
       }
     }
-  }, [date, height, offset, onClose, reduceMotion]);
+  }, [visible, height, offset, onClose, reduceMotion]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -35,7 +37,7 @@ export function useDaySheetMotion(date: string | null, onClose: () => void) {
 
   const open = useCallback(() => {
     // Layout/show may both fire; never reset a slide that's already started.
-    if (!alive.current || date === null || openingStarted.current) return;
+    if (!alive.current || !visible || openingStarted.current) return;
     openingStarted.current = true;
     if (reduceMotion) {
       offset.setValue(0);
@@ -47,7 +49,7 @@ export function useDaySheetMotion(date: string | null, onClose: () => void) {
       easing: Easing.out(Easing.cubic),
       useNativeDriver: Platform.OS !== 'web',
     }).start();
-  }, [date, offset, reduceMotion]);
+  }, [visible, offset, reduceMotion]);
 
   const close = useCallback(() => {
     if (!alive.current || closing.current) return;

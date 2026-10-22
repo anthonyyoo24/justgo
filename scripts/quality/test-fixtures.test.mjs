@@ -7,8 +7,7 @@ import ts from 'typescript';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const fixtureRoots = [
-  'apps/mobile/test-support/progress',
-  'apps/mobile/test-support/identity',
+  'apps/mobile/test-support',
   'apps/api/tests/identity/fixtures',
   'apps/api/tests/db/fixtures',
 ];
