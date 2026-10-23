@@ -13,6 +13,7 @@ export type ClientErrorCode =
   | 'TIMEOUT'
   | 'CANCELLED'
   | 'ACCOUNT_CHANGED'
+  | 'INVALID_RESPONSE'
   | 'DELETION_UNAVAILABLE'
   | 'DELETION_REJECTED';
 export class ApiError extends Error {
@@ -46,6 +47,20 @@ function retryAfterDelay(header: string | null | undefined) {
   return Number.isFinite(delay) && delay >= 0 ? delay : undefined;
 }
 export type HttpClient = ReturnType<typeof createHttpClient>;
+function localDevelopmentHost(hostname: string) {
+  if (['localhost', '127.0.0.1', '[::1]'].includes(hostname)) return true;
+  // Physical phones reach Metro's API through the Mac's private LAN address.
+  // Match canonical IPv4 hosts only; public addresses and host suffixes stay closed.
+  const ipv4 = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(hostname);
+  if (!ipv4) return false;
+  const first = Number(ipv4[1]);
+  const second = Number(ipv4[2]);
+  return (
+    first === 10 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
+}
 export function createHttpClient(
   baseUrl: string | undefined,
   fetcher: typeof fetch = fetch,
@@ -71,7 +86,7 @@ export function createHttpClient(
           !(
             __DEV__ &&
             base.protocol === 'http:' &&
-            ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)
+            localDevelopmentHost(base.hostname)
           )) ||
         base.username ||
         base.password ||

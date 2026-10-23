@@ -47,6 +47,7 @@ it('bounds initial mounting for 41 attempts and updates only the selected row wi
   const format = jest.spyOn(calendar, 'activityTime');
   try {
     const screen = render(<DaySheet {...props} />);
+    expect(screen.getByText('41 reps')).toBeTruthy();
     expect(screen.UNSAFE_getByType(DayEntryList).props.entries).toHaveLength(
       41,
     );

@@ -4,7 +4,10 @@ import { AppState, Text } from 'react-native';
 import { catalogSchema, venues, type SessionResponse } from '@justgo/contracts';
 import { card } from '../../../test-support/journal';
 import { createMemoryVault } from '../identity/storage';
-import { createVault } from '../identity/vault';
+import { ManagedIdentityController } from '../identity/auth/managed-controller';
+import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
+import { createIdentityApi } from '../identity/api';
+import { managedIdentityStateSchema } from '../identity/auth/managed-state';
 import {
   AppProvider,
   useIdentity,
@@ -26,7 +29,9 @@ jest.mock('../../data/activity/persistence/storage', () => ({
     removeItem: async () => {},
   },
 }));
-jest.mock('../identity/vault', () => ({ createVault: jest.fn() }));
+jest.mock('../identity/auth/create-managed-identity', () => ({
+  createManagedIdentityController: jest.fn(),
+}));
 jest.mock('./ProgressRefresh', () => ({ ProgressRefresh: () => null }));
 
 const session: SessionResponse = {
@@ -89,7 +94,61 @@ it.each([false, true])(
       savedKey: null,
       registration: null,
     });
-    jest.mocked(createVault).mockReturnValue(vault);
+    const providerSession = {
+      authUserId: '00000000-0000-4000-8000-000000000040',
+      accessToken: 'fixture-provider',
+      expiresAt: session.expiresAt,
+    };
+    let saved = managedIdentityStateSchema.parse({
+      version: 1,
+      deviceId: session.deviceId,
+      guestId: '00000000-0000-4000-8000-000000000050',
+      guestAdoption: { ownerId: session.userId, status: 'consumed' },
+      collection: { kind: 'account', id: session.userId },
+      mode: 'account',
+      account: {
+        ...session,
+        authUserId: providerSession.authUserId,
+        dataEpoch: 0,
+      },
+      pendingSignIn: null,
+      pendingLink: null,
+      logoutPending: false,
+      deletion: null,
+      deleted: false,
+    });
+    const identity = new ManagedIdentityController({
+      auth: {
+        initialize: async () => providerSession,
+        refresh: async () => providerSession,
+        signIn: async () => providerSession,
+        linkIdentity: async () => providerSession,
+        unlinkIdentity: async () => {
+          if (!providerSession) throw new Error('No provider session');
+          return providerSession;
+        },
+        signOut: async () => {},
+        setActive: jest.fn(),
+        subscribe: () => () => {},
+        dispose: () => {},
+      },
+      storage: {
+        read: async () => saved,
+        write: async (state) => {
+          saved = state;
+        },
+      },
+      secureStorage: {
+        getItem: async () => null,
+        setItem: async () => {},
+        removeItem: async () => {},
+      },
+      legacyVault: vault,
+      api: createIdentityApi('http://localhost:3000', (...args) =>
+        fetch(...args),
+      ),
+    });
+    jest.mocked(createManagedIdentityController).mockReturnValue(identity);
     const removeListener = jest.fn();
     const listeners = jest
       .spyOn(AppState, 'addEventListener')
@@ -98,17 +157,27 @@ it.each([false, true])(
       .spyOn(globalThis, 'fetch')
       .mockImplementation(async (input) => {
         const path = String(input);
-        const body = path.endsWith('/sessions/current')
-          ? session
-          : path.endsWith('/devices')
-            ? { devices: [] }
-            : path.endsWith('/credentials')
-              ? { credentials: [] }
-              : path.endsWith('/challenges')
-                ? {
-                    cards: venues.map(({ id }) => ({ ...card, id, venue: id })),
-                  }
-                : {};
+        const body = path.endsWith('/auth/session')
+          ? { ...session, authUserId: providerSession.authUserId, dataEpoch: 0 }
+          : path.includes('/completion-restores')
+            ? { dataEpoch: 0, attempts: [], nextCursor: null }
+            : path.includes('/journal-sync')
+              ? { dataEpoch: 0, versions: [], nextCursor: null }
+              : path.endsWith('/sessions/current')
+                ? session
+                : path.endsWith('/devices')
+                  ? { devices: [] }
+                  : path.endsWith('/credentials')
+                    ? { credentials: [] }
+                    : path.endsWith('/challenges')
+                      ? {
+                          cards: venues.map(({ id }) => ({
+                            ...card,
+                            id,
+                            venue: id,
+                          })),
+                        }
+                      : {};
         return new Response(JSON.stringify(body), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
@@ -159,5 +228,7 @@ it.each([false, true])(
     expect(runtime.client.queries.getQueryCache().getAll()).toHaveLength(0);
     await act(async () => jest.advanceTimersByTimeAsync(0));
     expect(jest.getTimerCount()).toBe(0);
+    identity.dispose();
+    runtime.activity.dispose();
   },
 );

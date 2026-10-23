@@ -20,7 +20,7 @@ jest.mock('react-native-gesture-handler', () => ({
 }));
 jest.mock('./providers/AppProvider', () => ({
   AppProvider: ({ children }: { children: ReactNode }) => children,
-  useIdentity: () => mockIdentity,
+  useIdentity: () => ({ ...mockIdentity, initialized: true }),
   useAccess: () => ({ verified: mockVerified, isPending: mockPending }),
   useRuntime: () => ({ challenges: { refresh: mockRefreshChallenges } }),
 }));

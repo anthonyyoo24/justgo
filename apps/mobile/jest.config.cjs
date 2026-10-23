@@ -1,5 +1,9 @@
 module.exports = {
   preset: 'jest-expo',
+  setupFilesAfterEnv: [
+    '<rootDir>/test-support/setup-platform-storage.ts',
+    '<rootDir>/test-support/setup-global-local-journal.ts',
+  ],
   maxWorkers: process.env.CI ? 2 : 1,
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

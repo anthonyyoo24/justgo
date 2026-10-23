@@ -1,4 +1,5 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { ProviderLogo } from '../auth/ProviderLogo';
 import { colors } from '../../theme/tokens';
 
 export type SettingsIconName =
@@ -9,6 +10,11 @@ export type SettingsIconName =
   | 'account'
   | 'subscription'
   | 'export'
+  | 'import'
+  | 'icloud'
+  | 'apple'
+  | 'google'
+  | 'logout'
   | 'delete'
   | 'analytics'
   | 'sensitive'
@@ -27,7 +33,9 @@ export type SettingsIconName =
 // Native outline icons reconstructed for the raster F1 reference's visual style.
 // They are decorative; each row supplies its own accessible name.
 export function SettingsIcon({ name }: { name: SettingsIconName }) {
-  const paths: Record<SettingsIconName, string> = {
+  if (name === 'apple' || name === 'google')
+    return <ProviderLogo provider={name} />;
+  const paths: Record<Exclude<SettingsIconName, 'apple' | 'google'>, string> = {
     back: 'M15 5L8 12L15 19',
     chevron: 'M9 7L14 12L9 17',
     haptics:
@@ -35,7 +43,11 @@ export function SettingsIcon({ name }: { name: SettingsIconName }) {
     motion: 'M7 12H17',
     account: 'M4 21V19C4 15 20 15 20 19V21',
     subscription: 'M3 9H21M14 15H18',
-    export: 'M12 3V15M7 10L12 15L17 10M4 16V21H20V16',
+    export: 'M12 3V16M6 10L12 16L18 10M4 21H20',
+    import: 'M12 16V3M6 9L12 3L18 9M4 21H20',
+    icloud:
+      'M21 7A9 9 0 0 0 4 7L3 10M1 7L3 10L6 8M8 21H18A4 4 0 0 0 18 13A5 5 0 0 0 8 14A3.5 3.5 0 0 0 8 21Z',
+    logout: 'M10 4H4V20H10M9 12H21M16 7L21 12L16 17',
     delete: 'M3 6H21M8 6V3H16V6M6 6L7 21H17L18 6M10 10V17M14 10V17',
     analytics: 'M4 20V13M12 20V8M20 20V3',
     sensitive:

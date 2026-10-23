@@ -34,7 +34,7 @@ export function SettingsGroup({
       <View style={styles.card}>
         {Children.toArray(children).map((child, index) => (
           <View key={index}>
-            {index > 0 && <View style={styles.divider} />}
+            {index > 0 && <SettingsRowDivider />}
             {child}
           </View>
         ))}
@@ -43,18 +43,24 @@ export function SettingsGroup({
   );
 }
 
+export function SettingsRowDivider() {
+  return <View style={styles.divider} />;
+}
+
 export function SettingsRowContent({
   icon,
   label,
   status,
   chevron = false,
   accessory,
+  destructive = false,
 }: {
   icon: SettingsIconName;
   label: string;
   status?: string | undefined;
   chevron?: boolean;
   accessory?: ReactNode;
+  destructive?: boolean;
 }) {
   const { fontScale } = useWindowDimensions();
   const expanded = fontScale > 1.3;
@@ -65,7 +71,10 @@ export function SettingsRowContent({
         <SettingsIcon name={icon} />
       </View>
       <View style={styles.copy}>
-        <Text maxFontSizeMultiplier={2} style={styles.label}>
+        <Text
+          maxFontSizeMultiplier={2}
+          style={[styles.label, destructive && styles.destructive]}
+        >
           {label}
         </Text>
         {status && expanded && (
@@ -121,12 +130,14 @@ export function SettingsActionRow({
   busy = false,
   chevron = false,
   href,
+  destructive = false,
 }: {
   icon: SettingsIconName;
   label: string;
   disabled?: boolean;
   busy?: boolean;
   chevron?: boolean;
+  destructive?: boolean;
 } & ({ href: Href; onPress?: never } | { href?: never; onPress: () => void })) {
   const control = (
     <Pressable
@@ -140,6 +151,7 @@ export function SettingsActionRow({
       <SettingsRowContent
         icon={icon}
         label={label}
+        destructive={destructive}
         chevron={chevron && !busy}
         accessory={
           busy ? (
@@ -200,6 +212,7 @@ const styles = StyleSheet.create({
   icon: { width: 24, height: 24, flexShrink: 0, justifyContent: 'center' },
   copy: { flex: 1, gap: spacing.xs },
   label: { ...typography.body, color: colors.ink },
+  destructive: { color: '#B3261E' },
   status: {
     ...typography.caption,
     color: colors.ink,

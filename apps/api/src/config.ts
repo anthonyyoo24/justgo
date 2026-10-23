@@ -17,6 +17,13 @@ const configSchema = z.object({
     .enum(['silent', 'error', 'warn', 'info', 'debug'])
     .default('info'),
   CORS_ORIGINS: z.string().default(''),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
+  SUPABASE_AUTH_SECRET_KEY: z.string().min(32).optional(),
+  MANAGED_AUTH_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   IDENTITY_RATE_LIMIT_KEY: z
     .string()
     .min(32)
@@ -35,6 +42,16 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   const result = configSchema.safeParse(env);
   if (!result.success) throw new Error('Invalid API environment configuration');
   const config = result.data;
+  if (config.MANAGED_AUTH_ENABLED && !config.SUPABASE_URL)
+    throw new Error('Managed Auth requires Supabase configuration');
+  if (config.MANAGED_AUTH_ENABLED && !config.SUPABASE_AUTH_SECRET_KEY)
+    throw new Error(
+      'Managed Auth requires server-only Auth deletion credentials',
+    );
+  if (Boolean(config.SUPABASE_URL) !== Boolean(config.SUPABASE_PUBLISHABLE_KEY))
+    throw new Error(
+      'Supabase Auth configuration must include URL and publishable key',
+    );
   const grants = readBetaGrants(config.BETA_ACCESS_GRANTS);
   const accessWindow = readBetaAccessWindow(config.BETA_ACCESS_WINDOW);
   if (

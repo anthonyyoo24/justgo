@@ -23,6 +23,7 @@ import { ProgressSkeleton, useProgressShimmer } from './ProgressSkeleton';
 import { calendarCells, dayLabel, monthLabel } from '../calendar-dates';
 export type ProgressCalendarProps = {
   month: string;
+  journalDates?: string[] | undefined;
   data?: ProgressResponse | undefined;
   loading?: boolean;
   updatingMonth?: boolean;
@@ -44,6 +45,7 @@ const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
  */
 export function ProgressCalendar({
   month,
+  journalDates,
   data,
   loading = false,
   updatingMonth = false,
@@ -164,7 +166,7 @@ export function ProgressCalendar({
                 <>
                   <Text accessibilityRole="alert" style={styles.stateText}>
                     {connectionRequired
-                      ? 'You’re offline. Connect to view this month.'
+                      ? 'You’re offline. Saved journal entries are available; connect to refresh challenge counts.'
                       : 'We couldn’t load your progress.'}
                   </Text>
                   {!connectionRequired && (
@@ -214,7 +216,8 @@ export function ProgressCalendar({
                   </View>
                 );
               const count = counts.get(date) ?? 0;
-              const active = calendarAvailable && count > 0;
+              const journalSaved = journalDates?.includes(date) ?? false;
+              const active = (calendarAvailable && count > 0) || journalSaved;
               const today = date === data?.today;
               const selected = date === selectedDate;
               const future = !data || date > data.today;
@@ -243,9 +246,11 @@ export function ProgressCalendar({
                   <Pressable
                     accessibilityRole={active ? 'button' : undefined}
                     accessibilityLabel={
-                      calendarAvailable
-                        ? `${dayLabel(date)}${today ? ', today' : ''}, ${count} ${count === 1 ? 'rep' : 'reps'}`
-                        : `${dayLabel(date)}, activity unavailable`
+                      journalSaved && !count
+                        ? `${dayLabel(date)}, saved journal entry`
+                        : calendarAvailable
+                          ? `${dayLabel(date)}${today ? ', today' : ''}, ${count} ${count === 1 ? 'rep' : 'reps'}`
+                          : `${dayLabel(date)}, activity unavailable`
                     }
                     accessibilityState={{
                       disabled: !active || future,
@@ -269,7 +274,7 @@ export function ProgressCalendar({
                     >
                       {Number(date.slice(-2))}
                     </Text>
-                    {active && (
+                    {active && count > 0 && (
                       <View testID={`rep-badge-${date}`} style={styles.badge}>
                         <Text style={styles.badgeText}>{count}</Text>
                       </View>

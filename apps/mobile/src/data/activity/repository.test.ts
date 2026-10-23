@@ -1,6 +1,10 @@
 import { AccountRepository } from './repository';
 import { AccountRepositories } from './accounts';
 import { journalSchema } from './model';
+import {
+  memoryLocalJournal,
+  memoryJournalBackend,
+} from '../../../test-support/local-journal';
 import { ApiError } from '../../lib/network/http';
 import {
   MemoryStorage,
@@ -35,6 +39,7 @@ async function setup(
 ) {
   const repo = new AccountRepository({
     accountId,
+    localJournal: memoryLocalJournal(accountId, storage),
     storage,
     transport,
     today,
@@ -125,20 +130,29 @@ it('retries one failed phone write after clearing only replaceable caches', asyn
   expect(storage.values.get(`justgo:v1:${owner}:catalog`)).toBe(catalog);
   expect(state(repo).warning).toBeNull();
 });
-it('preserves the committed journal during a failed later write and interrupted relaunch', async () => {
+it('keeps the prior committed journal intact when a private update fails', async () => {
   const { repo, storage } = await setup();
   await repo.complete(input(), card);
-  const committed = storage.values.get(key);
-  storage.fail = true;
   await repo.submitReflection(uuid(1), uuid(101), {
-    text: 'Synthetic unsaved edit',
+    text: 'Committed private fixture',
   });
+  const committed = storage.values.get(key);
+  memoryJournalBackend(storage).failCommit = true;
+  await expect(
+    repo.submitReflection(uuid(1), uuid(102), {
+      text: 'Uncommitted private fixture',
+    }),
+  ).rejects.toMatchObject({ code: 'STORAGE' });
   expect(storage.values.get(key)).toBe(committed);
-  expect(state(repo).warning?.visible).toBe(true);
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
+    'Committed private fixture',
+  );
   repo.dispose();
-  storage.fail = false;
+  memoryJournalBackend(storage).failCommit = false;
   const reopened = (await setup(storage)).repo;
-  expect(reopened.getAttempt(uuid(1))?.reflection).toBeNull();
+  expect(reopened.getAttempt(uuid(1))?.reflection?.text).toBe(
+    'Committed private fixture',
+  );
   expect(state(reopened).journal.operations).toHaveLength(1);
 });
 it('retains ten memory-only rounds and newer reflection edits through navigation, rollover, dismissal and offline recovery', async () => {
@@ -157,7 +171,7 @@ it('retains ten memory-only rounds and newer reflection edits through navigation
     text: 'Newer synthetic submission',
   });
   expect(Object.keys(state(repo).journal.records)).toHaveLength(10);
-  expect(state(repo).journal.operations).toHaveLength(12);
+  expect(state(repo).journal.operations).toHaveLength(10);
   expect(state(repo).warning).toMatchObject({
     episode,
     visible: false,
@@ -166,7 +180,8 @@ it('retains ten memory-only rounds and newer reflection edits through navigation
   });
   storage.fail = false;
   await jest.advanceTimersByTimeAsync(30_000);
-  expect(disk(storage).records[uuid(1)]?.attempt.reflection?.text).toBe(
+  expect(disk(storage).records[uuid(1)]?.attempt.reflection).toBeNull();
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
     'Newer synthetic submission',
   );
   expect(state(repo).warning).toBeNull();
@@ -180,31 +195,31 @@ it('retains ten memory-only rounds and newer reflection edits through navigation
     episode: (episode ?? 0) + 1,
   });
 });
-it('does not report a newer submission saved by an older in-flight phone snapshot', async () => {
+it('waits for the private journal commit and serializes a newer explicit edit', async () => {
   const { repo, storage } = await setup();
-  storage.fail = true;
   await repo.complete(input(), card);
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Older fixture' });
-  storage.fail = false;
-  storage.blocked = deferred<void>();
-  const recovery = jest.advanceTimersByTimeAsync(30_000);
-  // The sparse recovery snapshot has started but is not committed.
-  await Promise.resolve();
-  await Promise.resolve();
-  const submitted = repo.submitReflection(uuid(1), uuid(102), {
+  const gate = deferred<void>(),
+    entered = deferred<void>();
+  memoryJournalBackend(storage).beforeCommit = async () => {
+    entered.resolve();
+    await gate.promise;
+  };
+  let settled = false;
+  const first = repo
+    .submitReflection(uuid(1), uuid(101), { text: 'Older fixture' })
+    .then(() => {
+      settled = true;
+    });
+  await entered.promise;
+  expect(settled).toBe(false);
+  const second = repo.submitReflection(uuid(1), uuid(102), {
     text: 'Newer fixture',
   });
-  await Promise.resolve();
-  await Promise.resolve();
-  storage.blocked.resolve();
-  storage.blocked = null;
-  await recovery;
-  await submitted;
-  expect(disk(storage).records[uuid(1)]?.attempt.reflection?.text).toBe(
-    'Newer fixture',
-  );
-  expect(disk(storage).records[uuid(1)]?.phoneVersion).toBe(3);
-  expect(state(repo).recoverySequence).toBe(1);
+  gate.resolve();
+  await Promise.all([first, second]);
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe('Newer fixture');
+  expect(disk(storage).records[uuid(1)]?.attempt.reflection).toBeNull();
+  expect(disk(storage).records[uuid(1)]?.phoneVersion).toBe(1);
 });
 it('partial/versioned server recovery keeps the warning until all endangered versions are safe', async () => {
   const { repo, storage, transport } = await setup();
@@ -221,7 +236,7 @@ it('partial/versioned server recovery keeps the warning until all endangered ver
   };
   repo.setEnvironment({ active: true, online: true });
   await repo.synchronize();
-  expect(state(repo).journal.records[uuid(1)]?.serverVersion).toBe(2);
+  expect(state(repo).journal.records[uuid(1)]?.serverVersion).toBe(1);
   expect(state(repo).journal.records[uuid(2)]?.serverVersion).toBe(0);
   expect(state(repo).warning?.visible).toBe(true);
   expect(state(repo).recoverySequence).toBe(0);
@@ -255,7 +270,7 @@ it('keeps immutable submission identities before and after acknowledgements', as
     feeling: 'a_little_better',
     text: '  Exact fixture whitespace  ',
   });
-  expect(state(repo).journal.operations).toHaveLength(2);
+  expect(state(repo).journal.operations).toHaveLength(1);
   expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
     '  Exact fixture whitespace  ',
   );
@@ -271,7 +286,7 @@ it('keeps immutable submission identities before and after acknowledgements', as
   ).rejects.toMatchObject({ code: 'CONFLICT' });
   await expect(
     repo.submitReflection(uuid(1), uuid(102), { feeling: 'a_lot_better' }),
-  ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+  ).rejects.toMatchObject({ code: 'CONFLICT' });
   await expect(
     repo.submitReflection(uuid(1), uuid(103), { text: ' '.repeat(10001) }),
   ).rejects.toBeDefined();
@@ -367,6 +382,7 @@ it('preserves parked memory-only accounts and rejects submissions to inactive/di
   const accounts = new AccountRepositories((accountId) => {
     const repo = new AccountRepository({
       accountId,
+      localJournal: memoryLocalJournal(accountId, storage),
       storage,
       transport: backend(),
       today,
@@ -473,7 +489,8 @@ it('rejects stale aggregate refreshes and keeps limited current-period downloads
     true,
   );
   expect(state(repo).journal.today?.data.entries).toHaveLength(2);
-  expect(state(repo).journal.today?.data.entries[0]?.reflection?.text).toBe(
+  expect(state(repo).journal.today?.data.entries[0]?.reflection).toBeNull();
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
     'Newer canonical fixture',
   );
   await repo.rollover('2026-11-01', zone);
@@ -518,7 +535,10 @@ it('opens an unchanged durable attempt without a journal write or notification, 
     expect(repo.hasCurrentAttempt(newer)).toBe(false);
     await repo.adoptAttempt(newer);
     expect(repo.getAttempt(uuid(1))).toEqual(newer);
-    expect(disk(storage).records[uuid(1)]?.attempt).toEqual(newer);
+    expect(disk(storage).records[uuid(1)]?.attempt).toEqual(attempt());
+    expect((await repo.listJournalEntries())[0]?.reflection.text).toBe(
+      'Newer remote fixture',
+    );
     expect(storage.writes.length).toBeGreaterThan(writes);
     repo.dispose();
     expect(repo.hasCurrentAttempt(newer)).toBe(false);

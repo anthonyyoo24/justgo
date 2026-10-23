@@ -30,6 +30,20 @@ describe('local development legal destinations', () => {
           'JustGO does not record document views or legal agreement.',
         );
         expect(response.body).not.toContain('analytics-scope versions');
+        expect(response.body).toContain(
+          'When signed in, challenge history, feelings and written reflections synchronize with your JustGO account.',
+        );
+        expect(response.body).toContain(
+          'Guest and signed-out journals stay on this phone unless you separately enable iCloud Sync or share a downloaded backup.',
+        );
+        expect(response.body).toContain(
+          'Signing out stops JustGO account sync and keeps the same journal on this phone.',
+        );
+        expect(response.body).not.toContain('Your recovery credentials');
+        expect(response.body).not.toContain('are not uploaded to JustGO');
+        expect(response.body).not.toContain(
+          'restoring private journal entries requires your manual backup',
+        );
         if (path === 'privacy') {
           expect(response.body).toContain(
             'Product analytics stays disabled through beta and paid launch.',
@@ -44,10 +58,20 @@ describe('local development legal destinations', () => {
             'Exported reports exclude your account ID, feelings, written reflections and breadcrumbs.',
           );
           expect(response.body).toContain('Ordinary delivery remains disabled');
-          expect(response.body).toContain(
-            'Pending uploads remain only on the original phone',
-          );
           expect(response.body).not.toContain('PostHog');
+          expect(response.body).not.toContain(
+            'Account recovery alone does not restore the local journal.',
+          );
+          expect(response.body).not.toContain(
+            'Existing cloud journal copies remain available',
+          );
+          expect(response.body).toContain(
+            'Legacy server journal entries and their old update records were cleared by the approved reset.',
+          );
+          expect(response.body).toContain(
+            'Delete all my data keeps the account and its login methods.',
+          );
+          expect(response.body).toContain('Each file is a snapshot');
           expect(response.body).not.toContain('reflection-length categories');
         }
       }

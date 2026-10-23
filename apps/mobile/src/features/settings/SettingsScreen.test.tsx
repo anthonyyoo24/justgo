@@ -19,6 +19,9 @@ import { showMessageToast } from '../../platform/toast/Toast';
 // Supply build metadata so a reintroduced footer also fails in a free test build.
 jest.mock('../../app-support/providers/AppProvider', () => ({
   useAccess: () => ({ data: { source: 'free_beta' } }),
+  useIdentity: () => ({ account: null }),
+  useJournal: () => null,
+  useRuntime: () => ({ client: { ownsAccount: () => false } }),
 }));
 jest.mock('expo-constants', () => ({ expoConfig: { version: '0.1.0' } }));
 jest.mock('./export/SettingsExportRow', () => ({
@@ -65,6 +68,7 @@ jest.mock('expo-router', () => {
   const React = require('react') as typeof import('react');
   return {
     useRouter: () => mockRouter,
+    useFocusEffect: (effect: () => void) => React.useEffect(effect, [effect]),
     Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
     Link: ({ href, asChild, children, ...props }: LinkProps) =>
       asChild ? (
@@ -120,8 +124,8 @@ it('renders the actual route with scoped groups, honest pending controls and no 
   ).toEqual(['Settings', 'Preferences', 'Account & data', 'Support', 'About']);
   for (const label of ['General analytics', 'Sensitive metadata'])
     expect(screen.queryByText(label)).toBeNull();
-  fireEvent.press(screen.getByLabelText('Delete account'));
-  expect(mockRouter.push).toHaveBeenCalledWith('/delete-account');
+  fireEvent.press(screen.getByLabelText('Data'));
+  expect(mockRouter.push).toHaveBeenCalledWith('/data');
   expect(screen.getByRole('switch', { name: 'Reduce motion' })).toBeEnabled();
   expect(screen.getByRole('switch', { name: 'Haptics' })).toBeEnabled();
   expect(screen.queryByText('Practice reminders')).toBeNull();
@@ -134,8 +138,33 @@ it('renders the actual route with scoped groups, honest pending controls and no 
     /Recovery keys, device transfer & devices/,
     /Connect or recover your account/,
     /Apple’s standard license agreement/,
+    /Feelings and reflections are saved on this phone/,
+    /Each file is a snapshot/,
+    /Recover the same JustGO account before restoring/,
   ])
     expect(screen.queryByText(description)).toBeNull();
+});
+
+it('groups journal actions with the account data controls', () => {
+  const screen = render(<SettingsScreen />);
+  const groups = screen.UNSAFE_getAllByType(SettingsGroup);
+  const account = within(
+    groups.find((group) => group.props.title === 'Account & data')!,
+  );
+  expect(account.getByRole('link', { name: 'Account' })).toBeTruthy();
+  expect(account.getByRole('link', { name: 'Data' })).toBeTruthy();
+  expect(account.queryAllByRole('button')).toHaveLength(0);
+  for (const label of [
+    'Back up journal',
+    'Restore journal',
+    'Recover earlier journal',
+    'Export my data',
+    'Delete account',
+  ])
+    expect(account.queryByText(label)).toBeNull();
+  expect(
+    screen.queryByRole('header', { name: 'Journal on this phone' }),
+  ).toBeNull();
 });
 
 it('ends after About without version, test-build or developer-preview footer items', () => {
@@ -273,15 +302,14 @@ it.each(communityDestinations)(
 
 it('keeps the existing account recovery action available', () => {
   const screen = render(<SettingsScreen />);
-  fireEvent.press(screen.getByRole('link', { name: 'Account & recovery' }));
+  fireEvent.press(screen.getByRole('link', { name: 'Account' }));
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
 });
 
-it('offers export directly as an action without navigating to another page', () => {
+it('opens the concise Data controls from a single link', () => {
   const screen = render(<SettingsScreen />);
-  expect(screen.getByRole('button', { name: 'Export my data' })).toBeTruthy();
-  expect(screen.queryByRole('link', { name: 'Export my data' })).toBeNull();
-  expect(mockRouter.push).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('link', { name: 'Data' }));
+  expect(mockRouter.push).toHaveBeenCalledWith('/data');
 });
 
 it('returns to the originating screen, or safely goes home when opened directly', () => {

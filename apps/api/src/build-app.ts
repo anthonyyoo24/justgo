@@ -2,7 +2,6 @@ import {
   AttemptService,
   type UploadEligibilityReader,
 } from './attempts/service.js';
-import { AttemptPatchService } from './attempts/patch.js';
 import { attemptRoutes } from './attempts/routes.js';
 import { ProgressResources } from './progress/service.js';
 import { ChallengeService } from './challenges/service.js';
@@ -24,8 +23,15 @@ import type { IdentityService } from './identity/service.js';
 import { identityRoutes } from './identity/routes.js';
 import { accessRoutes } from './access/routes.js';
 import { errorHandler, notFoundHandler } from './http/error-handler.js';
-import { openApiDocument } from '@justgo/contracts/openapi';
+import {
+  openApiDocument,
+  managedOpenApiDocument,
+} from '@justgo/contracts/openapi';
 import { AccessService, type EntitlementReader } from './access/service.js';
+import { GuestService, type GuestAccessReader } from './access/guest.js';
+import { managedIdentityRoutes } from './identity/managed-routes.js';
+import { dataSyncRoutes } from './data-sync/routes.js';
+import { catalogSchema, accessResponseSchema } from '@justgo/contracts';
 
 /**
  * Compose the HTTP app with injected database, identity and access boundaries.
@@ -42,6 +48,8 @@ export function buildApp(
     entitlementReader?: EntitlementReader;
     uploadEligibilityReader?: UploadEligibilityReader;
     developmentLegalDrafts?: boolean;
+    guestAccessReader?: GuestAccessReader;
+    legacyIdentityEnabled?: boolean;
   },
   createServer: typeof Fastify = Fastify,
 ) {
@@ -67,7 +75,28 @@ export function buildApp(
   app.get('/health', async () =>
     healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
   );
-  app.get('/openapi.json', async () => openApiDocument);
+  app.get('/openapi.json', async () =>
+    options.legacyIdentityEnabled === false
+      ? managedOpenApiDocument
+      : openApiDocument,
+  );
+  if (options.identity) {
+    const guest = new GuestService(options.identity, options.guestAccessReader);
+    app.get('/v1/guest/access', async () =>
+      accessResponseSchema.parse(await guest.access()),
+    );
+    app.get('/v1/guest/challenges', async () =>
+      catalogSchema.parse(await guest.catalog()),
+    );
+    app.register(
+      async (scope) =>
+        managedIdentityRoutes(scope, options.identity!, options.onVercel),
+      { prefix: '/v1/auth' },
+    );
+    app.register(async (scope) => dataSyncRoutes(scope, options.identity!), {
+      prefix: '/v1',
+    });
+  }
   if (
     options.developmentLegalDrafts &&
     process.env.NODE_ENV !== 'production' &&
@@ -111,7 +140,12 @@ export function buildApp(
   if (options.identity)
     app.register(
       async (scope) =>
-        identityRoutes(scope, options.identity!, options.onVercel),
+        identityRoutes(
+          scope,
+          options.identity!,
+          options.onVercel,
+          options.legacyIdentityEnabled,
+        ),
       {
         prefix: '/v1',
       },
@@ -126,7 +160,6 @@ export function buildApp(
             options.uploadEligibilityReader,
           ),
           new ProgressResources(options.identity!, options.entitlementReader),
-          new AttemptPatchService(options.identity!),
         ),
       { prefix: '/v1/attempts' },
     );

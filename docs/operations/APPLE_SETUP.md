@@ -9,7 +9,7 @@ Started September 17, 2026. Owner: **Anthony**. **October 11 verification:** The
 | Identity/business verification and agreements                                         | Owner must complete                                                                             | Distribution/sales           |
 | Banking and tax information                                                           | Owner must complete; never put values in this repo                                              | Sales                        |
 | Reserve permanent bundle ID                                                           | `com.anthonyyoo.justgo` registered; matching EAS development variable verified                  | 02 device identity tests     |
-| App Store Connect app record                                                          | Pending permanent bundle ID and account setup                                                   | 07A                          |
+| App Store Connect app record                                                          | App record pending; permanent bundle ID already registered                                      | 07A                          |
 | Expo account/team and EAS project                                                     | Linked and remotely verified: @anthonyyoos-team/justgo                                          | EAS development build        |
 | Signing access and physical iPhone registration                                       | First iPhone registered with Apple/Expo; signed physical development build succeeded October 11 | 02                           |
 | Existing JustGO RevenueCat project access                                             | Mentioned by plan; access/configuration not verified here                                       | 07A                          |
@@ -21,11 +21,97 @@ Started September 17, 2026. Owner: **Anthony**. **October 11 verification:** The
 
 **October 12 haptics build:** The owner-authorized updated internal development build [e48faabd](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/e48faabd-d7e2-4b6e-ac34-e08d9087fce9) succeeded. Its signed app includes native haptics and the existing Keychain module; team/app identity and the registered iPhone provisioning were verified. SDK patches now pass Expo Doctor 21/21. Install this build over the existing app, then reconnect to the running development server. Actual installation and tactile feedback acceptance remain open. See the [build handoff](../handoffs/phase-08-settings-privacy.md).
 
-Next steps: Run the phone feature checks below using the connected test server. Anthony confirmed real Home and Home → Settings → Back after the bounded phone-clock correction. The [completed development build](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/1500d7ee-c49a-4047-b88a-278eccdc21bc) is installed and Developer Mode is enabled. The development server supplies the API address through JavaScript; that address alone does not require another native build. See the [Expo device-build walkthrough](https://docs.expo.dev/tutorial/eas/ios-development-build-for-devices/). Reuse the confirmed `IOS_BUNDLE_IDENTIFIER` in the development environment. Do not create another Expo project. Keep credentials in provider secret storage, never in `EXPO_PUBLIC_*` or checked-in files.
+**Earlier Phase 13 journal development binary:** Anthony authorized the updated iPhone build [fa3414c1](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/fa3414c1-dbef-46b2-aa40-e3859744f70d), which finished on October 20. Its downloaded IPA contains SQLite, DocumentPicker and the existing Keychain module, with the unchanged `com.anthonyyoo.justgo` identifier, team and registered-iPhone provisioning. Native compilation required static-framework linkage for the pinned Sentry scope API; privacy safeguards remain intact and diagnostics remain disabled. Installation and Phase 13 physical storage/Files acceptance remain unverified. That build predates the revised managed Apple/Google Auth, SecureStore and CloudKit module/capability changes. It is not a compatible acceptance binary for the expanded scope. The matching local API is required until separately approved hosted cutover; existing hosted services retain earlier behavior.
+
+**October 21 revised development binary:** Anthony authorized [967b34cf](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/967b34cf-7a97-4268-88b7-5a2c77dc2feb), which finished successfully. The downloaded signed IPA includes SQLite, DocumentPicker, Keychain, the CloudKit module, Apple Authentication, SecureStore and Google Sign-In. It preserves the existing bundle ID/team and registered iPhone; EAS enabled Sign in with Apple and refreshed the existing ad hoc profile. Fresh `npm run check` passed, including Expo Doctor 21/21. This is a guest/data-controls testing binary: actual provider configuration, Google's native URL scheme and CloudKit container/entitlements remain pending and will require another compatible native configuration/build. Native compilation does not establish provider or iCloud behavior. The development server uses the matching local LAN API with bounded staging guest admission; hosted services were not updated. Install over the existing app to preserve phone data. Installation and physical acceptance remain open.
+
+The inspected IPA reports `cloudKitConfigured=false`. It also predates the current
+native page `revision` / `resetIfUnchanged` bridge used for safe guest-copy
+handover. The current local implementation therefore requires a compatible
+rebuild before that native acceptance can run; JavaScript refresh alone cannot
+update this protocol. The build/check results above describe the earlier binary,
+not acceptance of the current changes.
+
+## Revised Phase 13 native prerequisites
+
+Reuse the existing app, team and Expo project. Follow
+[ACCOUNT_SYNC_SETUP.md](ACCOUNT_SYNC_SETUP.md) for exact public Auth/Google/CloudKit
+environment names, Supabase provider/manual-link setup, narrow live-session grants
+and server-only Auth deletion capability. The October 21 read-only audit found
+Apple/Google providers disabled, hosted migrations 0019–0023 unapplied, live Auth
+grants missing and local/EAS public Auth, Google and iCloud inputs absent. The
+October 21 authorized build updated Apple sign-in signing/provisioning; it did not
+activate those cloud services. Provider/container configuration, hosted cutover
+and the next native signing/build/upload remain external actions requiring their
+existing owner authorization.
+
+For native Apple sign-in, enable Supabase's Apple provider with
+`com.anthonyyoo.justgo` as an accepted client ID/token audience and preserve team
+`NPDYTJS425`. The native ID-token flow does not require a browser Services ID or a
+`.p8`-generated client secret. Browser Apple OAuth is separately configured with
+its Services ID, approved callback and rotating server-side secret; when both are
+enabled, the Services ID comes first in Supabase's Client IDs list. See
+[Supabase Apple sign-in](https://supabase.com/docs/guides/auth/social-login/auth-apple)
+and the provider checklist in ACCOUNT_SYNC_SETUP.md.
+
+The native config adds Apple sign-in, SecureStore, the original Google Sign-In
+plugin when its approved reversed-client URL scheme is configured, and a focused
+private CloudKit module. Configure the approved iCloud container and its private
+database capabilities under the existing team using
+`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER`. Verify the container association,
+`JustGoCollection`/`JustGoValue` record schema and matching development/production
+CloudKit environment. Confirm generated iCloud container/CloudKit entitlements
+and the provisioning profile, including Sign in with Apple/iCloud, before
+building. An OTA update or JavaScript export cannot add modules, the current
+conditional-reset bridge or capabilities. Keep unavailable states visible until
+the configuration and device checks pass.
+
+On a compatible signed build, verify both provider sign-ins/cancellation/refresh,
+hidden Apple email, verified linked-method switches, linking/unlinking and the
+last-method guard. Both methods may be on; Log out is separate from unlinking.
+Verify existing-owner migration and automatic adoption of unowned phone writing
+after the sign-in disclosure, including interruption and relaunch. There is no
+optional merge step or View guest data selector. Logout must leave the same
+journal editable offline, and returning sign-in to that owner resumes complete
+history/writing synchronization. A different account must not receive the former
+owner's writing. Exercise secure-session size/locked-device/interrupted-save
+behavior and account deletion with a lost response after the real Auth profile is
+erased. Browser fixtures and mocks do not close these gates.
+
+Use two physical devices for actual opt-in private CloudKit synchronization,
+concurrent journal versions, an unavailable/full iCloud account, Apple account
+change, toggling off with local retention and cross-device deletion propagation.
+Guest-to-account handover must include an associated guest iCloud copy and retire
+it only after durable destination verification. Test a source write arriving
+between read and conditional reset, a lost reset response and restart during
+cleanup. Preserve internal owner isolation while showing one continuous journal.
+Data/account deletion must clean previously associated copies even with sync off;
+ordinary sync stays off. If a previously used Apple account is unavailable, retain
+pending cleanup and do not claim full erasure. Verify retries cannot restore
+deleted source writing or upload it to another owner.
+
+Saving a downloaded ZIP to Files / iCloud Drive is a snapshot and does not verify
+the iCloud Sync toggle. Complete Download my data / Import data checks must
+include older challenge history, feelings, reflections, alternatives and supported
+preferences without duplicate reps. Verify the confirmation modal for both Delete
+all my data and Delete account: the former retains JustGO login methods, while the
+latter also removes the JustGO account/Auth profile. Neither removes the user's
+Apple/Google account. User-saved files remain under the user's control after app
+deletion.
+
+Next steps: Complete the authorized provider/native setup and produce a compatible
+build before real OAuth/iCloud acceptance. Install over the existing app to
+preserve phone data, and connect to the matching API/development server. Developer
+Mode was verified on the earlier installed build. An API address change alone is
+delivered through JavaScript and does not require a native build; the CloudKit
+bridge/capability changes above do. See the [Expo device-build walkthrough](https://docs.expo.dev/tutorial/eas/ios-development-build-for-devices/).
+Reuse the confirmed `IOS_BUNDLE_IDENTIFIER` and existing Expo project. Keep secret
+credentials in provider secret storage, never in `EXPO_PUBLIC_*` or checked-in
+files.
 
 An unsigned simulator build can verify this phase's launcher without enrollment. It cannot prove iCloud Keychain sharing, reinstall/two-iPhone recovery or real purchases. The permanent identifier/access group must be settled before identity testing on physical phones. [Expo development builds](https://docs.expo.dev/develop/development-builds/introduction/) and [iOS submission](https://docs.expo.dev/submit/ios/) describe distinct build and store steps.
 
-For full physical app testing, make the current API reachable from the phone; simulator localhost is not a phone-accessible backend. Building and installing the development launcher can proceed independently. Start with one iPhone for launch/layout/gesture/timer checks. Use two iPhones for the existing recovery/transfer matrix. The full acceptance pass remains required before release; enrollment alone does not close any device test gate.
+For full physical app testing, make the matching API reachable from the phone; simulator localhost is not a phone-accessible backend. Building and installing the development launcher can proceed independently when authorized. Start with one iPhone for launch/layout/gesture/timer checks. Use two iPhones for managed sign-in/history/journal synchronization and the actual CloudKit matrix above. Legacy recovery/transfer evidence remains historical/internal migration coverage. The full acceptance pass remains required before release; enrollment alone does not close any device test gate.
 
 ## First physical-phone testing checklist
 
@@ -53,7 +139,11 @@ The concrete backend work needed before full phone testing is:
 
 Anthony subsequently approved this prerequisite. The [test-server handoff](../handoffs/phase-14-test-server.md) records the completed backup/restoration, migration through 0013, matching protected preview and stable test API, credential fencing of old deployments, private test grant and current verification. The installed native binary was reused. Broader beta/device, durable offline admission, recovery and release gates remain open.
 
-### Phase 08 phone-check reference
+### Historical Phase 08 phone-check reference
+
+These labels describe the earlier accepted build. The revised candidate uses
+Account and Data → Download my data/Import data; its new native/provider checks
+are listed above and in ACCOUNT_SYNC_SETUP.md.
 
 - **Export my data:** Save the ZIP to Files, open it and check CSV/JSON contents. Open an email draft from the share sheet with the ZIP attached, cancel without losing data, retry export and check temporary-file cleanup. Actual sending is an owner action, using disposable data only.
 - **Get help and Suggest a feature:** Open separate drafts to the configured inbox with the correct subjects and no automatic private attachments, then return to the app. Include support links in account/saving-recovery tools.
@@ -70,7 +160,7 @@ Anthony reported completing Phase 08's required physical-iPhone checks, includin
 | Phase 01, in parallel                      | Choose individual or organization enrollment; begin/confirm Apple Developer membership and account access. Owner completes required identity/business verification, paid-app agreement, banking and tax details.                                                                                                              | Record status and outstanding items; Apple verification does not prevent local development. Membership and agreements must be ready for distribution/sales.                                                |
 | Phase 01 onward; ready for free beta       | Reserve a stable bundle identifier, create the App Store Connect app record and Expo/EAS project, and configure signing access. RevenueCat/store-credential connection, purchase-key generation, subscription-product creation and offering/paywall mapping wait for the post-beta 07A row below.                             | Matching app identifiers and signing access for the free beta build.                                                                                                                                       |
 | Phase 12                                   | Prepare reviewed Privacy Policy/Terms and disclosure answers for the implemented configuration; keep publication owner-deferred.                                                                                                                                                                                              | Local legal preparation and named open publication/release gates are handed off.                                                                                                                           |
-| Phase 13                                   | Implement local feelings/text and manual iCloud Drive backup/restore, then revise notices and App Privacy preparation against verified behavior.                                                                                                                                                                              | Local journal cutover and matched privacy sources are ready for release review.                                                                                                                            |
+| Phase 13                                   | Implement durable guest writing, optional Apple/Google accounts, signed-in history/journal sync, separate opt-in private CloudKit and complete Download/Import; revise notices and App Privacy preparation.                                                                                                                   | Local candidate and matching privacy sources are ready for review; real provider, signed native/iCloud and hosted rollout gates remain explicit.                                                           |
 | Phase 14, before testers                   | With publication approval, finalize effective dates, publish the revised legal pages and verify public/app links; complete final signed-build disclosures.                                                                                                                                                                    | Accessible notices and metadata match the actual beta/release build.                                                                                                                                       |
 | Phase 14 free beta, before 07A             | Use physical iPhones for core-app acceptance. Produce a release-like EAS build and upload using EAS Submit; test the processed build in TestFlight with explicit server-authorized free tester access.                                                                                                                        | Recovery, challenge loop, Progress and Settings pass on the signed free-beta binary. External testers may need beta review; purchase/restore acceptance follows in 07A.                                    |
 | After the free beta checkpoint, during 07A | Generate the Apple purchase key, connect the iOS app/store credentials in the existing JustGO RevenueCat project, create the agreed App Store subscription group/products, and map product → entitlement → offering/paywall. Keep secret credentials out of docs and mobile source.                                           | Matching billing identifiers and configured sandbox purchase path; final offer decisions settled before billing validation. Earlier local billing-code preparation does not authorize this external setup. |

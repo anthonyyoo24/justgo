@@ -1,5 +1,9 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { ReflectionScreen } from './ReflectionScreen';
+import {
+  memoryLocalJournal,
+  memoryJournalBackend,
+} from '../../../test-support/local-journal';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
@@ -49,6 +53,7 @@ beforeEach(async () => {
   mockRepository = new AccountRepository({
     accountId: owner,
     storage,
+    localJournal: memoryLocalJournal(owner, storage),
     transport: backend(),
     today,
     timeZone: zone,
@@ -87,6 +92,7 @@ it('replaces the missing-activity message with a working editor after a slow jou
   mockRepository = new AccountRepository({
     accountId: owner,
     storage,
+    localJournal: memoryLocalJournal(owner, storage),
     transport: backend(),
     today,
     timeZone: zone,
@@ -169,7 +175,7 @@ it('shows slow local-save feedback, coalesces taps and retains newer typing', as
   const screen = render(<ReflectionScreen />);
   fireEvent.changeText(screen.getByLabelText('Your reflection'), 'First');
   const block = deferred<void>();
-  storage.blocked = block;
+  memoryJournalBackend(storage).beforeCommit = () => block.promise;
   fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
   fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
   expect(screen.queryByText('Saving…')).toBeNull();
@@ -195,7 +201,7 @@ it('cleans delayed feedback on unmount and fences late navigation', async () => 
   const screen = render(<ReflectionScreen />);
   fireEvent.changeText(screen.getByLabelText('Your reflection'), 'First');
   const block = deferred<void>();
-  storage.blocked = block;
+  memoryJournalBackend(storage).beforeCommit = () => block.promise;
   fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
   screen.unmount();
   await act(async () => block.resolve());

@@ -78,6 +78,16 @@ function Navigation() {
   const deleted = identity.deletionStatus === 'deleted';
   const awaitingAccess = useWelcomeTransition();
   const welcome = deleted || identity.needsWelcome;
+  // Resolve the saved collection before protected routes choose their initial
+  // destination. Otherwise a cold local-history link is pruned as a new install.
+  if (!identity.initialized)
+    return (
+      <ActivityIndicator
+        accessibilityLabel="Loading saved data"
+        style={{ flex: 1, backgroundColor: colors.cream }}
+        color={colors.ink}
+      />
+    );
   return (
     <Stack
       screenOptions={{
@@ -90,12 +100,15 @@ function Navigation() {
     >
       <Stack.Screen name="access" />
       <Stack.Screen name="acceptance" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="account/sign-in" />
+      <Stack.Screen name="auth/callback" />
       <Stack.Protected guard={welcome}>
         <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       {/* Removing these routes also removes the deleted account's Back history. */}
       <Stack.Protected guard={!deleted && !awaitingAccess}>
         <Stack.Screen name="settings" />
+        <Stack.Screen name="data" />
         <Stack.Screen name="delete-account" />
         <Stack.Screen name="recovery" />
         <Stack.Screen name="account/recover" />
@@ -108,12 +121,21 @@ function Navigation() {
         guard={
           !identity.deletionStatus &&
           !welcome &&
-          !!identity.account &&
+          (!!identity.account ||
+            ('collectionId' in identity && !!identity.collectionId)) &&
+          !awaitingAccess
+        }
+      >
+        <Stack.Screen name="(tabs)" />
+      </Stack.Protected>
+      <Stack.Protected
+        guard={
+          !identity.deletionStatus &&
+          !welcome &&
           !awaitingAccess &&
           access.verified
         }
       >
-        <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="(challenge)/challenge"
           options={{ gestureEnabled: false }}

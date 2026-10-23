@@ -1,6 +1,10 @@
 import { AccountRepository } from '../repository';
 import { ApiError } from '../../../lib/network/http';
 import { journalSchema } from '../model';
+import {
+  memoryLocalJournal,
+  memoryJournalBackend,
+} from '../../../../test-support/local-journal';
 import { sparseRetryDelay } from './retry';
 import {
   MemoryStorage,
@@ -31,6 +35,7 @@ async function setup() {
   const transport = backend();
   const repo = new AccountRepository({
     accountId: owner,
+    localJournal: memoryLocalJournal(owner, storage),
     storage,
     transport,
     today,
@@ -48,7 +53,7 @@ async function send(repo: AccountRepository) {
 }
 const journal = (repo: AccountRepository) => repo.store.getState().journal;
 
-it('orders a create, first reflection and two rapid explicit edits with acknowledged revisions', async () => {
+it('keeps private saves and rapid edits local while sending one completion', async () => {
   const { repo, transport } = await setup();
   await repo.complete(input(), card);
   await repo.submitReflection(uuid(1), uuid(101), {
@@ -57,107 +62,163 @@ it('orders a create, first reflection and two rapid explicit edits with acknowle
   });
   await repo.submitReflection(uuid(1), uuid(102), { text: 'Second fixture' });
   await repo.submitReflection(uuid(1), uuid(103), { text: 'Third fixture' });
-  const patch = transport.patch;
-  const revisions: number[] = [];
-  transport.patch = async (id, body, signal) => {
-    revisions.push(body.expectedReflectionRevision);
-    return patch(id, body, signal);
-  };
   await send(repo);
-  expect(transport.calls).toEqual([
-    `create:${uuid(1)}`,
-    `patch:${uuid(101)}`,
-    `patch:${uuid(102)}`,
-    `patch:${uuid(103)}`,
-  ]);
-  expect(revisions).toEqual([0, 1, 2]);
-  expect(transport.records.size).toBe(1);
+  expect(transport.calls).toEqual([`create:${uuid(1)}`]);
+  expect(transport.records.get(uuid(1))?.reflection).toBeNull();
   expect(repo.getAttempt(uuid(1))?.reflection).toMatchObject({
     text: 'Third fixture',
     revision: 3,
   });
   expect(journal(repo).operations).toHaveLength(0);
 });
-it('replays lost create/patch responses unchanged, without duplicate reps or revisions', async () => {
+it('replays a lost completion response without duplicate reps or uploading the local journal', async () => {
   const { repo, transport } = await setup();
   await repo.complete(input(), card);
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Fixture' });
+  await repo.submitReflection(uuid(1), uuid(101), { text: 'Local fixture' });
   const create = transport.create;
-  const patch = transport.patch;
-  let createLost = true;
-  let patchLost = true;
+  let lost = true;
   transport.create = async (body, signal) => {
     const result = await create(body, signal);
-    if (createLost) {
-      createLost = false;
-      throw new ApiError('TIMEOUT');
-    }
-    return result;
-  };
-  transport.patch = async (id, body, signal) => {
-    const result = await patch(id, body, signal);
-    if (patchLost) {
-      patchLost = false;
+    if (lost) {
+      lost = false;
       throw new ApiError('TIMEOUT');
     }
     return result;
   };
   await send(repo);
-  expect(transport.calls).toEqual([`create:${uuid(1)}`]);
   await jest.advanceTimersByTimeAsync(2000);
-  expect(transport.calls).toEqual([
-    `create:${uuid(1)}`,
-    `create:${uuid(1)}`,
-    `patch:${uuid(101)}`,
-  ]);
-  await jest.advanceTimersByTimeAsync(2000);
+  expect(transport.calls).toEqual([`create:${uuid(1)}`, `create:${uuid(1)}`]);
   expect(transport.records.size).toBe(1);
-  expect(transport.records.get(uuid(1))?.reflection?.revision).toBe(1);
+  expect(transport.records.get(uuid(1))?.reflection).toBeNull();
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe('Local fixture');
   expect(journal(repo).operations).toHaveLength(0);
 });
-it('survives termination after a server response but before the acknowledgement write', async () => {
+it('replays completion after an interrupted acknowledgement while the separate journal survives', async () => {
   const { repo, transport, storage } = await setup();
   await repo.complete(input(), card);
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Fixture' });
+  await repo.submitReflection(uuid(1), uuid(101), {
+    text: 'Durable private fixture',
+  });
   const create = transport.create;
   transport.create = async (body, signal) => {
-    const canonical = await create(body, signal);
+    const result = await create(body, signal);
     storage.fail = true;
-    return canonical;
+    return result;
   };
-  // Pause after create so the failed ack write cannot be mistaken for a durable receipt.
-  const patchGate = deferred<Awaited<ReturnType<typeof transport.patch>>>();
-  const patch = transport.patch;
-  transport.patch = async () => patchGate.promise;
-  repo.setEnvironment({ active: true, online: true });
-  await jest.advanceTimersByTimeAsync(0);
+  await send(repo);
   expect(
     journalSchema.parse(
       JSON.parse(storage.values.get(`justgo:v1:${owner}:journal`)!),
     ).operations[0]?.kind,
   ).toBe('create');
   repo.dispose();
-  await jest.advanceTimersByTimeAsync(0);
   storage.fail = false;
   transport.create = create;
-  transport.patch = patch;
   const reopened = new AccountRepository({
     accountId: owner,
     storage,
     transport,
     today,
     timeZone: zone,
+    localJournal: memoryLocalJournal(owner, storage),
   });
   repos.push(reopened);
   await reopened.hydrate();
   await reopened.synchronize();
   expect(transport.records.size).toBe(1);
-  expect(transport.records.get(uuid(1))?.reflection?.text).toBe('Fixture');
+  expect(transport.records.get(uuid(1))?.reflection).toBeNull();
+  expect(reopened.getAttempt(uuid(1))?.reflection?.text).toBe(
+    'Durable private fixture',
+  );
   expect(journal(reopened).operations).toHaveLength(0);
-  patchGate.resolve({
-    attempt: attempt(),
-    acknowledgement: { submissionId: uuid(101), appliedRevision: 1 },
+});
+it('does not fall back to private uploads when the journal commit fails', async () => {
+  const { repo, transport, storage } = await setup();
+  await repo.complete(input(), card);
+  await send(repo);
+  memoryJournalBackend(storage).failCommit = true;
+  await expect(
+    repo.submitReflection(uuid(1), uuid(101), { text: 'Uncommitted fixture' }),
+  ).rejects.toMatchObject({ code: 'STORAGE' });
+  await jest.advanceTimersByTimeAsync(600_000);
+  expect(transport.calls).toEqual([`create:${uuid(1)}`]);
+  expect(repo.getAttempt(uuid(1))?.reflection).toBeNull();
+  memoryJournalBackend(storage).failCommit = false;
+  await repo.submitReflection(uuid(1), uuid(101), {
+    text: 'Uncommitted fixture',
   });
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
+    'Uncommitted fixture',
+  );
+  expect(transport.records.get(uuid(1))?.reflection).toBeNull();
+});
+it('ignores legacy private operations even when migration has not retired them', async () => {
+  const { repo, transport } = await setup();
+  await repo.complete(input(), card);
+  const old = journal(repo);
+  old.operations.unshift({
+    id: uuid(101),
+    attemptId: uuid(1),
+    kind: 'patch',
+    version: 1,
+    state: 'pending',
+    failures: 0,
+    dueAt: 0,
+    code: null,
+    requestId: null,
+    bound: true,
+    dependsOn: null,
+    input: {
+      submissionId: uuid(101),
+      expectedReflectionRevision: 0,
+      reflection: { text: 'Legacy pending fixture' },
+    },
+  });
+  old.submissions[uuid(101)] = {
+    attemptId: uuid(1),
+    reflection: { text: 'Legacy pending fixture' },
+    version: 1,
+    appliedRevision: null,
+  };
+  await send(repo);
+  await jest.advanceTimersByTimeAsync(600_000);
+  expect(transport.calls).toEqual([`create:${uuid(1)}`]);
+  expect(jest.getTimerCount()).toBe(0);
+});
+it('preserves newer local writing when a delayed completion response arrives', async () => {
+  const { repo, transport } = await setup();
+  await repo.complete(input(), card);
+  const pending = deferred<ReturnType<typeof attempt>>();
+  transport.create = async () => pending.promise;
+  repo.setEnvironment({ active: true, online: true });
+  await jest.advanceTimersByTimeAsync(0);
+  await repo.submitReflection(uuid(1), uuid(101), {
+    text: 'Newer local fixture',
+  });
+  pending.resolve(attempt());
+  await repo.synchronize();
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
+    'Newer local fixture',
+  );
+  expect(journal(repo).operations).toHaveLength(0);
+});
+it('completion fallback remains independent of a durable private journal when the cache is full', async () => {
+  const { repo, transport, storage } = await setup();
+  storage.fail = true;
+  repo.setEnvironment({ active: true, online: true });
+  await repo.complete(input(), card);
+  await repo.submitReflection(uuid(1), uuid(101), { text: 'Local fixture' });
+  expect(transport.records.size).toBe(1);
+  expect(journal(repo).records[uuid(1)]).toMatchObject({
+    phoneVersion: 0,
+    serverVersion: 1,
+  });
+  expect(repo.store.getState().warning).toBeNull();
+  expect(transport.records.get(uuid(1))?.reflection).toBeNull();
+  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe('Local fixture');
+  storage.fail = false;
+  await jest.advanceTimersByTimeAsync(30_000);
+  expect(journal(repo).records[uuid(1)]?.phoneVersion).toBe(1);
 });
 it('recovers after a prolonged outage while connectivity and foreground remain unchanged', async () => {
   const { repo, transport } = await setup();
@@ -321,23 +382,6 @@ it('bounds an unresponsive transport and ignores its late response after deactiv
   expect(journal(repo).records[uuid(1)]?.created).toBe(false);
   expect(jest.getTimerCount()).toBe(0);
 });
-it('online server fallback establishes durability while phone storage continues failing', async () => {
-  const { repo, transport, storage } = await setup();
-  storage.fail = true;
-  repo.setEnvironment({ active: true, online: true });
-  await repo.complete(input(), card);
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Cloud fixture' });
-  expect(transport.records.size).toBe(1);
-  expect(journal(repo).records[uuid(1)]).toMatchObject({
-    phoneVersion: 0,
-    serverVersion: 2,
-  });
-  expect(repo.store.getState().warning).toBeNull();
-  storage.fail = false;
-  await jest.advanceTimersByTimeAsync(30_000);
-  expect(journal(repo).operations).toHaveLength(0);
-  expect(journal(repo).records[uuid(1)]?.phoneVersion).toBe(2);
-});
 it('a timed-out backend fallback is not reported as saved and retries with the original identity', async () => {
   const { repo, transport, storage } = await setup();
   storage.fail = true;
@@ -358,257 +402,6 @@ it('a timed-out backend fallback is not reported as saved and retries with the o
   expect(repo.store.getState().warning).toBeNull();
   expect(repo.store.getState().recoverySequence).toBe(1);
 });
-it('automatically adopts backend state and settles the superseded conflict chain across restart', async () => {
-  const { repo, transport, storage } = await setup();
-  await repo.complete(input(), card);
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Stale fixture' });
-  await repo.submitReflection(uuid(1), uuid(102), {
-    text: 'Queued stale fixture',
-  });
-  transport.records.set(uuid(1), {
-    ...attempt(),
-    reflection: { feeling: null, text: 'Backend fixture', revision: 3 },
-  });
-  await send(repo);
-  expect(repo.getAttempt(uuid(1))?.reflection).toEqual({
-    feeling: null,
-    text: 'Backend fixture',
-    revision: 3,
-  });
-  expect(journal(repo).operations).toHaveLength(0);
-  expect(repo.store.getState().warning).toBeNull();
-  repo.dispose();
-  const reopened = new AccountRepository({
-    accountId: owner,
-    storage,
-    transport,
-    today,
-    timeZone: zone,
-  });
-  repos.push(reopened);
-  reopened.setEnvironment({ active: true, online: false });
-  await reopened.hydrate();
-  expect(reopened.getAttempt(uuid(1))?.reflection?.text).toBe(
-    'Backend fixture',
-  );
-  expect(journal(reopened).operations).toHaveLength(0);
-});
-it('retains a genuine new submission made while conflict recovery is in flight', async () => {
-  const { repo, transport } = await setup();
-  await repo.complete(input(), card);
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await repo.submitReflection(uuid(1), uuid(101), {
-    text: 'Conflicting fixture',
-  });
-  const canonical = {
-    ...attempt(),
-    reflection: { feeling: null, text: 'Backend fixture', revision: 3 },
-  };
-  transport.records.set(uuid(1), canonical);
-  const late = deferred<never>();
-  const patch = transport.patch;
-  let first = true;
-  transport.patch = async (id, body, signal) => {
-    if (first) {
-      first = false;
-      return late.promise;
-    }
-    return patch(id, body, signal);
-  };
-  repo.setEnvironment({ active: true, online: true });
-  await jest.advanceTimersByTimeAsync(0);
-  await repo.submitReflection(uuid(1), uuid(102), {
-    text: 'Newer explicit fixture',
-  });
-  late.reject(new ApiError('REFLECTION_CONFLICT', 'fixture', canonical));
-  await repo.synchronize();
-  expect(repo.getAttempt(uuid(1))?.reflection).toMatchObject({
-    text: 'Newer explicit fixture',
-    revision: 4,
-  });
-  expect(journal(repo).operations).toHaveLength(0);
-});
-it('does not settle a conflict without authoritative canonical data', async () => {
-  const { repo, transport } = await setup();
-  await repo.complete(input(), card);
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Retained fixture' });
-  transport.patch = async () => {
-    throw new ApiError('REFLECTION_CONFLICT');
-  };
-  await send(repo);
-  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe('Retained fixture');
-  expect(journal(repo).operations[0]?.state).toBe('pending');
-});
-
-it('reconstructs the original patch revision after cloud saving and an unwritable acknowledgement are interrupted', async () => {
-  const { repo, transport, storage } = await setup();
-  await repo.complete(input(), card);
-  await repo.submitReflection(uuid(1), uuid(101), {
-    text: 'First accepted fixture',
-  });
-  await repo.submitReflection(uuid(1), uuid(102), {
-    text: 'Second accepted fixture',
-  });
-  const create = transport.create;
-  const patch = transport.patch;
-  transport.create = async (body, signal) => {
-    const result = await create(body, signal);
-    storage.fail = true;
-    return result;
-  };
-  transport.patch = async (id, body, signal) => {
-    const result = await patch(id, body, signal);
-    if (body.submissionId === uuid(102))
-      repo.setEnvironment({ active: false, online: false });
-    return result;
-  };
-  await send(repo);
-  expect(transport.records.get(uuid(1))?.reflection?.revision).toBe(2);
-  repo.dispose();
-  storage.fail = false;
-  transport.create = create;
-  transport.patch = patch;
-  const reopened = new AccountRepository({
-    accountId: owner,
-    storage,
-    transport,
-    today,
-    timeZone: zone,
-  });
-  repos.push(reopened);
-  await reopened.hydrate();
-  await reopened.synchronize();
-  expect(journal(reopened).operations).toHaveLength(0);
-  expect(transport.records.get(uuid(1))?.reflection).toMatchObject({
-    text: 'Second accepted fixture',
-    revision: 2,
-  });
-});
-
-it('does not send a dependent patch before the normal acknowledgement write finishes', async () => {
-  const { repo, transport, storage } = await setup();
-  await repo.complete(input(), card);
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Fixture' });
-  const create = transport.create;
-  const ack = deferred<void>();
-  transport.create = async (body, signal) => {
-    const result = await create(body, signal);
-    storage.blocked = ack;
-    return result;
-  };
-  repo.setEnvironment({ active: true, online: true });
-  const sending = repo.synchronize();
-  await jest.advanceTimersByTimeAsync(0);
-  expect(transport.calls).toEqual([`create:${uuid(1)}`]);
-  ack.resolve();
-  storage.blocked = null;
-  await sending;
-  expect(transport.calls).toEqual([`create:${uuid(1)}`, `patch:${uuid(101)}`]);
-});
-it('a reflection rejection retains accepted completion credit and safe diagnostics', async () => {
-  const { repo, transport } = await setup();
-  await repo.complete(input(), card);
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Retained fixture' });
-  transport.patch = async () => {
-    throw new ApiError('INVALID_REQUEST', 'redacted-request-id');
-  };
-  await send(repo);
-  expect(journal(repo).records[uuid(1)]?.rejected).toBeNull();
-  expect(journal(repo).summaryAdditions).toContain(uuid(1));
-  expect(journal(repo).operations[0]).toMatchObject({
-    state: 'rejected',
-    code: 'INVALID_REQUEST',
-    requestId: 'redacted-request-id',
-  });
-  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe('Retained fixture');
-});
-it('does not let a delayed successful acknowledgement overwrite newer explicit reflection input', async () => {
-  const { repo, transport } = await setup();
-  await repo.complete(input(), card);
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Older fixture' });
-  const patch = transport.patch;
-  const late = deferred<Awaited<ReturnType<typeof patch>>>();
-  let first = true;
-  transport.patch = async (id, body, signal) => {
-    const result = await patch(id, body, signal);
-    if (first) {
-      first = false;
-      return late.promise;
-    }
-    return result;
-  };
-  repo.setEnvironment({ active: true, online: true });
-  await jest.advanceTimersByTimeAsync(0);
-  await repo.submitReflection(uuid(1), uuid(102), { text: 'Newer fixture' });
-  late.resolve({
-    attempt: {
-      ...attempt(),
-      reflection: { feeling: null, text: 'Older fixture', revision: 1 },
-    },
-    acknowledgement: { submissionId: uuid(101), appliedRevision: 1 },
-  });
-  await repo.synchronize();
-  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe('Newer fixture');
-  expect(transport.records.get(uuid(1))?.reflection?.revision).toBe(2);
-});
-
-it('sends an explicit changed correction with a new identity, preserving rejected writing and completion credit', async () => {
-  const { repo, transport } = await setup();
-  await repo.complete(input(), card);
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await repo.submitReflection(uuid(1), uuid(101), {
-    feeling: 'a_little_better',
-    text: 'Rejected fixture',
-  });
-  const patch = transport.patch;
-  transport.patch = async () => {
-    throw new ApiError('INVALID_REQUEST');
-  };
-  await send(repo);
-  await expect(
-    repo.correctReflection(uuid(101), uuid(102), {
-      feeling: 'a_little_better',
-      text: 'Rejected fixture',
-    }),
-  ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
-  await expect(
-    repo.correctReflection(uuid(101), uuid(102), { text: 'Rejected fixture' }),
-  ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
-  await expect(
-    repo.submitReflection(uuid(1), uuid(102), { text: 'Rejected fixture' }),
-  ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
-  expect(journal(repo).submissions[uuid(102)]).toBeUndefined();
-  transport.patch = patch;
-  await Promise.all([
-    repo.correctReflection(uuid(101), uuid(102), { text: 'Corrected fixture' }),
-    repo.correctReflection(uuid(101), uuid(102), { text: 'Corrected fixture' }),
-  ]);
-  await repo.correctReflection(uuid(101), uuid(102), {
-    text: 'Corrected fixture',
-  });
-  await repo.synchronize();
-  expect(transport.records.get(uuid(1))?.reflection).toMatchObject({
-    feeling: 'a_little_better',
-    text: 'Corrected fixture',
-    revision: 1,
-  });
-  expect(journal(repo).submissions[uuid(101)]?.reflection.text).toBe(
-    'Rejected fixture',
-  );
-  expect(journal(repo).operations).toHaveLength(0);
-  expect(journal(repo).records[uuid(1)]?.rejected).toBeNull();
-});
-
 it('chunks a Retry-After beyond the native timer limit without retrying early', async () => {
   const { repo, transport } = await setup();
   await repo.complete(input(), card);
@@ -626,145 +419,4 @@ it('chunks a Retry-After beyond the native timer limit without retrying early', 
   await jest.advanceTimersByTimeAsync(852_516_353);
   expect(calls).toBe(2);
   expect(journal(repo).operations).toHaveLength(0);
-});
-
-it.each([0, 1])(
-  'delivers an ordinary changed submission after rejection from server revision %s across restart',
-  async (serverRevision) => {
-    const { repo, storage, transport } = await setup();
-    await repo.complete(input(), card);
-    await send(repo);
-    if (serverRevision) {
-      await repo.submitReflection(uuid(1), uuid(100), {
-        feeling: 'a_little_better',
-        text: 'Accepted fixture',
-      });
-      await repo.synchronize();
-    }
-    repo.setEnvironment({ active: true, online: false });
-    await repo.submitReflection(uuid(1), uuid(101), {
-      ...(serverRevision ? {} : { feeling: 'a_little_better' as const }),
-      text: 'Rejected fixture',
-    });
-    const patch = transport.patch;
-    const requests: Parameters<typeof patch>[1][] = [];
-    transport.patch = async (id, body, signal) => {
-      requests.push(structuredClone(body));
-      if (body.submissionId === uuid(101))
-        throw new ApiError('INVALID_REQUEST');
-      return patch(id, body, signal);
-    };
-    await send(repo);
-    repo.setEnvironment({ active: true, online: false });
-    await Promise.all([
-      repo.submitReflection(uuid(1), uuid(102), { text: 'Corrected fixture' }),
-      repo.submitReflection(uuid(1), uuid(102), { text: 'Corrected fixture' }),
-    ]);
-    repo.dispose();
-    const restored = new AccountRepository({
-      accountId: owner,
-      storage,
-      transport,
-      today,
-      timeZone: zone,
-    });
-    repos.push(restored);
-    restored.setEnvironment({ active: true, online: false });
-    await restored.hydrate();
-    await send(restored);
-    expect(requests).toEqual([
-      {
-        submissionId: uuid(101),
-        expectedReflectionRevision: serverRevision,
-        reflection: {
-          ...(serverRevision ? {} : { feeling: 'a_little_better' }),
-          text: 'Rejected fixture',
-        },
-      },
-      {
-        submissionId: uuid(102),
-        expectedReflectionRevision: serverRevision,
-        reflection: {
-          ...(serverRevision ? {} : { feeling: 'a_little_better' }),
-          text: 'Corrected fixture',
-        },
-      },
-    ]);
-    expect(transport.records.get(uuid(1))?.reflection).toEqual({
-      feeling: 'a_little_better',
-      text: 'Corrected fixture',
-      revision: serverRevision + 1,
-    });
-    expect(journal(restored).submissions[uuid(101)]?.reflection.text).toBe(
-      'Rejected fixture',
-    );
-    expect(journal(restored).submissions[uuid(102)]?.reflection).toEqual({
-      text: 'Corrected fixture',
-    });
-    expect(journal(restored).operations).toHaveLength(0);
-    expect(journal(restored).records[uuid(1)]?.rejected).toBeNull();
-    expect(journal(restored).summaryAdditions).toContain(uuid(1));
-  },
-);
-
-it('refuses to replace a reflection rejected for a different permanent cause', async () => {
-  const { repo, transport } = await setup();
-  await repo.complete(input(), card);
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Retained fixture' });
-  transport.patch = async () => {
-    throw new ApiError('NOT_FOUND', 'redacted-request-id');
-  };
-  await send(repo);
-  const before = journal(repo);
-  await expect(
-    repo.submitReflection(uuid(1), uuid(102), { text: 'Changed fixture' }),
-  ).rejects.toMatchObject({
-    code: 'CONFLICT',
-    requestId: 'redacted-request-id',
-  });
-  expect(journal(repo)).toEqual(before);
-});
-
-it('protects newer queued writing from a stale correction and recovers through a new ordinary submission', async () => {
-  const { repo, transport } = await setup();
-  await repo.complete(input(), card);
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await repo.submitReflection(uuid(1), uuid(101), { text: 'Rejected fixture' });
-  const patch = transport.patch;
-  transport.patch = async () => {
-    throw new ApiError('INVALID_REQUEST');
-  };
-  await repo.submitReflection(uuid(1), uuid(102), {
-    text: 'Newer ordinary submission',
-  });
-  await send(repo);
-  repo.setEnvironment({ active: true, online: false });
-  await expect(
-    repo.correctReflection(uuid(101), uuid(103), { text: 'Stale correction' }),
-  ).rejects.toMatchObject({ code: 'CONFLICT' });
-  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
-    'Newer ordinary submission',
-  );
-  expect(journal(repo).operations.map((op) => op.id)).toEqual([
-    uuid(101),
-    uuid(102),
-  ]);
-  transport.patch = patch;
-  await repo.submitReflection(uuid(1), uuid(103), { text: 'Latest fixture' });
-  await send(repo);
-  expect(journal(repo).operations).toHaveLength(0);
-  expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe('Latest fixture');
-  expect(transport.records.get(uuid(1))?.reflection).toMatchObject({
-    text: 'Latest fixture',
-    revision: 1,
-  });
-  expect(journal(repo).submissions[uuid(101)]?.reflection.text).toBe(
-    'Rejected fixture',
-  );
-  expect(journal(repo).submissions[uuid(102)]?.reflection.text).toBe(
-    'Newer ordinary submission',
-  );
 });

@@ -1,17 +1,17 @@
 import { sql } from 'drizzle-orm';
-import type { ExportPage } from '@justgo/contracts';
+import type { CompletionExportPage } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
 import {
   attemptQuery,
-  projectAttempt,
-  type AttemptRow,
+  projectCompletion,
+  type CompletionRow,
 } from '../attempts/model.js';
 
 export class ExportService {
   constructor(private readonly identity: IdentityService) {}
 
   // Privacy controls intentionally require identity only, never an entitlement.
-  page(token: string, cursor?: string): Promise<ExportPage> {
+  page(token: string, cursor?: string): Promise<CompletionExportPage> {
     return this.identity.withSession(token, async (tx, session) => {
       const userId = session.userId;
       const account = (
@@ -34,7 +34,7 @@ export class ExportService {
       ).rows;
       // The existing (user_id,id) primary key supports every page depth.
       const rows = (
-        await tx.execute<AttemptRow>(sql`${attemptQuery} where a.user_id=${userId}
+        await tx.execute<CompletionRow>(sql`${attemptQuery} where a.user_id=${userId}
           ${cursor ? sql`and a.id>${cursor}::uuid` : sql``}
           order by a.id limit 51`)
       ).rows;
@@ -51,7 +51,7 @@ export class ExportService {
             ? new Date(device.revoked_at).toISOString()
             : null,
         })),
-        attempts: rows.slice(0, 50).map(projectAttempt),
+        attempts: rows.slice(0, 50).map(projectCompletion),
         nextCursor: rows.length > 50 ? rows[49]!.id : null,
       };
     });

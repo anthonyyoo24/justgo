@@ -5,7 +5,9 @@ import { identityErrorSchema } from './errors.ts';
 import * as attempts from './activity/attempts.ts';
 import * as progress from './activity/progress.ts';
 import { accessResponseSchema } from './access.ts';
-import { exportPageSchema } from './data-export.ts';
+import { completionExportPageSchema } from './data-export.ts';
+import * as managed from './managed-auth.ts';
+import * as sync from './data-sync.ts';
 
 const json = (schema: z.ZodType) => ({
   'application/json': { schema: z.toJSONSchema(schema) },
@@ -14,6 +16,7 @@ function operation(
   response: z.ZodType,
   body?: z.ZodType,
   authenticated = true,
+  bodyLimit = '32 KiB',
 ) {
   return {
     security: authenticated ? [{ deviceSession: [] }] : [],
@@ -23,8 +26,7 @@ function operation(
       ...(body
         ? {
             '413': {
-              description:
-                'REQUEST_TOO_LARGE: body exceeds 32 KiB; do not retry unchanged input',
+              description: `REQUEST_TOO_LARGE: body exceeds ${bodyLimit}; do not retry unchanged input`,
               content: json(
                 identityErrorSchema.extend({
                   code: z.literal('REQUEST_TOO_LARGE'),
@@ -52,7 +54,7 @@ function operation(
 }
 export const openApiDocument = {
   openapi: '3.1.0',
-  info: { title: 'JustGO API', version: '0.12.0' },
+  info: { title: 'JustGO API', version: '0.13.0' },
   components: {
     securitySchemes: {
       deviceSession: {
@@ -63,6 +65,106 @@ export const openApiDocument = {
     },
   },
   paths: {
+    '/v1/auth/session': {
+      post: {
+        ...operation(
+          managed.managedSessionResponseSchema,
+          managed.managedSessionRequestSchema,
+        ),
+        description:
+          'Verify a Supabase Apple/Google bearer session and map its subject to a canonical owner. Optional legacySessionToken proves ownership for the initial legacy link; email and metadata never confer ownership.',
+      },
+      get: {
+        ...operation(managed.managedSessionResponseSchema),
+        description:
+          'Recheck the provider user, live Auth session, local revocation and canonical owner deletion state. Returns the current data epoch.',
+      },
+    },
+    '/v1/auth/logout': {
+      post: operation(identity.okSchema, managed.managedLogoutRequestSchema),
+    },
+    '/v1/guest/access': {
+      get: {
+        ...operation(accessResponseSchema, undefined, false),
+        description:
+          'Account-free trusted guest access policy. Production denies by default until verified guest purchase support exists; an explicit bounded staging beta window can allow testing.',
+      },
+    },
+    '/v1/guest/challenges': {
+      get: {
+        ...operation(challenges.catalogSchema, undefined, false),
+        description:
+          'Active catalog under the same trusted guest access policy; creates no account and accepts no private data.',
+      },
+    },
+    '/v1/completion-restores': {
+      post: {
+        ...operation(
+          sync.completionRestoreResponseSchema,
+          sync.completionRestoreRequestSchema,
+          true,
+          '4 MiB',
+        ),
+        description:
+          'Atomic owner-only import of up to 50 bounded completion contexts, without entitlement or private journal fields. expectedEpoch must match. Identical IDs replay; changed contexts conflict; deleted IDs remain blocked unless a user-confirmed import explicitly supplies restoreDeleted:true. Routine sync never sets that flag.',
+      },
+      get: {
+        ...operation(sync.completionRestorePageSchema),
+        description:
+          'Owner-only UUID-ordered history page, up to 50 records, with dataEpoch and nextCursor. Enumerate from the beginning on a later sync to reconcile concurrent inserts.',
+        parameters: [
+          {
+            name: 'cursor',
+            in: 'query',
+            schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 50, default: 50 },
+          },
+        ],
+      },
+    },
+    '/v1/journal-sync': {
+      post: {
+        ...operation(
+          sync.journalSyncResponseSchema,
+          sync.journalSyncRequestSchema,
+          true,
+          '4 MiB',
+        ),
+        description:
+          'Managed signed-in journal sync only. Immutable owner-scoped versions and parents preserve concurrent writing. A journal-only entry requires its strict historical context and creates no completion or rep. Existing completion context may be derived for older clients. Atomic batches up to 50 require expectedEpoch; restoreDeleted is reserved for a user-confirmed import.',
+      },
+      get: {
+        ...operation(sync.journalSyncPageSchema),
+        description:
+          'Managed signed-in journal versions, UUID-ordered pages up to 50. A full enumeration on later sync reconciles concurrent inserts.',
+        parameters: [
+          {
+            name: 'cursor',
+            in: 'query',
+            schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 50, default: 50 },
+          },
+        ],
+      },
+    },
+    '/v1/data': {
+      delete: {
+        ...operation(
+          sync.dataDeletionResponseSchema,
+          sync.dataDeletionRequestSchema,
+        ),
+        description:
+          'Delete owner completion and journal data while retaining the account and entitlement. Advances the data epoch and tombstones deleted completion IDs. Retry the same expectedEpoch for its durable receipt without deleting newly saved data.',
+      },
+    },
     '/v1/account': {
       delete: {
         ...operation(
@@ -70,14 +172,14 @@ export const openApiDocument = {
           identity.accountDeletionRequestSchema,
         ),
         description:
-          'Permanently removes owned activity, devices, sessions and transfers without paid access. Retains revoked credential fingerprints and a minimal deletion receipt to prevent resurrection. Retry a lost response with the same bearer token; only the session that initiated deletion can retrieve its receipt. Does not cancel an Apple subscription.',
+          'Permanently removes owned activity, devices, sessions and transfers without paid access. Managed account success also requires hard deletion of its Supabase Auth profile; durable cleanup retries survive provider failure. Retains minimal revocation/deletion safety records. Retry a lost response with the exact original bearer token, including after provider deletion. Does not cancel an Apple subscription.',
       },
     },
     '/v1/account/export': {
       get: {
-        ...operation(exportPageSchema),
+        ...operation(completionExportPageSchema),
         description:
-          'Owner-only data export, available without paid access. Follow nextCursor until null; pages contain up to 50 attempts in ID order. Each page is read in an owner transaction; concurrent changes on other devices may be reflected between pages. No credentials, session tokens or diagnostics are returned.',
+          'Owner-only data export, available without paid access. Follow nextCursor until null; pages contain up to 50 completion records without private journal fields in ID order. Each page is read in an owner transaction; concurrent changes on other devices may be reflected between pages. No credentials, session tokens or diagnostics are returned.',
         parameters: [
           {
             name: 'cursor',
@@ -91,7 +193,7 @@ export const openApiDocument = {
     '/v1/challenges': { get: operation(challenges.catalogSchema) },
     '/v1/attempts': {
       get: {
-        ...operation(progress.progressDayResponseSchema),
+        ...operation(progress.completionProgressDayResponseSchema),
         parameters: [
           {
             name: 'date',
@@ -115,17 +217,17 @@ export const openApiDocument = {
       },
       post: {
         ...operation(
-          attempts.attemptResultSchema,
+          attempts.completionAttemptResultSchema,
           attempts.createAttemptSchema,
         ),
         responses: {
           ...operation(
-            attempts.attemptResultSchema,
+            attempts.completionAttemptResultSchema,
             attempts.createAttemptSchema,
           ).responses,
           '201': {
             description: 'Created completed attempt',
-            content: json(attempts.attemptResultSchema),
+            content: json(attempts.completionAttemptResultSchema),
           },
         },
       },
@@ -140,25 +242,17 @@ export const openApiDocument = {
         },
       ],
       patch: {
-        ...operation(
-          attempts.patchAttemptResponseSchema,
-          attempts.patchAttemptSchema,
-        ),
+        security: [],
+        description:
+          'Retired private journal write. Update the client and preserve pending content locally. The body is not read, accepted or replayed.',
         responses: {
-          ...operation(
-            attempts.patchAttemptResponseSchema,
-            attempts.patchAttemptSchema,
-          ).responses,
-          '409': {
+          '410': {
             description:
-              'Altered operation reuse or stale reflection revision; only genuine revision conflicts include owner-scoped currentAttempt',
+              'PRIVATE_JOURNAL_LOCAL: permanent retirement; never retry private input',
             content: json(
-              z.union([
-                identityErrorSchema.extend({
-                  code: z.literal('CONFLICT'),
-                }),
-                attempts.reflectionConflictSchema,
-              ]),
+              identityErrorSchema.extend({
+                code: z.literal('PRIVATE_JOURNAL_LOCAL'),
+              }),
             ),
           },
         },
@@ -256,6 +350,46 @@ export const openApiDocument = {
     },
     '/v1/transfer-approvals': {
       post: operation(identity.okSchema, identity.transferApproveSchema),
+    },
+  },
+};
+
+const retiredManagedPaths = new Set([
+  '/v1/devices',
+  '/v1/devices/{id}',
+  '/v1/credentials',
+  '/v1/credentials/{id}',
+  '/v1/transfers',
+  '/v1/transfers/{id}',
+  '/v1/transfer-inspections',
+  '/v1/transfer-approvals',
+]);
+export const managedOpenApiDocument = {
+  ...openApiDocument,
+  paths: {
+    ...Object.fromEntries(
+      Object.entries(openApiDocument.paths).filter(
+        ([path]) => !retiredManagedPaths.has(path),
+      ),
+    ),
+    '/v1/sessions': {
+      post: {
+        ...operation(
+          identity.sessionResponseSchema,
+          z.discriminatedUnion('kind', [
+            identity.bootstrapSchema
+              .extend({ kind: z.literal('recovery') })
+              .strict(),
+            identity.renewSchema
+              .extend({ kind: z.literal('renewal') })
+              .strict(),
+          ]),
+          false,
+        ),
+        description:
+          'Existing-proof recovery and renewal only for migrating unlinked installations. New legacy bootstrap and transfer redemption are retired with HTTP410. Successful managed linking revokes legacy credentials and sessions.',
+        security: [{}, { deviceSession: [] }],
+      },
     },
   },
 };

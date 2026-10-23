@@ -19,17 +19,23 @@ import {
   focusManager,
   useQuery,
 } from '@tanstack/react-query';
-import { hasVerifiedAccess } from '@justgo/contracts';
+import {
+  hasVerifiedAccess,
+  accessResponseSchema,
+  catalogSchema,
+} from '@justgo/contracts';
 import { readAccess } from '../access/api';
 import { IdentityController } from '../identity/controller';
-import { createIdentityApi } from '../identity/api';
-import { createVault } from '../identity/vault';
+import { ManagedIdentityController } from '../identity/auth/managed-controller';
+import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
 import { AccountClient, accountKey } from '../../lib/network/account-client';
 import { createHttpClient } from '../../lib/network/http';
 import { createTelemetry } from '../../lib/telemetry';
 
-export function createAppRuntime(
-  identity: IdentityController,
+export function createAppRuntime<
+  T extends IdentityController | ManagedIdentityController,
+>(
+  identity: T,
   url = process.env.EXPO_PUBLIC_API_URL,
   storage: JournalStorage = asyncStorageJournalStorage,
 ) {
@@ -39,22 +45,51 @@ export function createAppRuntime(
     reject: identity.rejectSession,
   });
   const telemetry = createTelemetry();
-  const activity = new ActivityRuntime(client, storage);
+  const managed = identity instanceof ManagedIdentityController;
+  const activity = new ActivityRuntime(client, storage, { managed, url });
   identity.setAccountDataRemover(activity.deleteAccount);
+  if (identity instanceof ManagedIdentityController) {
+    identity.setGuestDataMerger(activity.mergeGuestData);
+    identity.setGuestDataRetirer(activity.retireGuestData);
+  }
   const challenges = new ChallengeController(client, {
     repository: activity.getRepository,
+    readCatalog: (signal) =>
+      identity.getSnapshot().account
+        ? client.request('/v1/challenges', catalogSchema, { signal })
+        : client.requestGuest('/v1/guest/challenges', catalogSchema, signal),
   });
   let sessionId: string | null = null;
   let accountId: string | null = null;
   const sync = () => {
-    const next = identity.getSnapshot().account?.userId ?? null;
+    const snapshot = identity.getSnapshot();
+    const next = snapshot.account?.userId ?? null;
+    const collection =
+      'collectionId' in snapshot && typeof snapshot.collectionId === 'string'
+        ? snapshot.needsWelcome
+          ? null
+          : snapshot.collectionId
+        : next;
     if (accountId !== next) {
       telemetry.setConsent('unknown');
       accountId = next;
     }
     client.changeAccount(next);
-    activity.changeAccount(next);
-    challenges.changeAccount(next);
+    client.changeCollection(collection);
+    activity.setPendingGuestAdoption(
+      'pendingGuestId' in snapshot &&
+        typeof snapshot.pendingGuestId === 'string'
+        ? snapshot.pendingGuestId
+        : null,
+    );
+    activity.changeAccount(
+      collection,
+      managed ? (next ? 'cloud' : 'local') : 'legacy',
+      'collectionKind' in snapshot && snapshot.collectionKind === 'guest'
+        ? 'guest'
+        : 'account',
+    );
+    challenges.changeAccount(collection);
     const nextSession = identity.getSnapshot().account?.sessionId ?? null;
     if (nextSession && sessionId !== nextSession)
       activity.resumeAuthentication();
@@ -77,12 +112,7 @@ type Runtime = ReturnType<typeof createAppRuntime>;
 const Context = createContext<Runtime | null>(null);
 export function AppProvider({ children }: PropsWithChildren) {
   const [runtime] = useState(() =>
-    createAppRuntime(
-      new IdentityController(
-        createVault(),
-        createIdentityApi(process.env.EXPO_PUBLIC_API_URL),
-      ),
-    ),
+    createAppRuntime(createManagedIdentityController()),
   );
   useEffect(() => {
     let active =
@@ -91,6 +121,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     let online = true;
     const updateEnvironment = () =>
       runtime.activity.setEnvironment({ active, online });
+    runtime.identity.setActive(active);
     updateEnvironment();
     const unsubscribe = runtime.subscribe();
     const unsubscribeNetwork = listenToConnectivity((nextOnline) => {
@@ -110,9 +141,9 @@ export function AppProvider({ children }: PropsWithChildren) {
       updateEnvironment();
       focusManager.setFocused(active);
       if (next !== 'active') {
-        runtime.identity.hideKey();
-        void runtime.identity.cancelTransfer();
+        runtime.identity.setActive(false);
       } else {
+        runtime.identity.setActive(true);
         void runtime.identity.retry({
           background: !!runtime.identity.getSnapshot().account,
         });
@@ -122,7 +153,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       }
     });
     return () => {
-      void runtime.identity.cancelTransfer();
+      runtime.identity.setActive(false);
       unsubscribe();
       subscription.remove();
       unsubscribeNetwork();
@@ -157,11 +188,26 @@ export function useIdentity() {
 }
 export function useAccess() {
   const { client } = useRuntime();
-  const { account } = useIdentity();
+  const identity = useIdentity();
+  const { account } = identity;
+  const collectionId =
+    'collectionId' in identity &&
+    typeof identity.collectionId === 'string' &&
+    !identity.needsWelcome
+      ? identity.collectionId
+      : null;
+  const owner = account?.userId ?? collectionId;
   const query = useQuery({
-    queryKey: accountKey(account?.userId ?? 'disconnected', 'access'),
-    enabled: !!account,
-    queryFn: ({ signal }) => readAccess(client, signal),
+    queryKey: accountKey(
+      owner ?? 'disconnected',
+      'access',
+      account ? 'account' : 'guest',
+    ),
+    enabled: !!owner && !identity.deletionStatus,
+    queryFn: ({ signal }) =>
+      account
+        ? readAccess(client, signal)
+        : client.requestGuest('/v1/guest/access', accessResponseSchema, signal),
     refetchInterval: 30_000,
   });
   const [now, setNow] = useState(Date.now);
@@ -188,7 +234,7 @@ export function useAccess() {
   return {
     ...query,
     verified:
-      !!account &&
+      !!owner &&
       !query.isError &&
       hasVerifiedAccess(
         query.data,

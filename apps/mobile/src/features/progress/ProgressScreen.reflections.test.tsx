@@ -11,6 +11,7 @@ import {
 
 import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 
+import { memoryJournalBackend } from '../../../test-support/local-journal';
 import { attempt, uuid, deferred } from '../../../test-support/journal';
 
 it('adds and edits a reflection inline while preserving its feeling and local saving behavior', async () => {
@@ -170,7 +171,7 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
     'Submitted day text.',
   );
   const pending = deferred<void>();
-  harness.storage.blocked = pending;
+  memoryJournalBackend(harness.storage).beforeCommit = () => pending.promise;
   fireEvent.press(screen.getByRole('button', { name: 'Cancel reflection' }));
   fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
   fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
@@ -194,7 +195,7 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
     'Newer day text.',
   );
   await act(async () => {
-    harness.storage.blocked = null;
+    memoryJournalBackend(harness.storage).beforeCommit = null;
     pending.resolve();
   });
   await waitFor(() =>
@@ -209,7 +210,7 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
     harness
       .mockRepository!.store.getState()
       .journal.operations.filter((op) => op.kind === 'patch'),
-  ).toHaveLength(1);
+  ).toHaveLength(0);
   fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
@@ -312,7 +313,8 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
       revision: 1,
     },
   };
-  harness.transport.records.set(uuid(1), felt);
+  await harness.mockRepository!.adoptAttempt(felt);
+  harness.transport.records.set(uuid(1), attempt());
   harness.mockClient.request.mockImplementation(async (path: string) =>
     path.includes('/summary?')
       ? summary
@@ -342,11 +344,11 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
   await waitFor(() =>
-    expect(harness.transport.records.get(uuid(1))?.reflection?.text).toBe(
+    expect(harness.mockRepository!.getAttempt(uuid(1))?.reflection?.text).toBe(
       'Writing after a feeling-only submission.',
     ),
   );
-  expect(harness.transport.records.get(uuid(1))?.reflection?.feeling).toBe(
+  expect(harness.mockRepository!.getAttempt(uuid(1))?.reflection?.feeling).toBe(
     'a_little_better',
   );
   fireEvent.press(screen.getByRole('button', { name: 'Edit reflection' }));
@@ -416,13 +418,15 @@ it('retains an older-day saved reflection after upload, pruning and a stale day 
   );
   fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
   await waitFor(() =>
-    expect(harness.transport.records.get(uuid(2))?.reflection?.text).toBe(
+    expect(harness.mockRepository!.getAttempt(uuid(2))?.reflection?.text).toBe(
       'Saved older-day reflection.',
     ),
   );
   await loaded();
   await waitFor(() =>
-    expect(harness.mockRepository!.getAttempt(uuid(2))).toBeUndefined(),
+    expect(
+      harness.mockRepository!.store.getState().journal.records[uuid(2)],
+    ).toBeUndefined(),
   );
   expect(screen.getByText('Saved older-day reflection.')).toBeTruthy();
 });
@@ -432,7 +436,8 @@ it('cannot save an empty text-only edit from the dirty-close dialog', async () =
     ...attempt(),
     reflection: { feeling: null, text: 'Retain this text.', revision: 1 },
   };
-  harness.transport.records.set(uuid(1), written);
+  await harness.mockRepository!.adoptAttempt(written);
+  harness.transport.records.set(uuid(1), attempt());
   harness.mockClient.request.mockImplementation(async (path: string) =>
     path.includes('/summary?')
       ? summary
@@ -463,7 +468,7 @@ it('cannot save an empty text-only edit from the dirty-close dialog', async () =
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
-  expect(harness.transport.records.get(uuid(1))?.reflection?.text).toBe(
+  expect(harness.mockRepository!.getAttempt(uuid(1))?.reflection?.text).toBe(
     'Retain this text.',
   );
 });

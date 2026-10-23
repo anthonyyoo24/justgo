@@ -1,13 +1,9 @@
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
 import { SettingsInformationGroups } from './information/SettingsInformationGroups';
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import { SettingsMotionRow } from './SettingsMotionRow';
 import { SettingsHapticsRow } from './SettingsHapticsRow';
-import { SettingsExportRow } from './export/SettingsExportRow';
 import {
   SettingsGroup,
-  SettingsRowContent,
   SettingsActionRow,
 } from '../../components/settings/SettingsRows';
 
@@ -36,33 +32,16 @@ export function SettingsScreen() {
       </SettingsGroup>
 
       <SettingsGroup title="Account & data">
-        <Link href="/recovery" asChild>
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel="Account & recovery"
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <SettingsRowContent
-              icon="account"
-              label="Account & recovery"
-              chevron
-            />
-          </Pressable>
-        </Link>
-        <SettingsExportRow />
         <SettingsActionRow
-          icon="delete"
-          label="Delete account"
-          href="/delete-account"
+          icon="account"
+          label="Account"
+          href="/recovery"
           chevron
         />
+        <SettingsActionRow icon="export" label="Data" href="/data" chevron />
       </SettingsGroup>
 
       <SettingsInformationGroups />
     </SettingsPage>
   );
 }
-
-const styles = StyleSheet.create({
-  pressed: { opacity: 0.65 },
-});

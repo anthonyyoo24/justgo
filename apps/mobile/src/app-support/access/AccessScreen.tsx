@@ -10,6 +10,7 @@ export function AccessScreen() {
   const identity = useIdentity();
   const access = useAccess();
   const awaitingWelcomeAccess = useWelcomeTransition();
+  const localCollection = 'collectionId' in identity && !!identity.collectionId;
   if (identity.deletionStatus === 'deleted' || identity.needsWelcome)
     return <Redirect href="/welcome" />;
   if (
@@ -17,13 +18,17 @@ export function AccessScreen() {
     identity.deletionStatus === 'cleanup'
   )
     return <Redirect href="/delete-account" />;
-  if (!identity.initialized || (identity.busy && !identity.account))
+  if (
+    !identity.initialized ||
+    (identity.busy && !identity.account && !localCollection)
+  )
     return (
       <Screen title="JustGO">
         <ActivityIndicator accessibilityLabel="Connecting your account" />
       </Screen>
     );
-  if (!identity.account) return <Redirect href="/recovery" />;
+  if (!identity.account && !localCollection)
+    return <Redirect href="/recovery" />;
   if (awaitingWelcomeAccess) return <Redirect href="/acceptance" />;
   if (access.verified) return <Redirect href="/(tabs)" />;
   return (
@@ -38,12 +43,14 @@ export function AccessScreen() {
         </Text>
         <Text accessibilityLiveRegion="polite" style={styles.body}>
           {access.isPending
-            ? 'Your private account is connected.'
+            ? identity.account
+              ? 'Your account is connected.'
+              : 'Checking access for this phone.'
             : access.data?.status === 'unpaid' && !access.isError
               ? access.data.source === 'free_beta'
                 ? 'This is a free test build. Your account needs current approval from the developer to start challenges. Contact support if you need access.'
                 : 'An active subscription is needed to start challenges. Purchases aren’t available in this build yet.'
-              : 'Your account is connected. Please try again shortly. Your recovery options are always available.'}
+              : 'Please try again when connected. Saved history and Settings remain available on this phone.'}
         </Text>
         <PrimaryButton
           label="Check access again"
@@ -52,7 +59,12 @@ export function AccessScreen() {
           }}
           busy={access.isFetching}
         />
-        <NavigationLink href="/recovery">Account & recovery</NavigationLink>
+        {localCollection && (
+          <NavigationLink href="/(tabs)/progress">
+            View saved history
+          </NavigationLink>
+        )}
+        <NavigationLink href="/recovery">Account</NavigationLink>
         {__DEV__ && (
           <NavigationLink href="/preview">Preview app screens</NavigationLink>
         )}

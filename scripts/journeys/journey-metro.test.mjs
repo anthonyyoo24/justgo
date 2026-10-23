@@ -25,7 +25,7 @@ test('normal and production Metro builds do not enable journey storage injection
     assert.equal(
       load(
         { NODE_ENV },
-        `const context={originModulePath:process.cwd()+'/apps/mobile/src/app-support/providers/AppProvider.tsx',resolveRequest:()=>({type:'sourceFile',filePath:'normal'})}; console.log(config.resolver.resolveRequest(context,'../../data/activity/persistence/storage','web').filePath === 'normal');`,
+        `const context={originModulePath:process.cwd()+'/apps/mobile/src/app-support/providers/AppProvider.tsx',resolveRequest:()=>({type:'sourceFile',filePath:'normal'})}; console.log(config.resolver.resolveRequest(context,'../../data/activity/persistence/storage','web').filePath === 'normal' && config.resolver.resolveRequest({...context,originModulePath:process.cwd()+'/apps/mobile/src/data/journal/factory.ts'},'./storage','web').filePath === 'normal' && config.resolver.resolveRequest({...context,originModulePath:process.cwd()+'/apps/mobile/src/app-support/identity/auth/create-managed-identity.ts'},'./managed-auth','web').filePath === 'normal');`,
       ).trim(),
       'true',
     );
@@ -64,9 +64,20 @@ for (const ports of [
  console.log(config.resolver.resolveRequest({...context,originModulePath:'another'},'../../data/activity/persistence/storage','web').filePath);
  console.log(config.resolver.resolveRequest(context,'expo/virtual/env','web').filePath.endsWith('test-support/journey-environment.ts'));
  console.log(config.resolver.resolveRequest(context,'expo/virtual/env','ios').filePath);
+ const journalContext={...context,originModulePath:process.cwd()+'/apps/mobile/src/data/journal/factory.ts'};
+ console.log(config.resolver.resolveRequest(journalContext,'./storage','web').filePath.endsWith('test-support/journey-local-journal.ts'));
+ console.log(config.resolver.resolveRequest(journalContext,'./storage','ios').filePath);
+ console.log(config.resolver.resolveRequest(context,'./storage','web').filePath);
+ const authContext={...context,originModulePath:process.cwd()+'/apps/mobile/src/app-support/identity/auth/create-managed-identity.ts'};
+ console.log(config.resolver.resolveRequest(authContext,'./managed-auth','web').filePath.endsWith('test-support/journey-managed-auth.ts'));
+ console.log(config.resolver.resolveRequest(authContext,'./managed-auth','ios').filePath);
+ console.log(config.resolver.resolveRequest(context,'./managed-auth','web').filePath);
  `,
     );
-    assert.equal(output.trim(), 'true\nnormal\nnormal\ntrue\nnormal');
+    assert.equal(
+      output.trim(),
+      'true\nnormal\nnormal\ntrue\nnormal\ntrue\nnormal\nnormal\ntrue\nnormal\nnormal',
+    );
   });
 }
 for (const api of ['https://hosted.example', 'http://127.0.0.1:3000']) {

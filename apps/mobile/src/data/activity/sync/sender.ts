@@ -60,10 +60,17 @@ export class JournalSender {
       this.schedule();
     }
   }
-  private next(attemptId?: string): Operation | undefined {
+  private next(
+    attemptId?: string,
+  ): Extract<Operation, { kind: 'create' }> | undefined {
     const state = this.owner.read();
     return state.journal.operations.find(
-      (operation, index, operations) =>
+      (
+        operation,
+        index,
+        operations,
+      ): operation is Extract<Operation, { kind: 'create' }> =>
+        operation.kind === 'create' &&
         (!attemptId || operation.attemptId === attemptId) &&
         operation.state === 'pending' &&
         operation.dueAt <= this.clock.now() &&
@@ -72,6 +79,7 @@ export class JournalSender {
           .slice(0, index)
           .some(
             (prior) =>
+              prior.kind === 'create' &&
               prior.attemptId === operation.attemptId &&
               prior.state !== 'acknowledged',
           ),
@@ -85,23 +93,8 @@ export class JournalSender {
       this.owner.read().active &&
       this.owner.read().online
     ) {
-      const id = operation.id;
-      if (operation.kind === 'patch' && !operation.bound) {
-        this.owner.update((journal) => {
-          const current = journal.operations.find((item) => item.id === id);
-          if (current?.kind === 'patch') {
-            current.input.expectedReflectionRevision = current.dependsOn
-              ? (journal.submissions[current.dependsOn]!.appliedRevision ?? 0)
-              : journal.records[current.attemptId]!.serverRevision;
-            current.bound = true;
-          }
-        });
-        operation = this.owner
-          .read()
-          .journal.operations.find((item) => item.id === id)!;
-      }
-      // Await the consistent local write before any normal send. A failed write
-      // permits the confirmed server-save fallback through this same coordinator.
+      // Persist completion intent before sending. Completion metadata may still
+      // use the existing server acknowledgement fallback on device cache failure.
       if (this.owner.needsPersistence()) await this.owner.persist();
       if (
         epoch !== this.epoch ||
@@ -109,8 +102,6 @@ export class JournalSender {
         !this.owner.read().online
       )
         return;
-      const submittedThrough =
-        this.owner.read().journal.records[operation.attemptId]!.version;
       this.controller = new AbortController();
       const controller = this.controller;
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -126,22 +117,12 @@ export class JournalSender {
         });
         const response = await Promise.race([
           boundary,
-          operation.kind === 'create'
-            ? this.transport
-                .create(operation.input, controller.signal)
-                .then((attempt) => ({ attempt, acknowledgement: null }))
-            : this.transport.patch(
-                operation.attemptId,
-                operation.input,
-                controller.signal,
-              ),
+          this.transport
+            .create(operation.input, controller.signal)
+            .then((attempt) => ({ attempt })),
         ]);
         if (epoch !== this.epoch) return;
-        if (
-          response.attempt.id !== operation.attemptId ||
-          (operation.kind === 'patch' &&
-            response.acknowledgement?.submissionId !== operation.id)
-        )
+        if (response.attempt.id !== operation.attemptId)
           throw new ApiError('CONFLICT');
         const sent = operation;
         this.owner.update((journal) => acknowledge(journal, sent, response));
@@ -153,14 +134,7 @@ export class JournalSender {
           error instanceof ApiError ? error : new ApiError('UNAVAILABLE');
         const sent = operation;
         this.owner.update((journal) =>
-          recordFailure(
-            journal,
-            sent,
-            failure,
-            submittedThrough,
-            this.clock.now(),
-            this.random,
-          ),
+          recordFailure(journal, sent, failure, this.clock.now(), this.random),
         );
         await this.owner.persist();
         this.owner.settled();
@@ -194,12 +168,14 @@ export class JournalSender {
     if (state.online) {
       for (const [index, operation] of state.journal.operations.entries())
         if (
+          operation.kind === 'create' &&
           operation.state === 'pending' &&
           !state.journal.records[operation.attemptId]?.rejected &&
           !state.journal.operations
             .slice(0, index)
             .some(
               (prior) =>
+                prior.kind === 'create' &&
                 prior.attemptId === operation.attemptId &&
                 prior.state !== 'acknowledged',
             )

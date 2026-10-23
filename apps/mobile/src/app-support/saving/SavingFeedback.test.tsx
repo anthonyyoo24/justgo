@@ -313,14 +313,14 @@ it('keeps unreadable storage and retained failed records discoverable outside th
   fireEvent.press(screen.getByRole('button', { name: 'Recover account' }));
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
 });
-it('opens a retained rejected reflection for an explicit correction', async () => {
+it('opens locally preserved writing alongside a rejected completion', async () => {
   await mockRepository.submitReflection(
     input().id,
     '20000000-0000-4000-8000-000000000002',
     { text: 'Retained writing' },
   );
   const journal = structuredClone(mockRepository.store.getState().journal);
-  const operation = journal.operations[1]!;
+  const operation = journal.operations[0]!;
   operation.state = 'rejected';
   operation.code = 'INVALID_REQUEST';
   mockRepository.store.setState({ journal });
@@ -347,7 +347,7 @@ it('keeps retained problems readable in the active modal without offering page n
     { text: 'Retained active-modal writing' },
   );
   const journal = structuredClone(mockRepository.store.getState().journal);
-  const operation = journal.operations[1]!;
+  const operation = journal.operations[0]!;
   operation.state = 'rejected';
   operation.code = 'INVALID_REQUEST';
   mockRepository.store.setState({ journal });

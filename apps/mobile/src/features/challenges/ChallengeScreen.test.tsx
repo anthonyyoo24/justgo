@@ -37,7 +37,8 @@ const mockNavigation = {
   ),
 };
 let mockFocused = true;
-let mockAccount = { userId: 'deck-owner' };
+let mockAccount: { userId: string } | null = { userId: 'deck-owner' };
+let mockCollectionId: string | null = null;
 let mockRepository: { accountId: string } | null = null;
 const mockMarkReady = jest.fn();
 let mockPreparation = { active: false, attempt: 0, markReady: mockMarkReady };
@@ -77,7 +78,10 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('../../app-support/providers/AppProvider', () => ({
   useRuntime: () => ({ challenges: mockController }),
-  useIdentity: () => ({ account: mockAccount }),
+  useIdentity: () => ({
+    account: mockAccount,
+    collectionId: mockCollectionId,
+  }),
   useJournal: () => mockRepository,
 }));
 jest.mock('../../app-support/identity/welcome/welcome-preparation', () => ({
@@ -158,6 +162,7 @@ beforeEach(() => {
   jest.replaceProperty(Platform, 'OS', 'web');
   mockFocused = true;
   mockAccount = { userId: 'deck-owner' };
+  mockCollectionId = null;
   mockRepository = { accountId: mockAccount.userId };
   mockPreparation = { active: false, attempt: 0, markReady: mockMarkReady };
   mockSnapshot = {
@@ -187,7 +192,22 @@ it('starts its catalog read when the matching repository becomes available after
   mockRepository = { accountId: 'previous-owner' };
   screen.rerender(<Flow />);
   expect(mockController.refresh).not.toHaveBeenCalled();
+  if (!mockAccount) throw new Error('Expected a signed-in fixture');
   mockRepository = { accountId: mockAccount.userId };
+  screen.rerender(<Flow />);
+  expect(mockController.refresh).toHaveBeenCalledTimes(1);
+});
+
+it('starts the guest catalog read after its local collection repository is ready', () => {
+  mockAccount = null;
+  mockCollectionId = 'local-guest';
+  mockRepository = null;
+  const screen = render(<Flow />);
+  expect(mockController.refresh).not.toHaveBeenCalled();
+  mockRepository = { accountId: 'previous-collection' };
+  screen.rerender(<Flow />);
+  expect(mockController.refresh).not.toHaveBeenCalled();
+  mockRepository = { accountId: mockCollectionId };
   screen.rerender(<Flow />);
   expect(mockController.refresh).toHaveBeenCalledTimes(1);
 });
@@ -484,6 +504,21 @@ it('clears unfinished React state when the account changes', () => {
   screen.rerender(<Flow />);
   expect(screen.queryByTestId('active-challenge-modal')).toBeNull();
   expect(mockController.complete).not.toHaveBeenCalled();
+});
+
+it('clears unfinished activity between guest and signed-out account collections', () => {
+  mockAccount = null;
+  mockCollectionId = 'guest-collection';
+  mockRepository = { accountId: mockCollectionId };
+  const screen = render(<Flow />);
+  accept(screen);
+  expect(screen.getByTestId('active-challenge-modal')).toBeTruthy();
+  mockCollectionId = 'signed-out-account-collection';
+  mockRepository = { accountId: mockCollectionId };
+  screen.rerender(<Flow />);
+  expect(screen.queryByTestId('active-challenge-modal')).toBeNull();
+  expect(mockController.complete).not.toHaveBeenCalled();
+  expect(mockMounted).toHaveBeenCalledTimes(2);
 });
 it('exposes catalog recovery only when no active challenge exists', () => {
   mockSnapshot = { ...mockSnapshot, queues: {}, error: 'Download failed' };

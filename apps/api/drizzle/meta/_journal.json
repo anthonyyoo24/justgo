@@ -134,6 +134,41 @@
       "when": 1792423414035,
       "tag": "0018_remove_account_acceptance",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792530959392,
+      "tag": "0019_local_journal_cutover",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792539466390,
+      "tag": "0020_clear_legacy_journal",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792544519404,
+      "tag": "0021_managed_accounts_and_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792545507350,
+      "tag": "0022_journal_historical_context",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792545860672,
+      "tag": "0023_managed_auth_deletion_cleanup",
+      "breakpoints": true
     }
   ]
 }

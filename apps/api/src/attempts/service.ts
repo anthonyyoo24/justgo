@@ -2,7 +2,11 @@ import { sql } from 'drizzle-orm';
 import type { CreateAttempt } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
 import { ApiError } from '../http/api-error.js';
-import { projectAttempt, readAttempt, type Tx } from './model.js';
+import { projectCompletion, readAttempt, type Tx } from './model.js';
+import {
+  requireDataEpoch,
+  rejectDeletedCompletion,
+} from '../data-sync/epoch.js';
 // Phase 07A supplies a database-backed projection of verified coverage at startedAt.
 // Never perform provider network I/O inside this transaction or trust a phone premium flag.
 export type UploadEligibilityReader = (
@@ -23,6 +27,13 @@ export class AttemptService {
    */
   create(token: string, input: CreateAttempt) {
     return this.identity.withSession(token, async (tx, session) => {
+      await requireDataEpoch(
+        tx,
+        session.userId,
+        input.expectedEpoch,
+        Boolean(session.authUserId),
+      );
+      await rejectDeletedCompletion(tx, session.userId, input.id);
       const old = await readAttempt(tx, session.userId, input.id);
       if (old) {
         const sameStart = (
@@ -37,7 +48,7 @@ export class AttemptService {
           old.start_time_zone !== input.startTimeZone
         )
           throw new ApiError('CONFLICT', 409);
-        return { attempt: projectAttempt(old), created: false };
+        return { attempt: projectCompletion(old), created: false };
       }
       if (Date.parse(input.startedAt) > this.now() + FUTURE_START_TOLERANCE_MS)
         throw new ApiError('INVALID_REQUEST', 400);
@@ -54,15 +65,16 @@ export class AttemptService {
       const card = (
         await tx.execute<{
           level_id: string;
-        }>(sql`select c.level_id from justgo.challenges c
+          instruction: string;
+        }>(sql`select c.level_id,c.text as instruction from justgo.challenges c
         where c.id=${input.challengeId} and c.level_id='level-1' and exists(select 1 from justgo.venue_cards v where v.challenge_id=c.id and v.venue_id=${input.venue})`)
       ).rows[0];
       if (!card) throw new ApiError('INVALID_REQUEST', 400);
-      await tx.execute(sql`insert into justgo.attempts(user_id,id,challenge_id,venue_id,level_id,started_at,start_time_zone,activity_date)
-        values(${session.userId},${input.id},${input.challengeId},${input.venue},${card.level_id},${input.startedAt}::timestamptz,${input.startTimeZone},
+      await tx.execute(sql`insert into justgo.attempts(user_id,id,challenge_id,venue_id,level_id,started_at,start_time_zone,instruction_snapshot,activity_date)
+        values(${session.userId},${input.id},${input.challengeId},${input.venue},${card.level_id},${input.startedAt}::timestamptz,${input.startTimeZone},${card.instruction},
         to_char(${input.startedAt}::timestamptz at time zone ${input.startTimeZone},'YYYY-MM-DD'))`);
       return {
-        attempt: projectAttempt(
+        attempt: projectCompletion(
           (await readAttempt(tx, session.userId, input.id))!,
         ),
         created: true,

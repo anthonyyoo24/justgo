@@ -1,7 +1,7 @@
 import {
   progressSummarySchema,
   progressCalendarSchema,
-  progressDayResponseSchema,
+  completionProgressDayResponseSchema,
 } from '@justgo/contracts';
 import type { AccountClient } from '../../../lib/network/account-client';
 
@@ -30,15 +30,19 @@ export function readProgressCalendar(
     { signal },
   );
 }
-export function readProgressDay(
+export async function readProgressDay(
   client: ProgressClient,
   date: string,
   cursor: string,
   signal: AbortSignal,
 ) {
-  return client.request(
+  const page = await client.request(
     `/v1/attempts?date=${date}&limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
-    progressDayResponseSchema,
+    completionProgressDayResponseSchema,
     { signal },
   );
+  return {
+    ...page,
+    entries: page.entries.map((attempt) => ({ ...attempt, reflection: null })),
+  };
 }

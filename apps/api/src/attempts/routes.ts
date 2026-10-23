@@ -1,24 +1,20 @@
 import { parse } from '../http/parse.js';
 import type { FastifyInstance } from 'fastify';
 import {
-  idSchema,
-  patchAttemptSchema,
-  patchAttemptResponseSchema,
   createAttemptSchema,
-  attemptResultSchema,
+  completionAttemptResultSchema,
   progressDayQuerySchema,
-  progressDayResponseSchema,
+  completionProgressDayResponseSchema,
 } from '@justgo/contracts';
 import { bearer } from '../http/bearer.js';
 import type { AttemptService } from './service.js';
 import type { ProgressResources } from '../progress/service.js';
-import type { AttemptPatchService } from './patch.js';
+import { rejectPrivateJournalWrite } from './patch.js';
 
 export function attemptRoutes(
   app: FastifyInstance,
   service: AttemptService,
   progress: ProgressResources,
-  patch: AttemptPatchService,
 ) {
   app.post('/', async (req, reply) => {
     const result = await service.create(
@@ -27,20 +23,17 @@ export function attemptRoutes(
     );
     return reply
       .code(result.created ? 201 : 200)
-      .send(attemptResultSchema.parse({ attempt: result.attempt }));
+      .send(completionAttemptResultSchema.parse({ attempt: result.attempt }));
   });
-  app.patch('/:id', async (req) =>
-    patchAttemptResponseSchema.parse(
-      await patch.patch(
-        bearer(req),
-        parse(idSchema, req.params).id,
-        parse(patchAttemptSchema, req.body),
-      ),
-    ),
+  // Reject before Fastify reads/parses a legacy private request body.
+  app.patch(
+    '/:id',
+    { onRequest: rejectPrivateJournalWrite },
+    rejectPrivateJournalWrite,
   );
   app.get('/', async (req) => {
     const { date, limit, cursor } = parse(progressDayQuerySchema, req.query);
-    return progressDayResponseSchema.parse(
+    return completionProgressDayResponseSchema.parse(
       await progress.day(bearer(req), date, limit, cursor),
     );
   });

@@ -1,27 +1,34 @@
 # Foundation: setup, versions and operations
 
-> Current setup and operations guide, established in Phase 01. See [IDENTITY.md](../architecture/IDENTITY.md) for Phase 02 identity configuration and [phase handoffs](../handoffs/README.md) for historical verification and remaining acceptance gates.
+> Current setup and operations guide, established in Phase 01. See [IDENTITY.md](../architecture/IDENTITY.md) and [ACCOUNT_SYNC_SETUP.md](ACCOUNT_SYNC_SETUP.md) for optional accounts, internal legacy migration and provider/grant prerequisites. [Phase handoffs](../handoffs/README.md) record historical verification and remaining acceptance gates.
 
 Established September 17, 2026. Start with the [README](../../README.md). The Phase 01 preview did not include account/session endpoints or permanent client credential storage; Phase 02 adds those capabilities. Phase 07 now implements challenge/completion/reflection/Progress saving and synchronization; purchases and verified production coverage remain Phase 07A.
 
+Phase 13's revised local candidate adds durable guest collections, optional managed
+Apple/Google accounts, signed-in history/private-journal sync and a separate
+opt-in private CloudKit copy. It does not change hosted services or installed
+clients until separately approved coordinated rollout. The old public private
+PATCH and key/code account UI remain retired in managed mode.
+
 ## Compatible version set
 
-Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node/Vercel; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
+Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package-lock.json` fixes resolved versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node/Vercel; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
 
 | Component                        | Pinned version / constraint                                                                        |
 | -------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                         |
 | TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                       |
-| Expo / React Native / React      | 57.0.30 / 0.86.3 / 19.2.3                                                                          |
-| Expo Router / development client | 57.0.28 / 57.0.20                                                                                  |
+| Expo / React Native / React      | 57.0.31 / 0.86.3 / 19.2.3                                                                          |
+| Expo Router / development client | 57.0.29 / 57.0.20                                                                                  |
 | Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                                          |
 | Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                                    |
 | Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                                           |
-| Activity storage / state         | AsyncStorage 2.2.0 / Zustand 5.0.15; explicit journal persistence                                  |
+| Activity storage / state         | SQLite 57.0.4 private journal; AsyncStorage 2.2.0 completion/cache state; Zustand 5.0.15           |
+| Optional accounts                | Supabase JS 2.118.0 Auth; Expo Apple Authentication, SecureStore and original Google Sign-In       |
 | Connectivity / saving feedback   | NetInfo 12.0.1 / Sonner Native 0.27.0 / Sonner 2.0.8 web adapter                                   |
 | React Native Web                 | 0.21.2; development/browser verification only                                                      |
 | iOS                              | 16.4 minimum, Hermes; original iPhone 17 / iOS 26.4 smoke, retained Phase 07 QA device on iOS 26.5 |
-| Fastify / Drizzle / pg           | 5.12.5 / 0.45.2 (kit 0.31.10) / 8.23.0                                                             |
+| Fastify / Drizzle / pg           | 5.12.7 / 0.45.2 (kit 0.31.10) / 8.23.0                                                             |
 | PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                                        |
 | Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.6, React Native Testing Library 13.3.3                   |
 
@@ -31,17 +38,21 @@ Android is excluded from app platforms and has no package identifier, EAS profil
 
 ## Environments and secrets
 
-| Variable                        | Where / purpose                                                                                                                            |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `EXPO_PUBLIC_API_URL`           | Mobile `.env` or EAS environment; public HTTPS staging URL, loopback/LAN locally                                                           |
-| `IOS_BUNDLE_IDENTIFIER`         | Confirmed identifier required by device/distribution EAS builds; the simulator profile explicitly uses provisional `dev.justgo.foundation` |
-| `DATABASE_URL`                  | API `.env` / Vercel preview Secret; restricted `justgo_runtime` only                                                                       |
-| `MIGRATION_DATABASE_URL`        | Operator's local/CI migration environment only; `justgo_migrator`; never Vercel/mobile                                                     |
-| `DATABASE_CA_CERT`              | API/migration environment; Supabase root certificate PEM, with verification enabled                                                        |
-| `DATABASE_SSL`                  | `verify-full` remotely; `disable` accepted only for loopback test databases                                                                |
-| `DATABASE_POOL_MAX`             | API; default 1, validated range 1–5                                                                                                        |
-| `CORS_ORIGINS`                  | Explicit comma-separated browser origins; staging allows localhost:8081 for development                                                    |
-| `PORT`, `LOG_LEVEL`, `NODE_ENV` | API process; 3000 / info / development defaults; production requires a database URL                                                        |
+| Variable                                                           | Where / purpose                                                                                                                            |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `EXPO_PUBLIC_API_URL`                                              | Mobile `.env` or EAS environment; public HTTPS staging URL, loopback/LAN locally                                                           |
+| `IOS_BUNDLE_IDENTIFIER`                                            | Confirmed identifier required by device/distribution EAS builds; the simulator profile explicitly uses provisional `dev.justgo.foundation` |
+| `DATABASE_URL`                                                     | API `.env` / Vercel preview Secret; restricted `justgo_runtime` only                                                                       |
+| `MIGRATION_DATABASE_URL`                                           | Operator's local/CI migration environment only; `justgo_migrator`; never Vercel/mobile                                                     |
+| `DATABASE_CA_CERT`                                                 | API/migration environment; Supabase root certificate PEM, with verification enabled                                                        |
+| `DATABASE_SSL`                                                     | `verify-full` remotely; `disable` accepted only for loopback test databases                                                                |
+| `DATABASE_POOL_MAX`                                                | API; default 1, validated range 1–5                                                                                                        |
+| `CORS_ORIGINS`                                                     | Explicit comma-separated browser origins; staging allows localhost:8081 for development                                                    |
+| `MANAGED_AUTH_ENABLED`                                             | API only; default false until providers, live-session grants, deletion secret and coordinated client rollout are ready                     |
+| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`                         | API Auth verifier configuration; matching project origin/public key                                                                        |
+| `SUPABASE_AUTH_SECRET_KEY`                                         | Server-only hard Auth deletion capability; never mobile/public env or database credentials                                                 |
+| `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public mobile Auth configuration; no admin secret                                                                                          |
+| `PORT`, `LOG_LEVEL`, `NODE_ENV`                                    | API process; 3000 / info / development defaults; production requires a database URL                                                        |
 
 Expo project ID `53cf0560-8ab5-446a-9bc6-deb193b337b5`, owner `anthonyyoos-team`, slug `justgo` are public metadata committed in `apps/mobile/app.config.ts`. Anthony created the project; `eas init --id … --non-interactive` and `eas project:info` verified the existing link. Authenticate through `npx eas-cli@latest login`; no duplicate project is needed. Apple enrollment, permanent bundle ID and physical signing remain owner work in [APPLE_SETUP.md](APPLE_SETUP.md).
 
@@ -54,7 +65,13 @@ Staging: dedicated **JustGo**, project ref `kmcpcauaxlgpevkkenwd`, Canada Centra
 1. As an administrator, review and apply `apps/api/scripts/provision.sql` once. It creates `justgo_migrator` and `justgo_runtime`, private `justgo` and `drizzle` schemas, permissions and connection/time limits. Set random independent login passwords through a secure administrative channel. Do not put passwords in migrations.
 2. Set the migration connection to direct PostgreSQL or the **session** pooler on 5432, using the migration role. Staging uses `aws-0-ca-central-1.pooler.supabase.com`, username `justgo_migrator.<project-ref>`. Supply the project's trusted CA and keep certificate/hostname verification enabled.
 3. Review generated SQL and journal together. `npm run db:generate -w @justgo/api -- --name feature_name` generates later domain changes; custom migrations use Drizzle Kit's `--custom` option. `npm run db:migrate` verifies the effective migration role before applying the journal to schema `drizzle`.
-4. Runtime uses the **transaction** pooler on 6543, username `justgo_runtime.<project-ref>`, with the separate password. No administrator, migration or Supabase service-role key belongs in the API runtime. Mobile never connects to PostgreSQL or Supabase directly.
+4. Runtime uses the **transaction** pooler on 6543, username `justgo_runtime.<project-ref>`, with the separate password. Never use an administrator/migration database role for application queries. Managed Auth's isolated server-only admin SDK holds a deletion-capable secret, separate from the restricted database connection. Mobile calls Supabase Auth for provider sessions and Fastify for application data; it never connects directly to private PostgreSQL tables.
+
+Managed mode additionally needs Auth-owner-reviewed column grants for live session
+checks. The ordinary migrator cannot self-grant Supabase Auth access. Follow the
+exact [narrow grant and provider setup](ACCOUNT_SYNC_SETUP.md); no Auth writes,
+public data grants or security-definer bypass is introduced. Readiness verifies
+those read privileges when managed mode is enabled.
 
 Migration failures report only the registered SQL filename (when attributable)
 and a validated SQLSTATE, without SQL, parameters or raw driver messages. The
@@ -80,17 +97,36 @@ Before restoring:
 
 1. Stop API writes and note the backup's timestamp. Writes other accounts made after that timestamp are not recovered by this checklist.
 2. With the migration role, save the deletions made since the backup to restricted operator storage, never the repository, logs or tickets: every `justgo.users` row with `deleted_at` set (`id`, `created_at`, `deleted_at`, `deletion_session_digest`) and every `justgo.recovery_credentials` row with `revoked_at` set (`id`, `user_id`, `digest`, `kind`, `revoked_at`). Taking all of them, not only those after the timestamp, is simplest and safe.
+   For the managed candidate, also retain all owners' current `data_epoch` /
+   `data_deleted_at`, `deleted_completion_ids`, immutable `managed_auth_accounts`
+   mappings, app-session revocations and `managed_auth_deletions` state. This
+   includes Delete all my data events on active accounts, not only deleted users.
+   Preserve mapping/receipt consistency and provider subject tombstones; an older
+   app-data snapshot must never undo a later Auth/profile or activity deletion.
    If the current ledger cannot be recovered after a disaster, do not reopen an older snapshot that may lack later deletions/revocations. This checklist does not itself establish an independently recoverable ledger; Phase 14 must evidence that recovery arrangement.
 
 Restore and reapply:
 
 3. Restore into an isolated environment (a new project or branch), never over the live database, with no API pointed at it.
 4. Apply the current registered forward migrations to the isolated database before reconciliation. In one reviewed migration-role transaction, apply the saved deletions again, exactly as `apps/api/src/identity/delete-account.ts` does. For each deleted account, delete its attempt patch receipts, attempts, transfers, sessions and devices, clear `analytics_restricted_at`, and set `deleted_at` and `deletion_session_digest` from the saved row; insert the user row if the account is newer than the backup. Then make every saved credential revoked: insert missing rows and set `revoked_at` on restored rows that are still active.
+   Include journal versions and managed app-session revocation. Reapply active
+   accounts' deletion epochs monotonically and their deleted-ID tombstones, remove
+   restored completion/journal versions covered by those IDs, and preserve pending
+   Auth cleanup work. Do not replay provider network calls inside that transaction.
+   If the restored target also restores Auth records, separately reapply hard Auth
+   user deletion for every erased subject before reopening traffic; an old completed
+   outbox marker cannot prove the restored Auth profile is still absent. Review
+   the target project/secret and [cleanup procedure](ACCOUNT_SYNC_SETUP.md#pending-auth-erasure-operations)
+   under the operator restore plan rather than trusting recovered access tokens.
 
 Before reopening the app:
 
 5. Confirm in the restored database that every saved account has `deleted_at` set, `analytics_restricted_at` cleared and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
 6. Using an API restricted to the isolated environment, confirm that deleted disposable accounts' old recovery proofs are rejected and their journal data is absent. Only after these checks pass may the operator point the normal API at the restored database and reopen writes. This prevents a public recovery window during verification.
+   Also prove managed JWT/app-session rejection for deleted/revoked owners, absence
+   of erased Auth profiles, preserved active-account epochs and rejection of stale
+   completion/private-version uploads. A confirmed explicit import is the only
+   flow that may intentionally restore deleted record IDs at the current epoch.
 
 ## API deployment and diagnostics
 
@@ -111,7 +147,15 @@ Set runtime variables in the **preview** environment before deployment. Use Secr
 | `GET /health` | 200 `{ "status": "ok", "service": "justgo-api" }`             | Process/platform failures only; not a database check |
 | `GET /ready`  | 200 `{ "status": "ready" }` after database/role/context check | 503 `{ "status": "unavailable" }`                    |
 
-Responses use `no-store`, security headers and server-generated request IDs. The Phase 01 connection probe validated both endpoints with an 8-second deadline. The current identity UI uses the authenticated API and its 10-second request deadline; see [IDENTITY.md](../architecture/IDENTITY.md). Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. Identity and private reflection records now exist; diagnostics must exclude both secrets and journal contents. Sentry and analytics export are not enabled; Phase 10 plans a single Terms & Privacy onboarding acceptance with no analytics Settings switches. Implement its account-owned client/server enforcement and revalidate scrubbing before analytics export; diagnostic activation still needs its own field/basis review.
+Responses use `no-store`, security headers and server-generated request IDs. The Phase 01 connection probe validated both endpoints with an 8-second deadline. The current identity UI uses the authenticated API and its 10-second request deadline; see [IDENTITY.md](../architecture/IDENTITY.md). Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. Identity and private reflection records now exist; diagnostics must exclude both secrets and journal contents.
+
+The current entry flow uses ordinary Terms/Privacy links and Continue without
+legal-view/agreement receipts. Sentry remains configured but delivery disabled;
+product analytics remains disabled. Signed-in journal text now reaches the
+dedicated API journal resource in the local candidate, so the reopened provider,
+retention and privacy review must precede hosted activation. Managed `/ready`
+checks live-session read privileges, while actual provider login/hard deletion
+requires separate staged proof with disposable accounts.
 
 ## Design and tests
 
@@ -123,13 +167,20 @@ Native compilation runs on EAS using `development-simulator`, per the owner’s 
 
 The EAS `development-simulator` build `2c73c1af-3d5d-4216-8f25-875c72691973` completed on September 17, 2026. Its downloaded binary passed native startup and the connection check on one iPhone 17 / iOS 26.4 simulator. The artifact remains at `.local/JustGO-eas-simulator.tar.gz`, with the extracted app at `.local/eas-simulator/JustGO.app`. Start Metro from `apps/mobile` using `NODE_OPTIONS=--dns-result-order=ipv4first npx expo start --dev-client --localhost --max-workers 1`; the IPv4 option avoids a localhost/127.0.0.1 binding mismatch. Reuse this binary until a native dependency/configuration changes.
 
-The Phase 02 binary and its native checks remain historical in [its handoff](../handoffs/phase-02-identity.md). The October 6 EAS simulator build and retained QA device are recorded in the [07.3 simulator setup](../handoffs/phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup); use the existing installed binary containing AsyncStorage/NetInfo for current JavaScript/UI checks.
+The Phase 02 binary and its native checks remain historical in [its handoff](../handoffs/phase-02-identity.md). The October 6 EAS simulator build and retained QA device are recorded in the [07.3 simulator setup](../handoffs/phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup); that existing binary contains AsyncStorage/NetInfo. The earlier Phase 13 physical build added SQLite/document picker. Revised optional accounts/iCloud additionally require a separately authorized compatible binary with Apple/Google, SecureStore and the CloudKit module/capabilities. JavaScript exports cannot add those modules; see [Apple setup](APPLE_SETUP.md).
 
 The native launch harness is `apps/mobile/e2e/launch.yaml`; run it with Maestro only after installing/launching a development build and starting Metro/API. Browser verification covers the affected states and interactions, including relevant loading/disabled, success, offline failure/retry, keyboard and narrow-screen behavior. At phase closeout/release, cover the full applicable acceptance matrix. Native verification is separately recorded in the handoff; a web export proves no Keychain, purchase or device recovery behavior.
 
 The Phase 01 `npm audit` recorded 18 moderate dependency advisories, with no high/critical findings at the recorded installation. They include transitive Expo tooling and Drizzle Kit dependencies. Review compatible upstream fixes before release; do not apply a forced Expo downgrade to silence the audit.
 
 ## Phase 07 coordinated cutover and old clients
+
+This section records the earlier resource-protocol cutover. Phase 13's separate
+[local-journal rollout](LOCAL_JOURNAL_ROLLOUT.md) owns migration 0019, private-write
+retirement and its approved old-server-private reset. The revised
+[account/sync setup](ACCOUNT_SYNC_SETUP.md) owns managed Auth mappings, authenticated
+legacy linking and new private sync. The following Phase 07 PATCH/recovery sequence
+is historical, not authorization to re-enable those retired product options.
 
 This runbook prepares Phase 14 staging/release integration; Phase 07.5 local implementation does not deploy externally or prove that old installed clients are retired. The final public protocol is catalog/completed-attempt/reflection PATCH and independent summary/calendar/day resources, alongside noun identity resources. Old identity/product action routes return 404; no compatibility writer remains after contraction.
 

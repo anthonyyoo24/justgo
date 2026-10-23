@@ -1,53 +1,46 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { strFromU8, unzipSync } from 'fflate';
-import {
-  AccountClient,
-  createQueryClient,
-} from '../../../lib/network/account-client';
-import { createHttpClient } from '../../../lib/network/http';
-import { AccountRepository } from '../../../data/activity/repository';
 import { SettingsExportRow } from './SettingsExportRow';
+import { collectExport } from './data-export';
 import { saveExportFile } from '../../../platform/export/export-file';
-import { colors } from '../../../theme/tokens';
-import {
-  MemoryStorage,
-  backend,
-  card,
-  input,
-  owner,
-  otherOwner,
-  today,
-  zone,
-  deferred,
-} from '../../../../test-support/journal';
+import { ApiError } from '../../../lib/network/http';
+import { deferred, owner, otherOwner } from '../../../../test-support/journal';
 
 let mockOwner: string | null = owner;
-let mockRepo: AccountRepository | null;
-let mockClient: AccountClient;
+let mockKind: 'guest' | 'account' = 'guest';
+let mockPreferencesLoading = false;
 let mockBlur: (() => void) | undefined;
-let mockHapticsLoading = false;
-let mockHapticsSaving = false;
+const mockRouter = { push: jest.fn() };
+const mockRepository = { accountId: owner };
+jest.mock('../../../app-support/providers/AppProvider', () => ({
+  useIdentity: () => ({ account: null, collectionKind: mockKind }),
+  useJournal: () => (mockOwner ? mockRepository : null),
+  useRuntime: () => ({
+    client: {
+      ownsCollection: (id: string) => id === mockOwner,
+      ownsAccount: () => false,
+    },
+  }),
+}));
+jest.mock('../../../platform/motion/motion', () => ({
+  useMotionPreferences: () => ({
+    reduceMotion: true,
+    requestedReduceMotion: false,
+    loading: false,
+    saving: false,
+  }),
+}));
 jest.mock('../../../platform/haptics/haptics', () => ({
   useHapticPreferences: () => ({
     enabled: true,
-    loading: mockHapticsLoading,
-    saving: mockHapticsSaving,
+    loading: mockPreferencesLoading,
+    saving: false,
   }),
 }));
-const mockRouter = { push: jest.fn() };
-jest.mock('../../../app-support/providers/AppProvider', () => ({
-  useRuntime: () => ({ client: mockClient }),
-  useIdentity: () => ({ account: mockOwner ? { userId: mockOwner } : null }),
-  useJournal: () => mockRepo,
-}));
-jest.mock('../../../platform/motion/motion', () => ({
-  useMotionPreferences: () => ({ reduceMotion: false }),
-}));
+jest.mock('./data-export', () => ({ collectExport: jest.fn() }));
 jest.mock('../../../platform/export/export-file', () => ({
   saveExportFile: jest.fn(),
 }));
 jest.mock('expo-router', () => {
-  const { Text } = require('react-native') as typeof import('react-native');
   const { useEffect } = require('react') as typeof import('react');
   return {
     useRouter: () => mockRouter,
@@ -56,235 +49,98 @@ jest.mock('expo-router', () => {
         mockBlur = effect();
         return mockBlur;
       }, [effect]),
-    Link: ({ children }: { children: React.ReactNode }) => (
-      <Text>{children}</Text>
-    ),
   };
 });
-const save = jest.mocked(saveExportFile);
-let fetcher: jest.Mock;
-beforeEach(async () => {
-  mockHapticsLoading = false;
-  mockHapticsSaving = false;
+const collect = jest.mocked(collectExport),
+  share = jest.mocked(saveExportFile);
+beforeEach(() => {
+  jest.clearAllMocks();
   mockOwner = owner;
-  mockRouter.push.mockReset();
-  mockRepo = new AccountRepository({
-    accountId: owner,
-    storage: new MemoryStorage(),
-    transport: backend(),
-    today,
-    timeZone: zone,
+  mockKind = 'guest';
+  mockPreferencesLoading = false;
+  collect.mockResolvedValue({
+    name: 'JustGO-data-fixture.zip',
+    bytes: new Uint8Array([1, 2, 3]),
   });
-  mockRepo.setEnvironment({ active: true, online: false });
-  await mockRepo.hydrate();
-  await mockRepo.complete(input(), card);
-  fetcher = jest.fn(async () => ({
-    headers: new Headers({ 'Content-Type': 'application/json' }),
-    ok: true,
-    json: async () => ({
-      account: { id: owner, createdAt: `${today}T00:00:00.000Z` },
-      devices: [],
-      attempts: [],
-      nextCursor: null,
-    }),
-  }));
-  mockClient = new AccountClient(
-    createHttpClient('http://localhost:3000', fetcher),
-    {
-      current: () =>
-        mockOwner ? { userId: mockOwner, token: 'a'.repeat(64) } : null,
-      renew: jest.fn(),
-      reject: jest.fn(),
-    },
-    createQueryClient(),
-  );
-  mockClient.changeAccount(owner);
-  save.mockReset().mockResolvedValue('shared');
-});
-afterEach(() => {
-  mockRepo?.dispose();
-  mockClient.changeAccount(null);
-});
-it('requires an explicit export action and creates the real archive with phone-only data', async () => {
-  const screen = render(<SettingsExportRow />);
-  expect(screen.queryByText('Export ZIP')).toBeNull();
-  expect(fetcher).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await screen.findByText('Your export was shared.');
-  const archive = save.mock.calls[0]![0];
-  const json = JSON.parse(strFromU8(unzipSync(archive.bytes)['data.json']!));
-  expect(json.localChanges).toHaveLength(1);
-  expect(json.preferences).toEqual({ reduceMotion: false, haptics: true });
-  expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
-});
-it.each(['hydrating', 'saving'])(
-  'waits for %s preferences instead of exporting a stale choice',
-  (phase) => {
-    mockHapticsLoading = phase === 'hydrating';
-    mockHapticsSaving = phase === 'saving';
-    const screen = render(<SettingsExportRow />);
-    const button = screen.getByRole('button', { name: 'Export my data' });
-    expect(button).toBeDisabled();
-    fireEvent.press(button);
-    expect(fetcher).not.toHaveBeenCalled();
-    expect(save).not.toHaveBeenCalled();
-    mockHapticsLoading = false;
-    mockHapticsSaving = false;
-    screen.rerender(<SettingsExportRow />);
-    expect(
-      screen.getByRole('button', { name: 'Export my data' }),
-    ).toBeEnabled();
-  },
-);
-it('quietly returns to Settings after dismissing sharing and allows another export', async () => {
-  const dismissed = deferred<'cancelled'>();
-  save.mockImplementationOnce(() => dismissed.promise);
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-  expect(screen.getByRole('button', { name: 'Export my data' })).toBeDisabled();
-  expect(screen.queryByText('Creating export…')).toBeNull();
-  expect(
-    screen.getByRole('progressbar', { name: 'Export my data in progress' }),
-  ).toBeTruthy();
-  await act(async () => dismissed.resolve('cancelled'));
-  expect(screen.queryByRole('alert')).toBeNull();
-  expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await screen.findByText('Your export was shared.');
-  expect(save).toHaveBeenCalledTimes(2);
-});
-it('reports a browser download without claiming the file was saved', async () => {
-  save.mockResolvedValue('downloaded');
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await screen.findByText('Your ZIP download has started.');
-});
-it('blocks duplicate taps until sharing finishes', async () => {
-  const pending = deferred<'shared'>();
-  save.mockImplementation(() => pending.promise);
-  const screen = render(<SettingsExportRow />);
-  const button = screen.getByRole('button', { name: 'Export my data' });
-  fireEvent.press(button);
-  fireEvent.press(button);
-  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-  expect(screen.getByRole('button', { name: 'Export my data' })).toBeDisabled();
-  await act(async () => pending.resolve('shared'));
-  await screen.findByText('Your export was shared.');
-});
-it('shows a retryable failure and succeeds on a later explicit attempt', async () => {
-  save.mockRejectedValueOnce(new Error('Private adapter detail'));
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  expect(
-    await screen.findByText('Couldn’t export your data. Please try again.'),
-  ).toHaveStyle({ color: '#8B1E32' });
-  expect(screen.queryByText('Private adapter detail')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  expect(await screen.findByText('Your export was shared.')).toHaveStyle({
-    color: colors.ink,
-  });
-});
-it('clears an earlier error when the next share sheet is dismissed', async () => {
-  save
-    .mockRejectedValueOnce(new Error('Share failed'))
-    .mockResolvedValueOnce('cancelled');
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await screen.findByText('Couldn’t export your data. Please try again.');
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Export my data' }),
-    ).toBeEnabled(),
-  );
-  expect(screen.queryByRole('alert')).toBeNull();
-  expect(save).toHaveBeenCalledTimes(2);
-});
-it('fails instead of claiming an export is complete when the phone journal is unreadable', async () => {
-  mockRepo!.store.setState({ hydrationError: 'unreadable' });
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  expect(await screen.findByText(/could not be read/)).toHaveStyle({
-    color: '#8B1E32',
-  });
-  expect(save).not.toHaveBeenCalled();
-});
-it('cancels an in-flight export when leaving the screen', async () => {
-  const pending = deferred<{
-    ok: true;
-    headers: Headers;
-    json: () => Promise<object>;
-  }>();
-  fetcher.mockImplementation(() => pending.promise);
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
-  const signal = fetcher.mock.calls[0]![1].signal as AbortSignal;
-  screen.unmount();
-  expect(signal.aborted).toBe(true);
-  await act(async () =>
-    pending.resolve({
-      headers: new Headers({ 'Content-Type': 'application/json' }),
-      ok: true,
-      json: async () => ({}),
-    }),
-  );
-  expect(save).not.toHaveBeenCalled();
+  share.mockResolvedValue('shared');
 });
 
-it('cancels when a still-mounted stack screen loses focus, and resets the button for returning', async () => {
-  const pending = deferred<{
-    ok: true;
-    headers: Headers;
-    json: () => Promise<object>;
-  }>();
-  fetcher.mockImplementation(() => pending.promise);
+it('offers an explicit complete data download for a guest without requiring an account', async () => {
   const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
-  act(() => mockBlur?.());
-  expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
-  await act(async () =>
-    pending.resolve({
-      headers: new Headers({ 'Content-Type': 'application/json' }),
-      ok: true,
-      json: async () => ({}),
+  expect(collect).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('button', { name: 'Download my data' }));
+  await screen.findByText('Your data download was shared.');
+  expect(collect).toHaveBeenCalledWith(
+    expect.objectContaining({
+      ownerKind: 'guest',
+      repository: mockRepository,
+      reduceMotion: false,
+      haptics: true,
     }),
   );
-  expect(save).not.toHaveBeenCalled();
+  expect(mockRouter.push).not.toHaveBeenCalled();
 });
-it('clears old feedback and cancels stale work when a different account is activated', async () => {
-  const pending = deferred<{
-    ok: true;
-    headers: Headers;
-    json: () => Promise<object>;
-  }>();
-  fetcher.mockImplementation(() => pending.promise);
+it('uses account-owned local snapshots while signed out', async () => {
+  mockKind = 'account';
   const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
-  mockOwner = otherOwner;
-  mockClient.changeAccount(otherOwner);
-  screen.rerender(<SettingsExportRow />);
-  expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
-  await act(async () =>
-    pending.resolve({
-      headers: new Headers({ 'Content-Type': 'application/json' }),
-      ok: true,
-      json: async () => ({}),
-    }),
+  fireEvent.press(screen.getByRole('button', { name: 'Download my data' }));
+  await screen.findByText(
+    'Your phone’s saved data was shared. Sign in to include the latest cloud data.',
   );
-  expect(save).not.toHaveBeenCalled();
+  expect(collect).toHaveBeenCalledWith(
+    expect.objectContaining({ ownerKind: 'account' }),
+  );
+});
+it('waits for preference hydration and respects another active data action', () => {
+  mockPreferencesLoading = true;
+  const screen = render(<SettingsExportRow />);
+  expect(screen.getByRole('button')).toBeDisabled();
+  fireEvent.press(screen.getByRole('button'));
+  expect(collect).not.toHaveBeenCalled();
+  mockPreferencesLoading = false;
+  screen.rerender(<SettingsExportRow disabled />);
+  expect(screen.getByRole('button')).toBeDisabled();
+});
+it('blocks duplicate taps until sharing finishes and reports browser download accurately', async () => {
+  const pending = deferred<'downloaded'>();
+  share.mockReturnValue(pending.promise);
+  const screen = render(<SettingsExportRow />);
+  fireEvent.press(screen.getByRole('button'));
+  fireEvent.press(screen.getByRole('button'));
+  await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole('button')).toBeDisabled();
+  await act(async () => pending.resolve('downloaded'));
+  await screen.findByText('Your ZIP download has started.');
+});
+it('returns quietly after cancelling and permits a fresh explicit retry', async () => {
+  share.mockResolvedValueOnce('cancelled');
+  const screen = render(<SettingsExportRow />);
+  fireEvent.press(screen.getByRole('button'));
+  await waitFor(() => expect(screen.getByRole('button')).toBeEnabled());
   expect(screen.queryByRole('alert')).toBeNull();
+  fireEvent.press(screen.getByRole('button'));
+  await screen.findByText('Your data download was shared.');
 });
-it('opens recovery instead of exporting when no account is connected', () => {
-  mockOwner = null;
-  mockRepo!.dispose();
-  mockRepo = null;
+it('shows safe storage feedback rather than private adapter details', async () => {
+  collect.mockRejectedValueOnce(new ApiError('STORAGE'));
   const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Export my data' }));
-  expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
-  expect(fetcher).not.toHaveBeenCalled();
-  expect(save).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole('button'));
+  await screen.findByText(/could not be read/);
+  expect(share).not.toHaveBeenCalled();
 });
+it.each(['blur', 'account'] as const)(
+  'fences an old private download after %s',
+  async (event) => {
+    const pending = deferred<Awaited<ReturnType<typeof collectExport>>>();
+    collect.mockReturnValue(pending.promise);
+    const screen = render(<SettingsExportRow />);
+    fireEvent.press(screen.getByRole('button'));
+    if (event === 'blur') act(() => mockBlur?.());
+    else mockOwner = otherOwner;
+    await act(async () =>
+      pending.resolve({ name: 'data.zip', bytes: new Uint8Array() }),
+    );
+    expect(share).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).toBeNull();
+  },
+);

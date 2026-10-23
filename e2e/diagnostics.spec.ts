@@ -37,6 +37,14 @@ for (const providerStatus of [200, 503])
     page,
   }) => {
     const bodies = await openDiagnostics(page, providerStatus);
+    const guestOwner = await page.evaluate(() => {
+      const saved = JSON.parse(
+        localStorage.getItem('justgo.identity.managed.v1') ?? '{}',
+      ) as { collection?: { id?: string; kind?: string } };
+      if (saved.collection?.kind !== 'guest' || !saved.collection.id)
+        throw new Error('Expected a saved guest collection');
+      return saved.collection.id;
+    });
     await page
       .getByRole('button', { name: 'Trigger test error', exact: true })
       .click();
@@ -69,11 +77,18 @@ for (const providerStatus of [200, 503])
       JSON.stringify(event),
     );
     await page.getByRole('button', { name: 'Try again', exact: true }).click();
-    // Root recovery remounts the memory-only web identity. It must offer a usable
-    // fresh start rather than replaying the failed screen or blocking on delivery.
+    // Root recovery remounts the runtime and reopens the durable guest collection.
     await expect(
-      page.getByRole('button', { name: 'Continue', exact: true }),
+      page.getByRole('button', { name: 'Accept challenge', exact: true }),
     ).toBeEnabled();
+    expect(
+      await page.evaluate(() => {
+        const saved = JSON.parse(
+          localStorage.getItem('justgo.identity.managed.v1') ?? '{}',
+        ) as { collection?: { id?: string } };
+        return saved.collection?.id;
+      }),
+    ).toBe(guestOwner);
   });
 
 test('the real SDK captures and scrubs unhandled rejections', async ({

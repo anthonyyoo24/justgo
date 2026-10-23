@@ -5,6 +5,19 @@ import { diagnosticConfiguration } from './src/app-support/diagnostics/configura
 const projectId = '53cf0560-8ab5-446a-9bc6-deb193b337b5';
 const bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER;
 const profile = process.env.EAS_BUILD_PROFILE;
+const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
+const iCloudContainer = process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER;
+if (
+  googleIosUrlScheme &&
+  !/^com\.googleusercontent\.apps\.[A-Za-z0-9-]+$/.test(googleIosUrlScheme)
+)
+  throw new Error(
+    'Google sign-in requires the configured iOS OAuth URL scheme',
+  );
+if (iCloudContainer && !/^iCloud\.[A-Za-z0-9.-]+$/.test(iCloudContainer))
+  throw new Error(
+    'iCloud sync requires the approved CloudKit container identifier',
+  );
 if (profile && !bundleIdentifier)
   throw new Error('EAS builds require the confirmed IOS_BUNDLE_IDENTIFIER');
 
@@ -40,14 +53,47 @@ const config: ExpoConfig = {
     // Local simulator identifier only. Reserve the permanent identifier before device recovery work.
     bundleIdentifier: bundleIdentifier ?? 'dev.justgo.foundation',
     supportsTablet: false,
-    infoPlist: { ITSAppUsesNonExemptEncryption: false },
+    usesAppleSignIn: true,
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+      ...(iCloudContainer
+        ? { JustGoICloudContainerIdentifier: iCloudContainer }
+        : {}),
+    },
+    ...(iCloudContainer
+      ? {
+          entitlements: {
+            'com.apple.developer.icloud-container-identifiers': [
+              iCloudContainer,
+            ],
+            'com.apple.developer.icloud-services': ['CloudKit'],
+          },
+        }
+      : {}),
   },
   plugins: [
     'expo-router',
     'expo-dev-client',
     'expo-font',
     'expo-image',
-    ['expo-build-properties', { ios: { deploymentTarget: '16.4' } }],
+    'expo-apple-authentication',
+    ['expo-secure-store', { faceIDPermission: false }],
+    ...(googleIosUrlScheme
+      ? [
+          [
+            '@react-native-google-signin/google-signin',
+            { iosUrlScheme: googleIosUrlScheme },
+          ] as [string, Record<string, unknown>],
+        ]
+      : []),
+    [
+      'expo-build-properties',
+      {
+        // Cocoa 8.58 scope callbacks require framework modules under Swift 6.2.
+        // Keep static linkage while exposing Sentry's transitive Swift types.
+        ios: { deploymentTarget: '16.4', useFrameworks: 'static' },
+      },
+    ],
     [
       '@sentry/react-native/expo',
       {

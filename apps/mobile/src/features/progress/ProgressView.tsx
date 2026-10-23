@@ -32,6 +32,7 @@ export type ProgressViewProps = ProgressCalendarProps & {
 export function ProgressView({
   sheetAccessory,
   month,
+  journalDates,
   data,
   loading = false,
   updatingMonth = false,
@@ -70,6 +71,7 @@ export function ProgressView({
     >
       <ProgressCalendar
         month={month}
+        journalDates={journalDates}
         data={data}
         loading={loading}
         updatingMonth={updatingMonth}

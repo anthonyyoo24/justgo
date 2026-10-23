@@ -58,6 +58,30 @@ describe('Expo project configuration', () => {
     expect(JSON.stringify(config)).not.toContain('private-build-token');
   });
 
+  it('generates static framework linkage so native Sentry scope callbacks remain visible to Swift', async () => {
+    const { default: config } = require('./app.config');
+    const { default: withBuildProperties } = require('expo-build-properties');
+    const plugin = config.plugins.find(
+      (entry: unknown) =>
+        Array.isArray(entry) && entry[0] === 'expo-build-properties',
+    );
+    const configured = withBuildProperties(config, plugin[1]);
+    const result = await configured.mods.ios.podfileProperties({
+      ...configured,
+      modRawConfig: configured,
+      modResults: {},
+      modRequest: {
+        projectRoot: '/fixture',
+        platformProjectRoot: '/fixture/ios',
+        platform: 'ios',
+        modName: 'podfileProperties',
+        introspect: false,
+      },
+    });
+    expect(result.modResults['ios.useFrameworks']).toBe('static');
+    expect(result.modResults['ios.deploymentTarget']).toBe('16.4');
+  });
+
   it('requires a confirmed identifier for EAS builds', () => {
     process.env.EAS_BUILD_PROFILE = 'development';
     expect(() => require('./app.config')).toThrow('IOS_BUNDLE_IDENTIFIER');

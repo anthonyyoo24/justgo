@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { timeZoneSchema } from './challenges.ts';
-import { activityDateSchema, attemptSchema } from './attempts.ts';
+import {
+  activityDateSchema,
+  attemptSchema,
+  completionAttemptSchema,
+} from './attempts.ts';
 export const calendarDateSchema = activityDateSchema;
 export const calendarMonthSchema = z
   .string()
@@ -57,3 +61,11 @@ export const progressDayResponseSchema = z
   })
   .strict();
 export type ProgressDayResponse = z.infer<typeof progressDayResponseSchema>;
+
+export const completionProgressDayResponseSchema =
+  progressDayResponseSchema.extend({
+    entries: z.array(completionAttemptSchema),
+  });
+export type CompletionProgressDayResponse = z.infer<
+  typeof completionProgressDayResponseSchema
+>;

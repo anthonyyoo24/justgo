@@ -33,7 +33,7 @@ import { ProgressEntryRow } from './entries/ProgressEntryRow';
 import { DayEntryList } from './entries/DayEntryList';
 export type ProgressDay = {
   date: string;
-  totalReps: number;
+  totalReps: number | null;
   entries: ProgressEntry[];
 };
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
@@ -296,7 +296,9 @@ export function DaySheet({
             {date && <DayHeading date={date} />}
             {day && (
               <Text style={styles.repCount}>
-                {day.totalReps} {day.totalReps === 1 ? 'rep' : 'reps'}
+                {day.totalReps === null
+                  ? 'Saved journal · Challenge count unavailable'
+                  : `${day.totalReps} ${day.totalReps === 1 ? 'rep' : 'reps'}`}
               </Text>
             )}
             {connectionRequired ? (

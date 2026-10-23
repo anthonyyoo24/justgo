@@ -169,7 +169,7 @@ database/tooling/bundle/native evidence rather than a misleading JS coverage cla
 
 Independent critical selectors protect the provider and native vault (95% branches/
 lines), account client (85%/95%), HTTP (82%/94%), Progress as a group (90%/92%),
-identity/challenge services (85% branches), reflection PATCH (95%/99%) and Progress
+identity/challenge services (85% branches), retired private PATCH boundary (95%/99%) and Progress
 resources (95%/96%). Controllers/storage retain their own floors. The JSON file
 owns exact paths and thresholds; a move must update its selector without lowering
 protection.
@@ -213,9 +213,15 @@ validation is not a fix. Use synthetic compatibility/account-preservation fixtur
 
 The Playwright suite exercises the actual browser app/API/disposable database and
 bundled production repository/transport. It covers explicit saving/Progress,
-offline/reconnect, write-failure/cloud fallback/memory recovery, lost acknowledgements,
-ordered reflection edits, aggregate reconciliation, limited history, account/session
-recovery, export and deletion. It is distinct from presentation fixtures,
+offline/reconnect, completion write-failure/cloud fallback/memory recovery, lost
+completion acknowledgements, durable private saves with no cloud fallback,
+ordered local reflection edits, legacy boundary regressions, aggregate reconciliation,
+offline saved history, guest entry, managed sign-in/logout/account ownership,
+signed-in completion/journal sync, complete data download/import and deletion.
+External Apple/Google authorization is replaced only at the guarded provider
+boundary; the app's managed controller, canonical API mapping, owner transactions,
+database RLS and sync routes are real. No external-provider/native claim follows
+from that seam. Saved journeys are distinct from presentation fixtures,
 one-off interactive walkthroughs and native checks.
 
 Install pinned Chromium with `npx playwright install chromium`; Linux CI uses the
@@ -241,9 +247,32 @@ Do not assume CLI API overrides defeat Expo's virtual dotenv environment. Preser
 the guarded public-environment adapter and request-origin fence, and validate the
 browser's resolved API origin as well as database settings. Synthetic proofs must
 never reach hosted APIs. The `JUSTGO_JOURNEY_FIXTURES` Metro seam permits controlled
-journal failures only for guarded web fixtures; normal/native/production resolution
-cannot load those fault adapters. There are no product UI failure switches or
-production paid-access bypasses.
+journal failures and the synthetic managed provider only for guarded web fixtures;
+normal/native/production resolution cannot load those adapters. The fixture API
+injects its run-owned provider verifier, live-session reader and hard-delete
+adapter. It retains legacy endpoints only for repository compatibility tests.
+Guest catalog access uses the explicit disposable fixture beta policy. There are
+no product UI failure switches or production paid-access bypasses.
+
+Completion AsyncStorage and private IndexedDB fault seams are independent. A
+private commit failure must retain the editor input, report the phone save failure
+and make no PATCH/fallback request. The outbound fixture fence allows only strict
+completion POST payloads for attempt mutations and reports method/path without
+private bodies. Managed completion import and private journal delivery use their
+own strict restore/sync contracts, never the retired private PATCH. Journal adapters have transaction, rollback, account-fencing,
+concurrent edit/import, deletion and relaunch regressions; native adapter tests
+use Node SQLite and cannot establish iOS file protection or OS interruption.
+
+Backup tests cover the complete versioned data-only ZIP, full history, writing,
+preserved alternatives/preferences, bounds/CRC/UTF-8/schema/frozen-context and
+owner validation, cancellation, missing/identical/conflicting records, rollback
+and replay without duplicate reps or raw queue import. Compatible journal-only
+files preserve private context without fabricating completion counts. Browser
+journeys exercise downloaded files and actual IndexedDB reloads. Signed Files /
+iCloud Drive, temporary-file/device-backup and actual optional private CloudKit
+multi-device/account-change/quota/deletion evidence remain separate gates in
+[account/sync setup](ACCOUNT_SYNC_SETUP.md) and the
+[rollout runbook](LOCAL_JOURNAL_ROLLOUT.md#device-and-manual-file-acceptance).
 
 Journey builds enable the real Sentry SDK with a fixed fake ingestion key and
 intercept all hosted Sentry requests. `diagnostics.spec.ts` inspects scrubbed
@@ -256,20 +285,27 @@ The fixture registry owns every created account UUID independently of browser
 requests and response delivery. Teardown deletes only that registry's accounts;
 registry failure fails cleanup instead of trusting browser IDs. Failed creations
 can leave absent rows, safely deleted as no-ops. The registry endpoint is absent
-from deployable API. Browser identity is memory-only; reload tests recover the
-same synthetic account while the activity adapter retains its separate journal.
+from deployable API. Managed provider fixtures retain disposable sessions/opaque
+subject handles in browser sessionStorage so reload and returning sign-in can
+exercise the actual controller. Only server-allocated run-owned subjects may be
+selected; client UUIDs never authorize ownership or teardown. Legacy repository
+fixtures retain their separate synthetic proof behavior. This is no native token
+storage or real OAuth acceptance evidence.
 
-Before each database-backed case, reset only the fixture run's two hashed rate
-buckets. Keep real limits active during each case and retain unrelated buckets.
+Before each database-backed case, reset only the fixture run's three hashed rate
+buckets: identity, recovery and managed Auth. Keep real limits active during each
+case and retain unrelated buckets.
 Cases that exhaust an identity allowance cannot contaminate the next case. No
 production rate limit or cleanup authority changes.
 
 Seed dated activity inside the browser's intended local day using
 `e2e/support/seed-times.ts`; counting backward from wall-clock now crosses midnight
 in UTC CI. Use deliberate previous-month fixtures when a case needs an older
-month, including on the first day of a month or year. Older-month calendar data is
-unavailable offline: open an older day online and await its entries before testing
-the transition to its offline message. Layout assertions wait for usable controls
+month, including on the first day of a month or year. Managed full-history download
+persists completion history and private versions; previously downloaded history
+and guest/signed-out writing remain available offline beyond the current month.
+Data never downloaded to that phone still requires a connection. Journal-only
+history must not invent completion counts. Test these cases independently. Layout assertions wait for usable controls
 and retry fresh geometry after navigation;
 missing/detached controls keep failing. Preserve alignment limits rather than adding
 sleeps or weakening assertions.
@@ -330,8 +366,12 @@ rather than bypassing its database guards, request fence or teardown.
 
 Record actual viewport, flow, fixtures, failure and recovery, keeping saved automated
 journeys, one-off walkthroughs, native simulator and physical-device evidence separate.
-Browser/export/component checks cannot establish Keychain/AsyncStorage durability,
-OS lifecycle, gestures, software keyboard, VoiceOver, radio/backup or physical recovery.
+Browser/export/component checks cannot establish Keychain/SQLite/AsyncStorage durability,
+OS lifecycle, gestures, software keyboard, VoiceOver, radio/backup, native
+Apple/Google OAuth, live hosted Auth revocation/deletion or actual CloudKit sync.
+The native module requires a compatible signed binary, real private-container
+capabilities and physical multi-device/account-change/failure/deletion checks;
+in-memory cloud adapters establish domain decisions only.
 Use the [move checks](#file-moves-and-bundle-checks) when module or asset paths change.
 
 The [native-testing checkpoint](../handoffs/phase-07-3a-testing-checkpoint.md) and
@@ -389,6 +429,20 @@ This is a local/CI acceptance tool, not deployment authorization. The
 [cutover/old-client/restore runbook](FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients)
 owns operational rollout and recovery.
 
+The forward chain verifies 0019's historical instruction snapshots, byte-preserved
+old journal/receipts and private column write freeze before applying the separate
+0020 owner-approved old-server-private reset. That reset preserves identity,
+completion context/history and phone journals. The rehearsal then checks 0021
+managed mappings/sessions/epochs/immutable private versions/tombstones, 0022
+independent historical journal context and 0023 durable Auth deletion cleanup,
+including clean installation through the current journal and snapshot metadata.
+API integration covers real runtime-role owner isolation, immutable/idempotent
+completion and version sync, epoch/tombstone rejection, orphan journal context,
+legacy linking/revocation and lost-response/provider-cleanup account deletion.
+Injected provider boundaries establish application behavior, not real hosted Auth
+provider capability. The [Phase 13 rollout](LOCAL_JOURNAL_ROLLOUT.md) and
+[account setup](ACCOUNT_SYNC_SETUP.md) keep hosted changes separately authorized.
+
 ## Publication and hosted CI
 
 Before publication, install with `npm ci` in a clean checkout and run `npm run check`.
@@ -430,8 +484,20 @@ and leaves npm major upgrades for manual scope/native acceptance. Updates do not
 merge automatically. The audit gate is scoped to API production dependencies:
 
 ```sh
-npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low
+npm run audit:api
 ```
+
+The helper projects the API's declared production graph from the shared lockfile
+into a temporary workspace, preserving locked versions, integrity, nested
+resolution and workspace dependencies. Normal dependencies, available optional
+runtime dependencies and required peers remain included. Optional peers supplied
+solely by another workspace (such as Drizzle's unused Expo SQLite driver) do not
+become API roots; a provider declared or required by the API graph is included.
+Manifest/lock drift and missing required packages fail closed. Ordinary npm audit
+runs with the unchanged low severity threshold and propagates failures; no advisory
+is filtered or ignored. This audit does not establish mobile/tooling dependency
+health or inspect the deployed Vercel artifact. Those remain separate release
+responsibilities.
 
 The workflow and setup actions own exact job limits, versions and prerequisites;
 clean runners must not rely on ignored environment files or existing artifacts.

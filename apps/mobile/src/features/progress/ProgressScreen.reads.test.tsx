@@ -33,7 +33,9 @@ import {
   deferred,
   input,
   card,
+  owner,
 } from '../../../test-support/journal';
+import { journalEntry } from '../../data/activity/private-journal';
 
 import { ProgressScreen } from './ProgressScreen';
 
@@ -158,7 +160,9 @@ it('explains a stale older month while preserving local totals, offline guidance
   );
   expect(screen.queryByText('Syncing your latest activity…')).toBeNull();
   expect(
-    screen.getByText('You’re offline. Connect to view this month.'),
+    screen.getByText(
+      'You’re offline. Saved journal entries are available; connect to refresh challenge counts.',
+    ),
   ).toBeTruthy();
   await online();
   await act(async () => jest.advanceTimersByTimeAsync(2000));
@@ -198,10 +202,52 @@ it('hydrates offline current-period data and restricts previously viewed other d
   );
   fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
   expect(screen.getByRole('alert')).toHaveTextContent(
-    'You’re offline. Connect to view this month.',
+    'You’re offline. Saved journal entries are available; connect to refresh challenge counts.',
   );
   expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('10');
 });
+
+it.each([
+  ['2026-09-01', /Tuesday, September 1, saved journal entry/, null],
+  ['2026-10-02', /Friday, October 2/, 0],
+  ['2026-10-03', /Saturday, October 3/, 2],
+] as const)(
+  'shows the saved %s journal offline with an honest challenge count',
+  async (date, label, count) => {
+    const repo = harness.mockRepository!;
+    await repo.acceptCalendar(calendar, zone, 0);
+    await repo.restoreJournal([
+      journalEntry(owner, {
+        ...attempt(9),
+        activityDate: date,
+        startedAt: `${date}T14:00:00.000Z`,
+        reflection: {
+          feeling: null,
+          text: 'Restored synthetic writing remains readable.',
+          revision: 1,
+        },
+      }),
+    ]);
+    const screen = mount();
+    if (date.startsWith('2026-09'))
+      fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
+    fireEvent.press(screen.getByRole('button', { name: label }));
+    if (count === null) {
+      expect(
+        screen.getByText('Saved journal · Challenge count unavailable'),
+      ).toBeTruthy();
+      expect(screen.queryByText('0 reps')).toBeNull();
+    } else {
+      expect(screen.getByText(`${count} reps`)).toBeTruthy();
+      expect(screen.queryByText(/Challenge count unavailable/)).toBeNull();
+    }
+    fireEvent.press(screen.getByRole('button', { name: /Rep 1\./ }));
+    expect(
+      screen.getByText('Restored synthetic writing remains readable.'),
+    ).toBeTruthy();
+    expect(harness.mockClient.request).not.toHaveBeenCalled();
+  },
+);
 
 it('retries a failed initial page and later page without dropping already displayed attempts', async () => {
   let count = 0;

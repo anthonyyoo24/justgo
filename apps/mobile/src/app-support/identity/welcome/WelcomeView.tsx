@@ -5,6 +5,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import type { ReactNode } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
@@ -22,10 +23,14 @@ export function WelcomeView({
   disabled = false,
   error = '',
   onContinue,
+  signInButtons,
+  onRetry,
 }: {
   disabled?: boolean;
   error?: string;
   onContinue: () => void;
+  signInButtons?: ReactNode;
+  onRetry?: (() => void) | undefined;
 }) {
   const insets = useSafeAreaInsets();
   const { height, fontScale } = useWindowDimensions();
@@ -76,6 +81,17 @@ export function WelcomeView({
               {error}
             </Text>
           )}
+          {!!error && onRetry && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Retry connection"
+              onPress={onRetry}
+              style={styles.retry}
+            >
+              <Text style={styles.buttonLabel}>Retry connection</Text>
+            </Pressable>
+          )}
+          {signInButtons}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Continue"
@@ -140,6 +156,13 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   pressed: { opacity: 0.7 },
+  retry: {
+    minHeight: layout.minTouchTarget,
+    backgroundColor: '#FFFDF9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+  },
   error: {
     fontFamily: fontFamilies.regular,
     fontSize: 14,

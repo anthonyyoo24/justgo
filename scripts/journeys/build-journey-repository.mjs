@@ -6,5 +6,8 @@ await build({
   platform: 'node',
   format: 'esm',
   bundle: true,
+  // Tests inject a durable memory journal; native lazy imports must stay outside
+  // the Node transport bundle and never claim native persistence evidence.
+  external: ['expo-sqlite'],
   logLevel: 'warning',
 });
