@@ -518,22 +518,7 @@ export class AccountRepository {
     for (const entry of [...entries, ...alternatives]) {
       const completion =
         this.store.getState().journal.records[entry.id]?.attempt;
-      if (
-        completion &&
-        [
-          'challengeId',
-          'venue',
-          'levelId',
-          'startedAt',
-          'activityDate',
-          'startTimeZone',
-          'displayTimeZone',
-        ].some(
-          (field) =>
-            completion[field as keyof Attempt] !==
-            entry[field as keyof LocalJournalEntry],
-        )
-      )
+      if (completion && !sameHistoricalContext(completion, entry))
         throw new ApiError('INVALID_REQUEST');
     }
     const result = await this.localJournal.merge(entries, alternatives);

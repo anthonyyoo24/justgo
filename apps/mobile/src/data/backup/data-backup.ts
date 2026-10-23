@@ -276,12 +276,12 @@ export function readDataBackup(
       })
       .passthrough()
       .safeParse(data);
+    if (!previous.success) invalid();
     if (
-      !previous.success ||
       previous.data.account.id !== destination.id ||
       destination.kind !== 'account'
     )
-      invalid();
+      throw new JournalBackupError('WRONG_ACCOUNT');
     if (
       previous.data.attempts.length + previous.data.localChanges.length >
       JOURNAL_BACKUP_MAX_ENTRIES

@@ -7,6 +7,7 @@ import {
 } from './data-backup';
 import {
   createJournalBackup,
+  encodeJournalSnapshot,
   JOURNAL_BACKUP_MAX_BYTES,
   JOURNAL_BACKUP_MAX_ENTRIES,
 } from './journal-backup';
@@ -37,6 +38,37 @@ function editArchive(edit: (data: Record<string, unknown>) => void) {
   edit(data);
   files['data.json'] = strToU8(JSON.stringify(data));
   return zipSync(files, { level: 0 });
+}
+function legacyArchive(
+  formatVersion: 1 | 2,
+  edit?: (data: Record<string, unknown>) => void,
+) {
+  const data: Record<string, unknown> = {
+    formatVersion,
+    exportedAt: snapshot().exportedAt,
+    account: { id: owner },
+    preferences: snapshot().preferences,
+    attempts: [{ ...attempt(), reflection: entry.reflection }],
+    localChanges: [],
+  };
+  edit?.(data);
+  return zipSync(
+    {
+      'data.json': strToU8(JSON.stringify(data)),
+      'activity.csv': strToU8('old'),
+      'README.txt': strToU8('old'),
+      ...(formatVersion === 2
+        ? {
+            'journal.json': encodeJournalSnapshot({
+              accountId: owner,
+              createdAt: snapshot().exportedAt,
+              entries: [entry],
+            }),
+          }
+        : {}),
+    },
+    { level: 0 },
+  );
 }
 
 it('round trips full history, private writing, alternatives and preferences without credentials or queue state', () => {
@@ -199,6 +231,43 @@ it('restores the original account export while preserving rejected writing witho
     'Retained rejected writing',
   );
 });
+
+it.each([1, 2] as const)(
+  'restores a valid legacy v%s export only into its owning account',
+  (formatVersion) => {
+    const bytes = legacyArchive(formatVersion);
+    expect(readDataBackup(bytes, snapshot().owner)).toMatchObject({
+      owner: snapshot().owner,
+      attempts: [attempt()],
+      journal: { entries: [entry] },
+      preferences: snapshot().preferences,
+      legacyJournalOnly: false,
+    });
+    for (const destination of [
+      { id: otherOwner, kind: 'account' as const },
+      { id: owner, kind: 'guest' as const },
+    ]) {
+      expect(() => readDataBackup(bytes, destination)).toThrow(
+        expect.objectContaining({ code: 'WRONG_ACCOUNT' }),
+      );
+      expect(() => readDataBackup(bytes, destination)).toThrow(
+        'Sign in to the account that owns this backup before importing it.',
+      );
+    }
+  },
+);
+
+it.each([1, 2] as const)(
+  'reports malformed legacy v%s data as invalid before checking ownership',
+  (formatVersion) => {
+    const bytes = legacyArchive(formatVersion, (data) => {
+      data.attempts = [{ id: 'malformed-attempt' }];
+    });
+    expect(() =>
+      readDataBackup(bytes, { id: otherOwner, kind: 'account' }),
+    ).toThrow(expect.objectContaining({ code: 'INVALID_BACKUP' }));
+  },
+);
 
 it('enforces archive, record and count bounds before constructing large output', () => {
   expect(() =>

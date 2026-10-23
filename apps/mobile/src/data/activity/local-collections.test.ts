@@ -10,6 +10,7 @@ import {
   card,
   input,
   owner,
+  otherOwner,
   today,
   zone,
   uuid,
@@ -78,6 +79,81 @@ it('merges complete history idempotently and rejects changed historical ownershi
     repository.mergeCompletions([{ ...attempt(1), challengeId: 'changed' }]),
   ).rejects.toMatchObject({ code: 'CONFLICT' });
   expect(progressMetrics(repository.store.getState())?.totalReps).toBe(1);
+});
+
+it.each(['.000000Z', 'Z'])(
+  'restores private writing and alternatives when completion timestamp precision differs (%s)',
+  async (fraction) => {
+    const { repository, transport } = setup();
+    await repository.mergeCompletions([attempt(1)]);
+    const entry = journalEntry(owner, {
+      ...attempt(1),
+      startedAt: attempt(1).startedAt.replace('.000Z', fraction),
+      reflection: { feeling: null, text: 'Imported writing', revision: 1 },
+    });
+    const alternative = {
+      ...entry,
+      startedAt: attempt(1).startedAt,
+      reflection: { ...entry.reflection, text: 'Preserved writing' },
+    };
+    await expect(
+      repository.restoreJournal([entry], [alternative]),
+    ).resolves.toMatchObject({ added: 1, conflictIds: [entry.id] });
+    await expect(
+      repository.restoreJournal([entry], [alternative]),
+    ).resolves.toMatchObject({ identical: 1 });
+    expect(await repository.snapshotJournal()).toEqual({
+      entries: [entry],
+      alternatives: [alternative],
+    });
+    expect(progressMetrics(repository.store.getState())?.totalReps).toBe(1);
+    expect(transport.calls).toEqual([]);
+  },
+);
+
+it.each([
+  ['microseconds', { startedAt: `${today}T14:00:00.000001Z` }],
+  ['challenge', { challengeId: 'changed' }],
+  ['venue', { venue: 'cafe' as const }],
+  ['date', { activityDate: '2026-10-06' }],
+  ['start zone', { startTimeZone: null }],
+  ['display zone', { displayTimeZone: 'UTC' }],
+] as const)(
+  'rejects a restored journal with changed %s context',
+  async (_label, change) => {
+    const { repository } = setup();
+    await repository.mergeCompletions([attempt(1)]);
+    const entry = journalEntry(owner, {
+      ...attempt(1),
+      ...change,
+      reflection: { feeling: null, text: 'Imported writing', revision: 1 },
+    });
+    await expect(repository.restoreJournal([entry])).rejects.toMatchObject({
+      code: 'INVALID_REQUEST',
+    });
+    expect(await repository.snapshotJournal()).toEqual({
+      entries: [],
+      alternatives: [],
+    });
+    expect((await repository.snapshotData()).attempts).toHaveLength(1);
+  },
+);
+
+it('retains owner and feeling-scale validation when restoring equivalent timestamp precision', async () => {
+  const { repository } = setup();
+  await repository.mergeCompletions([attempt(1)]);
+  const entry = journalEntry(owner, {
+    ...attempt(1),
+    startedAt: attempt(1).startedAt.replace('.000Z', '.000000Z'),
+    reflection: { feeling: null, text: 'Imported writing', revision: 1 },
+  });
+  await expect(
+    repository.restoreJournal([{ ...entry, accountId: otherOwner }]),
+  ).rejects.toMatchObject({ code: 'WRONG_ACCOUNT' });
+  await expect(
+    repository.restoreJournal([{ ...entry, feelingScaleVersion: 2 as 1 }]),
+  ).rejects.toMatchObject({ code: 'INVALID_ENTRY' });
+  expect((await repository.snapshotJournal()).entries).toEqual([]);
 });
 
 it('preserves concurrent writing and only adopts a remote successor when the local version still matches', async () => {

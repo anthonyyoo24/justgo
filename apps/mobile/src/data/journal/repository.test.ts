@@ -225,6 +225,88 @@ describe('durable local journal', () => {
     expect(await restored.listConflicts()).toEqual([alternative]);
   });
 
+  it('preserves imported journal-only versions with equivalent timestamp precision', async () => {
+    const imported = entry({
+      startedAt: attempt.startedAt.replace('.000Z', '.000000Z'),
+      reflection: { ...entry().reflection, text: 'Imported writing' },
+    });
+    const alternative = entry({
+      startedAt: attempt.startedAt.replace('.000Z', 'Z'),
+      reflection: { ...entry().reflection, text: 'Preserved writing' },
+    });
+    await journal.save(entry());
+    await expect(journal.merge([imported], [alternative])).resolves.toEqual({
+      added: 0,
+      identical: 0,
+      conflictIds: [id],
+    });
+    expect(await journal.snapshot()).toEqual({
+      entries: [entry()],
+      alternatives: [imported, alternative],
+    });
+    const restored = new LocalJournalRepository(
+      owner,
+      new MemoryJournalBackend(),
+    );
+    await restored.merge([imported], [alternative]);
+    expect(await restored.snapshot()).toEqual({
+      entries: [imported],
+      alternatives: [alternative],
+    });
+  });
+
+  it('accepts a synced successor and alternatives across equivalent timestamp precision', async () => {
+    const original = entry();
+    const successor = entry({
+      startedAt: attempt.startedAt.replace('.000Z', '.000000Z'),
+      reflection: {
+        ...entry().reflection,
+        text: 'Remote writing',
+        revision: 2,
+      },
+    });
+    const alternative = entry({
+      startedAt: attempt.startedAt.replace('.000Z', 'Z'),
+      reflection: { ...entry().reflection, text: 'Other writing' },
+    });
+    await journal.save(original);
+    await journal.mergeSynced([successor], [alternative], [original]);
+    expect(await journal.snapshot()).toEqual({
+      entries: [successor],
+      alternatives: [original, alternative],
+    });
+  });
+
+  it.each(['merge', 'mergeSynced'] as const)(
+    'keeps %s atomic and rejects real microsecond differences, wrong owners and unsupported feeling scales',
+    async (method) => {
+      const original = entry({
+        startedAt: attempt.startedAt.replace('.000Z', '.123401Z'),
+      });
+      const changed = {
+        ...original,
+        startedAt: attempt.startedAt.replace('.000Z', '.123402Z'),
+      };
+      await journal.save(original);
+      await expect(
+        journal[method]([entry({ id: secondId }), changed], []),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      await expect(journal[method]([], [changed])).rejects.toMatchObject({
+        code: 'CONFLICT',
+      });
+      expect(() =>
+        journal[method]([{ ...original, accountId: otherOwner }], []),
+      ).toThrow('WRONG_ACCOUNT');
+      expect(() =>
+        journal[method]([{ ...original, feelingScaleVersion: 2 as 1 }], []),
+      ).toThrow('INVALID_ENTRY');
+      expect(await journal.snapshot()).toEqual({
+        entries: [original],
+        alternatives: [],
+      });
+    },
+  );
+
   it('rolls back the entire batch for orphan alternatives or an incompatible attempt relationship', async () => {
     await expect(
       journal.merge([entry()], [entry({ id: secondId })]),

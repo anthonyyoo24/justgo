@@ -12,14 +12,14 @@ PATCH and key/code account UI remain retired in managed mode.
 
 ## Compatible version set
 
-Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node/Vercel; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
+Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package-lock.json` fixes resolved versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node/Vercel; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
 
 | Component                        | Pinned version / constraint                                                                        |
 | -------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                         |
 | TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                       |
-| Expo / React Native / React      | 57.0.30 / 0.86.3 / 19.2.3                                                                          |
-| Expo Router / development client | 57.0.28 / 57.0.20                                                                                  |
+| Expo / React Native / React      | 57.0.31 / 0.86.3 / 19.2.3                                                                          |
+| Expo Router / development client | 57.0.29 / 57.0.20                                                                                  |
 | Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                                          |
 | Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                                    |
 | Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                                           |
@@ -28,7 +28,7 @@ Direct dependencies are exact-pinned; `package-lock.json` fixes transitive versi
 | Connectivity / saving feedback   | NetInfo 12.0.1 / Sonner Native 0.27.0 / Sonner 2.0.8 web adapter                                   |
 | React Native Web                 | 0.21.2; development/browser verification only                                                      |
 | iOS                              | 16.4 minimum, Hermes; original iPhone 17 / iOS 26.4 smoke, retained Phase 07 QA device on iOS 26.5 |
-| Fastify / Drizzle / pg           | 5.12.5 / 0.45.2 (kit 0.31.10) / 8.23.0                                                             |
+| Fastify / Drizzle / pg           | 5.12.7 / 0.45.2 (kit 0.31.10) / 8.23.0                                                             |
 | PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                                        |
 | Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.6, React Native Testing Library 13.3.3                   |
 

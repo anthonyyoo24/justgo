@@ -3,6 +3,7 @@ import {
   FEELING_SCALE_VERSION,
   normalizeReflectionText,
   patchAttemptSchema,
+  sameHistoricalContext,
   type Attempt,
   type PatchAttempt,
 } from '@justgo/contracts';
@@ -51,19 +52,10 @@ export interface LocalJournal {
 function sameContext(a: LocalJournalEntry, b: LocalJournalEntry): boolean {
   // Catalog wording may have changed between the historical sources.
   return (
-    [
-      'accountId',
-      'id',
-      'challengeId',
-      'venue',
-      'levelId',
-      'startedAt',
-      'startTimeZone',
-      'displayTimeZone',
-      'activityDate',
-      'feelingScaleVersion',
-    ] as const
-  ).every((key) => a[key] === b[key]);
+    a.accountId === b.accountId &&
+    a.feelingScaleVersion === b.feelingScaleVersion &&
+    sameHistoricalContext(a, b)
+  );
 }
 
 export class LocalJournalRepository implements LocalJournal {
