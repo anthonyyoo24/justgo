@@ -323,8 +323,10 @@ all typechecks, lint/formatting, 270 tooling tests, 180 API unit tests, 1,517 mo
 tests and 35 contract tests. App/native source and coverage selectors are unchanged;
 the prior application coverage, database, journey and export evidence remains
 applicable, with hosted producers enforcing those gates again on the pushed head.
-Hosted acceptance must be checked on PR #43 for the exact pushed commit; local
-results do not establish a hosted pass.
+PR #43 records historical Phase 13 results. Hosted acceptance for the combined
+SDK 58 candidate must be checked on [PR #46](https://github.com/anthonyyoo24/justgo/pull/46)
+for its exact pushed commit; local results and earlier PR results do not establish
+that pass.
 
 The nine mobile/tooling advisories are not patched by this scope correction and
 remain pre-public-release work for the implementation/dependency owner and Phase
@@ -397,7 +399,7 @@ owner and the Phase 14 release owner before release.
 | Hosted migration and old-client cutover               | Anthony plus release owner before testers                                             | 0019–0023, protected rehearsal and matching staged API are complete; still verify existing-phone migration, real Auth erasure/revocation, incompatible-client retirement and deletion-aware recovery acceptance.                                                                                                                                                                                                                                                               |
 | Public notices/provider/retention                     | Anthony plus privacy/release owner before public distribution                         | Review unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending. The external-deletion revision retains the existing optional-iCloud data flow; do not imply that Apple Settings deletion also erases phone data.                                                                                                                                                                                         |
 | Mobile/tooling dependency health                      | Implementation/dependency owner and Phase 14 release owner, before public release     | Follow the separate [SDK 58 handoff](phase-14-native-upgrade.md) for compatible patches and remaining upstream advisories. The corrected API production audit does not establish mobile dependency health.                                                                                                                                                                                                                                                                     |
-| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Reviewed Phase 13 candidate checks are recorded above. Complete `main` integration through the combined Phase 14 PR's checks, owner review and merge approval; retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and purchases/guest paid-admission release gates.                                                                                                                                                                |
+| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Reviewed Phase 13 candidate checks are recorded above. Complete `main` integration through the combined Phase 14 PR's checks, owner review and merge approval; retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and release gates for purchases and paid admission for guests.                                                                                                                                                   |
 
 Local implementation closeout and the owner's deferrals do not establish release
 acceptance. Preserve the named gates when carrying the candidate into Phase 14.

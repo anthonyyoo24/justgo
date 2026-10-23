@@ -331,8 +331,8 @@ The Auth adapter requires a publishable key with the `sb_publishable_` prefix.
 The native config includes Apple sign-in and SecureStore plugins; Google URL
 scheme configuration supplies its native plugin. Rebuild a compatible native app
 after native/plugin changes. JavaScript OTA/export cannot add those modules.
-Check current [Expo Apple Authentication](https://docs.expo.dev/versions/v57.0.0/sdk/apple-authentication/)
-and [SecureStore](https://docs.expo.dev/versions/v57.0.0/sdk/securestore/) requirements.
+Check current [Expo Apple Authentication](https://docs.expo.dev/versions/v58.0.0/sdk/apple-authentication/)
+and [SecureStore](https://docs.expo.dev/versions/v58.0.0/sdk/securestore/) requirements.
 
 Real web Auth uses PKCE and `/auth/callback`; allowlist only approved browser
 origins/callback URLs in Supabase, configure API CORS accordingly and do not ship

@@ -399,8 +399,10 @@ evidence is in the [handoff](../handoffs/phase-13-local-journal.md#pr-publicatio
 The API audit now projects exact locked production dependencies to prevent an
 unused optional Expo driver from importing the mobile graph into the server gate.
 Its unchanged low threshold passes locally and still rejects the earlier vulnerable
-Fastify lock; exact hosted results are recorded on PR #43. The nine mobile/tooling advisories
-remain pre-public-release work for the implementation/dependency owner and Phase
+Fastify lock. PR #43 records historical Phase 13 hosted results; the combined
+SDK 58 candidate requires passing hosted checks on the exact head of
+[PR #46](https://github.com/anthonyyoo24/justgo/pull/46). The nine mobile/tooling
+advisories remain pre-public-release work for the implementation/dependency owner and Phase
 14 release owner. Native/SDK upgrades require a separate task; do not weaken the
 audit gate.
 

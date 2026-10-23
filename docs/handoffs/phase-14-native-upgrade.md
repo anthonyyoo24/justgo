@@ -47,7 +47,7 @@ acceptance of this combined candidate; inspect its own required checks.
 ## Signed native build
 
 [Development build e9a503b3](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/e9a503b3-d1d9-4e69-abdf-aa7630b1888e)
-finished October 23, 2026 at 20:54:04 UTC, using pinned invocation EAS CLI 25.3.0.
+finished October 23, 2026, at 20:54:04 UTC, using pinned invocation EAS CLI 25.3.0.
 App 0.1.0 (1), bundle `com.anthonyyoo.justgo`, team `NPDYTJS425`, existing ad hoc
 profile and registered phone are preserved. EAS records parent commit `32c66ff`;
 the uploaded working-tree archive contains the uncommitted SDK changes. Its 388
@@ -104,7 +104,10 @@ the intended Data read and injects one typed permanent failure, leaving queued
 background reads healthy. A separate NETWORK component regression protects safe
 feedback, zero output and retry only after another explicit press. No application
 behavior, timeout, retry allowance or CI requirement was weakened. Hosted
-acceptance still requires the follow-up commit's own checks.
+acceptance for that follow-up passed all seven Foundation jobs on `19c2d21`
+([run 40032874404](https://github.com/anthonyyoo24/justgo/actions/runs/40032874404)),
+including all 43 journeys and the combined coverage gate. Later PR heads still
+require their own checks.
 
 The complete file lists in changed directories were reviewed. Existing feature,
 support, platform-adapter pairs, plugin and documentation groups remain coherent;
