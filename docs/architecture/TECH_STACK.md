@@ -58,9 +58,11 @@ the Auth SDK for provider sessions and calls Fastify for application data; it
 never accesses private database tables directly. Serverless connections use a small reused
 `pg` pool and the configured transaction-pooler connection. Migrations use the
 separate migrator connection and role. Keep account context transaction-local;
-never retain a transaction across provider calls. Live Auth session reads use
-explicit column grants, while hard Auth deletion uses a separate server-only
-administrative SDK client. Neither capability is a mobile database grant.
+never retain a transaction across provider calls. Live Auth session checks use a
+postgres-owned private boolean helper; the restricted runtime role receives only
+schema USAGE and function EXECUTE, without direct Auth access. Hard Auth deletion
+uses a separate server-only administrative SDK client. Neither capability is a
+mobile database grant.
 
 `src/db/schema.ts` describes the private `justgo` schema, foreign keys, constraints
 and row-level security. Runtime `justgo_runtime` has restricted privileges;

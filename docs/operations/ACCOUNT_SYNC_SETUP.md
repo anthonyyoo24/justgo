@@ -391,10 +391,15 @@ configuration must remain an explicit unsupported/pending state, not a simulated
 successful sync. Include concurrent-write and lost-response retries in native
 acceptance.
 
-Apple encrypted-data key resets or externally removed private zones currently
-return unavailable and retain phone writing. Before release, the implementation
-owner must design/test explicit recovery that preserves deletion fences; do not
-automatically recreate and re-upload a collection after these errors.
+When enabled ordinary sync finds missing private storage, including a removed
+zone or a missing zone after an Apple encrypted-data key reset, it may recreate
+the cloud copy and upload existing phone entries without clearing them. Turning
+sync off stops ordinary uploads and retains phone data. Genuine in-app deletion,
+closure and account-epoch fences remain separate and enforced. Access or
+recreation failures remain errors, and phone writing is retained. Actual
+external-deletion/recreation device acceptance remains unverified before release;
+see the [October 23 decision](../DECISIONS.md#october-23-icloud-deletion-retains-phone-data)
+and [activity architecture](../architecture/ACTIVITY_DATA.md).
 
 ## Pending Auth erasure operations
 
