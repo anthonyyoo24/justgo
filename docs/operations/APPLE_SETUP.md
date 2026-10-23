@@ -49,8 +49,10 @@ finished October 23 and was installed in place on the registered iPhone through
 the new scene lifecycle. Signed IPA verification confirms the existing bundle/team,
 registered device, Apple/Google configuration, approved CloudKit-only Production
 container and mandatory `readRetainingLocal` bridge. The default per-app Keychain
-identity is preserved; actual credential/history continuity and affected phone
-behavior still need verification. Earlier SDK 57 binaries cannot load the new
+identity is preserved. After unlocking, the app launched successfully and loaded
+the current iOS bundle from Metro without a reported JavaScript error. Actual
+credential/history continuity and affected phone interactions still need
+verification. Earlier SDK 57 binaries cannot load the new
 runtime. Use the current SDK 58 Metro server with a cleared cache. Exact build,
 source/archive attribution, checks and remaining gates are in the separate
 [native-upgrade handoff](../handoffs/phase-14-native-upgrade.md). Earlier phone

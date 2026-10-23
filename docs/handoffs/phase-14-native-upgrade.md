@@ -3,7 +3,8 @@
 ## Status and integration boundary
 
 Implemented locally on `codex/phase-14-native-upgrade`; signed development build
-installed on the registered iPhone. Physical runtime acceptance is still open.
+installed on the registered iPhone. Native launch/current-bundle loading pass;
+the remaining physical interaction and continuity checks are still open.
 This is the separate STK-2 prerequisite, not Phase 14 release closeout.
 
 The branch starts at Phase 13 integration `32c66ff`, preserved separately on
@@ -59,9 +60,12 @@ CloudKit-only Production container and `readRetainingLocal` bridge; obsolete
 Keychain authorization; actual credential continuity still requires device proof.
 IPA SHA-256: `9e198ca6fa38049df344051ff566cf60e68a11ea0557cb8b5dbd9177ad27142d`.
 Installation through `devicectl` succeeded in place without uninstalling or
-clearing phone data. The first launch attempt was refused by iOS because the
-phone was locked; the SDK 58 LAN Metro server is ready and Anthony has been asked
-to unlock it. No native runtime result is claimed from that attempt.
+clearing phone data. After Anthony unlocked the phone, `devicectl` successfully
+launched the app into the current LAN development server. Metro built and served
+the iOS bundle (2,873 modules, 23.4 seconds), the app process remained present,
+and no JavaScript error was reported. The earlier locked-device launch refusal
+is resolved. Visual/account/history and interaction acceptance still require
+phone observations; process/bundle evidence does not establish them.
 Generated SDK 57 native output was retained under ignored
 local storage; the fresh SDK 58 prebuild includes SceneDelegate.
 
@@ -109,8 +113,8 @@ release; tooling exposure has not been established non-exploitable. See
 
 ## Remaining gates
 
-The implementation owner and Anthony must verify the installed client launches
-the current native bundle, preserves account/history and Keychain access, and
+The implementation owner and Anthony must verify the installed client
+preserves account/history and Keychain access, and
 recheck affected scenes/lifecycle, keyboard, gestures/haptics, Files I/O,
 SQLite durability and iCloud on the phone. An in-place install is not that proof.
 The broader owner-deferred Phase 13 offline/provider/multi-device/Files/deletion
