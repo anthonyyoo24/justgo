@@ -50,9 +50,11 @@ the new scene lifecycle. Signed IPA verification confirms the existing bundle/te
 registered device, Apple/Google configuration, approved CloudKit-only Production
 container and mandatory `readRetainingLocal` bridge. The default per-app Keychain
 identity is preserved. After unlocking, the app launched successfully and loaded
-the current iOS bundle from Metro without a reported JavaScript error. Actual
-credential/history continuity and affected phone interactions still need
-verification. Earlier SDK 57 binaries cannot load the new
+the current iOS bundle from Metro without a reported JavaScript error. Anthony
+confirmed Home with the existing account and Progress history, normal day-sheet/
+editor opening and closing, and expected iCloud status in Settings → Data.
+This basic upgrade smoke does not close the extended Keychain, Files, lifecycle,
+accessibility or multi-device matrix. Earlier SDK 57 binaries cannot load the new
 runtime. Use the current SDK 58 Metro server with a cleared cache. Exact build,
 source/archive attribution, checks and remaining gates are in the separate
 [native-upgrade handoff](../handoffs/phase-14-native-upgrade.md). Earlier phone

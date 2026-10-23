@@ -3,8 +3,8 @@
 ## Status and integration boundary
 
 Implemented locally on `codex/phase-14-native-upgrade`; signed development build
-installed on the registered iPhone. Native launch/current-bundle loading pass;
-the remaining physical interaction and continuity checks are still open.
+installed on the registered iPhone. Native launch/current-bundle loading and the
+owner's basic continuity/interaction smoke pass. Broader release acceptance remains open.
 This is the separate STK-2 prerequisite, not Phase 14 release closeout.
 
 The branch starts at Phase 13 integration `32c66ff`, preserved separately on
@@ -57,15 +57,20 @@ The downloaded IPA passes `codesign --verify --deep --strict`. Its signed app
 contains the scene manifest, Apple sign-in, Google return scheme, approved
 CloudKit-only Production container and `readRetainingLocal` bridge; obsolete
 `readGuarded` is absent. Application/profile identity preserves default per-app
-Keychain authorization; actual credential continuity still requires device proof.
+Keychain authorization. Anthony confirmed that the existing account and Progress
+history remain available after the upgrade; the extended secure-session/Keychain
+matrix remains a release gate.
 IPA SHA-256: `9e198ca6fa38049df344051ff566cf60e68a11ea0557cb8b5dbd9177ad27142d`.
 Installation through `devicectl` succeeded in place without uninstalling or
 clearing phone data. After Anthony unlocked the phone, `devicectl` successfully
 launched the app into the current LAN development server. Metro built and served
 the iOS bundle (2,873 modules, 23.4 seconds), the app process remained present,
 and no JavaScript error was reported. The earlier locked-device launch refusal
-is resolved. Visual/account/history and interaction acceptance still require
-phone observations; process/bundle evidence does not establish them.
+is resolved. Anthony then confirmed Home loads with the existing account and
+Progress history, a Progress day sheet/editor opens and closes normally, and
+Settings → Data shows the expected iCloud status. These are owner-observed phone
+smoke results, separate from process/bundle evidence; they do not establish
+multi-device CloudKit, full Files flows or extended lifecycle/accessibility cases.
 Generated SDK 57 native output was retained under ignored
 local storage; the fresh SDK 58 prebuild includes SceneDelegate.
 
@@ -113,10 +118,11 @@ release; tooling exposure has not been established non-exploitable. See
 
 ## Remaining gates
 
-The implementation owner and Anthony must verify the installed client
-preserves account/history and Keychain access, and
-recheck affected scenes/lifecycle, keyboard, gestures/haptics, Files I/O,
-SQLite durability and iCloud on the phone. An in-place install is not that proof.
+The basic upgrade smoke passes; the implementation owner and Anthony retain
+extended scenes/lifecycle, keyboard/accessibility, gestures/haptics, actual Files
+read/write/cancellation, SQLite interruption/durability and secure-session
+acceptance for the release matrix. The confirmed account/history and expected
+iCloud status do not establish those cases or a new cloud round-trip.
 The broader owner-deferred Phase 13 offline/provider/multi-device/Files/deletion
 matrix and all [Phase 14 release gates](../implementation-plan/phase-14-release.md)
 remain open. Ordinary diagnostics and product analytics remain disabled; signed
