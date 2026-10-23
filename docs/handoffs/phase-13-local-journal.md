@@ -3,8 +3,10 @@
 ## Status
 
 The local continuity/Settings, working-login and private iCloud implementation is
-prepared for draft PR review. A remaining dependency-health audit failure blocks
-merge; it is not an owner-approved deferral. The October 23 revision removes the rejected recovery
+ready for PR review. The API dependency-audit scope fix passes locally; exact
+hosted results are recorded on [PR #43](https://github.com/anthonyyoo24/justgo/pull/43).
+Mobile/tooling dependency advisories remain separate pre-release
+work. The October 23 revision removes the rejected recovery
 clear flow and retains phone data when the iCloud copy is removed externally;
 its focused automated checks pass. The compatible bridge has been exercised on
 the phone for upload/readback, sync-off isolation, catch-up and restart; actual
@@ -278,7 +280,7 @@ These automated checks do not establish physical external-deletion behavior.
 That focused follow-up did not refresh aggregate coverage, database or hosted CI
 gates. The later publication preparation below records its separate validation.
 
-### Draft PR publication validation
+### PR publication validation
 
 Publication preparation passed full `npm run check`: online Expo Doctor 21/21,
 source/test/journey typechecks, lint/formatting, 260 architecture/tooling tests,
@@ -293,18 +295,35 @@ Home Refresh challenges assertion was corrected in `582194c`; the approved
 provider handoff retains Sign in/Try again. Its lint/formatting and journey
 typecheck also pass.
 
-The exact existing CI dependency-health command still fails:
-`npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low`.
+The first hosted candidate failed its API dependency audit and the dependent
+aggregate `checks` status; native, unit, database, journeys and exports passed.
 Fastify was patched from 5.12.5 to 5.12.7 in `414a085`, with lockfile changes
 limited to Fastify; all 272 API tests, API typechecks and combined coverage floors passed
-afterward. Nine remaining vulnerabilities (three moderate, five high and one
-critical) are reported through Drizzle ORM's optional Expo SQLite peer and the
-shared mobile Expo/tooling production dependency graph. Omitting optional
-dependencies does not resolve the audit. No gate was weakened or advisory ignored.
-This is an unresolved CI/dependency-health blocker before merge, assigned to the
-implementation/dependency owner in a follow-up; native/SDK upgrades require a
-separate task under the repository instructions. It is not an owner-approved
-deferral. Hosted checks for the pushed candidate remain unverified until run.
+afterward. The shared-workspace audit still followed Drizzle ORM's unused optional
+Expo SQLite peer into the mobile Expo/tooling graph, reporting nine remaining
+vulnerabilities (three moderate, five high and one critical).
+
+`npm run audit:api` now audits a temporary projection of the API's exact locked
+production dependencies, available optional runtime dependencies and required
+peers. It preserves nested/workspace resolution, fails on manifest drift or missing
+required packages and runs ordinary npm audit with the same low threshold. No
+advisory is suppressed. The current graph reports zero vulnerabilities; a live
+negative control against the earlier Fastify 5.12.5 lock correctly fails at low
+severity. Tooling regressions cover dependency selection, required peers, exact
+versions/aliases, invalid graphs, manifest drift, failure propagation and cleanup.
+Fresh full `npm run check` also passes after this tooling fix: online Doctor 21/21,
+all typechecks, lint/formatting, 270 tooling tests, 180 API unit tests, 1,517 mobile
+tests and 35 contract tests. App/native source and coverage selectors are unchanged;
+the prior application coverage, database, journey and export evidence remains
+applicable, with hosted producers enforcing those gates again on the pushed head.
+Hosted acceptance must be checked on PR #43 for the exact pushed commit; local
+results do not establish a hosted pass.
+
+The nine mobile/tooling advisories are not patched by this scope correction and
+remain pre-public-release work for the implementation/dependency owner and Phase
+14 release owner. Native/SDK upgrades require a separate task. API audit acceptance
+does not establish all-mobile dependency health or inspect the deployed Vercel
+artifact. PR #43 is ready for review; it has not been merged or accepted for release.
 
 Earlier Phase 13 candidate verification used pinned Node 24/npm 11 and sequential
 heavy checks:
@@ -366,8 +385,8 @@ owner and the Phase 14 release owner before release.
 | Native Download/Import/deletion                       | Anthony and implementation owner with Phase 14 release owner, deferred before release | Files/share cancellation/cleanup, complete native import/export, both confirmation actions, remote deletion while sync off/unavailable and lost acknowledgements. Automated evidence does not replace these checks.                                                                                                                                                                                                                                                            |
 | Hosted migration and old-client cutover               | Anthony plus release owner before testers                                             | 0019–0023, protected rehearsal and matching staged API are complete; still verify existing-phone migration, real Auth erasure/revocation, incompatible-client retirement and deletion-aware recovery acceptance.                                                                                                                                                                                                                                                               |
 | Public notices/provider/retention                     | Anthony plus privacy/release owner before public distribution                         | Review unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending. The external-deletion revision retains the existing optional-iCloud data flow; do not imply that Apple Settings deletion also erases phone data.                                                                                                                                                                                         |
-| CI dependency-health blocker                          | Implementation/dependency owner, follow-up before merge                               | Resolve the exact API-workspace CI audit's nine remaining advisories through Drizzle's optional Expo peer graph. No owner-approved deferral or gate weakening exists; native/SDK upgrades need a separate task.                                                                                                                                                                                                                                                                |
-| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Current local full checks, coverage, 43 journeys and exports/smoke pass. The audit blocker above and hosted candidate CI remain open; retain signed storage/accessibility, privacy, diagnostics activation and purchases/guest paid-admission release gates.                                                                                                                                                                                                                   |
+| Mobile/tooling dependency health                      | Implementation/dependency owner and Phase 14 release owner, before public release     | Resolve the nine mobile/tooling advisories reported through the shared Expo graph. The corrected API production audit does not establish mobile dependency health; native/SDK upgrades require a separate task.                                                                                                                                                                                                                                                                |
+| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Current local full checks, coverage, 43 journeys and exports/smoke pass. Verify exact hosted candidate CI on PR #43; retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and purchases/guest paid-admission release gates.                                                                                                                                                                                                          |
 
 Local implementation closeout and the owner's deferrals do not establish release
 acceptance. Preserve the named gates when carrying the candidate into Phase 14.

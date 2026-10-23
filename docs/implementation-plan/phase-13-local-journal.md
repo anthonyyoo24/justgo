@@ -2,8 +2,8 @@
 
 # Phase 13 — Local data, optional accounts and cloud sync
 
-**Status:** Prepared for draft PR review; an unresolved dependency-health audit
-failure blocks merge and is not an owner-approved deferral. Release acceptance
+**Status:** Ready for PR review; the API dependency-audit scope fix passes locally.
+Exact hosted acceptance is recorded on PR #43. Mobile/tooling advisories remain pre-release work. Release acceptance
 remains open. Native providers, protected hosted database/API cutover, private CloudKit
 setup and cloud-only missing-storage recreation are implemented. Anthony confirmed
 phone login, and actual single-phone CloudKit upload, sync-off isolation and
@@ -393,14 +393,16 @@ was blocked by browser-tool URL security policy and is not accepted as passed.
 Public privacy approval/publication remains pending. Local
 closeout does not mean the candidate is accepted for production release.
 
-Draft PR publication preparation subsequently passed full checks/coverage, all 43
+PR publication preparation subsequently passed full checks/coverage, all 43
 saved journeys, cold web/iOS exports and the production-web smoke case; current
-evidence is in the [handoff](../handoffs/phase-13-local-journal.md#draft-pr-publication-validation).
-The exact API-workspace CI audit still reports nine vulnerabilities through the
-optional Expo peer dependency graph after the direct Fastify patch. This is an
-unresolved CI/dependency-health blocker before merge, assigned to the
-implementation/dependency owner in a follow-up, not an owner-approved deferral.
-Native/SDK upgrades require a separate task; do not weaken the audit gate.
+evidence is in the [handoff](../handoffs/phase-13-local-journal.md#pr-publication-validation).
+The API audit now projects exact locked production dependencies to prevent an
+unused optional Expo driver from importing the mobile graph into the server gate.
+Its unchanged low threshold passes locally and still rejects the earlier vulnerable
+Fastify lock; exact hosted results are recorded on PR #43. The nine mobile/tooling advisories
+remain pre-public-release work for the implementation/dependency owner and Phase
+14 release owner. Native/SDK upgrades require a separate task; do not weaken the
+audit gate.
 
 ## Acceptance requirements
 

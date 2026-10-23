@@ -115,10 +115,11 @@ Anthony explicitly deferred the remaining manual offline/reconnect, two-device,
 extended provider-continuity and native Download/Import/deletion checks from the
 October 22 local closeout. These remain unverified pre-release gates with Anthony,
 the implementation owner and Phase 14 release owner. The routine iCloud fix used
-focused native/adapter/coordinator/UI checks at his request. Subsequent draft PR
+focused native/adapter/coordinator/UI checks at his request. Subsequent PR
 publication preparation passed broader checks, coverage, 43 saved journeys and
-exports/smoke; its remaining dependency-health audit failure blocks merge and is
-not an owner-approved deferral. See the [current publication evidence](../handoffs/phase-13-local-journal.md#draft-pr-publication-validation).
+exports/smoke. The API audit scope correction passes locally; exact hosted results
+are recorded on PR #43. Mobile/tooling advisories remain separate pre-release work. See the
+[current publication evidence](../handoffs/phase-13-local-journal.md#pr-publication-validation).
 These checks do not accept the deferred native cases.
 
 **Configured private iCloud:** Anthony approved assigning
