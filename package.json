@@ -19,6 +19,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "audit:api": "node scripts/quality/audit-api-dependencies.mjs",
     "test": "npm run test:architecture && npm run test --workspaces",
     "test:architecture": "node --test scripts/quality/*.test.mjs scripts/journeys/*.test.mjs sites/legal/*.test.mjs",
     "test:db": "npm run test:db -w @justgo/api",

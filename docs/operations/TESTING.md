@@ -484,8 +484,20 @@ and leaves npm major upgrades for manual scope/native acceptance. Updates do not
 merge automatically. The audit gate is scoped to API production dependencies:
 
 ```sh
-npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low
+npm run audit:api
 ```
+
+The helper projects the API's declared production graph from the shared lockfile
+into a temporary workspace, preserving locked versions, integrity, nested
+resolution and workspace dependencies. Normal dependencies, available optional
+runtime dependencies and required peers remain included. Optional peers supplied
+solely by another workspace (such as Drizzle's unused Expo SQLite driver) do not
+become API roots; a provider declared or required by the API graph is included.
+Manifest/lock drift and missing required packages fail closed. Ordinary npm audit
+runs with the unchanged low severity threshold and propagates failures; no advisory
+is filtered or ignored. This audit does not establish mobile/tooling dependency
+health or inspect the deployed Vercel artifact. Those remain separate release
+responsibilities.
 
 The workflow and setup actions own exact job limits, versions and prerequisites;
 clean runners must not rely on ignored environment files or existing artifacts.

@@ -50,10 +50,10 @@ test('static checks retain fresh route typechecking and audit only API productio
     runs.indexOf('npm run doctor -w @justgo/mobile') <
       runs.indexOf('npm run check:static'),
   );
-  assert.ok(
-    runs.includes(
-      'npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low',
-    ),
+  assert.ok(runs.includes('npm run audit:api'));
+  assert.equal(
+    rootPackage.scripts['audit:api'],
+    'node scripts/quality/audit-api-dependencies.mjs',
   );
   assert.match(rootPackage.scripts['check:static'], /npm run typecheck/);
   assert.match(

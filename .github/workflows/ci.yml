@@ -23,7 +23,7 @@ jobs:
       # without starting Metro, including on clean CI runners.
       - run: npm run check:static
       - name: Audit API production dependencies
-        run: npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low
+        run: npm run audit:api
   unit:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
