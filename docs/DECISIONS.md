@@ -610,13 +610,12 @@ implementation owner and the Phase 14 release owner. The single-phone upload,
 sync-off isolation and re-enable/restart catch-up checks already passed; skipped
 cases do not inherit those passes.
 
-Known missing CloudKit collections must fail closed during ordinary reads. An
-explicit recovery action may establish a durable reset fence, without replacing
-a live collection. Keep the phone's older writing until the user confirms recovery
-and durable clearing intent is recorded. Preserve pending deletion, closure,
-handover, current account ownership and server deletion epochs. The new native
-bridge needs a compatible signed build and physical recovery acceptance; the
-installed quota-fix binary does not establish that behavior.
+The recovery behavior in this paragraph was superseded by the October 23 decision
+below. The October 22 implementation required ordinary reads to fail closed for
+missing known collections, with explicit recovery recording a durable reset fence
+and clearing intent before phone writing could be cleared. Pending deletion,
+closure, handover, ownership and server epochs remained protected. Its compatible
+signed build was inspected; physical recovery acceptance was not established.
 
 For this scoped closeout Anthony requested focused checks of the changed
 recovery/native, adapter/coordinator and UI boundaries, avoiding unrelated or
@@ -625,6 +624,32 @@ full-suite evidence. This does not change coverage thresholds or remove the
 applicable publication/release checks, privacy approval/publication, signed-device
 or hosted CI gates. Local implementation closeout does not mean production
 release acceptance and does not authorize a Git push, PR, merge or public release.
+
+## October 23 iCloud deletion retains phone data
+
+Anthony rejected the Clear older copy and sync flow. Deleting JustGO's iCloud data
+through Apple Settings does not authorize deleting journal entries or challenge
+history from the phone. Remove that action and its recovery-clearing flow. Keep
+the saved iCloud Sync preference: while enabled, ordinary synchronization may
+recreate missing cloud storage and upload the phone's existing entries; turning
+it off stops ordinary uploads and keeps the phone's entries. Do not infer a wish
+to erase phone data from an external cloud deletion or encrypted-data reset.
+
+This supersedes the October 22 missing-collection recovery behavior, not its
+manual-test deferrals or scoped verification decision. Genuine in-app Delete all
+my data and Delete account retain their confirmations, durable cleanup, account
+closure and authenticated deletion-epoch safeguards. Native missing-storage reads
+create an empty cloud collection without an app-deletion marker; genuine in-app
+reset/closure always writes the app-deletion marker, including legacy recovered
+collections. The adapter requires the new `readRetainingLocal` capability so an
+older bridge cannot apply the rejected deletion semantics. A compatible signed
+build and actual device acceptance remain distinct from automated checks.
+
+An unfinished clearing intent from the removed flow may be canceled only when
+there is no actual deletion/cleanup or authoritative account-epoch clear to
+finish. Preserve current ownership, handover, conflicts and all entries that have
+not already been explicitly deleted. The superseded `3cbc873a` binary remains
+historical build evidence, not the installation candidate for this behavior.
 
 ## Open and settled product decisions
 

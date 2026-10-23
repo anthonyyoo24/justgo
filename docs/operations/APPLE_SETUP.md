@@ -60,7 +60,7 @@ entry, all three local challenge/journal pairs matched iCloud. The actual
 storage-full condition also reached the concise iCloud-full message. These checks
 do not establish the deferred offline/multi-device/account-change/deletion matrix.
 
-**Recovery build available; installation/device acceptance open:** Development
+**Historical recovery build, superseded October 23:** Development
 build [3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05), from source `b6c75d5`, finished successfully on October 22 at
 23:11:58 UTC. Fresh online Expo Doctor passes 21/21. The downloaded IPA's signature
 verifies; inspection confirms bundle `com.anthonyyoo.justgo`, team `NPDYTJS425`,
@@ -68,21 +68,48 @@ container `iCloud.com.anthonyyoo.justgo`, CloudKit/Production, registered-phone
 provisioning, retained Keychain access, Apple entitlement and Google URL scheme.
 The full provisioning profile is unchanged from the installed `1a1174d6` binary.
 The actual Mach-O contains the `readGuarded` bridge and `ZONE_RECOVERY_REQUIRED`
-code. Expo shows Succeeded with Install available, and the supplied QR was decoded
+code. Expo showed Succeeded with Install available, and the supplied QR was decoded
 and verified against this exact build's installation URL.
 
-Build `1a1174d6` remains the binary for the earlier installed-phone evidence and
-predates recovery. Install `3cbc873a` over the existing app, then verify actual
-reset/missing-zone recovery before release. An OTA or development-server
-JavaScript update cannot add the bridge. Recovery must not replace a live
-collection or clear phone writing before the explicit confirmation and durable
-clearing intent. Binary inspection does not establish physical recovery behavior.
+Build `1a1174d6` remains the binary for the earlier installed-phone evidence.
+Anthony rejected the recovery-clearing behavior in `3cbc873a`; do not install it
+as the acceptance candidate for the revised behavior. The historical build's
+inspection does not establish the October 23 bridge or physical behavior.
+
+**Revised cloud-only recreation build available; installation/device acceptance open:** Development build
+[b4da28da](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/b4da28da-e425-4e5a-83fd-d734b87f39c4),
+from source `4a9f10f`, finished successfully on October 23. The downloaded IPA
+passed `codesign --verify --deep --strict`; its actual Mach-O contains
+`readRetainingLocal`, with `readGuarded` absent. Inspection confirms bundle
+`com.anthonyyoo.justgo`, team `NPDYTJS425`, container
+`iCloud.com.anthonyyoo.justgo`, matching Info.plist container and CloudKit-only
+Production entitlements. Registered-phone provisioning, profile and Keychain
+permissions are unchanged from `1a1174d6`; Apple sign-in and Google's URL scheme
+remain present. The installation QR was decoded against this exact build URL.
+The phone Metro uses the matching staged API. The updated adapter requires
+native `readRetainingLocal`, which also certifies fixed real-deletion markers.
+An older binary cannot supply this through an OTA or development-server update;
+its cloud data operations are rejected safely. Install the compatible build over
+the existing app to retain phone data; actual installation remains unverified.
+
+Deleting JustGO data through Apple Settings or an encrypted-data reset retains
+the phone's journal/challenge entries and saved sync preference. Enabled ordinary
+sync may recreate missing iCloud storage and upload those entries; off stops
+ordinary uploads and preserves local entries. There is no Clear older copy and
+sync action. Genuine in-app Delete all my data/Delete account and authenticated
+account epochs remain authoritative. An unfinished legacy recovery clear is
+canceled only without a real deletion/cleanup or account-epoch clear to finish.
+Physical acceptance of this revised behavior remains open. Focused revision checks
+passed 145 distinct JavaScript tests across seven suites, 30 Swift tests, mobile
+source/tests typechecks, changed-file ESLint and online Expo Doctor 21/21. The
+live side-panel walkthrough was blocked by browser-tool URL security policy and
+is not counted as verified UI or device evidence.
 
 Anthony explicitly deferred the remaining manual offline/reconnect, two-device,
 extended provider-continuity and native Download/Import/deletion checks from the
 October 22 local closeout. These remain unverified pre-release gates with Anthony,
 the implementation owner and Phase 14 release owner. Current closeout verification
-is limited to affected recovery/native/adapter/coordinator/UI checks at his
+is limited to affected iCloud native/adapter/coordinator/UI checks at his
 request; earlier broad checks do not become fresh evidence for the new bridge.
 
 **Configured private iCloud:** Anthony approved assigning
@@ -134,7 +161,7 @@ database capabilities under the existing team using
 CloudKit environment. Confirm generated iCloud container/CloudKit entitlements
 and the provisioning profile, including Sign in with Apple/iCloud, before
 building. An OTA update or JavaScript export cannot add modules, the current
-conditional-reset bridge or capabilities. Keep unavailable states visible until
+conditional-reset/`readRetainingLocal` bridges or capabilities. Keep unavailable states visible until
 the configuration and device checks pass.
 
 On a compatible signed build, verify both provider sign-ins/cancellation/refresh,
@@ -170,8 +197,10 @@ latter also removes the JustGO account/Auth profile. Neither removes the user's
 Apple/Google account. User-saved files remain under the user's control after app
 deletion.
 
-Next steps before release: install the inspected recovery build and verify its
-physical flow, then complete the owner-deferred provider/native/iCloud matrix.
+Next steps before release: install the inspected compatible revised
+build, verify that external iCloud deletion retains phone entries while the
+toggle governs ordinary re-upload, then complete the owner-deferred
+provider/native/iCloud matrix.
 Container/schema setup and the named single-phone sync checks above are complete.
 Install over the existing app to preserve phone data, and connect to the matching
 API/development server. Developer

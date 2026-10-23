@@ -376,12 +376,13 @@ Opening or dismissing it does not enable sync. Start Syncing retains the sheet
 with a centered spinner through the existing native/coordinator operation. The
 toggle stays off until first sync succeeds. Sync errors and retry stay inside the
 sheet; the Data row never expands with an error or Retry iCloud Sync action.
-Remote deletion replaces the sheet action with explicit Clear older copy and sync,
-preserving its clear-before-sync safeguard. Missing-zone/encrypted-data-reset
-recovery uses the same action and a concise explanation; closing the sheet leaves
-phone writing intact. A bridge too old for guarded reads gets a build-update
-message inside the sheet. Consent is scoped to the route visit,
-collection and Apple account through the final preference write.
+The sheet never offers to erase phone entries after an iCloud reset or removal.
+Removing the iCloud copy in Apple's Settings retains phone data; enabled sync may
+recreate that copy. Turning sync off preserves local writing and stops uploads.
+Start Syncing and X are the normal actions, with Try Again retained only for a
+failed disable. A superseded native bridge gets the build-update message inside
+the sheet. Consent remains scoped to the route visit, collection and Apple account
+through the final preference write.
 Turning an enabled switch off remains direct. Delete all sits at the
 bottom. Both deletion rows use red labels and trash icons, omit chevrons and open
 their confirmation modal directly on the current page. Both flows reuse

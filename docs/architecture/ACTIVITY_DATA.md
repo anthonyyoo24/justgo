@@ -166,32 +166,31 @@ reconciliation. Permanent account closure markers fence later uploads. Reset
 uncertainty requires an explicit user decision. Lost reset acknowledgements retry
 the original operation rather than deleting newer records.
 
-Guarded native reads check zone existence before creation. A known generation or
-the native Apple-account/collection history marker prevents a missing zone/root
-from being mistaken for an empty first-use collection. `zoneNotFound` (including
-Apple's encrypted-data-reset key) and `userDeletedZone` become the sanitized
-`ZONE_RECOVERY_REQUIRED` code. Writes, reset, closure and purge never create a
-missing root. An older bridge without guarded reads cannot sync a known generation;
-Settings explains that a newer build is required.
+Removing JustGO's iCloud data through Apple's Settings is a cloud-only action.
+It never authorizes erasing phone entries. While sync remains enabled, ordinary
+reads may recreate an absent zone/root with reset marker 0, and the coordinator
+rebuilds cloud version bookkeeping while retaining completions, current writing
+and alternatives. Turning sync off stops uploads and keeps phone data. There is
+no clear-phone action, reset confirmation or clearing recovery method in the
+sync sheet; the normal Start Syncing/X flow remains.
 
-Explicit recovery can create only an absent root/zone, never delete or replace a
-live one. It writes the existing INT64 `wasReset` field as 2 (external recovery),
-preserving the earlier 0/1 wire meanings and requiring no schema addition. Normal
-resets retain this recovery marker. Every stale or unknown guest/account replica
-requires confirmation before clearing and joining that recovered generation.
-Check this before stale-epoch replacement or resumed replacement cleanup can
-retain old phone writing. Persist clearing intent before clearing; lost responses
-reuse the same recovered generation and preserve newer cloud writing. Pending
-closure/deletion/cleanup/replacement or guest handover cannot enter ordinary zone
-recovery. Account server epochs and associated Apple-account cleanup remain in
-force; authenticated current server data may repopulate after the confirmed clear.
+Real Delete all my data/Delete account operations remain separate and retain
+conditional generations, account closure and authenticated account-epoch fences.
+Native reset/close always write the existing INT64 marker 1, including roots
+left with legacy external-recovery marker 2. Decode legacy 2 without treating it
+as permission to clear phone entries. New native reads use `readRetainingLocal`;
+the adapter requires that capability before reads or mutations so a superseded
+binary cannot retain the previous marker-2 deletion behavior.
 
-If all local history is erased and Apple returns only plain `zoneNotFound`, first
-use cannot be distinguished from a historical deletion. Do not claim recovery
-protection for that unknowable history. Native reset behavior is documented by
-[Apple's reset-error key](https://developer.apple.com/documentation/cloudkit/ckerroruserdidresetencrypteddatakey).
-Installation of the compatible recovery build and physical reset acceptance remain open;
-Anthony deferred the other remaining manual cases in the Phase 13 plan.
+An unfinished local clear from the rejected recovery flow is cancelled when the
+cloud copy is fresh/externally reset and no actual deletion/cleanup/replacement
+or unobserved account-epoch clear is pending. Persist that cancellation before
+upload. Genuine deletion intents and newer server epochs still finish their
+clearing. Unknown history after a genuine in-app deletion remains fenced rather
+than silently re-uploading deleted entries; syncing offers no destructive escape.
+The October 23 decision supersedes the earlier clear-and-sync design. Physical
+cloud-removal/off/on acceptance stays distinct from native package and browser
+proof, and the other owner-deferred Phase 13 manual cases remain open.
 
 ## Download, import and deletion
 

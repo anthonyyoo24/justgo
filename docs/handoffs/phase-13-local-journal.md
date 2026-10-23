@@ -2,15 +2,20 @@
 
 ## Status
 
-The local continuity/Settings, working-login, private iCloud and guarded
-missing-collection recovery implementation is locally ready for owner review.
-Phone login and single-phone CloudKit upload/off/re-enable behavior are verified.
+The local continuity/Settings, working-login and private iCloud implementation is
+prepared for owner review. The October 23 revision removes the rejected recovery
+clear flow and retains phone data when the iCloud copy is removed externally;
+its focused automated checks pass, but actual external-deletion device acceptance
+remains open. Earlier phone login and single-phone CloudKit upload/off/re-enable
+behavior are verified separately.
 Anthony explicitly deferred the remaining manual acceptance checks and requested
-focused checks for this closeout. The compatible recovery build is available and
-inspected; installation and physical recovery acceptance remain open. This is not production release acceptance.
+focused checks for this closeout. The compatible build for the revised native
+bridge is finished and inspected; installation and physical acceptance remain pending.
+This is not production release acceptance.
 The [plan](../implementation-plan/phase-13-local-journal.md) owns remaining scope;
 the [October 22 decision](../DECISIONS.md#october-22-icloud-recovery-and-scoped-phase-13-closeout)
-records the scope and deferrals. No Git push, PR or merge ran.
+records the scope and deferrals; the [October 23 decision](../DECISIONS.md#october-23-icloud-deletion-retains-phone-data)
+supersedes its recovery-clearing behavior. No Git push, PR or merge ran.
 
 ## Implemented behavior
 
@@ -42,11 +47,12 @@ records the scope and deferrals. No Git push, PR or merge ran.
   off. Cleanup stays pending while a required Apple account is unavailable.
   User-saved downloads, the person's Apple/Google account and store subscription
   remain under their separate controls.
-- Known missing CloudKit collections fail closed during ordinary reads. Explicit
-  recovery first establishes a durable reset fence without replacing a live
-  collection; the confirmed flow may clear the older phone copy only after
-  durable local clearing intent. Closing, deletion, handover and server-epoch
-  safeguards still apply. Native/device acceptance remains separate.
+- Removing JustGO's iCloud copy through Apple Settings or an encrypted-data reset
+  does not clear phone entries or change the saved sync choice. Enabled ordinary
+  sync may recreate missing cloud storage and upload local journal/challenge
+  history; off stops ordinary uploads and keeps local entries. Clear older copy
+  and sync and its recovery-clearing flow are removed. Genuine in-app deletion,
+  closure, handover and server-epoch safeguards still apply.
 
 ## Boundaries to preserve
 
@@ -71,6 +77,15 @@ import is the separate restore action. Deletion persists its original operation 
 and epoch/generation, so uncertain responses cannot erase later writing. Resume
 saved deletion proofs/receipts and copied-source retirement before fresh provider
 verification, which can fail after the Auth user has already been deleted.
+
+External iCloud-only deletion is not an in-app deletion instruction. Missing-cloud
+reads create an empty root without a deletion marker and rebuild cloud-version
+bookkeeping while preserving all phone entries. Genuine reset/closure always
+writes the app-deletion marker, superseding legacy external-recovery markers.
+The adapter requires the new `readRetainingLocal` capability before data
+operations, so older destructive bridge behavior cannot be used accidentally.
+An unfinished legacy recovery clear is canceled only when no actual deletion,
+cleanup or authoritative account-epoch clear still needs completion.
 
 Preserve SQLite/IndexedDB ownership and local commit before delivery. Never replay
 retired private PATCH queues. Private journal content belongs only in authorized
@@ -134,32 +149,44 @@ CloudKit/Production entitlements, matching provisioning permissions, existing
 bundle/team/registered phone, native writer/conditional reset and per-record
 quota-error collection. Apple/Google/secure storage/SQLite/Files/Keychain modules
 and the Google URL scheme remain present; signature verification passes.
-Single-phone behavior on this build is recorded below. It predates the new
-missing-collection recovery bridge.
+Single-phone behavior on this build is recorded below. It predates both the
+superseded recovery bridge and the revised cloud-only recreation bridge.
 
-Recovery development build [3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05), from source `b6c75d5`, finished successfully
-on October 22 and is available through Expo's Install page. Fresh online Expo
+Historical recovery build [3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05), from source `b6c75d5`, finished successfully
+on October 22. It contains the rejected clear flow and is superseded; do not use
+it to accept the October 23 behavior. At that checkpoint, fresh online Expo
 Doctor passes 21/21. Downloaded IPA signature verification and inspection confirm
 `com.anthonyyoo.justgo`, team `NPDYTJS425`, `iCloud.com.anthonyyoo.justgo`,
 CloudKit/Production, registered-phone provisioning, Keychain access, Apple sign-in
 and Google's URL scheme; the full provisioning profile is unchanged from the
 installed `1a1174d6` binary. The actual Mach-O contains `readGuarded` and
-`ZONE_RECOVERY_REQUIRED`, establishing that the new native recovery bridge is in
+`ZONE_RECOVERY_REQUIRED`, establishing that the former native recovery bridge is in
 this binary. The install QR was decoded and matched to its exact installation URL.
-Installation and real recovery/reset acceptance remain unverified;
-a JavaScript update of the older binary cannot add the bridge.
+Installation and real recovery/reset acceptance were not established.
+
+Replacement development build [b4da28da](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/b4da28da-e425-4e5a-83fd-d734b87f39c4),
+from source `4a9f10f`, finished successfully on October 23. Downloaded IPA
+signature verification (`codesign --verify --deep --strict`) passed; its actual
+Mach-O contains `readRetainingLocal` and no `readGuarded`. Inspection confirms
+`com.anthonyyoo.justgo`, team `NPDYTJS425`, container
+`iCloud.com.anthonyyoo.justgo`, matching Info.plist container and CloudKit-only
+Production entitlements. Registered-phone provisioning, profile and Keychain
+permissions are unchanged from `1a1174d6`; Apple sign-in and Google's URL scheme
+remain present. The installation QR was decoded against this exact build URL.
+The phone Metro uses the matching staged API. An OTA or development-server update
+cannot add this capability; older native bridges safely reject data operations.
+Installation and physical external-deletion/reset acceptance remain open.
 
 Native and JS uploads now have byte/count budgets. Native size retries preserve
 fresh atomic generation fencing; durable cleanup can recover an expired cursor
 without repeating deletion reset/closure or accepted guest adoption. Settings
 retry preserves the intended enable/disable operation and opt-in. The dependency-free
 Swift test target is separate from pod sources/uploads and has a required macOS
-CI producer. Missing-zone recovery now retains the native durable reset marker
-and reports its recovered state to the guarded TypeScript flow; it cannot silently
-replace an existing live collection. Phone writing remains untouched until the
-explicit recovery confirmation and durable clearing intent. The new bridge's
-signed-build inspection is complete; installation and physical recovery checks
-remain implementation-owner release tasks.
+CI producer. The revised native missing-storage read retains existing live roots,
+including closed-account and real-deletion roots. Only missing cloud storage is
+recreated, with no local-clear instruction. Phone writing is retained unless a
+genuine in-app deletion or authoritative account-epoch fence applies. Compatible
+signed-build and physical checks remain implementation-owner release tasks.
 
 The shared modal lives in `components/modals`, shared provider artwork in
 `components/auth`, portable archives in `data/backup`, and cloud handover beside
@@ -188,9 +215,10 @@ Actual phone checks on the configured iCloud build established:
 The later toggle-initial-state fix passed focused row/toggle/Data/preview
 regressions, mobile typechecks, lint and an isolated side-panel walkthrough. The
 walkthrough established initial checked geometry and browser-unavailable
-feedback; it did not establish native recovery behavior.
+feedback; it did not establish native missing-storage behavior.
 
-Scoped recovery closeout verification passed:
+Historical October 22 recovery-closeout verification passed for the subsequently
+rejected flow:
 
 - 145 distinct JavaScript regressions across seven directly affected suites,
   including recovery consent before stale-account replacement/cleanup, reset
@@ -202,8 +230,8 @@ Scoped recovery closeout verification passed:
   with no lint errors or warnings.
 - One isolated side-panel recovery preview: the message occupied two lines in
   the reserved space, artwork stayed fixed, Clear older copy and sync was
-  explicit, and closing returned to the off state. This verifies presentation
-  only; it did not execute native recovery or modify real phone/cloud data.
+  explicit, and closing returned to the off state. This was presentation evidence
+  for the rejected flow, not native recovery or a real data operation.
 
 An independent audit's recovery-ordering and durable-marker findings were fixed
 and regression-tested; no required review finding remains. Anthony requested no
@@ -211,7 +239,24 @@ unrelated/full-phase suites for this scoped closeout. Earlier broad checks below
 remain historical evidence and aggregate coverage/publication gates were not
 refreshed. The compatible signed recovery build subsequently passed fresh online
 Doctor and the binary inspection above; its installation/native-device acceptance
-remains open.
+was not established, and that rejected flow is no longer an acceptance candidate.
+These results do not accept the October 23 revision.
+
+Focused October 23 revision verification passed:
+
+- 145 distinct JavaScript tests across seven affected suites cover local-data
+  retention, legacy clearing-intent migration, real deletion/account-epoch fences,
+  adapter capability checks and affected Settings/preview consumers. The final
+  adapter-only rerun passed 32 tests after its test-code lint correction.
+- 30 SwiftPM tests cover missing-cloud recreation, preservation of live/closed
+  roots, failure handling and genuine in-app deletion superseding legacy markers.
+- Mobile source/test typechecks, changed-file ESLint and online Expo Doctor 21/21
+  passed.
+
+The live side-panel UI walkthrough was blocked by the browser tool's URL security
+policy; it was not completed or counted as passed. No workaround was attempted.
+These automated checks do not establish physical external-deletion behavior.
+This follow-up does not refresh aggregate coverage, database or hosted CI gates.
 
 Earlier Phase 13 candidate verification used pinned Node 24/npm 11 and sequential
 heavy checks:
@@ -262,15 +307,15 @@ are owner-approved deferrals from this implementation closeout, remain unverifie
 and must be resolved by the named owners before release. Existing single-phone
 passes above are preserved. No skipped check is treated as passed.
 
-| Gate                                      | Owner and completion point                                                            | Required evidence                                                                                                                                                                                                                                               |
-| ----------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Recovery installation/device acceptance   | Implementation owner with Anthony, before release                                     | Signed recovery build `3cbc873a` is available and inspected. Install it and verify real encrypted-data-reset/missing-zone recovery; preserve live roots, deletion fences and newer writing during retries. Earlier installed-phone evidence is from `1a1174d6`. |
-| Offline/reconnect and multi-device iCloud | Anthony and implementation owner with Phase 14 release owner, deferred before release | Offline local save/reconnect; second-device guest/account restore, bidirectional changes/conflicts, Apple-account changes and deletion propagation, including sync off → delete → on.                                                                           |
-| Extended Apple/Google continuity          | Anthony and implementation owner with Phase 14 release owner, deferred before release | Hidden email, cancellation/refresh/revocation, link/unlink/last-method, returning data, owner isolation and interrupted native secure-session behavior. Basic phone login is confirmed.                                                                         |
-| Native Download/Import/deletion           | Anthony and implementation owner with Phase 14 release owner, deferred before release | Files/share cancellation/cleanup, complete native import/export, both confirmation actions, remote deletion while sync off/unavailable and lost acknowledgements. Automated evidence does not replace these checks.                                             |
-| Hosted migration and old-client cutover   | Anthony plus release owner before testers                                             | 0019–0023, protected rehearsal and matching staged API are complete; still verify existing-phone migration, real Auth erasure/revocation, incompatible-client retirement and deletion-aware recovery acceptance.                                                |
-| Public notices/provider/retention         | Anthony plus privacy/release owner before public distribution                         | Review unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending. Recovery retains the existing storage/deletion model and requires no new public data-flow claim.                          |
-| Publication/release validation            | Implementation owner and Phase 14/07A owners before publication/release               | Applicable broad checks, current coverage/online Doctor, hosted CI, signed storage/accessibility, diagnostics activation and purchases/guest paid admission. Focused closeout does not refresh these gates.                                                     |
+| Gate                                                  | Owner and completion point                                                            | Required evidence                                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Revised cloud-only recreation build/device acceptance | Implementation owner with Anthony, before release                                     | Build `b4da28da` from `4a9f10f` is finished and inspected; installation is unverified. Verify external deletion/reset retains phone entries, enabled sync recreates/uploads, off stops ordinary uploads, and genuine app-deletion/epoch fences remain. `3cbc873a` is superseded; earlier single-phone evidence is from `1a1174d6`. |
+| Offline/reconnect and multi-device iCloud             | Anthony and implementation owner with Phase 14 release owner, deferred before release | Offline local save/reconnect; second-device guest/account restore, bidirectional changes/conflicts, Apple-account changes and deletion propagation, including sync off → delete → on.                                                                                                                                              |
+| Extended Apple/Google continuity                      | Anthony and implementation owner with Phase 14 release owner, deferred before release | Hidden email, cancellation/refresh/revocation, link/unlink/last-method, returning data, owner isolation and interrupted native secure-session behavior. Basic phone login is confirmed.                                                                                                                                            |
+| Native Download/Import/deletion                       | Anthony and implementation owner with Phase 14 release owner, deferred before release | Files/share cancellation/cleanup, complete native import/export, both confirmation actions, remote deletion while sync off/unavailable and lost acknowledgements. Automated evidence does not replace these checks.                                                                                                                |
+| Hosted migration and old-client cutover               | Anthony plus release owner before testers                                             | 0019–0023, protected rehearsal and matching staged API are complete; still verify existing-phone migration, real Auth erasure/revocation, incompatible-client retirement and deletion-aware recovery acceptance.                                                                                                                   |
+| Public notices/provider/retention                     | Anthony plus privacy/release owner before public distribution                         | Review unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending. The external-deletion revision retains the existing optional-iCloud data flow; do not imply that Apple Settings deletion also erases phone data.                                             |
+| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Applicable broad checks, current coverage/online Doctor, hosted CI, signed storage/accessibility, diagnostics activation and purchases/guest paid admission. Focused closeout does not refresh these gates.                                                                                                                        |
 
 Local implementation closeout and the owner's deferrals do not establish release
 acceptance. Preserve the named gates when carrying the candidate into Phase 14.
