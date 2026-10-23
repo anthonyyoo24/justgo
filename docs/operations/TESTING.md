@@ -242,6 +242,15 @@ database RLS and sync routes are real. No external-provider/native claim follows
 from that seam. Saved journeys are distinct from presentation fixtures,
 one-off interactive walkthroughs and native checks.
 
+Install failure routes before navigation/bootstrap can start the targeted work.
+For one-shot faults after an authenticated page, first stop the old document
+(for example, navigate to `about:blank` in the same context) so its background
+requests cannot consume the fault. Gate and observe the intended request before
+releasing its failure; assert no file/output and require a separate explicit
+retry. Keep that user action distinct from transport-level read replays and
+queued background synchronization. Use these observable barriers instead of
+sleeps, larger timeouts or suite retries.
+
 Install pinned Chromium with `npx playwright install chromium`; Linux CI uses the
 shared setup action to install system dependencies on every run and Chromium on
 browser-cache misses. Run the full root journey command or pass a saved spec, for

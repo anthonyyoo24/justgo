@@ -370,8 +370,11 @@ Generated native config and the restarted phone Metro bundle use the approved
 container/Production environment and retain the staged API/provider inputs.
 A grouped isolated side-panel check verified the disabled web iCloud row and its
 visible platform explanation without creating server accounts. These focused
-checks do not refresh the earlier full phase/coverage evidence. The new macOS CI
-job remains unverified on GitHub until an authorized push runs it.
+checks do not refresh the earlier full phase/coverage evidence. The macOS native
+job subsequently passed on PR #46's initial head `139d27b`. That run's journey
+fixture failure and follow-up are recorded in the
+[SDK upgrade handoff](phase-14-native-upgrade.md); the follow-up still needs its
+own complete required-check result.
 
 ## Open acceptance gates
 

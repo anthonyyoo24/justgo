@@ -95,6 +95,17 @@ its guarded fallback is present, tracing is disabled, and actual diagnostics
 journeys/exported-web runtime pass without a browser error. No resolver alias or
 warning suppression was added.
 
+The first hosted [PR #46 run](https://github.com/anthonyyoo24/justgo/actions/runs/40029145314)
+on `139d27b` passed static, unit, database, exports and native CloudKit jobs.
+The download-error journey failed because its late interceptor could miss an
+already-started successful cloud read; the aggregate check correctly rejected
+that failed producer. The follow-up isolates the previous Home document, gates
+the intended Data read and injects one typed permanent failure, leaving queued
+background reads healthy. A separate NETWORK component regression protects safe
+feedback, zero output and retry only after another explicit press. No application
+behavior, timeout, retry allowance or CI requirement was weakened. Hosted
+acceptance still requires the follow-up commit's own checks.
+
 The complete file lists in changed directories were reviewed. Existing feature,
 support, platform-adapter pairs, plugin and documentation groups remain coherent;
 the new SVG test fixture stays with mobile test support. No folder move is needed.

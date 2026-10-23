@@ -98,24 +98,65 @@ test('Download reports a cloud read failure and retries only after another expli
   page,
 }) => {
   await signInFixture(page);
-  await openData(page);
+  // Stop the old Home document before selecting a one-shot failure for Data.
+  // Session/local storage survives navigation in this same browser context.
+  await page.goto('about:blank');
   const failures = '**/v1/completion-restores*';
-  await page.route(failures, (route) => route.abort('internetdisconnected'));
-  await page
-    .getByRole('button', { name: 'Download my data', exact: true })
-    .click();
-  await expect(
-    page.getByText('Couldn’t download your data. Please try again.', {
+  let blockedReads = 0;
+  let downloads = 0;
+  let releaseFailure = () => {};
+  const pendingFailure = new Promise<void>((resolve) => {
+    releaseFailure = resolve;
+  });
+  page.on('download', () => downloads++);
+  // Navigation starts cloud synchronization. Hold its first read so Download
+  // joins a failing pass. A single permanent API error keeps later background
+  // passes healthy and avoids coupling this test to transport retry counts.
+  await page.route(failures, async (route) => {
+    if (route.request().method() !== 'GET' || blockedReads > 0) {
+      await route.fallback();
+      return;
+    }
+    blockedReads++;
+    await pendingFailure;
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        code: 'INVALID_REQUEST',
+        requestId: 'fixture-download-read',
+      }),
+    });
+  });
+  try {
+    await openData(page);
+    await expect.poll(() => blockedReads).toBeGreaterThan(0);
+    const download = page.getByRole('button', {
+      name: 'Download my data',
       exact: true,
-    }),
-  ).toBeVisible();
-  await page.unroute(failures);
-  const downloading = page.waitForEvent('download');
-  await page
-    .getByRole('button', { name: 'Download my data', exact: true })
-    .click();
-  await downloading;
-  await expect(
-    page.getByText('Your ZIP download has started.', { exact: true }),
-  ).toBeVisible();
+    });
+    await expect(download).toBeEnabled();
+    await download.click();
+    await expect(download).toBeDisabled();
+    expect(downloads).toBe(0);
+    releaseFailure();
+    const feedback = page.getByRole('alert');
+    await expect(feedback).toHaveText(
+      'Couldn’t download your data. Please try again.',
+    );
+    await expect(download).toBeEnabled();
+    expect(downloads).toBe(0);
+    await page.unroute(failures);
+    await expect(feedback).toHaveText(
+      'Couldn’t download your data. Please try again.',
+    );
+    const downloading = page.waitForEvent('download');
+    await download.click();
+    await downloading;
+    await expect(feedback).toHaveText('Your ZIP download has started.');
+    expect(downloads).toBe(1);
+  } finally {
+    releaseFailure();
+    await page.unroute(failures);
+  }
 });

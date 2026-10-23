@@ -7,17 +7,21 @@ import { deferred, owner, otherOwner } from '../../../../test-support/journal';
 
 let mockOwner: string | null = owner;
 let mockKind: 'guest' | 'account' = 'guest';
+let mockSignedIn = false;
 let mockPreferencesLoading = false;
 let mockBlur: (() => void) | undefined;
 const mockRouter = { push: jest.fn() };
 const mockRepository = { accountId: owner };
 jest.mock('../../../app-support/providers/AppProvider', () => ({
-  useIdentity: () => ({ account: null, collectionKind: mockKind }),
+  useIdentity: () => ({
+    account: mockSignedIn && mockOwner ? { userId: mockOwner } : null,
+    collectionKind: mockKind,
+  }),
   useJournal: () => (mockOwner ? mockRepository : null),
   useRuntime: () => ({
     client: {
       ownsCollection: (id: string) => id === mockOwner,
-      ownsAccount: () => false,
+      ownsAccount: (id: string) => mockSignedIn && id === mockOwner,
     },
   }),
 }));
@@ -57,6 +61,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockOwner = owner;
   mockKind = 'guest';
+  mockSignedIn = false;
   mockPreferencesLoading = false;
   collect.mockResolvedValue({
     name: 'JustGO-data-fixture.zip',
@@ -131,6 +136,41 @@ it('shows safe storage feedback rather than private adapter details', async () =
   await fireEvent.press(screen.getByRole('button'));
   await screen.findByText(/could not be read/);
   expect(share).not.toHaveBeenCalled();
+});
+it('reports a failed cloud read and retries only after another explicit download action', async () => {
+  mockKind = 'account';
+  mockSignedIn = true;
+  collect.mockRejectedValueOnce(new ApiError('NETWORK'));
+  share.mockResolvedValueOnce('downloaded');
+  const screen = await render(<SettingsExportRow />);
+  const button = screen.getByRole('button', { name: 'Download my data' });
+  const failure = 'Couldn’t download your data. Please try again.';
+
+  await fireEvent.press(button);
+  await screen.findByText(failure);
+  await waitFor(() => expect(button).toBeEnabled());
+  expect(collect).toHaveBeenCalledTimes(1);
+  expect(share).not.toHaveBeenCalled();
+
+  const retry = deferred<Awaited<ReturnType<typeof collectExport>>>();
+  collect.mockReturnValueOnce(retry.promise);
+  await fireEvent.press(button);
+  expect(collect).toHaveBeenCalledTimes(2);
+  expect(button).toBeDisabled();
+  expect(screen.queryByText(failure)).toBeNull();
+  expect(share).not.toHaveBeenCalled();
+
+  await act(() =>
+    retry.resolve({
+      name: 'JustGO-data-fixture.zip',
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
+  );
+  await screen.findByText('Your ZIP download has started.');
+  expect(collect).toHaveBeenCalledTimes(2);
+  expect(share).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText(failure)).toBeNull();
+  expect(button).toBeEnabled();
 });
 it.each(['blur', 'account'] as const)(
   'fences an old private download after %s',
