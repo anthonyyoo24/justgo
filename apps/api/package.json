@@ -17,17 +17,17 @@
     "test:migrations": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/db/migrations.integration.test.ts --fileParallelism=false"
   },
   "dependencies": {
-    "@fastify/cors": "11.3.0",
-    "@fastify/helmet": "13.1.1",
+    "@fastify/cors": "11.3.1",
+    "@fastify/helmet": "13.2.0",
     "@justgo/contracts": "0.1.0",
     "@supabase/supabase-js": "2.118.0",
-    "drizzle-orm": "0.45.2",
+    "drizzle-orm": "0.45.4",
     "fastify": "5.12.7",
-    "pg": "8.23.0",
-    "pino": "10.3.1"
+    "pg": "8.23.1",
+    "pino": "10.4.0"
   },
   "devDependencies": {
     "@types/pg": "8.23.1",
-    "drizzle-kit": "0.31.10"
+    "drizzle-kit": "0.31.11"
   }
 }
