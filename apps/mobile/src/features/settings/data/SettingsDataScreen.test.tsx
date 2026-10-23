@@ -1,6 +1,6 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { createDataBackup } from '../../../data/backup/data-backup';
-import { DestructiveConfirmation } from '../../../components/modals/DestructiveConfirmation';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 import { Modal } from 'react-native';
 import { SettingsDataScreen } from './SettingsDataScreen';
 import { pickBackupFile } from '../../../platform/backup/backup-file';
@@ -137,6 +137,9 @@ it('shows only the requested data controls without extra journal sections', () =
   expect(screen.getByRole('switch', { name: 'iCloud Sync' })).toBeTruthy();
   for (const label of ['Download my data', 'Import data', 'Delete all my data'])
     expect(screen.getByRole('button', { name: label })).toBeTruthy();
+  expect(screen.getByText('Delete all my data')).toHaveStyle({
+    color: '#B3261E',
+  });
   for (const label of [
     'Back up journal',
     'Restore journal',
@@ -258,7 +261,7 @@ it('deletes only after an explicit confirmation, retaining the account and separ
   fireEvent.press(
     within(
       screen.getByLabelText(/deleting saved data\?|Delete all saved data\?/),
-    ).getByRole('button', { name: 'Delete all my data' }),
+    ).getByRole('button', { name: 'Delete' }),
   );
   await screen.findByText(
     'All saved data was deleted. Your account and downloaded files were kept.',
@@ -286,7 +289,7 @@ it('shows durable unfinished deletion on reopening and resumes it while import r
   fireEvent.press(
     within(
       screen.getByLabelText(/deleting saved data\?|Delete all saved data\?/),
-    ).getByRole('button', { name: 'Delete all my data' }),
+    ).getByRole('button', { name: 'Delete' }),
   );
   await screen.findByText(
     'All saved data was deleted. Your account and downloaded files were kept.',
@@ -308,7 +311,7 @@ it('uses the shared modal and cancels safely through its button or native dismis
       'aria-modal',
       true,
     );
-    const staleConfirm = screen.UNSAFE_getByType(DestructiveConfirmation).props
+    const staleConfirm = screen.UNSAFE_getByType(ConfirmationModal).props
       .onConfirm as () => void;
     if (dismiss === 'button')
       fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
@@ -324,7 +327,7 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
   const screen = render(<SettingsDataScreen />);
   fireEvent.press(screen.getByRole('button', { name: 'Delete all my data' }));
   const dialog = within(screen.getByLabelText('Delete all saved data?'));
-  fireEvent.press(dialog.getByRole('button', { name: 'Delete all my data' }));
+  fireEvent.press(dialog.getByRole('button', { name: 'Delete' }));
   await screen.findByText(
     'Deletion is unfinished. Please try again to finish deleting your saved data.',
   );
@@ -332,7 +335,7 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
   expect(dialog.getByRole('alert')).toBeTruthy();
   const deletion = deferred<void>();
   mockActivity.deleteAllData.mockReturnValueOnce(deletion.promise);
-  const callbacks = screen.UNSAFE_getByType(DestructiveConfirmation).props as {
+  const callbacks = screen.UNSAFE_getByType(ConfirmationModal).props as {
     onConfirm: () => void;
     onCancel: () => void;
   };
@@ -343,9 +346,7 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
   });
   expect(mockActivity.deleteAllData).toHaveBeenCalledTimes(2);
   expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  expect(
-    dialog.getByRole('button', { name: 'Delete all my data' }),
-  ).toBeDisabled();
+  expect(dialog.getByRole('button', { name: 'Delete' })).toBeDisabled();
   expect(
     dialog.getByRole('progressbar', { name: 'Deleting saved data' }),
   ).toBeTruthy();
@@ -362,7 +363,7 @@ it('authenticates before deleting an account journal while signed out', () => {
   fireEvent.press(
     within(screen.getByLabelText('Delete all saved data?')).getByRole(
       'button',
-      { name: 'Delete all my data' },
+      { name: 'Delete' },
     ),
   );
   expect(mockRouter.push).toHaveBeenCalledWith({

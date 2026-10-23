@@ -47,7 +47,8 @@ test('one import restores deleted history and writing, preserves conflicts and r
     .getByRole('button', { name: 'Delete all my data', exact: true })
     .click();
   await page
-    .getByRole('button', { name: 'Delete all my data', exact: true })
+    .getByRole('alertdialog', { name: 'Delete all saved data?', exact: true })
+    .getByRole('button', { name: 'Delete', exact: true })
     .click();
   await expect(
     page.getByText(

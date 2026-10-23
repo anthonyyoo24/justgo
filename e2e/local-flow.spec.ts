@@ -260,6 +260,14 @@ test('first-download failure has a recovery action and later refresh failure lea
   page,
   fixtureDatabase,
 }) => {
+  let authorizations = 0;
+  page.on('request', (request) => {
+    if (
+      request.url() === `${journeyApiUrl}/__fixtures/provider-sessions` &&
+      request.method() === 'POST'
+    )
+      authorizations++;
+  });
   let unavailable = true;
   await page.route(`${journeyApiUrl}/v1/challenges`, async (route) => {
     if (unavailable)
@@ -274,16 +282,18 @@ test('first-download failure has a recovery action and later refresh failure lea
     else await route.continue();
   });
   const account = await openAccount(page, false);
-  await expect(
-    page.getByRole('button', { name: 'Refresh challenges', exact: true }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/account\/sign-in\?provider=apple$/);
+  await expect(page.getByRole('alert')).toHaveText(
+    'Your challenges couldn’t load. Check your connection and try again.',
+  );
+  const retry = page.getByRole('button', { name: 'Try again', exact: true });
+  await expect(retry).toBeEnabled();
   unavailable = false;
-  await page
-    .getByRole('button', { name: 'Refresh challenges', exact: true })
-    .click();
+  await retry.click();
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toBeVisible();
+  expect(authorizations).toBe(1);
   unavailable = true;
   await page.getByRole('tab', { name: 'Progress', exact: true }).click();
   await page.getByRole('tab', { name: 'Home', exact: true }).click();

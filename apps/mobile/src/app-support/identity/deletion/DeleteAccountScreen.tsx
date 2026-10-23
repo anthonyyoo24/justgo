@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Redirect, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
@@ -9,15 +8,10 @@ import { colors, spacing, typography } from '../../../theme/tokens';
 import { CancelSubscriptionRow } from './CancelSubscriptionRow';
 import { DeleteAccountConfirmation } from './DeleteAccountConfirmation';
 import { useAccountDeletionDialog } from './useAccountDeletionDialog';
-import { preloadWelcomeArtwork } from '../welcome/welcome-artwork';
 
 export function DeleteAccountScreen() {
   const { state, pending, open, dialog } = useAccountDeletionDialog();
   const router = useRouter();
-  useEffect(() => {
-    // Best-effort preparation handles its own failure and never delays deletion.
-    void preloadWelcomeArtwork();
-  }, []);
   if (state.deletionStatus === 'deleted') return <Redirect href="/welcome" />;
   return (
     <SettingsPage title="Delete account" backHref="/settings">

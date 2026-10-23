@@ -25,25 +25,132 @@ Started September 17, 2026. Owner: **Anthony**. **October 11 verification:** The
 
 **October 21 revised development binary:** Anthony authorized [967b34cf](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/967b34cf-7a97-4268-88b7-5a2c77dc2feb), which finished successfully. The downloaded signed IPA includes SQLite, DocumentPicker, Keychain, the CloudKit module, Apple Authentication, SecureStore and Google Sign-In. It preserves the existing bundle ID/team and registered iPhone; EAS enabled Sign in with Apple and refreshed the existing ad hoc profile. Fresh `npm run check` passed, including Expo Doctor 21/21. This is a guest/data-controls testing binary: actual provider configuration, Google's native URL scheme and CloudKit container/entitlements remain pending and will require another compatible native configuration/build. Native compilation does not establish provider or iCloud behavior. The development server uses the matching local LAN API with bounded staging guest admission; hosted services were not updated. Install over the existing app to preserve phone data. Installation and physical acceptance remain open.
 
-The inspected IPA reports `cloudKitConfigured=false`. It also predates the current
-native page `revision` / `resetIfUnchanged` bridge used for safe guest-copy
-handover. The current local implementation therefore requires a compatible
-rebuild before that native acceptance can run; JavaScript refresh alone cannot
-update this protocol. The build/check results above describe the earlier binary,
-not acceptance of the current changes.
+The earlier IPA reports `cloudKitConfigured=false` and predates the current
+native conditional-reset bridge. It is superseded for login testing by the
+configured build below; CloudKit capability/device acceptance remains separate.
+
+**Configured provider build:** The authorized internal development build
+[87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab)
+succeeded October 21. Signed IPA inspection confirms the existing bundle/team,
+registered iPhone, Sign in with Apple entitlement, exact Google reversed-client
+URL scheme, Apple/Google modules, SecureStore, SQLite, Files/Keychain and current
+`resetIfUnchanged` bridge. The native providers, public development inputs and
+matching staged API are configured. Its CloudKit container remains unconfigured;
+this build does not establish working iCloud Sync. Install over the existing app,
+then use the restarted Metro server on the same Wi-Fi. Real sign-in, installation,
+secure storage and logout/deletion acceptance remain open.
 
 ## Revised Phase 13 native prerequisites
 
+**Configured iCloud testing binary:** The internal development build
+[1a1174d6](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/1a1174d6-160a-48ef-8a0e-4ffccfbc1590)
+finished successfully. Downloaded IPA/signature inspection confirms the approved
+container, `CloudKit` service, Production environment and matching provisioning
+permissions for the registered iPhone. The current native writer/conditional-reset
+bridge, Apple/Google providers, Google URL scheme, secure session storage,
+SQLite, Files and Keychain are present. The code signature verifies. This build
+also collects individual CloudKit save/delete failures so storage-quota errors
+can reach the concise storage-full message. Its compiled callback imports differ
+from the previous iCloud binary; registered devices and Keychain access are preserved.
+Fresh `npm run check` and all 23 native Swift regressions passed before that
+build. It is installed on Anthony's phone. Actual upload/readback matched one
+challenge/journal pair; with sync off, a new pair stayed only on the phone while
+the existing cloud pair remained. After re-enabling, restarting and saving another
+entry, all three local challenge/journal pairs matched iCloud. The actual
+storage-full condition also reached the concise iCloud-full message. These checks
+do not establish the deferred offline/multi-device/account-change/deletion matrix.
+
+**Historical recovery build, superseded October 23:** Development
+build [3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05), from source `b6c75d5`, finished successfully on October 22 at
+23:11:58 UTC. Fresh online Expo Doctor passes 21/21. The downloaded IPA's signature
+verifies; inspection confirms bundle `com.anthonyyoo.justgo`, team `NPDYTJS425`,
+container `iCloud.com.anthonyyoo.justgo`, CloudKit/Production, registered-phone
+provisioning, retained Keychain access, Apple entitlement and Google URL scheme.
+The full provisioning profile is unchanged from the installed `1a1174d6` binary.
+The actual Mach-O contains the `readGuarded` bridge and `ZONE_RECOVERY_REQUIRED`
+code. Expo showed Succeeded with Install available, and the supplied QR was decoded
+and verified against this exact build's installation URL.
+
+Build `1a1174d6` remains the binary for the earlier installed-phone evidence.
+Anthony rejected the recovery-clearing behavior in `3cbc873a`; do not install it
+as the acceptance candidate for the revised behavior. The historical build's
+inspection does not establish the October 23 bridge or physical behavior.
+
+**Revised build inspected and exercised on the phone; external deletion/restore acceptance deferred:** Development build
+[b4da28da](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/b4da28da-e425-4e5a-83fd-d734b87f39c4),
+from source `4a9f10f`, finished successfully on October 23. The downloaded IPA
+passed `codesign --verify --deep --strict`; its actual Mach-O contains
+`readRetainingLocal`, with `readGuarded` absent. Inspection confirms bundle
+`com.anthonyyoo.justgo`, team `NPDYTJS425`, container
+`iCloud.com.anthonyyoo.justgo`, matching Info.plist container and CloudKit-only
+Production entitlements. Registered-phone provisioning, profile and Keychain
+permissions are unchanged from `1a1174d6`; Apple sign-in and Google's URL scheme
+remain present. The installation QR was decoded against this exact build URL.
+The phone Metro uses the matching staged API. The updated adapter requires
+native `readRetainingLocal`, which also certifies fixed real-deletion markers.
+An older binary cannot supply this through an OTA or development-server update;
+its cloud data operations are rejected safely. The compatible `readRetainingLocal`
+bridge has now been successfully exercised on the phone. Sync on matched four
+challenge/journal pairs; off kept a fifth only on the phone, without diagnostic
+uploads/deletions or changing the off preference. Re-enable caught up all five,
+and they still matched with sync enabled/idle after force-quit and reopen.
+
+Deleting JustGO data through Apple Settings or an encrypted-data reset retains
+the phone's journal/challenge entries and saved sync preference. Enabled ordinary
+sync may recreate missing iCloud storage and upload those entries; off stops
+ordinary uploads and preserves local entries. There is no Clear older copy and
+sync action. Genuine in-app Delete all my data/Delete account and authenticated
+account epochs remain authoritative. An unfinished legacy recovery clear is
+canceled only without a real deletion/cleanup or account-epoch clear to finish.
+Anthony explicitly deferred external cloud deletion/recreation and second-phone
+restore. These remain unverified before release under Anthony, the implementation
+owner and the Phase 14 release owner; the single-phone results do not establish
+them. Focused revision checks
+passed 145 distinct JavaScript tests across seven suites, 30 Swift tests, mobile
+source/tests typechecks, changed-file ESLint and online Expo Doctor 21/21. The
+live side-panel walkthrough was blocked by browser-tool URL security policy and
+is not counted as verified UI or device evidence.
+
+Anthony explicitly deferred the remaining manual offline/reconnect, two-device,
+extended provider-continuity and native Download/Import/deletion checks from the
+October 22 local closeout. These remain unverified pre-release gates with Anthony,
+the implementation owner and Phase 14 release owner. The routine iCloud fix used
+focused native/adapter/coordinator/UI checks at his request. Subsequent PR
+publication preparation passed broader checks, coverage, 43 saved journeys and
+exports/smoke. The API audit scope correction passes locally; exact hosted results
+are recorded on PR #43. Mobile/tooling advisories remain separate pre-release work. See the
+[current publication evidence](../handoffs/phase-13-local-journal.md#pr-publication-validation).
+These checks do not accept the deferred native cases.
+
+**Configured private iCloud:** Anthony approved assigning
+`iCloud.com.anthonyyoo.justgo` to the existing App ID/team. The iCloud capability
+with CloudKit is saved, and the existing ad hoc provisioning profile was
+regenerated for the registered phone without replacing the distribution
+certificate. `JustGoCollection` and `JustGoValue` are deployed in both Development
+and Production; `JustGoValue.value` is Encrypted String. The app writes private
+custom zones only, with no public read/create grants for these types.
+
+Local phone and EAS development configuration pair
+`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER=iCloud.com.anthonyyoo.justgo` with
+`ICLOUD_CONTAINER_ENVIRONMENT=Production`. The internal ad hoc build uses the
+Production schema; a local Xcode development signing task would need Development
+instead. These environments have separate records. The fixture simulator profile
+does not inherit device CloudKit access. The focused native config mod preserves
+the environment after DocumentPicker's automatic entitlement mod while keeping
+the service `CloudKit`; do not enable unrelated CloudDocuments storage to work
+around that plugin. Generated config verifies this pair alongside the existing
+Apple entitlement and Google URL scheme. Final signed IPA inspection and real
+device acceptance are separate evidence.
+
 Reuse the existing app, team and Expo project. Follow
 [ACCOUNT_SYNC_SETUP.md](ACCOUNT_SYNC_SETUP.md) for exact public Auth/Google/CloudKit
-environment names, Supabase provider/manual-link setup, narrow live-session grants
-and server-only Auth deletion capability. The October 21 read-only audit found
-Apple/Google providers disabled, hosted migrations 0019–0023 unapplied, live Auth
-grants missing and local/EAS public Auth, Google and iCloud inputs absent. The
-October 21 authorized build updated Apple sign-in signing/provisioning; it did not
-activate those cloud services. Provider/container configuration, hosted cutover
-and the next native signing/build/upload remain external actions requiring their
-existing owner authorization.
+environment names, Supabase provider/manual-link setup, private live-session
+capability and server-only Auth deletion. The subsequent authorized rollout
+supersedes the earlier missing-provider/grant audit: native Apple/Google are enabled,
+0019–0023 applied, restricted-runtime readiness passes, and matching local/EAS
+public Auth/Google inputs are present. Real provider/device acceptance remains
+required. CloudKit configuration and any later signing/build changes retain their
+existing owner authorization boundaries.
 
 For native Apple sign-in, enable Supabase's Apple provider with
 `com.anthonyyoo.justgo` as an accepted client ID/token audience and preserve team
@@ -58,12 +165,13 @@ The native config adds Apple sign-in, SecureStore, the original Google Sign-In
 plugin when its approved reversed-client URL scheme is configured, and a focused
 private CloudKit module. Configure the approved iCloud container and its private
 database capabilities under the existing team using
-`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER`. Verify the container association,
+`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER` paired with
+`ICLOUD_CONTAINER_ENVIRONMENT=Development|Production`. Verify the container association,
 `JustGoCollection`/`JustGoValue` record schema and matching development/production
 CloudKit environment. Confirm generated iCloud container/CloudKit entitlements
 and the provisioning profile, including Sign in with Apple/iCloud, before
 building. An OTA update or JavaScript export cannot add modules, the current
-conditional-reset bridge or capabilities. Keep unavailable states visible until
+conditional-reset/`readRetainingLocal` bridges or capabilities. Keep unavailable states visible until
 the configuration and device checks pass.
 
 On a compatible signed build, verify both provider sign-ins/cancellation/refresh,
@@ -99,9 +207,13 @@ latter also removes the JustGO account/Auth profile. Neither removes the user's
 Apple/Google account. User-saved files remain under the user's control after app
 deletion.
 
-Next steps: Complete the authorized provider/native setup and produce a compatible
-build before real OAuth/iCloud acceptance. Install over the existing app to
-preserve phone data, and connect to the matching API/development server. Developer
+Next steps before release: resolve the owner-deferred checks for external iCloud
+deletion retaining phone entries while the
+toggle governs ordinary re-upload and for second-phone restore, then complete the owner-deferred
+provider/native/iCloud matrix.
+Container/schema setup and the named single-phone sync checks above are complete.
+Install over the existing app to preserve phone data, and connect to the matching
+API/development server. Developer
 Mode was verified on the earlier installed build. An API address change alone is
 delivered through JavaScript and does not require a native build; the CloudKit
 bridge/capability changes above do. See the [Expo device-build walkthrough](https://docs.expo.dev/tutorial/eas/ios-development-build-for-devices/).

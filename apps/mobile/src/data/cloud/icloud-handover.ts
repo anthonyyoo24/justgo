@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import type { JournalStorage } from '../activity/model';
 import type { AccountRepository } from '../activity/repository';
-import { ICloudError, type ICloudSync } from '../../platform/icloud/model';
+import {
+  ICloudError,
+  iCloudError,
+  type ICloudPurgePage,
+  type ICloudSync,
+} from '../../platform/icloud/model';
 
 type Snapshot = Awaited<ReturnType<AccountRepository['snapshotData']>>;
 type Remote = { generation: string; revision: string | null };
@@ -126,12 +131,30 @@ export async function handoverGuestCopy(input: {
   const generation = state.purgeGeneration;
   if (!generation) throw new ICloudError('INVALID_DATA');
   const cursors = new Set<string>();
+  let restartedCursor = false;
   while (true) {
-    const page = await input.cloud.purge({
-      collection: 'guest',
-      generation,
-      ...(state.purgeCursor ? { cursor: state.purgeCursor } : {}),
-    });
+    let page: ICloudPurgePage;
+    try {
+      page = await input.cloud.purge({
+        collection: 'guest',
+        generation,
+        ...(state.purgeCursor ? { cursor: state.purgeCursor } : {}),
+      });
+    } catch (error) {
+      if (
+        iCloudError(error).code !== 'CURSOR_EXPIRED' ||
+        !state.purgeCursor ||
+        restartedCursor
+      )
+        throw error;
+      // Keep the accepted adoption and its fenced source generation. Only the
+      // physical cleanup cursor restarts, once per invocation.
+      state = { ...state, purgeCursor: null };
+      await save();
+      restartedCursor = true;
+      cursors.clear();
+      continue;
+    }
     if (page.generation !== generation || cursors.has(page.cursor))
       throw new ICloudError('INVALID_DATA');
     cursors.add(page.cursor);

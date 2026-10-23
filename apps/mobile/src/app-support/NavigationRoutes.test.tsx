@@ -120,6 +120,71 @@ it('opens Home at the sole root URL when access is verified', async () => {
   expect(navigation.getPathname()).toBe('/');
 });
 
+it.each(['/', '/access'])(
+  'keeps cold %s startup quiet until access is verified',
+  async (initialUrl) => {
+    mockSnapshot.access = {
+      verified: false,
+      isPending: true,
+      refetch: jest.fn(),
+    };
+    const navigation = renderRouter(routes, { initialUrl });
+    expect(await screen.findByLabelText('Loading JustGO')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/access');
+    expect(screen.queryByText('Checking your access…')).toBeNull();
+    expect(screen.queryByText('Check access again')).toBeNull();
+    expect(screen.queryByText('Home ready')).toBeNull();
+    act(() => {
+      mockSnapshot = {
+        ...mockSnapshot,
+        access: { ...mockSnapshot.access, verified: true, isPending: false },
+      };
+      for (const listener of mockListeners) listener();
+    });
+    expect(await screen.findByText('Home ready')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/');
+    expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
+    expect(screen.queryByText('We can’t verify access yet.')).toBeNull();
+  },
+);
+
+it('replaces startup loading with recovery when access cannot be verified', async () => {
+  mockSnapshot.access.verified = false;
+  mockSnapshot.access.isPending = true;
+  renderRouter(routes, { initialUrl: '/' });
+  expect(await screen.findByLabelText('Loading JustGO')).toBeTruthy();
+  act(() => {
+    mockSnapshot = {
+      ...mockSnapshot,
+      access: { ...mockSnapshot.access, isPending: false },
+    };
+    for (const listener of mockListeners) listener();
+  });
+  expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
+  expect(screen.getByText('View saved history')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Check access again' }),
+  ).toBeTruthy();
+  expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
+  expect(screen.queryByText('Home ready')).toBeNull();
+});
+
+it.each([
+  ['/progress', 'Progress'],
+  ['/settings', 'Settings'],
+  ['/data', 'Data'],
+] as const)(
+  'keeps %s usable while admission is pending',
+  async (initialUrl, title) => {
+    mockSnapshot.access.verified = false;
+    mockSnapshot.access.isPending = true;
+    const navigation = renderRouter(routes, { initialUrl });
+    expect(await screen.findByText(`${title} ready`)).toBeTruthy();
+    expect(navigation.getPathname()).toBe(initialUrl);
+    expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
+  },
+);
+
 it.each(['/challenge', '/success', '/reflection'])(
   'falls back from %s to /access when access is unavailable',
   async (initialUrl) => {

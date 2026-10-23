@@ -140,7 +140,13 @@ make a focused run pass.
 The root coverage command builds contracts, runs workspaces sequentially and
 enforces [coverage-thresholds.json](../../scripts/quality/coverage-thresholds.json).
 API coverage includes unit/database suites and the migration rehearsal, so prepare
-the same local database first. Individual workspace coverage scripts generate
+the same local database first. The private Auth-session helper integration also
+requires `JUSTGO_TEST_ADMIN_DATABASE_URL` for a `postgres` connection to loopback
+`justgo_test`, with SSL disabled. New `db:local` environments and shared CI database
+jobs supply it; existing local `.env` files need that test-only value added.
+The test refuses occupied Auth/helper schemas, executes the actual operator SQL
+inside a rollback-only fixture transaction and never targets hosted Auth. Never
+deploy this test operator URL on Vercel or mobile. Individual workspace coverage scripts generate
 reports; the root command applies the combined gate. Reports are ignored generated
 output under `coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
 Jest uses Istanbul; Vitest's V8 provider is pinned with its Vitest version.
@@ -374,6 +380,20 @@ capabilities and physical multi-device/account-change/failure/deletion checks;
 in-memory cloud adapters establish domain decisions only.
 Use the [move checks](#file-moves-and-bundle-checks) when module or asset paths change.
 
+The private CloudKit bridge also has a dependency-free SwiftPM regression target:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test \
+  --package-path apps/mobile/modules/justgo-icloud \
+  --scratch-path .local/justgo-icloud-swift --jobs 1
+```
+
+Use the installed Xcode toolchain locally without changing the global developer
+directory. The target compiles production CloudKit code against controllable I/O;
+its tests cover byte bounds, atomic generation/account fences and sanitized cursor
+errors. It excludes the Expo bridge, requires no Apple login and does not contact
+CloudKit. A signed EAS build and actual phone checks still verify those boundaries.
+
 The [native-testing checkpoint](../handoffs/phase-07-3a-testing-checkpoint.md) and
 [browser assessment](../checks/phase-07-3a-browser-testing-assessment.md) remain the
 resume boundary for deferred native automation. Retain Playwright/web adapters,
@@ -453,7 +473,7 @@ never hide live metadata changes with offline mode/exclusions. Native/device
 acceptance for changed dependencies stays separate.
 
 CI runs on pull requests and pushes to `main`, cancels superseded PR runs and keeps
-each main commit's result. Five producer jobs run independently:
+each main commit's result. Six producer jobs run independently:
 
 - `static`: online Doctor, contracts/type/lint/format/tooling checks and the API
   production-dependency audit.
@@ -463,6 +483,7 @@ each main commit's result. Five producer jobs run independently:
 - `journeys`: isolated PostgreSQL and the actual app/API/database journeys. Their
   wrapper owns migration and fixture service startup.
 - `exports`: production web export, its independent static smoke, then iOS export.
+- `native-icloud`: the pure Swift CloudKit regressions on macOS, without npm setup.
 
 The final `checks` job runs even when a producer fails, is skipped or is cancelled;
 any such result fails the aggregate status. After all producers pass, it downloads

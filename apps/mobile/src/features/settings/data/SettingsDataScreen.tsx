@@ -7,7 +7,7 @@ import {
   useJournal,
   useRuntime,
 } from '../../../app-support/providers/AppProvider';
-import { DestructiveConfirmation } from '../../../components/modals/DestructiveConfirmation';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 import { SettingsPage } from '../../../components/settings/SettingsPage';
 import {
   SettingsActionRow,
@@ -302,6 +302,7 @@ function DataSession() {
           <SettingsActionRow
             icon="delete"
             label="Delete all my data"
+            destructive
             busy={busy === 'delete'}
             disabled={busy !== null}
             onPress={() => {
@@ -314,14 +315,15 @@ function DataSession() {
         </View>
       </View>
       {confirmDelete !== null && (
-        <DestructiveConfirmation
+        <ConfirmationModal
+          destructive
           title={
             deletionPending && busy !== 'delete'
               ? 'Finish deleting saved data?'
               : 'Delete all saved data?'
           }
           message="Your challenge history, feelings and reflections on this phone, in your JustGO account and in associated iCloud copies will be deleted. Your account, login methods and downloaded files remain. This cannot be undone."
-          confirmLabel="Delete all my data"
+          confirmLabel="Delete"
           progressLabel="Deleting saved data"
           busy={busy === 'delete'}
           disabled={busy !== null}

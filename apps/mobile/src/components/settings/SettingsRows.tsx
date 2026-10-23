@@ -68,7 +68,10 @@ export function SettingsRowContent({
   return (
     <View style={[styles.row, expanded && styles.expandedRow]}>
       <View style={[styles.icon, expanded && { height: firstLineHeight }]}>
-        <SettingsIcon name={icon} />
+        <SettingsIcon
+          name={icon}
+          color={destructive ? styles.destructive.color : colors.ink}
+        />
       </View>
       <View style={styles.copy}>
         <Text

@@ -48,7 +48,7 @@ Android is excluded from app platforms and has no package identifier, EAS profil
 | `DATABASE_SSL`                                                     | `verify-full` remotely; `disable` accepted only for loopback test databases                                                                |
 | `DATABASE_POOL_MAX`                                                | API; default 1, validated range 1–5                                                                                                        |
 | `CORS_ORIGINS`                                                     | Explicit comma-separated browser origins; staging allows localhost:8081 for development                                                    |
-| `MANAGED_AUTH_ENABLED`                                             | API only; default false until providers, live-session grants, deletion secret and coordinated client rollout are ready                     |
+| `MANAGED_AUTH_ENABLED`                                             | API only; default false until providers, private session helper, deletion secret and coordinated client rollout are ready                  |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`                         | API Auth verifier configuration; matching project origin/public key                                                                        |
 | `SUPABASE_AUTH_SECRET_KEY`                                         | Server-only hard Auth deletion capability; never mobile/public env or database credentials                                                 |
 | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public mobile Auth configuration; no admin secret                                                                                          |
@@ -67,11 +67,12 @@ Staging: dedicated **JustGo**, project ref `kmcpcauaxlgpevkkenwd`, Canada Centra
 3. Review generated SQL and journal together. `npm run db:generate -w @justgo/api -- --name feature_name` generates later domain changes; custom migrations use Drizzle Kit's `--custom` option. `npm run db:migrate` verifies the effective migration role before applying the journal to schema `drizzle`.
 4. Runtime uses the **transaction** pooler on 6543, username `justgo_runtime.<project-ref>`, with the separate password. Never use an administrator/migration database role for application queries. Managed Auth's isolated server-only admin SDK holds a deletion-capable secret, separate from the restricted database connection. Mobile calls Supabase Auth for provider sessions and Fastify for application data; it never connects directly to private PostgreSQL tables.
 
-Managed mode additionally needs Auth-owner-reviewed column grants for live session
-checks. The ordinary migrator cannot self-grant Supabase Auth access. Follow the
-exact [narrow grant and provider setup](ACCOUNT_SYNC_SETUP.md); no Auth writes,
-public data grants or security-definer bypass is introduced. Readiness verifies
-those read privileges when managed mode is enabled.
+Managed mode additionally needs the versioned postgres-operator private
+session-check helper in [account setup](ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
+Hosted Supabase cannot grant custom runtime roles direct Auth-schema access.
+Only runtime may execute this boolean helper; it has no direct Auth-table access,
+Auth writes or public application grants. Readiness checks its body, ownership,
+configuration and effective privileges alongside the managed application schema.
 
 Migration failures report only the registered SQL filename (when attributable)
 and a validated SQLSTATE, without SQL, parameters or raw driver messages. The
@@ -152,10 +153,11 @@ Responses use `no-store`, security headers and server-generated request IDs. The
 The current entry flow uses ordinary Terms/Privacy links and Continue without
 legal-view/agreement receipts. Sentry remains configured but delivery disabled;
 product analytics remains disabled. Signed-in journal text now reaches the
-dedicated API journal resource in the local candidate, so the reopened provider,
-retention and privacy review must precede hosted activation. Managed `/ready`
-checks live-session read privileges, while actual provider login/hard deletion
-requires separate staged proof with disposable accounts.
+dedicated API journal resource. The authorized staging rollout is configured for
+owner testing; public distribution still requires reopened provider, retention and
+privacy review. Managed `/ready` checks the private live-session capability and
+application schema. Actual provider login/hard deletion requires separate staged
+proof with disposable accounts.
 
 ## Design and tests
 

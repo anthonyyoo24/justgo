@@ -84,6 +84,28 @@ admission. Challenge starts require fresh verified access; saved local Progress
 remains available offline or signed out. Pending account deletion removes product
 routes from Back history until required cleanup finishes.
 
+Fonts, saved-collection hydration and the first challenge-access request use a
+static navy GO mark on cream, without visible text, a spinner or animation. The
+bundled transparent mark and its 194-point contained image frame match the native
+`expo-splash-screen` configuration. Home sends pending admission to `/access`
+outside the tab scene so startup stays centered in the full screen. Loading has
+an accessible busy label. Native launch configuration requires a rebuilt binary
+and release-build/device verification; a browser preview cannot establish it.
+Pending access does not show account status, recovery actions or development-preview links.
+Settled denial/unavailability keeps the access recovery page; access loading does
+not cover Progress, Settings or Data, and background refresh does not hide a
+verified challenge screen.
+
+The separate Apple/Google sign-in page keeps the selected button disabled with a
+centered spinner through native authorization, owner adoption, access verification
+and challenge preparation. It opens Challenges directly once the verified owner's
+repository and selected deck are usable. Cancelled/failed authorization restores
+the button; catalog failure offers retry without repeating provider login. Real
+access denial/unavailability still uses the access page. Handoff results are fenced
+by route focus, canonical owner and app session, and owner-authenticated Data
+returns skip challenge admission. Explicit provider entry cancels the Terms cover,
+including after deletion; later guest Continue retains its normal preparation.
+
 Welcome transition keeps Terms above navigation until the first selected collection's
 deck paints. Catalog preparation and unfinished challenge state key off the active
 collection, including guest/signed-out owners, rather than requiring a session.
@@ -276,8 +298,12 @@ access on reduced viewports; focus scrolling honors effective Reduce Motion.
 
 `ProgressScreen` owns selected date/editor coordination; independent read hooks
 accept repository data. `ProgressView` composes the calendar, day sheet and entry
-rows. The day-details group keeps sheet/motion, entry expansion and reflection
-editor responsibilities together. `ConnectedDayReflectionEditor` owns draft
+rows. The day-details group keeps the sheet, entry expansion and reflection
+editor responsibilities together. Shared `platform/modals/useSheetMotion` owns
+calendar/iCloud panel entry, exit and interruption: the full-screen backdrop appears
+immediately, while only the panel moves (280 ms in, 220 ms out). Covering native
+modals use no system slide animation. Reduce Motion settles the panel immediately.
+`ConnectedDayReflectionEditor` owns draft
 subscriptions so typing updates stay inside the active editor.
 
 `DayEntryList` initially mounts eight rows, fills ahead of scrolling and requests
@@ -304,14 +330,22 @@ Account shows a Login methods group with Apple/Google logos and switches driven 
 verified linked identities. There is no separate signed-in status sentence. An off
 switch signs in when signed out, or links that method when signed in. An on switch
 requests unlinking; removing the last login method is rejected with feedback.
-Log out is separate and Delete account is red. Old key/code/device routes redirect
+Log out is separate. Old key/code/device routes redirect
 there. Sign-out keeps the same local journal; there is no View guest data action.
 Actions preserve accessible names while busy and show retryable errors.
+Sign-in failures stay on the separate provider-entry page. The signed-out Account
+page omits connection messages and the generic Retry connection button. Signed-in
+provider-action feedback and pending account-deletion retries remain available.
+Provider-entry errors belong to the current attempt and reset on a new visit or
+provider change; a late result cannot add feedback to a later visit.
 
 Settings keeps Preferences, Account & data, Support and About. Account & data contains
 only Account and Data links. Support actions open private email drafts; legal/social
 links use configured URLs or honest unavailable states. No legal-view/agreement
 receipts or analytics switches are introduced; diagnostics/analytics stay gated.
+The shared `SettingsPage` keeps its safe-area title and Back button above the
+scrollable body, preserving navigation while longer pages scroll. Header and body
+share the same content width and enlarged-text layout rules.
 
 Welcome's branded Apple and Google buttons appear above Continue. Continue opens
 Terms & Privacy, then selects a local guest collection. It creates no account.
@@ -326,11 +360,41 @@ hydration before mounting protected routes, preserving cold saved-history links.
 Data contains iCloud Sync, Download my data, Import data and Delete all my data.
 Descriptions live in action flows instead of paragraphs beneath every Settings row.
 Download and Import use matching down/up tray icons; iCloud uses a cloud with a
-circular arrow. An unavailable iCloud switch shows its configuration, platform or
-Apple-account reason rather than silently ignoring taps. Delete all sits at the
-bottom. Both deletion flows reuse `components/modals/DestructiveConfirmation`,
-with their own consequence text and retry behavior. It preserves modal input and
+circular arrow. While its initial status is unknown, the row shows a neutral
+loading indicator. The switch mounts directly in the confirmed on/off position
+without an activation animation; later value changes keep their normal motion.
+Tapping an unavailable iCloud switch opens its configuration,
+platform or Apple-account explanation in the sheet with Start Syncing disabled.
+Enabling available iCloud Sync opens the peach `ICloudSyncSheet`, with
+live disclosure text, decorative cloud/cards artwork, X and Start Syncing.
+The artwork has a fixed height for the viewport and cannot flex smaller when
+feedback appears. An always-present message area reserves two scaled text lines
+below it; concise shared copy fits standard phone text sizes without truncation.
+Larger accessibility text may wrap further and remains available through scrolling.
+Its backdrop stays fixed while the panel uses the same motion as calendar day details.
+Opening or dismissing it does not enable sync. Start Syncing retains the sheet
+with a centered spinner through the existing native/coordinator operation. The
+toggle stays off until first sync succeeds. Sync errors and retry stay inside the
+sheet; the Data row never expands with an error or Retry iCloud Sync action.
+The sheet never offers to erase phone entries after an iCloud reset or removal.
+Removing the iCloud copy in Apple's Settings retains phone data; enabled sync may
+recreate that copy. Turning sync off preserves local writing and stops uploads.
+Start Syncing and X are the normal actions, with Try Again retained only for a
+failed disable. A superseded native bridge gets the build-update message inside
+the sheet. Consent remains scoped to the route visit, collection and Apple account
+through the final preference write.
+Turning an enabled switch off remains direct. Delete all sits at the
+bottom. Both deletion rows use red labels and trash icons, omit chevrons and open
+their confirmation modal directly on the current page. Both flows reuse
+`components/modals/ConfirmationModal` with destructive styling, their own consequence text and
+retry behavior. The Account modal retains the subscription warning. The
+`/delete-account` route remains available for deep links and interrupted cleanup;
+normal Account deletion does not navigate there. The modal preserves input and
 accessibility isolation, busy dismissal protection and large-text action layout.
+Log out uses the same modal with neutral Cancel/Log out actions, leaving the
+Account layout fixed. Its spinner stays visible until controller-confirmed logout
+finishes, including after the local account is fenced. Failures remain in the
+modal for retry. Route, owner and session changes dismiss stale confirmations.
 Native download uses the share sheet; the browser downloads directly. Import uses
 DocumentPicker/Files or the web file chooser, validates before preview/commit and
 preserves current differing writing. It accepts the full-data backup, adding real

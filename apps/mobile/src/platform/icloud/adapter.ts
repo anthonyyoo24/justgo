@@ -18,6 +18,11 @@ export interface ICloudNativeModule {
   status(): Promise<string>;
   configure(enabled: boolean, accountToken: string | null): Promise<string>;
   read(collection: string, cursor: string | null): Promise<string>;
+  /** Also certifies that in-app deletion writes marker 1, including legacy roots. */
+  readRetainingLocal?(
+    collection: string,
+    cursor: string | null,
+  ): Promise<string>;
   write(
     collection: string,
     generation: string,
@@ -66,6 +71,7 @@ export function createICloudSync(
   let epoch = 0;
   let disposed = false;
   let maintenance: symbol | null = null;
+  let activation: number | null = null;
   let ready: Promise<void> | null = null;
   let preferences: Promise<void> = Promise.resolve();
   const listeners = new Set<() => void>();
@@ -75,7 +81,10 @@ export function createICloudSync(
     accountToken: string | null;
   }) => {
     const work = () =>
-      storage.setItem(ICLOUD_PREFERENCE_KEY, JSON.stringify(value));
+      storage.setItem(
+        ICLOUD_PREFERENCE_KEY,
+        JSON.stringify({ version: 2, ...value }),
+      );
     const result = preferences.then(work, work);
     preferences = result.catch(() => undefined);
     return result;
@@ -116,6 +125,12 @@ export function createICloudSync(
         return;
       }
       if (disposed || capturedEpoch !== epoch) return;
+      if (preference?.success && preference.data.version === 1) {
+        // Earlier saved choices cannot prove a completed first sync. Preserve
+        // every local/cloud record, but require a fresh successful opt-in.
+        await disable();
+        return;
+      }
       if (
         !preference?.success ||
         !preference.data.enabled ||
@@ -152,6 +167,7 @@ export function createICloudSync(
     if (!native) throw new ICloudError('UNSUPPORTED');
     const capturedEpoch = epoch;
     check(capturedEpoch, access);
+    if (!native.readRetainingLocal) throw new ICloudError('NOT_CONFIGURED');
     try {
       const value = await action(native);
       check(capturedEpoch, access);
@@ -175,7 +191,11 @@ export function createICloudSync(
       )
         throw new ICloudError('INVALID_DATA');
       return request(
-        (module) => module.read(collection, cursor ?? null),
+        (module) => {
+          if (!module.readRetainingLocal)
+            throw new ICloudError('NOT_CONFIGURED');
+          return module.readRetainingLocal(collection, cursor ?? null);
+        },
         iCloudPageSchema,
         access,
       );
@@ -288,7 +308,11 @@ export function createICloudSync(
         throw iCloudError(error);
       }
     },
-    async setEnabled(value) {
+    async setEnabled(
+      value: boolean,
+      synchronize?: () => Promise<void>,
+      isCurrent: () => boolean = () => true,
+    ) {
       if (maintenance) throw new ICloudError('DISABLED');
       if (!value) {
         try {
@@ -298,11 +322,23 @@ export function createICloudSync(
         }
         return;
       }
+      if (!synchronize) throw new ICloudError('INVALID_DATA');
       await initialize();
       if (!native) throw new ICloudError('UNSUPPORTED');
-      if (disposed) throw new ICloudError('DISABLED');
+      if (disposed || maintenance) throw new ICloudError('DISABLED');
       const capturedEpoch = ++epoch;
+      activation = capturedEpoch;
+      const checkActivation = () => {
+        if (disposed || capturedEpoch !== epoch || !isCurrent())
+          throw new ICloudError('DISABLED');
+      };
       try {
+        checkActivation();
+        // A crash or relaunch during initial sync must reopen with sync off.
+        enabled = false;
+        pin = null;
+        await persist({ enabled: false, accountToken: null });
+        checkActivation();
         const status = decoded(iCloudStatusSchema, await native.status());
         if (status.status !== 'available' || !status.accountToken) {
           const code =
@@ -315,20 +351,23 @@ export function createICloudSync(
                   : 'UNAVAILABLE';
           throw new ICloudError(code);
         }
-        if (disposed || capturedEpoch !== epoch)
-          throw new ICloudError('DISABLED');
+        checkActivation();
         await native.configure(true, status.accountToken);
-        if (disposed || capturedEpoch !== epoch)
-          throw new ICloudError('DISABLED');
-        await persist({ enabled: true, accountToken: status.accountToken });
-        if (disposed || capturedEpoch !== epoch)
-          throw new ICloudError('DISABLED');
+        checkActivation();
+        // The coordinator needs temporary access, without publishing or saving
+        // an enabled preference until its complete first pass succeeds.
         pin = status.accountToken;
         enabled = true;
+        await synchronize();
+        checkActivation();
+        await persist({ enabled: true, accountToken: status.accountToken });
+        checkActivation();
         notify();
       } catch (error) {
         if (capturedEpoch === epoch) await disable().catch(() => undefined);
         throw iCloudError(error);
+      } finally {
+        if (activation === capturedEpoch) activation = null;
       }
     },
     async withMaintenance(accountToken, action) {
@@ -336,7 +375,8 @@ export function createICloudSync(
         throw new ICloudError('INVALID_DATA');
       await initialize();
       if (!native) throw new ICloudError('UNSUPPORTED');
-      if (disposed || maintenance) throw new ICloudError('DISABLED');
+      if (disposed || maintenance || activation !== null)
+        throw new ICloudError('DISABLED');
       const access = Symbol('icloud-maintenance');
       let changedNative = false;
       let failure: ICloudError | undefined;

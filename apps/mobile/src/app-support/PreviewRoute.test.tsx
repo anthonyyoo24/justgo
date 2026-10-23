@@ -6,12 +6,24 @@ const mockHapticsLoaded = jest.fn();
 const mockDiagnosticsLoaded = jest.fn();
 const mockWelcomeLoaded = jest.fn();
 const mockWelcomeRendered = jest.fn();
+const mockICloudLoaded = jest.fn();
+const mockICloudRendered = jest.fn();
 const mockPreviewParams = {
   mode: '',
   progressState: 'loading',
   progressDayState: 'initial-error',
   state: '',
 };
+jest.mock('../dev/previews/ICloudSyncPreview', () => {
+  mockICloudLoaded();
+  const { Text } = require('react-native') as typeof import('react-native');
+  return {
+    ICloudSyncPreview: (props: unknown) => {
+      mockICloudRendered(props);
+      return <Text>iCloud preview</Text>;
+    },
+  };
+});
 jest.mock('../dev/previews/WelcomePreview', () => {
   mockWelcomeLoaded();
   const { Text } = require('react-native') as typeof import('react-native');
@@ -77,6 +89,19 @@ it('guards the isolated welcome preview and passes presentation state without ac
   mockPreviewParams.state = 'error';
   screen.rerender(<PreviewRoute />);
   expect(mockWelcomeRendered).toHaveBeenLastCalledWith({ state: 'error' });
+});
+
+it('loads the isolated iCloud sheet preview only in development', () => {
+  mockPreviewParams.mode = 'icloud-sync';
+  mockPreviewParams.state = 'error';
+  development.__DEV__ = false;
+  const screen = render(<PreviewRoute />);
+  expect(screen.getByText('Redirect: /')).toBeTruthy();
+  expect(mockICloudLoaded).not.toHaveBeenCalled();
+  development.__DEV__ = true;
+  screen.rerender(<PreviewRoute />);
+  expect(screen.getByText('iCloud preview')).toBeTruthy();
+  expect(mockICloudRendered).toHaveBeenLastCalledWith({ state: 'error' });
 });
 
 it('loads the haptics screen only through the development guard', () => {

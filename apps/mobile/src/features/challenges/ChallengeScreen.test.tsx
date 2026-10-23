@@ -185,6 +185,42 @@ function Flow() {
   );
 }
 
+it('shows a labelled spinner until the challenge deck loads', () => {
+  const loaded = mockSnapshot;
+  mockSnapshot = { ...loaded, queues: {}, loading: true };
+  const screen = render(<Flow />);
+  expect(screen.getByLabelText('Loading challenges')).toBeVisible();
+  expect(screen.queryByText('Finding your challenges…')).toBeNull();
+  expect(screen.queryByText('Your challenges couldn’t load.')).toBeNull();
+  expect(screen.queryByTestId('mock-deck')).toBeNull();
+
+  mockSnapshot = loaded;
+  screen.rerender(<Flow />);
+  expect(screen.queryByLabelText('Loading challenges')).toBeNull();
+  expect(screen.getByTestId('mock-deck')).toBeVisible();
+});
+
+it('keeps the existing deck visible during a catalog refresh', () => {
+  mockSnapshot = { ...mockSnapshot, loading: true };
+  const screen = render(<Flow />);
+  expect(screen.getByTestId('mock-deck')).toBeVisible();
+  expect(screen.queryByLabelText('Loading challenges')).toBeNull();
+});
+
+it('replaces the spinner with catalog recovery after a failed load', () => {
+  mockSnapshot = { ...mockSnapshot, queues: {}, loading: true };
+  const screen = render(<Flow />);
+  expect(screen.getByLabelText('Loading challenges')).toBeVisible();
+
+  mockSnapshot = { ...mockSnapshot, loading: false, error: 'Download failed' };
+  screen.rerender(<Flow />);
+  expect(screen.queryByLabelText('Loading challenges')).toBeNull();
+  expect(screen.getByRole('alert')).toHaveTextContent('Download failed');
+  expect(screen.queryByText('Your challenges couldn’t load.')).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: 'Refresh challenges' }));
+  expect(mockController.refresh).toHaveBeenCalledTimes(2);
+});
+
 it('starts its catalog read when the matching repository becomes available after identity', () => {
   mockRepository = null;
   const screen = render(<Flow />);

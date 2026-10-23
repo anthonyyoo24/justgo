@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useIsFocused, useRouter } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useDelayedBusy } from '../../lib/useDelayedBusy';
 import { venues } from '@justgo/contracts';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -17,6 +24,7 @@ import { ChallengeDeck } from './deck/ChallengeDeck';
 import { ActiveChallengeModal } from './active/ActiveChallengeModal';
 import { useChallengeActivity } from './active/ChallengeActivityProvider';
 import { NativeChallengeHandoff } from './active/NativeChallengeHandoff';
+import { challengeDeckStage, challengeScale } from './challenge-design';
 /**
  * Reset Home's navigation bookkeeping when the account changes. The activity
  * provider separately scopes the in-memory challenge to the same identity.
@@ -36,6 +44,8 @@ export function ChallengeScreen() {
  * from a completed flow clears its memory state without reopening Success.
  */
 function ChallengeFlow() {
+  const { width } = useWindowDimensions();
+  const scale = challengeScale(width);
   const { challenges } = useRuntime();
   const identity = useIdentity();
   const owner =
@@ -96,6 +106,11 @@ function ChallengeFlow() {
   return (
     <>
       <ChallengeLayout title="Find a challenge" fillContent>
+        <VenueTabs
+          selected={state.selected}
+          disabled={preparation.active || !!active || moving || state.saving}
+          onSelect={(v) => void challenges.select(v)}
+        />
         {!active && !!state.error && (
           <View style={styles.notice}>
             <Text accessibilityRole="alert" style={styles.body}>
@@ -108,17 +123,21 @@ function ChallengeFlow() {
             />
           </View>
         )}
-        <VenueTabs
-          selected={state.selected}
-          disabled={preparation.active || !!active || moving || state.saving}
-          onSelect={(v) => void challenges.select(v)}
-        />
         {!queue ? (
-          <Text style={styles.body}>
-            {state.loading
-              ? 'Finding your challenges…'
-              : 'Your challenges couldn’t load.'}
-          </Text>
+          state.loading ? (
+            <View
+              style={[
+                styles.loading,
+                { height: challengeDeckStage.height * scale },
+              ]}
+            >
+              <ActivityIndicator
+                accessibilityLabel="Loading challenges"
+                size="large"
+                color={colors.ink}
+              />
+            </View>
+          ) : null
         ) : (
           <ChallengeDeck
             key={
@@ -160,6 +179,11 @@ function ChallengeFlow() {
   );
 }
 const styles = StyleSheet.create({
+  loading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: challengeDeckStage.paddingTop,
+  },
   body: { ...typography.body, color: colors.ink },
   notice: {
     gap: 16,
