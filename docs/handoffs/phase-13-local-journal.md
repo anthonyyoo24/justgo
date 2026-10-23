@@ -9,9 +9,11 @@ after [#44](https://github.com/anthonyyoo24/justgo/pull/44) had already merged t
 branch into `main`. GitHub `main` at `f7c7a69` therefore still lacks the refinements.
 Local integration `32c66ff` on `codex/phase-13-integration` merges the reviewed
 foundation head `cb8b89c`; its tree exactly matches reviewed candidate `a3a3be2`.
-Remote integration remains pending specific owner Git authorization. The separate
-[SDK 58 prerequisite](phase-14-native-upgrade.md) builds on that integration and
-owns the updated dependency-health evidence. The October 23 revision removes the rejected recovery
+Anthony authorized a single PR from `codex/phase-14-native-upgrade` into `main`,
+including these reviewed refinements and the completed native upgrade. Remote
+integration remains pending that PR's checks, owner review and merge approval.
+The [SDK 58 prerequisite](phase-14-native-upgrade.md) owns the updated
+dependency-health evidence. The October 23 revision removes the rejected recovery
 clear flow and retains phone data when the iCloud copy is removed externally;
 its focused automated checks pass. The compatible bridge has been exercised on
 the phone for upload/readback, sync-off isolation, catch-up and restart; actual
@@ -392,7 +394,7 @@ owner and the Phase 14 release owner before release.
 | Hosted migration and old-client cutover               | Anthony plus release owner before testers                                             | 0019–0023, protected rehearsal and matching staged API are complete; still verify existing-phone migration, real Auth erasure/revocation, incompatible-client retirement and deletion-aware recovery acceptance.                                                                                                                                                                                                                                                               |
 | Public notices/provider/retention                     | Anthony plus privacy/release owner before public distribution                         | Review unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending. The external-deletion revision retains the existing optional-iCloud data flow; do not imply that Apple Settings deletion also erases phone data.                                                                                                                                                                                         |
 | Mobile/tooling dependency health                      | Implementation/dependency owner and Phase 14 release owner, before public release     | Follow the separate [SDK 58 handoff](phase-14-native-upgrade.md) for compatible patches and remaining upstream advisories. The corrected API production audit does not establish mobile dependency health.                                                                                                                                                                                                                                                                     |
-| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Reviewed Phase 13 candidate checks are recorded above. Finish the separate `main` integration; retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and purchases/guest paid-admission release gates.                                                                                                                                                                                                                                |
+| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Reviewed Phase 13 candidate checks are recorded above. Complete `main` integration through the combined Phase 14 PR's checks, owner review and merge approval; retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and purchases/guest paid-admission release gates.                                                                                                                                                                |
 
 Local implementation closeout and the owner's deferrals do not establish release
 acceptance. Preserve the named gates when carrying the candidate into Phase 14.

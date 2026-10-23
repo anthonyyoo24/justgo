@@ -2,7 +2,7 @@
 
 ## Status and integration boundary
 
-Implemented locally on `codex/phase-14-native-upgrade`; signed development build
+Implemented on `codex/phase-14-native-upgrade` and ready for owner review; signed development build
 installed on the registered iPhone. Native launch/current-bundle loading and the
 owner's basic continuity/interaction smoke pass. Broader release acceptance remains open.
 This is the separate STK-2 prerequisite, not Phase 14 release closeout.
@@ -11,10 +11,12 @@ The branch starts at Phase 13 integration `32c66ff`, preserved separately on
 `codex/phase-13-integration`. Its tree exactly matches reviewed candidate
 `a3a3be2`; #44 merged to `main`, while #43 merged to the foundation branch after
 that merge. Remote `main` remains `f7c7a69` and lacks the second part. Local `main`
-tracks the remote; no changes have been pushed and no new PR has been created.
-Finish that integration separately with the owner's specific Git authorization
-before publishing an upgrade-only PR. Reviewed Phase 13 hosted checks do not
-establish hosted acceptance of this SDK branch.
+tracks the remote. Anthony authorized pushing the Phase 14 branch and opening a
+single PR into `main`, carrying both the missing reviewed Phase 13 refinements
+and the SDK upgrade. The preserved integration branch is a local reference;
+there is no separate integration PR. Merge still requires owner review and
+specific approval. Reviewed Phase 13 hosted checks do not establish hosted
+acceptance of this combined candidate; inspect its own required checks.
 
 ## Runtime and compatibility changes
 
@@ -127,5 +129,5 @@ The broader owner-deferred Phase 13 offline/provider/multi-device/Files/deletion
 matrix and all [Phase 14 release gates](../implementation-plan/phase-14-release.md)
 remain open. Ordinary diagnostics and product analytics remain disabled; signed
 crash/restart payload/cache/header/symbolication acceptance precedes diagnostics
-activation. Publication also requires owner Git permission and exact candidate
-hosted checks; release/distribution permissions remain separate.
+activation. The authorized PR still requires exact-candidate hosted checks and
+owner review/merge approval; release/distribution permissions remain separate.
