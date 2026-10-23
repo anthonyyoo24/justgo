@@ -3,7 +3,7 @@ import CryptoKit
 import Foundation
 
 // CloudKit stores this existing field as INT64. Values 0/1 keep their original
-// meaning; 2 is a reset fence created by explicit external-zone recovery.
+// meaning; decode legacy value 2 as an external iCloud-only reset.
 enum ICloudResetMarker: Int {
   case none = 0
   case appDeletion = 1
@@ -15,7 +15,8 @@ func iCloudWasRecovered(_ root: CKRecord) -> Bool {
 }
 
 func iCloudMarkReset(_ root: CKRecord) {
-  root["wasReset"] = NSNumber(value: (iCloudWasRecovered(root) ? ICloudResetMarker.externalRecovery : .appDeletion).rawValue)
+  // A real in-app deletion must supersede any legacy external-reset marker.
+  root["wasReset"] = NSNumber(value: ICloudResetMarker.appDeletion.rawValue)
 }
 
 enum ICloudFailure: String, Error, LocalizedError {

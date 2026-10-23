@@ -176,13 +176,6 @@ export class ICloudDataCoordinator {
     this.metadata = metadataSchema.parse(parsed);
   }
   private async remote(epoch: number) {
-    const metadata = await this.load();
-    const status = await this.cloud.status();
-    this.check(epoch);
-    const expectedGeneration =
-      metadata.accountToken === status.accountToken
-        ? metadata.generation
-        : null;
     const records: ICloudValue[] = [];
     const cursors = new Set<string>();
     let cursor: string | undefined;
@@ -196,7 +189,6 @@ export class ICloudDataCoordinator {
       const page = await this.cloud.read({
         collection: this.collection,
         ...(cursor ? { cursor } : {}),
-        ...(expectedGeneration ? { expectedGeneration } : {}),
       });
       this.check(epoch);
       if (generation && generation !== page.generation)
@@ -255,7 +247,6 @@ export class ICloudDataCoordinator {
 
   private async run(
     epoch: number,
-    acknowledgeReset = false,
     replacementPass = 0,
     consume?: (
       remote: Awaited<ReturnType<ICloudDataCoordinator['remote']>>,
@@ -317,21 +308,22 @@ export class ICloudDataCoordinator {
       await this.erase(metadata, remote.generation, epoch);
       return;
     }
-    // Recognize external recovery before any stale-epoch replacement or saved
-    // replacement cleanup can retain and republish an older phone copy.
-    if (remote.recovered && metadata.generation !== remote.generation) {
-      if (!acknowledgeReset)
-        throw new ICloudError('RESET_CONFIRMATION_REQUIRED');
-      metadata = {
-        ...emptyMetadata(
-          status.accountToken,
-          remote.generation,
-          metadata.associatedTokens,
-        ),
-        clearing: true,
-        accountEpochFloor: metadata.accountEpochFloor,
-        completedDeletionId: metadata.completedDeletionId,
-      };
+    const cloudOnlyReset = !remote.wasReset || remote.recovered;
+    const localEpoch = this.repository.store.getState().dataEpoch ?? null;
+    const pendingAccountClear =
+      metadata.accountEpochFloor !== null &&
+      (localEpoch === null || localEpoch < metadata.accountEpochFloor);
+    // Cancel an unfinished clear from the removed recovery flow. Actual app
+    // deletions and authoritative account-epoch clearing must still finish.
+    if (
+      cloudOnlyReset &&
+      metadata.clearing &&
+      !pendingAccountClear &&
+      !metadata.cleanup &&
+      !metadata.replacing &&
+      !metadata.pendingDeletionId
+    ) {
+      metadata.clearing = false;
       await this.save(metadata);
       this.check(epoch);
     }
@@ -344,6 +336,18 @@ export class ICloudDataCoordinator {
       await this.erase(metadata, remote.generation, epoch);
       metadata = await this.load();
       remote = await this.remote(epoch);
+    }
+    if (
+      (!remote.wasReset || remote.recovered) &&
+      metadata.generation !== remote.generation
+    ) {
+      // Rebuild only cloud version bookkeeping; every phone entry stays intact.
+      metadata = {
+        ...metadata,
+        generation: remote.generation,
+        versions: {},
+        heads: {},
+      };
     }
     if (metadata.clearing) {
       this.check(epoch);
@@ -389,7 +393,7 @@ export class ICloudDataCoordinator {
       // JustGO's authenticated deletion epoch is authoritative. Replace only
       // the stale additional iCloud copy, retaining current local/server data.
       await this.replaceStaleCopy(metadata, remote.generation, epoch);
-      return this.run(epoch, false, replacementPass + 1, consume);
+      return this.run(epoch, replacementPass + 1, consume);
     }
     const advanceFloor =
       account &&
@@ -400,16 +404,13 @@ export class ICloudDataCoordinator {
     if (
       !metadata.generation &&
       remote.wasReset &&
-      !acknowledgeReset &&
+      !remote.recovered &&
       (!account || accountEpoch === null)
     )
       throw new ICloudError('RESET_CONFIRMATION_REQUIRED');
-    const adoptUnknownReset =
-      acknowledgeReset && !metadata.generation && remote.wasReset;
     if (
       metadata.clearing ||
-      (!account && changed) ||
-      adoptUnknownReset ||
+      (!account && changed && remote.wasReset && !remote.recovered) ||
       (advanceFloor && remote.accountEpoch !== 0)
     ) {
       metadata = {
@@ -507,7 +508,7 @@ export class ICloudDataCoordinator {
     this.check(epoch);
     if (account && remote.hasOlderEpoch) {
       await this.replaceStaleCopy(metadata, remote.generation, epoch);
-      return this.run(epoch, false, replacementPass + 1, consume);
+      return this.run(epoch, replacementPass + 1, consume);
     }
     if (consume) {
       await this.save(metadata);
@@ -861,9 +862,7 @@ export class ICloudDataCoordinator {
           cloud: coordinator.cloud,
           read: () => coordinator.remote(coordinator.epoch),
           download: (consume) =>
-            coordinator.execute((epoch) =>
-              coordinator.run(epoch, false, 0, consume),
-            ),
+            coordinator.execute((epoch) => coordinator.run(epoch, 0, consume)),
           snapshot: () => this.repository.snapshotData(),
           identity: async (snapshot) => {
             const identities: string[] = [];
@@ -958,65 +957,5 @@ export class ICloudDataCoordinator {
       this.metadata.cleanup
     )
       throw new ICloudError('UNAVAILABLE');
-  }
-  async acknowledgeReset(): Promise<void> {
-    await this.work?.catch(() => {});
-    await this.execute((epoch) => this.run(epoch, true));
-  }
-
-  async recoverMissingCollection(): Promise<void> {
-    await this.work?.catch(() => {});
-    await this.execute(async (epoch) => {
-      await this.repository.hydrate();
-      this.check(epoch);
-      const status = await this.cloud.status();
-      this.check(epoch);
-      if (!status.enabled || !status.accountToken)
-        throw new ICloudError('DISABLED');
-      const stored = await this.load();
-      this.check(epoch);
-      if (stored.accountToken && stored.accountToken !== status.accountToken)
-        throw new ICloudError('ACCOUNT_CHANGED');
-      if (stored.closed || stored.closing)
-        throw new ICloudError('COLLECTION_DELETED');
-      if (
-        stored.deleting ||
-        stored.cleanup ||
-        stored.replacing ||
-        stored.pendingDeletionId
-      )
-        throw new ICloudError('CONFLICT');
-      if (
-        await this.storage.getItem(
-          `justgo:v1:${this.repository.accountId}:icloud-handover`,
-        )
-      )
-        throw new ICloudError('HANDOVER_PENDING');
-      this.check(epoch);
-      if (!this.cloud.recover) throw new ICloudError('NOT_CONFIGURED');
-      const recovered = await this.cloud.recover({
-        collection: this.collection,
-      });
-      this.check(epoch);
-      const current = await this.cloud.status();
-      this.check(epoch);
-      if (current.accountToken !== status.accountToken || !current.enabled)
-        throw new ICloudError('ACCOUNT_CHANGED');
-      // Store clearing intent first. A crash must resume the clear before any
-      // old phone writing can be published into the recovered generation.
-      await this.save({
-        ...stored,
-        accountToken: status.accountToken,
-        associatedTokens: [
-          ...new Set([...stored.associatedTokens, status.accountToken]),
-        ],
-        generation: recovered.generation,
-        clearing: true,
-        versions: {},
-        heads: {},
-      });
-      this.check(epoch);
-      await this.run(epoch, true);
-    });
   }
 }

@@ -139,11 +139,7 @@ export interface ICloudSync {
   read(input: {
     collection: ICloudCollection;
     cursor?: string;
-    expectedGeneration?: string;
   }): Promise<ICloudPage>;
-  recover?(input: {
-    collection: ICloudCollection;
-  }): Promise<{ generation: string }>;
   write(input: {
     collection: ICloudCollection;
     generation: string;

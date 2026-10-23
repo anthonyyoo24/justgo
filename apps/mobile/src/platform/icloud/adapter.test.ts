@@ -45,7 +45,9 @@ function setup(saved?: {
       state = { ...state, enabled };
       return JSON.stringify({ enabled });
     }),
-    read: jest.fn(async () => JSON.stringify(page)),
+    read: jest.fn<Promise<string>, [string, string | null]>(async () =>
+      JSON.stringify(page),
+    ),
     write: jest.fn(async () => JSON.stringify({ generation })),
     reset: jest.fn(async () => JSON.stringify({ generation: nextGeneration })),
     resetIfUnchanged: jest.fn(async () =>
@@ -64,9 +66,14 @@ function setup(saved?: {
       return { remove };
     }),
   } satisfies ICloudNativeModule;
+  const module = Object.assign(native, {
+    readRetainingLocal: jest.fn((collection: string, cursor: string | null) =>
+      native.read(collection, cursor),
+    ),
+  });
   return {
-    sync: createICloudSync(native, storage),
-    native,
+    sync: createICloudSync(module, storage),
+    native: module,
     storage,
     stored,
     remove,
@@ -101,49 +108,28 @@ it('defaults off without native reads or uploads and persists an explicit enable
   sync.dispose();
 });
 
-it('requires guarded native reads for known generations instead of recreating through an older bridge', async () => {
-  const { sync, native } = setup();
-  await sync.setEnabled(true, async () => {});
-  await expect(
-    sync.read({ collection: 'guest', expectedGeneration: generation }),
-  ).rejects.toMatchObject({ code: 'NOT_CONFIGURED' });
-  expect(native.read).not.toHaveBeenCalled();
-  const readGuarded = jest.fn(async () => JSON.stringify(page));
-  Object.assign(native, { readGuarded });
-  await expect(
-    sync.read({ collection: 'guest', expectedGeneration: generation }),
-  ).resolves.toEqual(page);
-  expect(readGuarded).toHaveBeenCalledWith('guest', null, generation);
-  await expect(
-    sync.read({ collection: 'guest', expectedGeneration: 'invalid' }),
-  ).rejects.toMatchObject({ code: 'INVALID_DATA' });
+it('requires the non-destructive native protocol and blocks old deletion semantics', async () => {
+  const { sync, native, storage } = setup();
   sync.dispose();
-});
-
-it('requires the recovery capability and fences its response after Apple account changes', async () => {
-  const { sync, native, changeAccount } = setup();
-  await sync.setEnabled(true, async () => {});
-  await expect(sync.recover!({ collection: 'guest' })).rejects.toMatchObject({
+  const olderNative: ICloudNativeModule = { ...native };
+  delete olderNative.readRetainingLocal;
+  const older = createICloudSync(olderNative, storage);
+  await older.setEnabled(true, async () => {});
+  await expect(older.read({ collection: 'guest' })).rejects.toMatchObject({
     code: 'NOT_CONFIGURED',
   });
-  const recover = jest.fn(async () =>
-    JSON.stringify({ generation: nextGeneration }),
-  );
-  Object.assign(native, { readGuarded: native.read, recover });
-  await expect(sync.recover!({ collection: 'guest' })).resolves.toEqual({
-    generation: nextGeneration,
-  });
   await expect(
-    sync.recover!({ collection: 'not-a-collection' as 'guest' }),
-  ).rejects.toMatchObject({ code: 'INVALID_DATA' });
-  recover.mockImplementationOnce(async () => {
-    changeAccount();
-    return JSON.stringify({ generation: nextGeneration });
-  });
-  await expect(sync.recover!({ collection: 'guest' })).rejects.toMatchObject({
-    code: 'DISABLED',
-  });
-  sync.dispose();
+    older.reset({ collection: 'guest', generation }),
+  ).rejects.toMatchObject({ code: 'NOT_CONFIGURED' });
+  await expect(
+    older.close({ collection: `account:${owner}`, generation }),
+  ).rejects.toMatchObject({ code: 'NOT_CONFIGURED' });
+  expect(native.read).not.toHaveBeenCalled();
+  expect(native.reset).not.toHaveBeenCalled();
+  expect(native.close).not.toHaveBeenCalled();
+  await older.setEnabled(false);
+  await expect(older.status()).resolves.toMatchObject({ enabled: false });
+  older.dispose();
 });
 
 it('reopens only the pinned Apple account and never silently enables a different account', async () => {

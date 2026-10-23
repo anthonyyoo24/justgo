@@ -93,11 +93,11 @@ actor ICloudStore {
     throw ICloudFailure.zoneRecoveryRequired
   }
 
-  private func createRoot(_ zone: CKRecordZone.ID, io: CloudKitIO, lease: Int, recovered: Bool) async throws -> CKRecord {
+  private func createRoot(_ zone: CKRecordZone.ID, io: CloudKitIO, lease: Int) async throws -> CKRecord {
     let id = CKRecord.ID(recordName: "collection", zoneID: zone)
     let root = CKRecord(recordType: "JustGoCollection", recordID: id)
     root["generation"] = UUID().uuidString as NSString
-    root["wasReset"] = NSNumber(value: (recovered ? ICloudResetMarker.externalRecovery : .none).rawValue)
+    root["wasReset"] = NSNumber(value: ICloudResetMarker.none.rawValue)
     root["closed"] = NSNumber(value: false)
     root["revision"] = UUID().uuidString as NSString
     do { try await io.modify(saving: [root], lease: lease) }
@@ -111,29 +111,17 @@ actor ICloudStore {
   }
 
   private func access(_ zone: CKRecordZone.ID, io: CloudKitIO, lease: Int) throws -> ICloudCollectionAccess {
-    guard let accountToken else { throw ICloudFailure.disabled }
-    let key = "JustGoICloudKnownCollection:" + iCloudHash(accountToken + ":" + zone.zoneName)
     return ICloudCollectionAccess(
       zoneExists: { try await io.zoneExists(zone, lease: lease) },
       ensureZone: { try await io.ensureZone(zone, lease: lease) },
       fetchRoot: { try await io.fetch([CKRecord.ID(recordName: "collection", zoneID: zone)], lease: lease).values.first },
-      createRoot: { recovered in try await self.createRoot(zone, io: io, lease: lease, recovered: recovered) },
-      wasKnown: { UserDefaults.standard.bool(forKey: key) },
-      remember: { UserDefaults.standard.set(true, forKey: key) }
+      createRoot: { try await self.createRoot(zone, io: io, lease: lease) }
     )
   }
 
-  func recover(_ collection: String) async throws -> String {
+  func read(_ collection: String, cursor: String?) async throws -> String {
     let (io, zone, capturedEpoch, lease) = try await context(collection)
-    let root = try await access(zone, io: io, lease: lease).recover()
-    try check(capturedEpoch)
-    return try iCloudJSON(["generation": iCloudGeneration(root)])
-  }
-
-  func read(_ collection: String, cursor: String?, expectedGeneration: String? = nil) async throws -> String {
-    if let expectedGeneration, UUID(uuidString: expectedGeneration) == nil { throw ICloudFailure.invalidData }
-    let (io, zone, capturedEpoch, lease) = try await context(collection)
-    let before = try await access(zone, io: io, lease: lease).read(expectedGeneration: expectedGeneration)
+    let before = try await access(zone, io: io, lease: lease).read()
     let generation = try iCloudGeneration(before)
     guard let revision = before.recordChangeTag else { throw ICloudFailure.unavailable }
     let token = try ICloudCursor.decode(cursor, collection: collection, generation: generation)

@@ -32,13 +32,7 @@ const messageFor = (error: unknown) =>
       ? iCloudSyncMessages.update
       : error instanceof ICloudError && error.code === 'ACCOUNT_CHANGED'
         ? iCloudSyncMessages.accountChanged
-        : error instanceof ICloudError &&
-            error.code === 'ZONE_RECOVERY_REQUIRED'
-          ? iCloudSyncMessages.recovery
-          : error instanceof ICloudError &&
-              error.code === 'RESET_CONFIRMATION_REQUIRED'
-            ? iCloudSyncMessages.reset
-            : iCloudSyncMessages.failed;
+        : iCloudSyncMessages.failed;
 
 export function SettingsICloudRow({
   disabled,
@@ -108,11 +102,7 @@ export function SettingsICloudRow({
     }, [owner, status?.accountToken]),
   );
   const run = useCallback(
-    async (
-      enabled: boolean,
-      acknowledgeReset = false,
-      recoverMissing = false,
-    ) => {
+    async (enabled: boolean) => {
       const submittedVisit = visit.current;
       if (
         !owner ||
@@ -137,9 +127,7 @@ export function SettingsICloudRow({
               };
               checkVisit();
               if (!coordinator) throw new ICloudError('UNAVAILABLE');
-              if (recoverMissing) await coordinator.recoverMissingCollection();
-              else if (acknowledgeReset) await coordinator.acknowledgeReset();
-              else await coordinator.synchronize();
+              await coordinator.synchronize();
               checkVisit();
             },
             isCurrent,
@@ -173,8 +161,6 @@ export function SettingsICloudRow({
     },
     [owner, disabled, client, coordinator],
   );
-  const reset = state.error === 'RESET_CONFIRMATION_REQUIRED';
-  const recover = state.error === 'ZONE_RECOVERY_REQUIRED';
   const visibleError =
     error ??
     (state.status === 'error' && state.error
@@ -227,18 +213,12 @@ export function SettingsICloudRow({
           busy={busy}
           disabled={disabled || !owner || status?.status !== 'available'}
           error={unavailableReason ?? visibleError}
-          actionLabel={
-            retryDisable
-              ? 'Try Again'
-              : reset || recover
-                ? 'Clear older copy and sync'
-                : 'Start Syncing'
-          }
+          actionLabel={retryDisable ? 'Try Again' : 'Start Syncing'}
           reduceMotion={reduceMotion}
           onClose={() => setConfirm(false)}
           onStart={() => {
             // run owns and presents any sync failure without dropping local data.
-            void run(!retryDisable, reset, recover);
+            void run(!retryDisable);
           }}
         />
       )}

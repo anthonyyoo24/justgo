@@ -18,12 +18,11 @@ export interface ICloudNativeModule {
   status(): Promise<string>;
   configure(enabled: boolean, accountToken: string | null): Promise<string>;
   read(collection: string, cursor: string | null): Promise<string>;
-  readGuarded?(
+  /** Also certifies that in-app deletion writes marker 1, including legacy roots. */
+  readRetainingLocal?(
     collection: string,
     cursor: string | null,
-    generation: string | null,
   ): Promise<string>;
-  recover?(collection: string): Promise<string>;
   write(
     collection: string,
     generation: string,
@@ -168,6 +167,7 @@ export function createICloudSync(
     if (!native) throw new ICloudError('UNSUPPORTED');
     const capturedEpoch = epoch;
     check(capturedEpoch, access);
+    if (!native.readRetainingLocal) throw new ICloudError('NOT_CONFIGURED');
     try {
       const value = await action(native);
       check(capturedEpoch, access);
@@ -183,43 +183,20 @@ export function createICloudSync(
   };
   const operations = (
     access?: symbol,
-  ): Pick<
-    ICloudSync,
-    'read' | 'write' | 'reset' | 'purge' | 'close' | 'recover'
-  > => ({
-    async read({ collection, cursor, expectedGeneration }) {
+  ): Pick<ICloudSync, 'read' | 'write' | 'reset' | 'purge' | 'close'> => ({
+    async read({ collection, cursor }) {
       if (
         !iCloudCollectionSchema.safeParse(collection).success ||
-        (cursor !== undefined && (!cursor || cursor.length > 32_768)) ||
-        (expectedGeneration !== undefined &&
-          !z.uuid().safeParse(expectedGeneration).success)
+        (cursor !== undefined && (!cursor || cursor.length > 32_768))
       )
         throw new ICloudError('INVALID_DATA');
       return request(
         (module) => {
-          if (module.readGuarded)
-            return module.readGuarded(
-              collection,
-              cursor ?? null,
-              expectedGeneration ?? null,
-            );
-          if (expectedGeneration) throw new ICloudError('NOT_CONFIGURED');
-          return module.read(collection, cursor ?? null);
+          if (!module.readRetainingLocal)
+            throw new ICloudError('NOT_CONFIGURED');
+          return module.readRetainingLocal(collection, cursor ?? null);
         },
         iCloudPageSchema,
-        access,
-      );
-    },
-    async recover({ collection }) {
-      if (!iCloudCollectionSchema.safeParse(collection).success)
-        throw new ICloudError('INVALID_DATA');
-      return request(
-        (module) => {
-          if (!module.recover || !module.readGuarded)
-            throw new ICloudError('NOT_CONFIGURED');
-          return module.recover(collection);
-        },
-        iCloudGenerationSchema,
         access,
       );
     },

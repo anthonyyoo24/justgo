@@ -71,7 +71,6 @@ function cloud() {
   let wasReset = false;
   let recovered = false;
   let missing = false;
-  let loseRecoveryAcknowledgement = false;
   let closed = false;
   let enabled = true;
   let loseAcknowledgement = false;
@@ -94,7 +93,16 @@ function cloud() {
       enabled = value;
     }),
     read: jest.fn(async ({ cursor }) => {
-      if (missing) throw new ICloudError('ZONE_RECOVERY_REQUIRED');
+      if (!enabled) throw new ICloudError('DISABLED');
+      if (missing) {
+        generation = uuid(Number(generation.slice(-12)) + 1);
+        generations.clear();
+        generations.set(generation, new Map());
+        revision++;
+        wasReset = false;
+        recovered = false;
+        missing = false;
+      }
       const offset = cursor ? Number(cursor.slice(1)) : 0;
       const values = [...records().values()];
       return {
@@ -107,24 +115,6 @@ function cloud() {
         cursor: `p${offset + 50}`,
         hasMore: offset + 50 < values.length,
       };
-    }),
-    recover: jest.fn(async () => {
-      if (closed) throw new ICloudError('COLLECTION_DELETED');
-      if (!missing && !recovered) throw new ICloudError('CONFLICT');
-      if (missing) {
-        generation = uuid(Number(generation.slice(-12)) + 1);
-        generations.clear();
-        generations.set(generation, new Map());
-        revision++;
-        wasReset = true;
-        recovered = true;
-        missing = false;
-      }
-      if (loseRecoveryAcknowledgement) {
-        loseRecoveryAcknowledgement = false;
-        throw new ICloudError('UNAVAILABLE');
-      }
-      return { generation };
     }),
     write: jest.fn(async ({ generation: expected, records: incoming }) => {
       if (closed) throw new ICloudError('COLLECTION_DELETED');
@@ -152,6 +142,7 @@ function cloud() {
       revision++;
       generation = uuid(Number(generation.slice(-12)) + 1);
       wasReset = true;
+      recovered = false;
       generations.set(generation, new Map());
       if (loseResetAcknowledgement) {
         loseResetAcknowledgement = false;
@@ -164,6 +155,7 @@ function cloud() {
       check(expected);
       generation = uuid(Number(generation.slice(-12)) + 1);
       wasReset = true;
+      recovered = false;
       closed = true;
       generations.set(generation, new Map());
       return { generation };
@@ -211,8 +203,13 @@ function cloud() {
     removeExternally: () => {
       missing = true;
     },
-    loseNextRecoveryAcknowledgement: () => {
-      loseRecoveryAcknowledgement = true;
+    legacyExternalReset: () => {
+      generation = uuid(Number(generation.slice(-12)) + 1);
+      generations.clear();
+      generations.set(generation, new Map());
+      wasReset = true;
+      recovered = true;
+      revision++;
     },
   };
 }
@@ -706,7 +703,7 @@ it('fences known stale local data after a remote deletion before uploading again
   expect(remote.records().size).toBe(1);
 });
 
-it('retains unknown local writing after a previous iCloud deletion until explicit reset acknowledgement', async () => {
+it('retains unknown phone writing after a genuine JustGO deletion without offering a sync-time erase', async () => {
   const remote = cloud();
   await remote.reset();
   const { repository, sync } = setup(remote);
@@ -722,214 +719,172 @@ it('retains unknown local writing after a previous iCloud deletion until explici
     'Preserve pending choice',
   );
   expect(remote.transport.write).not.toHaveBeenCalled();
-  await sync.acknowledgeReset();
-  expect((await repository.snapshotData()).attempts).toEqual([]);
+  expect((await repository.snapshotData()).attempts).toHaveLength(1);
   expect(remote.records().size).toBe(0);
 });
 
 it.each(['guest', `account:${owner}`] as const)(
-  'requires explicit missing-zone recovery for %s and blocks other stale copies afterward',
+  'retains all phone entries when external iCloud storage is removed for %s',
   async (collection) => {
-    const remote = cloud();
-    const first = setup(remote, owner, collection);
-    if (collection !== 'guest') await first.repository.observeDataEpoch(0);
-    await first.repository.complete(input(), card);
-    await first.repository.submitReflection(uuid(1), uuid(2), {
-      text: 'Old phone copy',
+    const { repository, sync, remote } = setup(cloud(), owner, collection);
+    if (collection !== 'guest') await repository.observeDataEpoch(0);
+    await repository.complete(input(), card);
+    await repository.submitReflection(uuid(1), uuid(2), {
+      text: 'Saved before removal',
     });
-    await first.sync.synchronize();
-    const second = setup(remote, owner, collection, new MemoryStorage(), 500);
+    await sync.synchronize();
+    const clear = jest.spyOn(repository, 'clearData');
+    remote.removeExternally();
+    await repository.submitReflection(uuid(1), uuid(3), {
+      text: 'Recent phone writing',
+    });
+    await sync.synchronize();
+    expect(clear).not.toHaveBeenCalled();
+    expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+      'Recent phone writing',
+    );
+    const second = setup(remote, owner, collection, new MemoryStorage(), 700);
     if (collection !== 'guest') await second.repository.observeDataEpoch(0);
     await second.sync.synchronize();
-    remote.removeExternally();
-    await expect(first.sync.synchronize()).rejects.toMatchObject({
-      code: 'ZONE_RECOVERY_REQUIRED',
-    });
-    expect(first.repository.getAttempt(uuid(1))).toBeDefined();
-    await first.sync.recoverMissingCollection();
-    expect((await first.repository.snapshotData()).attempts).toHaveLength(0);
-    expect(await first.repository.listJournalEntries()).toHaveLength(0);
-    const writes = jest.mocked(remote.transport.write).mock.calls.length;
-    await expect(second.sync.synchronize()).rejects.toMatchObject({
-      code: 'RESET_CONFIRMATION_REQUIRED',
-    });
-    expect(second.repository.getAttempt(uuid(1))).toBeDefined();
-    expect(remote.transport.write).toHaveBeenCalledTimes(writes);
-    await second.sync.acknowledgeReset();
-    expect((await second.repository.snapshotData()).attempts).toHaveLength(0);
+    expect(second.repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+      'Recent phone writing',
+    );
   },
 );
 
-it('keeps newer cloud writing after a lost recovery acknowledgement and resumes an interrupted local clear', async () => {
-  const remote = cloud();
-  const first = setup(remote);
-  await first.repository.complete(input(), card);
-  await first.sync.synchronize();
-  remote.removeExternally();
-  remote.loseNextRecoveryAcknowledgement();
-  await expect(first.sync.recoverMissingCollection()).rejects.toMatchObject({
-    code: 'UNAVAILABLE',
-  });
-  expect(first.repository.getAttempt(uuid(1))).toBeDefined();
-  await expect(first.sync.synchronize()).rejects.toMatchObject({
-    code: 'RESET_CONFIRMATION_REQUIRED',
-  });
-  const newer = setup(remote, owner, 'guest', new MemoryStorage(), 600);
-  await newer.sync.acknowledgeReset();
-  await newer.repository.complete(input(2), card);
-  await newer.sync.synchronize();
-  const clear = jest
-    .spyOn(first.repository, 'clearData')
-    .mockRejectedValueOnce(new Error('Interrupted clear'));
-  await expect(first.sync.recoverMissingCollection()).rejects.toMatchObject({
-    code: 'UNAVAILABLE',
-  });
-  clear.mockRestore();
-  await first.sync.synchronize();
-  expect(first.repository.getAttempt(uuid(1))).toBeUndefined();
-  expect(first.repository.getAttempt(uuid(2))).toBeDefined();
-  expect(remote.records().size).toBe(1);
-});
-
-it.each([false, true])(
-  'requires recovery consent before stale account-epoch replacement (saved replacement=%s)',
-  async (replacing) => {
-    const collection = `account:${owner}` as const;
+it.each(['guest', `account:${owner}`] as const)(
+  'cancels an unfinished legacy recovery clear and keeps %s writing',
+  async (collection) => {
     const { repository, sync, remote, storage } = setup(
       cloud(),
       owner,
       collection,
     );
-    await repository.observeDataEpoch(2);
+    if (collection !== 'guest') await repository.observeDataEpoch(0);
     await repository.complete(input(), card);
+    await repository.submitReflection(uuid(1), uuid(2), {
+      text: 'Keep this phone copy',
+    });
     await sync.synchronize();
     sync.stop();
-    if (replacing) {
-      const key = `justgo:v1:${owner}:icloud-sync:${collection}`;
-      const raw = JSON.parse((await storage.getItem(key))!);
-      await storage.setItem(
-        key,
-        JSON.stringify({
-          ...raw,
-          replacing: true,
-          replacementExpectedGeneration: uuid(900),
-        }),
-      );
-    }
-    remote.removeExternally();
-    await remote.transport.recover!({ collection });
-    remote.records().set(uuid(890), {
-      id: uuid(890),
-      value: JSON.stringify(epochData(collection, 1)),
-    });
-    const resumed = setup(remote, owner, collection, storage, 800);
-    await expect(resumed.sync.synchronize()).rejects.toMatchObject({
-      code: 'RESET_CONFIRMATION_REQUIRED',
-    });
-    expect(remote.transport.reset).not.toHaveBeenCalled();
-    expect(resumed.repository.getAttempt(uuid(1))).toBeDefined();
-    await resumed.sync.acknowledgeReset();
-    expect(resumed.repository.getAttempt(uuid(1))).toBeUndefined();
-    expect(remote.records().size).toBe(1);
-  },
-);
-
-it.each(['closed', 'closing', 'deleting', 'cleanup', 'replacing'] as const)(
-  'cannot bypass %s through missing-zone recovery',
-  async (flag) => {
-    const { repository, sync, storage, remote } = setup();
-    await repository.complete(input(), card);
-    await sync.synchronize();
-    sync.stop();
-    const key = `justgo:v1:${owner}:icloud-sync:guest`;
-    const raw = await storage.getItem(key);
+    remote.legacyExternalReset();
+    const page = await remote.transport.read({ collection });
+    const key = `justgo:v1:${owner}:icloud-sync:${collection}`;
+    const metadata = JSON.parse((await storage.getItem(key))!);
     await storage.setItem(
       key,
-      JSON.stringify({ ...JSON.parse(raw!), [flag]: true }),
+      JSON.stringify({
+        ...metadata,
+        generation: page.generation,
+        clearing: true,
+        versions: {},
+        heads: {},
+      }),
     );
-    const restarted = setup(remote, owner, 'guest', storage, 700);
-    remote.removeExternally();
-    await expect(
-      restarted.sync.recoverMissingCollection(),
-    ).rejects.toMatchObject({
-      code:
-        flag === 'closed' || flag === 'closing'
-          ? 'COLLECTION_DELETED'
-          : 'CONFLICT',
-    });
-    expect(remote.transport.recover).not.toHaveBeenCalled();
+    const resumed = setup(remote, owner, collection, storage, 800);
+    const clear = jest.spyOn(resumed.repository, 'clearData');
+    await resumed.sync.synchronize();
+    expect(clear).not.toHaveBeenCalled();
+    expect(resumed.repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+      'Keep this phone copy',
+    );
+    expect(JSON.parse((await storage.getItem(key))!).clearing).toBe(false);
   },
 );
 
-it('blocks recovery during guest handover or after the active collection stops', async () => {
-  const { repository, sync, storage, remote } = setup();
-  await repository.complete(input(), card);
-  await storage.setItem(
-    `justgo:v1:${owner}:icloud-handover`,
-    JSON.stringify({ targetOwnerId: otherOwner }),
-  );
-  await expect(sync.recoverMissingCollection()).rejects.toMatchObject({
-    code: 'HANDOVER_PENDING',
-  });
-  expect(remote.transport.recover).not.toHaveBeenCalled();
-  await storage.removeItem(`justgo:v1:${owner}:icloud-handover`);
-  jest.spyOn(remote.transport, 'recover').mockImplementationOnce(async () => {
-    sync.stop();
-    return { generation: uuid(999) };
-  });
-  await expect(sync.recoverMissingCollection()).rejects.toMatchObject({
-    code: 'DISABLED',
-  });
-  expect(repository.getAttempt(uuid(1))).toBeDefined();
-});
-
-it.each(['disabled', 'changed-before', 'changed-after', 'old-build'] as const)(
-  'retains phone writing when recovery cannot use its pinned account (%s)',
-  async (failure) => {
-    const { repository, sync, remote } = setup();
-    await repository.complete(input(), card);
-    await sync.synchronize();
-    remote.removeExternally();
-    if (failure === 'disabled') await remote.transport.setEnabled(false);
-    if (failure === 'changed-before') remote.changeAppleAccount('b'.repeat(64));
-    if (failure === 'old-build') delete remote.transport.recover;
-    if (failure === 'changed-after')
-      jest
-        .spyOn(remote.transport, 'recover')
-        .mockImplementationOnce(async () => {
-          remote.changeAppleAccount('b'.repeat(64));
-          return { generation: uuid(999) };
-        });
-    await expect(sync.recoverMissingCollection()).rejects.toMatchObject({
-      code:
-        failure === 'disabled'
-          ? 'DISABLED'
-          : failure === 'old-build'
-            ? 'NOT_CONFIGURED'
-            : 'ACCOUNT_CHANGED',
-    });
-    expect(repository.getAttempt(uuid(1))).toBeDefined();
-  },
-);
-
-it('does not clear or re-upload old writing if saving recovery intent fails after native creation', async () => {
-  const { repository, sync, remote, storage } = setup();
+it('keeps iCloud absent while off and copies phone entries when enabled again', async () => {
+  const { repository, sync, remote } = setup();
   await repository.complete(input(), card);
   await sync.synchronize();
-  const writes = jest.mocked(remote.transport.write).mock.calls.length;
+  await remote.transport.setEnabled(false);
   remote.removeExternally();
-  const save = jest
-    .spyOn(storage, 'setItem')
-    .mockRejectedValueOnce(new Error('Synthetic persistence failure'));
-  await expect(sync.recoverMissingCollection()).rejects.toMatchObject({
+  const reads = jest.mocked(remote.transport.read).mock.calls.length;
+  const writes = jest.mocked(remote.transport.write).mock.calls.length;
+  await repository.complete(input(2), card);
+  await repository.submitReflection(uuid(2), uuid(3), {
+    text: 'Phone only while off',
+  });
+  await sync.synchronize();
+  expect(remote.transport.read).toHaveBeenCalledTimes(reads);
+  expect(remote.transport.write).toHaveBeenCalledTimes(writes);
+  expect((await repository.snapshotData()).attempts).toHaveLength(2);
+  await remote.transport.setEnabled(true, async () => {});
+  await sync.synchronize();
+  expect((await repository.snapshotData()).attempts).toHaveLength(2);
+  expect(repository.getAttempt(uuid(2))?.reflection?.text).toBe(
+    'Phone only while off',
+  );
+  expect(remote.records().size).toBe(3);
+});
+
+it('retains phone writing across interrupted upload to recreated iCloud storage', async () => {
+  const { repository, sync, remote } = setup();
+  await repository.complete(input(), card);
+  await repository.submitReflection(uuid(1), uuid(2), {
+    text: 'Retained after retry',
+  });
+  await sync.synchronize();
+  const clear = jest.spyOn(repository, 'clearData');
+  remote.removeExternally();
+  remote.loseNextAcknowledgement();
+  await expect(sync.synchronize()).rejects.toMatchObject({
     code: 'UNAVAILABLE',
   });
-  save.mockRestore();
-  expect(repository.getAttempt(uuid(1))).toBeDefined();
-  await expect(sync.synchronize()).rejects.toMatchObject({
-    code: 'RESET_CONFIRMATION_REQUIRED',
+  expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+    'Retained after retry',
+  );
+  await sync.synchronize();
+  expect(clear).not.toHaveBeenCalled();
+  expect(remote.records().size).toBe(2);
+});
+
+it('retains a pending authoritative account clear when iCloud storage was removed', async () => {
+  const collection = `account:${owner}` as const;
+  const { repository, sync, remote, storage } = setup(
+    cloud(),
+    owner,
+    collection,
+  );
+  await repository.observeDataEpoch(1);
+  await repository.complete(input(), card);
+  await sync.synchronize();
+  sync.stop();
+  const key = `justgo:v1:${owner}:icloud-sync:${collection}`;
+  const metadata = JSON.parse((await storage.getItem(key))!);
+  await storage.setItem(
+    key,
+    JSON.stringify({ ...metadata, clearing: true, accountEpochFloor: 2 }),
+  );
+  remote.removeExternally();
+  const resumed = setup(remote, owner, collection, storage, 800);
+  await resumed.sync.synchronize();
+  expect((await resumed.repository.snapshotData()).attempts).toHaveLength(0);
+  expect(resumed.repository.store.getState().dataEpoch).toBe(2);
+  expect(
+    [...remote.records().values()].map(({ value }) => JSON.parse(value)),
+  ).toEqual([epochData(collection, 2)]);
+});
+
+it('keeps genuine in-app deletion and account closure effective after an external reset', async () => {
+  const remote = cloud();
+  const first = setup(remote);
+  await first.repository.complete(input(), card);
+  await first.sync.synchronize();
+  remote.legacyExternalReset();
+  await first.sync.synchronize();
+  await remote.reset();
+  await first.sync.synchronize();
+  expect((await first.repository.snapshotData()).attempts).toHaveLength(0);
+  const account = setup(cloud(), owner, `account:${owner}`);
+  await account.repository.observeDataEpoch(0);
+  await account.repository.complete(input(), card);
+  await account.sync.synchronize();
+  await account.sync.deleteAccount();
+  account.remote.removeExternally();
+  await expect(account.sync.synchronize()).rejects.toMatchObject({
+    code: 'COLLECTION_DELETED',
   });
-  expect(remote.transport.write).toHaveBeenCalledTimes(writes);
+  expect((await account.repository.snapshotData()).attempts).toHaveLength(0);
 });
 
 it('persists reset before erasing and resumes physical cleanup after a failure without resetting twice', async () => {

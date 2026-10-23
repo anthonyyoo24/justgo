@@ -61,20 +61,11 @@ export function ICloudSyncPreview({ state }: { state?: string }) {
           busy={busy}
           disabled={false}
           error={error}
-          actionLabel={
-            error && (state === 'recovery' || state === 'reset')
-              ? 'Clear older copy and sync'
-              : 'Start Syncing'
-          }
           reduceMotion={reduceMotion}
           onClose={() => setOpen(false)}
           onStart={() => {
             if (state === 'busy') setBusy(true);
-            else if (
-              previewError &&
-              !(error && (state === 'recovery' || state === 'reset'))
-            )
-              setError(previewError);
+            else if (previewError) setError(previewError);
             else {
               setEnabled(true);
               setOpen(false);

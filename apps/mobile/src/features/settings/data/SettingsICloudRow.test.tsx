@@ -42,8 +42,6 @@ const mockCoordinator = {
       | null;
   }>(() => ({ status: 'idle', error: null })),
   synchronize: jest.fn(),
-  acknowledgeReset: jest.fn(),
-  recoverMissingCollection: jest.fn(),
 };
 jest.mock('../../../app-support/providers/AppProvider', () => ({
   useRuntime: () => ({
@@ -88,10 +86,6 @@ beforeEach(() => {
       },
     );
   mockCoordinator.synchronize.mockReset();
-  mockCoordinator.acknowledgeReset.mockReset();
-  mockCoordinator.recoverMissingCollection
-    .mockReset()
-    .mockResolvedValue(undefined);
   mockOwner = owner;
   mockReduceMotion = true;
   mockStatus = {
@@ -101,7 +95,6 @@ beforeEach(() => {
   };
   mockCoordinator.store.setState({ status: 'idle', error: null });
   mockCoordinator.synchronize.mockResolvedValue(undefined);
-  mockCoordinator.acknowledgeReset.mockResolvedValue(undefined);
 });
 
 it.each([false, true])(
@@ -497,93 +490,35 @@ it('retries a failed disable without requesting opt-in or synchronizing', async 
   expect(screen.queryByRole('button', { name: 'Start Syncing' })).toBeNull();
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
 });
-it('requires an explicit clear-before-sync action after deletion elsewhere', async () => {
-  mockCoordinator.store.setState({
-    status: 'error',
-    error: 'RESET_CONFIRMATION_REQUIRED',
-  });
-  const screen = render(
-    <SettingsICloudRow disabled={false} onBusyChange={jest.fn()} />,
-  );
-  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  expect(mockCoordinator.acknowledgeReset).not.toHaveBeenCalled();
-  expect(screen.queryByRole('alert')).toBeNull();
-  fireEvent.press(screen.getByRole('switch'));
-  expect(screen.getByRole('alert')).toHaveTextContent(
-    'iCloud data was deleted elsewhere. Clear this phone’s older copy to sync.',
-  );
-  fireEvent.press(
-    screen.getByRole('button', { name: 'Clear older copy and sync' }),
-  );
-  await waitFor(() =>
-    expect(mockCoordinator.acknowledgeReset).toHaveBeenCalledTimes(1),
-  );
-  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-});
-
-it('reveals the explicit clear-before-sync action if the first sync discovers a remote deletion', async () => {
-  mockCoordinator.synchronize.mockImplementationOnce(async () => {
-    mockCoordinator.store.setState({
-      status: 'error',
-      error: 'RESET_CONFIRMATION_REQUIRED',
+it.each(['RESET_CONFIRMATION_REQUIRED', 'ZONE_RECOVERY_REQUIRED'] as const)(
+  'never offers to clear phone entries after %s',
+  async (code) => {
+    mockCoordinator.synchronize.mockImplementationOnce(async () => {
+      mockCoordinator.store.setState({ status: 'error', error: code });
+      throw new ICloudError(code);
     });
-    throw new ICloudError('RESET_CONFIRMATION_REQUIRED');
-  });
-  const screen = render(
-    <SettingsICloudRow disabled={false} onBusyChange={jest.fn()} />,
-  );
-  await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  fireEvent.press(screen.getByRole('switch'));
-  await act(async () => {
+    const screen = render(
+      <SettingsICloudRow disabled={false} onBusyChange={jest.fn()} />,
+    );
+    fireEvent.press(await screen.findByRole('switch'));
     fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' }));
-  });
-  expect(mockCoordinator.synchronize).toHaveBeenCalledTimes(1);
-  expect(screen.getByTestId('icloud-sync-sheet')).toBeTruthy();
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Clear older copy and sync' }),
-    ).toBeEnabled(),
-  );
-  expect(mockCoordinator.acknowledgeReset).not.toHaveBeenCalled();
-});
-
-it('keeps missing-zone recovery inside the sheet and requires the explicit clear action', async () => {
-  mockCoordinator.synchronize.mockImplementationOnce(async () => {
-    mockCoordinator.store.setState({
-      status: 'error',
-      error: 'ZONE_RECOVERY_REQUIRED',
-    });
-    throw new ICloudError('ZONE_RECOVERY_REQUIRED');
-  });
-  const screen = render(
-    <SettingsICloudRow disabled={false} onBusyChange={jest.fn()} />,
-  );
-  fireEvent.press(await screen.findByRole('switch'));
-  await act(async () =>
-    fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' })),
-  );
-  expect(screen.getByRole('alert')).toHaveTextContent(
-    'iCloud data was reset. Clear this phone’s older copy to sync.',
-  );
-  expect(mockCoordinator.recoverMissingCollection).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('button', { name: 'Close iCloud Sync' }));
-  expect(mockCoordinator.recoverMissingCollection).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('switch'));
-  fireEvent.press(
-    screen.getByRole('button', { name: 'Clear older copy and sync' }),
-  );
-  await waitFor(() =>
-    expect(mockCoordinator.recoverMissingCollection).toHaveBeenCalledTimes(1),
-  );
-  expect(mockCoordinator.acknowledgeReset).not.toHaveBeenCalled();
-  await waitFor(() =>
-    expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull(),
-  );
-  expect(screen.getByRole('switch')).toHaveProp(
-    'accessibilityState',
-    expect.objectContaining({ checked: true }),
-  );
-});
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Couldn’t sync. Your data stays on this phone. Try again.',
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Start Syncing' }),
+      ).toBeEnabled(),
+    );
+    expect(screen.queryByRole('button', { name: /clear/i })).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: 'Close iCloud Sync' }));
+    expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull();
+    expect(screen.getByRole('switch')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: false }),
+    );
+  },
+);
 
 it('explains when the installed native build lacks the safe sync bridge', async () => {
   mockCoordinator.synchronize.mockRejectedValueOnce(

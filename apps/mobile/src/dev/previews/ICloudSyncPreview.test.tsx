@@ -47,6 +47,21 @@ it('previews an already-enabled switch on its first render', () => {
   expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull();
 });
 
+it.each(['recovery', 'reset'])(
+  'does not expose the removed clear action through an old %s preview link',
+  (state) => {
+    const screen = render(<ICloudSyncPreview state={state} />);
+    fireEvent.press(screen.getByRole('switch'));
+    expect(screen.queryByRole('button', { name: /clear/i })).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' }));
+    expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull();
+    expect(screen.getByRole('switch')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: true }),
+    );
+  },
+);
+
 it.each(['busy', 'error'])(
   'previews the %s state without calling iCloud',
   (state) => {
