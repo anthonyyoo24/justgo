@@ -2,14 +2,17 @@
 
 # Phase 13 — Local data, optional accounts and cloud sync
 
-**Status:** Locally implemented and verified for owner review; release acceptance
+**Status:** Prepared for draft PR review; an unresolved dependency-health audit
+failure blocks merge and is not an owner-approved deferral. Release acceptance
 remains open. Native providers, protected hosted database/API cutover, private CloudKit
 setup and cloud-only missing-storage recreation are implemented. Anthony confirmed
 phone login, and actual single-phone CloudKit upload, sync-off isolation and
 re-enable/restart catch-up have been verified. Anthony deferred the remaining
 manual checks. The October 23 revision removes the rejected recovery-clearing flow;
-its focused automated checks pass. The compatible native build is finished and
-inspected; installation and physical acceptance remain pending. The [handoff](../handoffs/phase-13-local-journal.md) distinguishes
+its focused automated checks pass. The compatible native bridge is inspected and
+exercised on the phone for on/off, catch-up and restart. External cloud deletion/
+recreation and second-phone restore are owner-deferred and unverified before
+release. The [handoff](../handoffs/phase-13-local-journal.md) distinguishes
 verified behavior, owner deferrals and pre-release gates.
 
 ## Outcome
@@ -251,7 +254,10 @@ external-deletion behavior. Historical build
 contains the rejected recovery flow and is superseded. Compatible development
 build [b4da28da](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/b4da28da-e425-4e5a-83fd-d734b87f39c4)
 from source `4a9f10f` finished successfully and passed signed-binary inspection.
-Installation and physical external-deletion/reset acceptance remain open.
+Its mandatory `readRetainingLocal` bridge has now been exercised on the phone:
+all five challenge/journal pairs match iCloud after off/on catch-up and restart.
+External deletion/recreation and second-phone restore remain owner-deferred and
+unverified before release.
 Follow
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) and the
 [rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
@@ -321,6 +327,9 @@ checks; independent native and TypeScript audits cover separate boundaries.
       Verify off retains the local/cloud copies without uploading a new entry,
       then re-enable/restart and verify all three local challenge/journal pairs
       match iCloud. Storage-full feedback was also observed on this phone.
+- [x] Exercise the compatible October 23 bridge on the phone: on matches four
+      challenge/journal pairs, off keeps the fifth local without uploading it,
+      and re-enable/restart match all five pairs with sync enabled and idle.
 - [ ] **Owner-deferred, unverified before release:** finish the single-phone
       offline-save/reconnect case. Anthony explicitly skipped this remaining
       step on October 22; implementation owner and Anthony retain acceptance.
@@ -342,10 +351,12 @@ checks; independent native and TypeScript audits cover separate boundaries.
       This capability also guarantees real in-app reset/closure writes the
       deletion marker even on legacy roots. Older bridges are rejected safely;
       `3cbc873a` is historical evidence and must not be used for this acceptance.
-- [ ] On the compatible build, verify external cloud deletion retains phone
-      entries, enabled sync recreates/uploads, and off prevents ordinary uploads.
-      Actual encrypted-data-reset/missing-storage behavior remains a physical
-      release gate; earlier single-phone checks do not establish it.
+- [ ] **Owner-deferred, unverified before release:** verify external cloud
+      deletion/reset retains phone entries and enabled sync recreates/uploads.
+      Anthony explicitly deferred this case and second-phone restoration after
+      the compatible bridge's single-phone checks. Implementation owner, Anthony
+      and Phase 14 release owner retain acceptance; those passes do not establish
+      either deferred case.
 - [x] Reconcile setup, architecture and handoff evidence together. Distinguish
       console setup, automated tests, signed-build inspection and physical-device
       evidence; retain any unavailable device gate with its owner and next step.
@@ -375,11 +386,21 @@ second-device/Apple-account-change cases, extended Apple/Google continuity and
 account-isolation cases, and physical Download/Import/deletion checks. Keep these
 named and unverified under Anthony, the implementation owner and the Phase 14
 release owner; no manual run is required to finish this scoped implementation
-closeout. Build `b4da28da` is finished and inspected; installation and physical
-acceptance of revised cloud-only recreation remain pending. The live side-panel UI walkthrough
+closeout. Build `b4da28da` is finished, inspected and exercised on the phone for
+on/off, catch-up and restart. External deletion/recreation and second-phone
+restore remain explicitly owner-deferred and unverified before release. The live side-panel UI walkthrough
 was blocked by browser-tool URL security policy and is not accepted as passed.
 Public privacy approval/publication remains pending. Local
 closeout does not mean the candidate is accepted for production release.
+
+Draft PR publication preparation subsequently passed full checks/coverage, all 43
+saved journeys, cold web/iOS exports and the production-web smoke case; current
+evidence is in the [handoff](../handoffs/phase-13-local-journal.md#draft-pr-publication-validation).
+The exact API-workspace CI audit still reports nine vulnerabilities through the
+optional Expo peer dependency graph after the direct Fastify patch. This is an
+unresolved CI/dependency-health blocker before merge, assigned to the
+implementation/dependency owner in a follow-up, not an owner-approved deferral.
+Native/SDK upgrades require a separate task; do not weaken the audit gate.
 
 ## Acceptance requirements
 
@@ -402,9 +423,11 @@ existing beta/subscription access rules, billing identity and the deferred Phase
 - [ ] **Owner-deferred before release:** offline/reconnect, two-device/account-change and native Download/Import/deletion cases.
 - [x] External cloud deletion/reset cannot authorize clearing phone entries; enabled sync recreates missing cloud storage, and the rejected recovery-clearing UI is removed. Genuine in-app deletion and account-epoch fences remain.
 - [x] The revised `readRetainingLocal` native bridge has a compatible inspected signed build, `b4da28da`, from source `4a9f10f`.
-- [ ] That build passes actual external-deletion/reset device acceptance, distinct from earlier single-phone evidence.
+- [x] The compatible `readRetainingLocal` bridge is exercised on the phone; on/off, catch-up and restart retain/match all five challenge/journal pairs as applicable.
+- [ ] **Owner-deferred before release:** actual external-deletion/reset and second-phone restore acceptance, distinct from the verified single-phone cases, under Anthony, the implementation owner and Phase 14 release owner.
 - [x] Documents distinguish current implementation, earlier evidence and owner-deferred release gates; public privacy approval/publication remains pending.
 - [x] Focused checks for the October 23 cloud-only recreation revision pass and are recorded in the handoff: 145 distinct JavaScript tests across seven suites, 30 Swift tests, mobile source/tests typechecks, changed-file ESLint and online Expo Doctor 21/21. Live browser verification is blocked and remains unverified; historical recovery-closeout results do not establish the revision.
+- [ ] **Merge blocker:** resolve the exact CI dependency-health audit's nine remaining advisories under the implementation/dependency owner. This is not an owner-approved deferral; preserve the native/SDK separate-task requirement and existing audit gate.
 
 ## Primary implementation references
 

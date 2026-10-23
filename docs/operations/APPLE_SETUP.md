@@ -76,7 +76,7 @@ Anthony rejected the recovery-clearing behavior in `3cbc873a`; do not install it
 as the acceptance candidate for the revised behavior. The historical build's
 inspection does not establish the October 23 bridge or physical behavior.
 
-**Revised cloud-only recreation build available; installation/device acceptance open:** Development build
+**Revised build inspected and exercised on the phone; external deletion/restore acceptance deferred:** Development build
 [b4da28da](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/b4da28da-e425-4e5a-83fd-d734b87f39c4),
 from source `4a9f10f`, finished successfully on October 23. The downloaded IPA
 passed `codesign --verify --deep --strict`; its actual Mach-O contains
@@ -89,8 +89,11 @@ remain present. The installation QR was decoded against this exact build URL.
 The phone Metro uses the matching staged API. The updated adapter requires
 native `readRetainingLocal`, which also certifies fixed real-deletion markers.
 An older binary cannot supply this through an OTA or development-server update;
-its cloud data operations are rejected safely. Install the compatible build over
-the existing app to retain phone data; actual installation remains unverified.
+its cloud data operations are rejected safely. The compatible `readRetainingLocal`
+bridge has now been successfully exercised on the phone. Sync on matched four
+challenge/journal pairs; off kept a fifth only on the phone, without diagnostic
+uploads/deletions or changing the off preference. Re-enable caught up all five,
+and they still matched with sync enabled/idle after force-quit and reopen.
 
 Deleting JustGO data through Apple Settings or an encrypted-data reset retains
 the phone's journal/challenge entries and saved sync preference. Enabled ordinary
@@ -99,7 +102,10 @@ ordinary uploads and preserves local entries. There is no Clear older copy and
 sync action. Genuine in-app Delete all my data/Delete account and authenticated
 account epochs remain authoritative. An unfinished legacy recovery clear is
 canceled only without a real deletion/cleanup or account-epoch clear to finish.
-Physical acceptance of this revised behavior remains open. Focused revision checks
+Anthony explicitly deferred external cloud deletion/recreation and second-phone
+restore. These remain unverified before release under Anthony, the implementation
+owner and the Phase 14 release owner; the single-phone results do not establish
+them. Focused revision checks
 passed 145 distinct JavaScript tests across seven suites, 30 Swift tests, mobile
 source/tests typechecks, changed-file ESLint and online Expo Doctor 21/21. The
 live side-panel walkthrough was blocked by browser-tool URL security policy and
@@ -108,9 +114,12 @@ is not counted as verified UI or device evidence.
 Anthony explicitly deferred the remaining manual offline/reconnect, two-device,
 extended provider-continuity and native Download/Import/deletion checks from the
 October 22 local closeout. These remain unverified pre-release gates with Anthony,
-the implementation owner and Phase 14 release owner. Current closeout verification
-is limited to affected iCloud native/adapter/coordinator/UI checks at his
-request; earlier broad checks do not become fresh evidence for the new bridge.
+the implementation owner and Phase 14 release owner. The routine iCloud fix used
+focused native/adapter/coordinator/UI checks at his request. Subsequent draft PR
+publication preparation passed broader checks, coverage, 43 saved journeys and
+exports/smoke; its remaining dependency-health audit failure blocks merge and is
+not an owner-approved deferral. See the [current publication evidence](../handoffs/phase-13-local-journal.md#draft-pr-publication-validation).
+These checks do not accept the deferred native cases.
 
 **Configured private iCloud:** Anthony approved assigning
 `iCloud.com.anthonyyoo.justgo` to the existing App ID/team. The iCloud capability
@@ -197,9 +206,9 @@ latter also removes the JustGO account/Auth profile. Neither removes the user's
 Apple/Google account. User-saved files remain under the user's control after app
 deletion.
 
-Next steps before release: install the inspected compatible revised
-build, verify that external iCloud deletion retains phone entries while the
-toggle governs ordinary re-upload, then complete the owner-deferred
+Next steps before release: resolve the owner-deferred checks for external iCloud
+deletion retaining phone entries while the
+toggle governs ordinary re-upload and for second-phone restore, then complete the owner-deferred
 provider/native/iCloud matrix.
 Container/schema setup and the named single-phone sync checks above are complete.
 Install over the existing app to preserve phone data, and connect to the matching

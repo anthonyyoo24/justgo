@@ -651,6 +651,13 @@ finish. Preserve current ownership, handover, conflicts and all entries that hav
 not already been explicitly deleted. The superseded `3cbc873a` binary remains
 historical build evidence, not the installation candidate for this behavior.
 
+After the compatible replacement bridge was exercised on the phone, Anthony
+explicitly deferred external iCloud deletion/recreation and second-phone restore
+acceptance. These remain unverified before release under Anthony, the
+implementation owner and the Phase 14 release owner. Single-phone on/off,
+catch-up and restart results do not establish either deferred case; the earlier
+manual, privacy and release deferrals remain in force.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.
