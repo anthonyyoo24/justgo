@@ -72,7 +72,14 @@ export function runApiCoverage(
 
 /** The aggregate status must fail for failed, cancelled or skipped producers. */
 export function requireSuccessfulJobs(value) {
-  const required = ['static', 'unit', 'database', 'journeys', 'exports'];
+  const required = [
+    'static',
+    'unit',
+    'database',
+    'journeys',
+    'exports',
+    'native-icloud',
+  ];
   let jobs;
   try {
     jobs = JSON.parse(value);

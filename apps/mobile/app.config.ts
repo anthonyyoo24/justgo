@@ -6,7 +6,15 @@ const projectId = '53cf0560-8ab5-446a-9bc6-deb193b337b5';
 const bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER;
 const profile = process.env.EAS_BUILD_PROFILE;
 const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
-const iCloudContainer = process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER;
+// The fixture simulator profile never inherits the device environment's CloudKit access.
+const iCloudContainer =
+  profile === 'development-simulator'
+    ? undefined
+    : process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER;
+const iCloudEnvironment =
+  profile === 'development-simulator'
+    ? undefined
+    : process.env.ICLOUD_CONTAINER_ENVIRONMENT;
 if (
   googleIosUrlScheme &&
   !/^com\.googleusercontent\.apps\.[A-Za-z0-9-]+$/.test(googleIosUrlScheme)
@@ -17,6 +25,15 @@ if (
 if (iCloudContainer && !/^iCloud\.[A-Za-z0-9.-]+$/.test(iCloudContainer))
   throw new Error(
     'iCloud sync requires the approved CloudKit container identifier',
+  );
+if (
+  (iCloudContainer &&
+    iCloudEnvironment !== 'Development' &&
+    iCloudEnvironment !== 'Production') ||
+  (!iCloudContainer && iCloudEnvironment)
+)
+  throw new Error(
+    'iCloud sync requires a paired container and Development or Production ICLOUD_CONTAINER_ENVIRONMENT',
   );
 if (profile && !bundleIdentifier)
   throw new Error('EAS builds require the confirmed IOS_BUNDLE_IDENTIFIER');
@@ -67,6 +84,8 @@ const config: ExpoConfig = {
               iCloudContainer,
             ],
             'com.apple.developer.icloud-services': ['CloudKit'],
+            'com.apple.developer.icloud-container-environment':
+              iCloudEnvironment,
           },
         }
       : {}),
@@ -76,8 +95,25 @@ const config: ExpoConfig = {
     'expo-dev-client',
     'expo-font',
     'expo-image',
+    [
+      'expo-splash-screen',
+      {
+        backgroundColor: '#F9EFE8',
+        image: './assets/brand/justgo-mark.png',
+        imageWidth: 194,
+        resizeMode: 'contain',
+      },
+    ],
     'expo-apple-authentication',
     ['expo-secure-store', { faceIDPermission: false }],
+    ...(iCloudContainer
+      ? [
+          [
+            './plugins/with-icloud-environment.cjs',
+            { environment: iCloudEnvironment },
+          ] as [string, Record<string, unknown>],
+        ]
+      : []),
     ...(googleIosUrlScheme
       ? [
           [

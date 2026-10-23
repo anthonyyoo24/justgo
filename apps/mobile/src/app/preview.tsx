@@ -8,6 +8,11 @@ export default function PreviewRoute() {
       state?: string;
     }>();
   if (!__DEV__) return <Redirect href="/" />;
+  if (mode === 'icloud-sync') {
+    const { ICloudSyncPreview } =
+      require('../dev/previews/ICloudSyncPreview') as typeof import('../dev/previews/ICloudSyncPreview');
+    return <ICloudSyncPreview state={state ?? 'default'} />;
+  }
   if (mode === 'diagnostics') {
     const { DiagnosticsPreview } =
       require('../dev/diagnostics/DiagnosticsPreview') as typeof import('../dev/diagnostics/DiagnosticsPreview');

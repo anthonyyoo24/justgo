@@ -1,25 +1,165 @@
 # Optional accounts and cloud synchronization setup
 
-This is the operator checklist for the Phase 13 implementation candidate.
-It does not authorize hosted migrations, grants, provider activation, deployment,
-native signing/build/upload, purchases or scheduling. None of those actions was
-performed as part of the local implementation. The [phase plan](../implementation-plan/phase-13-local-journal.md)
+This is the operator checklist for Phase 13. The owner authorized the current
+staging provider/API setup and a compatible internal development build. Git
+publication, public distribution, purchases and scheduling retain their separate
+permissions. The [phase plan](../implementation-plan/phase-13-local-journal.md)
 and [handoff](../handoffs/phase-13-local-journal.md) own acceptance status;
 [IDENTITY.md](../architecture/IDENTITY.md) owns the safety invariants.
 
 ## Current setup status
 
-The October 21 read-only setup audit found the following prerequisites still open.
-These are configuration gaps, not evidence that the local implementation is
-ready for hosted or physical-device acceptance.
+The October 21 authorized implementation configured these prerequisites. Console
+configuration, automated evidence and real phone acceptance remain distinct.
 
-| Area                     | Verified state / remaining work                                                                                                                    |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Existing Apple identity  | Reuse team `NPDYTJS425` and bundle `com.anthonyyoo.justgo`; the existing signed development app includes Sign in with Apple.                       |
-| Supabase Auth            | Apple and Google providers are disabled. Configure approved audiences/clients and manual linking before real provider tests.                       |
-| Hosted database          | Migrations 0019–0023 are unapplied; the narrow live `auth.sessions` grants below are missing.                                                      |
-| Public app configuration | Local/EAS public Auth, Google and iCloud inputs are absent. Supply the matching approved values before the next build.                             |
-| iCloud native setup      | The inspected October 21 IPA reports `cloudKitConfigured=false`. Container/capability/provisioning setup and a compatible rebuild remain required. |
+| Area                     | Verified state / remaining work                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Existing Apple identity  | Reused team `NPDYTJS425`, bundle `com.anthonyyoo.justgo` and existing signing credentials. Supabase Apple accepts that native audience, allows missing email and keeps nonce validation.                                                                                                                                                                                   |
+| Supabase Auth            | Apple/Google enabled in existing `kmcpcauaxlgpevkkenwd`; manual identity linking enabled. Server administrative key was verified without exporting user records.                                                                                                                                                                                                           |
+| Google clients           | Existing organization, new project `justgo-512319`; JustGO Supabase web client and JustGO iPhone client. External/Testing, owner email allowlisted, only openid/profile/email scopes. Google-only Skip nonce checks explicitly approved for the pinned original iOS SDK.                                                                                                   |
+| Hosted database          | Registered migrations 0019–0023 applied, 19→24 history verified. Protected snapshot restored and forward-rehearsed locally; account/history preservation checked inside the live transaction. There were no old server attempts/reflections to erase.                                                                                                                      |
+| Public app configuration | Matching seven public Auth/Google/API inputs configured in local development and the existing EAS development environment. Server-only Auth configuration uses Vercel secret/environment storage.                                                                                                                                                                          |
+| Native build             | Configured internal build [87bc28d0](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/87bc28d0-8c0e-4936-8222-d918d362b8ab) succeeded. Signed IPA inspection confirms bundle/team, registered phone, Apple entitlement, Google URL scheme, secure storage and current conditional CloudKit bridge. Installation and real provider acceptance remain open. |
+| Staging API              | Matching deployment `dpl_HmREmiNREfSTiW6uC5GpjWFrbqkr` is active at `https://justgo-two.vercel.app`. `/ready` returns 200/ready; managed routes reject missing authentication and legacy administration is absent. Actual restricted-role helper/schema checks and absent-session rejection pass; security advisor reports no findings.                                    |
+| iCloud native setup      | `iCloud.com.anthonyyoo.justgo` is assigned to the existing App ID/team. The encrypted private record schema is deployed in Development and Production; local/EAS development configuration uses Production for the ad hoc build. Signed-build inspection and physical acceptance remain separate. Provider login does not enable iCloud Sync.                              |
+
+## Execution checklist: working Apple and Google login
+
+This is the remaining login work within Phase 13, in execution order. The
+implementation owner completes each step and records evidence before moving to
+dependent work. Anthony handles account access and the existing authorization
+boundaries for hosted changes and signed builds. Planning does not enable a
+provider, deploy an API or change an installed app.
+
+The original read-only audit identified missing provider, app and database setup.
+The status table above supersedes that audit; use live readiness and actual device
+results before claiming acceptance. Loopback test API configuration stays isolated
+from hosted Auth and production credentials.
+
+### 1. Audit legacy recovery and prepare the cutover
+
+- [x] Confirm the target Supabase project, API environment, existing Apple team
+      and bundle ID, Google project and current installed build. Inventory old
+      installations and pending operations using counts/status only.
+- [x] Trace every remaining legacy dependency and record its removal condition
+      using the inventory below. Identify presentation/fallback code that can
+      retire independently of account migration. Preserve old journal ownership
+      and unfinished deletion state; no account/history/phone reset is part of
+      this work.
+- [x] Prepare the exact configuration/deployment/build changes for review, with
+      environment names, console destinations, migration scope and acceptance
+      checks. Recheck current Supabase, Expo and provider documentation before
+      implementation. Store credentials through the appropriate secret manager.
+
+| Existing responsibility                                  | Current owner                                                                                     | Planned treatment / removal condition                                                                                                                                                                                                                                             |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Old key, transfer and device screens and route fallbacks | Mobile `identity/account`, `app/account` and `app/recovery.tsx`                                   | Removed from the managed-only app. Old URLs redirect to Account; managed routes/fixtures/tests now exercise the current controller. Retain redirects for existing links.                                                                                                          |
+| General legacy controller                                | Mobile `identity/controller.ts` and `providers/AppProvider.tsx`                                   | Obsolete UI branches removed. Keep the generic boundary-test constructor, pending legacy deletion consumer and shared snapshot type until their supported migration/cleanup window closes.                                                                                        |
+| Existing-owner proof migration                           | Mobile `auth/legacy-link-proof.ts`, `auth/managed-controller.ts` and API managed identity service | Retain proof renewal/recovery, frozen exchange proof and linked-owner marker until supported old installations can migrate without replacement accounts or cross-owner linking. Verify lost-response replay.                                                                      |
+| Old secure vault/native bridge                           | Mobile `identity/vault.ts`, `identity/storage.ts` and `modules/justgo-keychain`                   | Retain the operations required to read/migrate old ownership and finish pending cleanup. Startup currently reads this bridge even on a fresh installation; do not remove the native module while callers remain. Audit unused credential-creation/transfer operations separately. |
+| Legacy server routes and records                         | API `identity/routes.ts`, identity services and registered database migrations                    | Managed mode disables public key/device/transfer administration and bootstrap/transfer creation. Keep exact-proof current-session/renewal/recovery and pending deletion compatibility until the supported migration window closes. Preserve revocation/deletion records.          |
+| Secure storage for new sign-ins                          | Mobile `platform/auth` and Supabase Auth adapter                                                  | Keep. This stores managed login tokens securely and does not restore the user-facing key/code system.                                                                                                                                                                             |
+
+**Exit:** every retained legacy path has a named migration/cleanup consumer and a
+removal condition; candidate cleanup has a focused verification scope. Do not
+delay real provider setup solely because migration compatibility must remain.
+
+### 2. Configure and verify the real providers
+
+- [x] Configure native Apple sign-in in the existing Supabase project using the
+      permanent bundle ID as an accepted audience. Preserve the existing Apple
+      capability and nonce validation. The native ID-token path does not require
+      adding browser Apple OAuth setup.
+- [x] Configure Google's web/server and iOS OAuth clients for the same app,
+      Supabase Google provider and iOS reversed-client URL scheme. Confirm the
+      consent/test-user settings permit the intended phone testers.
+- [x] Enable and verify explicit Supabase identity linking. Keep both methods
+      attached to the same verified JustGO owner; do not add custom email merges.
+- [x] Supply matching public app values and server-only secrets using the
+      environment tables below. Add only approved callback/CORS destinations
+      for browser OAuth if browser login is included in this rollout.
+
+**Exit:** provider/client/audience settings match the existing app identity, and
+the intended test accounts can reach real Auth. Configuration alone does not
+establish successful app login or data synchronization.
+
+### 3. Roll out the matching API and database
+
+- [x] Follow the coordinated [rollout](LOCAL_JOURNAL_ROLLOUT.md), including a
+      restorable snapshot, registered migrations 0019–0023, the private Auth-session
+      helper and the compatible API deployment. Retain the narrowly approved
+      server-only reflection reset scope.
+- [ ] Enable managed Auth for the chosen environment only after its prerequisites
+      pass. Verify readiness using the actual restricted runtime role, real token
+      verification, canonical-owner mapping and blocked legacy administration.
+- [ ] Verify Auth account-erasure capability and arrange the documented pending
+      deletion retry operation before testers depend on Delete account. Keep
+      supported old-proof migration available and coordinate incompatible clients.
+
+**Current evidence:** the compatible staging API and private helper are live.
+The restricted runtime passes readiness, a nonexistent session is denied, the
+server admin key was validated, and the operator cleanup command completed with
+zero pending work. Real provider mapping, revocation and erasure still require
+the phone/disposable-account cases below; do not equate readiness with those tests.
+
+### 4. Build the configured iPhone app
+
+- [x] Put the matching public Auth/Google values in local development and the
+      chosen EAS environment. Check the resolved API origin and generated native
+      configuration without exposing secrets.
+- [x] Preserve the existing Welcome and Account provider-entry pages, logos and
+      cloud disclosure. Tapping a signed-out switch continues to open the separate
+      provider page; errors stay with that attempt and reset on a later visit.
+- [x] Create a compatible signed development build with the existing bundle/team,
+      Apple entitlement, Google URL scheme, secure storage and required modules.
+      Inspect the resulting binary, then provide its installation link and QR code.
+      Install over the existing app to preserve its phone data.
+
+**Current evidence:** the signed binary contains the Apple entitlement and Google
+URL scheme. The restarted, cache-cleared phone Metro bundle contains the matching
+public Auth/Google/staging API inputs and no actual server admin secret. The
+unpublished legal reader remains a separate local LAN preview; its pages return
+200 and no legal content was published. Installation and native login remain open.
+Keep iCloud's separate Phase 13 checklist open until its own setup and device
+checks pass; successful provider login does not establish working iCloud Sync.
+
+### 5. Accept real login and data continuity on the phone
+
+- [ ] Test first and returning Apple and Google sign-in, provider cancellation,
+      Apple hidden email, expired/refreshed sessions and network interruption.
+- [ ] Confirm guest entries are adopted after disclosure; log out, edit offline,
+      relaunch and sign back into the same account. Verify challenge history and
+      journal together, including another device's changes and conflicts.
+- [ ] Link/unlink both providers, protect the final method and reject an identity
+      belonging to a different owner. Confirm Account switches reflect verified
+      connections and another account never receives the prior owner's entries.
+- [ ] On disposable accounts, verify session revocation, Delete all my data,
+      Delete account and interrupted cleanup/retry. Verify existing-phone proof
+      migration, a lost exchange response and pending legacy deletion separately.
+- [ ] Record real device/provider evidence separately from unit, browser and
+      fixture journeys. Run the applicable focused and release/phase gates in
+      [TESTING.md](TESTING.md); keep any unavailable device/provider check open.
+
+**Exit:** both real providers complete login in the configured iPhone app, the
+correct data survives logout/returning login, and server-side ownership/deletion
+works. A mocked login, successful build or disappearing error is insufficient.
+
+### 6. Remove obsolete recovery code and reconcile documentation
+
+- [x] Remove audited legacy presentation/fallback consumers in a separate
+      reviewable change. Extract required migration/deletion responsibilities
+      before removing general controllers, shared types or native operations.
+- [x] Bound retained compatibility to existing-owner migration and unfinished
+      deletion. Remove it only when supported installations have migrated or the
+      owner explicitly approves ending that support. Keep
+      canonical ownership, deleted-owner/revocation records and pending cleanup
+      authoritative through restoration. Retain managed token secure storage.
+- [x] Update the plan, implemented architecture, setup/rollout guidance and handoff
+      together with actual evidence and remaining gates. Do not mark the whole
+      phase complete while iCloud, hosted or physical-device requirements remain.
+
+**Exit:** obsolete recovery code is removed, necessary compatibility is explicitly
+bounded, and documentation distinguishes working phone login from open work.
 
 ## Rollout prerequisites
 
@@ -79,27 +219,32 @@ against the live `auth.sessions` row. Signature/expiry alone does not establish
 that a user has not signed out. Supabase documents the session-ID relationship in
 [User sessions](https://supabase.com/docs/guides/auth/sessions).
 
-An authorized Auth-schema owner/administrator must review and execute these
-additional grants in the target project. They were **not executed** during local
-implementation:
+Hosted Supabase does not support direct grants from `postgres` to custom roles
+on its managed `auth` schema. The prior direct-grant recipe is superseded by
+[Supabase's documented private-helper pattern](https://supabase.com/kb/troubleshooting/permission-errors-when-granting-custom-roles-access-to-the-auth-schema).
+The ordinary migrator remains unable to grant itself Auth access.
 
-```sql
-GRANT USAGE ON SCHEMA auth TO justgo_runtime;
-GRANT SELECT (id, user_id, not_after) ON auth.sessions TO justgo_runtime;
-```
+After the registered application migrations, the authorized project `postgres`
+operator runs the versioned
+[session-check-v1.sql](../../apps/api/scripts/managed-auth/session-check-v1.sql).
+Keep `justgo_auth_private` outside the Data API exposed schemas. Its only helper
+returns a boolean for the exact session/subject plus `not_after`; arguments come
+from the API's verified JWT, never client-selected owner fields. A direct backend
+SQL connection has no PostgREST `auth.uid()` context, so verified server arguments
+are the ownership boundary.
 
-These grant only the columns the live-session query uses. They do not grant
-`SELECT *`, Auth user/refresh-token access, Auth writes, role ownership, bypass-RLS
-or security-definer execution. The ordinary `justgo_migrator` role does not own
-Supabase Auth and cannot grant itself access. Review existing Auth-schema policies
-and Supabase managed-service constraints with the authorized operator before
-rollout. Do not replace this with a broadly privileged runtime database account.
+The helper uses SQL, STRICT/STABLE, fixed `search_path=''`, fully qualified Auth
+objects and postgres ownership. Revoke schema/function access from PUBLIC and
+Data API roles, grant only runtime USAGE/EXECUTE, and remove the obsolete direct
+Auth-column grants. Runtime receives no Auth records, writes, administrator role
+or ability to replace the function. Application RLS remains forced and unchanged.
 
-After grants, verify the actual runtime role can execute the narrow live-session
-query and cannot write Auth records. `/ready` checks schema usage and all three
-column privileges when managed Auth is enabled; it fails closed when absent.
-Readiness is a privilege probe, not proof of provider login or administrative
-deletion capability. Real logout/revocation tests must still pass.
+`/ready` validates the helper's exact executable body, types, owner, security
+settings, direct/effective privileges and managed application tables. Wrong/missing
+setup fails closed. Verify the real runtime can call the helper with fresh random
+UUIDs and receive false, cannot read/write Auth directly, and cannot access another
+owner's application rows. Live matching-session/revocation and actual hard deletion
+still need separate real-provider evidence.
 
 ## API environment
 
@@ -144,8 +289,8 @@ For native Apple sign-in, preserve team `NPDYTJS425` and bundle
 `com.anthonyyoo.justgo`, retain its Sign in with Apple capability and enable the
 Supabase Apple provider with that bundle ID among its accepted Client IDs/token
 audiences. The native ID-token exchange does not require a browser Services ID
-or a `.p8`-generated OAuth client secret. The native implementation uses a
-cryptographic nonce; do not disable validation. Verify first/returning sign-in,
+or a `.p8`-generated OAuth client secret. Native Apple uses no email/name scopes, so allow users without email for this
+provider. Its cryptographic nonce validation stays enabled. Verify first/returning sign-in,
 hidden email, cancellation and provider linking on the signed app.
 
 Browser Apple OAuth is separate setup: it needs an Apple Services ID, approved
@@ -161,7 +306,13 @@ same permanent bundle identity. Add the approved iOS reversed-client URL scheme;
 confirm the consent screen and provider settings through
 [Supabase Google sign-in](https://supabase.com/docs/guides/auth/social-login/auth-google)
 and the [original Google Sign-In Expo setup](https://react-native-google-signin.github.io/docs/setting-up/expo).
-The application uses the free/original native integration, not a paid SDK.
+The application uses the free/original native integration. Its pinned iOS wrapper
+does not expose the nonce generated by Google's SDK. The owner explicitly approved
+Google-only Skip nonce checks, following Supabase's iOS configuration; signatures
+and allowed audiences remain verified. Apple nonce validation is unchanged.
+The web client callback is the project's `/auth/v1/callback`; native ID-token
+exchange does not require putting a client secret on the phone. Browser Google
+OAuth remains a separate configuration and acceptance task.
 Keep provider secrets in provider/server configuration, never public mobile env.
 
 The implemented mobile inputs are:
@@ -189,11 +340,39 @@ fixture providers. The guarded loopback fixture allocates its own principals and
 sessions in dedicated `justgo_test`; it establishes no real Apple/Google evidence.
 
 iCloud is separately opt-in and off by default. Its native configuration uses
-`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER=iCloud.<approved-container>`, the existing
-Apple team and private CloudKit capabilities. This is independent of JustGO
+`EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER=iCloud.com.anthonyyoo.justgo` paired with
+`ICLOUD_CONTAINER_ENVIRONMENT=Production` for the internal ad hoc build, the existing
+Apple team and private CloudKit capabilities. Both values are public build metadata.
+The EAS development environment and local phone configuration contain this pair;
+configure preview/production explicitly before their builds. Unconfigured local
+builds omit iCloud entitlements, and `development-simulator` ignores inherited
+device CloudKit inputs. This is independent of JustGO
 provider login. Follow [APPLE_SETUP.md](APPLE_SETUP.md) and retain physical
 multi-device, account-change, quota, toggle-off and deletion gates. A Files share
 to iCloud Drive is a manual snapshot, not the iCloud Sync toggle.
+
+The approved container is assigned only to `com.anthonyyoo.justgo` under team
+`NPDYTJS425`. Its schema is deployed in Development and Production:
+
+| Record type        | Field                    | CloudKit type    |
+| ------------------ | ------------------------ | ---------------- |
+| `JustGoCollection` | `generation`, `revision` | String           |
+| `JustGoCollection` | `wasReset`, `closed`     | Int(64)          |
+| `JustGoValue`      | `generation`, `itemId`   | String           |
+| `JustGoValue`      | `value`                  | Encrypted String |
+
+There are no custom query indexes or public `_world`/`_icloud` grants for these
+types. The bridge uses private custom zones; deploying schema does not copy any
+user records. Create `value` as Encrypted String from the beginning. Keep the
+signed environment consistent with the deployed schema and inspect the final IPA.
+
+The pinned DocumentPicker automatic plugin removes the environment entitlement
+when its separate CloudDocuments integration is off. The focused
+`with-icloud-environment.cjs` mod restores the validated CloudKit environment after
+the entitlement pipeline; do not enable `usesIcloudStorage` merely to compensate,
+because that changes service/container entitlements to CloudDocuments. App-config
+tests exercise both plugins together and introspection must retain `CloudKit`,
+the approved container, the environment and the Apple sign-in entitlement.
 
 The local implementation remembers previously used iCloud copies. Guest-to-account
 handover reads any associated guest copy before retiring it; deletion also cleans
@@ -205,11 +384,22 @@ Retry against the associated account without uploading another owner's writing.
 
 The current handover requires the native page `revision` and `resetIfUnchanged`
 bridge, which conditionally retires only the source version actually read. The
-October 21 IPA predates this bridge revision and must be rebuilt with the current
-module and approved CloudKit configuration. A missing bridge or unavailable
+earlier `967b34cf` IPA predates this bridge revision; the provider build includes
+it but lacks CloudKit configuration. Use the subsequent configured iCloud build
+recorded in [APPLE_SETUP.md](APPLE_SETUP.md). A missing bridge or unavailable
 configuration must remain an explicit unsupported/pending state, not a simulated
 successful sync. Include concurrent-write and lost-response retries in native
 acceptance.
+
+When enabled ordinary sync finds missing private storage, including a removed
+zone or a missing zone after an Apple encrypted-data key reset, it may recreate
+the cloud copy and upload existing phone entries without clearing them. Turning
+sync off stops ordinary uploads and retains phone data. Genuine in-app deletion,
+closure and account-epoch fences remain separate and enforced. Access or
+recreation failures remain errors, and phone writing is retained. Actual
+external-deletion/recreation device acceptance remains unverified before release;
+see the [October 23 decision](../DECISIONS.md#october-23-icloud-deletion-retains-phone-data)
+and [activity architecture](../architecture/ACTIVITY_DATA.md).
 
 ## Pending Auth erasure operations
 
@@ -255,7 +445,7 @@ retention and operational response commitments require final privacy review.
   hidden/different email and safe linking to the same canonical owner.
 - Existing-phone proof migration with lost responses, revoked proofs, returning
   provider sign-in and old pending deletion receipts; no replacement owners.
-- Actual Auth-column grant checks, runtime least privilege, provider sign-out and
+- Actual private-helper/runtime least privilege, provider sign-out and
   formerly valid JWT rejection on private endpoints after logout/revocation.
 - Hard Auth deletion with a real administrative key, interrupted provider/marker
   cleanup, original-proof replay after provider removal and operator retry.

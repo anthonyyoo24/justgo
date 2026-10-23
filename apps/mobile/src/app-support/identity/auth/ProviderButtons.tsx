@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { ProviderLogo } from '../../../components/auth/ProviderLogo';
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
 import { fontFamilies, layout, radii, spacing } from '../../../theme/tokens';
@@ -9,10 +9,14 @@ export function ProviderButtons({
   onSignIn,
   disabled = false,
   provider,
+  busyProvider,
+  retry = false,
 }: {
   onSignIn: (provider: SignInProvider) => void;
   disabled?: boolean;
   provider?: SignInProvider | undefined;
+  busyProvider?: SignInProvider | null;
+  retry?: boolean;
 }) {
   return (
     <View style={styles.stack}>
@@ -22,9 +26,17 @@ export function ProviderButtons({
           <Pressable
             key={value}
             accessibilityRole="button"
-            accessibilityLabel={`Sign in with ${value === 'apple' ? 'Apple' : 'Google'}`}
-            accessibilityState={{ disabled }}
-            disabled={disabled}
+            accessibilityLabel={
+              retry
+                ? 'Try again'
+                : `Sign in with ${value === 'apple' ? 'Apple' : 'Google'}`
+            }
+            accessibilityState={{
+              disabled: disabled || !!busyProvider,
+              busy: busyProvider === value,
+            }}
+            aria-busy={busyProvider === value}
+            disabled={disabled || !!busyProvider}
             onPress={() => onSignIn(value)}
             style={({ pressed }) => [
               styles.button,
@@ -32,15 +44,30 @@ export function ProviderButtons({
               pressed && styles.pressed,
             ]}
           >
-            <ProviderLogo provider={value} appleColor="#fff" />
-            <Text
-              style={[
-                styles.label,
-                value === 'apple' ? styles.appleLabel : styles.googleLabel,
-              ]}
-            >
-              Sign in with {value === 'apple' ? 'Apple' : 'Google'}
-            </Text>
+            {busyProvider === value ? (
+              <ActivityIndicator
+                size="small"
+                color={value === 'apple' ? '#fff' : '#1F1F1F'}
+                accessible
+                accessibilityRole="progressbar"
+                accessibilityLabel={`Signing in with ${value === 'apple' ? 'Apple' : 'Google'}`}
+                style={styles.busy}
+              />
+            ) : (
+              <>
+                <ProviderLogo provider={value} appleColor="#fff" />
+                <Text
+                  style={[
+                    styles.label,
+                    value === 'apple' ? styles.appleLabel : styles.googleLabel,
+                  ]}
+                >
+                  {retry
+                    ? 'Try again'
+                    : `Sign in with ${value === 'apple' ? 'Apple' : 'Google'}`}
+                </Text>
+              </>
+            )}
           </Pressable>
         ))}
     </View>
@@ -64,4 +91,5 @@ const styles = StyleSheet.create({
   appleLabel: { color: '#fff' },
   googleLabel: { color: '#1F1F1F' },
   pressed: { opacity: 0.7 },
+  busy: { height: 20 },
 });

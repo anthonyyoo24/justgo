@@ -28,3 +28,7 @@ apps/mobile/android/
 **/*.test.ts
 **/*.test.tsx
 **/AGENTS.md
+# Native regression harness is not part of the CocoaPods module.
+/apps/mobile/modules/justgo-icloud/Tests/
+/apps/mobile/modules/justgo-icloud/Package.swift
+/apps/mobile/modules/justgo-icloud/.build/

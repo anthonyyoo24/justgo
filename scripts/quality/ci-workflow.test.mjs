@@ -11,7 +11,14 @@ import {
 } from './ci-workflow-fixture.mjs';
 
 const [triggers] = workflow.split(/^permissions:$/m);
-const producers = ['static', 'unit', 'database', 'journeys', 'exports'];
+const producers = [
+  'static',
+  'unit',
+  'database',
+  'journeys',
+  'exports',
+  'native-icloud',
+];
 
 test('pushes run only for main, PRs cancel older revisions, and main results stay independent', () => {
   assert.match(triggers, /^ {2}push:\n {4}branches: \[main\]$/m);
@@ -27,14 +34,15 @@ test('pushes run only for main, PRs cancel older revisions, and main results sta
 test('independent bounded producer jobs feed one always-evaluated required status', () => {
   assert.deepEqual(Object.keys(jobs), [...producers, 'checks']);
   for (const name of producers) assert.doesNotMatch(jobs[name], /^ {4}needs:/m);
-  for (const job of Object.values(jobs)) {
+  for (const [name, job] of Object.entries(jobs)) {
     assert.match(job, /^ {4}timeout-minutes: [1-9]\d*$/m);
     assert.match(job, /persist-credentials: false/);
-    assert.match(job, /uses: \.\/\.github\/actions\/setup-node/);
+    if (name !== 'native-icloud')
+      assert.match(job, /uses: \.\/\.github\/actions\/setup-node/);
   }
   assert.match(
     jobs.checks,
-    /^ {4}needs: \[static, unit, database, journeys, exports\]$/m,
+    /^ {4}needs: \[static, unit, database, journeys, exports, native-icloud\]$/m,
   );
   assert.match(jobs.checks, /^ {4}if: always\(\)$/m);
   assert.match(
@@ -42,6 +50,20 @@ test('independent bounded producer jobs feed one always-evaluated required statu
     /run: node scripts\/quality\/api-coverage.mjs require-jobs/,
   );
   assert.match(jobs.checks, /JUSTGO_CI_RESULTS: \$\{\{ toJSON\(needs\) \}\}/);
+});
+
+test('native iCloud regressions run on a bounded macOS producer without npm prerequisites', () => {
+  const job = jobs['native-icloud'];
+  assert.match(job, /^ {4}runs-on: macos-15$/m);
+  assert.match(job, /^ {4}timeout-minutes: 10$/m);
+  assert.match(
+    job,
+    /uses: actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/,
+  );
+  assert.deepEqual(commands(job), [
+    'swift test --package-path apps/mobile/modules/justgo-icloud --scratch-path .local/justgo-icloud-swift --jobs 1',
+  ]);
+  assert.doesNotMatch(job, /setup-node|\bnpm\b|\bnode\b|continue-on-error/);
 });
 
 test('static checks retain fresh route typechecking and audit only API production dependencies', () => {
@@ -94,6 +116,10 @@ test('database and journey prerequisites share isolated roles without ignored en
   assert.match(
     jobs.database,
     /justgo_migrator:migration-ci-only@localhost:5432\/justgo_test/,
+  );
+  assert.match(
+    jobs.database,
+    /JUSTGO_TEST_ADMIN_DATABASE_URL: postgresql:\/\/postgres:local-ci-only@localhost:5432\/justgo_test/,
   );
   assert.match(jobs.database, /DATABASE_SSL: disable/);
   assert.match(jobs.journeys, /^ {4}env: \*database-test-env$/m);

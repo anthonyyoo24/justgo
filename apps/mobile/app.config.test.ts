@@ -11,6 +11,9 @@ describe('Expo project configuration', () => {
     delete process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT;
     delete process.env.SENTRY_AUTH_TOKEN;
     delete process.env.SENTRY_ENVIRONMENT;
+    delete process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
+    delete process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER;
+    delete process.env.ICLOUD_CONTAINER_ENVIRONMENT;
   });
   afterEach(() => {
     process.env = originalEnv;
@@ -27,6 +30,19 @@ describe('Expo project configuration', () => {
     expect(config.scheme).toBe('justgo');
     expect(config.plugins).toContain('expo-dev-client');
     expect(config.experiments.typedRoutes).toBe(true);
+  });
+
+  it('uses the approved mark and cream for the native launch screen', () => {
+    const { default: config } = require('./app.config');
+    expect(config.plugins).toContainEqual([
+      'expo-splash-screen',
+      {
+        backgroundColor: '#F9EFE8',
+        image: './assets/brand/justgo-mark.png',
+        imageWidth: 194,
+        resizeMode: 'contain',
+      },
+    ]);
   });
 
   it('requires explicit valid reporting configuration and installs native privacy after Sentry', () => {
@@ -87,6 +103,89 @@ describe('Expo project configuration', () => {
     expect(() => require('./app.config')).toThrow('IOS_BUNDLE_IDENTIFIER');
   });
 
+  it('omits iCloud configuration until both native inputs are supplied', () => {
+    const { default: config } = require('./app.config');
+    expect(config.ios.infoPlist).not.toHaveProperty(
+      'JustGoICloudContainerIdentifier',
+    );
+    expect(config.ios.entitlements).toBeUndefined();
+    expect(config.ios.usesAppleSignIn).toBe(true);
+  });
+
+  it.each(['Development', 'Production'])(
+    'configures matching private CloudKit container and %s environment',
+    (environment) => {
+      process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER =
+        'iCloud.com.example.justgo';
+      process.env.ICLOUD_CONTAINER_ENVIRONMENT = environment;
+      const { default: config } = require('./app.config');
+      expect(config.ios.infoPlist.JustGoICloudContainerIdentifier).toBe(
+        'iCloud.com.example.justgo',
+      );
+      expect(config.ios.entitlements).toEqual({
+        'com.apple.developer.icloud-container-identifiers': [
+          'iCloud.com.example.justgo',
+        ],
+        'com.apple.developer.icloud-services': ['CloudKit'],
+        'com.apple.developer.icloud-container-environment': environment,
+      });
+      expect(config.ios.usesAppleSignIn).toBe(true);
+    },
+  );
+
+  it('retains the CloudKit environment after DocumentPicker strips its CloudDocuments setting', async () => {
+    process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER =
+      'iCloud.com.example.justgo';
+    process.env.ICLOUD_CONTAINER_ENVIRONMENT = 'Production';
+    const { default: config } = require('./app.config');
+    const withICloudEnvironment = require('./plugins/with-icloud-environment.cjs');
+    const {
+      default: withDocumentPicker,
+    } = require('expo-document-picker/app.plugin.js');
+    const options = config.plugins.find(
+      (entry: unknown) =>
+        Array.isArray(entry) &&
+        entry[0] === './plugins/with-icloud-environment.cjs',
+    )[1];
+    const configured = withICloudEnvironment(
+      withDocumentPicker(config),
+      options,
+    );
+    const result = await configured.mods.ios.entitlements({
+      ...configured,
+      modResults: { ...config.ios.entitlements },
+      modRequest: {
+        projectRoot: '/fixture',
+        platformProjectRoot: '/fixture/ios',
+        platform: 'ios',
+        modName: 'entitlements',
+        introspect: true,
+      },
+    });
+    expect(result.modResults).toEqual(config.ios.entitlements);
+    expect(result.modResults['com.apple.developer.icloud-services']).toEqual([
+      'CloudKit',
+    ]);
+    expect(result.modResults).not.toHaveProperty(
+      'com.apple.developer.ubiquity-container-identifiers',
+    );
+  });
+
+  it.each([
+    ['com.example.justgo', 'Production', 'approved CloudKit container'],
+    ['iCloud.com.example.justgo', undefined, 'paired container'],
+    ['iCloud.com.example.justgo', 'production', 'paired container'],
+    [undefined, 'Production', 'paired container'],
+  ])(
+    'rejects mismatched iCloud inputs %s / %s',
+    (container, environment, error) => {
+      if (container)
+        process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER = container;
+      if (environment) process.env.ICLOUD_CONTAINER_ENVIRONMENT = environment;
+      expect(() => require('./app.config')).toThrow(error);
+    },
+  );
+
   it('reconciles native disabled state even after an enabled prebuild', () => {
     const { default: config } = require('./app.config');
     expect(config.plugins.slice(-2)).toEqual([
@@ -129,11 +228,17 @@ describe('Expo project configuration', () => {
       ...process.env,
       ...eas.build['development-simulator'].env,
       EAS_BUILD_PROFILE: 'development-simulator',
+      EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER: 'iCloud.com.example.justgo',
+      ICLOUD_CONTAINER_ENVIRONMENT: 'Production',
     };
     const { default: config } = require('./app.config');
     expect(config.ios.bundleIdentifier).toBe('dev.justgo.foundation');
     expect(config.extra.eas.projectId).toBe(
       '53cf0560-8ab5-446a-9bc6-deb193b337b5',
+    );
+    expect(config.ios.entitlements).toBeUndefined();
+    expect(config.ios.infoPlist).not.toHaveProperty(
+      'JustGoICloudContainerIdentifier',
     );
   });
 });

@@ -24,13 +24,11 @@ type LegacyReader = (
 const context = (tx: Tx, key: string, value: string) =>
   tx.execute(sql`select set_config(${key},${value},true)`);
 const liveSession: ManagedLiveSessionReader = async (tx, identity) =>
-  Boolean(
-    (
-      await tx.execute(
-        sql`select id from auth.sessions where id=${identity.sessionId}::uuid and user_id=${identity.authUserId}::uuid and (not_after is null or not_after>now())`,
-      )
-    ).rows[0],
-  );
+  (
+    await tx.execute<{ live: boolean | null }>(
+      sql`select justgo_auth_private.is_live_session_v1(${identity.sessionId}::uuid,${identity.authUserId}::uuid) as live`,
+    )
+  ).rows[0]?.live === true;
 
 export class ManagedIdentityService {
   constructor(

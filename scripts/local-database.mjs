@@ -68,7 +68,7 @@ try {
     await admin.query(
       `alter role justgo_runtime password '${runtimePassword}'; alter role justgo_migrator password '${migrationPassword}';`,
     );
-    const env = `DATABASE_URL=postgresql://justgo_runtime:${runtimePassword}@127.0.0.1:54329/justgo_test\nMIGRATION_DATABASE_URL=postgresql://justgo_migrator:${migrationPassword}@127.0.0.1:54329/justgo_test\nDATABASE_SSL=disable\nDATABASE_POOL_MAX=1\nCORS_ORIGINS=http://localhost:8081\nPORT=3000\n`;
+    const env = `DATABASE_URL=postgresql://justgo_runtime:${runtimePassword}@127.0.0.1:54329/justgo_test\nMIGRATION_DATABASE_URL=postgresql://justgo_migrator:${migrationPassword}@127.0.0.1:54329/justgo_test\nJUSTGO_TEST_ADMIN_DATABASE_URL=postgresql://postgres@127.0.0.1:54329/justgo_test\nDATABASE_SSL=disable\nDATABASE_POOL_MAX=1\nCORS_ORIGINS=http://localhost:8081\nPORT=3000\n`;
     writeFileSync(resolve(folder, 'database.env'), env, { mode: 0o600 });
   }
   if (!existsSync('apps/api/.env'))

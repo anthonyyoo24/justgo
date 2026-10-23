@@ -5,7 +5,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { LinkProps } from 'expo-router';
-import { Linking } from 'react-native';
+import { Linking, ScrollView } from 'react-native';
 import SettingsRoute from '../../app/settings';
 import { SettingsScreen } from './SettingsScreen';
 import { SettingsGroup } from '../../components/settings/SettingsRows';
@@ -165,6 +165,17 @@ it('groups journal actions with the account data controls', () => {
   expect(
     screen.queryByRole('header', { name: 'Journal on this phone' }),
   ).toBeNull();
+});
+
+it('keeps navigation outside the scrollable settings content', () => {
+  const screen = render(<SettingsScreen />);
+  const content = within(screen.UNSAFE_getByType(ScrollView));
+  expect(screen.getByRole('header', { name: 'Settings' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
+  expect(content.queryByRole('header', { name: 'Settings' })).toBeNull();
+  expect(content.queryByRole('button', { name: 'Back' })).toBeNull();
+  expect(content.getByRole('header', { name: 'Preferences' })).toBeTruthy();
+  expect(content.getByRole('button', { name: 'Terms of use' })).toBeTruthy();
 });
 
 it('ends after About without version, test-build or developer-preview footer items', () => {

@@ -104,13 +104,18 @@ test('producer failures and interrupted processes cannot appear successful', (t)
 
 test('the required status rejects failed, skipped, cancelled and absent producer results', () => {
   const passing = Object.fromEntries(
-    ['static', 'unit', 'database', 'journeys', 'exports'].map((name) => [
-      name,
-      { result: 'success' },
-    ]),
+    ['static', 'unit', 'database', 'journeys', 'exports', 'native-icloud'].map(
+      (name) => [name, { result: 'success' }],
+    ),
   );
   requireSuccessfulJobs(JSON.stringify(passing));
-  for (const name of Object.keys(passing))
+  for (const name of Object.keys(passing)) {
+    const missing = { ...passing };
+    delete missing[name];
+    assert.throws(
+      () => requireSuccessfulJobs(JSON.stringify(missing)),
+      new RegExp(name),
+    );
     for (const result of ['failure', 'skipped', 'cancelled', undefined])
       assert.throws(
         () =>
@@ -119,6 +124,7 @@ test('the required status rejects failed, skipped, cancelled and absent producer
           ),
         new RegExp(name),
       );
+  }
   for (const value of [undefined, '{', 'null', '{}'])
     assert.throws(() => requireSuccessfulJobs(value));
 });

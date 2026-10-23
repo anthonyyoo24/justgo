@@ -2,10 +2,18 @@
 
 # Phase 13 — Local data, optional accounts and cloud sync
 
-**Status:** October 21 continuity/Settings revision implemented and verified locally.
-Real-provider configuration, a further compatible
-signed build, CloudKit/device acceptance and hosted rollout remain open. The
-[handoff](../handoffs/phase-13-local-journal.md) records current evidence and gates.
+**Status:** Ready for PR review; the API dependency-audit scope fix passes locally.
+Exact hosted acceptance is recorded on PR #43. Mobile/tooling advisories remain pre-release work. Release acceptance
+remains open. Native providers, protected hosted database/API cutover, private CloudKit
+setup and cloud-only missing-storage recreation are implemented. Anthony confirmed
+phone login, and actual single-phone CloudKit upload, sync-off isolation and
+re-enable/restart catch-up have been verified. Anthony deferred the remaining
+manual checks. The October 23 revision removes the rejected recovery-clearing flow;
+its focused automated checks pass. The compatible native bridge is inspected and
+exercised on the phone for on/off, catch-up and restart. External cloud deletion/
+recreation and second-phone restore are owner-deferred and unverified before
+release. The [handoff](../handoffs/phase-13-local-journal.md) distinguishes
+verified behavior, owner deferrals and pre-release gates.
 
 ## Outcome
 
@@ -21,9 +29,11 @@ uploads without switching the user to a different journal.
 ## Decisions and reference boundaries
 
 - The [October 20 optional-account decision](../DECISIONS.md#october-20-optional-accounts-and-cloud-sync) supersedes the earlier local-only/manual-backup phase scope. Dependencies and remaining release gates from Phases 07–12 continue to apply.
+- The [October 22 scoped-closeout decision](../DECISIONS.md#october-22-icloud-recovery-and-scoped-phase-13-closeout) defers remaining manual acceptance checks and limits this closeout to focused recovery checks; those deferrals do not establish release acceptance.
+- The [October 23 iCloud decision](../DECISIONS.md#october-23-icloud-deletion-retains-phone-data) supersedes the recovery-clearing flow: external iCloud deletion retains phone entries, enabled sync may recreate/upload, and turning sync off keeps local data.
 - The [October 21 continuity and Settings decision](../DECISIONS.md#october-21-journal-continuity-and-accountdata-settings) supersedes the optional guest-merge choice and permanent guest-collection selector. It also fixes the Account/Data organization, provider switches and deletion-modal requirements. Keep these connected changes within Phase 13 and implement the slices below in order.
 - How We Feel's [privacy policy](https://howwefeel.web.app/privacy) distinguishes account-free local recording from account-user collection, including journal/check-in data. Its [captured login screen](https://mobbin.com/screens/5fc47e96-a36f-44eb-8fc3-d43871b3c121) describes cloud synchronization, its [data screen](https://mobbin.com/screens/0cc34b3f-9377-43e6-baac-23cf75ead256) groups iCloud Sync/download/import/deletion, and its [account screen](https://mobbin.com/screens/b4a6e18c-938d-40a7-99d3-94e873778bf0) preserves local data after logout. These sources do not establish its internal implementation, initial guest upload/merge rules or the relationship between its account sync and iCloud toggle. The rules below are JustGO implementation rules for those gaps, not claims about How We Feel.
-- Use managed Supabase Auth with native Apple/Google sign-in; keep the existing Fastify API, PostgreSQL database and strict owner isolation. Supabase currently hosts the database only; introducing Supabase Auth is a real identity migration.
+- Use managed Supabase Auth with native Apple/Google sign-in; keep the existing Fastify API, PostgreSQL database and strict owner isolation. The authorized staging rollout now includes Supabase Auth; canonical ownership and existing-phone proof migration remain explicit boundaries.
 - iCloud Sync means actual optional synchronization through the user's Apple iCloud account. It is separate from signing into JustGO and from downloading a manual snapshot. Its default is off. Do not ship a toggle backed only by Keychain credential synchronization or a one-time file export.
 - Keep analytics, crash delivery and AI activation outside this change. Never include journal content or auth secrets in diagnostics or test artifacts. Preserve country exclusions, access/billing safeguards and ordinary Terms/Privacy links without legal-view/agreement receipts.
 - Hosted configuration/migrations/deployment, Git publication, paid purchases and native signing/build/upload retain their existing separate authorization boundaries. This plan does not enable any provider or change hosted data.
@@ -45,17 +55,18 @@ uploads without switching the user to a different journal.
 
 ## Required product behavior
 
-| Situation                              | Expected result                                                                                                                                                                                                                                                                                          |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Continue without signing in            | Challenges, history and journal work locally without creating an account or sending journal content to JustGO. Optional iCloud remains a separate explicit choice.                                                                                                                                       |
-| First sign-in on this phone            | Explain that signing in syncs this phone's history and journal to JustGO. Completing sign-in adopts that data automatically; no optional guest-merge checkbox or separate journal selection. If the account already has data, combine it safely.                                                         |
-| Log out, edit and restart              | The same saved entries remain visible and editable offline. Stop JustGO account sync; preserve pending local edits for that same account. Previously enabled iCloud remains governed by its own toggle and owner safeguards.                                                                             |
-| Sign back into the same account        | Reconcile the phone's intervening edits with account history and reflections together, preserving conflicts and avoiding duplicate reps.                                                                                                                                                                 |
-| Sign into a different person's account | Never upload the previous account's journal to the new owner. Explain the account change in that action flow, keep the prior owner's local data protected and recoverable, and show the new account's data after successful sign-in. This exception does not create a permanent guest-data selector.     |
-| Connect a second login method          | Link it to the current JustGO account through verified provider identity. A provider already belonging to a different owner must not silently merge accounts.                                                                                                                                            |
-| Download / Import                      | One complete backup and one import flow for history, feelings, reflections, alternatives and supported preferences. Download uses the native share/save flow; the user can choose On My iPhone or iCloud Drive when available. Saving a file is a manual snapshot.                                       |
-| Delete all my data                     | After confirmation, remove activity/journal from this phone, JustGO account storage if present and previously associated app-managed iCloud copies, even when sync is now off; keep the account, login methods and purchase entitlement. Track unavailable remote cleanup until complete.                |
-| Delete account                         | After confirmation, remove the JustGO account and associated data, including local and previously associated app-managed iCloud copies. Preserve durable cleanup/retry until finished. This does not delete the person's Apple/Google account, cancel an App Store subscription or erase exported files. |
+| Situation                                     | Expected result                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Continue without signing in                   | Challenges, history and journal work locally without creating an account or sending journal content to JustGO. Optional iCloud remains a separate explicit choice.                                                                                                                                       |
+| First sign-in on this phone                   | Explain that signing in syncs this phone's history and journal to JustGO. Completing sign-in adopts that data automatically; no optional guest-merge checkbox or separate journal selection. If the account already has data, combine it safely.                                                         |
+| Log out, edit and restart                     | The same saved entries remain visible and editable offline. Stop JustGO account sync; preserve pending local edits for that same account. Previously enabled iCloud remains governed by its own toggle and owner safeguards.                                                                             |
+| Sign back into the same account               | Reconcile the phone's intervening edits with account history and reflections together, preserving conflicts and avoiding duplicate reps.                                                                                                                                                                 |
+| Sign into a different person's account        | Never upload the previous account's journal to the new owner. Explain the account change in that action flow, keep the prior owner's local data protected and recoverable, and show the new account's data after successful sign-in. This exception does not create a permanent guest-data selector.     |
+| Connect a second login method                 | Link it to the current JustGO account through verified provider identity. A provider already belonging to a different owner must not silently merge accounts.                                                                                                                                            |
+| Delete JustGO's iCloud copy in Apple Settings | Keep this phone's journal and challenge history. If iCloud Sync stays enabled, it may recreate the cloud copy and upload those entries again. Turning sync off stops ordinary uploads and retains local data. This is separate from the in-app deletion actions below.                                   |
+| Download / Import                             | One complete backup and one import flow for history, feelings, reflections, alternatives and supported preferences. Download uses the native share/save flow; the user can choose On My iPhone or iCloud Drive when available. Saving a file is a manual snapshot.                                       |
+| Delete all my data                            | After confirmation, remove activity/journal from this phone, JustGO account storage if present and previously associated app-managed iCloud copies, even when sync is now off; keep the account, login methods and purchase entitlement. Track unavailable remote cleanup until complete.                |
+| Delete account                                | After confirmation, remove the JustGO account and associated data, including local and previously associated app-managed iCloud copies. Preserve durable cleanup/retry until finished. This does not delete the person's Apple/Google account, cancel an App Store subscription or erase exported files. |
 
 For both deletion actions, downloaded backups remain under the user's control.
 Guests have Delete all my data but no account to delete. If the selected journal
@@ -67,8 +78,9 @@ An archive never serves as a login credential.
 
 ## Implementation sequence
 
-Slices 1–5 are implemented locally. Slice 6 remains open for authorized external
-setup and device evidence; slice 7 records the local verification and handoff.
+Slices 1–5 and cloud-only missing-storage recreation are implemented locally.
+Slice 6 records completed setup/single-phone evidence and owner-deferred device
+gates; slice 7 closes out local work with focused verification and the handoff.
 Finish and verify each coherent slice before building dependent work on it. Keep one implementation owner for
 continuity/auth/deletion; bounded independent reviews or icon work can use other
 agents. Run heavy checks sequentially on the owner's Mac. No per-slice approval is
@@ -145,17 +157,21 @@ behavior only; real provider acceptance remains in slice 6.
 **Complexity: low. Owners:** `identity/account`, `features/settings/data` and shared
 settings components. Depend on the state and transition rules from slices 1–2.
 
-| Account page, in order                                              | Data page, in order                                 |
-| ------------------------------------------------------------------- | --------------------------------------------------- |
-| Login methods: Apple logo/name/switch, then Google logo/name/switch | iCloud Sync: cloud with circular arrow, plus switch |
-| Log out, when signed in                                             | Download my data: downward arrow with tray          |
-| Delete account, with red text, when an account is available         | Import data: matching upward arrow with tray        |
-|                                                                     | Delete all my data at the bottom                    |
+| Account page, in order                                                     | Data page, in order                                 |
+| -------------------------------------------------------------------------- | --------------------------------------------------- |
+| Login methods: Apple logo/name/switch, then Google logo/name/switch        | iCloud Sync: cloud with circular arrow, plus switch |
+| Log out, when signed in                                                    | Download my data: downward arrow with tray          |
+| Delete account, with red text and trash icon, when an account is available | Import data: matching upward arrow with tray        |
+|                                                                            | Delete all my data at the bottom                    |
 
 Use the existing JustGO typography, spacing and icon system with the reference
 organization. Do not add profile/friend-code features from the reference. Remove
 the generic Signed in/On this phone block, Link Apple/Google rows, View guest data
 and redundant descriptions. Keep necessary disclosure/errors in the action flow.
+Both deletion actions use red labels and trash icons, omit chevrons and open the
+shared confirmation modal directly on their current page. Keep the account
+subscription warning in the modal and retain the standalone deletion route for
+interrupted cleanup and existing deep links.
 An unavailable iCloud control must give a visible short reason or open an
 explanation when tapped; it must not appear silently broken.
 
@@ -176,7 +192,8 @@ modal presentation in `src/components`. Extract only the common presentation fro
 - Replace the inline Data confirmation with the same modal used for account
   deletion. Preserve safe-area layout, background isolation, accessibility/focus,
   Cancel, destructive confirmation, busy state and retry/error feedback.
-- Use action-specific titles, consequences and confirm labels. Delete all my data
+- Use action-specific titles and consequences, with Cancel and Delete buttons in
+  both modals. Delete all my data
   keeps the account; Delete account removes it. Opening/cancelling a modal performs
   no deletion. Repeated taps cannot start competing operations.
 - Keep durable pending-deletion state independent of modal mounting/dismissal and
@@ -227,11 +244,29 @@ guest source. Run affected database suites and saved backup/deletion journeys.
 and restricted actions; implementation owner for configuration/runbook preparation,
 native integration and verification. Coordinate with Phase 14 release ownership.
 
-The October 21 development binary contains the native modules. Real OAuth setup,
-Google's native URL scheme and CloudKit container/entitlements remain unfinished.
-The present iCloud switch is not accepted as functional. Follow
+Installed development build [1a1174d6](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/1a1174d6-160a-48ef-8a0e-4ffccfbc1590)
+contains the configured native providers, Apple entitlement, Google URL scheme
+and private CloudKit/quota bridge. Anthony confirmed phone login. Single-phone
+upload/readback, sync-off isolation and re-enable/restart catch-up have passed;
+they do not establish the deferred multi-device/deletion matrix or the revised
+external-deletion behavior. Historical build
+[3cbc873a](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/3cbc873a-ea18-4cf7-b309-c62ed87ace05)
+contains the rejected recovery flow and is superseded. Compatible development
+build [b4da28da](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/b4da28da-e425-4e5a-83fd-d734b87f39c4)
+from source `4a9f10f` finished successfully and passed signed-binary inspection.
+Its mandatory `readRetainingLocal` bridge has now been exercised on the phone:
+all five challenge/journal pairs match iCloud after off/on catch-up and restart.
+External deletion/recreation and second-phone restore remain owner-deferred and
+unverified before release.
+Follow
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) and the
 [rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
+The [working-login execution checklist](../operations/ACCOUNT_SYNC_SETUP.md#execution-checklist-working-apple-and-google-login)
+expands the provider work below into ordered steps: audit retained recovery code,
+configure providers, coordinate the API/database, build the configured app, verify
+real phone login/data continuity, then remove obsolete recovery consumers.
+This remains Phase 13 work. The handoff records completed provider/hosted/build
+setup separately from the still-open phone and iCloud acceptance gates.
 
 1. Prepare the exact Apple/Google OAuth, Supabase Auth and private CloudKit
    configuration against the existing bundle/team identity. Recheck SDK/provider
@@ -258,6 +293,74 @@ The present iCloud switch is not accepted as functional. Follow
 mock/browser checks. If a setup/device dependency is unavailable, keep its named
 gate open; an unresponsive switch or successful native compilation is not acceptance.
 
+#### iCloud execution checklist
+
+Anthony authorized this checklist and iCloud implementation, including the
+required Apple setup and compatible internal iPhone build. Keep the existing
+Apple team `NPDYTJS425`, bundle `com.anthonyyoo.justgo` and Expo project. Git
+publication, public distribution and purchases retain their separate permissions.
+One implementation owner coordinates code/configuration and sequential heavy
+checks; independent native and TypeScript audits cover separate boundaries.
+
+- [x] Audit the current Swift CloudKit bridge and TypeScript lifecycle/collection
+      coordinator. Fix concrete readiness, restore, concurrency, account-change
+      or deletion defects with focused regression tests before external setup.
+- [x] Inspect Apple Developer and CloudKit access. Reuse an appropriate existing
+      container or register `iCloud.com.anthonyyoo.justgo` under the existing team,
+      associate only the JustGO app, and enable CloudKit private-database access.
+      Complete any required interactive Apple authentication with the owner.
+- [x] Configure the exact container identifier in the app/build environment.
+      Verify generated Info.plist, CloudKit entitlements, signing profile and
+      development/production environment agree. Preserve existing Apple/Google
+      login configuration, secure storage and phone data.
+- [x] Prepare the `JustGoCollection` and `JustGoValue` record schema from the
+      actual native fields. Verify the environment used by the signed internal
+      build has that schema; deploy schema changes when required without copying
+      private records or enabling public access.
+- [x] Run affected adapter/coordinator/configuration tests and saved data/deletion
+      journeys. Run fresh online Expo validation and the required native-build
+      checks, then create the compatible EAS development build. Download and
+      inspect the signed IPA for the exact container/environment and current
+      native bridge; provide the installation link and QR code.
+- [x] On the first physical iPhone, verify availability, explicit opt-in,
+      real disposable challenge/journal upload and canonical content readback.
+      Verify off retains the local/cloud copies without uploading a new entry,
+      then re-enable/restart and verify all three local challenge/journal pairs
+      match iCloud. Storage-full feedback was also observed on this phone.
+- [x] Exercise the compatible October 23 bridge on the phone: on matches four
+      challenge/journal pairs, off keeps the fifth local without uploading it,
+      and re-enable/restart match all five pairs with sync enabled and idle.
+- [ ] **Owner-deferred, unverified before release:** finish the single-phone
+      offline-save/reconnect case. Anthony explicitly skipped this remaining
+      step on October 22; implementation owner and Anthony retain acceptance.
+- [ ] **Owner-deferred, unverified before release:** use two physical devices to
+      verify guest/account restoration, edits in both directions, conflicts,
+      Apple-account changes and deletion propagation. Include sync off -> delete
+      -> on, interrupted handover/reset and owner-isolation cases. Implementation
+      owner coordinates with Anthony and the Phase 14 release owner.
+- [x] Remove the rejected Clear older copy and sync action and recovery-clearing
+      flow. After external deletion/reset, enabled ordinary reads recreate only
+      missing cloud storage without clearing phone journal/challenge history.
+      Off stops ordinary uploads and retains local entries. Preserve live roots,
+      genuine in-app deletion/closure, server epochs, pending cleanup and handover.
+      Cancel legacy recovery clearing only when no actual deletion/cleanup or
+      authoritative account-epoch clear remains. See [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md).
+- [x] Inspect compatible native build [b4da28da](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/b4da28da-e425-4e5a-83fd-d734b87f39c4)
+      from source `4a9f10f`: its verified signed binary contains `readRetainingLocal`
+      and retains app/container/provider, registered-phone and Keychain capabilities.
+      This capability also guarantees real in-app reset/closure writes the
+      deletion marker even on legacy roots. Older bridges are rejected safely;
+      `3cbc873a` is historical evidence and must not be used for this acceptance.
+- [ ] **Owner-deferred, unverified before release:** verify external cloud
+      deletion/reset retains phone entries and enabled sync recreates/uploads.
+      Anthony explicitly deferred this case and second-phone restoration after
+      the compatible bridge's single-phone checks. Implementation owner, Anthony
+      and Phase 14 release owner retain acceptance; those passes do not establish
+      either deferred case.
+- [x] Reconcile setup, architecture and handoff evidence together. Distinguish
+      console setup, automated tests, signed-build inspection and physical-device
+      evidence; retain any unavailable device gate with its owner and next step.
+
 ### 7. Reconcile documents, verify and hand off
 
 Update PRD, IDENTITY/ACTIVITY_DATA/APP_SHELL/TECH_STACK, rollout/setup/testing
@@ -268,17 +371,44 @@ from guest local use and optional personal iCloud copies. Reassess the actual
 Vercel/Supabase private-data processing and reopened provider/retention conditions;
 do not retain clearance assumptions based on completion-only traffic.
 
-Run focused tests during each slice. At revised phase closeout, run root `check`,
-full coverage, dedicated-loopback `test:db`, affected saved app/API/database
-journeys and cold platform exports/smoke under [TESTING.md](../operations/TESTING.md).
-Use one grouped in-app walkthrough after UI tests. Keep Apple/Google real-provider,
-iCloud multi-device, native storage/logout/deletion and hosted acceptance distinct
-from mocks/browser results. Retain device/hosting gates until evidenced.
+Run focused tests during each slice. For the October 22 scoped closeout and the
+October 23 follow-up,
+Anthony explicitly requested only checks related to the recovery/native bridge,
+adapter/coordinator and affected UI changes, with no unrelated or repeated broad
+phase suites. Record those current results separately from earlier full-phase
+checks. Use one grouped in-app walkthrough after affected UI tests. This does not
+refresh aggregate coverage, full-suite, database, export or hosted CI evidence.
+Before publication/release, the release owner still runs the applicable broader
+gates in [TESTING.md](../operations/TESTING.md).
+
+Anthony also explicitly deferred the remaining offline/reconnect test, all
+second-device/Apple-account-change cases, extended Apple/Google continuity and
+account-isolation cases, and physical Download/Import/deletion checks. Keep these
+named and unverified under Anthony, the implementation owner and the Phase 14
+release owner; no manual run is required to finish this scoped implementation
+closeout. Build `b4da28da` is finished, inspected and exercised on the phone for
+on/off, catch-up and restart. External deletion/recreation and second-phone
+restore remain explicitly owner-deferred and unverified before release. The live side-panel UI walkthrough
+was blocked by browser-tool URL security policy and is not accepted as passed.
+Public privacy approval/publication remains pending. Local
+closeout does not mean the candidate is accepted for production release.
+
+PR publication preparation subsequently passed full checks/coverage, all 43
+saved journeys, cold web/iOS exports and the production-web smoke case; current
+evidence is in the [handoff](../handoffs/phase-13-local-journal.md#pr-publication-validation).
+The API audit now projects exact locked production dependencies to prevent an
+unused optional Expo driver from importing the mobile graph into the server gate.
+Its unchanged low threshold passes locally and still rejects the earlier vulnerable
+Fastify lock; exact hosted results are recorded on PR #43. The nine mobile/tooling advisories
+remain pre-public-release work for the implementation/dependency owner and Phase
+14 release owner. Native/SDK upgrades require a separate task; do not weaken the
+audit gate.
 
 ## Acceptance requirements
 
-These are the revised acceptance targets. Checked items establish local automated
-and browser behavior only; real provider/device requirements remain separate. Preserve
+These are the revised acceptance targets. Checked implementation items establish
+local automated/browser behavior; the single-phone item explicitly records actual
+physical evidence. Other provider/device requirements remain separate. Preserve
 existing beta/subscription access rules, billing identity and the deferred Phase
 07A activation boundary throughout the work.
 
@@ -290,9 +420,16 @@ existing beta/subscription access rules, billing identity and the deferred Phase
 - [x] Both deletion actions reuse the existing modal presentation with distinct wording, cancellation, accessibility and durable busy/error/retry behavior.
 - [x] One Download/Import flow covers all supported history, writing and preferences, including signed-out behavior and correct-owner authentication when needed.
 - [x] Signed-in sync remains authenticated, durable and account-isolated; both deletion actions remove promised copies without source/stale-device resurrection.
-- [ ] Real Apple/Google flows and the configured signed build pass native session, return-login, revocation and deletion cases.
-- [ ] iCloud toggle performs real optional sync and passes two-device/account-change/full-storage/deletion cases; unavailable states visibly explain themselves.
-- [x] Product, architecture, privacy and release documents match verified behavior; required checks pass and remaining gates have explicit owners.
+- [ ] **Owner-deferred before release:** extended real Apple/Google session, return-login, revocation, linking/unlinking, account-isolation and deletion cases. Basic phone login is confirmed.
+- [x] Single-phone iCloud upload/readback, sync-off isolation, re-enable/restart catch-up and storage-full feedback are verified.
+- [ ] **Owner-deferred before release:** offline/reconnect, two-device/account-change and native Download/Import/deletion cases.
+- [x] External cloud deletion/reset cannot authorize clearing phone entries; enabled sync recreates missing cloud storage, and the rejected recovery-clearing UI is removed. Genuine in-app deletion and account-epoch fences remain.
+- [x] The revised `readRetainingLocal` native bridge has a compatible inspected signed build, `b4da28da`, from source `4a9f10f`.
+- [x] The compatible `readRetainingLocal` bridge is exercised on the phone; on/off, catch-up and restart retain/match all five challenge/journal pairs as applicable.
+- [ ] **Owner-deferred before release:** actual external-deletion/reset and second-phone restore acceptance, distinct from the verified single-phone cases, under Anthony, the implementation owner and Phase 14 release owner.
+- [x] Documents distinguish current implementation, earlier evidence and owner-deferred release gates; public privacy approval/publication remains pending.
+- [x] Focused checks for the October 23 cloud-only recreation revision pass and are recorded in the handoff: 145 distinct JavaScript tests across seven suites, 30 Swift tests, mobile source/tests typechecks, changed-file ESLint and online Expo Doctor 21/21. Live browser verification is blocked and remains unverified; historical recovery-closeout results do not establish the revision.
+- [ ] **Merge blocker:** resolve the exact CI dependency-health audit's nine remaining advisories under the implementation/dependency owner. This is not an owner-approved deferral; preserve the native/SDK separate-task requirement and existing audit gate.
 
 ## Primary implementation references
 

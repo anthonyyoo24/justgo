@@ -36,8 +36,12 @@ export function WelcomeTransition({ children }: PropsWithChildren) {
   const access = useAccess();
   const { challenges } = useRuntime();
   const deleted = identity.deletionStatus === 'deleted';
-  const [entryRequested, setEntryRequested] = useState(false);
-  const needsWelcome = deleted || (identity.needsWelcome && entryRequested);
+  const [entryRequested, setEntryRequested] = useState<boolean | null>(null);
+  // An explicit provider entry owns its button loading state, including after
+  // account deletion. A later guest Continue can start the Terms cover again.
+  const needsWelcome =
+    entryRequested !== false &&
+    (deleted || (identity.needsWelcome && entryRequested === true));
   const owner =
     identity.account?.userId ??
     ('collectionId' in identity && typeof identity.collectionId === 'string'

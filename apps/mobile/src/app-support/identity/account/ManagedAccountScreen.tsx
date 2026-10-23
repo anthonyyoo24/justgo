@@ -1,7 +1,10 @@
-import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { useIdentity, useRuntime } from '../../providers/AppProvider';
+import { useRuntime } from '../../providers/AppProvider';
+import { DeleteAccountConfirmation } from '../deletion/DeleteAccountConfirmation';
+import { useAccountDeletionDialog } from '../deletion/useAccountDeletionDialog';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
+import { useLogoutDialog } from './useLogoutDialog';
 import { SettingsPage } from '../../../components/settings/SettingsPage';
 import {
   SettingsActionRow,
@@ -15,10 +18,10 @@ import { colors, radii, spacing, typography } from '../../../theme/tokens';
 
 export function ManagedAccountScreen() {
   const { identity } = useRuntime();
-  const state = useIdentity();
+  const { state, pending, open, dialog } = useAccountDeletionDialog();
   const router = useRouter();
   const reduceMotion = useReduceMotion();
-  const [confirming, setConfirming] = useState(false);
+  const logout = useLogoutDialog();
   if (!('signIn' in identity)) return null;
   const connected = 'linkedProviders' in state ? state.linkedProviders : null;
   const linkedProviders =
@@ -42,7 +45,7 @@ export function ManagedAccountScreen() {
             }
             value={linkedProviders.includes(provider)}
             busy={state.busy}
-            disabled={state.busy || !state.initialized}
+            disabled={state.busy || pending || !state.initialized}
             reduceMotion={reduceMotion}
             onValueChange={(connected) => {
               if (!state.account) {
@@ -60,62 +63,45 @@ export function ManagedAccountScreen() {
           />
         ))}
       </SettingsGroup>
-      {state.account && (
+      {(state.account || pending) && (
         <View style={styles.card}>
-          {confirming && (
-            <Text style={styles.message}>
-              Log out? Your saved data stays on this phone and account sync
-              stops.
-            </Text>
+          {state.account && (
+            <>
+              <SettingsActionRow
+                icon="logout"
+                label="Log out"
+                disabled={state.busy || pending}
+                onPress={logout.open}
+              />
+              <SettingsRowDivider />
+            </>
           )}
-          <SettingsActionRow
-            icon="logout"
-            label={confirming ? 'Confirm log out' : 'Log out'}
-            disabled={state.busy}
-            onPress={() => {
-              if (!confirming) {
-                setConfirming(true);
-                return;
-              }
-              setConfirming(false);
-              void identity.signOut();
-            }}
-          />
-          {confirming && (
-            <SettingsActionRow
-              icon="back"
-              label="Cancel"
-              disabled={state.busy}
-              onPress={() => setConfirming(false)}
-            />
-          )}
-          <SettingsRowDivider />
           <SettingsActionRow
             icon="delete"
             label="Delete account"
             destructive
             disabled={state.busy}
-            href="/delete-account"
-            chevron
+            onPress={open}
           />
         </View>
       )}
-      {!!state.message && (
-        <Text accessibilityRole="alert" style={styles.message}>
-          {state.message}
-        </Text>
-      )}
-      {state.hasPending && (
-        <View style={styles.card}>
-          <SettingsActionRow
-            icon="account"
-            label="Retry connection"
-            disabled={state.busy}
-            onPress={() => {
-              void identity.retry();
-            }}
-          />
-        </View>
+      {!!state.message &&
+        (state.account || pending) &&
+        !dialog &&
+        !logout.dialog && (
+          <Text accessibilityRole="alert" style={styles.message}>
+            {state.message}
+          </Text>
+        )}
+      {dialog && <DeleteAccountConfirmation {...dialog} />}
+      {logout.dialog && (
+        <ConfirmationModal
+          {...logout.dialog}
+          title="Log out?"
+          message="Your saved data will stay on this phone. Account syncing will stop until you sign in again."
+          confirmLabel="Log out"
+          progressLabel="Logging out"
+        />
       )}
     </SettingsPage>
   );

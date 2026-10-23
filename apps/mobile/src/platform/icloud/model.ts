@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 export const ICLOUD_PAGE_LIMIT = 50;
 export const ICLOUD_VALUE_LIMIT = 65_536;
+// Leave room for CloudKit's native record metadata and the atomic root update.
+export const ICLOUD_WRITE_BYTE_LIMIT = 1_000_000;
 export const ICLOUD_PREFERENCE_KEY = 'justgo:icloud:v1';
+
+export const iCloudUtf8Bytes = (value: string) =>
+  // Count surrogate pairs without relying on native TextEncoder availability.
+  encodeURIComponent(value).replace(/%[A-F\d]{2}/gi, 'x').length;
 
 export const iCloudCollectionSchema = z.union([
   z.literal('guest'),
@@ -18,12 +24,7 @@ export const iCloudValueSchema = z
   .refine(({ value }) => {
     try {
       JSON.parse(value);
-      // UTF-8 bytes, including surrogate pairs; do not depend on native-only
-      // TextEncoder support when checking values before crossing the bridge.
-      return (
-        encodeURIComponent(value).replace(/%[A-F\d]{2}/gi, 'x').length <=
-        ICLOUD_VALUE_LIMIT
-      );
+      return iCloudUtf8Bytes(value) <= ICLOUD_VALUE_LIMIT;
     } catch {
       return false;
     }
@@ -54,6 +55,7 @@ export const iCloudPageSchema = iCloudGenerationSchema
   .extend({
     revision: z.string().min(1).max(1024).nullable().default(null),
     wasReset: z.boolean(),
+    recovered: z.boolean().optional(),
     closed: z.boolean(),
     records: z.array(iCloudValueSchema).max(ICLOUD_PAGE_LIMIT),
     cursor: z.string().min(1).max(32_768),
@@ -72,6 +74,8 @@ export const iCloudPurgePageSchema = iCloudGenerationSchema
 export type ICloudPurgePage = z.infer<typeof iCloudPurgePageSchema>;
 export const iCloudPreferenceSchema = z
   .object({
+    // Version 1 enabled native access before the first sync completed.
+    version: z.union([z.literal(1), z.literal(2)]).default(1),
     enabled: z.boolean(),
     accountToken: iCloudStatusSchema.shape.accountToken,
   })
@@ -93,6 +97,7 @@ const errorCodes = [
   'RESET_CONFIRMATION_REQUIRED',
   'COLLECTION_DELETED',
   'HANDOVER_PENDING',
+  'ZONE_RECOVERY_REQUIRED',
 ] as const;
 export type ICloudErrorCode = (typeof errorCodes)[number];
 export class ICloudError extends Error {
@@ -119,7 +124,13 @@ export function iCloudError(error: unknown): ICloudError {
 
 export interface ICloudSync {
   status(): Promise<ICloudStatus>;
-  setEnabled(enabled: boolean): Promise<void>;
+  setEnabled(enabled: false): Promise<void>;
+  /** Persist on only after this fenced first synchronization succeeds. */
+  setEnabled(
+    enabled: true,
+    synchronize: () => Promise<void>,
+    isCurrent?: () => boolean,
+  ): Promise<void>;
   /** Pinned access for explicit migration/deletion, without enabling background sync. */
   withMaintenance?(
     accountToken: string,

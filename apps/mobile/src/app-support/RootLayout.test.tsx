@@ -13,7 +13,11 @@ let mockVerified = true;
 let mockPending = false;
 const mockRefreshChallenges = jest.fn(async () => {});
 const mockStackScreenOptions = new Map<string, unknown>();
-jest.mock('expo-font', () => ({ useFonts: () => [true, null] }));
+let mockFontsLoaded = true;
+let mockFontError: Error | null = null;
+jest.mock('expo-font', () => ({
+  useFonts: () => [mockFontsLoaded, mockFontError],
+}));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('react-native-gesture-handler', () => ({
   GestureHandlerRootView: ({ children }: { children: ReactNode }) => children,
@@ -89,6 +93,31 @@ beforeEach(() => {
   };
   mockVerified = true;
   mockPending = false;
+  mockFontsLoaded = true;
+  mockFontError = null;
+});
+
+it('keeps the branded loading screen until fonts are ready', () => {
+  mockFontsLoaded = false;
+  const screen = render(<RootLayout />);
+  expect(
+    screen.getByRole('progressbar', { name: 'Loading JustGO' }),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('navigation')).toBeNull();
+  mockFontsLoaded = true;
+  screen.rerender(<RootLayout />);
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(screen.getByTestId('navigation')).toBeTruthy();
+});
+
+it('leaves loading for a font error so launch cannot get stuck behind the logo', () => {
+  mockFontsLoaded = false;
+  mockFontError = new Error('font unavailable');
+  const screen = render(<RootLayout />);
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'The app’s fonts couldn’t load. Please reopen JustGO.',
+  );
 });
 
 it('uses the retryable crash screen as the root error boundary', () => {
