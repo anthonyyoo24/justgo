@@ -93,15 +93,25 @@ test('failed startup leaves loading and retains saved history and access retry',
     }),
   );
   await page.reload();
-  await expect(
-    page.getByText('We can’t verify access yet.', { exact: true }),
-  ).toBeVisible();
+  // SDK 58 keeps inactive stack screens mounted but hidden from accessibility.
+  const failure = page.getByRole('heading', {
+    name: 'We can’t verify access yet.',
+    exact: true,
+  });
+  await expect(failure).toHaveCount(1);
+  await expect(failure).toBeVisible();
   await expect(
     page.getByRole('progressbar', { name: 'Loading JustGO', exact: true }),
   ).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Accept challenge', exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'View saved history', exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole('button', { name: 'Check access again', exact: true }),
+  ).toHaveCount(1);
   await page
     .getByRole('link', { name: 'View saved history', exact: true })
     .click();
@@ -110,9 +120,8 @@ test('failed startup leaves loading and retains saved history and access retry',
     page.getByRole('heading', { name: 'Progress', exact: true }),
   ).toBeVisible();
   await page.goto('/');
-  await expect(
-    page.getByText('We can’t verify access yet.', { exact: true }),
-  ).toBeVisible();
+  await expect(failure).toHaveCount(1);
+  await expect(failure).toBeVisible();
   await page.unroute(accessUrl);
   await page
     .getByRole('button', { name: 'Check access again', exact: true })

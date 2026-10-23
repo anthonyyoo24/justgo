@@ -1,8 +1,8 @@
 import { useLayoutEffect, type RefObject } from 'react';
-import type { View } from 'react-native';
+import type { ViewInstance } from 'react-native';
 
 /** RN Web traps focus, but leaves the underlying page exposed to assistive tools. */
-export function useModalIsolation(surface: RefObject<View | null>) {
+export function useModalIsolation(surface: RefObject<ViewInstance | null>) {
   useLayoutEffect(() => {
     const node = surface.current as unknown as HTMLElement | null;
     if (!node) return;

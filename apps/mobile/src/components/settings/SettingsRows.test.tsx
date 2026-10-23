@@ -1,11 +1,13 @@
+jest.mock('react-native-svg', () =>
+  jest.requireActual('../../../test-support/svg'),
+);
 import { render } from '@testing-library/react-native';
 import { Text } from 'react-native';
-import { Path } from 'react-native-svg';
 import { SettingsRowContent } from './SettingsRows';
 import { colors } from '../../theme/tokens';
 
-it('keeps an absent numeric accessory from becoming raw text in a native row', () => {
-  const screen = render(
+it('keeps an absent numeric accessory from becoming raw text in a native row', async () => {
+  const screen = await render(
     <SettingsRowContent icon="account" label="Preference" accessory={0} />,
   );
   expect(screen.getByText('Preference')).toBeTruthy();
@@ -16,8 +18,8 @@ it('keeps an absent numeric accessory from becoming raw text in a native row', (
   );
 });
 
-it('renders a supplied accessory without changing the row label', () => {
-  const screen = render(
+it('renders a supplied accessory without changing the row label', async () => {
+  const screen = await render(
     <SettingsRowContent
       icon="account"
       label="Preference"
@@ -33,8 +35,8 @@ it.each([
   { destructive: false, color: colors.ink },
 ])(
   'uses matching icon and label colors for destructive=$destructive',
-  ({ destructive, color }) => {
-    const screen = render(
+  async ({ destructive, color }) => {
+    const screen = await render(
       <SettingsRowContent
         icon="delete"
         label="Delete data"
@@ -42,6 +44,9 @@ it.each([
       />,
     );
     expect(screen.getByText('Delete data')).toHaveStyle({ color });
-    expect(screen.UNSAFE_getByType(Path).props.stroke).toBe(color);
+    expect(
+      screen.container.queryAll((node) => node.type === 'Path')[0]!.props
+        .stroke,
+    ).toBe(color);
   },
 );

@@ -27,9 +27,9 @@ const nearEnd = {
   },
 };
 
-it('fills available space in measured batches without scrolling or reusing stale measurements', () => {
+it('fills available space in measured batches without scrolling or reusing stale measurements', async () => {
   const onScroll = jest.fn();
-  const screen = render(
+  const screen = await render(
     <DayEntryList
       entries={entries(25)}
       renderEntry={renderEntry}
@@ -39,31 +39,31 @@ it('fills available space in measured batches without scrolling or reusing stale
   );
   const list = screen.getByTestId('day-sheet-entry-list');
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(8);
-  fireEvent(list, 'layout', layout(1000));
-  fireEvent(list, 'contentSizeChange', 390, 600);
+  await fireEvent(list, 'layout', layout(1000));
+  await fireEvent(list, 'contentSizeChange', 390, 600);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
 
   // A resize must not reuse the old eight-row height for another batch.
-  fireEvent(list, 'layout', layout(1200));
+  await fireEvent(list, 'layout', layout(1200));
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
-  fireEvent(list, 'contentSizeChange', 390, 1100);
+  await fireEvent(list, 'contentSizeChange', 390, 1100);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(24);
-  fireEvent(list, 'contentSizeChange', 390, 1500);
-  fireEvent(list, 'contentSizeChange', 390, 1500);
+  await fireEvent(list, 'contentSizeChange', 390, 1500);
+  await fireEvent(list, 'contentSizeChange', 390, 1500);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(24);
   expect(screen.queryByText('List footer')).toBeNull();
   expect(onScroll).not.toHaveBeenCalled();
 
-  fireEvent.scroll(list, nearEnd);
+  await fireEvent.scroll(list, nearEnd);
   expect(screen.getByText('Entry 25')).toBeTruthy();
   expect(screen.getByText('List footer')).toBeTruthy();
   expect(onScroll).not.toHaveBeenCalled();
-  fireEvent.scroll(list, nearEnd);
+  await fireEvent.scroll(list, nearEnd);
   expect(onScroll).toHaveBeenCalledTimes(1);
 });
 
-it('fills when content is measured before the viewport, including an exact fit', () => {
-  const screen = render(
+it('fills when content is measured before the viewport, including an exact fit', async () => {
+  const screen = await render(
     <DayEntryList
       entries={entries(9)}
       renderEntry={renderEntry}
@@ -72,15 +72,15 @@ it('fills when content is measured before the viewport, including an exact fit',
     />,
   );
   const list = screen.getByTestId('day-sheet-entry-list');
-  fireEvent(list, 'contentSizeChange', 390, 600);
+  await fireEvent(list, 'contentSizeChange', 390, 600);
   expect(screen.queryByText('Entry 9')).toBeNull();
-  fireEvent(list, 'layout', layout(600));
+  await fireEvent(list, 'layout', layout(600));
   expect(screen.getByText('Entry 9')).toBeTruthy();
   expect(screen.getByText('List footer')).toBeTruthy();
 });
 
-it('ignores zero sizes and preserves rendered rows when the viewport shrinks', () => {
-  const screen = render(
+it('ignores zero sizes and preserves rendered rows when the viewport shrinks', async () => {
+  const screen = await render(
     <DayEntryList
       entries={entries(25)}
       renderEntry={renderEntry}
@@ -89,42 +89,42 @@ it('ignores zero sizes and preserves rendered rows when the viewport shrinks', (
     />,
   );
   const list = screen.getByTestId('day-sheet-entry-list');
-  fireEvent(list, 'layout', layout(1000));
-  fireEvent(list, 'contentSizeChange', 390, 0);
-  fireEvent(list, 'layout', layout(0));
-  fireEvent(list, 'contentSizeChange', 390, 600);
+  await fireEvent(list, 'layout', layout(1000));
+  await fireEvent(list, 'contentSizeChange', 390, 0);
+  await fireEvent(list, 'layout', layout(0));
+  await fireEvent(list, 'contentSizeChange', 390, 600);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(8);
-  fireEvent(list, 'layout', layout(500));
+  await fireEvent(list, 'layout', layout(500));
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(8);
-  fireEvent(list, 'layout', layout(1000));
+  await fireEvent(list, 'layout', layout(1000));
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
-  fireEvent(list, 'contentSizeChange', 390, 1100);
-  fireEvent(list, 'layout', layout(500));
+  await fireEvent(list, 'contentSizeChange', 390, 1100);
+  await fireEvent(list, 'layout', layout(500));
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
 });
 
-it('fills newly available entries when the previous data already fit without scrolling', () => {
+it('fills newly available entries when the previous data already fit without scrolling', async () => {
   const props = { renderEntry, onScroll: jest.fn(), footer: null };
-  const screen = render(<DayEntryList {...props} entries={entries(8)} />);
+  const screen = await render(<DayEntryList {...props} entries={entries(8)} />);
   const list = screen.getByTestId('day-sheet-entry-list');
-  fireEvent(list, 'layout', layout(1000));
-  fireEvent(list, 'contentSizeChange', 390, 600);
-  screen.rerender(<DayEntryList {...props} entries={entries(17)} />);
+  await fireEvent(list, 'layout', layout(1000));
+  await fireEvent(list, 'contentSizeChange', 390, 600);
+  await screen.rerender(<DayEntryList {...props} entries={entries(17)} />);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
-  fireEvent(list, 'contentSizeChange', 390, 900);
+  await fireEvent(list, 'contentSizeChange', 390, 900);
   expect(screen.getByText('Entry 17')).toBeTruthy();
   expect(props.onScroll).not.toHaveBeenCalled();
 });
 
-it('reveals a new page after scrolling without mounting the rest or requesting it twice', () => {
+it('reveals a new page after scrolling without mounting the rest or requesting it twice', async () => {
   const props = { renderEntry, onScroll: jest.fn(), footer: null };
-  const screen = render(<DayEntryList {...props} entries={entries(8)} />);
+  const screen = await render(<DayEntryList {...props} entries={entries(8)} />);
   const list = screen.getByTestId('day-sheet-entry-list');
-  fireEvent.scroll(list, nearEnd);
+  await fireEvent.scroll(list, nearEnd);
   expect(props.onScroll).toHaveBeenCalledTimes(1);
-  screen.rerender(<DayEntryList {...props} entries={entries(41)} />);
+  await screen.rerender(<DayEntryList {...props} entries={entries(41)} />);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
-  screen.rerender(<DayEntryList {...props} entries={entries(41)} />);
+  await screen.rerender(<DayEntryList {...props} entries={entries(41)} />);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
   expect(props.onScroll).toHaveBeenCalledTimes(1);
 });

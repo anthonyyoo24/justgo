@@ -21,8 +21,6 @@ import type {
   ProgressDayResponse,
 } from '@justgo/contracts';
 
-import { DayEntryList } from './day-details/entries/DayEntryList';
-
 import { ApiError } from '../../lib/network/http';
 
 import {
@@ -47,7 +45,7 @@ import type { ActivityRuntime } from '../../app-support/providers/activity-runti
 
 it('loads independent summary/calendar/today reads and does not query summary while switching months', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
   const initial = requests('/summary?').length;
   const next = deferred<ProgressCalendar>();
@@ -62,7 +60,7 @@ it('loads independent summary/calendar/today reads and does not query summary wh
               : page,
         ),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
   expect(screen.getByRole('header', { name: 'September 2026' })).toBeTruthy();
   expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('10');
   expect(screen.getByLabelText('Loading month')).toBeTruthy();
@@ -90,7 +88,7 @@ it('explains an uncached aggregate waiting for upload retry and resumes reads af
     .mockRejectedValueOnce(new ApiError('UNAVAILABLE'));
   await online();
   await act(async () => harness.mockRepository!.synchronize());
-  const screen = mount();
+  const screen = await mount();
   await loaded();
   expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
   expect(screen.queryByLabelText('Loading progress')).toBeNull();
@@ -128,16 +126,16 @@ it('explains a stale older month while preserving local totals, offline guidance
           : page,
   );
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
   await loaded();
   await waitFor(() =>
     expect(
       screen.getByRole('button', { name: /September 10.*4 reps/ }),
     ).toBeTruthy(),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Next month' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Next month' }));
   await loaded();
   await act(async () => {
     harness.mockRepository!.setEnvironment({ active: true, online: false });
@@ -149,7 +147,7 @@ it('explains a stale older month while preserving local totals, offline guidance
   await online();
   await act(async () => harness.mockRepository!.synchronize());
   const previousReads = requests('month=2026-09').length;
-  fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
   expect(screen.getByText('Syncing your latest activity…')).toBeTruthy();
   expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('11');
   expect(screen.queryByLabelText('Loading progress')).toBeNull();
@@ -178,29 +176,29 @@ it('explains a stale older month while preserving local totals, offline guidance
 
 it('hydrates offline current-period data and restricts previously viewed other days/months', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  openToday(screen);
+  await openToday(screen);
   expect(screen.getByLabelText(/Rep 1\. Say hello/)).toBeTruthy();
   await act(async () =>
     harness.mockRepository!.setEnvironment({ active: true, online: false }),
   );
   expect(screen.getByLabelText(/Rep 1\. Say hello/)).toBeTruthy();
   expect(screen.queryByText(/partial|out of date/i)).toBeNull();
-  fireEvent.press(
+  await fireEvent.press(
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
   );
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Saturday, October 3, 2 reps/ }),
   );
   expect(screen.getByText("You're currently offline")).toBeTruthy();
   expect(
     screen.getByText('Connect to the internet to view this day’s activity.'),
   ).toBeTruthy();
-  fireEvent.press(
+  await fireEvent.press(
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
   expect(screen.getByRole('alert')).toHaveTextContent(
     'You’re offline. Saved journal entries are available; connect to refresh challenge counts.',
   );
@@ -228,10 +226,12 @@ it.each([
         },
       }),
     ]);
-    const screen = mount();
+    const screen = await mount();
     if (date.startsWith('2026-09'))
-      fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
-    fireEvent.press(screen.getByRole('button', { name: label }));
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Previous month' }),
+      );
+    await fireEvent.press(screen.getByRole('button', { name: label }));
     if (count === null) {
       expect(
         screen.getByText('Saved journal · Challenge count unavailable'),
@@ -241,7 +241,7 @@ it.each([
       expect(screen.getByText(`${count} reps`)).toBeTruthy();
       expect(screen.queryByText(/Challenge count unavailable/)).toBeNull();
     }
-    fireEvent.press(screen.getByRole('button', { name: /Rep 1\./ }));
+    await fireEvent.press(screen.getByRole('button', { name: /Rep 1\./ }));
     expect(
       screen.getByText('Restored synthetic writing remains readable.'),
     ).toBeTruthy();
@@ -256,6 +256,7 @@ it('retries a failed initial page and later page without dropping already displa
     totalReps: 21,
     entries: Array.from({ length: 20 }, (_, i) => ({
       ...attempt(i + 10),
+      instruction: `Synthetic challenge ${i + 10}`,
       activityDate: '2026-10-03',
     })),
     nextCursor: 'next',
@@ -271,7 +272,13 @@ it('retries a failed initial page and later page without dropping already displa
           ? first
           : {
               ...first,
-              entries: [{ ...attempt(30), activityDate: '2026-10-03' }],
+              entries: [
+                {
+                  ...attempt(30),
+                  instruction: 'Synthetic challenge 30',
+                  activityDate: '2026-10-03',
+                },
+              ],
               nextCursor: null,
             },
       );
@@ -285,20 +292,20 @@ it('retries a failed initial page and later page without dropping already displa
     );
   });
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Saturday, October 3, 2 reps/ }),
   );
   await waitFor(() =>
     expect(screen.getByText('Couldn’t load attempts')).toBeTruthy(),
   );
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: 'Try loading attempts again' }),
   );
   const retainedRows = () =>
-    screen.UNSAFE_getByType(DayEntryList).props.entries;
-  await waitFor(() => expect(retainedRows()).toHaveLength(20));
+    screen.getAllByRole('button', { name: /Rep \d+\./ });
+  await waitFor(() => expect(screen.getByLabelText(/Rep 1\./)).toBeTruthy());
   expect(screen.getByLabelText(/Rep 1\./)).toBeTruthy();
   const nearEnd = {
     nativeEvent: {
@@ -307,11 +314,11 @@ it('retries a failed initial page and later page without dropping already displa
       layoutMeasurement: { height: 700 },
     },
   };
-  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
-  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
+  await fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
+  await fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
   expect(count).toBe(2);
   expect(screen.getByLabelText(/Rep 20\./)).toBeTruthy();
-  fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
+  await fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
   await waitFor(() =>
     expect(screen.getByLabelText('Loading more attempts')).toBeTruthy(),
   );
@@ -320,22 +327,22 @@ it('retries a failed initial page and later page without dropping already displa
     expect(screen.getByText('Couldn’t load more attempts')).toBeTruthy(),
   );
   // The complete loaded page remains available after the next-page failure.
-  expect(
-    retainedRows().map((row: { attemptId: string }) => row.attemptId),
-  ).toEqual(first.entries.map((row) => row.id));
+  expect(retainedRows().map((row) => row.props.accessibilityLabel)).toEqual(
+    first.entries.map((row) => expect.stringContaining(row.instruction)),
+  );
   expect(screen.getByLabelText(/Rep 1\./)).toBeTruthy();
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: 'Try loading more attempts again' }),
   );
   await waitFor(() => expect(retainedRows()).toHaveLength(21));
-  expect(retainedRows().at(-1).attemptId).toBe(attempt(30).id);
+  expect(retainedRows().at(-1)).toHaveAccessibleName(/Synthetic challenge 30/);
   expect(screen.getByLabelText(/Rep 21\./)).toBeTruthy();
   expect(count).toBe(4);
 });
 
 it('fences account changes and clears old account progress while another account loads', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
   const pending = deferred<ProgressSummary>();
   harness.mockClient.request.mockReturnValue(pending.promise);
@@ -345,7 +352,7 @@ it('fences account changes and clears old account progress while another account
     harness.mockRepository = nextRepository;
     harness.mockRepository.setEnvironment({ active: true, online: true });
   });
-  screen.rerender(
+  await screen.rerender(
     <QueryClientProvider client={harness.mockClient.queries}>
       <ProgressRefresh
         client={harness.mockClient as unknown as AccountClient}
@@ -370,22 +377,22 @@ it('fences account changes and clears old account progress while another account
 
 it('keeps current summary on month failures and follows current-month rollover', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
   harness.mockClient.request.mockRejectedValue(new Error('Unavailable'));
-  fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Previous month' }));
   await waitFor(() =>
     expect(screen.getByText('We couldn’t load your progress.')).toBeTruthy(),
   );
   expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('10');
-  fireEvent.press(screen.getByRole('button', { name: 'Next month' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Next month' }));
   await act(async () => harness.mockRepository!.rollover('2026-11-01', zone));
   expect(screen.getByRole('header', { name: 'November 2026' })).toBeTruthy();
 });
 
-it('shows a disconnected account message without private cached entries', () => {
+it('shows a disconnected account message without private cached entries', async () => {
   harness.mockRepository = null;
-  const screen = mount();
+  const screen = await mount();
   expect(
     screen.getByText('Connect your account to view Progress.'),
   ).toBeTruthy();
@@ -398,10 +405,10 @@ it('summary failure leaves the independently loaded calendar usable', async () =
       : Promise.resolve(path.includes('/calendar?') ? calendar : page),
   );
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
   expect(screen.getByText('Couldn’t refresh your summary.')).toBeTruthy();
   expect(screen.getByTestId('progress-value-reps')).toHaveTextContent('—');
-  openToday(screen);
+  await openToday(screen);
   expect(screen.getByLabelText(/Rep 1\./)).toBeTruthy();
 });

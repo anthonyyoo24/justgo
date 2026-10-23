@@ -133,13 +133,15 @@ afterEach(() => mockController?.dispose());
 
 it('places the Apple and Google logo actions above the unchanged Continue button', async () => {
   const ctx = await setup();
-  const screen = render(<WelcomeScreen controller={mockController} />);
+  const screen = await render(<WelcomeScreen controller={mockController} />);
   expect(
     screen
       .getAllByRole('button')
       .map((button) => button.props.accessibilityLabel),
   ).toEqual(['Sign in with Apple', 'Sign in with Google', 'Continue']);
-  fireEvent.press(screen.getByRole('button', { name: 'Sign in with Apple' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Sign in with Apple' }),
+  );
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: '/account/sign-in',
     params: { provider: 'apple' },
@@ -148,12 +150,12 @@ it('places the Apple and Google logo actions above the unchanged Continue button
 });
 it('opens Terms on Continue and enters durable guest mode without a server account', async () => {
   const ctx = await setup();
-  const welcome = render(<WelcomeScreen controller={mockController} />);
-  fireEvent.press(welcome.getByRole('button', { name: 'Continue' }));
+  const welcome = await render(<WelcomeScreen controller={mockController} />);
+  await fireEvent.press(welcome.getByRole('button', { name: 'Continue' }));
   expect(mockRouter.push).toHaveBeenCalledWith('/acceptance');
-  welcome.unmount();
-  const terms = render(<AcceptanceScreen />);
-  fireEvent.press(terms.getByRole('button', { name: 'Continue' }));
+  await welcome.unmount();
+  const terms = await render(<AcceptanceScreen />);
+  await fireEvent.press(terms.getByRole('button', { name: 'Continue' }));
   await terms.findByText('Redirect: /access');
   expect(mockController.getSnapshot()).toMatchObject({
     mode: 'guest',
@@ -171,7 +173,7 @@ it.each(['apple', 'google'])(
     const signIn = jest
       .spyOn(mockController, 'signIn')
       .mockResolvedValue(undefined);
-    const screen = render(<ProviderSignInScreen />);
+    const screen = await render(<ProviderSignInScreen />);
     expect(
       screen.getByText(
         /Signing in saves your challenge history, feelings and reflections/,
@@ -181,12 +183,13 @@ it.each(['apple', 'google'])(
       screen.getByText(/Your saved entries on this phone will be included/),
     ).toBeTruthy();
     expect(screen.queryByRole('checkbox')).toBeNull();
-    await act(async () =>
-      fireEvent.press(
-        screen.getByRole('button', {
-          name: `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`,
-        }),
-      ),
+    await act(
+      async () =>
+        await fireEvent.press(
+          screen.getByRole('button', {
+            name: `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`,
+          }),
+        ),
     );
     expect(signIn).toHaveBeenCalledWith(provider, {});
   },
@@ -205,9 +208,10 @@ it.each(['apple', 'google'] as const)(
     );
     mockProvider = provider;
     const label = `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`;
-    const screen = render(<ProviderSignInScreen />);
-    await act(async () =>
-      fireEvent.press(screen.getByRole('button', { name: label })),
+    const screen = await render(<ProviderSignInScreen />);
+    await act(
+      async () =>
+        await fireEvent.press(screen.getByRole('button', { name: label })),
     );
     expect(
       screen.getByRole('button', { name: label, busy: true }),
@@ -235,14 +239,15 @@ it.each([
       .fn()
       .mockRejectedValue(new ProviderAuthError('CONFIGURATION'));
     mockProvider = from;
-    const screen = render(<ProviderSignInScreen />);
+    const screen = await render(<ProviderSignInScreen />);
     const pressSignIn = async (provider: string) => {
-      await act(async () =>
-        fireEvent.press(
-          screen.getByRole('button', {
-            name: `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`,
-          }),
-        ),
+      await act(
+        async () =>
+          await fireEvent.press(
+            screen.getByRole('button', {
+              name: `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`,
+            }),
+          ),
       );
     };
     await pressSignIn(from);
@@ -250,16 +255,16 @@ it.each([
       'Sign-in isn’t configured in this build yet. You can continue on this phone.',
     );
     mockProvider = to;
-    screen.rerender(<ProviderSignInScreen />);
+    await screen.rerender(<ProviderSignInScreen />);
     expect(screen.queryByRole('alert')).toBeNull();
     await pressSignIn(to);
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Sign-in isn’t configured in this build yet. You can continue on this phone.',
     );
     mockFocused = false;
-    screen.rerender(<ProviderSignInScreen />);
+    await screen.rerender(<ProviderSignInScreen />);
     mockFocused = true;
-    screen.rerender(<ProviderSignInScreen />);
+    await screen.rerender(<ProviderSignInScreen />);
     expect(screen.queryByRole('alert')).toBeNull();
     auth.signIn = jest.fn().mockResolvedValue(null);
     await pressSignIn(to);
@@ -276,25 +281,30 @@ it('ignores a late provider failure after leaving the sign-in visit', async () =
         rejectSignIn = reject;
       }),
   );
-  const screen = render(<ProviderSignInScreen />);
-  await act(async () =>
-    fireEvent.press(screen.getByRole('button', { name: 'Sign in with Apple' })),
+  const screen = await render(<ProviderSignInScreen />);
+  await act(
+    async () =>
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Sign in with Apple' }),
+      ),
   );
   mockFocused = false;
-  screen.rerender(<ProviderSignInScreen />);
+  await screen.rerender(<ProviderSignInScreen />);
   await act(async () => rejectSignIn(new ProviderAuthError('CONFIGURATION')));
   mockFocused = true;
-  screen.rerender(<ProviderSignInScreen />);
+  await screen.rerender(<ProviderSignInScreen />);
   expect(screen.queryByRole('alert')).toBeNull();
   expect(mockRouter.replace).not.toHaveBeenCalled();
 });
 
 it('lets an incomplete web callback restart provider sign-in after a consumed or failed PKCE exchange', async () => {
   await setup();
-  const screen = render(<AuthCallbackRoute />);
+  const screen = await render(<AuthCallbackRoute />);
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Sign-in was not completed. Your saved data was kept.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Back to sign in' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Back to sign in' }),
+  );
   expect(mockRouter.replace).toHaveBeenCalledWith('/account/sign-in');
 });

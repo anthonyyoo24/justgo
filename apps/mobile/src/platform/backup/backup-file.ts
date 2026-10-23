@@ -57,7 +57,7 @@ export async function pickBackupFile(
     let bytes: Uint8Array;
     try {
       // Bound the read itself, including if the cache file changes after stat.
-      bytes = handle.readBytes(maxBytes + 1);
+      bytes = await handle.readBytes(maxBytes + 1);
     } finally {
       handle.close();
     }

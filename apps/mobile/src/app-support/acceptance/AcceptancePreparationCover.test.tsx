@@ -1,10 +1,8 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react-native';
-import { Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ChallengeSnapshot } from '../../features/challenges/controller';
 import { card } from '../../../test-support/journal';
 import { AcceptancePreparationCover } from './AcceptancePreparationCover';
-import { AcceptanceView } from './AcceptanceView';
 
 const mockInsets = { top: 47, bottom: 34, left: 0, right: 0 };
 const mockListeners = new Set<() => void>();
@@ -36,7 +34,7 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 beforeEach(() => {
-  jest.useFakeTimers({ doNotFake: ['performance'] });
+  jest.useFakeTimers({ doNotFake: ['performance', 'queueMicrotask'] });
   jest.clearAllMocks();
   jest.mocked(useSafeAreaInsets).mockReturnValue(mockInsets);
   mockState = {
@@ -50,17 +48,17 @@ beforeEach(() => {
   };
 });
 afterEach(async () => {
-  await act(async () => cleanup());
+  await act(async () => await cleanup());
   await act(async () => jest.advanceTimersByTimeAsync(0));
   expect(mockListeners.size).toBe(0);
   expect(jest.getTimerCount()).toBe(0);
   jest.useRealTimers();
 });
 
-it('retains Terms through access and deck preparation, with a deck-only retry after failure', () => {
+it('retains Terms through access and deck preparation, with a deck-only retry after failure', async () => {
   const onRetry = jest.fn();
   const onShow = jest.fn();
-  const screen = render(
+  const screen = await render(
     <AcceptancePreparationCover
       preparing
       attempt={0}
@@ -74,9 +72,14 @@ it('retains Terms through access and deck preparation, with a deck-only retry af
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   expect(screen.getByRole('header', { name: 'Terms & Privacy' })).toBeTruthy();
   expect(screen.queryByText('A little courage.\nEvery day.')).toBeNull();
-  fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+  await fireEvent(
+    screen.container.queryAll(
+      (node) => typeof node.props.onRequestClose === 'function',
+    )[0]!,
+    'show',
+  );
   expect(onShow).toHaveBeenCalledTimes(1);
-  act(() => {
+  await act(() => {
     mockState = {
       ...mockState,
       loading: false,
@@ -88,36 +91,43 @@ it('retains Terms through access and deck preparation, with a deck-only retry af
   expect(screen.getByRole('alert')).toHaveTextContent(mockState.error);
   expect(screen.queryByText('JustGO')).toBeNull();
   expect(screen.queryByRole('progressbar')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
   expect(onRetry).toHaveBeenCalledTimes(1);
-  fireEvent(screen.UNSAFE_getByType(Modal), 'requestClose');
+  await fireEvent(
+    screen.container.queryAll(
+      (node) => typeof node.props.onRequestClose === 'function',
+    )[0]!,
+    'requestClose',
+  );
   expect(onRetry).toHaveBeenCalledTimes(1);
 });
 
-it('times out stalled assets after 15 seconds and gives a retry attempt its full interval', () => {
+it('times out stalled assets after 15 seconds and gives a retry attempt its full interval', async () => {
   mockState = {
     ...mockState,
     loading: false,
     queues: { streets: { turn: 0, cards: [{ ...card, venue: 'streets' }] } },
   };
   const props = { preparing: true, onShow: jest.fn(), onRetry: jest.fn() };
-  const screen = render(<AcceptancePreparationCover {...props} attempt={0} />);
-  act(() => jest.advanceTimersByTime(14_999));
+  const screen = await render(
+    <AcceptancePreparationCover {...props} attempt={0} />,
+  );
+  await act(() => jest.advanceTimersByTime(14_999));
   expect(screen.queryByRole('alert')).toBeNull();
-  act(() => jest.advanceTimersByTime(1));
+  await act(() => jest.advanceTimersByTime(1));
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Your challenges are taking longer to prepare. Please try again.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
   expect(props.onRetry).toHaveBeenCalledTimes(1);
-  screen.rerender(<AcceptancePreparationCover {...props} attempt={1} />);
+  await screen.rerender(<AcceptancePreparationCover {...props} attempt={1} />);
   expect(screen.queryByRole('alert')).toBeNull();
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-  act(() => jest.advanceTimersByTime(14_999));
+  await act(() => jest.advanceTimersByTime(14_999));
   expect(screen.queryByRole('alert')).toBeNull();
-  act(() => jest.advanceTimersByTime(1));
+  await act(() => jest.advanceTimersByTime(1));
   expect(screen.getByRole('alert')).toBeTruthy();
-  screen.rerender(
+  await screen.rerender(
     <AcceptancePreparationCover {...props} preparing={false} attempt={1} />,
   );
   expect(screen.queryByRole('alert')).toBeNull();
@@ -126,25 +136,27 @@ it('times out stalled assets after 15 seconds and gives a retry attempt its full
   ).toBeTruthy();
 });
 
-it('cancels the previous attempt timer when retried before expiry', () => {
+it('cancels the previous attempt timer when retried before expiry', async () => {
   mockState = { ...mockState, loading: false };
   const props = { preparing: true, onShow: jest.fn(), onRetry: jest.fn() };
-  const screen = render(<AcceptancePreparationCover {...props} attempt={0} />);
-  act(() => jest.advanceTimersByTime(10_000));
-  screen.rerender(<AcceptancePreparationCover {...props} attempt={1} />);
-  act(() => jest.advanceTimersByTime(5_000));
+  const screen = await render(
+    <AcceptancePreparationCover {...props} attempt={0} />,
+  );
+  await act(() => jest.advanceTimersByTime(10_000));
+  await screen.rerender(<AcceptancePreparationCover {...props} attempt={1} />);
+  await act(() => jest.advanceTimersByTime(5_000));
   expect(screen.queryByRole('alert')).toBeNull();
   expect(jest.getTimerCount()).toBe(1);
-  screen.unmount();
+  await screen.unmount();
   expect(jest.getTimerCount()).toBe(0);
 });
 
-it('uses the root’s measured insets on the first modal layout without doubling them', () => {
+it('uses the root’s measured insets on the first modal layout without doubling them', async () => {
   jest
     .mocked(useSafeAreaInsets)
     .mockReturnValueOnce(mockInsets)
     .mockReturnValueOnce({ top: 0, bottom: 0, left: 0, right: 0 });
-  const screen = render(
+  const screen = await render(
     <AcceptancePreparationCover
       preparing
       attempt={0}
@@ -152,28 +164,24 @@ it('uses the root’s measured insets on the first modal layout without doubling
       onRetry={jest.fn()}
     />,
   );
-  const modal = screen.UNSAFE_getByType(Modal);
+  const modal = screen.container.queryAll(
+    (node) => typeof node.props.onRequestClose === 'function',
+  )[0]!;
   expect(modal.props).toMatchObject({
     visible: true,
     animationType: 'none',
     presentationStyle: 'fullScreen',
   });
-  expect(screen.UNSAFE_getByType(AcceptanceView).props.insets).toEqual(
-    mockInsets,
-  );
-  const styles = screen
-    .UNSAFE_getAllByType(View)
-    .map((view) => StyleSheet.flatten(view.props.style));
-  expect(styles).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ paddingTop: 47 }),
-      expect.objectContaining({ paddingBottom: 34 }),
-    ]),
-  );
+  expect(
+    screen.getByRole('header', { name: 'Terms & Privacy' }).parent!.parent,
+  ).toHaveStyle({ paddingTop: 47 });
+  expect(
+    screen.getByRole('header', { name: 'Your data is yours' }).parent!.parent,
+  ).toHaveStyle({ paddingBottom: 34, paddingLeft: 24, paddingRight: 24 });
 });
 
 it('preserves legal-link failure feedback while the new account is preparing', async () => {
-  const screen = render(
+  const screen = await render(
     <AcceptancePreparationCover
       preparing={false}
       attempt={0}
@@ -182,7 +190,9 @@ it('preserves legal-link failure feedback while the new account is preparing', a
     />,
   );
   await act(async () => {
-    fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
+    await fireEvent.press(
+      screen.getByRole('link', { name: 'Terms of Service' }),
+    );
   });
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Couldn’t open the Terms of Service. Please try again.',
@@ -198,7 +208,7 @@ it('restores the preparation error when retrying after a document failure', asyn
       'Your challenges couldn’t load. Check your connection and try again.',
   };
   const onRetry = jest.fn();
-  const screen = render(
+  const screen = await render(
     <AcceptancePreparationCover
       preparing
       attempt={0}
@@ -207,12 +217,14 @@ it('restores the preparation error when retrying after a document failure', asyn
     />,
   );
   await act(async () => {
-    fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
+    await fireEvent.press(
+      screen.getByRole('link', { name: 'Terms of Service' }),
+    );
   });
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Couldn’t open the Terms of Service. Please try again.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
   expect(onRetry).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('alert')).toHaveTextContent(mockState.error);
 });

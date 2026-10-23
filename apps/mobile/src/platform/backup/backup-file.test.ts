@@ -42,7 +42,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockExists = true;
   mockSize = 4;
-  mockRead.mockReturnValue(new Uint8Array([80, 75, 3, 4]));
+  mockRead.mockResolvedValue(new Uint8Array([80, 75, 3, 4]));
   pick.mockResolvedValue(selected());
 });
 
@@ -96,7 +96,7 @@ it.each(['stat', 'picker', 'read'] as const)(
         ...selected(),
         assets: [{ ...selected().assets[0]!, size: 101 }],
       });
-    if (source === 'read') mockRead.mockReturnValue(new Uint8Array(101));
+    if (source === 'read') mockRead.mockResolvedValue(new Uint8Array(101));
     await expect(run()).rejects.toThrow('size limit');
     expect(mockDelete).toHaveBeenCalledTimes(1);
     if (source !== 'read') expect(mockRead).not.toHaveBeenCalled();
@@ -127,10 +127,31 @@ it('cleans the picker cache after a cancellation while Files was open', async ()
 });
 
 it('closes and cleans the copy on read failure without removing the original document', async () => {
-  mockRead.mockImplementation(() => {
-    throw new Error('Read failed');
-  });
+  mockRead.mockRejectedValue(new Error('Read failed'));
   await expect(run()).rejects.toThrow('Read failed');
+  expect(mockClose).toHaveBeenCalledTimes(1);
+  expect(mockDelete).toHaveBeenCalledTimes(1);
+});
+it('keeps the handle open through the async read and honors cancellation afterward', async () => {
+  let finishRead!: (bytes: Uint8Array) => void;
+  let startedRead!: () => void;
+  const readStarted = new Promise<void>((resolve) => {
+    startedRead = resolve;
+  });
+  mockRead.mockImplementationOnce(() => {
+    startedRead();
+    return new Promise<Uint8Array>((resolve) => {
+      finishRead = resolve;
+    });
+  });
+  const abort = new AbortController();
+  const reading = run(jest.fn(), abort.signal);
+  await readStarted;
+  expect(mockClose).not.toHaveBeenCalled();
+  expect(mockDelete).not.toHaveBeenCalled();
+  abort.abort();
+  finishRead(new Uint8Array([80, 75, 3, 4]));
+  await expect(reading).resolves.toBeNull();
   expect(mockClose).toHaveBeenCalledTimes(1);
   expect(mockDelete).toHaveBeenCalledTimes(1);
 });

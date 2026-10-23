@@ -1,15 +1,8 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import {
-  Animated,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
+import { Animated, StyleSheet, TextInput } from 'react-native';
 import * as calendar from '../calendar-dates';
 import type { ProgressEntry } from '../types';
 import { DaySheet } from './DaySheet';
-import { DayEntryList } from './entries/DayEntryList';
 
 let mockReduceMotion = true;
 jest.mock('../../../platform/motion/motion', () => ({
@@ -22,7 +15,7 @@ jest.mock('./entries/useEntryMotion', () =>
   jest.requireActual('./entries/useEntryMotion.ts'),
 );
 
-it('bounds initial mounting for 41 attempts and updates only the selected row with current callbacks', () => {
+it('bounds initial mounting for 41 attempts and updates only the selected row with current callbacks', async () => {
   const entries: ProgressEntry[] = Array.from({ length: 41 }, (_, index) => ({
     attemptId: `attempt-${index}`,
     instruction: `Synthetic challenge ${index}`,
@@ -46,11 +39,10 @@ it('bounds initial mounting for 41 attempts and updates only the selected row wi
   };
   const format = jest.spyOn(calendar, 'activityTime');
   try {
-    const screen = render(<DaySheet {...props} />);
+    const screen = await render(<DaySheet {...props} />);
     expect(screen.getByText('41 reps')).toBeTruthy();
-    expect(screen.UNSAFE_getByType(DayEntryList).props.entries).toHaveLength(
-      41,
-    );
+    // The total remains available while the list mounts only its first batch.
+    expect(screen.queryByRole('button', { name: /Rep 41\./ })).toBeNull();
     expect(screen.getAllByRole('button', { name: /Rep \d+\./ })).toHaveLength(
       8,
     );
@@ -61,7 +53,7 @@ it('bounds initial mounting for 41 attempts and updates only the selected row wi
     ).toBeNull();
     format.mockClear();
     const latestEdit = jest.fn();
-    screen.rerender(
+    await screen.rerender(
       <DaySheet
         {...props}
         day={{ ...props.day, entries: entries.map((entry) => ({ ...entry })) }}
@@ -69,11 +61,11 @@ it('bounds initial mounting for 41 attempts and updates only the selected row wi
       />,
     );
     expect(format).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByRole('button', { name: /Rep 1\./ }));
+    await fireEvent.press(screen.getByRole('button', { name: /Rep 1\./ }));
     expect(latestEdit).toHaveBeenCalledWith('attempt-0');
     expect(props.onEditReflection).not.toHaveBeenCalled();
     const latestClose = jest.fn((work: () => void) => work());
-    screen.rerender(
+    await screen.rerender(
       <DaySheet
         {...props}
         editingId="attempt-0"
@@ -91,7 +83,9 @@ it('bounds initial mounting for 41 attempts and updates only the selected row wi
         includeHiddenElements: true,
       }),
     ).toHaveLength(1);
-    fireEvent.press(screen.getByRole('button', { name: /Rep 1.*Cancel/ }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: /Rep 1.*Cancel/ }),
+    );
     expect(latestClose).toHaveBeenCalledTimes(1);
     const input = screen.getByLabelText('Synthetic editor');
     const nearEnd = {
@@ -102,15 +96,18 @@ it('bounds initial mounting for 41 attempts and updates only the selected row wi
       },
     };
     for (let page = 0; page < 5; page++)
-      fireEvent.scroll(screen.getByTestId('day-sheet-entry-list'), nearEnd);
+      await fireEvent.scroll(
+        screen.getByTestId('day-sheet-entry-list'),
+        nearEnd,
+      );
     expect(screen.getByRole('button', { name: /Rep 41\./ })).toBeTruthy();
     expect(screen.getByLabelText('Synthetic editor')).toBe(input);
-    screen.rerender(<DaySheet {...props} date={null} day={undefined} />);
-    screen.rerender(<DaySheet {...props} />);
+    await screen.rerender(<DaySheet {...props} date={null} day={undefined} />);
+    await screen.rerender(<DaySheet {...props} />);
     expect(screen.getAllByRole('button', { name: /Rep \d+\./ })).toHaveLength(
       8,
     );
-    screen.unmount();
+    await screen.unmount();
   } finally {
     format.mockRestore();
   }
@@ -118,7 +115,7 @@ it('bounds initial mounting for 41 attempts and updates only the selected row wi
 
 it.each([400, 900])(
   'centers the offline message below the header within a %s-point screen',
-  (height) => {
+  async (height) => {
     const dimensions = jest
       .spyOn(
         require('react-native') as typeof import('react-native'),
@@ -127,7 +124,7 @@ it.each([400, 900])(
       .mockReturnValue({ width: 390, height, scale: 3, fontScale: 1 });
     const onClose = jest.fn();
     try {
-      const screen = render(
+      const screen = await render(
         <DaySheet
           date="2026-09-17"
           loading={false}
@@ -157,7 +154,8 @@ it.each([400, 900])(
       });
       expect(
         StyleSheet.flatten(
-          screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
+          screen.container.queryAll((node) => node.type === 'RCTScrollView')[0]!
+            .props.contentContainerStyle,
         ),
       ).toMatchObject({
         flexGrow: 1,
@@ -169,22 +167,22 @@ it.each([400, 900])(
           includeHiddenElements: true,
         }).props['aria-hidden'],
       ).toBe(true);
-      fireEvent.press(
+      await fireEvent.press(
         screen.getAllByRole('button', { name: 'Close day details' })[0]!,
       );
       expect(onClose).toHaveBeenCalledTimes(1);
-      screen.unmount();
+      await screen.unmount();
     } finally {
       dimensions.mockRestore();
     }
   },
 );
 
-it('opens and closes immediately with reduced motion, including repeated show/layout events', () => {
+it('opens and closes immediately with reduced motion, including repeated show/layout events', async () => {
   const timing = jest.spyOn(Animated, 'timing');
   const onClose = jest.fn();
   try {
-    const screen = render(
+    const screen = await render(
       <DaySheet
         date="2026-09-18"
         loading={false}
@@ -196,8 +194,11 @@ it('opens and closes immediately with reduced motion, including repeated show/la
         onClose={onClose}
       />,
     );
-    fireEvent(screen.UNSAFE_getByType(Modal), 'show');
-    fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', {
+    await fireEvent(
+      screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+      'show',
+    );
+    await fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', {
       nativeEvent: { layout: { width: 390, height: 360 } },
     });
     expect(timing).not.toHaveBeenCalled();
@@ -212,7 +213,7 @@ it('opens and closes immediately with reduced motion, including repeated show/la
         }).props.style,
       ).pointerEvents,
     ).toBe('none');
-    fireEvent.press(screen.getByText('×'));
+    await fireEvent.press(screen.getByText('×'));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(timing).not.toHaveBeenCalled();
   } finally {
@@ -222,7 +223,7 @@ it('opens and closes immediately with reduced motion, including repeated show/la
 
 it.each(['opening', 'closing'])(
   'settles an in-flight %s when reduced motion becomes enabled',
-  (stage) => {
+  async (stage) => {
     mockReduceMotion = false;
     const onClose = jest.fn();
     const props = {
@@ -241,25 +242,28 @@ it.each(['opening', 'closing'])(
       reset: jest.fn(),
     });
     try {
-      const screen = render(<DaySheet {...props} />);
-      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
-      if (stage === 'closing') fireEvent.press(screen.getByText('×'));
+      const screen = await render(<DaySheet {...props} />);
+      await fireEvent(
+        screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+        'show',
+      );
+      if (stage === 'closing') await fireEvent.press(screen.getByText('×'));
       mockReduceMotion = true;
-      screen.rerender(<DaySheet {...props} />);
+      await screen.rerender(<DaySheet {...props} />);
       expect(onClose).toHaveBeenCalledTimes(stage === 'closing' ? 1 : 0);
       if (stage === 'opening')
         expect(
           StyleSheet.flatten(screen.getByTestId('day-sheet-panel').props.style)
             .transform,
         ).toEqual([{ translateY: 0 }]);
-      screen.unmount();
+      await screen.unmount();
     } finally {
       timing.mockRestore();
     }
   },
 );
 
-it('ignores an exit callback delivered after its sheet unmounts', () => {
+it('ignores an exit callback delivered after its sheet unmounts', async () => {
   mockReduceMotion = false;
   let finish!: (result: { finished: boolean }) => void;
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
@@ -271,7 +275,7 @@ it('ignores an exit callback delivered after its sheet unmounts', () => {
   });
   const onClose = jest.fn();
   try {
-    const screen = render(
+    const screen = await render(
       <DaySheet
         date="2026-09-18"
         loading={false}
@@ -283,8 +287,8 @@ it('ignores an exit callback delivered after its sheet unmounts', () => {
         onClose={onClose}
       />,
     );
-    fireEvent.press(screen.getByText('×'));
-    screen.unmount();
+    await fireEvent.press(screen.getByText('×'));
+    await screen.unmount();
     finish({ finished: true });
     expect(onClose).not.toHaveBeenCalled();
   } finally {

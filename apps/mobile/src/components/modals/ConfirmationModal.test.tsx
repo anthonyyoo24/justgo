@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
-import { Dimensions, Modal, View } from 'react-native';
+import { Dimensions } from 'react-native';
 import { ConfirmationModal } from './ConfirmationModal';
 import { colors } from '../../theme/tokens';
 import { useModalIsolation } from '../../platform/modals/useModalIsolation';
@@ -28,19 +28,23 @@ const props = {
 beforeEach(() => {
   jest.clearAllMocks();
 });
-afterEach(() => act(() => Dimensions.set({ window: originalWindow })));
-it('retains modal isolation, device safe areas and accessible destructive actions', () => {
-  const screen = render(<ConfirmationModal {...props} />);
+afterEach(
+  async () => await act(() => Dimensions.set({ window: originalWindow })),
+);
+it('retains modal isolation, device safe areas and accessible destructive actions', async () => {
+  const screen = await render(<ConfirmationModal {...props} />);
   expect(useModalIsolation).toHaveBeenCalledWith(
     expect.objectContaining({ current: expect.anything() }),
   );
-  const modal = screen.UNSAFE_getByType(Modal);
+  const modal = screen.container.queryAll(
+    (node) => typeof node.props.onRequestClose === 'function',
+  )[0]!;
   expect(modal.props).toMatchObject({
     transparent: true,
     visible: true,
     presentationStyle: 'overFullScreen',
   });
-  expect(modal.findByType(View).props.style).toEqual(
+  expect(screen.getByLabelText(props.title).parent!.props.style).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ paddingTop: 47, paddingBottom: 34 }),
     ]),
@@ -52,14 +56,18 @@ it('retains modal isolation, device safe areas and accessible destructive action
   expect(screen.getByText(props.confirmLabel)).toHaveStyle({
     color: '#B3261E',
   });
-  fireEvent.press(screen.getByRole('button', { name: props.confirmLabel }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: props.confirmLabel }),
+  );
   expect(confirm).toHaveBeenCalledTimes(1);
-  fireEvent(screen.getByLabelText(props.title), 'accessibilityEscape');
+  await fireEvent(screen.getByLabelText(props.title), 'accessibilityEscape');
   expect(cancel).toHaveBeenCalledTimes(1);
 });
-it('stacks the actions at larger font sizes and guards native dismissal while busy', () => {
-  act(() => Dimensions.set({ window: { ...originalWindow, fontScale: 2 } }));
-  const screen = render(<ConfirmationModal {...props} busy />);
+it('stacks the actions at larger font sizes and guards native dismissal while busy', async () => {
+  await act(() =>
+    Dimensions.set({ window: { ...originalWindow, fontScale: 2 } }),
+  );
+  const screen = await render(<ConfirmationModal {...props} busy />);
   expect(screen.getByRole('button', { name: 'Cancel' })).toHaveStyle({
     width: '100%',
   });
@@ -69,20 +77,26 @@ it('stacks the actions at larger font sizes and guards native dismissal while bu
   expect(
     screen.getByRole('progressbar', { name: props.progressLabel }),
   ).toBeTruthy();
-  act(() => screen.UNSAFE_getByType(Modal).props.onRequestClose());
-  fireEvent(screen.getByLabelText(props.title), 'accessibilityEscape');
-  fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
-  fireEvent.press(screen.getByRole('button', { name: props.confirmLabel }));
+  await act(() =>
+    screen.container
+      .queryAll((node) => typeof node.props.onRequestClose === 'function')[0]!
+      .props.onRequestClose(),
+  );
+  await fireEvent(screen.getByLabelText(props.title), 'accessibilityEscape');
+  await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: props.confirmLabel }),
+  );
   expect(cancel).not.toHaveBeenCalled();
   expect(confirm).not.toHaveBeenCalled();
 });
 
-it('uses the normal action color for logout, including its loading indicator', () => {
-  const screen = render(
+it('uses the normal action color for logout, including its loading indicator', async () => {
+  const screen = await render(
     <ConfirmationModal {...props} destructive={false} confirmLabel="Log out" />,
   );
   expect(screen.getByText('Log out')).toHaveStyle({ color: colors.ink });
-  screen.rerender(
+  await screen.rerender(
     <ConfirmationModal
       {...props}
       destructive={false}

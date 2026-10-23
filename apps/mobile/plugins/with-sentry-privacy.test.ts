@@ -16,7 +16,7 @@ const publicDsn = `https://${'a'.repeat(32)}@o123.ingest.us.sentry.io/4512279181
 const enabled = { enabled: true, dsn: publicDsn, environment: 'staging' };
 const disabled = { enabled: false, dsn: '', environment: undefined };
 // Supplementary compiler evidence where Swift is installed; ordinary generation
-// assertions below still enforce the reviewed nonoptional exception contract.
+// assertions below also enforce the reviewed nullable/attachment contracts.
 const swiftTest =
   spawnSync('swift', ['--version'], { timeout: 5_000 }).status === 0
     ? it
@@ -34,26 +34,47 @@ const modRequest = {
   modName: 'appDelegate',
   introspect: false,
 };
-// The multiline installed Expo 57 launch signature, including linking overloads.
+// Reviewed SDK 58 template: AppDelegate configures the factory; the generated
+// SceneDelegate starts React Native later through ExpoAppSceneDelegate.
+// https://github.com/expo/expo/blob/sdk-58/templates/expo-template-bare-minimum/ios/HelloWorld/AppDelegate.swift
 const appDelegate = `internal import Expo
 import React
 import ReactAppDependencyProvider
 
 @main
-class AppDelegate: ExpoAppDelegate {
+class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider {
+  var window: UIWindow?
+
+  var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
+  var reactNativeFactory: RCTReactNativeFactory?
   public override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
-    factory.startReactNative(withModuleName: "main", launchOptions: launchOptions)
+    delegate.dependencyProvider = RCTAppDependencyProvider()
+
+    reactNativeDelegate = delegate
+    reactNativeFactory = factory
+    // The window is created and React Native is started by SceneDelegate.
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
+}
 
-  public override func application(
-    _ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-  ) -> Bool { return true }
+class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
+  // Extension point for config-plugins
+
+  override func sourceURL(for bridge: RCTBridge) -> URL? {
+    bridge.bundleURL ?? bundleURL()
+  }
+  override func bundleURL() -> URL? {
+#if DEBUG
+    return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: ".expo/.virtual-metro-entry")
+#else
+    return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+#endif
+  }
 }
 `;
 async function evaluate(
@@ -123,7 +144,7 @@ function prefix(shellScript: string) {
 
 describe('native Sentry privacy config plugin', () => {
   it('initializes before React Native with the supported SDK and explicit public props', async () => {
-    expect(require('@sentry/react-native/package.json').version).toBe('7.11.0');
+    expect(require('@sentry/react-native/package.json').version).toBe('8.28.0');
     const contents = await evaluate();
     for (const framework of ['Sentry', 'Foundation', 'UIKit'])
       expect(contents).toContain(`import ${framework}`);
@@ -139,9 +160,34 @@ describe('native Sentry privacy config plugin', () => {
     );
     expect(contents).not.toContain('RNSentrySDK');
     expect(contents).not.toContain('sentry.options');
+    expect(contents).toContain(
+      'class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider',
+    );
+    expect(contents).toContain('reactNativeFactory = factory');
+    expect(contents).not.toContain('factory.startReactNative(');
     expect(await evaluate(enabled, contents)).toBe(contents);
   });
-  it('combines with the official SDK 7 plugin and reconciles enabled → off → enabled incrementally', async () => {
+  it('ignores URL-linking overloads while initializing before scene creation', async () => {
+    const source = appDelegate.replace(
+      'class ReactNativeDelegate:',
+      `extension AppDelegate {
+  public override func application(
+    _ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool { return true }
+}
+
+class ReactNativeDelegate:`,
+    );
+    const contents = await evaluate(enabled, source);
+    expect(contents.match(/^ {4}JustGODiagnostics\.start\(\)$/gm)).toHaveLength(
+      1,
+    );
+    expect(contents).toContain(
+      ') -> Bool {\n    JustGODiagnostics.start()\n    let delegate = ReactNativeDelegate()',
+    );
+    expect(contents).toContain(') -> Bool { return true }');
+  });
+  it('combines with the official SDK 8 plugin and reconciles enabled → off → enabled incrementally', async () => {
     let contents = appDelegate;
     let first = '';
     for (const [index, options] of [enabled, disabled, enabled].entries()) {
@@ -188,7 +234,7 @@ describe('native Sentry privacy config plugin', () => {
         }));
         const plugin =
           require('./with-sentry-privacy.cjs') as typeof withSentryPrivacy;
-        expect(() => plugin(base, enabled)).toThrow('reviewed SDK 7.11.0');
+        expect(() => plugin(base, enabled)).toThrow('reviewed SDK 8.28.0');
       });
     } finally {
       jest.dontMock('@sentry/react-native/package.json');
@@ -202,9 +248,9 @@ describe('native Sentry privacy config plugin', () => {
         'other launchOptions:',
       ),
       'swift',
-      'reviewed Expo 57',
+      'reviewed Expo 58',
     ],
-    [appDelegate + appDelegate, 'swift', 'reviewed Expo 57'],
+    [appDelegate + appDelegate, 'swift', 'reviewed Expo 58'],
     [appDelegate + '\nSentrySDK.start { _ in }', 'swift', 'unowned'],
     [
       appDelegate + '\n// BEGIN JustGO native diagnostics privacy',
@@ -247,11 +293,11 @@ describe('native Sentry privacy config plugin', () => {
       'frame.instructionAddress = address(original.instructionAddress)',
       'image.codeFile = "image-\\(index)"',
       'user.ipAddress = "0.0.0.0"',
-      '"version": "8.58.0"',
+      '"version": "9.29.0"',
       'ExceptionsManager.reportException',
-      '$0.type.contains("Unhandled JS Exception")',
-      '$0.value.contains("ExceptionsManager.reportException")',
-      'allowedTypes.contains(original.type) ? original.type : "NativeError"',
+      '$0.type?.contains("Unhandled JS Exception") == true',
+      '$0.value?.contains("ExceptionsManager.reportException") == true',
+      'original.type.flatMap { allowedTypes.contains($0) ? $0 : nil } ?? "NativeError"',
     ])
       expect(contents).toContain(text);
     for (const field of [
@@ -285,7 +331,7 @@ describe('native Sentry privacy config plugin', () => {
       expect(contents).not.toMatch(new RegExp(`= original\\.${field}\\b`));
   });
   swiftTest(
-    'compiles and runs generated exception handling against Cocoa 8.58 String properties (requires Swift)',
+    'compiles and runs nullable exceptions and attachment removal against Cocoa 9.29 contracts (requires Swift)',
     async () => {
       const contents = await evaluate();
       const duplicateFilter = contents.match(
@@ -294,14 +340,18 @@ describe('native Sentry privacy config plugin', () => {
       const exceptionMapping = contents.match(
         / {4}clean\.exceptions = exceptions\.prefix\(10\)\.map \{[\s\S]*?^ {4}\}/m,
       )?.[0];
-      if (!duplicateFilter || !exceptionMapping)
-        throw new Error('Generated native exception handling was not found');
+      const sendCallback = contents.match(
+        / {4}options\.beforeSendWithHint = \{ event, hint in[\s\S]*?^ {4}\}/m,
+      )?.[0];
+      if (!duplicateFilter || !exceptionMapping || !sendCallback)
+        throw new Error('Generated native privacy handling was not found');
       const source = readFileSync(
         join(__dirname, 'with-sentry-privacy.fixture.swift'),
         'utf8',
       )
         .replace('// GENERATED_DUPLICATE_FILTER', duplicateFilter)
-        .replace('// GENERATED_EXCEPTION_MAPPING', exceptionMapping);
+        .replace('// GENERATED_EXCEPTION_MAPPING', exceptionMapping)
+        .replace('// GENERATED_SEND_CALLBACK', sendCallback);
       const result = spawnSync('swift', ['-'], {
         input: source,
         encoding: 'utf8',
@@ -310,14 +360,20 @@ describe('native Sentry privacy config plugin', () => {
       expect(result.error).toBeUndefined();
       expect(result.stderr).toBe('');
       expect(result.status).toBe(0);
-      expect(result.stdout).toBe('Native exception contract passed\n');
+      expect(result.stdout).toBe('Native privacy contracts passed\n');
     },
     30_000,
   );
-  it('disables supported non-error sources and limits attachments without newer APIs', async () => {
+  it('disables automatic non-error sources and drops independent logs, metrics, spans and attachments', async () => {
     const contents = await evaluate();
     for (const flag of [
       'sendDefaultPii',
+      'enableMemoryIntrospection',
+      'attachAllThreads',
+      'enableDataSwizzling',
+      'enableFileManagerSwizzling',
+      'enableLogs',
+      'enableMetrics',
       'enableAutoBreadcrumbTracking',
       'enableNetworkBreadcrumbs',
       'enableSwizzling',
@@ -327,7 +383,6 @@ describe('native Sentry privacy config plugin', () => {
       'enableAutoSessionTracking',
       'enableWatchdogTerminationTracking',
       'enableAppHangTracking',
-      'enableAppHangTrackingV2',
       'enableMetricKit',
       'enableMetricKitRawPayload',
       'attachScreenshot',
@@ -337,11 +392,13 @@ describe('native Sentry privacy config plugin', () => {
     ])
       expect(contents).toContain(`options.${flag} = false`);
     for (const text of [
-      'options.integrations = ["SentryCrashIntegration"]',
-      'options.experimental.enableLogs = false',
+      'options.maxFeatureFlags = 0',
       'options.beforeSendLog = { _ in nil }',
+      'options.beforeSendMetric = { _ in nil }',
+      'options.beforeSendSpan = { _ in nil }',
       'options.maxAttachmentSize = 0',
-      'SentrySDK.configureScope { scope in scope.clearAttachments() }',
+      'options.beforeSendWithHint = { event, hint in',
+      'hint.attachments = []',
       'session.httpShouldSetCookies = false',
       'session.httpCookieStorage = nil',
       'options.sessionReplay.sessionSampleRate = 0',
@@ -352,10 +409,11 @@ describe('native Sentry privacy config plugin', () => {
     ])
       expect(contents).toContain(text);
     for (const absent of [
-      'beforeSendWithHint',
-      'enableMemoryIntrospection',
-      'enableMetrics',
-      'attachAllThreads',
+      'integrations',
+      'enableAppHangTrackingV2',
+      'experimental.enableLogs',
+      'experimental.enableDataSwizzling',
+      'experimental.enableFileManagerSwizzling',
     ])
       expect(contents).not.toContain(`options.${absent}`);
   });

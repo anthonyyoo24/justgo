@@ -47,7 +47,13 @@ jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   return {
     Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
-    Link: ({ children, asChild, href, onPress, ...props }: LinkProps) =>
+    Link: ({
+      children,
+      asChild,
+      href,
+      onPress,
+      ...props
+    }: Omit<LinkProps, 'ref'>) =>
       asChild ? (
         React.cloneElement(children as ReactElement<PressableProps>, {
           onPress: (event) => onPress?.(event),
@@ -93,12 +99,12 @@ function connect(userId = owner) {
 }
 
 it('shows direct document links without mutations and enters guest mode only after Continue', async () => {
-  const screen = render(<AcceptanceScreen />);
+  const screen = await render(<AcceptanceScreen />);
   expect(screen.getByRole('header', { name: 'Terms & Privacy' })).toBeTruthy();
   expect(mockContinueAsGuest).not.toHaveBeenCalled();
   expect(Linking.openURL).not.toHaveBeenCalled();
   for (const name of ['Terms of Service', 'Privacy Policy']) {
-    fireEvent.press(screen.getByRole('link', { name }), {
+    await fireEvent.press(screen.getByRole('link', { name }), {
       preventDefault: jest.fn(),
     });
   }
@@ -107,42 +113,42 @@ it('shows direct document links without mutations and enters guest mode only aft
   expect(mockNavigate).not.toHaveBeenCalled();
   expect(screen.queryByText('Account & data')).toBeNull();
   expect(screen.queryByText('Account & recovery')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   await waitFor(() => expect(mockContinueAsGuest).toHaveBeenCalledTimes(1));
 });
 
-it('sends an existing account through the access gate without changing its collection', () => {
+it('sends an existing account through the access gate without changing its collection', async () => {
   connect();
-  const screen = render(<AcceptanceScreen />);
+  const screen = await render(<AcceptanceScreen />);
   expect(screen.getByText('Redirect: /access')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
   expect(mockContinueAsGuest).not.toHaveBeenCalled();
   expect(mockAccess).not.toHaveBeenCalled();
 });
 
-it('keeps Continue busy until the native deck preparation cover is shown', () => {
+it('keeps Continue busy until the native deck preparation cover is shown', async () => {
   connect();
   mockAwaitingPreparation = true;
-  const screen = render(<AcceptanceScreen />);
+  const screen = await render(<AcceptanceScreen />);
   expect(screen.getByRole('header', { name: 'Terms & Privacy' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   expect(
     screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
   ).toBeTruthy();
   expect(screen.queryByText('Redirect: /access')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   expect(mockContinueAsGuest).not.toHaveBeenCalled();
   mockAwaitingPreparation = false;
-  screen.rerender(<AcceptanceScreen />);
+  await screen.rerender(<AcceptanceScreen />);
   expect(screen.getByText('Redirect: /access')).toBeTruthy();
 });
 
 it.each(['pending', 'cleanup'] as const)(
   'prioritizes %s deletion over navigation and guest entry',
-  (status) => {
+  async (status) => {
     connect();
     mockIdentity.deletionStatus = status;
-    const screen = render(<AcceptanceScreen />);
+    const screen = await render(<AcceptanceScreen />);
     expect(screen.getByText('Redirect: /delete-account')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
     expect(mockContinueAsGuest).not.toHaveBeenCalled();
@@ -151,35 +157,35 @@ it.each(['pending', 'cleanup'] as const)(
 
 it.each(['initialization', 'guest entry'] as const)(
   'blocks guest entry during %s',
-  (pending) => {
+  async (pending) => {
     if (pending === 'initialization') mockIdentity.initialized = false;
     else mockIdentity.busy = true;
-    const screen = render(<AcceptanceScreen />);
+    const screen = await render(<AcceptanceScreen />);
     const button = screen.getByRole('button', { name: 'Continue' });
     expect(button).toBeDisabled();
     expect(
       screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
     ).toBeTruthy();
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(mockContinueAsGuest).not.toHaveBeenCalled();
   },
 );
 
 it('keeps failed guest entry retryable without adding account controls', async () => {
   mockIdentity.message = 'Couldn’t connect. Please try again.';
-  const screen = render(<AcceptanceScreen />);
+  const screen = await render(<AcceptanceScreen />);
   expect(screen.getByRole('alert')).toHaveTextContent(mockIdentity.message);
   expect(screen.queryByRole('button', { name: 'Account options' })).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   await waitFor(() => expect(mockContinueAsGuest).toHaveBeenCalledTimes(1));
 });
 
-it('keeps first-use and post-deletion entry free of account controls', () => {
-  const screen = render(<AcceptanceScreen />);
+it('keeps first-use and post-deletion entry free of account controls', async () => {
+  const screen = await render(<AcceptanceScreen />);
   expect(screen.queryByRole('button', { name: 'Account options' })).toBeNull();
   mockIdentity.deletionStatus = 'deleted';
   mockIdentity.message = 'Your account has been deleted.';
-  screen.rerender(<AcceptanceScreen />);
+  await screen.rerender(<AcceptanceScreen />);
   expect(screen.queryByRole('alert')).toBeNull();
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
 });
@@ -189,20 +195,23 @@ it('opens development documents without release notices and reports link failure
   jest
     .mocked(Linking.openURL)
     .mockRejectedValueOnce(new Error('private native details'));
-  const screen = render(<AcceptanceScreen />);
+  const screen = await render(<AcceptanceScreen />);
   expect(
     screen.queryByText(/Development legal drafts|not final release documents/i),
   ).toBeNull();
-  fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }), {
-    preventDefault: jest.fn(),
-  });
+  await fireEvent.press(
+    screen.getByRole('link', { name: 'Terms of Service' }),
+    {
+      preventDefault: jest.fn(),
+    },
+  );
   await waitFor(() =>
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Couldn’t open the Terms of Service. Please try again.',
     ),
   );
   expect(screen.queryByText(/private native details/)).toBeNull();
-  fireEvent.press(screen.getByRole('link', { name: 'Privacy Policy' }), {
+  await fireEvent.press(screen.getByRole('link', { name: 'Privacy Policy' }), {
     preventDefault: jest.fn(),
   });
   await waitFor(() =>
@@ -214,8 +223,8 @@ it('opens development documents without release notices and reports link failure
 
 it('reports an unavailable document while preserving Continue', async () => {
   mockLegal.privacy = null;
-  const screen = render(<AcceptanceScreen />);
-  fireEvent.press(screen.getByRole('link', { name: 'Privacy Policy' }));
+  const screen = await render(<AcceptanceScreen />);
+  await fireEvent.press(screen.getByRole('link', { name: 'Privacy Policy' }));
   await waitFor(() =>
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Couldn’t open the Privacy Policy. Please try again.',
@@ -228,18 +237,18 @@ it('reports an unavailable document while preserving Continue', async () => {
 
 it('clears an earlier document error before guest entry and preserves entry failures', async () => {
   mockLegal.terms = null;
-  const screen = render(<AcceptanceScreen />);
-  fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
+  const screen = await render(<AcceptanceScreen />);
+  await fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
   await waitFor(() =>
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Couldn’t open the Terms of Service. Please try again.',
     ),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   expect(mockContinueAsGuest).toHaveBeenCalledTimes(1);
   mockIdentity.message = 'Couldn’t connect. Please try again.';
-  screen.rerender(<AcceptanceScreen />);
+  await screen.rerender(<AcceptanceScreen />);
   expect(screen.getByRole('alert')).toHaveTextContent(mockIdentity.message);
 });
 
@@ -251,18 +260,24 @@ it.each(['guest entry', 'another document'] as const)(
       reject = fail;
     });
     jest.mocked(Linking.openURL).mockReturnValueOnce(pending);
-    const screen = render(<AcceptanceScreen />);
-    fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }), {
-      preventDefault: jest.fn(),
-    });
-    if (nextAction === 'guest entry') {
-      fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-      mockIdentity.message = 'Couldn’t connect. Please try again.';
-      screen.rerender(<AcceptanceScreen />);
-    } else {
-      fireEvent.press(screen.getByRole('link', { name: 'Privacy Policy' }), {
+    const screen = await render(<AcceptanceScreen />);
+    await fireEvent.press(
+      screen.getByRole('link', { name: 'Terms of Service' }),
+      {
         preventDefault: jest.fn(),
-      });
+      },
+    );
+    if (nextAction === 'guest entry') {
+      await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+      mockIdentity.message = 'Couldn’t connect. Please try again.';
+      await screen.rerender(<AcceptanceScreen />);
+    } else {
+      await fireEvent.press(
+        screen.getByRole('link', { name: 'Privacy Policy' }),
+        {
+          preventDefault: jest.fn(),
+        },
+      );
       await waitFor(() =>
         expect(Linking.openURL).toHaveBeenLastCalledWith(mockLegal.privacy),
       );
@@ -283,12 +298,15 @@ it('ignores a late document failure after the screen unmounts', async () => {
     reject = fail;
   });
   jest.mocked(Linking.openURL).mockReturnValueOnce(pending);
-  const screen = render(<AcceptanceScreen />);
-  fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }), {
-    preventDefault: jest.fn(),
-  });
+  const screen = await render(<AcceptanceScreen />);
+  await fireEvent.press(
+    screen.getByRole('link', { name: 'Terms of Service' }),
+    {
+      preventDefault: jest.fn(),
+    },
+  );
   expect(Linking.openURL).toHaveBeenCalledTimes(1);
-  screen.unmount();
+  await screen.unmount();
   await act(async () => {
     reject(new Error('late native detail'));
     await Promise.resolve();

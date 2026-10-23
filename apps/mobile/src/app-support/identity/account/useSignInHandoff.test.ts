@@ -57,14 +57,16 @@ it('holds the provider page through slow account, admission and catalog preparat
   mockIdentity.busy = true;
   const pending = deferred();
   mockChallenges.refresh.mockReturnValue(pending.promise);
-  const { result, rerender } = renderHook(() => useSignInHandoff(true, false));
+  const { result, rerender } = await renderHook(() =>
+    useSignInHandoff(true, false),
+  );
   expect(result.current.destination).toBeNull();
   mockIdentity.busy = false;
-  rerender({});
+  await rerender({});
   expect(result.current.destination).toBeNull();
   expect(mockChallenges.refresh).not.toHaveBeenCalled();
   mockAccess = { verified: true, isPending: false, isFetching: false };
-  rerender({});
+  await rerender({});
   expect(result.current.destination).toBeNull();
   expect(mockChallenges.refresh).toHaveBeenCalledTimes(1);
   await act(async () => pending.resolve());
@@ -72,18 +74,20 @@ it('holds the provider page through slow account, admission and catalog preparat
   expect(result.current.error).toBe('');
 });
 
-it('preserves access denial and does not navigate while an access check is still fetching', () => {
+it('preserves access denial and does not navigate while an access check is still fetching', async () => {
   mockAccess.isPending = false;
-  const { result, rerender } = renderHook(() => useSignInHandoff(true, false));
+  const { result, rerender } = await renderHook(() =>
+    useSignInHandoff(true, false),
+  );
   expect(result.current.destination).toBeNull();
   mockAccess.isFetching = false;
-  rerender({});
+  await rerender({});
   expect(result.current.destination).toBe('/access');
   expect(mockChallenges.refresh).not.toHaveBeenCalled();
 });
 
-it('returns owner-authenticated import to Data without waiting for challenge access or a catalog', () => {
-  const { result } = renderHook(() => useSignInHandoff(true, true));
+it('returns owner-authenticated import to Data without waiting for challenge access or a catalog', async () => {
+  const { result } = await renderHook(() => useSignInHandoff(true, true));
   expect(result.current.destination).toBe('/data');
   expect(mockChallenges.refresh).not.toHaveBeenCalled();
 });
@@ -97,7 +101,7 @@ it.each(['missing cards', 'storage failure', 'rejected refresh'])(
       mockJournalState.hydrationError = 'unreadable';
     if (failure === 'rejected refresh')
       mockChallenges.refresh.mockRejectedValueOnce(new Error('offline'));
-    const { result } = renderHook(() => useSignInHandoff(true, false));
+    const { result } = await renderHook(() => useSignInHandoff(true, false));
     await act(async () => {});
     expect(result.current.destination).toBeNull();
     expect(result.current.error).toContain('try again');
@@ -119,7 +123,7 @@ it.each(['blur', 'session change', 'owner change'])(
       .mockReturnValueOnce(old.promise)
       .mockReturnValueOnce(next.promise);
     let focused = true;
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       useSignInHandoff(focused, false),
     );
     if (change === 'blur') focused = false;
@@ -127,22 +131,24 @@ it.each(['blur', 'session change', 'owner change'])(
       mockIdentity.account = { userId: 'owner-a', sessionId: 'session-b' };
     if (change === 'owner change')
       mockIdentity.account = { userId: 'owner-b', sessionId: 'session-b' };
-    rerender({});
+    await rerender({});
     await act(async () => old.resolve());
     expect(result.current.destination).toBeNull();
     expect(result.current.error).toBe('');
   },
 );
 
-it('never prepares another collection or a deleted account', () => {
+it('never prepares another collection or a deleted account', async () => {
   mockAccess = { verified: true, isPending: false, isFetching: false };
   mockRepository.accountId = 'other-owner';
-  const { result, rerender } = renderHook(() => useSignInHandoff(true, false));
+  const { result, rerender } = await renderHook(() =>
+    useSignInHandoff(true, false),
+  );
   expect(result.current.destination).toBeNull();
   expect(mockChallenges.refresh).not.toHaveBeenCalled();
   mockIdentity.deletionStatus = 'pending';
   mockRepository.accountId = 'owner-a';
-  rerender({});
+  await rerender({});
   expect(result.current.destination).toBeNull();
   expect(mockChallenges.refresh).not.toHaveBeenCalled();
 });

@@ -25,6 +25,9 @@ import {
 
 export { RouteErrorScreen as ErrorBoundary } from '../app-support/fallbacks/RouteErrorScreen';
 
+// Protected cold links return through access while identity and local data hydrate.
+export const unstable_settings = { anchor: 'access' };
+
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     Inter_400Regular,

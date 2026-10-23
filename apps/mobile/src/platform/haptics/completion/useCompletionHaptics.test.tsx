@@ -18,7 +18,7 @@ afterEach(() => {
   development.__DEV__ = originalDevelopment;
   jest.restoreAllMocks();
 });
-function setup(initial: string | null = null, available = true) {
+async function setup(initial: string | null = null, available = true) {
   const adapter = {
     isAvailable: jest.fn(() => available),
     play: jest
@@ -44,7 +44,7 @@ function setup(initial: string | null = null, available = true) {
       {children}
     </HapticsPreferencesProvider>
   );
-  const hook = renderHook(
+  const hook = await renderHook(
     () => ({
       preferences: useHapticPreferences(),
       testing: useCompletionHapticsTesting(),
@@ -59,7 +59,7 @@ function setup(initial: string | null = null, available = true) {
     remove,
   };
 }
-async function ready(hook: ReturnType<typeof setup>) {
+async function ready(hook: Awaited<ReturnType<typeof setup>>) {
   await waitFor(() =>
     expect(hook.result.current.preferences.loading).toBe(false),
   );
@@ -68,9 +68,9 @@ async function ready(hook: ReturnType<typeof setup>) {
 it.each(completionHaptics.filter(({ id }) => id !== 'current'))(
   'uses $label for preview and accepted completion, leaving other actions alone',
   async ({ id }) => {
-    const hook = setup();
+    const hook = await setup();
     await ready(hook);
-    act(() => hook.result.current.testing.select(id));
+    await act(() => hook.result.current.testing.select(id));
     expect(hook.adapter.playPreset).not.toHaveBeenCalled();
     await act(async () => hook.result.current.testing.preview());
     await act(async () =>
@@ -89,24 +89,24 @@ it.each(completionHaptics.filter(({ id }) => id !== 'current'))(
   },
 );
 it('defaults to Batter without a selection and restores it on remount', async () => {
-  const hook = setup();
+  const hook = await setup();
   await ready(hook);
   await act(async () => hook.result.current.testing.preview());
   expect(hook.result.current.testing.selected).toBe('batter');
   expect(hook.adapter.playPreset).toHaveBeenCalledWith('batter');
   expect(hook.adapter.play).not.toHaveBeenCalled();
-  act(() => hook.result.current.testing.select('barrage'));
-  hook.unmount();
+  await act(() => hook.result.current.testing.select('barrage'));
+  await hook.unmount();
   expect(hook.adapter.stop).toHaveBeenCalled();
   expect(hook.remove).toHaveBeenCalled();
-  const fresh = setup();
+  const fresh = await setup();
   await ready(fresh);
   expect(fresh.result.current.testing.selected).toBe('batter');
 });
 it('respects saved off and stops a native pattern immediately when toggled off', async () => {
-  const hook = setup('false');
+  const hook = await setup('false');
   await ready(hook);
-  act(() => hook.result.current.testing.select('bloom'));
+  await act(() => hook.result.current.testing.select('bloom'));
   await act(async () => hook.result.current.testing.preview());
   await act(async () => hook.result.current.preferences.feedback('completed'));
   expect(hook.adapter.playPreset).not.toHaveBeenCalled();
@@ -122,7 +122,7 @@ it('respects saved off and stops a native pattern immediately when toggled off',
       }),
   );
   let write!: Promise<void>;
-  act(() => {
+  await act(() => {
     write = hook.result.current.preferences.setEnabled(false);
   });
   expect(hook.adapter.stop).toHaveBeenCalledTimes(1);
@@ -135,9 +135,9 @@ it('respects saved off and stops a native pattern immediately when toggled off',
   });
 });
 it('keeps old binaries usable and quiet without an alternate library', async () => {
-  const hook = setup(null, false);
+  const hook = await setup(null, false);
   await ready(hook);
-  act(() => hook.result.current.testing.select('fizz'));
+  await act(() => hook.result.current.testing.select('fizz'));
   await act(async () => hook.result.current.testing.preview());
   expect(hook.result.current.preferences.available).toBe(false);
   expect(hook.result.current.testing.error).toBeNull();
@@ -147,9 +147,9 @@ it('keeps old binaries usable and quiet without an alternate library', async () 
 });
 it('uses Batter in production and ignores development selection and preview actions', async () => {
   development.__DEV__ = false;
-  const hook = setup();
+  const hook = await setup();
   await ready(hook);
-  act(() => hook.result.current.testing.select('fizz'));
+  await act(() => hook.result.current.testing.select('fizz'));
   await act(async () => hook.result.current.testing.preview());
   await act(async () => hook.result.current.preferences.feedback('completed'));
   expect(hook.result.current.testing.selected).toBe('batter');
@@ -157,16 +157,16 @@ it('uses Batter in production and ignores development selection and preview acti
   expect(hook.adapter.playPreset.mock.calls).toEqual([['batter']]);
 });
 it('keeps a development override out of production completion', async () => {
-  const hook = setup();
+  const hook = await setup();
   await ready(hook);
-  act(() => hook.result.current.testing.select('afterglow'));
+  await act(() => hook.result.current.testing.select('afterglow'));
   development.__DEV__ = false;
   await act(async () => hook.result.current.preferences.feedback('completed'));
   expect(hook.adapter.playPreset.mock.calls).toEqual([['batter']]);
 });
 it('honors saved off and stops playback when disabling the production default', async () => {
   development.__DEV__ = false;
-  const hook = setup('false');
+  const hook = await setup('false');
   await ready(hook);
   await act(async () => hook.result.current.preferences.feedback('completed'));
   expect(hook.adapter.playPreset).not.toHaveBeenCalled();
@@ -181,16 +181,16 @@ it('honors saved off and stops playback when disabling the production default', 
 });
 it('stays quiet in production when Pulsar is unavailable', async () => {
   development.__DEV__ = false;
-  const hook = setup(null, false);
+  const hook = await setup(null, false);
   await ready(hook);
   await act(async () => hook.result.current.preferences.feedback('completed'));
   expect(hook.adapter.play).not.toHaveBeenCalled();
   expect(hook.adapter.playPreset).not.toHaveBeenCalled();
 });
 it('contains native failures, shows red-error state for preview only and allows retry', async () => {
-  const hook = setup();
+  const hook = await setup();
   await ready(hook);
-  act(() => hook.result.current.testing.select('triumph'));
+  await act(() => hook.result.current.testing.select('triumph'));
   hook.adapter.playPreset.mockImplementationOnce(() => {
     throw new Error('private detail');
   });
@@ -213,9 +213,9 @@ it('contains native failures, shows red-error state for preview only and allows 
   expect(hook.result.current.preferences.enabled).toBe(false);
 });
 it('blocks duplicate previews and fences a pending Pulsar tap burst on stop, choice or background', async () => {
-  const hook = setup();
+  const hook = await setup();
   await ready(hook);
-  act(() => hook.result.current.testing.select('current'));
+  await act(() => hook.result.current.testing.select('current'));
   let finish!: () => void;
   hook.adapter.play.mockImplementationOnce(
     () =>
@@ -224,7 +224,7 @@ it('blocks duplicate previews and fences a pending Pulsar tap burst on stop, cho
       }),
   );
   let pending!: Promise<void>;
-  act(() => {
+  await act(() => {
     pending = hook.result.current.testing.preview();
   });
   expect(hook.result.current.testing.previewing).toBe(true);
@@ -232,13 +232,13 @@ it('blocks duplicate previews and fences a pending Pulsar tap burst on stop, cho
   await act(async () => hook.result.current.testing.preview());
   expect(hook.adapter.play).toHaveBeenCalledTimes(1);
   expect(fence()).toBe(true);
-  act(() => hook.result.current.testing.stop());
+  await act(() => hook.result.current.testing.stop());
   expect(fence()).toBe(false);
-  act(() => hook.result.current.testing.select('bloom'));
+  await act(() => hook.result.current.testing.select('bloom'));
   hook.adapter.stop.mockClear();
-  act(() => hook.lifecycle('active'));
+  await act(() => hook.lifecycle('active'));
   expect(hook.adapter.stop).not.toHaveBeenCalled();
-  act(() => hook.lifecycle('background'));
+  await act(() => hook.lifecycle('background'));
   expect(hook.adapter.stop).toHaveBeenCalledTimes(1);
   await act(async () => {
     finish();
@@ -247,9 +247,9 @@ it('blocks duplicate previews and fences a pending Pulsar tap burst on stop, cho
   expect(hook.result.current.testing.previewing).toBe(false);
 });
 it('ignores failed previews from an old choice or an unmounted screen', async () => {
-  const hook = setup();
+  const hook = await setup();
   await ready(hook);
-  act(() => hook.result.current.testing.select('current'));
+  await act(() => hook.result.current.testing.select('current'));
   let fail!: (error: Error) => void;
   hook.adapter.play.mockImplementationOnce(
     () =>
@@ -258,27 +258,27 @@ it('ignores failed previews from an old choice or an unmounted screen', async ()
       }),
   );
   let pending!: Promise<void>;
-  act(() => {
+  await act(() => {
     pending = hook.result.current.testing.preview();
   });
-  act(() => hook.result.current.testing.select('bloom'));
+  await act(() => hook.result.current.testing.select('bloom'));
   await act(async () => {
     fail(new Error('old'));
     await pending;
   });
   expect(hook.result.current.testing.error).toBeNull();
-  act(() => hook.result.current.testing.select('current'));
+  await act(() => hook.result.current.testing.select('current'));
   hook.adapter.play.mockImplementationOnce(
     () =>
       new Promise<void>((_resolve, reject) => {
         fail = reject;
       }),
   );
-  act(() => {
+  await act(() => {
     pending = hook.result.current.testing.preview();
   });
   const old = hook.result.current.testing;
-  hook.unmount();
+  await hook.unmount();
   await act(async () => {
     fail(new Error('late'));
     await pending;

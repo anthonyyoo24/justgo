@@ -30,6 +30,11 @@ describe('Expo project configuration', () => {
     expect(config.scheme).toBe('justgo');
     expect(config.plugins).toContain('expo-dev-client');
     expect(config.experiments.typedRoutes).toBe(true);
+    expect(config.plugins).toContainEqual([
+      'expo-router',
+      { asyncRoutes: { web: false } },
+    ]);
+    expect(config.web.output).toBe('single');
   });
 
   it('uses the approved mark and cream for the native launch screen', () => {

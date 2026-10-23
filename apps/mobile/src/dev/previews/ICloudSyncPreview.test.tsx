@@ -13,33 +13,35 @@ jest.mock('../../platform/motion/motion', () => ({
   useReduceMotion: () => true,
 }));
 
-it('previews opening, dismissing and enabling with presentation state only', () => {
-  const screen = render(<ICloudSyncPreview />);
+it('previews opening, dismissing and enabling with presentation state only', async () => {
+  const screen = await render(<ICloudSyncPreview />);
   expect(
     screen.getByText('SCREEN PREVIEW · No iCloud data is saved'),
   ).toBeTruthy();
-  fireEvent.press(screen.getByRole('switch'));
-  fireEvent.press(screen.getByRole('button', { name: 'Close iCloud Sync' }));
+  await fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Close iCloud Sync' }),
+  );
   expect(screen.getByRole('switch')).toHaveProp(
     'accessibilityState',
     expect.objectContaining({ checked: false }),
   );
-  fireEvent.press(screen.getByRole('switch'));
-  fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' }));
+  await fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' }));
   expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull();
   expect(screen.getByRole('switch')).toHaveProp(
     'accessibilityState',
     expect.objectContaining({ checked: true }),
   );
-  fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(screen.getByRole('switch'));
   expect(screen.getByRole('switch')).toHaveProp(
     'accessibilityState',
     expect.objectContaining({ checked: false }),
   );
 });
 
-it('previews an already-enabled switch on its first render', () => {
-  const screen = render(<ICloudSyncPreview state="enabled" />);
+it('previews an already-enabled switch on its first render', async () => {
+  const screen = await render(<ICloudSyncPreview state="enabled" />);
   expect(screen.getByRole('switch')).toHaveProp(
     'accessibilityState',
     expect.objectContaining({ checked: true }),
@@ -49,11 +51,13 @@ it('previews an already-enabled switch on its first render', () => {
 
 it.each(['recovery', 'reset'])(
   'does not expose the removed clear action through an old %s preview link',
-  (state) => {
-    const screen = render(<ICloudSyncPreview state={state} />);
-    fireEvent.press(screen.getByRole('switch'));
+  async (state) => {
+    const screen = await render(<ICloudSyncPreview state={state} />);
+    await fireEvent.press(screen.getByRole('switch'));
     expect(screen.queryByRole('button', { name: /clear/i })).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Start Syncing' }),
+    );
     expect(screen.queryByTestId('icloud-sync-sheet')).toBeNull();
     expect(screen.getByRole('switch')).toHaveProp(
       'accessibilityState',
@@ -64,10 +68,12 @@ it.each(['recovery', 'reset'])(
 
 it.each(['busy', 'error'])(
   'previews the %s state without calling iCloud',
-  (state) => {
-    const screen = render(<ICloudSyncPreview state={state} />);
-    fireEvent.press(screen.getByRole('switch'));
-    fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' }));
+  async (state) => {
+    const screen = await render(<ICloudSyncPreview state={state} />);
+    await fireEvent.press(screen.getByRole('switch'));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Start Syncing' }),
+    );
     expect(screen.getByTestId('icloud-sync-sheet')).toBeTruthy();
     if (state === 'busy')
       expect(
@@ -82,11 +88,13 @@ it.each(['busy', 'error'])(
 
 it.each(Object.entries(iCloudSyncMessages))(
   'previews the complete %s message for layout verification',
-  (state, message) => {
-    const screen = render(<ICloudSyncPreview state={state} />);
-    fireEvent.press(screen.getByRole('switch'));
+  async (state, message) => {
+    const screen = await render(<ICloudSyncPreview state={state} />);
+    await fireEvent.press(screen.getByRole('switch'));
     expect(screen.queryByRole('alert')).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: 'Start Syncing' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Start Syncing' }),
+    );
     expect(screen.getByRole('alert')).toHaveTextContent(message);
   },
 );

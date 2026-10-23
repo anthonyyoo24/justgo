@@ -20,14 +20,14 @@ it.each([
   { bottom: 34, height: 64, paddingBottom: 8, iconMarginTop: 10 },
 ])(
   'keeps the tab bar compact and icons centered with bottom inset $bottom',
-  ({ bottom, height, paddingBottom, iconMarginTop }) => {
+  async ({ bottom, height, paddingBottom, iconMarginTop }) => {
     jest.mocked(useSafeAreaInsets).mockReturnValue({
       bottom,
       top: 0,
       left: 0,
       right: 0,
     });
-    render(<TabLayout />);
+    await render(<TabLayout />);
     const tabProps = (Tabs as unknown as jest.Mock).mock.lastCall?.[0] as {
       screenOptions: {
         tabBarStyle: { height: number; paddingBottom: number };

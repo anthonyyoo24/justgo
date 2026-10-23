@@ -26,7 +26,7 @@ it('replaces a crashed route with a retryable screen that hides the error text',
     if (broken) throw new Error(privateText);
     return <Text>Home ready</Text>;
   }
-  renderRouter(
+  await renderRouter(
     {
       _layout: { default: StackLayout, ErrorBoundary: RouteErrorScreen },
       index: Home,
@@ -43,10 +43,17 @@ it('replaces a crashed route with a retryable screen that hides the error text',
   expect(capture).toHaveBeenCalledWith(new Error(privateText));
   expect(report).toHaveBeenCalledTimes(1);
   expect(report.mock.calls[0]![1]).toEqual(new Error(privateText));
-  expect(report.mock.calls[0]![3]).toContain('using the error boundary');
+  expect(report.mock.calls[0]).toEqual([
+    'Caught error:',
+    new Error(privateText),
+    expect.objectContaining({
+      componentStack: expect.stringContaining('Home'),
+      errorBoundary: expect.anything(),
+    }),
+  ]);
 
   broken = false;
-  fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
   expect(await screen.findByText('Home ready')).toBeTruthy();
   expect(
     screen.queryByRole('header', { name: 'Something went wrong' }),
@@ -60,7 +67,7 @@ it('keeps showing the error screen when a retry fails again', async () => {
     renders++;
     throw new Error(privateText);
   }
-  renderRouter(
+  await renderRouter(
     {
       _layout: { default: StackLayout, ErrorBoundary: RouteErrorScreen },
       index: Home,
@@ -68,7 +75,7 @@ it('keeps showing the error screen when a retry fails again', async () => {
     { initialUrl: '/' },
   );
   const before = renders;
-  fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
   await waitFor(() => expect(renders).toBeGreaterThan(before));
   expect(
     screen.getByRole('header', { name: 'Something went wrong' }),
@@ -80,7 +87,7 @@ it('keeps showing the error screen when a retry fails again', async () => {
 });
 
 it('shows unknown links as not found and enters the access gate', async () => {
-  const navigation = renderRouter(
+  const navigation = await renderRouter(
     {
       _layout: StackLayout,
       index: () => <Text>Home ready</Text>,
@@ -93,7 +100,7 @@ it('shows unknown links as not found and enters the access gate', async () => {
   expect(
     screen.getByText('This link doesn’t open anything in JustGO.'),
   ).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Go home' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Go home' }));
   await waitFor(() => expect(navigation.getPathname()).toBe('/access'));
   expect(screen.getByText('Access gate ready')).toBeTruthy();
   expect(screen.queryByRole('header', { name: 'Page not found' })).toBeNull();

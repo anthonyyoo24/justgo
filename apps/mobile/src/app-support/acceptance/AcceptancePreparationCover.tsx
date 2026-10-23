@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Modal, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRuntime } from '../providers/AppProvider';
 import { useModalIsolation } from '../../platform/modals/useModalIsolation';
@@ -27,7 +27,7 @@ export function AcceptancePreparationCover({
     challenges.getSnapshot,
   );
   const [timedOutAttempt, setTimedOutAttempt] = useState<number | null>(null);
-  const surface = useRef<View>(null);
+  const surface = useRef<ViewInstance>(null);
   useModalIsolation(surface);
   useEffect(() => {
     if (!preparing) return;

@@ -11,7 +11,7 @@ const legacyNativeCall =
 const legacyGuardedCall = `if JustGODiagnostics.isEnabled { ${legacyNativeCall} }`;
 const launchCall = 'JustGODiagnostics.start()';
 
-// Reviewed against Expo's supported @sentry/react-native 7.11.0 / Cocoa 8.58.0.
+// Reviewed against Expo's supported @sentry/react-native 8.28.0 / Cocoa 9.29.0.
 // Native crashes bypass JavaScript beforeSend. Keep the native callback installed
 // for the whole process: JavaScript must use autoInitializeNativeSdk: false.
 function swift(configuration) {
@@ -39,9 +39,11 @@ private enum JustGODiagnostics {
       options.enableCrashHandler = false
     }
     options.debug = false
-    // The Cocoa 8 API still supports this explicit integration list. Only native
-    // crash capture is needed; no replay, feedback or performance processors.
-    options.integrations = ["SentryCrashIntegration"]
+    // Cocoa 9 installs integrations internally. Disable their automatic sources
+    // and independently reject non-error telemetry through the send callbacks.
+    options.enableMemoryIntrospection = false
+    options.attachAllThreads = false
+    options.maxFeatureFlags = 0
     options.sendDefaultPii = false
     options.maxBreadcrumbs = 0
     options.beforeBreadcrumb = { _ in nil }
@@ -62,7 +64,6 @@ private enum JustGODiagnostics {
     options.enableAutoSessionTracking = false
     options.enableWatchdogTerminationTracking = false
     options.enableAppHangTracking = false
-    options.enableAppHangTrackingV2 = false
     options.enableReportNonFullyBlockingAppHangs = false
     options.enableMetricKit = false
     options.enableMetricKitRawPayload = false
@@ -70,10 +71,13 @@ private enum JustGODiagnostics {
     options.attachViewHierarchy = false
     options.reportAccessibilityIdentifier = false
     options.maxAttachmentSize = 0
-    options.experimental.enableLogs = false
-    options.experimental.enableDataSwizzling = false
-    options.experimental.enableFileManagerSwizzling = false
+    options.enableLogs = false
+    options.enableDataSwizzling = false
+    options.enableFileManagerSwizzling = false
+    options.enableMetrics = false
     options.beforeSendLog = { _ in nil }
+    options.beforeSendMetric = { _ in nil }
+    options.beforeSendSpan = { _ in nil }
     options.sendClientReports = false
     options.enableSpotlight = false
     options.sessionReplay.sessionSampleRate = 0
@@ -88,11 +92,10 @@ private enum JustGODiagnostics {
     session.httpCookieStorage = nil
     session.urlCache = nil
     options.urlSession = URLSession(configuration: session)
-    options.beforeSend = { event in
-      // Cocoa 8.58 has no attachment-aware beforeSend hook. Automatic sources
-      // are disabled and nonempty attachments are blocked by maxAttachmentSize.
-      // No manual native attachment APIs are used by the app.
-      SentrySDK.configureScope { scope in scope.clearAttachments() }
+    options.beforeSendWithHint = { event, hint in
+      // Cocoa 9.29 sends the callback's attachment list. Clear even empty or
+      // crash-recovered attachments, independently of the size/source guards.
+      hint.attachments = []
       return reportingEnabled ? scrub(event) : nil
     }
   }
@@ -105,8 +108,8 @@ private enum JustGODiagnostics {
     // Preserve the SDK's native duplicate exclusion: these JS errors are
     // already reported through the separately scrubbed JavaScript pipeline.
     if exceptions.contains(where: {
-      $0.type.contains("Unhandled JS Exception") ||
-      $0.value.contains("ExceptionsManager.reportException")
+      $0.type?.contains("Unhandled JS Exception") == true ||
+      $0.value?.contains("ExceptionsManager.reportException") == true
     }) { return nil }
 
     // Construct an allowlist instead of mutating the input. This also excludes
@@ -136,7 +139,7 @@ private enum JustGODiagnostics {
       "app": ["app_version": version, "app_build": build],
       "os": ["name": "iOS", "version": "\(os.majorVersion).\(os.minorVersion).\(os.patchVersion)"]
     ]
-    clean.sdk = ["name": "sentry.cocoa", "version": "8.58.0"]
+    clean.sdk = ["name": "sentry.cocoa", "version": "9.29.0"]
     let user = User()
     user.ipAddress = "0.0.0.0"
     clean.user = user
@@ -148,7 +151,7 @@ private enum JustGODiagnostics {
         "SIGABRT", "SIGBUS", "SIGFPE", "SIGILL", "SIGSEGV", "SIGTRAP",
         "NSInvalidArgumentException", "NSRangeException", "NSInternalInconsistencyException"
       ]
-      let type = allowedTypes.contains(original.type) ? original.type : "NativeError"
+      let type = original.type.flatMap { allowedTypes.contains($0) ? $0 : nil } ?? "NativeError"
       let exception = Exception(value: "Native application failure", type: type)
       exception.threadId = original.threadId
       exception.stacktrace = stack(original.stacktrace)
@@ -268,12 +271,12 @@ function protectAppDelegate(modResults, configuration) {
       'JustGO Sentry privacy refuses an unowned native initialization',
     );
   }
-  // Match the installed Expo 57 launch method, not open-URL/linking overloads.
+  // Match the installed Expo 58 launch method, not open-URL/linking overloads.
   const launch =
     /\bfunc application\(\s*_\s+application:\s*UIApplication,\s*didFinishLaunchingWithOptions\s+launchOptions:\s*\[UIApplication\.LaunchOptionsKey:\s*Any\]\?\s*=\s*nil\s*\)\s*->\s*Bool\s*\{/g;
   if ((contents.match(launch) ?? []).length !== 1) {
     throw new Error(
-      'JustGO Sentry privacy requires the reviewed Expo 57 launch method',
+      'JustGO Sentry privacy requires the reviewed Expo 58 launch method',
     );
   }
   contents = contents.replace(launch, `$&\n    ${launchCall}`);
@@ -357,9 +360,9 @@ ${uploadEnd}
 }
 
 module.exports = function withSentryPrivacy(config, options) {
-  if (sdkVersion !== '7.11.0') {
+  if (sdkVersion !== '8.28.0') {
     throw new Error(
-      'JustGO Sentry native privacy requires reviewed SDK 7.11.0 / Cocoa 8.58.0',
+      'JustGO Sentry native privacy requires reviewed SDK 8.28.0 / Cocoa 9.29.0',
     );
   }
   if (!config.platforms || config.platforms.includes('android')) {
@@ -388,7 +391,7 @@ module.exports = function withSentryPrivacy(config, options) {
     platform: 'ios',
     mod: 'appDelegate',
     isProvider: false,
-    // The official SDK 7 plugin owns build scripts, not native initialization.
+    // The official SDK 8 plugin owns build scripts, not native initialization.
     async action({ modRequest: { nextMod, ...modRequest }, ...modConfig }) {
       const result = await nextMod({ ...modConfig, modRequest });
       result.modResults = protectAppDelegate(result.modResults, configuration);

@@ -27,21 +27,21 @@ beforeEach(() => {
   mockVerified = false;
   mockPending = false;
 });
-it('keeps startup outside the tab scene until access is verified', () => {
+it('keeps startup outside the tab scene until access is verified', async () => {
   mockPending = true;
-  const screen = render(<HomeRoute />);
+  const screen = await render(<HomeRoute />);
   expect(screen.getByText('Redirect: /access')).toBeTruthy();
   expect(screen.queryByText('Challenge admission')).toBeNull();
   mockVerified = true;
-  screen.rerender(<HomeRoute />);
+  await screen.rerender(<HomeRoute />);
   expect(screen.getByText('Challenge admission')).toBeTruthy();
   expect(screen.queryByText('Redirect: /access')).toBeNull();
 });
-it('keeps a challenge deck unmounted when access is stale or unavailable', () => {
-  const screen = render(<HomeRoute />);
+it('keeps a challenge deck unmounted when access is stale or unavailable', async () => {
+  const screen = await render(<HomeRoute />);
   expect(screen.queryByText('Challenge admission')).toBeNull();
   expect(screen.getByText('Fresh access required')).toBeTruthy();
   mockVerified = true;
-  screen.rerender(<HomeRoute />);
+  await screen.rerender(<HomeRoute />);
   expect(screen.getByText('Challenge admission')).toBeTruthy();
 });

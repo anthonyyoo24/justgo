@@ -3,10 +3,10 @@ import { ProviderButtons } from './ProviderButtons';
 
 it.each(['apple', 'google'] as const)(
   'centers only a spinner in the busy %s button and disables duplicate actions',
-  (provider) => {
+  async (provider) => {
     const signIn = jest.fn();
     const label = `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`;
-    const screen = render(
+    const screen = await render(
       <ProviderButtons onSignIn={signIn} busyProvider={provider} />,
     );
     const button = screen.getByRole('button', { name: label });
@@ -22,22 +22,22 @@ it.each(['apple', 'google'] as const)(
     ).toBeTruthy();
     for (const action of screen.getAllByRole('button')) {
       expect(action).toBeDisabled();
-      fireEvent.press(action);
+      await fireEvent.press(action);
     }
     expect(signIn).not.toHaveBeenCalled();
-    screen.rerender(<ProviderButtons onSignIn={signIn} />);
+    await screen.rerender(<ProviderButtons onSignIn={signIn} />);
     expect(screen.queryByRole('progressbar')).toBeNull();
     expect(screen.getByText(label)).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: label }));
+    await fireEvent.press(screen.getByRole('button', { name: label }));
     expect(signIn).toHaveBeenCalledWith(provider);
   },
 );
 
-it('offers a usable retry after challenge preparation fails', () => {
+it('offers a usable retry after challenge preparation fails', async () => {
   const retry = jest.fn();
-  const screen = render(
+  const screen = await render(
     <ProviderButtons provider="apple" retry onSignIn={retry} />,
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
   expect(retry).toHaveBeenCalledWith('apple');
 });

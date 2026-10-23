@@ -1,8 +1,12 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { Animated, Image, StyleSheet } from 'react-native';
-import { Circle, Path } from 'react-native-svg';
+import { Animated, StyleSheet } from 'react-native';
+
 import type { ProgressEntry } from './types';
 import { ProgressView } from './ProgressView';
+
+jest.mock('react-native-svg', () =>
+  jest.requireActual('../../../test-support/svg'),
+);
 
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../platform/motion/motion', () => ({
@@ -14,8 +18,8 @@ jest.mock('./day-details/entries/useEntryMotion', () =>
 
 import { month, entry, callbacks } from '../../../test-support/progress/view';
 
-it('shows captured start times and the Paper day total without duration', () => {
-  const screen = render(
+it('shows captured start times and the Paper day total without duration', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -58,13 +62,15 @@ it('shows captured start times and the Paper day total without duration', () => 
   }
   for (const clock of clocks) {
     expect(clock.props.width).toBe(16);
-    expect(clock.findAllByType(Circle)).toHaveLength(1);
-    expect(clock.findAllByType(Path).length).toBeGreaterThan(0);
+    expect(clock.queryAll((node) => node.type === 'Circle')).toHaveLength(1);
+    expect(
+      clock.queryAll((node) => node.type === 'Path').length,
+    ).toBeGreaterThan(0);
   }
   expect(screen.queryByText(/◷|◴/)).toBeNull();
 });
 
-it('opens and hides saved reflections by tapping a row, keeping one open at a time', () => {
+it('opens and hides saved reflections by tapping a row, keeping one open at a time', async () => {
   const entries: ProgressEntry[] = [
     {
       ...entry('first', 'submitted'),
@@ -76,7 +82,7 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
       reflectionText: 'Saying hello felt easier the second time.',
     },
   ];
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -94,7 +100,7 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
 
   const first = screen.getByRole('button', { name: /Rep 1.*View Reflection/ });
   expect(first.props.accessibilityState).toEqual({ expanded: false });
-  fireEvent.press(first);
+  await fireEvent.press(first);
   expect(
     screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }).props
       .accessibilityState,
@@ -103,7 +109,7 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
   expect(screen.getAllByText('Saved reflection')).toHaveLength(1);
   expect(screen.getAllByText('View Reflection')).toHaveLength(1);
 
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 3.*View Reflection/ }),
   );
   expect(screen.queryByText(entries[0]!.reflectionText!)).toBeNull();
@@ -113,7 +119,7 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
       .accessibilityState,
   ).toEqual({ expanded: false });
 
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 3.*Hide Reflection/ }),
   );
   expect(screen.queryByText('Saved reflection')).toBeNull();
@@ -121,9 +127,9 @@ it('opens and hides saved reflections by tapping a row, keeping one open at a ti
   expect(screen.getAllByText('View Reflection')).toHaveLength(2);
 });
 
-it('uses the Paper plus for Add reflection and omits the saved row pencil', () => {
+it('uses the Paper plus for Add reflection and omits the saved row pencil', async () => {
   const edit = jest.fn();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -153,20 +159,22 @@ it('uses the Paper plus for Add reflection and omits the saved row pencil', () =
   expect(plus.props.width).toBe(13);
   expect(plus.props.height).toBe(13);
   expect(plus.props['aria-hidden']).toBe(true);
-  expect(plus.findByType(Path).props.d).toBe('M8 2v12M2 8h12');
-  expect(add.findAllByType(Image)).toHaveLength(0);
+  expect(plus.queryAll((node) => node.type === 'Path')[0]!.props.d).toBe(
+    'M8 2v12M2 8h12',
+  );
+  expect(add.queryAll((node) => node.type === 'Image')).toHaveLength(0);
   expect(
     screen
       .getByRole('button', { name: /Rep 2.*View Reflection/ })
-      .findAllByType(Image),
+      .queryAll((node) => node.type === 'Image'),
   ).toHaveLength(0);
-  fireEvent.press(add);
+  await fireEvent.press(add);
   expect(edit).toHaveBeenCalledWith('addable');
 });
 
-it('shows the pencil inside the Edit action and opens the selected saved reflection', () => {
+it('shows the pencil inside the Edit action and opens the selected saved reflection', async () => {
   const edit = jest.fn();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -185,23 +193,27 @@ it('shows the pencil inside the Edit action and opens the selected saved reflect
       {...callbacks()}
     />,
   );
-  fireEvent.press(screen.getByRole('button', { name: /View Reflection/ }));
-  const action = screen.getByRole('button', { name: 'Edit reflection' });
-  expect(action.findByType(Image).props.source).toEqual(
-    require('../../../assets/icons/reflection-pencil.png'),
+  await fireEvent.press(
+    screen.getByRole('button', { name: /View Reflection/ }),
   );
-  expect(action.findByType(Image).props['aria-hidden']).toBe(true);
-  fireEvent.press(action);
+  const action = screen.getByRole('button', { name: 'Edit reflection' });
+  expect(
+    action.queryAll((node) => node.type === 'Image')[0]!.props.source,
+  ).toEqual(require('../../../assets/icons/reflection-pencil.png'));
+  expect(
+    action.queryAll((node) => node.type === 'Image')[0]!.props['aria-hidden'],
+  ).toBe(true);
+  await fireEvent.press(action);
   expect(edit).toHaveBeenCalledWith('editable');
 });
 
-it('animates the saved reflection both into and out of the row', () => {
+it('animates the saved reflection both into and out of the row', async () => {
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
   } as unknown as ReturnType<typeof Animated.timing>);
   try {
-    const screen = render(
+    const screen = await render(
       <ProgressView
         month="2026-09"
         data={month}
@@ -224,20 +236,20 @@ it('animates the saved reflection both into and out of the row', () => {
         includeHiddenElements: true,
       }),
     ).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: /View Reflection/ }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: /View Reflection/ }),
+    );
     const content = screen.getByTestId('entry-details-content', {
       includeHiddenElements: true,
     });
-    expect(
-      StyleSheet.flatten(content.parent?.parent?.props.style),
-    ).toMatchObject({
+    expect(StyleSheet.flatten(content.parent?.props.style)).toMatchObject({
       position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
     });
     timing.mockClear();
-    fireEvent(content, 'layout', {
+    await fireEvent(content, 'layout', {
       nativeEvent: { layout: { height: 72 } },
     });
     expect(timing).toHaveBeenCalledWith(
@@ -246,7 +258,9 @@ it('animates the saved reflection both into and out of the row', () => {
     );
     timing.mockClear();
 
-    fireEvent.press(screen.getByRole('button', { name: /Hide Reflection/ }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: /Hide Reflection/ }),
+    );
     expect(timing).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ toValue: 0, useNativeDriver: false }),
@@ -256,7 +270,7 @@ it('animates the saved reflection both into and out of the row', () => {
   }
 });
 
-it('omits reflection controls for empty text or absent submitted reflections', () => {
+it('omits reflection controls for empty text or absent submitted reflections', async () => {
   const entries: ProgressEntry[] = [
     entry('no-text', 'submitted'),
     { ...entry('empty', 'submitted'), reflectionText: '' },
@@ -264,7 +278,7 @@ it('omits reflection controls for empty text or absent submitted reflections', (
     { ...entry('absent-1', 'none'), reflectionText: 'Not submitted yet' },
     { ...entry('absent-2', 'none'), reflectionText: 'Not submitted' },
   ];
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -280,13 +294,13 @@ it('omits reflection controls for empty text or absent submitted reflections', (
 
   expect(screen.queryByTestId('reflection-action')).toBeNull();
   expect(screen.queryByRole('button', { name: /^Rep / })).toBeNull();
-  fireEvent.press(screen.getByLabelText(/^Rep 1\./));
+  await fireEvent.press(screen.getByLabelText(/^Rep 1\./));
   expect(screen.queryByText('Saved reflection')).toBeNull();
   expect(screen.queryByText('Hide Reflection')).toBeNull();
 });
 
-it('centers each Feeling rating with four points between its label and result', () => {
-  const screen = render(
+it('centers each Feeling rating with four points between its label and result', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -323,6 +337,9 @@ it('centers each Feeling rating with four points between its label and result', 
   });
   expect(emptyCircle.props.width).toBe(36);
   expect(emptyCircle.props.height).toBe(36);
-  expect(emptyCircle.findByType(Circle).props.strokeDasharray).toBe('0.1 4.2');
+  expect(
+    emptyCircle.queryAll((node) => node.type === 'Circle')[0]!.props
+      .strokeDasharray,
+  ).toBe('0.1 4.2');
   expect(screen.queryByText('Not\nrecorded')).toBeNull();
 });

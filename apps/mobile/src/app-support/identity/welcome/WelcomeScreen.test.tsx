@@ -90,7 +90,7 @@ it.each([false, true])(
   'shows managed sign-in and Continue without recovery controls (previously deleted=%s)',
   async (deleted) => {
     const s = await setup(deleted);
-    const screen = render(<WelcomeScreen controller={s.controller} />);
+    const screen = await render(<WelcomeScreen controller={s.controller} />);
     expect(screen.getByText('JustGO')).toBeTruthy();
     expect(screen.getByText('A little courage.\nEvery day.')).toBeTruthy();
     expect(
@@ -113,8 +113,8 @@ it.each(['Apple', 'Google'] as const)(
   'opens the separate %s sign-in page after beginning entry preparation',
   async (provider) => {
     const s = await setup();
-    const screen = render(<WelcomeScreen controller={s.controller} />);
-    fireEvent.press(
+    const screen = await render(<WelcomeScreen controller={s.controller} />);
+    await fireEvent.press(
       screen.getByRole('button', { name: `Sign in with ${provider}` }),
     );
     expect(mockPush).toHaveBeenCalledWith({
@@ -131,8 +131,8 @@ it.each(['Apple', 'Google'] as const)(
 it('opens acceptance on Continue without changing the saved identity', async () => {
   const s = await setup();
   const before = await s.storage.read();
-  const screen = render(<WelcomeScreen controller={s.controller} />);
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  const screen = await render(<WelcomeScreen controller={s.controller} />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   expect(mockPush).toHaveBeenCalledWith('/acceptance');
   expect(mockBeginEntry).toHaveBeenCalledTimes(1);
   expect(mockBeginEntry.mock.invocationCallOrder[0]).toBeLessThan(
@@ -145,7 +145,7 @@ it('opens acceptance on Continue without changing the saved identity', async () 
 it('leaves Welcome once a guest collection has been selected', async () => {
   const s = await setup();
   await s.controller.continueAsGuest();
-  const screen = render(<WelcomeScreen controller={s.controller} />);
+  const screen = await render(<WelcomeScreen controller={s.controller} />);
   expect(screen.getByText('Redirect: /access')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
   expect(s.api.request).not.toHaveBeenCalled();
@@ -158,7 +158,7 @@ it('keeps all entry controls disabled while provider sign-in is running', async 
     new Promise((resolve) => {
       release = () => resolve(null);
     });
-  const screen = render(<WelcomeScreen controller={s.controller} />);
+  const screen = await render(<WelcomeScreen controller={s.controller} />);
   let operation!: Promise<void>;
   await act(async () => {
     operation = s.controller.signIn('apple');
@@ -172,7 +172,7 @@ it('keeps all entry controls disabled while provider sign-in is running', async 
     ]) {
       const button = screen.getByRole('button', { name });
       expect(button).toBeDisabled();
-      fireEvent.press(button);
+      await fireEvent.press(button);
     }
     expect(mockPush).not.toHaveBeenCalled();
     expect(mockBeginEntry).not.toHaveBeenCalled();
@@ -190,10 +190,10 @@ it('keeps a failed local entry retryable without creating a server account', asy
   const s = await setup();
   s.storage.write.mockRejectedValueOnce(new Error('Synthetic disk failure'));
   await s.controller.continueAsGuest();
-  const screen = render(<WelcomeScreen controller={s.controller} />);
+  const screen = await render(<WelcomeScreen controller={s.controller} />);
   expect(screen.getByRole('alert')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   expect(mockPush).toHaveBeenCalledWith('/acceptance');
   expect(s.api.request).not.toHaveBeenCalled();
 });

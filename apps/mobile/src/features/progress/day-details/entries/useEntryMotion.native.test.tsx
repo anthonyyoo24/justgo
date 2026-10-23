@@ -47,8 +47,8 @@ const timing = jest.mocked(withTiming);
 const cancel = jest.mocked(cancelAnimation);
 beforeEach(() => jest.clearAllMocks());
 
-it('animates height and reveal on native shared values and cancels both together', () => {
-  const { result } = renderHook(useEntryMotion);
+it('animates height and reveal on native shared values and cancels both together', async () => {
+  const { result } = await renderHook(useEntryMotion);
   const stop = result.current.animate(true, 144, jest.fn());
   expect(timing.mock.calls.map(([to, config]) => [to, config])).toEqual([
     [144, { duration: 240, easing: 'out-cubic' }],
@@ -66,8 +66,8 @@ it('animates height and reveal on native shared values and cancels both together
   ]);
 });
 
-it('schedules the RN focus callback only when native reveal actually finishes', () => {
-  const { result } = renderHook(useEntryMotion);
+it('schedules the RN focus callback only when native reveal actually finishes', async () => {
+  const { result } = await renderHook(useEntryMotion);
   const onDone = jest.fn();
   const stop = result.current.animate(true, 144, onDone);
   const complete = timing.mock.calls[1]![2]!;
@@ -82,8 +82,8 @@ it('schedules the RN focus callback only when native reveal actually finishes', 
   stop();
 });
 
-it('sets reduced-motion endpoints without timing', () => {
-  const { result } = renderHook(useEntryMotion);
+it('sets reduced-motion endpoints without timing', async () => {
+  const { result } = await renderHook(useEntryMotion);
   result.current.set(true, 156);
   const values = cancel.mock.calls.map(([value]) => value);
   expect(values.map((value) => value.get())).toEqual([156, 1]);
@@ -92,10 +92,10 @@ it('sets reduced-motion endpoints without timing', () => {
   expect(timing).not.toHaveBeenCalled();
 });
 
-it('keeps the adapter stable across unrelated renders without restarting motion', () => {
-  const { result, rerender } = renderHook(useEntryMotion);
+it('keeps the adapter stable across unrelated renders without restarting motion', async () => {
+  const { result, rerender } = await renderHook(useEntryMotion);
   const initial = result.current;
-  rerender({});
+  await rerender({});
   expect(result.current).toBe(initial);
   expect(timing).not.toHaveBeenCalled();
   expect(cancel).not.toHaveBeenCalled();

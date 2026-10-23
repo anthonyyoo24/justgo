@@ -25,14 +25,14 @@ it('opens the exact destination once while busy, then makes the action available
         resolve = done;
       }),
   );
-  const screen = render(
+  const screen = await render(
     <ExternalLinkButton {...props}>
       <Text>Custom row</Text>
     </ExternalLinkButton>,
   );
   const button = screen.getByRole('button', { name: 'Get help' });
-  fireEvent.press(button);
-  fireEvent.press(button);
+  await fireEvent.press(button);
+  await fireEvent.press(button);
   expect(openUrl).toHaveBeenCalledTimes(1);
   expect(openUrl).toHaveBeenCalledWith(props.url);
   expect(button.props.accessibilityState).toEqual({
@@ -53,9 +53,9 @@ it('shows only approved failure copy and allows a successful retry', async () =>
   openUrl
     .mockRejectedValueOnce(new Error('private transport detail'))
     .mockResolvedValueOnce(undefined);
-  const screen = render(<ExternalLinkButton {...props} />);
+  const screen = await render(<ExternalLinkButton {...props} />);
   const button = screen.getByRole('button', { name: 'Get help' });
-  fireEvent.press(button);
+  await fireEvent.press(button);
   await waitFor(() =>
     expect(showMessageToast).toHaveBeenCalledWith(
       'activity',
@@ -63,17 +63,17 @@ it('shows only approved failure copy and allows a successful retry', async () =>
     ),
   );
   expect(button.props.accessibilityState.disabled).toBe(false);
-  fireEvent.press(button);
+  await fireEvent.press(button);
   await waitFor(() => expect(button.props.accessibilityState.busy).toBe(false));
   expect(openUrl).toHaveBeenCalledTimes(2);
   expect(showMessageToast).toHaveBeenCalledTimes(1);
 });
 
-it('keeps an unavailable destination disabled', () => {
-  const screen = render(<ExternalLinkButton {...props} url={null} />);
+it('keeps an unavailable destination disabled', async () => {
+  const screen = await render(<ExternalLinkButton {...props} url={null} />);
   const button = screen.getByRole('button', { name: 'Get help' });
   expect(button.props.accessibilityState.disabled).toBe(true);
-  fireEvent.press(button);
+  await fireEvent.press(button);
   expect(openUrl).not.toHaveBeenCalled();
 });
 
@@ -85,9 +85,9 @@ it('does not present a late failure after leaving the screen', async () => {
         reject = fail;
       }),
   );
-  const screen = render(<ExternalLinkButton {...props} />);
-  fireEvent.press(screen.getByRole('button', { name: 'Get help' }));
-  screen.unmount();
+  const screen = await render(<ExternalLinkButton {...props} />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Get help' }));
+  await screen.unmount();
   await act(async () => {
     reject!(new Error('late failure'));
   });

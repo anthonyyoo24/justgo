@@ -91,7 +91,8 @@ const config: ExpoConfig = {
       : {}),
   },
   plugins: [
-    'expo-router',
+    // Keep the existing single-bundle web preview and guarded fixture loading.
+    ['expo-router', { asyncRoutes: { web: false } }],
     'expo-dev-client',
     'expo-font',
     'expo-image',
@@ -125,8 +126,8 @@ const config: ExpoConfig = {
     [
       'expo-build-properties',
       {
-        // Cocoa 8.58 scope callbacks require framework modules under Swift 6.2.
-        // Keep static linkage while exposing Sentry's transitive Swift types.
+        // Sentry's prebuilt Cocoa framework and native privacy hook use Swift modules.
+        // Preserve static linkage across the SDK 58 native rebuild.
         ios: { deploymentTarget: '16.4', useFrameworks: 'static' },
       },
     ],

@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react-native';
 import {
   Keyboard,
   type LayoutChangeEvent,
-  type ScrollView,
+  type ScrollViewInstance,
 } from 'react-native';
 import {
   MotionContext,
@@ -15,7 +15,7 @@ const layout = (y: number, height: number) =>
     nativeEvent: { layout: { x: 0, y, width: 390, height } },
   }) as LayoutChangeEvent;
 
-function setup(reduceMotion = false) {
+async function setup(reduceMotion = false) {
   const shown = jest.fn();
   const remove = jest.fn();
   const listen = Keyboard.addListener.bind(Keyboard);
@@ -30,7 +30,7 @@ function setup(reduceMotion = false) {
     return subscription;
   });
   const preferences = { reduceMotion } as MotionPreferences;
-  const hook = renderHook(() => useReflectionKeyboard(228), {
+  const hook = await renderHook(() => useReflectionKeyboard(228), {
     wrapper: ({ children }) => (
       <MotionContext.Provider value={preferences}>
         {children}
@@ -38,8 +38,10 @@ function setup(reduceMotion = false) {
     ),
   });
   const scrollTo = jest.fn();
-  hook.result.current.scrollRef.current = { scrollTo } as unknown as ScrollView;
-  act(() => {
+  hook.result.current.scrollRef.current = {
+    scrollTo,
+  } as unknown as ScrollViewInstance;
+  await act(() => {
     hook.result.current.onViewportLayout(layout(0, 700));
     hook.result.current.onSectionLayout(layout(350, 320));
     hook.result.current.onInputLayout(layout(92, 228));
@@ -49,21 +51,21 @@ function setup(reduceMotion = false) {
 
 afterEach(() => jest.restoreAllMocks());
 
-it('reveals the editor on focus and retries after keyboard layout/content settle', () => {
-  const { result, scrollTo, shown } = setup();
+it('reveals the editor on focus and retries after keyboard layout/content settle', async () => {
+  const { result, scrollTo, shown } = await setup();
   expect(scrollTo).not.toHaveBeenCalled();
-  act(() => result.current.onFocus());
+  await act(() => result.current.onFocus());
   expect(scrollTo).toHaveBeenLastCalledWith({ y: 338, animated: true });
   expect(result.current.paddingBottom).toBe(380);
   scrollTo.mockClear();
-  act(() => {
+  await act(() => {
     // A small phone leaves only 260 points above the separately measured footer.
     result.current.onViewportLayout(layout(0, 260));
     shown();
   });
   expect(result.current.inputHeight).toBe(140);
   expect(12 + 92 + result.current.inputHeight).toBeLessThanOrEqual(260 - 16);
-  act(() => {
+  await act(() => {
     result.current.onSectionLayout(layout(350, 232));
     result.current.onContentSizeChange();
   });
@@ -75,34 +77,34 @@ it('reveals the editor on focus and retries after keyboard layout/content settle
   );
 });
 
-it('bounds a long editor to the viewport and responds to large text and rotation', () => {
-  const { result } = setup();
-  act(() => {
+it('bounds a long editor to the viewport and responds to large text and rotation', async () => {
+  const { result } = await setup();
+  await act(() => {
     result.current.onFocus();
     result.current.onViewportLayout(layout(0, 180));
     result.current.onInputLayout(layout(130, 228));
   });
   expect(result.current.inputHeight).toBe(96);
-  act(() => result.current.onViewportLayout(layout(0, 500)));
+  await act(() => result.current.onViewportLayout(layout(0, 500)));
   expect(result.current.inputHeight).toBe(228);
 });
 
-it('honors reduced motion and supports refocusing when a keyboard is already visible', () => {
-  const { result, scrollTo } = setup(true);
-  act(() => result.current.onFocus());
+it('honors reduced motion and supports refocusing when a keyboard is already visible', async () => {
+  const { result, scrollTo } = await setup(true);
+  await act(() => result.current.onFocus());
   expect(scrollTo).toHaveBeenLastCalledWith({ y: 338, animated: false });
-  act(() => result.current.onBlur());
+  await act(() => result.current.onBlur());
   scrollTo.mockClear();
-  act(() => result.current.onFocus());
+  await act(() => result.current.onFocus());
   expect(scrollTo).toHaveBeenLastCalledWith({ y: 338, animated: false });
 });
 
-it('ignores late keyboard/layout events after blur and removes the native listener', () => {
-  const { result, scrollTo, shown, remove, unmount } = setup();
-  act(() => result.current.onFocus());
-  act(() => result.current.onBlur());
+it('ignores late keyboard/layout events after blur and removes the native listener', async () => {
+  const { result, scrollTo, shown, remove, unmount } = await setup();
+  await act(() => result.current.onFocus());
+  await act(() => result.current.onBlur());
   scrollTo.mockClear();
-  act(() => {
+  await act(() => {
     shown();
     result.current.onViewportLayout(layout(0, 260));
     result.current.onContentSizeChange();
@@ -110,20 +112,24 @@ it('ignores late keyboard/layout events after blur and removes the native listen
   expect(scrollTo).not.toHaveBeenCalled();
   expect(result.current.inputHeight).toBe(228);
   expect(result.current.paddingBottom).toBe(16);
-  unmount();
+  await unmount();
   expect(remove).toHaveBeenCalledTimes(1);
 });
 
-it('handles focus before measurements without negative offsets or a missing ref', () => {
-  const { result, unmount } = renderHook(() => useReflectionKeyboard(228));
-  act(() => result.current.onFocus());
+it('handles focus before measurements without negative offsets or a missing ref', async () => {
+  const { result, unmount } = await renderHook(() =>
+    useReflectionKeyboard(228),
+  );
+  await act(() => result.current.onFocus());
   expect(result.current.inputHeight).toBe(228);
   const scrollTo = jest.fn();
-  result.current.scrollRef.current = { scrollTo } as unknown as ScrollView;
-  act(() => {
+  result.current.scrollRef.current = {
+    scrollTo,
+  } as unknown as ScrollViewInstance;
+  await act(() => {
     result.current.onSectionLayout(layout(5, 320));
     result.current.onContentSizeChange();
   });
   expect(scrollTo).toHaveBeenLastCalledWith({ y: 0, animated: false });
-  unmount();
+  await unmount();
 });

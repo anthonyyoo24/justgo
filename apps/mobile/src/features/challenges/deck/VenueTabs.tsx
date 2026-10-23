@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import {
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   View,
@@ -46,7 +47,7 @@ export function VenueTabs({
   disabled?: boolean;
   onSelect: (venue: Venue) => void;
 }) {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const { width, fontScale } = useWindowDimensions();
   const scale = challengeScale(width);
   const verticalInset = 4 * scale;

@@ -17,7 +17,7 @@ jest.mock('../../platform/toast/Toast', () => ({
 }));
 
 it('navigates from the actual Settings link to haptics, rather than the general preview', async () => {
-  const navigation = renderRouter(
+  const navigation = await renderRouter(
     {
       _layout: () => (
         <MotionContext.Provider
@@ -38,7 +38,7 @@ it('navigates from the actual Settings link to haptics, rather than the general 
     },
     { initialUrl: '/settings' },
   );
-  fireEvent.press(screen.getByRole('link', { name: 'Test haptics' }));
+  await fireEvent.press(screen.getByRole('link', { name: 'Test haptics' }));
   await waitFor(() =>
     expect(screen.getByRole('header', { name: 'Test haptics' })).toBeTruthy(),
   );
@@ -47,6 +47,6 @@ it('navigates from the actual Settings link to haptics, rather than the general 
   expect(
     screen.queryByText('SCREEN PREVIEW · No activity is saved'),
   ).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
   await waitFor(() => expect(navigation.getPathname()).toBe('/settings'));
 });

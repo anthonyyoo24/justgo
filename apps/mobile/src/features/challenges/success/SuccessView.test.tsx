@@ -3,9 +3,9 @@ import { StyleSheet } from 'react-native';
 import { colors, fontFamilies } from '../../../theme/tokens';
 import { SuccessView } from './SuccessView';
 
-it('matches the Paper success layout and type scale', () => {
+it('matches the Paper success layout and type scale', async () => {
   const onContinue = jest.fn();
-  const screen = render(<SuccessView onContinue={onContinue} />);
+  const screen = await render(<SuccessView onContinue={onContinue} />);
   const illustration = StyleSheet.flatten(
     screen.getByTestId('success-illustration', { includeHiddenElements: true })
       .props.style,
@@ -67,6 +67,6 @@ it('matches the Paper success layout and type scale', () => {
     fontWeight: '500',
     fontSize: 13 * scale,
   });
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   expect(onContinue).toHaveBeenCalledTimes(1);
 });

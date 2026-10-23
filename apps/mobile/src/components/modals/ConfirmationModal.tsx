@@ -7,6 +7,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   View,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScaledText as Text } from '../typography/ScaledText';
@@ -66,7 +67,7 @@ function ConfirmationContent({
   onConfirm,
   destructive = false,
 }: ConfirmationProps) {
-  const surface = useRef<View>(null);
+  const surface = useRef<ViewInstance>(null);
   const stacked = useWindowDimensions().fontScale > 1.3;
   useModalIsolation(surface);
   return (

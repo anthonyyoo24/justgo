@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { SafeAreaView, type EdgeInsets } from 'react-native-safe-area-context';
 import { useModalIsolation } from '../../../platform/modals/useModalIsolation';
 import { SavingSheetSurface } from '../../../app-support/saving/SavingFeedback';
@@ -45,7 +51,7 @@ export function ActiveChallengeContent({
   useEffect(() => {
     if (laidOut && artworkSettled && textureSettled) onVisualReady?.();
   }, [laidOut, artworkSettled, textureSettled, onVisualReady]);
-  const surface = useRef<View>(null);
+  const surface = useRef<ViewInstance>(null);
   // Android's default dialog can exclude system bars, unlike its root window.
   // Preserve its modal-owned inset measurement rather than padding twice.
   const android = Platform.OS === 'android';

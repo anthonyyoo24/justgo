@@ -8,6 +8,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   View,
+  type ViewInstance,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -101,7 +102,7 @@ function SheetContent({
   onLayout: () => void;
   offset: Animated.Value;
 }) {
-  const surface = useRef<View>(null);
+  const surface = useRef<ViewInstance>(null);
   const { fontScale } = useWindowDimensions();
   useModalIsolation(surface);
   return (

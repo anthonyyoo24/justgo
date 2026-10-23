@@ -8,7 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { AppState, Text, type AppStateStatus } from 'react-native';
-import { focusManager, notifyManager } from '@tanstack/react-query';
+import { focusManager } from '@tanstack/react-query';
 import { z } from 'zod';
 import { type AccessResponse, type SessionResponse } from '@justgo/contracts';
 import { card } from '../../../test-support/journal';
@@ -105,7 +105,7 @@ function Probe() {
   );
 }
 async function mount() {
-  const screen = render(
+  const screen = await render(
     <AppProvider>
       <Probe />
     </AppProvider>,
@@ -128,8 +128,7 @@ async function receiveAccess(value: AccessResponse) {
 
 beforeEach(async () => {
   // Control polling/freshness and flush scheduled notifications before restoring timers.
-  jest.useFakeTimers({ doNotFake: ['performance'] });
-  notifyManager.setNotifyFunction((notify) => act(notify));
+  jest.useFakeTimers({ doNotFake: ['performance', 'queueMicrotask'] });
   process.env.EXPO_PUBLIC_API_URL = 'http://localhost:3000';
   session = {
     userId,
@@ -241,13 +240,12 @@ beforeEach(async () => {
     });
 });
 afterEach(async () => {
-  await act(async () => cleanup());
+  await act(async () => await cleanup());
   await runtime?.client.queries.cancelQueries();
   runtime?.client.queries.clear();
   runtime?.activity.dispose();
   controller?.dispose();
   focusManager.setFocused(undefined);
-  notifyManager.setNotifyFunction((notify) => notify());
   await act(async () => jest.runOnlyPendingTimersAsync());
   jest.restoreAllMocks();
   jest.useRealTimers();
@@ -265,7 +263,7 @@ it('initializes one identity/runtime, provides its query cache and admits verifi
     ),
   ).toEqual(access);
   const originalRuntime = runtime;
-  screen.rerender(
+  await screen.rerender(
     <AppProvider>
       <Probe />
       <Text>rerender</Text>
@@ -330,7 +328,7 @@ it('clears queries, mutations and challenge state synchronously on account loss 
   });
   const consent = jest.spyOn(runtime.telemetry, 'setConsent');
   // Losing this session synchronously disconnects all account-scoped domains.
-  act(() => runtime.identity.rejectSession(token, 'SESSION_REVOKED'));
+  await act(() => runtime.identity.rejectSession(token, 'SESSION_REVOKED'));
   expect(screen.getByText('disconnected')).toBeTruthy();
   expect(screen.getByText('access closed')).toBeTruthy();
   expect(
@@ -410,7 +408,7 @@ it('pauses provider refresh on background, refreshes on foreground and releases 
   const invalidate = jest.spyOn(runtime.client.queries, 'invalidateQueries');
   const refresh = jest.spyOn(runtime.challenges, 'refresh').mockResolvedValue();
   const track = jest.spyOn(runtime.telemetry, 'track');
-  act(() => onAppState('background'));
+  await act(() => onAppState('background'));
   expect(active).toHaveBeenLastCalledWith(false);
   expect(focusManager.isFocused()).toBe(false);
   expect(retry).not.toHaveBeenCalled();
@@ -422,7 +420,7 @@ it('pauses provider refresh on background, refreshes on foreground and releases 
   expect(invalidate).toHaveBeenCalled();
   expect(refresh).toHaveBeenCalledTimes(1);
   expect(track).toHaveBeenCalledWith('app_foregrounded');
-  screen.unmount();
+  await screen.unmount();
   expect(removeListener).toHaveBeenCalledTimes(1);
   expect(runtime.client.queries.getQueryCache().getAll()).toHaveLength(0);
   // Unsubscribed identity notifications must not reconnect a disposed runtime.
@@ -537,17 +535,17 @@ it('forwards connectivity to the active repository and refreshes only after reco
   expect(repo.accountId).toBe(userId);
   const listener = jest.mocked(listenToConnectivity).mock.calls.at(-1)![0];
   const refresh = jest.spyOn(runtime.challenges, 'refresh').mockResolvedValue();
-  act(() => listener(false));
+  await act(() => listener(false));
   expect(repo.store.getState().online).toBe(false);
   expect(screen.getByText('activity offline')).toBeTruthy();
   expect(refresh).not.toHaveBeenCalled();
-  act(() => listener(true));
+  await act(() => listener(true));
   expect(repo.store.getState().online).toBe(true);
   expect(screen.getByText('activity online')).toBeTruthy();
   expect(refresh).toHaveBeenCalledTimes(1);
-  act(() => onAppState('background'));
+  await act(() => onAppState('background'));
   expect(repo.store.getState().active).toBe(false);
-  screen.unmount();
+  await screen.unmount();
   expect(runtime.activity.getRepository()).toBeNull();
 });
 
@@ -573,8 +571,8 @@ it('restores a session while backgrounded without activating uploads until foreg
   }
 });
 
-it('requires a provider for runtime consumers', () => {
-  expect(() => renderHook(() => useRuntime())).toThrow(
+it('requires a provider for runtime consumers', async () => {
+  await expect(renderHook(() => useRuntime())).rejects.toThrow(
     'AppProvider is required',
   );
 });
@@ -589,7 +587,7 @@ it('initializes and refreshes account activity without legal receipt requests or
       String(input).includes('/account/acceptance'),
     ),
   ).toBe(false);
-  act(() => onAppState('background'));
+  await act(() => onAppState('background'));
   await act(async () => onAppState('active'));
   await waitFor(() => expect(screen.getByText('access verified')).toBeTruthy());
   expect(

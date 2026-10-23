@@ -17,8 +17,8 @@ jest.mock('sonner', () => ({
   Toaster: jest.fn(() => null),
   toast: { success: jest.fn(), dismiss: jest.fn(), error: jest.fn() },
 }));
-it('uses the documented web host and account-scoped toast identity', () => {
-  render(<ToastHost channel="activity" />);
+it('uses the documented web host and account-scoped toast identity', async () => {
+  await render(<ToastHost channel="activity" />);
   expect(Toaster).toHaveBeenCalledWith(
     expect.objectContaining({ id: 'activity', position: 'top-center' }),
     undefined,
@@ -39,9 +39,9 @@ it('presents safe link failure copy on the matching web host', () => {
   );
 });
 
-it('disables web toast transitions when motion is reduced', () => {
+it('disables web toast transitions when motion is reduced', async () => {
   mockReduceMotion = true;
-  render(<ToastHost channel="activity" />);
+  await render(<ToastHost channel="activity" />);
   expect(
     jest.mocked(Toaster).mock.calls.at(-1)![0].toastOptions?.style,
   ).toMatchObject({

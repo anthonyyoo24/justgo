@@ -66,9 +66,11 @@ beforeEach(() => {
 });
 
 it('offers an explicit complete data download for a guest without requiring an account', async () => {
-  const screen = render(<SettingsExportRow />);
+  const screen = await render(<SettingsExportRow />);
   expect(collect).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('button', { name: 'Download my data' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Download my data' }),
+  );
   await screen.findByText('Your data download was shared.');
   expect(collect).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -82,8 +84,10 @@ it('offers an explicit complete data download for a guest without requiring an a
 });
 it('uses account-owned local snapshots while signed out', async () => {
   mockKind = 'account';
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button', { name: 'Download my data' }));
+  const screen = await render(<SettingsExportRow />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Download my data' }),
+  );
   await screen.findByText(
     'Your phone’s saved data was shared. Sign in to include the latest cloud data.',
   );
@@ -91,22 +95,22 @@ it('uses account-owned local snapshots while signed out', async () => {
     expect.objectContaining({ ownerKind: 'account' }),
   );
 });
-it('waits for preference hydration and respects another active data action', () => {
+it('waits for preference hydration and respects another active data action', async () => {
   mockPreferencesLoading = true;
-  const screen = render(<SettingsExportRow />);
+  const screen = await render(<SettingsExportRow />);
   expect(screen.getByRole('button')).toBeDisabled();
-  fireEvent.press(screen.getByRole('button'));
+  await fireEvent.press(screen.getByRole('button'));
   expect(collect).not.toHaveBeenCalled();
   mockPreferencesLoading = false;
-  screen.rerender(<SettingsExportRow disabled />);
+  await screen.rerender(<SettingsExportRow disabled />);
   expect(screen.getByRole('button')).toBeDisabled();
 });
 it('blocks duplicate taps until sharing finishes and reports browser download accurately', async () => {
   const pending = deferred<'downloaded'>();
   share.mockReturnValue(pending.promise);
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button'));
-  fireEvent.press(screen.getByRole('button'));
+  const screen = await render(<SettingsExportRow />);
+  await fireEvent.press(screen.getByRole('button'));
+  await fireEvent.press(screen.getByRole('button'));
   await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
   expect(screen.getByRole('button')).toBeDisabled();
   await act(async () => pending.resolve('downloaded'));
@@ -114,17 +118,17 @@ it('blocks duplicate taps until sharing finishes and reports browser download ac
 });
 it('returns quietly after cancelling and permits a fresh explicit retry', async () => {
   share.mockResolvedValueOnce('cancelled');
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button'));
+  const screen = await render(<SettingsExportRow />);
+  await fireEvent.press(screen.getByRole('button'));
   await waitFor(() => expect(screen.getByRole('button')).toBeEnabled());
   expect(screen.queryByRole('alert')).toBeNull();
-  fireEvent.press(screen.getByRole('button'));
+  await fireEvent.press(screen.getByRole('button'));
   await screen.findByText('Your data download was shared.');
 });
 it('shows safe storage feedback rather than private adapter details', async () => {
   collect.mockRejectedValueOnce(new ApiError('STORAGE'));
-  const screen = render(<SettingsExportRow />);
-  fireEvent.press(screen.getByRole('button'));
+  const screen = await render(<SettingsExportRow />);
+  await fireEvent.press(screen.getByRole('button'));
   await screen.findByText(/could not be read/);
   expect(share).not.toHaveBeenCalled();
 });
@@ -133,9 +137,9 @@ it.each(['blur', 'account'] as const)(
   async (event) => {
     const pending = deferred<Awaited<ReturnType<typeof collectExport>>>();
     collect.mockReturnValue(pending.promise);
-    const screen = render(<SettingsExportRow />);
-    fireEvent.press(screen.getByRole('button'));
-    if (event === 'blur') act(() => mockBlur?.());
+    const screen = await render(<SettingsExportRow />);
+    await fireEvent.press(screen.getByRole('button'));
+    if (event === 'blur') await act(() => mockBlur?.());
     else mockOwner = otherOwner;
     await act(async () =>
       pending.resolve({ name: 'data.zip', bytes: new Uint8Array() }),
