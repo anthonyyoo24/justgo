@@ -77,12 +77,21 @@ with file watching disabled must be restarted before its bundle proves edits.
 | `/preview` and unknown links            | Guarded development fixtures or provider-independent not-found recovery.             |
 
 The root uses `Stack.Protected` for local collection, access and deletion boundaries.
+Its explicit `access` anchor makes SDK 58 protected cold links resolve through
+hydration/admission rather than an alphabetical supporting route. A denied push
+returns through Access; a retained public anchor after deletion cannot reopen the
+deleted account's private history.
 Home is the sole owner of `/`. Guest Continue selects a durable collection without
 creating an account. Apple/Google entry explains JustGO cloud storage before login;
 the disclosure states that saved phone entries are included. Settings, Data and Account remain outside paid
 admission. Challenge starts require fresh verified access; saved local Progress
 remains available offline or signed out. Pending account deletion removes product
 routes from Back history until required cleanup finishes.
+
+The browser is a development verification surface. Router 58 supplies zero web
+safe-area metrics even in the synchronous single-page mode; keep the native
+provider boundary and do not insert an extra web provider to force measurements.
+Notched mobile-web layouts remain unverified and are not an iOS acceptance claim.
 
 Fonts, saved-collection hydration and the first challenge-access request use a
 static navy GO mark on cream, without visible text, a spinner or animation. The
@@ -173,21 +182,23 @@ addresses/debug UUIDs and generic reasons. JS uses `autoInitializeNativeSdk: fal
 so it cannot replace that callback. Replay, screenshots, view hierarchy, network
 capture, automatic sessions, logs, tracing and profiling remain disabled. SDK or
 native API additions, including manual attachments, require renewed privacy review.
-Only `SentryCrashIntegration` is enabled natively. Cocoa 8.58 runs global event
-processors after `beforeSend`; its built-in Replay processor stays excluded.
-It also adds envelope trace metadata after the callback: random trace ID, public
-key, release/environment and SDK metadata. Do not add native user/segment/replay
-scope or manual span APIs without reviewing that separate header boundary.
+Cocoa 9.29 installs integrations internally. The plugin disables automatic
+sources, memory introspection and all-thread attachment, drops logs/metrics/spans,
+and clears `Hint.attachments` in `beforeSendWithHint` before rebuilding the event.
+Replay sampling remains zero. Initialization stays in AppDelegate before the
+SDK 58 SceneDelegate starts React Native. The plugin refuses unreviewed RN/Cocoa
+versions. Global processors and envelope metadata run after the callback;
+native envelope headers, cached payloads and replay exclusion still require
+signed-device delivery inspection. Do not add native user/segment/replay scope
+or manual span APIs without reviewing that separate header boundary.
 The native crash cache can retain original crash details locally until the next
 launch; outbound reconstruction is separate from that local capture.
 
 Native builds use `expo-build-properties` with `ios.useFrameworks: 'static'`.
-Cocoa 8.58's scope-taking Swift APIs can disappear under plain static-library
-linkage because Swift cannot resolve the transitive `_SentryPrivate` module;
-[Sentry's linkage diagnosis](https://github.com/getsentry/sentry-dart/issues/3570)
-describes the same failure. Keep framework modules with static linkage rather
-than removing the attachment-clearing callback or weakening the privacy options.
-The owner-authorized Phase 13 iPhone build verifies this configuration compiles;
+Cocoa 9.29's prebuilt framework and the attachment-aware Swift callback retain
+that linkage requirement. Keep framework modules rather than removing the
+attachment-clearing callback or weakening the privacy options. The signed SDK 58
+development build verifies this configuration compiles;
 physical diagnostics acceptance and activation remain separate gates.
 
 Explicit enabled/DSN/environment settings control JS delivery; native settings are

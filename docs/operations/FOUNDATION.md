@@ -14,25 +14,39 @@ PATCH and key/code account UI remain retired in managed mode.
 
 Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package-lock.json` fixes resolved versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node/Vercel; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
 
-| Component                        | Pinned version / constraint                                                                        |
-| -------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                         |
-| TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                       |
-| Expo / React Native / React      | 57.0.31 / 0.86.3 / 19.2.3                                                                          |
-| Expo Router / development client | 57.0.29 / 57.0.20                                                                                  |
-| Reanimated / Worklets            | 4.5.1 / 0.10.1; New Architecture required                                                          |
-| Bottom sheet / Gesture Handler   | 5.2.14 / 2.32.0                                                                                    |
-| Safe area / Screens / SVG        | 5.7.0 / 4.26.2 / 15.15.4                                                                           |
-| Activity storage / state         | SQLite 57.0.4 private journal; AsyncStorage 2.2.0 completion/cache state; Zustand 5.0.15           |
-| Optional accounts                | Supabase JS 2.118.0 Auth; Expo Apple Authentication, SecureStore and original Google Sign-In       |
-| Connectivity / saving feedback   | NetInfo 12.0.1 / Sonner Native 0.27.0 / Sonner 2.0.8 web adapter                                   |
-| React Native Web                 | 0.21.2; development/browser verification only                                                      |
-| iOS                              | 16.4 minimum, Hermes; original iPhone 17 / iOS 26.4 smoke, retained Phase 07 QA device on iOS 26.5 |
-| Fastify / Drizzle / pg           | 5.12.7 / 0.45.2 (kit 0.31.10) / 8.23.0                                                             |
-| PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                                        |
-| Tests                            | Vitest 5.0.1; Jest 29.7.0, jest-expo 57.0.6, React Native Testing Library 13.3.3                   |
+| Component                        | Pinned version / constraint                                                                                          |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                                           |
+| TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                                         |
+| Expo / React Native / React      | 58.0.17 / 0.88.0 / 19.3.0                                                                                            |
+| Expo Router / development client | 58.0.25 / 58.0.14                                                                                                    |
+| Reanimated / Worklets            | 4.7.1 / 0.13.0; New Architecture required                                                                            |
+| Bottom sheet / Gesture Handler   | 5.2.14 / 3.3.0                                                                                                       |
+| Safe area / Screens / SVG        | 5.10.1 / 4.30.0 / 15.16.0                                                                                            |
+| Activity storage / state         | SQLite 58.0.13 private journal; AsyncStorage 2.2.0 completion/cache state; Zustand 5.0.15                            |
+| Optional accounts                | Supabase JS 2.118.0 Auth; Expo Apple Authentication, SecureStore and original Google Sign-In                         |
+| Connectivity / saving feedback   | NetInfo 12.0.1 / Sonner Native 0.27.0 / Sonner 2.0.8 web adapter                                                     |
+| React Native Web                 | 0.21.4; development/browser verification only                                                                        |
+| iOS                              | 16.4 minimum, Hermes; original iPhone 17 / iOS 26.4 smoke, retained Phase 07 QA device on iOS 26.5                   |
+| Fastify / Drizzle / pg           | 5.12.7 / 0.45.2 (kit 0.31.10) / 8.23.0                                                                               |
+| PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                                                          |
+| Tests                            | Vitest / coverage-v8 5.0.5; Jest 30.5.2, jest-expo 58.0.12, React Native Testing Library 14.1.0, test-renderer 1.3.0 |
 
-The React family is overridden to the Expo-supported version to prevent a test renderer from pulling an incompatible React. Expo Doctor validates the installed native set. Recheck the [Expo 57 reference](https://docs.expo.dev/versions/v57.0.0/) and [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/) as a set when upgrading. Do not update Worklets independently.
+React/React DOM and `test-renderer` have root overrides to preserve one compatible
+runtime and renderer across Expo, Router and Testing Library. The SDK 58 lockfile
+also hoists Expo Router/core/linking/Metro runtime so CLI route generation and Jest
+resolve the same versions after root `npm ci`; do not add test-only resolution
+aliases or duplicate native runtime dependencies. Expo Doctor validates the installed
+native set. Recheck the [Expo 58 reference](https://docs.expo.dev/versions/v58.0.0/)
+and [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/)
+as a set when upgrading. Do not update Worklets independently.
+
+SDK 58 adds iOS scene lifecycle integration and requires a new development binary;
+SDK 57 clients cannot load this JavaScript runtime. The signed upgrade build and
+remaining device/release gates are recorded in the
+[native-upgrade handoff](../handoffs/phase-14-native-upgrade.md). The iOS minimum
+remains 16.4. File export/import now awaits SDK 58's asynchronous write/read APIs
+before sharing, checking ownership or closing the file handle.
 
 Android is excluded from app platforms and has no package identifier, EAS profile, signing or test evidence. Shared dependencies do not establish Android support. When scheduled, select the SDK's Android minimum/target/compile levels, JDK/Gradle, New Architecture and recovery adapter together, and recheck current Play requirements. Do not infer an Android release promise from the Expo template.
 

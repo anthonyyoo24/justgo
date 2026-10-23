@@ -2,7 +2,7 @@
 
 # Phase 14 — Release validation & launch
 
-**Status:** Hosted owner-device prerequisite ready; beta/release acceptance not started
+**Status:** Hosted owner-device prerequisite ready; SDK 58 prerequisite implemented locally with device acceptance open; beta/release acceptance not started
 
 ## Outcome
 
@@ -29,7 +29,7 @@ A free TestFlight beta validates the complete core product; payment activation a
 - Before real testers, complete and verify the revised Phase 13 guest/provider-account cutover: guest journal data stays out of JustGO API traffic; signed-in journal sync is explicitly disclosed, authenticated and account-isolated; no private content enters diagnostics/analytics. Verify guest migration, logout/local retention, complete import/export, real iCloud sync and deletion without resurrection. Reassess Vercel/Supabase processing for signed-in private journal payloads; the earlier completion-only assessment does not close that gate. Preserve the approved old-server-reflection reset scope, local data and account ownership. Preserve JustGO's opt-out/no-contact direction and separate hosting eligibility/purchase/deployment permissions.
 - Complete Phase 13's revised privacy/provider assessment against verified guest local use, signed-in cloud journal collection, provider account information, optional private iCloud sync and manual backup files. Reassess the prepared cloud-journal health supplement against actual signed-in processing before choosing any extra public policy link. Keep appropriate request/appeal, support, provider-protection and legacy-copy deletion/expiry handling. Preserve country exclusions, long-lived credential safeguards and absence of legal receipts. Review changed public text before publication.
 - Collect feedback and resolve beta-blocking issues. Record the build/commit, tester access policy, device evidence and remaining paid-only checks in the Phase 14 handoff. A beta does not establish paid-launch acceptance.
-- Before the beta build, complete the Expo SDK 58 / React Native 0.88 upgrade as its own native-upgrade task, with a new signed development build and a device recheck of affected native behavior [STK-2].
+- Before the beta build, complete the separate Expo SDK 58 / React Native 0.88 prerequisite [STK-2]. Its [native-upgrade handoff](../handoffs/phase-14-native-upgrade.md) records the local implementation, signed development build, remaining phone checks and upstream dependency advisories. Installation alone does not close affected native behavior acceptance.
 - Re-review the Phase 11 native Sentry privacy plugin when the supported SDK/Cocoa version changes during that upgrade. Preserve both payload allowlists and verify signed-build crash/restart delivery, native envelope headers and event bodies, source maps/dSYMs and cached-crash release attribution; browser delivery does not establish these gates.
 - Set the app icon and splash in `app.config.ts` from the existing `assets/icon.png` and `assets/splash-icon.png`, embed Inter through the `expo-font` config plugin, and keep the splash visible until fonts and providers are ready [RTR-5].
 - Automate release steps [CI-6, CI-7]: switch `eas.json` to remote app versions with `autoIncrement` on the production profile; pin the EAS CLI version; build and submit to TestFlight from a tag; run migrations through a protected workflow with manual approval and a log; and smoke-check `/ready` after each deploy. These workflows still need the existing separate authorization before any upload or deployment.

@@ -2,11 +2,16 @@
 
 ## Status
 
-The local continuity/Settings, working-login and private iCloud implementation is
-ready for PR review. The API dependency-audit scope fix passes locally; exact
-hosted results are recorded on [PR #43](https://github.com/anthonyyoo24/justgo/pull/43).
-Mobile/tooling dependency advisories remain separate pre-release
-work. The October 23 revision removes the rejected recovery
+The continuity/Settings, working-login and private iCloud implementation passed
+reviewed-candidate hosted checks on [PR #43](https://github.com/anthonyyoo24/justgo/pull/43).
+Both Phase 13 PRs are merged, but #43 targeted `codex/phase-13-data-foundation`
+after [#44](https://github.com/anthonyyoo24/justgo/pull/44) had already merged that
+branch into `main`. GitHub `main` at `f7c7a69` therefore still lacks the refinements.
+Local integration `32c66ff` on `codex/phase-13-integration` merges the reviewed
+foundation head `cb8b89c`; its tree exactly matches reviewed candidate `a3a3be2`.
+Remote integration remains pending specific owner Git authorization. The separate
+[SDK 58 prerequisite](phase-14-native-upgrade.md) builds on that integration and
+owns the updated dependency-health evidence. The October 23 revision removes the rejected recovery
 clear flow and retains phone data when the iCloud copy is removed externally;
 its focused automated checks pass. The compatible bridge has been exercised on
 the phone for upload/readback, sync-off isolation, catch-up and restart; actual
@@ -323,7 +328,8 @@ The nine mobile/tooling advisories are not patched by this scope correction and
 remain pre-public-release work for the implementation/dependency owner and Phase
 14 release owner. Native/SDK upgrades require a separate task. API audit acceptance
 does not establish all-mobile dependency health or inspect the deployed Vercel
-artifact. PR #43 is ready for review; it has not been merged or accepted for release.
+artifact. PR #43's subsequent merge into the foundation branch and the remaining
+`main` integration are recorded in the status above; release acceptance remains open.
 
 Earlier Phase 13 candidate verification used pinned Node 24/npm 11 and sequential
 heavy checks:
@@ -385,8 +391,8 @@ owner and the Phase 14 release owner before release.
 | Native Download/Import/deletion                       | Anthony and implementation owner with Phase 14 release owner, deferred before release | Files/share cancellation/cleanup, complete native import/export, both confirmation actions, remote deletion while sync off/unavailable and lost acknowledgements. Automated evidence does not replace these checks.                                                                                                                                                                                                                                                            |
 | Hosted migration and old-client cutover               | Anthony plus release owner before testers                                             | 0019–0023, protected rehearsal and matching staged API are complete; still verify existing-phone migration, real Auth erasure/revocation, incompatible-client retirement and deletion-aware recovery acceptance.                                                                                                                                                                                                                                                               |
 | Public notices/provider/retention                     | Anthony plus privacy/release owner before public distribution                         | Review unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending. The external-deletion revision retains the existing optional-iCloud data flow; do not imply that Apple Settings deletion also erases phone data.                                                                                                                                                                                         |
-| Mobile/tooling dependency health                      | Implementation/dependency owner and Phase 14 release owner, before public release     | Resolve the nine mobile/tooling advisories reported through the shared Expo graph. The corrected API production audit does not establish mobile dependency health; native/SDK upgrades require a separate task.                                                                                                                                                                                                                                                                |
-| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Current local full checks, coverage, 43 journeys and exports/smoke pass. Verify exact hosted candidate CI on PR #43; retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and purchases/guest paid-admission release gates.                                                                                                                                                                                                          |
+| Mobile/tooling dependency health                      | Implementation/dependency owner and Phase 14 release owner, before public release     | Follow the separate [SDK 58 handoff](phase-14-native-upgrade.md) for compatible patches and remaining upstream advisories. The corrected API production audit does not establish mobile dependency health.                                                                                                                                                                                                                                                                     |
+| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Reviewed Phase 13 candidate checks are recorded above. Finish the separate `main` integration; retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and purchases/guest paid-admission release gates.                                                                                                                                                                                                                                |
 
 Local implementation closeout and the owner's deferrals do not establish release
 acceptance. Preserve the named gates when carrying the candidate into Phase 14.

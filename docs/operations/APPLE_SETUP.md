@@ -42,6 +42,20 @@ secure storage and logout/deletion acceptance remain open.
 
 ## Revised Phase 13 native prerequisites
 
+**SDK 58 replacement client:** Development build
+[e9a503b3](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/e9a503b3-d1d9-4e69-abdf-aa7630b1888e)
+finished October 23 and was installed in place on the registered iPhone through
+`devicectl`. It upgrades Expo to 58 / React Native 0.88 / React 19.3 and includes
+the new scene lifecycle. Signed IPA verification confirms the existing bundle/team,
+registered device, Apple/Google configuration, approved CloudKit-only Production
+container and mandatory `readRetainingLocal` bridge. The default per-app Keychain
+identity is preserved; actual credential/history continuity and affected phone
+behavior still need verification. Earlier SDK 57 binaries cannot load the new
+runtime. Use the current SDK 58 Metro server with a cleared cache. Exact build,
+source/archive attribution, checks and remaining gates are in the separate
+[native-upgrade handoff](../handoffs/phase-14-native-upgrade.md). Earlier phone
+evidence below remains historical, not automatic acceptance of this SDK.
+
 **Configured iCloud testing binary:** The internal development build
 [1a1174d6](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/1a1174d6-160a-48ef-8a0e-4ffccfbc1590)
 finished successfully. Downloaded IPA/signature inspection confirms the approved

@@ -90,7 +90,7 @@ objects, unnecessary assertions and redundant unions to production TypeScript. N
 assertions warn. Mobile React rules protect list keys, nested component definitions
 and leaked conditional rendering. Testing Library rules require awaited async
 queries/utilities and reject awaited synchronous queries or promises passed to
-`fireEvent`; native renderer `findByType` inspection remains synchronous. Focused
+`fireEvent`; host renderer inspection remains synchronous. Focused
 lint fixtures prove that each configured rule detects its intended failure.
 
 Relative imports in API/contracts TypeScript use `.js` for NodeNext's emitted
@@ -188,6 +188,18 @@ justified change with before/after evidence and review uncovered behavior: execu
 a schema declaration does not establish input rejection or ownership isolation.
 
 ## Async tests and boundary regressions
+
+React Native Testing Library 14 uses `test-renderer`, with asynchronous `render`,
+`renderHook`, events, `act`, rerenders and unmounts. Await these operations and
+Router test navigation; do not hide unfinished updates behind synchronous helpers
+or a global async notifier callback that its caller cannot await. Prefer accessible
+host queries. SDK 58 web stacks retain inactive screens in the DOM; use role/name
+queries to assert the active accessible screen instead of matching hidden text.
+The authored SVG host fixture permits geometry assertions at that explicit
+boundary without inspecting composite implementation instances. The modal web
+adapter test creates a narrow JSDOM document in the Node test environment because
+RN 0.88's preset conflicts with Jest 30's nonconfigurable jsdom window property.
+It still exercises real DOM isolation and restores the document after each test.
 
 Provider tests mount the actual provider/controller/client with controllable
 vault/fetch/AppState boundaries. Fake timers govern expiry/polling. Unmount,

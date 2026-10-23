@@ -21,14 +21,14 @@ recommendations are checked separately by the pinned Doctor command.
 
 | Responsibility                   | Installed technology                                                                          |
 | -------------------------------- | --------------------------------------------------------------------------------------------- |
-| Mobile runtime                   | Expo SDK 57, React 19.2, React Native 0.86, strict TypeScript                                 |
+| Mobile runtime                   | Expo SDK 58, React 19.3, React Native 0.88, strict TypeScript                                 |
 | Navigation and native builds     | Expo Router, development client, EAS configuration, Continuous Native Generation              |
 | Native gestures and motion       | Gesture Handler, Reanimated 4, compatible Worklets                                            |
 | UI, art and detail sheets        | React Native StyleSheet/tokens, SVG, Expo Image/Font, Gorhom Bottom Sheet, safe-area context  |
 | Remote reads                     | TanStack Query 5, account-scoped in-memory queries                                            |
 | Live activity state              | Zustand 5 without persistence middleware                                                      |
 | Completion/cache persistence     | AsyncStorage 2.2 with versioned completion/catalog/deck-preference envelopes                  |
-| Private journal persistence      | Expo SQLite 57.0.4 with per-account databases; IndexedDB development-browser adapter          |
+| Private journal persistence      | Expo SQLite 58.0.13 with per-account databases; IndexedDB development-browser adapter         |
 | Connectivity and saving feedback | NetInfo, Sonner Native and the Sonner web adapter                                             |
 | Optional account sign-in         | Supabase Auth, native Expo Apple Authentication and original Google Sign-In integration       |
 | Managed session storage          | Chunked Expo SecureStore; legacy Swift Keychain proofs retained for internal migration        |
@@ -233,8 +233,8 @@ owned by [Phase 07A](../implementation-plan/phase-07a-billing.md). The optional
 [Stripe checkout](../proposals/optional-stripe-checkout.md) and future
 [text coach](../proposals/future-text-coach.md) are separate proposals.
 
-Product analytics remains uninstalled and disabled. Sentry React Native 7.11.0
-(Expo 57's supported version, Cocoa 8.58.0) is installed for errors only under
+Product analytics remains uninstalled and disabled. Sentry React Native 8.28.0
+(Expo 58's supported version, Cocoa 9.29.0) is installed for errors only under
 `anthony-corp` / `justgo-mobile` in the US region. The ordinary app environment
 keeps delivery disabled pending matching notices/provider review and signed-build
 acceptance. Anthony approved the minimal Policy-only startup scope before app
