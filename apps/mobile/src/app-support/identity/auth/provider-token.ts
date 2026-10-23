@@ -50,8 +50,9 @@ export async function nativeProviderToken(
     const response = await GoogleSignin.signIn();
     if (!isSuccessResponse(response)) return null;
     if (!response.data.idToken) throw new ProviderAuthError('AUTH');
-    // The original Google iOS SDK owns its OAuth request. It exposes no custom
-    // nonce option; retain Supabase's nonce checks and never disable validation.
+    // This original iOS wrapper cannot supply or return the SDK's nonce.
+    // Supabase's supported setup requires Google Skip nonce check for this path;
+    // Apple keeps its independently supplied nonce and normal verification.
     return { token: response.data.idToken };
   } catch (error) {
     if (isErrorWithCode(error) && error.code === statusCodes.SIGN_IN_CANCELLED)
