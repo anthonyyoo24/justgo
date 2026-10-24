@@ -677,6 +677,16 @@ challenge, its result and unsaved reflection to finish within the same collectio
 identity and deletion guards remain in force. This beta policy does not activate
 the separate paid-access rules in Phase 07A or authorize distribution/deployment.
 
+## October 24 offline-artwork check waived
+
+After confirming venue and Success illustrations return online, Anthony chose to
+trust the inspected packaging and skip a separate packaged-build offline-image
+check. The installed development client fetches those images from Metro; the
+production iOS export contains all required venue variants, paper texture and
+Success artwork. Record the physical offline-artwork check as owner-waived and
+unverified, rather than passed, and proceed with other Phase 14 work. This does
+not waive cold offline launch, data-safety, privacy or other release gates.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.
