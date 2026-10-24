@@ -44,7 +44,13 @@ export function createAppRuntime<
   const access = new AccessStore(apiOrigin(url), storage);
   const managed = identity instanceof ManagedIdentityController;
   const activity = new ActivityRuntime(client, storage, { managed, url });
-  identity.setAccountDataRemover(activity.deleteAccount);
+  identity.setAccountDataRemover(async (owner) => {
+    if (access.getSnapshot().owner?.id === owner) access.changeOwner(null);
+    // Permission metadata shares the erased namespace. Finish its pending writes
+    // before erasing, so a late recovery record cannot recreate an old owner key.
+    await access.settled();
+    await activity.deleteAccount(owner);
+  });
   if (identity instanceof ManagedIdentityController) {
     identity.setGuestDataMerger(activity.mergeGuestData);
     identity.setGuestDataRetirer(activity.retireGuestData);

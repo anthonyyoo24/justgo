@@ -158,9 +158,23 @@ and iCloud adoption do not copy admission metadata. Slow or failed optional cach
 writes do not block live approval or hold the query's later online rechecks open;
 persistence failures cannot promise approval survives restart.
 
-A successful non-approval response clears the old beta approval. Owner/mode
-changes, logout, provider detachment and deletion fence late reads/responses/writes
-and remove prior metadata. Offline account restoration may retain local admission
+Offline recovery requires the cached approval and a separate recovery record
+containing exactly the same serialized bytes. Legacy caches without that matching
+record need one fresh online approval; journal history is unaffected. A successful
+non-approval response closes live admission immediately and writes a durable
+denial independently of optional cache writes/deletion. Once that denial commits,
+failed cleanup or an older pending cache write cannot restore approval on restart.
+A fresh approved cache must commit before its matching recovery record, and both
+completion steps check the current owner and accepted-decision revision. Merely
+starting a later poll does not supersede an accepted decision when its transport
+fails. Storage failures remain visible through the safe storage status; a process
+stopping before any new storage commit cannot make a memory-only decision durable.
+
+Owner/mode changes, logout, provider detachment and deletion fence late reads,
+responses and writes, invalidate the old recovery record and remove old approval
+bytes where possible. Account erasure fences the matching access owner and drains
+both storage queues, including dependent proof work, before erasing its namespace;
+late permission writes cannot recreate deleted owner metadata. Offline account restoration may retain local admission
 without an authenticated session; account access reads and cloud sync wait for
 real session verification. A remote revocation takes effect on the next successful
 online check; an offline approval never exceeds its expiry.

@@ -12,7 +12,7 @@ import { AppState, Text, type AppStateStatus } from 'react-native';
 import { focusManager } from '@tanstack/react-query';
 import { z } from 'zod';
 import { type AccessResponse, type SessionResponse } from '@justgo/contracts';
-import { card } from '../../../test-support/journal';
+import { card, deferred } from '../../../test-support/journal';
 import { venues } from '@justgo/contracts';
 import { accountKey } from '../../lib/network/account-client';
 import { createIdentityApi } from '../identity/api';
@@ -594,6 +594,74 @@ it('requires a provider for runtime consumers', async () => {
     'AppProvider is required',
   );
 });
+
+it.each(['selected', 'already fenced'] as const)(
+  'drains late access proof writes before erasing the %s account namespace',
+  async (selection) => {
+    const configure = jest.spyOn(controller, 'setAccountDataRemover');
+    await mount();
+    await runtime.access.settled();
+    const removeData = configure.mock.calls[0]![0];
+    const blocked = deferred<void>();
+    const proofStarted = deferred<void>();
+    const persist = asyncStorageJournalStorage.setItem;
+    jest
+      .spyOn(asyncStorageJournalStorage, 'setItem')
+      .mockImplementation(async (key, value) => {
+        if (key.endsWith(':recovery') && value !== 'denied:v1') {
+          proofStarted.resolve();
+          await blocked.promise;
+        }
+        await persist(key, value);
+      });
+    const erase = jest
+      .spyOn(runtime.activity, 'deleteAccount')
+      .mockImplementation(async (owner) => {
+        for (const key of (await asyncStorageJournalStorage.getAllKeys?.()) ??
+          []) {
+          if (key.startsWith(`justgo:v1:${owner}:`))
+            await asyncStorageJournalStorage.removeItem(key);
+        }
+      });
+    let saving!: Promise<void>, removing!: Promise<void>;
+    await act(async () => {
+      const lease = runtime.access.beginRequest({
+        id: userId,
+        kind: 'account',
+      })!;
+      saving = runtime.access.receive(
+        lease,
+        {
+          status: 'verified',
+          source: 'free_beta',
+          checkedAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        },
+        Date.now(),
+      );
+      await proofStarted.promise;
+    });
+    try {
+      await act(() => {
+        if (selection === 'already fenced') runtime.access.changeOwner(null);
+        removing = removeData(userId);
+      });
+      expect(runtime.access.getSnapshot().owner).toBeNull();
+      expect(erase).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => {
+        blocked.resolve();
+        await Promise.all([saving, removing]);
+      });
+    }
+    expect(erase).toHaveBeenCalledWith(userId);
+    expect(
+      ((await asyncStorageJournalStorage.getAllKeys?.()) ?? []).filter((key) =>
+        key.startsWith(`justgo:v1:${userId}:`),
+      ),
+    ).toEqual([]);
+  },
+);
 
 it('initializes and refreshes account activity without legal receipt requests or a tracking runtime', async () => {
   const screen = await mount();

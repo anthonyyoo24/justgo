@@ -25,6 +25,8 @@ const other: AccessOwner = { id: 'another-account', kind: 'account' };
 const guest: AccessOwner = { ...account, kind: 'guest' };
 const accessKey = (owner: AccessOwner) =>
   accountKey(owner.id, 'access', owner.kind);
+const cacheKey = (owner: AccessOwner) =>
+  `justgo:v1:${owner.id}:access:${owner.kind}:${encodeURIComponent(origin)}`;
 const beta = (
   expiresAt = start + 3_600_000,
   checkedAt = Date.now(),
@@ -86,11 +88,13 @@ async function setup({
   });
   clients.push(client);
   const values = new Map<string, string>();
-  if (cached && owner)
-    values.set(
-      `justgo:v1:${owner.id}:access:${owner.kind}:${encodeURIComponent(origin)}`,
-      JSON.stringify(createBetaApproval(cached, origin, owner, Date.now())),
+  if (cached && owner) {
+    const raw = JSON.stringify(
+      createBetaApproval(cached, origin, owner, Date.now()),
     );
+    values.set(cacheKey(owner), raw);
+    values.set(`${cacheKey(owner)}:recovery`, raw);
+  }
   const storage = {
     getItem: jest.fn(async (key: string) => {
       if (readFails) throw new Error('Synthetic read failure');
@@ -226,12 +230,19 @@ it('finishes first-use cold-account loading without granting access and refetche
 it('admits a fresh server-approved tester while its optional cache write is still pending', async () => {
   const ctx = await setup();
   const write = deferred<void>();
-  ctx.storage.setItem.mockReturnValueOnce(write.promise);
+  const persist = ctx.storage.setItem.getMockImplementation()!;
+  ctx.storage.setItem.mockImplementation(async (key, value) => {
+    if (key === cacheKey(account)) await write.promise;
+    await persist(key, value);
+  });
   ctx.fetcher.mockResolvedValueOnce(json(beta()));
   const hook = await ctx.mount();
   try {
     await waitFor(() => {
-      expect(ctx.storage.setItem).toHaveBeenCalledTimes(1);
+      expect(ctx.storage.setItem).toHaveBeenCalledWith(
+        cacheKey(account),
+        expect.any(String),
+      );
       expect(hook.result.current.isFetching).toBe(false);
     });
     expect(hook.result.current.verified).toBe(true);
@@ -244,18 +255,21 @@ it('admits a fresh server-approved tester while its optional cache write is stil
 });
 
 it('completes an explicit denial recheck before an older optional cache write finishes', async () => {
-  const ctx = await setup();
+  const ctx = await setup({ cached: beta() });
   const write = deferred<void>();
   const persist = ctx.storage.setItem.getMockImplementation()!;
-  ctx.storage.setItem.mockImplementationOnce(async (key, value) => {
-    await write.promise;
+  ctx.storage.setItem.mockImplementation(async (key, value) => {
+    if (key === cacheKey(account)) await write.promise;
     await persist(key, value);
   });
   ctx.fetcher.mockResolvedValueOnce(json(beta()));
   const hook = await ctx.mount();
   try {
     await waitFor(() => {
-      expect(ctx.storage.setItem).toHaveBeenCalledTimes(1);
+      expect(ctx.storage.setItem).toHaveBeenCalledWith(
+        cacheKey(account),
+        expect.any(String),
+      );
       expect(hook.result.current.isFetching).toBe(false);
     });
     expect(hook.result.current.verified).toBe(true);
@@ -270,32 +284,41 @@ it('completes an explicit denial recheck before an older optional cache write fi
     expect(canStartChallenge(ctx.client, ctx.store)).toBe(false);
     expect(ctx.store.getSnapshot().approval).toBeNull();
     expect(ctx.storage.removeItem).not.toHaveBeenCalled();
+    await waitFor(async () =>
+      expect(await ctx.storage.getItem(`${cacheKey(account)}:recovery`)).toBe(
+        'denied:v1',
+      ),
+    );
+    const restarted = new AccessStore(origin, ctx.storage, () => Date.now());
+    restarted.changeOwner(account);
+    await waitFor(() => expect(restarted.getSnapshot().hydrating).toBe(false));
+    expect(restarted.getSnapshot().approval).toBeNull();
   } finally {
     await act(() => write.resolve());
   }
 
   await waitFor(() => expect(ctx.storage.removeItem).toHaveBeenCalledTimes(1));
-  expect(
-    await ctx.storage.getItem(
-      `justgo:v1:${account.id}:access:account:${encodeURIComponent(origin)}`,
-    ),
-  ).toBeNull();
+  expect(await ctx.storage.getItem(cacheKey(account))).toBeNull();
   expect(ctx.store.getSnapshot().approval).toBeNull();
 });
 
 it('keeps a pending offline cache read visible as loading until its approval is hydrated', async () => {
   const ctx = await setup({ owner: null, online: false });
   const pending = deferred<string | null>();
-  ctx.storage.getItem.mockReturnValueOnce(pending.promise);
+  const raw = JSON.stringify(
+    createBetaApproval(beta(), origin, account, Date.now()),
+  );
+  const read = ctx.storage.getItem.getMockImplementation()!;
+  ctx.storage.getItem.mockImplementation(async (key) => {
+    if (key === cacheKey(account)) return pending.promise;
+    if (key === `${cacheKey(account)}:recovery`) return raw;
+    return read(key);
+  });
   const hook = await ctx.mount();
   await act(() => ctx.select(account));
   expect(hook.result.current.isPending).toBe(true);
   expect(hook.result.current.verified).toBe(false);
-  await act(() =>
-    pending.resolve(
-      JSON.stringify(createBetaApproval(beta(), origin, account, Date.now())),
-    ),
-  );
+  await act(() => pending.resolve(raw));
   expect(hook.result.current.isPending).toBe(false);
   expect(hook.result.current.verified).toBe(true);
   expect(ctx.fetcher).not.toHaveBeenCalled();
