@@ -687,6 +687,13 @@ Success artwork. Record the physical offline-artwork check as owner-waived and
 unverified, rather than passed, and proceed with other Phase 14 work. This does
 not waive cold offline launch, data-safety, privacy or other release gates.
 
+## October 24 TestFlight display name
+
+Anthony selected **JustGo: Ditch Dating Apps** for the existing App Store Connect
+record. Preserve app `6821022390`, bundle `com.anthonyyoo.justgo`, existing Apple
+team and Expo project; this is a store-name update, not a new app/account or a
+change to local journal ownership. The installed app retains the JustGO name.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.
