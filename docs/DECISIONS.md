@@ -658,6 +658,25 @@ implementation owner and the Phase 14 release owner. Single-phone on/off,
 catch-up and restart results do not establish either deferred case; the earlier
 manual, privacy and release deferrals remain in force.
 
+## October 24 beta access while offline
+
+Anthony chose to let previously approved free-beta testers start challenges offline
+until their server-issued beta access expires. The phone retains only a fresh
+`free_beta` approval, scoped to its canonical account or guest collection, access
+mode and API origin. First use still needs a server approval; expiry grants no
+extra grace. Saved history remains available. An authoritative online denial,
+explicit logout, provider detachment, account switch or deletion invalidates the
+old local approval. An offline tester cannot discover a remote revocation until
+reconnecting, so beta expiry remains the offline limit.
+
+Transient offline restoration of an account-owned journal may read that same
+account's saved beta approval without creating an authenticated session or enabling
+cloud requests. Challenge admission checks the live clock and current owner at the
+Accept action. Expiry blocks new starts while allowing an already-admitted
+challenge, its result and unsaved reflection to finish within the same collection;
+identity and deletion guards remain in force. This beta policy does not activate
+the separate paid-access rules in Phase 07A or authorize distribution/deployment.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.

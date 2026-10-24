@@ -2,6 +2,10 @@ import { render } from '@testing-library/react-native';
 import HomeRoute from '../../app/(tabs)/index';
 let mockVerified = false;
 let mockPending = false;
+let mockActive = false;
+jest.mock('../../features/challenges/active/ChallengeActivityProvider', () => ({
+  useChallengeActivity: () => ({ active: mockActive ? {} : null }),
+}));
 jest.mock('../providers/AppProvider', () => ({
   useAccess: () => ({ verified: mockVerified, isPending: mockPending }),
 }));
@@ -26,6 +30,16 @@ jest.mock('./AccessScreen', () => ({
 beforeEach(() => {
   mockVerified = false;
   mockPending = false;
+  mockActive = false;
+});
+it('keeps an already-started challenge mounted across admission expiry', async () => {
+  mockActive = true;
+  const screen = await render(<HomeRoute />);
+  expect(screen.getByText('Challenge admission')).toBeTruthy();
+  expect(screen.queryByText('Fresh access required')).toBeNull();
+  mockActive = false;
+  await screen.rerender(<HomeRoute />);
+  expect(screen.getByText('Fresh access required')).toBeTruthy();
 });
 it('keeps startup outside the tab scene until access is verified', async () => {
   mockPending = true;

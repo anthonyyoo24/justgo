@@ -6,11 +6,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Text, View } from 'react-native';
-import {
-  AppProvider,
-  useAccess,
-  useIdentity,
-} from '../app-support/providers/AppProvider';
+import { AppProvider, useIdentity } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
 import { AppLoadingScreen } from '../app-support/loading/AppLoadingScreen';
@@ -70,7 +66,6 @@ export default function RootLayout() {
   );
 }
 function Navigation() {
-  const access = useAccess();
   const identity = useIdentity();
   const deleted = identity.deletionStatus === 'deleted';
   const awaitingAccess = useWelcomeTransition();
@@ -124,7 +119,8 @@ function Navigation() {
           !identity.deletionStatus &&
           !welcome &&
           !awaitingAccess &&
-          access.verified
+          (!!identity.account ||
+            ('collectionId' in identity && !!identity.collectionId))
         }
       >
         <Stack.Screen

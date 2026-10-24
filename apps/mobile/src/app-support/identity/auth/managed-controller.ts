@@ -75,6 +75,8 @@ export class ManagedIdentityController {
   private active = true;
   private networkBlocked = false;
   private verifiedOwner = false;
+  private providerDetached = false;
+  private providerGeneration = 0;
   private readonly lifetime = new AbortController();
   private readonly listeners = new Set<() => void>();
   private removeData: ((owner: string) => Promise<void>) | null = null;
@@ -115,17 +117,23 @@ export class ManagedIdentityController {
   constructor(private readonly options: Options) {
     this.vault = options.legacyVault;
     this.unsubscribeAuth = options.auth.subscribe((session) => {
+      const hadLocalAdmission = this.offlineAccountOwner() !== null;
       this.providerSession = session;
-      if (
-        this.snapshot.account &&
-        this.snapshot.account.authUserId !== session?.authUserId
-      )
-        this.publish({
-          account: null,
-          mode: 'signed-out',
-          linkedProviders: [],
-        });
-      else if (this.snapshot.account)
+      const expectedAuthOwner =
+        this.snapshot.account?.authUserId ??
+        (this.data?.mode === 'account' ? this.data.account?.authUserId : null);
+      if (expectedAuthOwner && expectedAuthOwner !== session?.authUserId) {
+        this.providerDetached = true;
+        this.providerGeneration++;
+        // Deletion/logout already fenced the owner. Publishing it again after
+        // local erasure could reactivate and reopen the just-deleted journal.
+        if (this.snapshot.account || hadLocalAdmission)
+          this.publish({
+            account: null,
+            mode: 'signed-out',
+            linkedProviders: [],
+          });
+      } else if (this.snapshot.account)
         this.publish({ linkedProviders: session?.linkedProviders ?? [] });
     });
   }
@@ -161,6 +169,22 @@ export class ManagedIdentityController {
       !this.data?.logoutPending &&
       !this.data?.deletion
       ? { userId: account.userId, token: this.providerSession.accessToken }
+      : null;
+  };
+  /** Local admission scope only; this never supplies a session or enables sync. */
+  offlineAccountOwner = () => {
+    const state = this.data;
+    return state?.mode === 'account' &&
+      state.collection.kind === 'account' &&
+      state.account?.userId === state.collection.id &&
+      !this.networkBlocked &&
+      !this.providerDetached &&
+      !state.logoutPending &&
+      !state.deletion &&
+      !state.pendingSignIn &&
+      (!this.providerSession ||
+        this.providerSession.authUserId === state.account.authUserId)
+      ? state.collection.id
       : null;
   };
   rejectSession = (token: string, code: 'SESSION_REVOKED' | 'UNAUTHORIZED') => {
@@ -408,6 +432,7 @@ export class ManagedIdentityController {
       await this.adopt(session);
     });
   private async adopt(session: ProviderSession) {
+    const providerGeneration = this.providerGeneration;
     const intent = this.state().pendingSignIn;
     if (!intent) throw new ProviderAuthError('AUTH');
     const legacy = await this.vault.read();
@@ -511,7 +536,13 @@ export class ManagedIdentityController {
     // Select the verified durable destination before erasing the old source.
     // A restart with unavailable Auth still displays that local journal.
     await this.finishGuestRetirement();
+    if (
+      providerGeneration !== this.providerGeneration ||
+      this.providerSession?.authUserId !== session.authUserId
+    )
+      throw new ApiError('ACCOUNT_CHANGED');
     this.networkBlocked = false;
+    this.providerDetached = false;
     this.verifiedOwner = true;
     this.publish({ provider: intent.provider });
     this.reconcile();
@@ -527,21 +558,29 @@ export class ManagedIdentityController {
     });
   }
   private async verify() {
-    if (!this.providerSession) throw new ProviderAuthError('AUTH');
+    const session = this.providerSession;
+    const providerGeneration = this.providerGeneration;
+    if (!session) throw new ProviderAuthError('AUTH');
     const account = await this.options.api.request(
       'GET',
       '/auth/session',
       managedSessionResponseSchema,
       undefined,
-      this.providerSession.accessToken,
+      session.accessToken,
       this.lifetime.signal,
     );
     if (
-      account.authUserId !== this.providerSession.authUserId ||
+      account.authUserId !== session.authUserId ||
       (this.state().account && account.userId !== this.state().account?.userId)
     )
       throw new ApiError('ACCOUNT_CHANGED');
     await this.save({ ...this.state(), account });
+    if (
+      providerGeneration !== this.providerGeneration ||
+      this.providerSession?.authUserId !== session.authUserId
+    )
+      throw new ApiError('ACCOUNT_CHANGED');
+    this.providerDetached = false;
     this.verifiedOwner = true;
     this.reconcile();
   }

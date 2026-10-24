@@ -173,8 +173,8 @@ database/tooling/bundle/native evidence rather than a misleading JS coverage cla
 | API (unit + database) |          82% |        84% |             83% |            76% |
 | Contracts             |          95% |        95% |             95% |            95% |
 
-Independent critical selectors protect the provider and native vault (95% branches/
-lines), account client (85%/95%), HTTP (82%/94%), Progress as a group (90%/92%),
+Independent critical selectors protect the provider, extracted access policy/store/hook
+and native vault (95% branches/lines), account client (85%/95%), HTTP (82%/94%), Progress as a group (90%/92%),
 identity/challenge services (85% branches), retired private PATCH boundary (95%/99%) and Progress
 resources (95%/96%). Controllers/storage retain their own floors. The JSON file
 owns exact paths and thresholds; a move must update its selector without lowering

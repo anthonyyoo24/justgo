@@ -17,6 +17,7 @@ let repository: AccountRepository;
 let controller: ChallengeController;
 let storage: MemoryStorage;
 const capture = {
+  canStart: () => true,
   now: () => Date.parse(`${today}T23:59:00Z`),
   timeZone: () => zone,
 };
@@ -219,3 +220,48 @@ it.each(['given_up', 'completed'] as const)(
     await screen.unmount();
   },
 );
+
+it('checks live admission when a queued accept arrives after expiry', async () => {
+  let permitted = true;
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, {
+      ...capture,
+      canStart: () => permitted,
+    }),
+  );
+  const queuedAccept = screen.result.current.onAction;
+  permitted = false;
+  await act(async () => queuedAccept(1));
+  expect(screen.result.current.active).toBeNull();
+  expect(mockFeedback).not.toHaveBeenCalled();
+  expect(repository.store.getState().journal.operations).toEqual([]);
+  permitted = true;
+  await act(async () => queuedAccept(1));
+  expect(screen.result.current.active).not.toBeNull();
+  await screen.unmount();
+});
+
+it('finishes an admitted challenge once after expiry with its original start', async () => {
+  let permitted = true;
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, {
+      ...capture,
+      canStart: () => permitted,
+    }),
+  );
+  await act(async () => screen.result.current.onAction(1));
+  permitted = false;
+  await act(async () => {
+    await screen.result.current.finish('completed');
+    await screen.result.current.finish('completed');
+  });
+  expect(Object.keys(repository.store.getState().journal.records)).toHaveLength(
+    1,
+  );
+  expect(repository.getAttempt(uuid(1))).toMatchObject({
+    startedAt: `${today}T23:59:00.000Z`,
+    startTimeZone: zone,
+  });
+  expect(mockFeedback.mock.calls).toEqual([['accept'], ['completed']]);
+  await screen.unmount();
+});

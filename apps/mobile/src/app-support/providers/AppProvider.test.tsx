@@ -1,3 +1,4 @@
+import { asyncStorageJournalStorage } from '../../data/activity/persistence/storage';
 import { listenToConnectivity } from '../../platform/connectivity/connectivity';
 import { useEffect } from 'react';
 import {
@@ -47,13 +48,21 @@ jest.mock('expo-crypto', () => {
 jest.mock('../../platform/connectivity/connectivity', () => ({
   listenToConnectivity: jest.fn(() => () => {}),
 }));
-jest.mock('../../data/activity/persistence/storage', () => ({
-  asyncStorageJournalStorage: {
-    getItem: async () => null,
-    setItem: async () => {},
-    removeItem: async () => {},
-  },
-}));
+jest.mock('../../data/activity/persistence/storage', () => {
+  const values = new Map<string, string>();
+  return {
+    asyncStorageJournalStorage: {
+      getAllKeys: async () => [...values.keys()],
+      getItem: async (key: string) => values.get(key) ?? null,
+      setItem: async (key: string, value: string) => {
+        values.set(key, value);
+      },
+      removeItem: async (key: string) => {
+        values.delete(key);
+      },
+    },
+  };
+});
 jest.mock('../identity/auth/create-managed-identity', () => ({
   createManagedIdentityController: jest.fn(),
 }));
@@ -118,6 +127,13 @@ async function mount() {
 async function receiveAccess(value: AccessResponse) {
   access = value;
   await act(async () => {
+    if (value.source === 'free_beta') {
+      const lease = runtime.access.beginRequest({
+        id: userId,
+        kind: 'account',
+      })!;
+      await runtime.access.receive(lease, value, Date.now());
+    }
     runtime.client.queries.setQueryData(
       accountKey(userId, 'access', 'account'),
       value,
@@ -127,6 +143,8 @@ async function receiveAccess(value: AccessResponse) {
 }
 
 beforeEach(async () => {
+  for (const key of (await asyncStorageJournalStorage.getAllKeys?.()) ?? [])
+    await asyncStorageJournalStorage.removeItem(key);
   // Control polling/freshness and flush scheduled notifications before restoring timers.
   jest.useFakeTimers({ doNotFake: ['performance', 'queueMicrotask'] });
   process.env.EXPO_PUBLIC_API_URL = 'http://localhost:3000';
@@ -554,9 +572,9 @@ it('restores a session while backgrounded without activating uploads until foreg
   AppState.currentState = 'background';
   try {
     const screen = await mount();
-    await waitFor(() =>
-      expect(screen.getByText('access verified')).toBeTruthy(),
-    );
+    // Inactive startup restores identity/history without starting access I/O.
+    expect(screen.getByText('access closed')).toBeTruthy();
+    expect(runtime.access.getSnapshot().active).toBe(false);
     expect(runtime.activity.getRepository()?.store.getState().active).toBe(
       false,
     );
@@ -610,3 +628,59 @@ it('keeps the owner-bound local collection after sign-out while stopping account
     runtime.client.request('/v1/test', z.unknown()),
   ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
+
+it.each(['api', 'provider'] as const)(
+  'restores an account beta approval through %s unavailability without authorizing cloud requests',
+  async (failure) => {
+    access = { ...access, source: 'free_beta' };
+    const first = await mount();
+    await waitFor(() =>
+      expect(first.getByText('access verified')).toBeTruthy(),
+    );
+    await waitFor(() => expect(runtime.client.queries.isFetching()).toBe(0));
+    await first.unmount();
+    await runtime.client.queries.cancelQueries();
+    runtime.client.queries.clear();
+    runtime.activity.dispose();
+    controller.dispose();
+    controller = new ManagedIdentityController({
+      auth,
+      storage: managedStorage,
+      legacyVault: vault,
+      api: createIdentityApi('http://localhost:3000', (...args) =>
+        fetch(...args),
+      ),
+      secureStorage: {
+        getItem: async () => null,
+        setItem: async () => {},
+        removeItem: async () => {},
+      },
+    });
+    jest.mocked(createManagedIdentityController).mockReturnValue(controller);
+    if (failure === 'provider')
+      jest.mocked(auth.initialize).mockRejectedValue(new Error('offline'));
+    fetcher.mockClear();
+    fetcher.mockRejectedValue(new Error('offline'));
+    const restarted = await mount();
+    await waitFor(() =>
+      expect(restarted.getByText('access verified')).toBeTruthy(),
+    );
+    expect(controller.currentSession()).toBeNull();
+    expect(runtime.client.ownsAccount(userId)).toBe(false);
+    expect(runtime.activity.getRepository()?.store.getState().dataMode).toBe(
+      'local',
+    );
+    expect(runtime.access.getSnapshot()).toMatchObject({
+      owner: { id: userId, kind: 'account' },
+      authenticated: false,
+    });
+    await act(async () => jest.advanceTimersByTimeAsync(61_000));
+    expect(restarted.getByText('access verified')).toBeTruthy();
+    expect(
+      fetcher.mock.calls.some(([url]) => String(url).endsWith('/access')),
+    ).toBe(false);
+    await act(async () => controller.signOut());
+    expect(restarted.getByText('access closed')).toBeTruthy();
+    expect(runtime.access.getSnapshot().approval).toBeNull();
+  },
+);

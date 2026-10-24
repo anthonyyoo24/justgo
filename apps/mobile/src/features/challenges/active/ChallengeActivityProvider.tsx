@@ -37,8 +37,10 @@ export function ChallengeActivityProvider({ children }: PropsWithChildren) {
 }
 
 function AccountActivity({ children }: PropsWithChildren) {
-  const { challenges } = useRuntime();
-  const activity = useActiveChallenge(challenges);
+  const { challenges, canStartChallenge } = useRuntime();
+  const activity = useActiveChallenge(challenges, {
+    canStart: canStartChallenge,
+  });
   const [presentedStart, setPresentedStart] = useState<ChallengeStart | null>(
     null,
   );

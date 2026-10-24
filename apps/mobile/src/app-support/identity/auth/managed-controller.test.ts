@@ -157,6 +157,7 @@ function setup() {
 
 it('enters a durable guest collection without creating a server or Auth account', async () => {
   const ctx = setup();
+  expect(ctx.controller.offlineAccountOwner()).toBeNull();
   await ctx.controller.initialize();
   expect(ctx.controller.getSnapshot()).toMatchObject({
     mode: 'welcome',
@@ -171,6 +172,7 @@ it('enters a durable guest collection without creating a server or Auth account'
     collectionKind: 'guest',
   });
   expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.offlineAccountOwner()).toBeNull();
   expect(ctx.calls).toEqual([]);
   expect(ctx.auth.signIn).not.toHaveBeenCalled();
   const restarted = ctx.create();
@@ -307,9 +309,11 @@ it('fences uploads immediately on offline logout, retains local ownership and re
   const ctx = setup();
   await ctx.controller.initialize();
   await ctx.controller.signIn('apple');
+  expect(ctx.controller.offlineAccountOwner()).toBe(account.userId);
   ctx.setFailure(new ApiError('NETWORK'));
   expect(await ctx.controller.signOut()).toBe(false);
   expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.offlineAccountOwner()).toBeNull();
   expect(ctx.controller.getSnapshot()).toMatchObject({
     mode: 'signed-out',
     collectionId: account.userId,
@@ -327,6 +331,7 @@ it('fences uploads immediately on offline logout, retains local ownership and re
     hasPending: false,
   });
   expect(ctx.auth.signOut).toHaveBeenCalledTimes(1);
+  expect(restarted.offlineAccountOwner()).toBeNull();
 });
 
 it('never treats another signed-out account collection as guest data to merge', async () => {
@@ -352,11 +357,251 @@ it('checks canonical owner with the API before making a stored session available
   const restarted = ctx.create();
   await restarted.initialize();
   expect(restarted.currentSession()).toBeNull();
+  expect(restarted.offlineAccountOwner()).toBeNull();
   expect(restarted.getSnapshot()).toMatchObject({
     mode: 'signed-out',
     account: null,
     collectionId: account.userId,
   });
+});
+
+it.each(['API', 'provider'] as const)(
+  'retains the saved local account scope without exposing a session when cold %s verification is unavailable',
+  async (boundary) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    ctx.controller.dispose();
+    ctx.calls.length = 0;
+    if (boundary === 'API') ctx.setFailure(new ApiError('NETWORK'));
+    else
+      ctx.auth.initialize.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+
+    const restarted = ctx.create();
+    try {
+      await restarted.initialize();
+      expect(restarted.getSnapshot()).toMatchObject({
+        initialized: true,
+        mode: 'signed-out',
+        account: null,
+        collectionId: account.userId,
+        collectionKind: 'account',
+      });
+      expect(ctx.saved()).toMatchObject({ mode: 'account', account });
+      expect(restarted.offlineAccountOwner()).toBe(account.userId);
+      expect(restarted.currentSession()).toBeNull();
+      expect(ctx.calls.map(({ method, path }) => ({ method, path }))).toEqual(
+        boundary === 'API' ? [{ method: 'GET', path: '/auth/session' }] : [],
+      );
+    } finally {
+      restarted.dispose();
+    }
+  },
+);
+
+it.each([
+  { change: 'missing', recovery: 'retry' },
+  { change: 'different', recovery: 'retry' },
+  { change: 'missing', recovery: 'sign in' },
+  { change: 'different', recovery: 'sign in' },
+] as const)(
+  'immediately fences an offline local owner after a $change provider event until a successful $recovery',
+  async ({ change, recovery }) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    ctx.controller.dispose();
+    ctx.setFailure(new ApiError('NETWORK'));
+    const restarted = ctx.create();
+    const notifyProvider = ctx.auth.subscribe.mock.lastCall![0];
+    try {
+      await restarted.initialize();
+      expect(restarted.getSnapshot().account).toBeNull();
+      expect(restarted.offlineAccountOwner()).toBe(account.userId);
+      const changed = jest.fn(() => restarted.offlineAccountOwner());
+      const unsubscribe = restarted.subscribe(changed);
+      try {
+        const requestsBefore = ctx.calls.length;
+        notifyProvider(
+          change === 'missing' ? null : { ...session, authUserId: uuid(999) },
+        );
+        expect(restarted.offlineAccountOwner()).toBeNull();
+        expect(restarted.currentSession()).toBeNull();
+        expect(changed).toHaveReturnedWith(null);
+        expect(ctx.calls).toHaveLength(requestsBefore);
+
+        // A matching cached provider event alone cannot undo the detach fence.
+        notifyProvider(session);
+        expect(restarted.offlineAccountOwner()).toBeNull();
+        expect(restarted.currentSession()).toBeNull();
+        ctx.setFailure(null);
+        if (recovery === 'retry') await restarted.retry();
+        else await restarted.signIn('apple');
+        expect(restarted.offlineAccountOwner()).toBe(account.userId);
+        expect(restarted.currentSession()).toEqual({
+          userId: account.userId,
+          token: session.accessToken,
+        });
+        expect(ctx.calls.at(-1)).toMatchObject({
+          method: recovery === 'retry' ? 'GET' : 'POST',
+          path: '/auth/session',
+        });
+      } finally {
+        unsubscribe();
+      }
+    } finally {
+      restarted.dispose();
+    }
+  },
+);
+
+it.each(['SESSION_REVOKED', 'UNAUTHORIZED'] as const)(
+  'clears local admission scope synchronously after %s without removing the selected journal',
+  async (code) => {
+    const ctx = setup();
+    try {
+      await ctx.controller.initialize();
+      await ctx.controller.signIn('apple');
+      expect(ctx.controller.offlineAccountOwner()).toBe(account.userId);
+      ctx.controller.rejectSession(session.accessToken, code);
+      expect(ctx.controller.offlineAccountOwner()).toBeNull();
+      expect(ctx.controller.currentSession()).toBeNull();
+      expect(ctx.controller.getSnapshot()).toMatchObject({
+        account: null,
+        collectionId: account.userId,
+        collectionKind: 'account',
+      });
+    } finally {
+      ctx.controller.dispose();
+    }
+  },
+);
+
+it.each([
+  { change: 'missing', operation: 'retry' },
+  { change: 'different', operation: 'retry' },
+  { change: 'missing', operation: 'sign in' },
+  { change: 'different', operation: 'sign in' },
+] as const)(
+  'keeps a newer $change provider fence when an older $operation finishes its final account write',
+  async ({ change, operation }) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    ctx.controller.dispose();
+    ctx.setFailure(new ApiError('NETWORK'));
+    const restarted = ctx.create();
+    await restarted.initialize();
+    expect(restarted.offlineAccountOwner()).toBe(account.userId);
+    expect(restarted.currentSession()).toBeNull();
+    const notifyProvider = ctx.auth.subscribe.mock.lastCall![0];
+    const writing = deferred<void>();
+    const release = deferred<void>();
+    const persist = ctx.storage.write.getMockImplementation()!;
+    ctx.storage.write.mockImplementation(async (next) => {
+      if (next.mode === 'account' && next.pendingSignIn === null) {
+        writing.resolve();
+        await release.promise;
+      }
+      await persist(next);
+    });
+    ctx.setFailure(null);
+    const pending =
+      operation === 'retry' ? restarted.retry() : restarted.signIn('apple');
+    try {
+      await writing.promise;
+      expect(ctx.calls.at(-1)).toMatchObject({
+        method: operation === 'retry' ? 'GET' : 'POST',
+        path: '/auth/session',
+      });
+      notifyProvider(
+        change === 'missing' ? null : { ...session, authUserId: uuid(999) },
+      );
+      expect(restarted.offlineAccountOwner()).toBeNull();
+      // Returning cached provider metadata cannot make the preceding online
+      // verification current again while its final write is still pending.
+      notifyProvider(session);
+      release.resolve();
+      await pending;
+      expect(restarted.offlineAccountOwner()).toBeNull();
+      expect(restarted.currentSession()).toBeNull();
+      expect(restarted.getSnapshot()).toMatchObject({
+        account: null,
+        collectionId: account.userId,
+        collectionKind: 'account',
+      });
+    } finally {
+      release.resolve();
+      await pending;
+      restarted.dispose();
+    }
+  },
+);
+
+it.each(['missing', 'different'] as const)(
+  'keeps a newer %s provider fence when an older adoption finishes retiring its guest source',
+  async (change) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    const retiring = deferred<void>();
+    const release = deferred<void>();
+    ctx.controller.setGuestDataRetirer(async () => {
+      retiring.resolve();
+      await release.promise;
+    });
+    const notifyProvider = ctx.auth.subscribe.mock.lastCall![0];
+    const pending = ctx.controller.signIn('apple');
+    try {
+      await retiring.promise;
+      expect(ctx.saved()).toMatchObject({
+        mode: 'account',
+        collection: { kind: 'account', id: account.userId },
+        guestAdoption: { ownerId: account.userId, status: 'copied' },
+      });
+      notifyProvider(
+        change === 'missing' ? null : { ...session, authUserId: uuid(999) },
+      );
+      expect(ctx.controller.offlineAccountOwner()).toBeNull();
+      notifyProvider(session);
+      release.resolve();
+      await pending;
+      expect(ctx.saved()?.guestAdoption?.status).toBe('consumed');
+      expect(ctx.controller.offlineAccountOwner()).toBeNull();
+      expect(ctx.controller.currentSession()).toBeNull();
+      expect(ctx.controller.getSnapshot().account).toBeNull();
+    } finally {
+      release.resolve();
+      await pending;
+      ctx.controller.dispose();
+    }
+  },
+);
+
+it('withholds offline scope during a pending provider sign-in and restores it after cancellation', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  expect(ctx.controller.offlineAccountOwner()).toBe(account.userId);
+  const pending = deferred<ProviderSession | null>();
+  const started = deferred<void>();
+  ctx.auth.signIn.mockImplementationOnce(() => {
+    started.resolve();
+    return pending.promise;
+  });
+  const signingIn = ctx.controller.signIn('google');
+  try {
+    await started.promise;
+    expect(ctx.saved()?.pendingSignIn?.provider).toBe('google');
+    expect(ctx.controller.offlineAccountOwner()).toBeNull();
+    pending.resolve(null);
+    await signingIn;
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.controller.offlineAccountOwner()).toBe(account.userId);
+  } finally {
+    pending.resolve(null);
+    await signingIn;
+    ctx.controller.dispose();
+  }
 });
 
 it('freezes deletion proof, commits the receipt before cleanup and resumes after local failure', async () => {
@@ -371,6 +616,7 @@ it('freezes deletion proof, commits the receipt before cleanup and resumes after
   await ctx.controller.deleteAccount();
   expect(ctx.controller.getSnapshot().deletionStatus).toBe('cleanup');
   expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.offlineAccountOwner()).toBeNull();
   expect(ctx.saved()?.deletion?.receipt?.userId).toBe(account.userId);
   expect([...ctx.stored.values()]).toEqual([session.accessToken]);
   await ctx.controller.retry();
@@ -382,6 +628,45 @@ it('freezes deletion proof, commits the receipt before cleanup and resumes after
     account: null,
   });
   expect(ctx.stored.size).toBe(0);
+});
+
+it('does not republish an erased account collection when provider sign-out emits a missing session', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const notifyProvider = ctx.auth.subscribe.mock.lastCall![0];
+  let removed = false;
+  const afterRemoval: ReturnType<ManagedIdentityController['getSnapshot']>[] =
+    [];
+  ctx.controller.setAccountDataRemover(async (owner) => {
+    expect(owner).toBe(account.userId);
+    removed = true;
+  });
+  ctx.auth.signOut.mockImplementationOnce(async () => {
+    expect(removed).toBe(true);
+    notifyProvider(null);
+  });
+  const unsubscribe = ctx.controller.subscribe(() => {
+    if (removed) afterRemoval.push(ctx.controller.getSnapshot());
+  });
+  try {
+    await ctx.controller.deleteAccount();
+    expect(ctx.auth.signOut).toHaveBeenCalledTimes(1);
+    expect(afterRemoval.length).toBeGreaterThan(0);
+    for (const snapshot of afterRemoval) {
+      expect(snapshot).toMatchObject({
+        mode: 'welcome',
+        account: null,
+        deletionStatus: 'deleted',
+      });
+      expect(snapshot.collectionId).not.toBe(account.userId);
+    }
+    expect(ctx.controller.offlineAccountOwner()).toBeNull();
+    expect(ctx.controller.currentSession()).toBeNull();
+  } finally {
+    unsubscribe();
+    ctx.controller.dispose();
+  }
 });
 
 it.each(['pending', 'cleanup'] as const)(
@@ -397,6 +682,7 @@ it.each(['pending', 'cleanup'] as const)(
     if (stage === 'pending') ctx.setFailure(new ApiError('NETWORK'));
     await ctx.controller.deleteAccount();
     expect(ctx.controller.getSnapshot().deletionStatus).toBe(stage);
+    expect(ctx.controller.offlineAccountOwner()).toBeNull();
     ctx.setFailure(null);
     ctx.auth.initialize
       .mockClear()
@@ -489,6 +775,7 @@ it('keeps a signout storage failure fenced from all subsequent authenticated req
   ctx.storage.write.mockRejectedValueOnce(new ProviderAuthError('STORAGE'));
   expect(await ctx.controller.signOut()).toBe(false);
   expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.offlineAccountOwner()).toBeNull();
   expect(ctx.controller.getSnapshot()).toMatchObject({
     mode: 'signed-out',
     account: null,

@@ -59,6 +59,7 @@ jest.mock('./saving/SavingFeedback', () => ({
 jest.mock('../features/challenges/active/ChallengeActivityProvider', () => ({
   ChallengeActivityProvider: ({ children }: { children: ReactNode }) =>
     children,
+  useChallengeActivity: () => ({ active: null }),
 }));
 jest.mock('../features/challenges/ChallengeScreen', () => {
   const { Text } = require('react-native') as typeof import('react-native');
@@ -186,12 +187,17 @@ it.each([
 );
 
 it.each(['/challenge', '/success', '/reflection'])(
-  'falls back from %s to /access when access is unavailable',
+  'keeps the owned %s flow mounted when access expires',
   async (initialUrl) => {
     mockSnapshot.access.verified = false;
     const navigation = await renderRouter(routes, { initialUrl });
-    expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
-    expect(navigation.getPathname()).toBe('/access');
+    const title = initialUrl.slice(1);
+    expect(
+      await screen.findByText(
+        `${title[0]!.toUpperCase()}${title.slice(1)} ready`,
+      ),
+    ).toBeTruthy();
+    expect(navigation.getPathname()).toBe(initialUrl);
   },
 );
 
@@ -214,10 +220,10 @@ it.each(['guest', 'account'] as const)(
     await act(() => router.push('/settings'));
     expect(await screen.findByText('Settings ready')).toBeTruthy();
     await act(() => router.push('/challenge'));
-    // SDK 58 resolves a denied destination through the configured access anchor.
-    expect(await screen.findByText('We can’t verify access yet.')).toBeTruthy();
-    expect(navigation.getPathname()).toBe('/access');
-    expect(screen.queryByText('Challenge ready')).toBeNull();
+    // Route availability preserves existing local work. The actual challenge
+    // screen independently requires an owner-local active start.
+    expect(await screen.findByText('Challenge ready')).toBeTruthy();
+    expect(navigation.getPathname()).toBe('/challenge');
     await act(() => router.push('/progress'));
     expect(await screen.findByText('Progress ready')).toBeTruthy();
     expect(navigation.getPathname()).toBe('/progress');

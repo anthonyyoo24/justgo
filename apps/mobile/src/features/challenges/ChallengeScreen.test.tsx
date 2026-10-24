@@ -77,7 +77,10 @@ jest.mock('expo-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
 jest.mock('../../app-support/providers/AppProvider', () => ({
-  useRuntime: () => ({ challenges: mockController }),
+  useRuntime: () => ({
+    challenges: mockController,
+    canStartChallenge: () => true,
+  }),
   useIdentity: () => ({
     account: mockAccount,
     collectionId: mockCollectionId,

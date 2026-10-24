@@ -7,7 +7,15 @@ const currentTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 /** React-owned unfinished activity, with synchronous guards before React commits. */
 export function useActiveChallenge(
   controller: ChallengeController,
-  { now = Date.now, timeZone = currentTimeZone } = {},
+  {
+    canStart,
+    now = Date.now,
+    timeZone = currentTimeZone,
+  }: {
+    canStart: () => boolean;
+    now?: () => number;
+    timeZone?: () => string;
+  },
 ) {
   const feedback = useHapticFeedback();
   const [active, setActive] = useState<ChallengeStart | null>(null);
@@ -34,7 +42,8 @@ export function useActiveChallenge(
         current.current ||
         state.saving ||
         state.success ||
-        !queue?.cards.length
+        !queue?.cards.length ||
+        (direction === 1 && !canStart())
       )
         return;
       if (direction === -1) controller.skip();
@@ -51,7 +60,7 @@ export function useActiveChallenge(
       }
       return controller.getSnapshot().queues[state.selected]?.turn;
     },
-    [controller, now, timeZone, feedback],
+    [controller, canStart, now, timeZone, feedback],
   );
   const finish = useCallback(
     async (outcome: 'completed' | 'given_up') => {

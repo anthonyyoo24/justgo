@@ -46,6 +46,19 @@ eligible for upload to it. Account
 changes fence stale callbacks, queries and writes. Pending or memory-only writing
 belongs to the collection that accepted it.
 
+Transient offline restoration keeps a saved account-owned collection selected.
+`offlineAccountOwner()` exposes only its local beta-admission scope while the
+normal account projection/session stays unavailable. It excludes pending sign-in,
+logout/deletion, explicit revocation and provider detachment, including a provider
+change while the account projection is already null. Only successful owner
+verification or disclosed sign-in can clear the provider-detachment fence. A
+provider generation check prevents verification/adoption finishing an older
+storage write from clearing a newer detach event. An already-fenced logout or
+deletion does not republish the erased owner after cleanup: runtime subscribers
+could otherwise reopen its journal. The
+[app-shell access policy](APP_SHELL.md#access-verification) owns beta approval;
+this local scope never authenticates a request or enables synchronization.
+
 ## Managed sessions and canonical owners
 
 Native Apple and Google sign-in produce provider ID tokens for
