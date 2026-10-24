@@ -393,6 +393,16 @@ rather than bypassing its database guards, request fence or teardown.
 
 Record actual viewport, flow, fixtures, failure and recovery, keeping saved automated
 journeys, one-off walkthroughs, native simulator and physical-device evidence separate.
+
+The Metro development client loads local illustration assets over HTTP from the
+Mac; swiping to an uncached card or opening Success after disconnecting can leave
+its artwork blank. Its access and local saving checks remain separate from offline
+asset acceptance. Use a self-contained preview/release binary with bundled
+JavaScript and assets for cold offline launch and artwork checks; inspect the
+packaged assets and verify every venue variant and the Success illustration on
+the physical phone. A successful export alone does not establish that acceptance.
+See [Expo's asset delivery model](https://docs.expo.dev/develop/user-interface/assets/#how-are-assets-served-locally).
+
 Browser/export/component checks cannot establish Keychain/SQLite/AsyncStorage durability,
 OS lifecycle, gestures, software keyboard, VoiceOver, radio/backup, native
 Apple/Google OAuth, live hosted Auth revocation/deletion or actual CloudKit sync.
