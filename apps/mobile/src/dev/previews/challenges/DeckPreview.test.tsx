@@ -45,18 +45,18 @@ jest.mock('../../../features/challenges/deck/VenueTabs', () => ({
   VenueTabs: () => null,
 }));
 
-it('opens success only for a completed preview challenge', () => {
+it('opens success only for a completed preview challenge', async () => {
   const onCompleted = jest.fn();
-  const screen = render(<DeckPreview onCompleted={onCompleted} />);
-  fireEvent.press(
+  const screen = await render(<DeckPreview onCompleted={onCompleted} />);
+  await fireEvent.press(
     screen.getByRole('button', { name: 'Start preview challenge' }),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Give up' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Give up' }));
   expect(onCompleted).not.toHaveBeenCalled();
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: 'Start preview challenge' }),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Completed' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Completed' }));
   expect(onCompleted).toHaveBeenCalledTimes(1);
 });
 

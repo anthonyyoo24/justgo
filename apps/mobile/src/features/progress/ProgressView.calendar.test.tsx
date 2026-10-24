@@ -1,8 +1,12 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { ActivityIndicator, StyleSheet, Text } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import { StyleSheet } from 'react-native';
+
 import { colors } from '../../theme/tokens';
 import { ProgressView } from './ProgressView';
+
+jest.mock('react-native-svg', () =>
+  jest.requireActual('../../../test-support/svg'),
+);
 
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../platform/motion/motion', () => ({
@@ -14,33 +18,38 @@ jest.mock('./day-details/entries/useEntryMotion', () =>
 
 import { month, callbacks } from '../../../test-support/progress/view';
 
-it.each([0, 1, 2])('uses singular and plural Progress copy for %s', (days) => {
-  const screen = render(
-    <ProgressView
-      month="2026-09"
-      data={{
-        ...month,
-        currentStreak: days,
-        bestStreak: days,
-        monthlyReps: days,
-      }}
-      selectedDate={null}
-      {...callbacks()}
-    />,
-  );
-  const expected = new RegExp(`^${days}\\s${days === 1 ? 'day' : 'days'}$`);
-  expect(screen.getByTestId('progress-value-streak')).toHaveTextContent(
-    expected,
-  );
-  expect(screen.getByTestId('progress-value-best')).toHaveTextContent(expected);
-  expect(
-    screen.getByText(`${days === 1 ? 'rep' : 'reps'} this month`),
-  ).toBeTruthy();
-});
+it.each([0, 1, 2])(
+  'uses singular and plural Progress copy for %s',
+  async (days) => {
+    const screen = await render(
+      <ProgressView
+        month="2026-09"
+        data={{
+          ...month,
+          currentStreak: days,
+          bestStreak: days,
+          monthlyReps: days,
+        }}
+        selectedDate={null}
+        {...callbacks()}
+      />,
+    );
+    const expected = new RegExp(`^${days}\\s${days === 1 ? 'day' : 'days'}$`);
+    expect(screen.getByTestId('progress-value-streak')).toHaveTextContent(
+      expected,
+    );
+    expect(screen.getByTestId('progress-value-best')).toHaveTextContent(
+      expected,
+    );
+    expect(
+      screen.getByText(`${days === 1 ? 'rep' : 'reps'} this month`),
+    ).toBeTruthy();
+  },
+);
 
-it('keeps loading inside the calendar and numeric slots, then enables loaded days', () => {
+it('keeps loading inside the calendar and numeric slots, then enables loaded days', async () => {
   const actions = callbacks();
-  const screen = render(
+  const screen = await render(
     <ProgressView month="2026-09" loading selectedDate={null} {...actions} />,
   );
   expect(
@@ -78,10 +87,10 @@ it('keeps loading inside the calendar and numeric slots, then enables loaded day
   expect(screen.queryByText('Loading your progress…')).toBeNull();
   expect(screen.queryByText('We couldn’t load your progress.')).toBeNull();
   expect(screen.queryByText('0')).toBeNull();
-  expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
+  expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
   expect(screen.queryByRole('button', { name: /September 18/ })).toBeNull();
 
-  screen.rerender(
+  await screen.rerender(
     <ProgressView
       month="2026-09"
       data={month}
@@ -105,20 +114,20 @@ it('keeps loading inside the calendar and numeric slots, then enables loaded day
   expect(skeletonShape.borderRadius).toBeGreaterThanOrEqual(
     skeletonShape.width / 2,
   );
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }),
   );
   expect(actions.onOpenDay).toHaveBeenCalledWith('2026-09-18');
 });
 
-it('preserves available progress during a refresh and stops skeletons on a failure', () => {
+it('preserves available progress during a refresh and stops skeletons on a failure', async () => {
   const props = { month: '2026-09', selectedDate: null, ...callbacks() };
-  const screen = render(<ProgressView {...props} data={month} loading />);
+  const screen = await render(<ProgressView {...props} data={month} loading />);
   expect(screen.queryByLabelText('Loading progress')).toBeNull();
   expect(
     screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }),
   ).toBeTruthy();
-  screen.rerender(<ProgressView {...props} loading error />);
+  await screen.rerender(<ProgressView {...props} loading error />);
   expect(screen.getByText('We couldn’t load your progress.')).toBeTruthy();
   expect(
     screen.queryAllByTestId('progress-calendar-skeleton', {
@@ -127,8 +136,8 @@ it('preserves available progress during a refresh and stops skeletons on a failu
   ).toHaveLength(0);
 });
 
-it('explains paused aggregate reads without shimmer or a misleading error and retry', () => {
-  const screen = render(
+it('explains paused aggregate reads without shimmer or a misleading error and retry', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       selectedDate={null}
@@ -163,8 +172,8 @@ it('explains paused aggregate reads without shimmer or a misleading error and re
   ).toHaveLength(0);
 });
 
-it('keeps a loaded calendar usable while an uncached summary waits for sync', () => {
-  const screen = render(
+it('keeps a loaded calendar usable while an uncached summary waits for sync', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       selectedDate={null}
@@ -185,8 +194,8 @@ it('keeps a loaded calendar usable while an uncached summary waits for sync', ()
   expect(screen.queryByRole('button', { name: 'Retry progress' })).toBeNull();
 });
 
-it('uses the warm Paper calendar panel and inactive day colors', () => {
-  const screen = render(
+it('uses the warm Paper calendar panel and inactive day colors', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -209,8 +218,8 @@ it('uses the warm Paper calendar panel and inactive day colors', () => {
   });
 });
 
-it('mutes zero-activity date numbers while keeping active dates dark and today light', () => {
-  const screen = render(
+it('mutes zero-activity date numbers while keeping active dates dark and today light', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -221,7 +230,8 @@ it('mutes zero-activity date numbers while keeping active dates dark and today l
 
   const numberColor = (label: string) =>
     StyleSheet.flatten(
-      screen.getByLabelText(label).findAllByType(Text)[0]!.props.style,
+      screen.getByLabelText(label).queryAll((node) => node.type === 'Text')[0]!
+        .props.style,
     ).color;
 
   expect(numberColor('Wednesday, September 2, 0 reps')).toBe('#77797B');
@@ -229,8 +239,8 @@ it('mutes zero-activity date numbers while keeping active dates dark and today l
   expect(numberColor('Friday, September 18, 2 reps')).toBe(colors.ink);
 });
 
-it('keeps the three decorative metric icons distinct and readable', () => {
-  const screen = render(
+it('keeps the three decorative metric icons distinct and readable', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -255,8 +265,8 @@ it('keeps the three decorative metric icons distinct and readable', () => {
   expect(screen.getByText('Total reps')).toBeTruthy();
 });
 
-it('keeps the Paper flame as one continuous outline with an open base cutout', () => {
-  const screen = render(
+it('keeps the Paper flame as one continuous outline with an open base cutout', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -264,10 +274,10 @@ it('keeps the Paper flame as one continuous outline with an open base cutout', (
       {...callbacks()}
     />,
   );
-  const icon = screen
-    .UNSAFE_getAllByType(Svg)
-    .find(({ props }) => props.testID === 'progress-metric-icon-streak')!;
-  const paths = icon.findAllByType(Path);
+  const icon = screen.getByTestId('progress-metric-icon-streak', {
+    includeHiddenElements: true,
+  });
+  const paths = icon.queryAll((node) => node.type === 'Path');
 
   // Separate inner and outer paths produced the overlapping nested-flame shape.
   expect(paths).toHaveLength(1);
@@ -277,8 +287,8 @@ it('keeps the Paper flame as one continuous outline with an open base cutout', (
   expect(paths[0]!.props.strokeLinejoin).toBe('round');
 });
 
-it('matches the Paper dumbbell proportions with a long grip and touching plates', () => {
-  const screen = render(
+it('matches the Paper dumbbell proportions with a long grip and touching plates', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -286,13 +296,15 @@ it('matches the Paper dumbbell proportions with a long grip and touching plates'
       {...callbacks()}
     />,
   );
-  const icon = screen
-    .UNSAFE_getAllByType(Svg)
-    .find(({ props }) => props.testID === 'progress-metric-icon-reps')!;
+  const icon = screen.getByTestId('progress-metric-icon-reps', {
+    includeHiddenElements: true,
+  });
   expect(icon.props.viewBox).toBe(
     `0 0 ${icon.props.width} ${icon.props.height}`,
   );
-  const parts = icon.findAllByType(Rect).map(({ props }) => props);
+  const parts = icon
+    .queryAll((node) => node.type === 'Rect')
+    .map(({ props }) => props);
   const plates = parts.filter(({ height }) => height > 20);
   expect(plates).toHaveLength(2);
   const [left, right] = plates;
@@ -317,9 +329,9 @@ it('matches the Paper dumbbell proportions with a long grip and touching plates'
   }
 });
 
-it('highlights today with navy and orange rays before any reps without a badge or day action', () => {
+it('highlights today with navy and orange rays before any reps without a badge or day action', async () => {
   const actions = callbacks();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={{ ...month, today: '2026-09-30' }}
@@ -335,16 +347,20 @@ it('highlights today with navy and orange rays before any reps without a badge o
   });
   expect(today.props.accessibilityState.disabled).toBe(true);
   expect(screen.getByText('30')).toHaveStyle({ color: colors.cream });
-  const rays = screen.getByTestId('calendar-cell-2026-09-30').findByType(Svg);
-  expect(rays.findByType(Path).props.stroke).toBe('#F4A46C');
+  const rays = screen
+    .getByTestId('calendar-cell-2026-09-30')
+    .queryAll((node) => node.type === 'Svg')[0]!;
+  expect(rays.queryAll((node) => node.type === 'Path')[0]!.props.stroke).toBe(
+    '#F4A46C',
+  );
   expect(screen.queryByTestId('rep-badge-2026-09-30')).toBeNull();
-  fireEvent.press(today);
+  await fireEvent.press(today);
   expect(actions.onOpenDay).not.toHaveBeenCalled();
 });
 
-it('keeps the today badge clear of the next row and the day tappable', () => {
+it('keeps the today badge clear of the next row and the day tappable', async () => {
   const actions = callbacks();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={{
@@ -371,12 +387,12 @@ it('keeps the today badge clear of the next row and the day tappable', () => {
   );
   expect(cell.height - circle.height + badge.bottom).toBeGreaterThanOrEqual(3);
   expect(badge.minWidth).toBeGreaterThan(badge.height);
-  fireEvent.press(today);
+  await fireEvent.press(today);
   expect(actions.onOpenDay).toHaveBeenCalledWith('2026-09-27');
 });
 
-it('shows a larger # in the legend than the calendar rep badges', () => {
-  const screen = render(
+it('shows a larger # in the legend than the calendar rep badges', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -389,17 +405,17 @@ it('shows a larger # in the legend than the calendar rep badges', () => {
   ).fontSize;
   const calendarBadge = screen.getByTestId('rep-badge-2026-09-18');
   const calendarSize = StyleSheet.flatten(
-    calendarBadge.findByType(Text).props.style,
+    calendarBadge.queryAll((node) => node.type === 'Text')[0]!.props.style,
   ).fontSize;
 
   expect(legendSize).toBe(16);
   expect(legendSize).toBeGreaterThan(calendarSize);
 });
 
-it('keeps the calendar visible without presenting a failed request as zero activity', () => {
+it('keeps the calendar visible without presenting a failed request as zero activity', async () => {
   const actions = callbacks();
   const retry = jest.fn();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       selectedDate={null}
@@ -417,13 +433,13 @@ it('keeps the calendar visible without presenting a failed request as zero activ
       .accessibilityState.disabled,
   ).toBe(true);
   expect(screen.queryByText('0')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Retry progress' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Retry progress' }));
   expect(retry).toHaveBeenCalledTimes(1);
 });
 
-it('shows real zero totals, a complete calendar, and a first challenge hint for a new account', () => {
+it('shows real zero totals, a complete calendar, and a first challenge hint for a new account', async () => {
   const actions = callbacks();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={{
@@ -450,9 +466,9 @@ it('shows real zero totals, a complete calendar, and a first challenge hint for 
   expect(screen.queryByText('—')).toBeNull();
 });
 
-it('explains an empty month when the account has earlier activity', () => {
+it('explains an empty month when the account has earlier activity', async () => {
   const actions = callbacks();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-08"
       data={{

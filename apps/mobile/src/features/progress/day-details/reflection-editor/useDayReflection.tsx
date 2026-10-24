@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import type { Attempt } from '@justgo/contracts';
 import type { AccountRepository } from '../../../../data/activity/repository';
 import { ReflectionController } from '../../../reflections/controller';
@@ -19,7 +19,7 @@ export function useDayReflection(repository: AccountRepository) {
   const preparationGeneration = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const afterClose = useRef<(() => void) | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const opening = useRef(false);
   const alive = useRef(true);
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
-import { Animated, Image, TextInput } from 'react-native';
+import { Animated, TextInput } from 'react-native';
 import type { ProgressEntry } from '../../types';
 import { ProgressEntryRow } from './ProgressEntryRow';
 import { SlidingEntryDetails } from './SlidingEntryDetails';
@@ -21,10 +21,10 @@ const savedEntry: ProgressEntry = {
   reflectionText: null,
 };
 
-it('opens Add from the title, ordinal, feeling and metadata with padded row coverage', () => {
+it('opens Add from the title, ordinal, feeling and metadata with padded row coverage', async () => {
   const onEdit = jest.fn();
   const onToggle = jest.fn();
-  const screen = render(
+  const screen = await render(
     <ProgressEntryRow
       entry={savedEntry}
       index={0}
@@ -39,12 +39,12 @@ it('opens Add from the title, ordinal, feeling and metadata with padded row cove
     bottom: 12,
   });
   for (const text of ['Say hello to someone', '01', 'Feeling', '9:15 AM'])
-    fireEvent.press(screen.getByText(text));
+    await fireEvent.press(screen.getByText(text));
   expect(onEdit).toHaveBeenCalledTimes(4);
   expect(onToggle).not.toHaveBeenCalled();
 });
 
-it('slides the editor from zero height using the saved-reflection motion and collapses on close', () => {
+it('slides the editor from zero height using the saved-reflection motion and collapses on close', async () => {
   const start = jest.fn();
   const stop = jest.fn();
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
@@ -60,9 +60,9 @@ it('slides the editor from zero height using the saved-reflection motion and col
       onEdit: jest.fn(),
       reduceMotion: false,
     };
-    const screen = render(<ProgressEntryRow {...props} />);
+    const screen = await render(<ProgressEntryRow {...props} />);
     timing.mockClear();
-    screen.rerender(
+    await screen.rerender(
       <ProgressEntryRow
         {...props}
         expanded
@@ -71,11 +71,11 @@ it('slides the editor from zero height using the saved-reflection motion and col
     );
     const details = screen.getByTestId('sliding-entry-details');
     expect(details).toHaveStyle({ opacity: 0, height: 0 });
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 12 } },
     });
     expect(timing).not.toHaveBeenCalled();
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
     });
     expect(timing).toHaveBeenLastCalledWith(
@@ -88,11 +88,11 @@ it('slides the editor from zero height using the saved-reflection motion and col
     );
     expect(start).toHaveBeenCalled();
     timing.mockClear();
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144.2 } },
     });
     expect(timing).not.toHaveBeenCalled();
-    screen.rerender(<ProgressEntryRow {...props} />);
+    await screen.rerender(<ProgressEntryRow {...props} />);
     expect(screen.queryByLabelText('Your day reflection')).toBeNull();
     expect(timing).toHaveBeenLastCalledWith(
       expect.anything(),
@@ -104,14 +104,14 @@ it('slides the editor from zero height using the saved-reflection motion and col
         includeHiddenElements: true,
       }),
     ).toHaveStyle({ pointerEvents: 'none' });
-    screen.unmount();
+    await screen.unmount();
     expect(stop).toHaveBeenCalledTimes(4);
   } finally {
     timing.mockRestore();
   }
 });
 
-it('leaves closed Add rows unmounted and measures only the selected form before revealing', () => {
+it('leaves closed Add rows unmounted and measures only the selected form before revealing', async () => {
   const parallel = jest.spyOn(Animated, 'parallel').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
@@ -125,7 +125,7 @@ it('leaves closed Add rows unmounted and measures only the selected form before 
       onEdit: jest.fn(),
       reduceMotion: false,
     };
-    const screen = render(<ProgressEntryRow {...props} />);
+    const screen = await render(<ProgressEntryRow {...props} />);
     expect(screen.queryByLabelText('Your day reflection')).toBeNull();
     expect(screen.queryByTestId('reflection-editor-measurement')).toBeNull();
     expect(
@@ -140,7 +140,7 @@ it('leaves closed Add rows unmounted and measures only the selected form before 
     ).toBeNull();
     expect(parallel).not.toHaveBeenCalled();
     parallel.mockClear();
-    screen.rerender(
+    await screen.rerender(
       <ProgressEntryRow
         {...props}
         editing
@@ -152,23 +152,23 @@ it('leaves closed Add rows unmounted and measures only the selected form before 
       within(screen.getByTestId('reflection-action')).getByText('Cancel'),
     ).toBeTruthy();
     // The input's first identical native measurement must not restart the slide.
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
     });
     expect(parallel).toHaveBeenCalledTimes(1);
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
     });
     expect(parallel).toHaveBeenCalledTimes(1);
-    screen.unmount();
+    await screen.unmount();
   } finally {
     parallel.mockRestore();
   }
 });
 
-it('releases a panel closed before its first layout and can reopen it', () => {
+it('releases a panel closed before its first layout and can reopen it', async () => {
   const onOpened = jest.fn();
-  const screen = render(
+  const screen = await render(
     <SlidingEntryDetails
       open
       reduceMotion
@@ -178,7 +178,7 @@ it('releases a panel closed before its first layout and can reopen it', () => {
       <TextInput accessibilityLabel="Your day reflection" />
     </SlidingEntryDetails>,
   );
-  screen.rerender(
+  await screen.rerender(
     <SlidingEntryDetails open={false} reduceMotion contentKey="editor">
       <TextInput accessibilityLabel="Your day reflection" />
     </SlidingEntryDetails>,
@@ -189,7 +189,7 @@ it('releases a panel closed before its first layout and can reopen it', () => {
     }),
   ).toBeNull();
   expect(onOpened).not.toHaveBeenCalled();
-  screen.rerender(
+  await screen.rerender(
     <SlidingEntryDetails
       open
       reduceMotion
@@ -199,13 +199,13 @@ it('releases a panel closed before its first layout and can reopen it', () => {
       <TextInput accessibilityLabel="Your day reflection" />
     </SlidingEntryDetails>,
   );
-  fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+  await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
     nativeEvent: { layout: { height: 144 } },
   });
   expect(onOpened).toHaveBeenCalledTimes(1);
 });
 
-it('shows and closes the editor immediately with reduced motion', () => {
+it('shows and closes the editor immediately with reduced motion', async () => {
   const timing = jest.spyOn(Animated, 'timing');
   try {
     const props = {
@@ -215,14 +215,14 @@ it('shows and closes the editor immediately with reduced motion', () => {
       onEdit: jest.fn(),
       reduceMotion: true,
     };
-    const screen = render(
+    const screen = await render(
       <ProgressEntryRow
         {...props}
         expanded
         editor={<TextInput accessibilityLabel="Your day reflection" />}
       />,
     );
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
     });
     expect(screen.getByTestId('sliding-entry-details')).toHaveStyle({
@@ -230,7 +230,7 @@ it('shows and closes the editor immediately with reduced motion', () => {
       height: 144,
       pointerEvents: 'auto',
     });
-    screen.rerender(<ProgressEntryRow {...props} expanded={false} />);
+    await screen.rerender(<ProgressEntryRow {...props} expanded={false} />);
     expect(screen.queryByLabelText('Your day reflection')).toBeNull();
     expect(
       screen.queryByTestId('sliding-entry-details', {
@@ -243,7 +243,7 @@ it('shows and closes the editor immediately with reduced motion', () => {
   }
 });
 
-it('keeps Edit visible while resizing from the saved reflection height', () => {
+it('keeps Edit visible while resizing from the saved reflection height', async () => {
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
@@ -261,18 +261,18 @@ it('keeps Edit visible while resizing from the saved reflection height', () => {
       onEdit: jest.fn(),
       reduceMotion: false,
     };
-    const screen = render(<ProgressEntryRow {...props} />);
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    const screen = await render(<ProgressEntryRow {...props} />);
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 84 } },
     });
     const height = timing.mock.calls[0]![0] as Animated.Value;
     const reveal = timing.mock.calls[1]![0] as Animated.Value;
-    act(() => {
+    await act(() => {
       height.setValue(84);
       reveal.setValue(1);
     });
     timing.mockClear();
-    screen.rerender(
+    await screen.rerender(
       <ProgressEntryRow
         {...props}
         editor={<TextInput accessibilityLabel="Your day reflection" />}
@@ -282,7 +282,7 @@ it('keeps Edit visible while resizing from the saved reflection height', () => {
       height: 84,
       opacity: 1,
     });
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 156 } },
     });
     expect(timing).toHaveBeenCalledWith(
@@ -298,7 +298,7 @@ it('keeps Edit visible while resizing from the saved reflection height', () => {
   }
 });
 
-it('keeps Cancel and its close icon stable if Add content is temporarily unavailable during a refresh', () => {
+it('keeps Cancel and its close icon stable if Add content is temporarily unavailable during a refresh', async () => {
   const onToggle = jest.fn();
   const props = {
     entry: savedEntry,
@@ -309,9 +309,11 @@ it('keeps Cancel and its close icon stable if Add content is temporarily unavail
     reduceMotion: true,
     editing: true,
   };
-  const screen = render(<ProgressEntryRow {...props} editor={<TextInput />} />);
+  const screen = await render(
+    <ProgressEntryRow {...props} editor={<TextInput />} />,
+  );
   for (const editor of [undefined, <TextInput key="restored" />]) {
-    screen.rerender(<ProgressEntryRow {...props} editor={editor} />);
+    await screen.rerender(<ProgressEntryRow {...props} editor={editor} />);
     expect(screen.getByRole('button', { name: /Rep 1.*Cancel/ })).toHaveProp(
       'accessibilityState',
       { expanded: true },
@@ -336,11 +338,11 @@ it('keeps Cancel and its close icon stable if Add content is temporarily unavail
         includeHiddenElements: true,
       }),
     ).toBeNull();
-    fireEvent.press(screen.getByRole('button'));
+    await fireEvent.press(screen.getByRole('button'));
   }
   expect(onToggle).toHaveBeenCalledTimes(2);
   expect(props.onEdit).not.toHaveBeenCalled();
-  screen.rerender(<ProgressEntryRow {...props} editing={false} />);
+  await screen.rerender(<ProgressEntryRow {...props} editing={false} />);
   expect(screen.getByText('Add reflection')).toBeTruthy();
   expect(
     screen.getByTestId('add-reflection-icon', { includeHiddenElements: true }),
@@ -354,7 +356,7 @@ it('keeps Cancel and its close icon stable if Add content is temporarily unavail
 
 it.each(['America/Toronto', 'Europe/London'])(
   'aligns View/Hide without a leading pencil, retaining the Edit pencil (zone: %s)',
-  (timeZone) => {
+  async (timeZone) => {
     const props = {
       entry: {
         ...savedEntry,
@@ -367,29 +369,31 @@ it.each(['America/Toronto', 'Europe/London'])(
       onEdit: jest.fn(),
       reduceMotion: true,
     };
-    const screen = render(<ProgressEntryRow {...props} expanded={false} />);
+    const screen = await render(
+      <ProgressEntryRow {...props} expanded={false} />,
+    );
     expect(screen.getByText('View Reflection')).toBeTruthy();
     expect(
-      within(screen.getByTestId('reflection-action')).UNSAFE_queryAllByType(
-        Image,
-      ),
+      screen
+        .getByTestId('reflection-action')
+        .queryAll((node) => node.type === 'Image'),
     ).toHaveLength(0);
     expect(
       screen.getByTestId('reflection-chevron', { includeHiddenElements: true }),
     ).toBeTruthy();
-    screen.rerender(<ProgressEntryRow {...props} expanded />);
+    await screen.rerender(<ProgressEntryRow {...props} expanded />);
     expect(
       screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
     ).toBeTruthy();
     expect(
-      within(screen.getByTestId('reflection-action')).UNSAFE_queryAllByType(
-        Image,
-      ),
+      screen
+        .getByTestId('reflection-action')
+        .queryAll((node) => node.type === 'Image'),
     ).toHaveLength(0);
     expect(
-      within(
-        screen.getByRole('button', { name: 'Edit reflection' }),
-      ).UNSAFE_getByType(Image),
+      screen
+        .getByRole('button', { name: 'Edit reflection' })
+        .queryAll((node) => node.type === 'Image')[0]!,
     ).toBeTruthy();
     expect(
       screen.getByTestId('reflection-chevron', { includeHiddenElements: true }),
@@ -399,7 +403,7 @@ it.each(['America/Toronto', 'Europe/London'])(
         includeHiddenElements: true,
       }),
     ).toBeNull();
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', { name: /Rep 1.*Hide Reflection/ }),
     );
     expect(props.onToggle).toHaveBeenCalledTimes(1);
@@ -407,7 +411,7 @@ it.each(['America/Toronto', 'Europe/London'])(
   },
 );
 
-it('notifies focus only after a completed reveal and fences cancelled or unmounted completions', () => {
+it('notifies focus only after a completed reveal and fences cancelled or unmounted completions', async () => {
   const completions: Array<(result: { finished: boolean }) => void> = [];
   const stop = jest.fn();
   const parallel = jest.spyOn(Animated, 'parallel').mockReturnValue({
@@ -423,18 +427,18 @@ it('notifies focus only after a completed reveal and fences cancelled or unmount
     onOpened,
   };
   try {
-    const screen = render(
+    const screen = await render(
       <SlidingEntryDetails {...props}>
         <TextInput />
       </SlidingEntryDetails>,
     );
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
     });
     expect(onOpened).not.toHaveBeenCalled();
-    act(() => completions[0]!({ finished: false }));
+    await act(() => completions[0]!({ finished: false }));
     expect(onOpened).not.toHaveBeenCalled();
-    screen.rerender(
+    await screen.rerender(
       <SlidingEntryDetails {...props} open={false}>
         <TextInput />
       </SlidingEntryDetails>,
@@ -445,81 +449,81 @@ it('notifies focus only after a completed reveal and fences cancelled or unmount
         includeHiddenElements: true,
       }),
     ).toBeTruthy();
-    act(() => completions[0]!({ finished: true }));
+    await act(() => completions[0]!({ finished: true }));
     expect(onOpened).not.toHaveBeenCalled();
     expect(stop).toHaveBeenCalled();
-    screen.rerender(
+    await screen.rerender(
       <SlidingEntryDetails {...props}>
         <TextInput />
       </SlidingEntryDetails>,
     );
-    act(() => cancelledClose({ finished: true }));
+    await act(() => cancelledClose({ finished: true }));
     expect(screen.getByTestId('entry-details-content')).toBeTruthy();
-    act(() => completions.at(-1)!({ finished: true }));
+    await act(() => completions.at(-1)!({ finished: true }));
     expect(onOpened).toHaveBeenCalledTimes(1);
-    screen.rerender(
+    await screen.rerender(
       <SlidingEntryDetails {...props} open={false}>
         <TextInput />
       </SlidingEntryDetails>,
     );
     const finishClose = completions.at(-1)!;
-    act(() => finishClose({ finished: false }));
+    await act(() => finishClose({ finished: false }));
     expect(
       screen.getByTestId('entry-details-content', {
         includeHiddenElements: true,
       }),
     ).toBeTruthy();
-    act(() => finishClose({ finished: true }));
+    await act(() => finishClose({ finished: true }));
     expect(
       screen.queryByTestId('entry-details-content', {
         includeHiddenElements: true,
       }),
     ).toBeNull();
-    screen.rerender(
+    await screen.rerender(
       <SlidingEntryDetails {...props}>
         <TextInput />
       </SlidingEntryDetails>,
     );
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
     });
-    act(() => completions.at(-1)!({ finished: true }));
+    await act(() => completions.at(-1)!({ finished: true }));
     expect(onOpened).toHaveBeenCalledTimes(2);
     const late = completions.at(-1)!;
-    screen.unmount();
-    act(() => late({ finished: true }));
+    await screen.unmount();
+    await act(() => late({ finished: true }));
     expect(onOpened).toHaveBeenCalledTimes(2);
   } finally {
     parallel.mockRestore();
   }
 });
 
-it('waits for a fresh editor measurement even when it matches the saved text height', () => {
+it('waits for a fresh editor measurement even when it matches the saved text height', async () => {
   const parallel = jest.spyOn(Animated, 'parallel').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
   } as unknown as ReturnType<typeof Animated.parallel>);
   try {
-    const screen = render(
+    const screen = await render(
       <SlidingEntryDetails open contentKey="saved" reduceMotion={false}>
         <TextInput />
       </SlidingEntryDetails>,
     );
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
     });
     parallel.mockClear();
-    screen.rerender(
+    await screen.rerender(
       <SlidingEntryDetails open contentKey="editor" reduceMotion={false}>
         <TextInput />
       </SlidingEntryDetails>,
     );
     expect(parallel).not.toHaveBeenCalled();
-    fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
+    await fireEvent(screen.getByTestId('entry-details-content'), 'layout', {
       nativeEvent: { layout: { height: 144 } },
     });
     expect(parallel).toHaveBeenCalledTimes(1);
-    screen.unmount();
+    await screen.unmount();
   } finally {
     parallel.mockRestore();
   }
@@ -530,8 +534,8 @@ it.each([
   ['Europe/London', '2:15 PM'],
 ])(
   'shows the captured start in its display time zone (%s)',
-  (timeZone, time) => {
-    const screen = render(
+  async (timeZone, time) => {
+    const screen = await render(
       <ProgressEntryRow
         entry={{ ...savedEntry, timeZone: timeZone! }}
         index={0}
@@ -550,9 +554,9 @@ it.each([
   },
 );
 
-it('uses the captured start time when displaying saved reflection controls', () => {
+it('uses the captured start time when displaying saved reflection controls', async () => {
   const onToggle = jest.fn();
-  const screen = render(
+  const screen = await render(
     <ProgressEntryRow
       entry={{
         ...savedEntry,
@@ -575,6 +579,6 @@ it('uses the captured start time when displaying saved reflection controls', () 
   const row = screen.getByRole('button', {
     name: 'Rep 1. Say hello to someone. 8:05 AM. Feeling: Not recorded. View Reflection',
   });
-  fireEvent.press(row);
+  await fireEvent.press(row);
   expect(onToggle).toHaveBeenCalledTimes(1);
 });

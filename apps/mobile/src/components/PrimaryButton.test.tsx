@@ -1,13 +1,13 @@
 import { fireEvent, render, within } from '@testing-library/react-native';
 import { PrimaryButton } from './PrimaryButton';
 
-it('replaces visible text with one spinner while preserving the button name and blocking duplicate presses', () => {
+it('replaces visible text with one spinner while preserving the button name and blocking duplicate presses', async () => {
   const onPress = jest.fn();
-  const screen = render(
+  const screen = await render(
     <PrimaryButton label="Review transfer" onPress={onPress} />,
   );
   expect(screen.getByText('Review transfer')).toBeTruthy();
-  screen.rerender(
+  await screen.rerender(
     <PrimaryButton label="Review transfer" onPress={onPress} busy />,
   );
   const button = screen.getByRole('button', { name: 'Review transfer' });
@@ -20,23 +20,29 @@ it('replaces visible text with one spinner while preserving the button name and 
     }),
   ).toBeTruthy();
   expect(screen.queryByText('Review transfer')).toBeNull();
-  fireEvent.press(button);
+  await fireEvent.press(button);
   expect(onPress).not.toHaveBeenCalled();
 
-  screen.rerender(<PrimaryButton label="Review transfer" onPress={onPress} />);
+  await screen.rerender(
+    <PrimaryButton label="Review transfer" onPress={onPress} />,
+  );
   expect(screen.queryByRole('progressbar')).toBeNull();
   expect(screen.getByText('Review transfer')).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Review transfer' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Review transfer' }),
+  );
   expect(onPress).toHaveBeenCalledTimes(1);
 });
 
-it('retains the label without a spinner when disabled for a reason other than loading', () => {
+it('retains the label without a spinner when disabled for a reason other than loading', async () => {
   const onPress = jest.fn();
-  const screen = render(
+  const screen = await render(
     <PrimaryButton label="Recover with key" onPress={onPress} disabled />,
   );
   expect(screen.getByText('Recover with key')).toBeTruthy();
   expect(screen.queryByRole('progressbar')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Recover with key' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Recover with key' }),
+  );
   expect(onPress).not.toHaveBeenCalled();
 });

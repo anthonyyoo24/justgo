@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   View,
 } from 'react-native';
 import { useReduceMotion } from '../../../../platform/motion/motion';
@@ -69,7 +70,7 @@ export function DayReflectionEditor({
 }: {
   controller: ReflectionController;
   state: ReflectionSnapshot;
-  inputRef?: RefObject<TextInput | null>;
+  inputRef?: RefObject<TextInputInstance | null>;
   inputReady?: boolean;
   onKeepEditing: () => void;
 }) {

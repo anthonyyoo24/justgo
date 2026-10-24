@@ -153,7 +153,7 @@ function apple() {
       accountToken: 'a'.repeat(64),
       enabled,
     })),
-    setEnabled: jest.fn(async (value) => {
+    setEnabled: jest.fn(async (value: boolean) => {
       enabled = value;
     }),
     read: jest.fn(async ({ collection }) => {
@@ -601,7 +601,7 @@ it('deletes an earlier iCloud copy while sync is off and does not restore it whe
       (record) => JSON.parse(record.value).kind,
     ),
   ).toEqual(['epoch']);
-  await cloud.transport.setEnabled(true);
+  await cloud.transport.setEnabled(true, async () => {});
   await repository.synchronize();
   expect((await repository.snapshotData()).attempts).toEqual([]);
 });

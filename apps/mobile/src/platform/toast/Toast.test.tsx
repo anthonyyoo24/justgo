@@ -21,8 +21,8 @@ jest.mock('sonner-native', () => ({
   Toaster: jest.fn(() => null),
   toast: { success: jest.fn(), dismiss: jest.fn(), error: jest.fn() },
 }));
-it('uses safe areas, scalable text, the modal host and accessible native recovery announcement', () => {
-  render(<ToastHost channel="activity-sheet" />);
+it('uses safe areas, scalable text, the modal host and accessible native recovery announcement', async () => {
+  await render(<ToastHost channel="activity-sheet" />);
   expect(Toaster).toHaveBeenCalledWith(
     expect.objectContaining({
       offset: 36,
@@ -53,9 +53,9 @@ it('presents link failure on the requested host and announces the same safe mess
   announce.mockRestore();
 });
 
-it('keeps native toast entry and exit stationary when motion is reduced', () => {
+it('keeps native toast entry and exit stationary when motion is reduced', async () => {
   mockReduceMotion = true;
-  render(<ToastHost channel="activity-sheet" />);
+  await render(<ToastHost channel="activity-sheet" />);
   const options = jest.mocked(Toaster).mock.calls.at(-1)![0];
   const animation = options.animation!;
   const enter = animation.enter as () => unknown;

@@ -1,11 +1,11 @@
 # Implementation decision register
 
-Updated October 20, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence/artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 23, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Root npm workspaces, strict TypeScript, one lockfile                            | Implementation owner           | 01                              | Implemented. No code wrapper.                                                                                                                                                                                                                               |
-| Expo SDK 57 / React Native 0.86, Node 24 LTS, iOS 16.4 minimum                  | Implementation owner           | 01                              | Pinned; see FOUNDATION.md for exact versions and evidence.                                                                                                                                                                                                  |
+| Expo SDK 58 / React Native 0.88, Node 24 LTS, iOS 16.4 minimum                  | Implementation owner           | 01 / 14 native prerequisite     | Pinned; see FOUNDATION.md for exact versions and the native-upgrade handoff for evidence.                                                                                                                                                                   |
 | Staging Supabase organization/project                                           | Anthony                        | 01                              | Approved anthonyyoo corp; created dedicated JustGo in Canada Central.                                                                                                                                                                                       |
 | Vercel project                                                                  | Anthony / implementation owner | 01                              | Dedicated justgo project; API root apps/api, Montréal compute.                                                                                                                                                                                              |
 | Production infrastructure and budgets                                           | Anthony                        | Before 14                       | Separate from staging; not provisioned.                                                                                                                                                                                                                     |
@@ -535,7 +535,9 @@ does not authorize moving a former owner's entries into another person's account
 
 Account will contain Login methods with branded Apple/Google rows and switches
 that show the actual connected methods, followed by Log out and Delete account.
-Do not add a separate connected-status sentence/block. Delete account text is red.
+Do not add a separate connected-status sentence/block. Both deletion rows use red
+text and trash icons, with no chevron, and open their confirmation modal directly
+on the current page instead of adding an intermediate deletion page.
 Data will contain iCloud Sync, Download my data, Import data and Delete all my data
 at the bottom, with matching cloud/circular-arrow, down-arrow/tray and up-arrow/tray
 icons. Reuse the existing account-deletion confirmation modal presentation for
@@ -565,6 +567,96 @@ Previously associated iCloud copies remain deletion targets when sync is off;
 unavailable cleanup stays pending. Preserve the earlier server-only legacy-reflection
 reset scope and all separate publication, hosted configuration and native build
 permissions. The handoff distinguishes local evidence from open external gates.
+
+## October 21 native provider rollout and hosted session checks
+
+Anthony authorized implementation of the working-login checklist, console access,
+Google policy acceptance, creation of JustGO's web/iPhone OAuth clients and the
+Google-only Skip nonce checks setting required by the pinned original iOS SDK.
+Apple retains native nonce validation and permits missing email because the app
+requests no Apple email/name scopes. Browser OAuth remains separate from the
+native ID-token flows. No paid SDK, billing upgrade, Git publication or public
+release was authorized by this setup.
+
+The existing staging Supabase project, Apple team/bundle, Vercel app and Expo
+project are reused. Migrations 0019–0023 ran only after a protected snapshot,
+restoration/forward rehearsal and transaction-internal preservation comparisons.
+The approved old-server-only journal reset excludes accounts, challenge history
+and phone storage; hosted inventory had no old attempt/reflection rows to erase.
+
+Hosted Supabase does not support direct Auth-schema grants to custom roles.
+Follow its [private-helper guidance](https://supabase.com/kb/troubleshooting/permission-errors-when-granting-custom-roles-access-to-the-auth-schema):
+a versioned, postgres-owned, unexposed helper returns only the exact verified
+session/subject's live boolean. Fixed empty search path, runtime-only execution,
+no direct Auth access and fail-closed body/owner/effective-permission readiness
+preserve live logout/revocation checks without granting the API an administrator
+role. Keep app-schema migrations immutable and manage this provider-owned
+capability through reviewed versioned operator SQL.
+
+Retire the obsolete recovery UI and fallback branches, retaining existing-owner
+proof/vault reads and pending legacy deletion until supported installations finish
+migration/cleanup. The configured signed build and successful automated/staging
+readiness checks do not establish real phone login, hard Auth deletion or working
+iCloud. Those acceptance gates remain explicit in Phase 13.
+
+## October 22 iCloud recovery and scoped Phase 13 closeout
+
+Anthony requested completing guarded iCloud recovery and the local closeout, and
+explicitly skipped the remaining manual checks: offline-save/reconnect, all
+second-device/Apple-account-change cases, extended Apple/Google continuity and
+account-isolation cases, and native Download/Import/deletion acceptance. Preserve
+these as owner-deferred and unverified before release, under Anthony, the
+implementation owner and the Phase 14 release owner. The single-phone upload,
+sync-off isolation and re-enable/restart catch-up checks already passed; skipped
+cases do not inherit those passes.
+
+The recovery behavior in this paragraph was superseded by the October 23 decision
+below. The October 22 implementation required ordinary reads to fail closed for
+missing known collections, with explicit recovery recording a durable reset fence
+and clearing intent before phone writing could be cleared. Pending deletion,
+closure, handover, ownership and server epochs remained protected. Its compatible
+signed build was inspected; physical recovery acceptance was not established.
+
+For this scoped closeout Anthony requested focused checks of the changed
+recovery/native, adapter/coordinator and UI boundaries, avoiding unrelated or
+repeated full-phase suites. Record current focused results separately from earlier
+full-suite evidence. This does not change coverage thresholds or remove the
+applicable publication/release checks, privacy approval/publication, signed-device
+or hosted CI gates. Local implementation closeout does not mean production
+release acceptance and does not authorize a Git push, PR, merge or public release.
+
+## October 23 iCloud deletion retains phone data
+
+Anthony rejected the Clear older copy and sync flow. Deleting JustGO's iCloud data
+through Apple Settings does not authorize deleting journal entries or challenge
+history from the phone. Remove that action and its recovery-clearing flow. Keep
+the saved iCloud Sync preference: while enabled, ordinary synchronization may
+recreate missing cloud storage and upload the phone's existing entries; turning
+it off stops ordinary uploads and keeps the phone's entries. Do not infer a wish
+to erase phone data from an external cloud deletion or encrypted-data reset.
+
+This supersedes the October 22 missing-collection recovery behavior, not its
+manual-test deferrals or scoped verification decision. Genuine in-app Delete all
+my data and Delete account retain their confirmations, durable cleanup, account
+closure and authenticated deletion-epoch safeguards. Native missing-storage reads
+create an empty cloud collection without an app-deletion marker; genuine in-app
+reset/closure always writes the app-deletion marker, including legacy recovered
+collections. The adapter requires the new `readRetainingLocal` capability so an
+older bridge cannot apply the rejected deletion semantics. A compatible signed
+build and actual device acceptance remain distinct from automated checks.
+
+An unfinished clearing intent from the removed flow may be canceled only when
+there is no actual deletion/cleanup or authoritative account-epoch clear to
+finish. Preserve current ownership, handover, conflicts and all entries that have
+not already been explicitly deleted. The superseded `3cbc873a` binary remains
+historical build evidence, not the installation candidate for this behavior.
+
+After the compatible replacement bridge was exercised on the phone, Anthony
+explicitly deferred external iCloud deletion/recreation and second-phone restore
+acceptance. These remain unverified before release under Anthony, the
+implementation owner and the Phase 14 release owner. Single-phone on/off,
+catch-up and restart results do not establish either deferred case; the earlier
+manual, privacy and release deferrals remain in force.
 
 ## Open and settled product decisions
 

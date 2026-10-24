@@ -26,9 +26,9 @@ function actions() {
   };
 }
 
-it('shows the data summary and document links without analytics, Sentry or development notices', () => {
+it('shows the data summary and document links without analytics, Sentry or development notices', async () => {
   const props = actions();
-  const screen = render(<AcceptanceView {...props} />);
+  const screen = await render(<AcceptanceView {...props} />);
   expect(screen.getByRole('header', { name: 'Terms & Privacy' })).toBeTruthy();
   expect(
     screen.getByRole('header', { name: 'Your data is yours' }),
@@ -54,14 +54,14 @@ it('shows the data summary and document links without analytics, Sentry or devel
     screen.queryByText(/Sentry|Analytics|PostHog|Development legal drafts/i),
   ).toBeNull();
   expect(props.onContinue).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
   expect(props.onContinue).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole('switch')).toBeNull();
 });
 
-it('keeps both legal actions usable while saving and blocks duplicate account creation', () => {
+it('keeps both legal actions usable while saving and blocks duplicate account creation', async () => {
   const props = actions();
-  const screen = render(
+  const screen = await render(
     <AcceptanceView {...props} busy busyLabel="Preparing your challenges" />,
   );
   const accept = screen.getByRole('button', { name: 'Continue' });
@@ -70,45 +70,45 @@ it('keeps both legal actions usable while saving and blocks duplicate account cr
   expect(
     screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
   ).toBeTruthy();
-  fireEvent.press(accept);
+  await fireEvent.press(accept);
   expect(props.onContinue).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
-  fireEvent.press(screen.getByRole('link', { name: 'Privacy Policy' }));
+  await fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
+  await fireEvent.press(screen.getByRole('link', { name: 'Privacy Policy' }));
   expect(props.onOpenTerms).toHaveBeenCalledTimes(1);
   expect(props.onOpenPrivacy).toHaveBeenCalledTimes(1);
 });
 
-it('restores Continue after account creation is no longer busy', () => {
+it('restores Continue after account creation is no longer busy', async () => {
   const props = actions();
-  const screen = render(<AcceptanceView {...props} busy />);
+  const screen = await render(<AcceptanceView {...props} busy />);
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   expect(
     screen.getByRole('progressbar', { name: 'Preparing your challenges' }),
   ).toBeTruthy();
-  screen.rerender(<AcceptanceView {...props} />);
+  await screen.rerender(<AcceptanceView {...props} />);
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   expect(screen.queryByRole('progressbar')).toBeNull();
 });
 
-it('announces a red error without adding account controls', () => {
+it('announces a red error without adding account controls', async () => {
   const props = actions();
-  const screen = render(
+  const screen = await render(
     <AcceptanceView {...props} error="Couldn’t connect. Please try again." />,
   );
   expect(screen.getByRole('alert').props.accessibilityLiveRegion).toBe(
     'polite',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-  fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByRole('link', { name: 'Terms of Service' }));
   expect(screen.getByRole('alert')).toHaveStyle({ color: '#8B1E32' });
   expect(screen.queryByRole('button', { name: 'Account options' })).toBeNull();
   expect(props.onContinue).toHaveBeenCalledTimes(1);
   expect(props.onOpenTerms).toHaveBeenCalledTimes(1);
 });
 
-it('routes configured legal links through failure-aware openers without default navigation', () => {
+it('routes configured legal links through failure-aware openers without default navigation', async () => {
   const props = actions();
-  const screen = render(
+  const screen = await render(
     <AcceptanceView
       {...props}
       termsUrl="http://127.0.0.1:4000/legal/terms"
@@ -116,21 +116,24 @@ it('routes configured legal links through failure-aware openers without default 
     />,
   );
   const event = { preventDefault: jest.fn() };
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('link', { name: 'Terms of Service' }),
     event,
   );
-  fireEvent.press(screen.getByRole('link', { name: 'Privacy Policy' }), event);
+  await fireEvent.press(
+    screen.getByRole('link', { name: 'Privacy Policy' }),
+    event,
+  );
   expect(event.preventDefault).toHaveBeenCalledTimes(2);
   expect(props.onOpenTerms).toHaveBeenCalledTimes(1);
   expect(props.onOpenPrivacy).toHaveBeenCalledTimes(1);
 });
 
-it('updates body, headings and the action label when the system text size changes', () => {
+it('updates body, headings and the action label when the system text size changes', async () => {
   const original = Dimensions.get('window');
-  const screen = render(<AcceptanceView {...actions()} />);
+  const screen = await render(<AcceptanceView {...actions()} />);
   try {
-    act(() =>
+    await act(() =>
       Dimensions.set({ window: { ...original, width: 320, fontScale: 2.4 } }),
     );
     expect(screen.getByText(/By continuing/).props.style).toMatchObject({
@@ -145,12 +148,12 @@ it('updates body, headings and the action label when the system text size change
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
     expect(screen.getByRole('link', { name: 'Privacy Policy' })).toBeEnabled();
   } finally {
-    act(() => Dimensions.set({ window: original }));
+    await act(() => Dimensions.set({ window: original }));
   }
 });
 
-it('lays out both legal links inside the same two-line text paragraph', () => {
-  const screen = render(<AcceptanceView {...actions()} />);
+it('lays out both legal links inside the same two-line text paragraph', async () => {
+  const screen = await render(<AcceptanceView {...actions()} />);
   const agreement = screen.getByText(/^By continuing, you agree to our/);
   expect(agreement).toHaveTextContent(
     'By continuing, you agree to our Terms of Service and Privacy Policy.',

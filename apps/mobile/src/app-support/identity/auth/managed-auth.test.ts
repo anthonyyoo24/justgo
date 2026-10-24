@@ -255,6 +255,111 @@ it('links a native provider to the existing Auth identity instead of signing int
   expect(mockAuth.getUser).toHaveBeenCalledWith(serverSession.access_token);
 });
 
+it('uses the installed SDK ID-token sign-in and authenticated linking protocols without inventing a Google nonce', async () => {
+  const sdk = jest.requireActual<typeof import('@supabase/supabase-js')>(
+    '@supabase/supabase-js',
+  );
+  const stored = new Map<string, string>();
+  const requests: {
+    path: string;
+    body: unknown;
+    authorization: string | null;
+  }[] = [];
+  let user = {
+    ...serverSession.user,
+    identities: [{ provider: 'google', identity_id: 'google-identity' }],
+  };
+  const transport: typeof fetch = async (input, init) => {
+    const path = new URL(String(input)).pathname;
+    const body: unknown = init?.body
+      ? JSON.parse(String(init.body))
+      : undefined;
+    requests.push({
+      path,
+      body,
+      authorization: new Headers(init?.headers).get('authorization'),
+    });
+    if (path === '/auth/v1/user') return Response.json({ user });
+    if (path === '/auth/v1/logout') return new Response(null, { status: 204 });
+    if (path !== '/auth/v1/token')
+      throw new Error('Unexpected synthetic Auth request');
+    if (
+      body &&
+      typeof body === 'object' &&
+      'link_identity' in body &&
+      body.link_identity === true
+    )
+      user = {
+        ...user,
+        identities: [
+          ...user.identities,
+          { provider: 'apple', identity_id: 'apple-identity' },
+        ],
+      };
+    return Response.json({
+      ...serverSession,
+      user,
+      refresh_token: 'synthetic-refresh-token',
+      expires_in: 3600,
+      token_type: 'bearer',
+    });
+  };
+  jest.mocked(createClient).mockImplementationOnce((url, key, options) =>
+    sdk.createClient(url, key, {
+      ...options,
+      global: { fetch: transport },
+      auth: {
+        ...options?.auth,
+        storage: {
+          getItem: (key) => stored.get(key) ?? null,
+          setItem: (key, value) => {
+            stored.set(key, value);
+          },
+          removeItem: (key) => {
+            stored.delete(key);
+          },
+        },
+      },
+    }),
+  );
+  const auth = createManagedAuth();
+  auth.setActive(false);
+  try {
+    jest.mocked(nativeProviderToken).mockResolvedValueOnce({
+      token: 'synthetic-google-token',
+    });
+    await expect(auth.signIn('google')).resolves.toMatchObject({
+      authUserId: serverSession.user.id,
+      linkedProviders: ['google'],
+    });
+    await expect(auth.linkIdentity('apple')).resolves.toMatchObject({
+      authUserId: serverSession.user.id,
+      linkedProviders: ['google', 'apple'],
+    });
+    const tokenRequests = requests.filter(
+      ({ path }) => path === '/auth/v1/token',
+    );
+    expect(tokenRequests[0]?.body).toEqual({
+      provider: 'google',
+      id_token: 'synthetic-google-token',
+      gotrue_meta_security: {},
+    });
+    expect(tokenRequests[1]).toMatchObject({
+      authorization: `Bearer ${serverSession.access_token}`,
+      body: {
+        provider: 'apple',
+        id_token: 'synthetic-id-token',
+        nonce: 'raw-apple-nonce',
+        link_identity: true,
+      },
+    });
+    await auth.signOut();
+    expect(stored.has('justgo.auth.v1')).toBe(false);
+  } finally {
+    auth.dispose();
+  }
+});
+
 it('reads actual linked identities at startup and refresh instead of trusting the cached provider list', async () => {
   verifiedUser = {
     ...serverSession.user,

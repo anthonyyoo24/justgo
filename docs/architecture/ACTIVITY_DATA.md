@@ -140,14 +140,57 @@ unavailable or changed accounts leave cleanup retryable. Web reports unsupported
 not simulate native acceptance. Apple account changes fail closed rather than
 uploading to a new iCloud owner silently.
 
+First activation saves off before temporarily allowing the coordinator to sync.
+Only a complete successful pass can persist the version-2 enabled preference;
+failure, account/visit changes or cancellation leave it off. Maintenance cannot
+borrow a pending activation. Earlier enabled preferences have no success proof
+and migrate to off without deleting any records. Verified enabled choices survive
+later transient background failures; their errors remain inside the Settings sheet.
+
+Uploads are bounded by both record count and serialized UTF-8 bytes. The native
+writer splits oversized batches finitely and refetches the root/change tag before
+every atomic attempt; successful partial delivery retains immutable IDs for retry.
+Collect per-record save/delete failures together with the final operation failure
+before sanitizing errors. A quota rejection must retain `QUOTA_EXCEEDED` so Settings
+can explain that the user's iCloud storage is full; unknown failures stay unavailable.
+Expired CloudKit cursors restart reads. For deletion and guest handover, restart
+only physical cleanup once per invocation and persist the cleared cursor first;
+retain the original fenced generation, reset/closure intent and accepted adoption.
+Never repeat a deletion reset merely to recover pagination.
+
 Generation-based conditional writes, stable reset IDs and per-account data epochs
 prevent stale devices restoring deleted data. A newer JustGO epoch replaces stale
 iCloud records without deleting fresh local history. A signed-out collection can
 adopt a verified newer iCloud epoch; a signed-in unexpected future epoch fails for
 reconciliation. Permanent account closure markers fence later uploads. Reset
 uncertainty requires an explicit user decision. Lost reset acknowledgements retry
-the original operation rather than deleting newer records. Real CloudKit schema,
-entitlements, two-device conflicts/full-storage/reset behavior remain release gates.
+the original operation rather than deleting newer records.
+
+Removing JustGO's iCloud data through Apple's Settings is a cloud-only action.
+It never authorizes erasing phone entries. While sync remains enabled, ordinary
+reads may recreate an absent zone/root with reset marker 0, and the coordinator
+rebuilds cloud version bookkeeping while retaining completions, current writing
+and alternatives. Turning sync off stops uploads and keeps phone data. There is
+no clear-phone action, reset confirmation or clearing recovery method in the
+sync sheet; the normal Start Syncing/X flow remains.
+
+Real Delete all my data/Delete account operations remain separate and retain
+conditional generations, account closure and authenticated account-epoch fences.
+Native reset/close always write the existing INT64 marker 1, including roots
+left with legacy external-recovery marker 2. Decode legacy 2 without treating it
+as permission to clear phone entries. New native reads use `readRetainingLocal`;
+the adapter requires that capability before reads or mutations so a superseded
+binary cannot retain the previous marker-2 deletion behavior.
+
+An unfinished local clear from the rejected recovery flow is cancelled when the
+cloud copy is fresh/externally reset and no actual deletion/cleanup/replacement
+or unobserved account-epoch clear is pending. Persist that cancellation before
+upload. Genuine deletion intents and newer server epochs still finish their
+clearing. Unknown history after a genuine in-app deletion remains fenced rather
+than silently re-uploading deleted entries; syncing offers no destructive escape.
+The October 23 decision supersedes the earlier clear-and-sync design. Physical
+cloud-removal/off/on acceptance stays distinct from native package and browser
+proof, and the other owner-deferred Phase 13 manual cases remain open.
 
 ## Download, import and deletion
 

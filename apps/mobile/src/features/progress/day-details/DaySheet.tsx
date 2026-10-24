@@ -23,7 +23,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { useDaySheetMotion } from './useDaySheetMotion';
+import { useSheetMotion } from '../../../platform/modals/useSheetMotion';
+import { useReduceMotion } from '../../../platform/motion/motion';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import type { ProgressEntry } from '../types';
@@ -184,13 +185,13 @@ export function DaySheet({
     setExpanded(null);
     onClose();
   }, [onClose]);
+  const reduceMotion = useReduceMotion();
   const {
     offset: sheetOffset,
     open,
     close: animateClose,
     backdropVisible,
-    reduceMotion,
-  } = useDaySheetMotion(date, finishClose);
+  } = useSheetMotion(date !== null, finishClose, reduceMotion);
   const { height } = useWindowDimensions();
   const close = useCallback(
     () => (beforeClose ? beforeClose(animateClose) : animateClose()),

@@ -90,7 +90,7 @@ objects, unnecessary assertions and redundant unions to production TypeScript. N
 assertions warn. Mobile React rules protect list keys, nested component definitions
 and leaked conditional rendering. Testing Library rules require awaited async
 queries/utilities and reject awaited synchronous queries or promises passed to
-`fireEvent`; native renderer `findByType` inspection remains synchronous. Focused
+`fireEvent`; host renderer inspection remains synchronous. Focused
 lint fixtures prove that each configured rule detects its intended failure.
 
 Relative imports in API/contracts TypeScript use `.js` for NodeNext's emitted
@@ -140,7 +140,13 @@ make a focused run pass.
 The root coverage command builds contracts, runs workspaces sequentially and
 enforces [coverage-thresholds.json](../../scripts/quality/coverage-thresholds.json).
 API coverage includes unit/database suites and the migration rehearsal, so prepare
-the same local database first. Individual workspace coverage scripts generate
+the same local database first. The private Auth-session helper integration also
+requires `JUSTGO_TEST_ADMIN_DATABASE_URL` for a `postgres` connection to loopback
+`justgo_test`, with SSL disabled. New `db:local` environments and shared CI database
+jobs supply it; existing local `.env` files need that test-only value added.
+The test refuses occupied Auth/helper schemas, executes the actual operator SQL
+inside a rollback-only fixture transaction and never targets hosted Auth. Never
+deploy this test operator URL on Vercel or mobile. Individual workspace coverage scripts generate
 reports; the root command applies the combined gate. Reports are ignored generated
 output under `coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
 Jest uses Istanbul; Vitest's V8 provider is pinned with its Vitest version.
@@ -183,6 +189,18 @@ a schema declaration does not establish input rejection or ownership isolation.
 
 ## Async tests and boundary regressions
 
+React Native Testing Library 14 uses `test-renderer`, with asynchronous `render`,
+`renderHook`, events, `act`, rerenders and unmounts. Await these operations and
+Router test navigation; do not hide unfinished updates behind synchronous helpers
+or a global async notifier callback that its caller cannot await. Prefer accessible
+host queries. SDK 58 web stacks retain inactive screens in the DOM; use role/name
+queries to assert the active accessible screen instead of matching hidden text.
+The authored SVG host fixture permits geometry assertions at that explicit
+boundary without inspecting composite implementation instances. The modal web
+adapter test creates a narrow JSDOM document in the Node test environment because
+RN 0.88's preset conflicts with Jest 30's nonconfigurable jsdom window property.
+It still exercises real DOM isolation and restores the document after each test.
+
 Provider tests mount the actual provider/controller/client with controllable
 vault/fetch/AppState boundaries. Fake timers govern expiry/polling. Unmount,
 cancel, clear and flush queued callbacks before restoring real timers. Controllers
@@ -223,6 +241,15 @@ boundary; the app's managed controller, canonical API mapping, owner transaction
 database RLS and sync routes are real. No external-provider/native claim follows
 from that seam. Saved journeys are distinct from presentation fixtures,
 one-off interactive walkthroughs and native checks.
+
+Install failure routes before navigation/bootstrap can start the targeted work.
+For one-shot faults after an authenticated page, first stop the old document
+(for example, navigate to `about:blank` in the same context) so its background
+requests cannot consume the fault. Gate and observe the intended request before
+releasing its failure; assert no file/output and require a separate explicit
+retry. Keep that user action distinct from transport-level read replays and
+queued background synchronization. Use these observable barriers instead of
+sleeps, larger timeouts or suite retries.
 
 Install pinned Chromium with `npx playwright install chromium`; Linux CI uses the
 shared setup action to install system dependencies on every run and Chromium on
@@ -374,6 +401,20 @@ capabilities and physical multi-device/account-change/failure/deletion checks;
 in-memory cloud adapters establish domain decisions only.
 Use the [move checks](#file-moves-and-bundle-checks) when module or asset paths change.
 
+The private CloudKit bridge also has a dependency-free SwiftPM regression target:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test \
+  --package-path apps/mobile/modules/justgo-icloud \
+  --scratch-path .local/justgo-icloud-swift --jobs 1
+```
+
+Use the installed Xcode toolchain locally without changing the global developer
+directory. The target compiles production CloudKit code against controllable I/O;
+its tests cover byte bounds, atomic generation/account fences and sanitized cursor
+errors. It excludes the Expo bridge, requires no Apple login and does not contact
+CloudKit. A signed EAS build and actual phone checks still verify those boundaries.
+
 The [native-testing checkpoint](../handoffs/phase-07-3a-testing-checkpoint.md) and
 [browser assessment](../checks/phase-07-3a-browser-testing-assessment.md) remain the
 resume boundary for deferred native automation. Retain Playwright/web adapters,
@@ -453,7 +494,7 @@ never hide live metadata changes with offline mode/exclusions. Native/device
 acceptance for changed dependencies stays separate.
 
 CI runs on pull requests and pushes to `main`, cancels superseded PR runs and keeps
-each main commit's result. Five producer jobs run independently:
+each main commit's result. Six producer jobs run independently:
 
 - `static`: online Doctor, contracts/type/lint/format/tooling checks and the API
   production-dependency audit.
@@ -463,6 +504,7 @@ each main commit's result. Five producer jobs run independently:
 - `journeys`: isolated PostgreSQL and the actual app/API/database journeys. Their
   wrapper owns migration and fixture service startup.
 - `exports`: production web export, its independent static smoke, then iOS export.
+- `native-icloud`: the pure Swift CloudKit regressions on macOS, without npm setup.
 
 The final `checks` job runs even when a producer fails, is skipped or is cancelled;
 any such result fails the aggregate status. After all producers pass, it downloads

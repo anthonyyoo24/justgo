@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { AppState } from 'react-native';
 import { useIdentity, useRuntime } from '../../providers/AppProvider';
+import { preloadWelcomeArtwork } from '../welcome/welcome-artwork';
 
 type Visit = { userId: string | null };
 type Job = {
@@ -44,6 +45,8 @@ export function useAccountDeletionDialog() {
       (!latest.account && !resuming)
     )
       return;
+    // Best-effort preparation handles its own failure and never delays deletion.
+    void preloadWelcomeArtwork();
     const visit = { userId: latest.account?.userId ?? null };
     current.current = {
       visit,

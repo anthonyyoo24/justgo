@@ -16,11 +16,11 @@ import { attempt, uuid, deferred } from '../../../test-support/journal';
 
 it('adds and edits a reflection inline while preserving its feeling and local saving behavior', async () => {
   await online();
-  const root = mount();
+  const root = await mount();
   await loaded();
-  openToday(root);
+  await openToday(root);
   const screen = within(root.getByTestId('day-sheet-panel'));
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
@@ -34,11 +34,11 @@ it('adds and edits a reflection inline while preserving its feeling and local sa
       includeHiddenElements: true,
     }),
   ).toBeTruthy();
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'First day entry text.',
   );
-  fireEvent.press(addSave);
+  await fireEvent.press(addSave);
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
@@ -54,17 +54,21 @@ it('adds and edits a reflection inline while preserving its feeling and local sa
       includeHiddenElements: true,
     }),
   ).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Edit reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Edit reflection' }),
+  );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection').props.value).toBe(
       'First day entry text.',
     ),
   );
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Edited day text.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save reflection' }),
+  );
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
@@ -75,26 +79,28 @@ it('adds and edits a reflection inline while preserving its feeling and local sa
 
 it('opens Add from the row title and guards dirty input when the row is tapped again', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  openToday(screen);
-  fireEvent.press(screen.getByText('Say hello.'));
+  await openToday(screen);
+  await fireEvent.press(screen.getByText('Say hello.'));
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
   expect(screen.getByRole('button', { name: /Rep 1.*Cancel/ })).toBeTruthy();
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Keep this unsent writing.',
   );
-  fireEvent.press(screen.getByText('Feeling'));
+  await fireEvent.press(screen.getByText('Feeling'));
   expect(screen.getByText('Leave your reflection?')).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
   expect(screen.getByLabelText('Your day reflection').props.value).toBe(
     'Keep this unsent writing.',
   );
-  fireEvent.press(screen.getByRole('button', { name: /Rep 1.*Cancel/ }));
-  fireEvent.press(screen.getByRole('button', { name: 'Discard changes' }));
+  await fireEvent.press(screen.getByRole('button', { name: /Rep 1.*Cancel/ }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Discard changes' }),
+  );
   expect(screen.queryByLabelText('Your day reflection')).toBeNull();
   expect(harness.mockRepository!.getAttempt(uuid(1))?.reflection).toBeNull();
   expect(screen.getByLabelText(/Rep 1.*Add reflection/)).toBeTruthy();
@@ -102,28 +108,30 @@ it('opens Add from the row title and guards dirty input when the row is tapped a
 
 it('protects dirty input on sheet close and keeps editing without applying the canceled close later', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  openToday(screen);
-  fireEvent.press(
+  await openToday(screen);
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Unfinished day text.',
   );
-  fireEvent.press(
+  await fireEvent.press(
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
   );
   expect(screen.getByText('Leave your reflection?')).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
   expect(screen.getByLabelText('Your day reflection').props.value).toBe(
     'Unfinished day text.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save reflection' }),
+  );
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
@@ -132,21 +140,25 @@ it('protects dirty input on sheet close and keeps editing without applying the c
 
 it('discards only unsent editor changes and keeps the day sheet open', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  openToday(screen);
-  fireEvent.press(
+  await openToday(screen);
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Discardable text.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Cancel reflection' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Discard changes' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Cancel reflection' }),
+  );
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Discard changes' }),
+  );
   expect(screen.queryByLabelText('Your day reflection')).toBeNull();
   expect(harness.mockRepository!.getAttempt(uuid(1))?.reflection).toBeNull();
   expect(screen.getByLabelText(/Rep 1.*Add reflection/)).toBeTruthy();
@@ -154,10 +166,10 @@ it('discards only unsent editor changes and keeps the day sheet open', async () 
 
 it('blocks duplicate slow saves, retains newer typing and saves through dirty-close confirmation', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  openToday(screen);
-  fireEvent.press(
+  await openToday(screen);
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
@@ -166,15 +178,21 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
   await act(async () =>
     harness.mockRepository!.setEnvironment({ active: true, online: false }),
   );
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Submitted day text.',
   );
   const pending = deferred<void>();
   memoryJournalBackend(harness.storage).beforeCommit = () => pending.promise;
-  fireEvent.press(screen.getByRole('button', { name: 'Cancel reflection' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Cancel reflection' }),
+  );
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save Reflection' }),
+  );
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save Reflection' }),
+  );
   await act(async () => jest.advanceTimersByTimeAsync(199));
   expect(screen.queryByTestId('day-reflection-dismiss-spinner')).toBeNull();
   await act(async () => jest.advanceTimersByTimeAsync(1));
@@ -183,12 +201,12 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
     name: 'Saving reflection',
   }))
     expect(button).toBeDisabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
-  fireEvent.changeText(
+  await fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Newer day text.',
   );
-  fireEvent.press(
+  await fireEvent.press(
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
   );
   expect(screen.getByLabelText('Your day reflection').props.value).toBe(
@@ -211,7 +229,9 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
       .mockRepository!.store.getState()
       .journal.operations.filter((op) => op.kind === 'patch'),
   ).toHaveLength(0);
-  fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save reflection' }),
+  );
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
@@ -222,16 +242,16 @@ it('blocks duplicate slow saves, retains newer typing and saves through dirty-cl
 
 it('allows clean cancellation and reports unavailable today cache instead of a false empty day', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  openToday(screen);
-  fireEvent.press(
+  await openToday(screen);
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  fireEvent.press(screen.getByRole('button', { name: /Rep 1.*Cancel/ }));
+  await fireEvent.press(screen.getByRole('button', { name: /Rep 1.*Cancel/ }));
   expect(screen.queryByLabelText('Your day reflection')).toBeNull();
   expect(screen.queryByText('Leave your reflection?')).toBeNull();
   expect(
@@ -256,7 +276,7 @@ it('allows clean cancellation and reports unavailable today cache instead of a f
 
 it('keeps usable caches through a failed background refresh and reports a failed explicit editor adoption', async () => {
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
   harness.mockClient.request.mockRejectedValue(
     new Error('Refresh unavailable'),
@@ -281,7 +301,7 @@ it('keeps usable caches through a failed background refresh and reports a failed
       };
     throw new Error('Refresh unavailable');
   });
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Saturday, October 3, 2 reps/ }),
   );
   await waitFor(() =>
@@ -292,7 +312,7 @@ it('keeps usable caches through a failed background refresh and reports a failed
   const adopt = jest
     .spyOn(harness.mockRepository!, 'adoptAttempt')
     .mockRejectedValueOnce(new Error('Account changed'));
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
@@ -323,11 +343,11 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
         : { ...page, entries: [harness.transport.records.get(uuid(1))!] },
   );
   await online();
-  const root = mount();
+  const root = await mount();
   await loaded();
-  openToday(root);
+  await openToday(root);
   const screen = within(root.getByTestId('day-sheet-panel'));
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
@@ -335,11 +355,11 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
   );
   const addSave = screen.getByRole('button', { name: 'Save reflection' });
   expect(addSave).toBeDisabled();
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Writing after a feeling-only submission.',
   );
-  fireEvent.press(addSave);
+  await fireEvent.press(addSave);
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
@@ -351,14 +371,16 @@ it('calendar reflection creation and text clearing preserve an existing feeling 
   expect(harness.mockRepository!.getAttempt(uuid(1))?.reflection?.feeling).toBe(
     'a_little_better',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Edit reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Edit reflection' }),
+  );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
+  await fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
   const editSave = screen.getByRole('button', { name: 'Save reflection' });
   expect(editSave).toBeEnabled();
-  fireEvent.press(editSave);
+  await fireEvent.press(editSave);
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );
@@ -395,9 +417,9 @@ it('retains an older-day saved reflection after upload, pruning and a stale day 
           : page,
   );
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Saturday, October 3, 2 reps/ }),
   );
   await loaded();
@@ -406,17 +428,19 @@ it('retains an older-day saved reflection after upload, pruning and a stale day 
       screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
     ).toBeTruthy(),
   );
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*Add reflection/ }),
   );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Saved older-day reflection.',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Save reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save reflection' }),
+  );
   await waitFor(() =>
     expect(harness.mockRepository!.getAttempt(uuid(2))?.reflection?.text).toBe(
       'Saved older-day reflection.',
@@ -446,25 +470,31 @@ it('cannot save an empty text-only edit from the dirty-close dialog', async () =
         : { ...page, entries: [written] },
   );
   await online();
-  const screen = mount();
+  const screen = await mount();
   await loaded();
-  openToday(screen);
-  fireEvent.press(
+  await openToday(screen);
+  await fireEvent.press(
     screen.getByRole('button', { name: /Rep 1.*View Reflection/ }),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Edit reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Edit reflection' }),
+  );
   await waitFor(() =>
     expect(screen.getByLabelText('Your day reflection')).toBeTruthy(),
   );
-  fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
+  await fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
   expect(
     screen.getByRole('button', { name: 'Save reflection' }),
   ).toBeDisabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Cancel reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Cancel reflection' }),
+  );
   expect(
     screen.getByRole('button', { name: 'Save Reflection' }),
   ).toBeDisabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Discard changes' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Discard changes' }),
+  );
   await waitFor(() =>
     expect(screen.queryByLabelText('Your day reflection')).toBeNull(),
   );

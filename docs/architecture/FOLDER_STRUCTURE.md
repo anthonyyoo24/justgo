@@ -31,6 +31,7 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/app/(challenge)/                                 | Challenge, Success and reflection routes; no extra navigator/layout.                        |
 | apps/mobile/src/app/account/                                     | Provider sign-in adapter and legacy account-route redirects.                                |
 | apps/mobile/src/app-support/access/                              | Startup/access gate.                                                                        |
+| apps/mobile/src/app-support/loading/                             | Shared quiet loading presentation for fonts, saved data and challenge admission.            |
 | apps/mobile/src/app-support/identity/                            | Identity controller, transport, vault and storage.                                          |
 | apps/mobile/src/app-support/identity/auth/                       | Managed sessions, verified provider links and durable guest-adoption lifecycle.             |
 | apps/mobile/src/app-support/identity/account/                    | Managed Account, provider sign-in and disclosure screens.                                   |
@@ -101,21 +102,23 @@ capability changes need a separately authorized compatible build.
 
 ## API and contracts
 
-| Implemented path                 | Responsibility                                                            |
-| -------------------------------- | ------------------------------------------------------------------------- |
-| apps/api/src/identity/           | Managed Auth, owner linking/deletion and internal legacy migration.       |
-| apps/api/src/access/             | Server-authorized access and staging-only beta admission.                 |
-| apps/api/src/challenges/         | Stable catalog reads.                                                     |
-| apps/api/src/attempts/           | Canonical completion creation and retired private PATCH rejection.        |
-| apps/api/src/progress/           | Independent summary/month/day resources.                                  |
-| apps/api/src/account-export/     | Owner-isolated compatibility completion export.                           |
-| apps/api/src/http/               | Shared errors, bearer/validation, response handling and safe diagnostics. |
-| apps/api/src/db/                 | Restricted pools, transaction ownership and current single schema.        |
-| apps/api/tests/                  | Mirrored domain/db/http/script tests and fixtures.                        |
-| apps/api/scripts/                | Migration/provisioning and separate loopback fixture entrypoints.         |
-| apps/api/drizzle/                | Ordered registered SQL migrations and immutable generated metadata.       |
-| packages/contracts/src/          | Public error/operational schemas; API-only OpenAPI document entry.        |
-| packages/contracts/src/activity/ | Catalog, completion/reflection and Progress resource contracts.           |
+| Implemented path                         | Responsibility                                                                |
+| ---------------------------------------- | ----------------------------------------------------------------------------- |
+| apps/api/src/db/managed-session-check.ts | Private Auth helper source/ownership/effective-privilege readiness.           |
+| apps/api/scripts/managed-auth/           | Versioned postgres-operator session capability; separate from app migrations. |
+| apps/api/src/identity/                   | Managed Auth, owner linking/deletion and internal legacy migration.           |
+| apps/api/src/access/                     | Server-authorized access and staging-only beta admission.                     |
+| apps/api/src/challenges/                 | Stable catalog reads.                                                         |
+| apps/api/src/attempts/                   | Canonical completion creation and retired private PATCH rejection.            |
+| apps/api/src/progress/                   | Independent summary/month/day resources.                                      |
+| apps/api/src/account-export/             | Owner-isolated compatibility completion export.                               |
+| apps/api/src/http/                       | Shared errors, bearer/validation, response handling and safe diagnostics.     |
+| apps/api/src/db/                         | Restricted pools, transaction ownership and current single schema.            |
+| apps/api/tests/                          | Mirrored domain/db/http/script tests and fixtures.                            |
+| apps/api/scripts/                        | Migration/provisioning and separate loopback fixture entrypoints.             |
+| apps/api/drizzle/                        | Ordered registered SQL migrations and immutable generated metadata.           |
+| packages/contracts/src/                  | Public error/operational schemas; API-only OpenAPI document entry.            |
+| packages/contracts/src/activity/         | Catalog, completion/reflection and Progress resource contracts.               |
 
 Runtime and migration credentials remain separate. Mobile and API import the
 public contracts package and do not import each other's implementations. The

@@ -1,28 +1,38 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { StyleSheet, View } from 'react-native';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { useFocusEffect } from 'expo-router';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import {
   useJournal,
   useRuntime,
 } from '../../../app-support/providers/AppProvider';
 import { SettingsToggleRow } from '../../../components/settings/SettingsToggleRow';
-import { SettingsActionRow } from '../../../components/settings/SettingsRows';
-import { ScaledText as Text } from '../../../components/typography/ScaledText';
+import { SettingsRowContent } from '../../../components/settings/SettingsRows';
 import {
   iCloudSync,
   type ICloudStatus,
   ICloudError,
 } from '../../../platform/icloud/icloud-sync';
 import { useReduceMotion } from '../../../platform/motion/motion';
-import { colors, spacing, typography } from '../../../theme/tokens';
+import { colors } from '../../../theme/tokens';
+import { ICloudSyncSheet } from './ICloudSyncSheet';
+import { iCloudSyncMessages } from './icloud-messages';
 
 const noSubscription = () => () => {};
 const idle = { status: 'idle', error: null } as const;
 const messageFor = (error: unknown) =>
   error instanceof ICloudError && error.code === 'QUOTA_EXCEEDED'
-    ? 'iCloud storage is full. Your saved data remains on this phone.'
-    : error instanceof ICloudError && error.code === 'ACCOUNT_CHANGED'
-      ? 'Your iCloud account changed. Review your iCloud account and turn sync on again.'
-      : 'Couldn’t finish iCloud sync. Your saved data remains on this phone. Please try again.';
+    ? iCloudSyncMessages.quota
+    : error instanceof ICloudError && error.code === 'NOT_CONFIGURED'
+      ? iCloudSyncMessages.update
+      : error instanceof ICloudError && error.code === 'ACCOUNT_CHANGED'
+        ? iCloudSyncMessages.accountChanged
+        : iCloudSyncMessages.failed;
 
 export function SettingsICloudRow({
   disabled,
@@ -42,7 +52,13 @@ export function SettingsICloudRow({
   const [status, setStatus] = useState<ICloudStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const running = useRef(false);
+  const visit = useRef<{
+    owner: string | undefined;
+    accountToken: string | null | undefined;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryDisable, setRetryDisable] = useState(false);
   useEffect(() => {
     let alive = true;
     const refresh = () => {
@@ -72,145 +88,144 @@ export function SettingsICloudRow({
     return () => onBusyChange(false);
   }, [busy, onBusyChange]);
   const owner = repository?.accountId;
+  useFocusEffect(
+    useCallback(() => {
+      // Consent and feedback belong to this visit, collection and Apple account.
+      visit.current = { owner, accountToken: status?.accountToken };
+      setConfirm(false);
+      setError(null);
+      setRetryDisable(false);
+      return () => {
+        visit.current = null;
+        setConfirm(false);
+      };
+    }, [owner, status?.accountToken]),
+  );
   const run = useCallback(
-    async (enabled: boolean, acknowledgeReset = false) => {
-      if (!owner || busy || disabled || !client.ownsCollection(owner)) return;
+    async (enabled: boolean) => {
+      const submittedVisit = visit.current;
+      if (
+        !owner ||
+        !submittedVisit ||
+        running.current ||
+        disabled ||
+        !client.ownsCollection(owner)
+      )
+        return;
+      running.current = true;
       setBusy(true);
       setError(null);
-      setConfirm(false);
       try {
-        await iCloudSync.setEnabled(enabled);
-        if (!client.ownsCollection(owner)) return;
         if (enabled) {
-          if (!coordinator) throw new ICloudError('UNAVAILABLE');
-          if (acknowledgeReset) await coordinator?.acknowledgeReset();
-          else await coordinator?.synchronize();
+          const isCurrent = () =>
+            client.ownsCollection(owner) && submittedVisit === visit.current;
+          await iCloudSync.setEnabled(
+            true,
+            async () => {
+              const checkVisit = () => {
+                if (!isCurrent()) throw new ICloudError('DISABLED');
+              };
+              checkVisit();
+              if (!coordinator) throw new ICloudError('UNAVAILABLE');
+              await coordinator.synchronize();
+              checkVisit();
+            },
+            isCurrent,
+          );
+        } else await iCloudSync.setEnabled(false);
+        const next = await iCloudSync.status();
+        if (client.ownsCollection(owner) && submittedVisit === visit.current) {
+          setStatus(next);
+          setConfirm(false);
         }
-        if (client.ownsCollection(owner)) setStatus(await iCloudSync.status());
       } catch (failure) {
-        if (client.ownsCollection(owner)) {
+        if (client.ownsCollection(owner) && submittedVisit === visit.current) {
           setError(messageFor(failure));
+          setRetryDisable(!enabled);
+          setConfirm(true);
           try {
-            setStatus(await iCloudSync.status());
+            const next = await iCloudSync.status();
+            if (
+              client.ownsCollection(owner) &&
+              submittedVisit === visit.current
+            )
+              setStatus(next);
           } catch {
             /* Keep the last known toggle while retry feedback is visible. */
           }
         }
       } finally {
+        running.current = false;
         setBusy(false);
       }
     },
-    [owner, busy, disabled, client, coordinator],
+    [owner, disabled, client, coordinator],
   );
-  const reset = state.error === 'RESET_CONFIRMATION_REQUIRED';
   const visibleError =
     error ??
-    (state.status === 'error' && state.error && !reset
+    (state.status === 'error' && state.error
       ? messageFor(new ICloudError(state.error))
       : null);
   const unavailableReason =
     status && status.status !== 'available'
-      ? unavailableMessages[status.status]
+      ? iCloudSyncMessages[status.status]
       : null;
   return (
     <View>
-      <SettingsToggleRow
-        icon="icloud"
-        label="iCloud Sync"
-        hint={
-          status?.status === 'available'
-            ? 'Sync your saved data with your private Apple iCloud account. JustGO sign-in is separate.'
-            : 'iCloud Sync requires a configured iPhone build and an available iCloud account.'
-        }
-        value={status?.enabled ?? false}
-        busy={busy || status === null || state.status === 'syncing'}
-        disabled={disabled || busy || !owner || status?.status !== 'available'}
-        reduceMotion={reduceMotion}
-        onValueChange={(enabled) => {
-          if (enabled) setConfirm(true);
-          else void run(false);
-        }}
-      />
-      {unavailableReason && (
-        <Text accessibilityRole="alert" style={styles.unavailable}>
-          {unavailableReason}
-        </Text>
+      {status === null ? (
+        <SettingsRowContent
+          icon="icloud"
+          label="iCloud Sync"
+          accessory={
+            <ActivityIndicator
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel="Loading iCloud Sync"
+              color={colors.ink}
+              style={styles.loadingAccessory}
+            />
+          }
+        />
+      ) : (
+        <SettingsToggleRow
+          icon="icloud"
+          label="iCloud Sync"
+          hint={
+            status.status === 'available'
+              ? 'Sync your saved data with your private Apple iCloud account. JustGO sign-in is separate.'
+              : 'iCloud Sync requires a configured iPhone build and an available iCloud account.'
+          }
+          value={status.enabled && (!confirm || retryDisable)}
+          busy={busy || state.status === 'syncing'}
+          disabled={disabled || busy || !owner}
+          reduceMotion={reduceMotion}
+          onValueChange={(enabled) => {
+            if (enabled) {
+              if (retryDisable) setError(null);
+              setRetryDisable(false);
+              setConfirm(true);
+            } else void run(false);
+          }}
+        />
       )}
-      {confirm && (
-        <View accessibilityRole="alert" style={styles.inset}>
-          <Text style={styles.body}>
-            Sync your challenge history, feelings and reflections with your
-            private iCloud account? This is separate from JustGO sign-in.
-          </Text>
-          <SettingsActionRow
-            icon="account"
-            label="Turn on iCloud Sync"
-            disabled={disabled || busy}
-            onPress={() => {
-              void run(true);
-            }}
-          />
-          <SettingsActionRow
-            icon="account"
-            label="Cancel"
-            onPress={() => setConfirm(false)}
-          />
-        </View>
-      )}
-      {reset && (
-        <View style={styles.inset}>
-          <Text accessibilityRole="alert" style={styles.body}>
-            Your saved data was deleted from iCloud on another device. Clear
-            this phone’s older copy before syncing again.
-          </Text>
-          <SettingsActionRow
-            icon="delete"
-            label="Clear older copy and sync"
-            disabled={disabled || busy}
-            onPress={() => {
-              void run(true, true);
-            }}
-          />
-        </View>
-      )}
-      {visibleError && (
-        <View style={styles.inset}>
-          <Text accessibilityRole="alert" style={styles.error}>
-            {visibleError}
-          </Text>
-          <SettingsActionRow
-            icon="account"
-            label="Retry iCloud Sync"
-            disabled={disabled || busy}
-            onPress={() => {
-              void run(status?.enabled ?? false);
-            }}
-          />
-        </View>
+      {confirm && !disabled && (
+        <ICloudSyncSheet
+          busy={busy}
+          disabled={disabled || !owner || status?.status !== 'available'}
+          error={unavailableReason ?? visibleError}
+          actionLabel={retryDisable ? 'Try Again' : 'Start Syncing'}
+          reduceMotion={reduceMotion}
+          onClose={() => setConfirm(false)}
+          onStart={() => {
+            // run owns and presents any sync failure without dropping local data.
+            void run(!retryDisable);
+          }}
+        />
       )}
     </View>
   );
 }
-const unavailableMessages: Record<
-  Exclude<ICloudStatus['status'], 'available'>,
-  string
-> = {
-  not_configured: 'iCloud Sync is not set up in this version of JustGO yet.',
-  unsupported: 'iCloud Sync is available on iPhone and iPad.',
-  not_authenticated:
-    'Sign in to iCloud in your device’s Settings to use iCloud Sync.',
-  restricted: 'iCloud access is restricted on this device.',
-  unavailable:
-    'iCloud is unavailable right now. Your saved data stays on this phone.',
-};
+
 const styles = StyleSheet.create({
-  unavailable: {
-    ...typography.caption,
-    color: colors.ink,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  inset: { padding: spacing.lg, gap: spacing.md },
-  body: { ...typography.caption, color: colors.ink },
-  error: { ...typography.caption, color: '#8B1E32' },
+  loadingAccessory: { width: 51, height: 31 },
 });

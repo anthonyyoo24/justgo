@@ -48,7 +48,7 @@ afterEach(() => {
   repository.dispose();
 });
 
-it('keeps typing and dirty-close state inside the editor without rendering its screen owner', () => {
+it('keeps typing and dirty-close state inside the editor without rendering its screen owner', async () => {
   const ownerRender = jest.fn();
   const leave = jest.fn();
   function Fixture() {
@@ -75,32 +75,32 @@ it('keeps typing and dirty-close state inside the editor without rendering its s
       </>
     );
   }
-  const screen = render(<Fixture />);
-  fireEvent.press(screen.getByRole('button', { name: 'Open' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Reveal' }));
+  const screen = await render(<Fixture />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Open' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Reveal' }));
   ownerRender.mockClear();
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your day reflection'),
     'Disposable draft',
   );
   expect(screen.getByLabelText('Your day reflection').props.value).toBe(
     'Disposable draft',
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Leave' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Leave' }));
   expect(screen.getByText('Leave your reflection?')).toBeTruthy();
   expect(ownerRender).not.toHaveBeenCalled();
   expect(leave).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Keep editing' }));
   expect(screen.getByLabelText('Your day reflection').props.value).toBe(
     'Disposable draft',
   );
   expect(ownerRender).not.toHaveBeenCalled();
-  screen.unmount();
+  await screen.unmount();
 });
 
 it.each(['android', 'web'] as const)(
   'retains the native placeholder on %s without a duplicate visible hint',
-  (platform) => {
+  async (platform) => {
     const os = jest.replaceProperty(Platform, 'OS', platform);
     const controller = new ReflectionController(
       repository,
@@ -108,7 +108,7 @@ it.each(['android', 'web'] as const)(
       () => {},
     );
     try {
-      const screen = render(
+      const screen = await render(
         <DayReflectionEditor
           controller={controller}
           state={controller.getSnapshot()}
@@ -123,7 +123,7 @@ it.each(['android', 'web'] as const)(
           includeHiddenElements: true,
         }),
       ).toBeNull();
-      screen.unmount();
+      await screen.unmount();
     } finally {
       controller.dispose();
       os.restore();
@@ -132,11 +132,11 @@ it.each(['android', 'web'] as const)(
 );
 
 it('opens an already durable row despite blocked storage and focuses once after the reveal', async () => {
-  const screen = renderHook(() => useDayReflection(repository));
+  const screen = await renderHook(() => useDayReflection(repository));
   const writes = storage.writes.length;
   const adopt = jest.spyOn(repository, 'adoptAttempt');
   storage.blocked = deferred<void>();
-  act(() => screen.result.current.edit(attempt()));
+  await act(() => screen.result.current.edit(attempt()));
   expect(screen.result.current.editingId).toBe(attempt().id);
   expect(adopt).not.toHaveBeenCalled();
   expect(storage.writes).toHaveLength(writes);
@@ -148,7 +148,7 @@ it('opens an already durable row despite blocked storage and focuses once after 
   const focus = jest.fn();
   editor.props.inputRef.current = { focus } as unknown as TextInput;
   expect(focus).not.toHaveBeenCalled();
-  act(() => {
+  await act(() => {
     screen.result.current.onEditorOpened();
     screen.result.current.onEditorOpened();
   });
@@ -156,7 +156,7 @@ it('opens an already durable row despite blocked storage and focuses once after 
   expect((screen.result.current.editor as typeof editor).props.inputReady).toBe(
     true,
   );
-  screen.unmount();
+  await screen.unmount();
   adopt.mockRestore();
 });
 
@@ -188,8 +188,8 @@ it.each(['', 'Existing synthetic QA reflection.'])(
         </>
       );
     }
-    const screen = render(<Fixture />);
-    fireEvent.press(screen.getByRole('button', { name: 'Open' }));
+    const screen = await render(<Fixture />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Open' }));
     if (initialText) {
       expect(screen.getByLabelText('Your day reflection').props.value).toBe(
         initialText,
@@ -200,9 +200,12 @@ it.each(['', 'Existing synthetic QA reflection.'])(
         }),
       ).toBeNull();
       // An early tap/clear must keep this mounted input through the reveal.
-      fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
+      await fireEvent.changeText(
+        screen.getByLabelText('Your day reflection'),
+        '',
+      );
       expect(screen.getByLabelText('Your day reflection').props.value).toBe('');
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByLabelText('Your day reflection'),
         initialText,
       );
@@ -214,7 +217,9 @@ it.each(['', 'Existing synthetic QA reflection.'])(
         }),
       ).toBeTruthy();
     }
-    fireEvent.press(screen.getByRole('button', { name: 'Reveal completed' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Reveal completed' }),
+    );
     expect(screen.getByLabelText('Your day reflection').props.value).toBe(
       initialText,
     );
@@ -234,7 +239,7 @@ it.each(['', 'Existing synthetic QA reflection.'])(
       expect(
         screen.getByLabelText('Your day reflection').props.placeholderTextColor,
       ).toBe('transparent');
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByLabelText('Your day reflection'),
         'Synthetic typed reflection.',
       );
@@ -246,7 +251,10 @@ it.each(['', 'Existing synthetic QA reflection.'])(
       expect(screen.getByLabelText('Your day reflection').props.value).toBe(
         'Synthetic typed reflection.',
       );
-      fireEvent.changeText(screen.getByLabelText('Your day reflection'), '');
+      await fireEvent.changeText(
+        screen.getByLabelText('Your day reflection'),
+        '',
+      );
       expect(hint()).toBeTruthy();
     } else {
       expect(
@@ -260,9 +268,11 @@ it.each(['', 'Existing synthetic QA reflection.'])(
         includeHiddenElements: true,
       }),
     ).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: 'Cancel reflection' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Cancel reflection' }),
+    );
     expect(screen.queryByLabelText('Your day reflection')).toBeNull();
-    screen.unmount();
+    await screen.unmount();
   },
 );
 
@@ -274,27 +284,27 @@ it('allows clean close/reopen while pruning is pending and ignores the old sessi
       repository.store.setState({ flowAttemptId: id });
       return pruning.promise;
     });
-  const screen = renderHook(() => useDayReflection(repository));
-  act(() => screen.result.current.edit(attempt()));
+  const screen = await renderHook(() => useDayReflection(repository));
+  await act(() => screen.result.current.edit(attempt()));
   expect(screen.result.current.editingId).toBe(attempt().id);
   const closed = jest.fn();
-  act(() => screen.result.current.beforeClose(closed));
+  await act(() => screen.result.current.beforeClose(closed));
   expect(closed).toHaveBeenCalledTimes(1);
   expect(screen.result.current.editingId).toBeNull();
-  act(() => screen.result.current.edit(attempt()));
+  await act(() => screen.result.current.edit(attempt()));
   expect(screen.result.current.editingId).toBe(attempt().id);
   await act(async () => {
     pruning.reject(new Error('Pruning unavailable'));
     await pruning.promise.catch(() => {});
   });
   expect(screen.result.current.error).toBeNull();
-  screen.unmount();
+  await screen.unmount();
   pin.mockRestore();
 });
 
 it('ignores a late reveal callback after clean close and for an inactive account', async () => {
-  const screen = renderHook(() => useDayReflection(repository));
-  act(() => screen.result.current.edit(attempt()));
+  const screen = await renderHook(() => useDayReflection(repository));
+  await act(() => screen.result.current.edit(attempt()));
   await waitFor(() => expect(screen.result.current.editor).not.toBeNull());
   const editor = screen.result.current.editor as ReactElement<{
     inputRef: RefObject<TextInput | null>;
@@ -302,16 +312,16 @@ it('ignores a late reveal callback after clean close and for an inactive account
   const focus = jest.fn();
   editor.props.inputRef.current = { focus } as unknown as TextInput;
   const late = screen.result.current.onEditorOpened;
-  act(() => screen.result.current.beforeClose(() => {}));
+  await act(() => screen.result.current.beforeClose(() => {}));
   expect(screen.result.current.editingId).toBeNull();
-  act(late);
+  await act(late);
   expect(focus).not.toHaveBeenCalled();
-  act(() => screen.result.current.edit(attempt()));
+  await act(() => screen.result.current.edit(attempt()));
   await waitFor(() => expect(screen.result.current.editor).not.toBeNull());
-  act(() => repository.setEnvironment({ active: false, online: false }));
-  act(() => screen.result.current.onEditorOpened());
+  await act(() => repository.setEnvironment({ active: false, online: false }));
+  await act(() => screen.result.current.onEditorOpened());
   expect(focus).not.toHaveBeenCalled();
-  screen.unmount();
+  await screen.unmount();
 });
 
 it('does not mount an editor when the account deactivates during older-row adoption', async () => {
@@ -319,16 +329,16 @@ it('does not mount an editor when the account deactivates during older-row adopt
   const adopt = jest
     .spyOn(repository, 'adoptAttempt')
     .mockReturnValueOnce(adoption.promise);
-  const screen = renderHook(() => useDayReflection(repository));
-  act(() => screen.result.current.edit(attempt(2)));
+  const screen = await renderHook(() => useDayReflection(repository));
+  await act(() => screen.result.current.edit(attempt(2)));
   await waitFor(() => expect(adopt).toHaveBeenCalled());
-  act(() => repository.setEnvironment({ active: false, online: false }));
+  await act(() => repository.setEnvironment({ active: false, online: false }));
   await act(async () => {
     adoption.resolve();
     await adoption.promise;
   });
   expect(screen.result.current.editor).toBeNull();
   expect(repository.store.getState().flowAttemptId).toBeNull();
-  screen.unmount();
+  await screen.unmount();
   adopt.mockRestore();
 });

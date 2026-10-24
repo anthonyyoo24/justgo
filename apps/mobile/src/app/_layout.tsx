@@ -5,7 +5,7 @@ import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import {
   AppProvider,
   useAccess,
@@ -13,6 +13,7 @@ import {
 } from '../app-support/providers/AppProvider';
 import { SavingFeedbackShell } from '../app-support/saving/SavingFeedback';
 import { colors } from '../theme/tokens';
+import { AppLoadingScreen } from '../app-support/loading/AppLoadingScreen';
 import { ChallengeActivityProvider } from '../features/challenges/active/ChallengeActivityProvider';
 import { MotionPreferencesProvider } from '../platform/motion/MotionPreferencesProvider';
 import { HapticsPreferencesProvider } from '../platform/haptics/HapticsPreferencesProvider';
@@ -23,6 +24,9 @@ import {
 } from '../app-support/identity/welcome/WelcomeTransition';
 
 export { RouteErrorScreen as ErrorBoundary } from '../app-support/fallbacks/RouteErrorScreen';
+
+// Protected cold links return through access while identity and local data hydrate.
+export const unstable_settings = { anchor: 'access' };
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -45,14 +49,7 @@ export default function RootLayout() {
         </Text>
       </View>
     );
-  if (!loaded)
-    return (
-      <ActivityIndicator
-        accessibilityLabel="Loading JustGO"
-        style={{ flex: 1, backgroundColor: colors.cream }}
-        color={colors.ink}
-      />
-    );
+  if (!loaded) return <AppLoadingScreen />;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
@@ -81,13 +78,7 @@ function Navigation() {
   // Resolve the saved collection before protected routes choose their initial
   // destination. Otherwise a cold local-history link is pruned as a new install.
   if (!identity.initialized)
-    return (
-      <ActivityIndicator
-        accessibilityLabel="Loading saved data"
-        style={{ flex: 1, backgroundColor: colors.cream }}
-        color={colors.ink}
-      />
-    );
+    return <AppLoadingScreen label="Loading saved data" />;
   return (
     <Stack
       screenOptions={{

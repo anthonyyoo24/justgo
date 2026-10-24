@@ -6,12 +6,36 @@ import {
   within,
 } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
-import { Path } from 'react-native-svg';
 import { cancelAnimation, withTiming } from 'react-native-reanimated';
 import { ChallengeCard, ChallengeDeck } from './ChallengeDeck';
-import { VenueArt } from './VenueArt';
 import { panelOutline } from '../challenge-design';
 import { colors } from '../../../theme/tokens';
+const artworkSources = {
+  streets: {
+    peach: require('../../../../assets/challenges/streets.png'),
+    cream: require('../../../../assets/challenges/streets-cream.png'),
+  },
+  park: {
+    peach: require('../../../../assets/challenges/park.png'),
+    cream: require('../../../../assets/challenges/park-cream.png'),
+  },
+  gym: {
+    peach: require('../../../../assets/challenges/gym.png'),
+    cream: require('../../../../assets/challenges/gym-cream.png'),
+  },
+  cafe: {
+    peach: require('../../../../assets/challenges/cafe.png'),
+    cream: require('../../../../assets/challenges/cafe-cream.png'),
+  },
+  bookstore: {
+    peach: require('../../../../assets/challenges/bookstore.png'),
+    cream: require('../../../../assets/challenges/bookstore-cream.png'),
+  },
+  bars: {
+    peach: require('../../../../assets/challenges/bars.png'),
+    cream: require('../../../../assets/challenges/bars-cream.png'),
+  },
+} as const;
 type PanEvent = {
   translationX: number;
   translationY: number;
@@ -97,9 +121,9 @@ const cards = [
 
 it.each(['layout', 'illustration', 'texture'] as const)(
   'waits for the front card’s %s before reporting visual readiness',
-  (last) => {
+  async (last) => {
     const ready = jest.fn();
-    const screen = render(
+    const screen = await render(
       <ChallengeDeck
         cards={cards}
         venue="cafe"
@@ -111,19 +135,19 @@ it.each(['layout', 'illustration', 'texture'] as const)(
     );
     const front = screen.getByTestId('challenge-card');
     const settle = {
-      layout: () =>
-        fireEvent(front, 'layout', {
+      layout: async () =>
+        await fireEvent(front, 'layout', {
           nativeEvent: { layout: { x: 0, y: 0, width: 220, height: 273 } },
         }),
-      illustration: () =>
-        fireEvent(
+      illustration: async () =>
+        await fireEvent(
           within(front).getByTestId('challenge-illustration', {
             includeHiddenElements: true,
           }),
           'load',
         ),
-      texture: () =>
-        fireEvent(
+      texture: async () =>
+        await fireEvent(
           within(front).getByTestId('challenge-paper-texture', {
             includeHiddenElements: true,
           }),
@@ -131,13 +155,13 @@ it.each(['layout', 'illustration', 'texture'] as const)(
         ),
     };
     for (const [name, finish] of Object.entries(settle))
-      if (name !== last) finish();
+      if (name !== last) await finish();
     expect(ready).not.toHaveBeenCalled();
-    settle[last]();
+    await settle[last]();
     expect(ready).toHaveBeenCalledTimes(1);
-    for (const finish of Object.values(settle)) finish();
+    for (const finish of Object.values(settle)) await finish();
     expect(ready).toHaveBeenCalledTimes(1);
-    screen.rerender(
+    await screen.rerender(
       <ChallengeDeck
         cards={cards.slice(1)}
         venue="cafe"
@@ -151,9 +175,13 @@ it.each(['layout', 'illustration', 'texture'] as const)(
   },
 );
 
-it('ignores queued-card readiness and settles failed decorative assets after a nonempty front layout', () => {
+jest.mock('react-native-svg', () =>
+  jest.requireActual('../../../../test-support/svg'),
+);
+
+it('ignores queued-card readiness and settles failed decorative assets after a nonempty front layout', async () => {
   const ready = jest.fn();
-  const screen = render(
+  const screen = await render(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -163,13 +191,16 @@ it('ignores queued-card readiness and settles failed decorative assets after a n
       onVisualReady={ready}
     />,
   );
-  const layout = (node: ReturnType<typeof screen.getByTestId>, width: number) =>
-    fireEvent(node, 'layout', {
+  const layout = async (
+    node: ReturnType<typeof screen.getByTestId>,
+    width: number,
+  ) =>
+    await fireEvent(node, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width, height: 273 } },
     });
-  const settleAssets = (node: ReturnType<typeof screen.getByTestId>) => {
+  const settleAssets = async (node: ReturnType<typeof screen.getByTestId>) => {
     for (const id of ['challenge-illustration', 'challenge-paper-texture'])
-      fireEvent(
+      await fireEvent(
         within(node).getByTestId(id, { includeHiddenElements: true }),
         'error',
       );
@@ -177,14 +208,14 @@ it('ignores queued-card readiness and settles failed decorative assets after a n
   const queued = screen.getByTestId('challenge-back-2', {
     includeHiddenElements: true,
   });
-  layout(queued, 220);
-  settleAssets(queued);
+  await layout(queued, 220);
+  await settleAssets(queued);
   expect(ready).not.toHaveBeenCalled();
   const front = screen.getByTestId('challenge-card');
-  settleAssets(front);
-  layout(front, 0);
+  await settleAssets(front);
+  await layout(front, 0);
   expect(ready).not.toHaveBeenCalled();
-  layout(front, 220);
+  await layout(front, 220);
   expect(ready).toHaveBeenCalledTimes(1);
 });
 
@@ -195,9 +226,11 @@ it.each([false, true])(
     jest.mocked(withTiming).mockClear();
     const onAction = jest.fn(async () => 1);
     const props = { venue: 'cafe', label: 'Cafe', onAction };
-    const screen = render(<ChallengeDeck {...props} cards={cards} turn={0} />);
+    const screen = await render(
+      <ChallengeDeck {...props} cards={cards} turn={0} />,
+    );
     const short = { translationX: 20, translationY: 10, velocityX: 0 };
-    act(() => {
+    await act(() => {
       mockPanCallbacks.onUpdate!(short);
       mockPanCallbacks.onEnd!(short);
       mockPanCallbacks.onFinalize!(short, false);
@@ -213,7 +246,7 @@ it.each([false, true])(
       }),
     );
     expect(onAction).toHaveBeenCalledWith(-1);
-    screen.rerender(
+    await screen.rerender(
       <ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />,
     );
     expect(
@@ -232,18 +265,20 @@ it('finishes acceptance when a reduced-motion change cancels its in-flight exit'
   jest.mocked(cancelAnimation).mockImplementation(() => finish(false));
   const onAction = jest.fn(async () => 0);
   const props = { cards, venue: 'cafe', label: 'Cafe', turn: 0, onAction };
-  const screen = render(<ChallengeDeck {...props} />);
-  fireEvent.press(screen.getByRole('button', { name: 'Accept challenge' }));
+  const screen = await render(<ChallengeDeck {...props} />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Accept challenge' }),
+  );
   expect(onAction).not.toHaveBeenCalled();
   mockReduceMotion = true;
-  screen.rerender(<ChallengeDeck {...props} />);
+  await screen.rerender(<ChallengeDeck {...props} />);
   await act(async () => {});
   expect(onAction).toHaveBeenCalledTimes(1);
   expect(onAction).toHaveBeenCalledWith(1);
   expect(
     screen.getByRole('button', { name: 'Accept challenge' }),
   ).toBeEnabled();
-  screen.unmount();
+  await screen.unmount();
   jest.mocked(cancelAnimation).mockReset();
 });
 it.each([false, true])(
@@ -252,7 +287,13 @@ it.each([false, true])(
     mockReduceMotion = reduced;
     jest.mocked(withTiming).mockClear();
     const onBusyChange = jest.fn();
-    const onAction = jest.fn(async () => 0);
+    let confirm!: (turn: number) => void;
+    const onAction = jest.fn(
+      () =>
+        new Promise<number>((resolve) => {
+          confirm = resolve;
+        }),
+    );
     const props = {
       cards,
       venue: 'cafe',
@@ -260,12 +301,16 @@ it.each([false, true])(
       onBusyChange,
       onAction,
     };
-    const screen = render(<ChallengeDeck {...props} turn={0} />);
+    const screen = await render(<ChallengeDeck {...props} turn={0} />);
     await act(async () => {});
-    fireEvent.press(screen.getByRole('button', { name: 'Accept challenge' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Accept challenge' }),
+    );
     // The parent opens the modal without advancing the browsing queue.
-    screen.rerender(<ChallengeDeck {...props} turn={0} covered disabled />);
-    await act(async () => {});
+    await screen.rerender(
+      <ChallengeDeck {...props} turn={0} covered disabled />,
+    );
+    await act(() => confirm(0));
     expect(onAction).toHaveBeenCalledWith(1);
     expect(withTiming).toHaveBeenCalledTimes(reduced ? 0 : 1);
     expect(onBusyChange.mock.calls).toEqual([[true]]);
@@ -274,7 +319,7 @@ it.each([false, true])(
     ).toBeDisabled();
     // Give up advances the queue and uncovers the existing deck; input works
     // again without a return animation of the accepted card.
-    screen.rerender(
+    await screen.rerender(
       <ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />,
     );
     expect(
@@ -282,14 +327,14 @@ it.each([false, true])(
     ).toBeEnabled();
     expect(onBusyChange.mock.calls).toEqual([[true], [false]]);
     expect(withTiming).toHaveBeenCalledTimes(reduced ? 0 : 1);
-    screen.unmount();
+    await screen.unmount();
   },
 );
 it('restores an unconfirmed action so the same card can be tried again', async () => {
   mockReduceMotion = false;
   jest.mocked(withTiming).mockClear();
   const action = jest.fn(async () => 0);
-  const screen = render(
+  const screen = await render(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -299,7 +344,7 @@ it('restores an unconfirmed action so the same card can be tried again', async (
     />,
   );
   await act(async () => {});
-  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
   await act(async () => {});
   expect(withTiming).toHaveBeenCalledTimes(2);
   expect(jest.mocked(withTiming).mock.calls[1]![0]).toMatchObject({
@@ -309,43 +354,49 @@ it('restores an unconfirmed action so the same card can be tried again', async (
   expect(
     screen.getByRole('button', { name: 'Accept challenge' }),
   ).toBeEnabled();
-  screen.unmount();
+  await screen.unmount();
 });
 it.each([0, 1, 2, 5])(
   'preserves the full deck theme on acceptance at turn %s',
   async (turn) => {
     const props = { venue: 'cafe', label: 'Cafe', turn };
-    const deck = render(
+    const deck = await render(
       <ChallengeDeck {...props} cards={cards} onAction={async () => {}} />,
     );
     await act(async () => {});
     const surface = StyleSheet.flatten(
       deck.getByTestId('challenge-card').props.style,
     ).backgroundColor;
-    const accent = within(deck.getByTestId('challenge-face-1'))
-      .UNSAFE_getAllByType(Path)
+    const accent = deck
+      .getByTestId('challenge-face-1')
+      .queryAll((node) => node.type === 'Path')
       .find((path) => path.props.d === panelOutline)!.props.fill;
-    const artwork = within(
-      deck.getByTestId('challenge-face-1'),
-    ).UNSAFE_getByType(VenueArt).props.background;
-    deck.unmount();
-    const activeCard = render(<ChallengeCard {...props} card={cards[0]!} />);
+    const artwork = within(deck.getByTestId('challenge-face-1')).getByTestId(
+      'challenge-illustration',
+      { includeHiddenElements: true },
+    ).props.source;
+    await deck.unmount();
+    const activeCard = await render(
+      <ChallengeCard {...props} card={cards[0]!} />,
+    );
     expect(
       StyleSheet.flatten(activeCard.getByTestId('challenge-card').props.style)
         .backgroundColor,
     ).toBe(surface);
     expect(
-      activeCard
-        .UNSAFE_getAllByType(Path)
+      activeCard.container
+        .queryAll((node) => node.type === 'Path')
         .find((path) => path.props.d === panelOutline)!.props.fill,
     ).toBe(accent);
-    expect(activeCard.UNSAFE_getByType(VenueArt).props.background).toBe(
-      artwork,
-    );
+    expect(
+      activeCard.getByTestId('challenge-illustration', {
+        includeHiddenElements: true,
+      }).props.source,
+    ).toBe(artwork);
   },
 );
-it('uses the same cream surface for the light card as the challenge page', () => {
-  const screen = render(
+it('uses the same cream surface for the light card as the challenge page', async () => {
+  const screen = await render(
     <ChallengeCard card={cards[0]!} venue="cafe" label="Cafe" />,
   );
   expect(
@@ -362,7 +413,7 @@ it('keeps button input exclusive while the same confirmed action is pending', as
         finish = resolve;
       }),
   );
-  const screen = render(
+  const screen = await render(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -372,8 +423,10 @@ it('keeps button input exclusive while the same confirmed action is pending', as
     />,
   );
   await act(async () => {});
-  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Accept challenge' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Accept challenge' }),
+  );
   await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
   expect(action).toHaveBeenCalledWith(-1);
   expect(
@@ -381,7 +434,7 @@ it('keeps button input exclusive while the same confirmed action is pending', as
       .accessibilityState.disabled,
   ).toBe(true);
   // Saving still blocks duplicate input, but does not flash both controls pale.
-  screen.rerender(
+  await screen.rerender(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -397,7 +450,7 @@ it('keeps button input exclusive while the same confirmed action is pending', as
         .opacity ?? 1,
     ).toBe(1);
   }
-  screen.rerender(
+  await screen.rerender(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -414,7 +467,7 @@ it('keeps button input exclusive while the same confirmed action is pending', as
   expect(screen.getByLabelText('Cafe. Say hello.. Five minutes.')).toBeTruthy();
 });
 it('keeps action buttons fully opaque during a background refresh', async () => {
-  const screen = render(
+  const screen = await render(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -432,7 +485,7 @@ it('keeps action buttons fully opaque during a background refresh', async () => 
   }
 });
 it('hides queued content from screen readers and renders no duplicate cards for a one-card queue', async () => {
-  const screen = render(
+  const screen = await render(
     <ChallengeDeck
       cards={[cards[0]!]}
       venue="cafe"
@@ -443,7 +496,7 @@ it('hides queued content from screen readers and renders no duplicate cards for 
   );
   await act(async () => {});
   expect(screen.getAllByText('Say hello.')).toHaveLength(1);
-  screen.rerender(
+  await screen.rerender(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -455,9 +508,14 @@ it('hides queued content from screen readers and renders no duplicate cards for 
   expect(screen.queryByText('Ask a question.')).toBeNull();
 });
 it('does not send an acceptance when navigation interrupts before the animation hands off', async () => {
-  mockReduceMotion = true;
+  mockReduceMotion = false;
+  let finishExit!: (finished: boolean) => void;
+  jest.mocked(withTiming).mockImplementationOnce((to, _config, finish) => {
+    finishExit = finish!;
+    return to;
+  });
   const action = jest.fn(async () => {});
-  const screen = render(
+  const screen = await render(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -467,9 +525,13 @@ it('does not send an acceptance when navigation interrupts before the animation 
     />,
   );
   await act(async () => {});
-  fireEvent.press(screen.getByRole('button', { name: 'Accept challenge' }));
-  screen.unmount();
-  await act(async () => {});
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Accept challenge' }),
+  );
+  expect(action).not.toHaveBeenCalled();
+  expect(finishExit).toEqual(expect.any(Function));
+  await screen.unmount();
+  await act(() => finishExit(true));
   expect(action).not.toHaveBeenCalled();
 });
 
@@ -479,7 +541,7 @@ it('keeps the frame and action area stable when short and long challenges advanc
     text: 'Ask someone nearby for a recommendation for a place they enjoy visiting in the neighborhood.',
   };
   const props = { venue: 'cafe', label: 'Cafe', onAction: async () => {} };
-  const screen = render(
+  const screen = await render(
     <ChallengeDeck {...props} cards={[cards[0]!, long]} turn={0} />,
   );
   await act(async () => {});
@@ -501,7 +563,7 @@ it('keeps the frame and action area stable when short and long challenges advanc
   expect(
     StyleSheet.flatten(screen.getByText(cards[0]!.text).props.style).fontSize,
   ).toBe(20 * scale);
-  screen.rerender(
+  await screen.rerender(
     <ChallengeDeck {...props} cards={[long, cards[0]!]} turn={1} />,
   );
   expect(
@@ -520,8 +582,8 @@ it('keeps the frame and action area stable when short and long challenges advanc
   ).toBe(20 * scale);
   expect(screen.getByTestId('challenge-copy-scroll-long')).toBeTruthy();
   // Accepting the same challenge preserves the frame too.
-  screen.unmount();
-  const active = render(<ChallengeCard {...props} card={long} />);
+  await screen.unmount();
+  const active = await render(<ChallengeCard {...props} card={long} />);
   expect(
     StyleSheet.flatten(active.getByTestId('challenge-card').props.style),
   ).toMatchObject({
@@ -533,8 +595,8 @@ it('keeps the frame and action area stable when short and long challenges advanc
 it.each([
   'Comment on the song to someone beside you on the dance floor.',
   'Ask someone sitting beside you to watch your things while you use the bathroom.',
-])('uses the regular type treatment for catalog copy: %s', (text) => {
-  const screen = render(
+])('uses the regular type treatment for catalog copy: %s', async (text) => {
+  const screen = await render(
     <ChallengeCard card={{ id: 'catalog', text }} venue="cafe" label="Cafe" />,
   );
   const frame = StyleSheet.flatten(
@@ -548,12 +610,12 @@ it.each([
   });
 });
 
-it('reserves room for four lines of regular challenge copy', () => {
+it('reserves room for four lines of regular challenge copy', async () => {
   const card = {
     id: 'four-lines',
     text: 'Ask someone nearby where they like to go when they need a quiet break.',
   };
-  const screen = render(
+  const screen = await render(
     <ChallengeCard card={card} venue="cafe" label="Cafe" />,
   );
   const frame = StyleSheet.flatten(
@@ -585,8 +647,8 @@ it.each([
   ['bars', -0.875],
 ] as const)(
   'centers the drawn %s artwork with the venue and copy',
-  (venue, offset) => {
-    const screen = render(
+  async (venue, offset) => {
+    const screen = await render(
       <ChallengeCard card={cards[0]!} venue={venue} label={venue} />,
     );
     const face = StyleSheet.flatten(
@@ -613,7 +675,9 @@ it.each([
 
 it('preserves the flourish coordinate system when a queued card becomes the front card', async () => {
   const props = { venue: 'cafe', label: 'Cafe', onAction: async () => {} };
-  const screen = render(<ChallengeDeck {...props} cards={cards} turn={0} />);
+  const screen = await render(
+    <ChallengeDeck {...props} cards={cards} turn={0} />,
+  );
   await act(async () => {});
   const queued = screen.getByTestId('challenge-face-2', {
     includeHiddenElements: true,
@@ -639,7 +703,9 @@ it('preserves the flourish coordinate system when a queued card becomes the fron
     bottom: 0,
     left: 0,
   });
-  screen.rerender(<ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />);
+  await screen.rerender(
+    <ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />,
+  );
   // Keep the native face and its image instances mounted through promotion.
   expect(screen.getByTestId('challenge-face-2')).toBe(queued);
   expect(
@@ -661,18 +727,22 @@ it('holds the promoted stack and locks input until the acknowledged queue is ren
   mockReduceMotion = true;
   const action = jest.fn(async () => 1);
   const props = { venue: 'cafe', label: 'Cafe', onAction: action };
-  const screen = render(<ChallengeDeck {...props} cards={cards} turn={0} />);
+  const screen = await render(
+    <ChallengeDeck {...props} cards={cards} turn={0} />,
+  );
   await act(async () => {});
   const queued = screen.getByTestId('challenge-face-2', {
     includeHiddenElements: true,
   });
-  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
   await act(async () => {});
   // A resolved save is not proof that React has committed its new queue yet.
   expect(screen.getByRole('button', { name: 'Skip challenge' })).toBeDisabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
   expect(action).toHaveBeenCalledTimes(1);
-  screen.rerender(<ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />);
+  await screen.rerender(
+    <ChallengeDeck {...props} cards={cards.slice(1)} turn={1} />,
+  );
   expect(screen.getByTestId('challenge-face-2')).toBe(queued);
   expect(
     screen.getByRole('button', { name: 'Skip challenge' }),
@@ -681,7 +751,7 @@ it('holds the promoted stack and locks input until the acknowledged queue is ren
 
 it('restores the original card when a save does not advance the queue', async () => {
   mockReduceMotion = false;
-  const screen = render(
+  const screen = await render(
     <ChallengeDeck
       cards={cards}
       venue="cafe"
@@ -692,7 +762,7 @@ it('restores the original card when a save does not advance the queue', async ()
   );
   await act(async () => {});
   const original = screen.getByTestId('challenge-face-1');
-  fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Skip challenge' }));
   await act(async () => {});
   expect(screen.getByTestId('challenge-face-1')).toBe(original);
   expect(
@@ -700,26 +770,31 @@ it('restores the original card when a save does not advance the queue', async ()
   ).not.toBeDisabled();
 });
 
-it.each(['streets', 'park', 'gym', 'cafe', 'bookstore', 'bars'])(
+it.each(['streets', 'park', 'gym', 'cafe', 'bookstore', 'bars'] as const)(
   'uses cream accents on both darker %s cards and preserves them during promotion',
   async (venue) => {
     const props = { venue, label: venue, onAction: async () => {} };
-    const screen = render(<ChallengeDeck {...props} cards={cards} turn={0} />);
+    const screen = await render(
+      <ChallengeDeck {...props} cards={cards} turn={0} />,
+    );
     await act(async () => {});
     function accents(id: string) {
-      const face = within(
-        screen.getByTestId(`challenge-face-${id}`, {
-          includeHiddenElements: true,
-        }),
-      );
+      const face = screen.getByTestId(`challenge-face-${id}`, {
+        includeHiddenElements: true,
+      });
       return {
         panel: face
-          .UNSAFE_getAllByType(Path)
+          .queryAll((node) => node.type === 'Path')
           .find((path) => path.props.d === panelOutline)!.props.fill,
-        artwork: face.UNSAFE_getByType(VenueArt).props.background,
+        artwork: within(face).getByTestId('challenge-illustration', {
+          includeHiddenElements: true,
+        }).props.source,
       };
     }
-    expect(accents('1')).toEqual({ panel: '#FBE3CC', artwork: 'peach' });
+    expect(accents('1')).toEqual({
+      panel: '#FBE3CC',
+      artwork: artworkSources[venue].peach,
+    });
     for (const [index, surface] of [
       [1, '#F9E3D0'],
       [2, '#FCD9B9'],
@@ -729,10 +804,10 @@ it.each(['streets', 'park', 'gym', 'cafe', 'bookstore', 'bars'])(
       const queued = accents(id);
       expect(queued).toEqual(
         index === 3
-          ? { panel: '#FBE3CC', artwork: 'peach' }
-          : { panel: '#F8EFE7', artwork: 'cream' },
+          ? { panel: '#FBE3CC', artwork: artworkSources[venue].peach }
+          : { panel: '#F8EFE7', artwork: artworkSources[venue].cream },
       );
-      screen.rerender(
+      await screen.rerender(
         <ChallengeDeck {...props} cards={cards.slice(index)} turn={index} />,
       );
       expect(accents(id)).toEqual(queued);

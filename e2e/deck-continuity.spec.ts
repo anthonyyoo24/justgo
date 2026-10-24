@@ -27,7 +27,8 @@ async function createAccount(page: Page) {
   if (await signOut.isVisible()) {
     await signOut.click();
     await page
-      .getByRole('button', { name: 'Confirm log out', exact: true })
+      .getByRole('alertdialog', { name: 'Log out?', exact: true })
+      .getByRole('button', { name: 'Log out', exact: true })
       .click();
     await expect(signIn).toBeEnabled();
   }
@@ -37,7 +38,8 @@ async function recover(page: Page, subjectHandle: string) {
   await page.goto('/recovery');
   await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Confirm log out', exact: true })
+    .getByRole('alertdialog', { name: 'Log out?', exact: true })
+    .getByRole('button', { name: 'Log out', exact: true })
     .click();
   await expect(
     page.getByRole('switch', { name: 'Apple', exact: true }),

@@ -14,6 +14,7 @@ import {
   iCloudError,
   type ICloudCollection,
   type ICloudErrorCode,
+  type ICloudPurgePage,
   type ICloudSync,
   type ICloudValue,
 } from '../../platform/icloud/model';
@@ -29,6 +30,7 @@ import {
 } from './icloud-records';
 import { isAncestor, versionHeads } from './versions';
 import { handoverGuestCopy } from './icloud-handover';
+import { iCloudWriteBatches } from './icloud-batches';
 
 const LIMIT = 50_000;
 const metadataSchema = z
@@ -181,6 +183,7 @@ export class ICloudDataCoordinator {
     let revision: string | null | undefined;
     let wasReset = false;
     let closed = false;
+    let recovered = false;
     while (true) {
       this.check(epoch);
       const page = await this.cloud.read({
@@ -196,6 +199,7 @@ export class ICloudDataCoordinator {
       revision = page.revision;
       wasReset ||= page.wasReset;
       closed ||= page.closed;
+      recovered ||= page.recovered ?? false;
       records.push(...page.records);
       if (
         records.length > LIMIT ||
@@ -213,6 +217,7 @@ export class ICloudDataCoordinator {
       revision: revision ?? null,
       wasReset,
       closed,
+      recovered,
     };
   }
   private execute(action: (epoch: number) => Promise<void>): Promise<void> {
@@ -242,7 +247,6 @@ export class ICloudDataCoordinator {
 
   private async run(
     epoch: number,
-    acknowledgeReset = false,
     replacementPass = 0,
     consume?: (
       remote: Awaited<ReturnType<ICloudDataCoordinator['remote']>>,
@@ -304,6 +308,25 @@ export class ICloudDataCoordinator {
       await this.erase(metadata, remote.generation, epoch);
       return;
     }
+    const cloudOnlyReset = !remote.wasReset || remote.recovered;
+    const localEpoch = this.repository.store.getState().dataEpoch ?? null;
+    const pendingAccountClear =
+      metadata.accountEpochFloor !== null &&
+      (localEpoch === null || localEpoch < metadata.accountEpochFloor);
+    // Cancel an unfinished clear from the removed recovery flow. Actual app
+    // deletions and authoritative account-epoch clearing must still finish.
+    if (
+      cloudOnlyReset &&
+      metadata.clearing &&
+      !pendingAccountClear &&
+      !metadata.cleanup &&
+      !metadata.replacing &&
+      !metadata.pendingDeletionId
+    ) {
+      metadata.clearing = false;
+      await this.save(metadata);
+      this.check(epoch);
+    }
     if (metadata.replacing && !metadata.cleanup) {
       await this.replaceStaleCopy(metadata, remote.generation, epoch);
       metadata = await this.load();
@@ -313,6 +336,18 @@ export class ICloudDataCoordinator {
       await this.erase(metadata, remote.generation, epoch);
       metadata = await this.load();
       remote = await this.remote(epoch);
+    }
+    if (
+      (!remote.wasReset || remote.recovered) &&
+      metadata.generation !== remote.generation
+    ) {
+      // Rebuild only cloud version bookkeeping; every phone entry stays intact.
+      metadata = {
+        ...metadata,
+        generation: remote.generation,
+        versions: {},
+        heads: {},
+      };
     }
     if (metadata.clearing) {
       this.check(epoch);
@@ -358,7 +393,7 @@ export class ICloudDataCoordinator {
       // JustGO's authenticated deletion epoch is authoritative. Replace only
       // the stale additional iCloud copy, retaining current local/server data.
       await this.replaceStaleCopy(metadata, remote.generation, epoch);
-      return this.run(epoch, false, replacementPass + 1, consume);
+      return this.run(epoch, replacementPass + 1, consume);
     }
     const advanceFloor =
       account &&
@@ -369,16 +404,13 @@ export class ICloudDataCoordinator {
     if (
       !metadata.generation &&
       remote.wasReset &&
-      !acknowledgeReset &&
+      !remote.recovered &&
       (!account || accountEpoch === null)
     )
       throw new ICloudError('RESET_CONFIRMATION_REQUIRED');
-    const adoptUnknownReset =
-      acknowledgeReset && !metadata.generation && remote.wasReset;
     if (
       metadata.clearing ||
-      (!account && changed) ||
-      adoptUnknownReset ||
+      (!account && changed && remote.wasReset && !remote.recovered) ||
       (advanceFloor && remote.accountEpoch !== 0)
     ) {
       metadata = {
@@ -476,7 +508,7 @@ export class ICloudDataCoordinator {
     this.check(epoch);
     if (account && remote.hasOlderEpoch) {
       await this.replaceStaleCopy(metadata, remote.generation, epoch);
-      return this.run(epoch, false, replacementPass + 1, consume);
+      return this.run(epoch, replacementPass + 1, consume);
     }
     if (consume) {
       await this.save(metadata);
@@ -521,12 +553,12 @@ export class ICloudDataCoordinator {
       throw new ICloudError('INVALID_DATA');
     // Version IDs and original ancestry are durable before any uncertain save.
     await this.save(metadata);
-    for (let index = 0; index < upload.length; index += ICLOUD_PAGE_LIMIT) {
+    for (const records of iCloudWriteBatches(upload)) {
       this.check(epoch);
       const response = await this.cloud.write({
         collection: this.collection,
         generation: remote.generation,
-        records: upload.slice(index, index + ICLOUD_PAGE_LIMIT),
+        records,
       });
       this.check(epoch);
       if (response.generation !== remote.generation)
@@ -612,13 +644,32 @@ export class ICloudDataCoordinator {
     const cursors = new Set<string>();
     const purgeGeneration = metadata.generation;
     if (!purgeGeneration) throw new ICloudError('INVALID_DATA');
+    let restartedCursor = false;
     while (true) {
       this.check(epoch);
-      const page = await this.cloud.purge({
-        collection: this.collection,
-        generation: purgeGeneration,
-        ...(metadata.purgeCursor ? { cursor: metadata.purgeCursor } : {}),
-      });
+      let page: ICloudPurgePage;
+      try {
+        page = await this.cloud.purge({
+          collection: this.collection,
+          generation: purgeGeneration,
+          ...(metadata.purgeCursor ? { cursor: metadata.purgeCursor } : {}),
+        });
+      } catch (error) {
+        this.check(epoch);
+        if (
+          iCloudError(error).code !== 'CURSOR_EXPIRED' ||
+          !metadata.purgeCursor ||
+          restartedCursor
+        )
+          throw error;
+        // The reset/closure is already durable. Restart only physical cleanup,
+        // retaining that generation and bounding cursor recovery to one retry.
+        metadata.purgeCursor = null;
+        await this.save(metadata);
+        restartedCursor = true;
+        cursors.clear();
+        continue;
+      }
       this.check(epoch);
       if (page.generation !== metadata.generation || cursors.has(page.cursor))
         throw new ICloudError('INVALID_DATA');
@@ -811,9 +862,7 @@ export class ICloudDataCoordinator {
           cloud: coordinator.cloud,
           read: () => coordinator.remote(coordinator.epoch),
           download: (consume) =>
-            coordinator.execute((epoch) =>
-              coordinator.run(epoch, false, 0, consume),
-            ),
+            coordinator.execute((epoch) => coordinator.run(epoch, 0, consume)),
           snapshot: () => this.repository.snapshotData(),
           identity: async (snapshot) => {
             const identities: string[] = [];
@@ -908,9 +957,5 @@ export class ICloudDataCoordinator {
       this.metadata.cleanup
     )
       throw new ICloudError('UNAVAILABLE');
-  }
-  async acknowledgeReset(): Promise<void> {
-    await this.work?.catch(() => {});
-    await this.execute((epoch) => this.run(epoch, true));
   }
 }

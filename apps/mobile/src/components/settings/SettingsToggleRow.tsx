@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  type KeyDownEvent,
 } from 'react-native';
 import { colors } from '../../theme/tokens';
 import type { SettingsIconName } from './SettingsIcon';
@@ -67,8 +68,11 @@ export function SettingsToggleRow({
       {...(Platform.OS === 'web'
         ? {
             // RN Web already handles Enter; switch roles need Space support.
-            onKeyDown: (event: { key: string; preventDefault: () => void }) => {
-              if (event.key === ' ' || event.key === 'Spacebar') {
+            onKeyDown: (event: KeyDownEvent) => {
+              if (
+                event.nativeEvent.key === ' ' ||
+                event.nativeEvent.key === 'Spacebar'
+              ) {
                 event.preventDefault();
                 toggle();
               }

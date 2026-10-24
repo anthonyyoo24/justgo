@@ -1,7 +1,7 @@
 import { act, fireEvent, render, within } from '@testing-library/react-native';
+import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 import { createDataBackup } from '../../../data/backup/data-backup';
-import { DestructiveConfirmation } from '../../../components/modals/DestructiveConfirmation';
-import { Modal } from 'react-native';
+
 import { SettingsDataScreen } from './SettingsDataScreen';
 import { pickBackupFile } from '../../../platform/backup/backup-file';
 import { applyImportedPreferences } from './import-preferences';
@@ -11,6 +11,20 @@ import {
   owner,
   otherOwner,
 } from '../../../../test-support/journal';
+
+jest.mock('../../../components/modals/ConfirmationModal', () => {
+  const actual = jest.requireActual<
+    typeof import('../../../components/modals/ConfirmationModal')
+  >('../../../components/modals/ConfirmationModal');
+  return {
+    ...actual,
+    ConfirmationModal: jest.fn(
+      (props: React.ComponentProps<typeof actual.ConfirmationModal>) => (
+        <actual.ConfirmationModal {...props} />
+      ),
+    ),
+  };
+});
 
 let mockOwner = owner;
 let mockKind: 'guest' | 'account' = 'guest';
@@ -131,12 +145,15 @@ beforeEach(() => {
   apply.mockResolvedValue(undefined);
 });
 
-it('shows only the requested data controls without extra journal sections', () => {
-  const screen = render(<SettingsDataScreen />);
+it('shows only the requested data controls without extra journal sections', async () => {
+  const screen = await render(<SettingsDataScreen />);
   expect(screen.getByRole('header', { name: 'Data' })).toBeTruthy();
   expect(screen.getByRole('switch', { name: 'iCloud Sync' })).toBeTruthy();
   for (const label of ['Download my data', 'Import data', 'Delete all my data'])
     expect(screen.getByRole('button', { name: label })).toBeTruthy();
+  expect(screen.getByText('Delete all my data')).toHaveStyle({
+    color: '#B3261E',
+  });
   for (const label of [
     'Back up journal',
     'Restore journal',
@@ -146,13 +163,13 @@ it('shows only the requested data controls without extra journal sections', () =
     expect(screen.queryByText(label)).toBeNull();
 });
 it('opens the picker in the press gesture, previews bounded data and imports only after confirmation', async () => {
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
   expect(pick).toHaveBeenCalledTimes(1);
   await screen.findByRole('header', { name: 'Import this data?' });
   expect(mockActivity.importData).not.toHaveBeenCalled();
   expect(screen.queryByText('Synthetic private journal.')).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
   await screen.findByText(
     'Your data was imported. Existing differing journal entries were kept.',
   );
@@ -165,17 +182,17 @@ it('opens the picker in the press gesture, previews bounded data and imports onl
   expect(apply).toHaveBeenCalledTimes(1);
 });
 it('keeps selected data read-only when preview is cancelled', async () => {
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
   await screen.findByRole('header', { name: 'Import this data?' });
-  fireEvent.press(screen.getByRole('button', { name: 'Cancel import' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Cancel import' }));
   expect(mockActivity.importData).not.toHaveBeenCalled();
   expect(apply).not.toHaveBeenCalled();
 });
 it('rejects another account’s backup before any data or preference changes', async () => {
   pick.mockResolvedValueOnce(backup('account', otherOwner));
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
   await screen.findByText(
     'Sign in to the account that owns this backup before importing it.',
   );
@@ -185,21 +202,21 @@ it('rejects another account’s backup before any data or preference changes', a
 it('authenticates the retained owner before asking for an import file', async () => {
   mockKind = 'account';
   pick.mockResolvedValueOnce(backup('account'));
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: '/account/sign-in',
     params: { returnTo: 'data', ownerId: owner },
   });
   expect(pick).not.toHaveBeenCalled();
   expect(mockActivity.importData).not.toHaveBeenCalled();
-  act(() => mockBlur?.());
+  await act(() => mockBlur?.());
   mockSignedIn = true;
-  screen.rerender(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+  await screen.rerender(<SettingsDataScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
   await screen.findByRole('header', { name: 'Import this data?' });
   expect(pick).toHaveBeenCalledTimes(1);
-  fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
   await screen.findByText(
     'Your data was imported. Existing differing journal entries were kept.',
   );
@@ -208,10 +225,10 @@ it('authenticates the retained owner before asking for an import file', async ()
 it('waits for the durable data commit before saving preferences and announcing success', async () => {
   const commit = deferred<void>();
   mockActivity.importData.mockReturnValue(commit.promise);
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
   await screen.findByRole('header', { name: 'Import this data?' });
-  fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
   expect(apply).not.toHaveBeenCalled();
   expect(
     screen.getByRole('button', { name: 'Delete all my data' }),
@@ -223,10 +240,10 @@ it('waits for the durable data commit before saving preferences and announcing s
 });
 it('reports partially saved preferences accurately and keeps replayable preview for retry', async () => {
   apply.mockRejectedValueOnce(new Error('Storage unavailable'));
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
   await screen.findByRole('header', { name: 'Import this data?' });
-  fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Confirm import' }));
   await screen.findByText(
     'Your saved data was imported, but preferences couldn’t finish saving. Import again to finish.',
   );
@@ -237,12 +254,12 @@ it.each(['blur', 'owner'] as const)(
   async (event) => {
     const selection = deferred<Uint8Array | null>();
     pick.mockReturnValue(selection.promise);
-    const screen = render(<SettingsDataScreen />);
-    fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
-    if (event === 'blur') act(() => mockBlur?.());
+    const screen = await render(<SettingsDataScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Import data' }));
+    if (event === 'blur') await act(() => mockBlur?.());
     else {
       mockOwner = otherOwner;
-      screen.rerender(<SettingsDataScreen />);
+      await screen.rerender(<SettingsDataScreen />);
     }
     await act(async () => selection.resolve(backup()));
     expect(
@@ -252,13 +269,15 @@ it.each(['blur', 'owner'] as const)(
   },
 );
 it('deletes only after an explicit confirmation, retaining the account and separately saved files', async () => {
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Delete all my data' }));
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Delete all my data' }),
+  );
   expect(mockActivity.deleteAllData).not.toHaveBeenCalled();
-  fireEvent.press(
+  await fireEvent.press(
     within(
       screen.getByLabelText(/deleting saved data\?|Delete all saved data\?/),
-    ).getByRole('button', { name: 'Delete all my data' }),
+    ).getByRole('button', { name: 'Delete' }),
   );
   await screen.findByText(
     'All saved data was deleted. Your account and downloaded files were kept.',
@@ -271,22 +290,24 @@ it('shows durable unfinished deletion on reopening and resumes it while import r
   mockActivity.deleteAllData.mockImplementationOnce(async () => {
     mockDeletionPending = false;
   });
-  const screen = render(<SettingsDataScreen />);
+  const screen = await render(<SettingsDataScreen />);
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Deletion is unfinished. Select Delete all my data to resume.',
   );
   const importButton = screen.getByRole('button', { name: 'Import data' });
   expect(importButton).toBeDisabled();
-  fireEvent.press(importButton);
+  await fireEvent.press(importButton);
   expect(pick).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('button', { name: 'Delete all my data' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Delete all my data' }),
+  );
   expect(
     screen.getByRole('header', { name: 'Finish deleting saved data?' }),
   ).toBeTruthy();
-  fireEvent.press(
+  await fireEvent.press(
     within(
       screen.getByLabelText(/deleting saved data\?|Delete all saved data\?/),
-    ).getByRole('button', { name: 'Delete all my data' }),
+    ).getByRole('button', { name: 'Delete' }),
   );
   await screen.findByText(
     'All saved data was deleted. Your account and downloaded files were kept.',
@@ -296,10 +317,12 @@ it('shows durable unfinished deletion on reopening and resumes it while import r
   expect(mockActivity.importData).not.toHaveBeenCalled();
 });
 
-it('uses the shared modal and cancels safely through its button or native dismissal', () => {
-  const screen = render(<SettingsDataScreen />);
+it('uses the shared modal and cancels safely through its button or native dismissal', async () => {
+  const screen = await render(<SettingsDataScreen />);
   for (const dismiss of ['button', 'native'] as const) {
-    fireEvent.press(screen.getByRole('button', { name: 'Delete all my data' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Delete all my data' }),
+    );
     expect(screen.getByLabelText('Delete all saved data?')).toHaveProp(
       'role',
       'alertdialog',
@@ -308,23 +331,30 @@ it('uses the shared modal and cancels safely through its button or native dismis
       'aria-modal',
       true,
     );
-    const staleConfirm = screen.UNSAFE_getByType(DestructiveConfirmation).props
-      .onConfirm as () => void;
+    const staleConfirm =
+      jest.mocked(ConfirmationModal).mock.lastCall![0].onConfirm;
     if (dismiss === 'button')
-      fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
-    else act(() => screen.UNSAFE_getByType(Modal).props.onRequestClose());
+      await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+    else
+      await act(() =>
+        screen.container
+          .queryAll((node) => node.type === 'Modal')[0]!
+          .props.onRequestClose(),
+      );
     expect(screen.queryByLabelText('Delete all saved data?')).toBeNull();
-    act(staleConfirm);
+    await act(staleConfirm);
   }
   expect(mockActivity.deleteAllData).not.toHaveBeenCalled();
 });
 
 it('keeps deletion errors inside the modal and retries without overlapping deletion or cancellation', async () => {
   mockActivity.deleteAllData.mockRejectedValueOnce(new Error('Offline'));
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Delete all my data' }));
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Delete all my data' }),
+  );
   const dialog = within(screen.getByLabelText('Delete all saved data?'));
-  fireEvent.press(dialog.getByRole('button', { name: 'Delete all my data' }));
+  await fireEvent.press(dialog.getByRole('button', { name: 'Delete' }));
   await screen.findByText(
     'Deletion is unfinished. Please try again to finish deleting your saved data.',
   );
@@ -332,37 +362,38 @@ it('keeps deletion errors inside the modal and retries without overlapping delet
   expect(dialog.getByRole('alert')).toBeTruthy();
   const deletion = deferred<void>();
   mockActivity.deleteAllData.mockReturnValueOnce(deletion.promise);
-  const callbacks = screen.UNSAFE_getByType(DestructiveConfirmation).props as {
-    onConfirm: () => void;
-    onCancel: () => void;
-  };
-  act(() => {
+  const callbacks = jest.mocked(ConfirmationModal).mock.lastCall![0];
+  await act(() => {
     callbacks.onConfirm();
     callbacks.onConfirm();
     callbacks.onCancel();
   });
   expect(mockActivity.deleteAllData).toHaveBeenCalledTimes(2);
   expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  expect(
-    dialog.getByRole('button', { name: 'Delete all my data' }),
-  ).toBeDisabled();
+  expect(dialog.getByRole('button', { name: 'Delete' })).toBeDisabled();
   expect(
     dialog.getByRole('progressbar', { name: 'Deleting saved data' }),
   ).toBeTruthy();
-  act(() => screen.UNSAFE_getByType(Modal).props.onRequestClose());
+  await act(() =>
+    screen.container
+      .queryAll((node) => node.type === 'Modal')[0]!
+      .props.onRequestClose(),
+  );
   expect(screen.getByLabelText('Delete all saved data?')).toBeTruthy();
   await act(async () => deletion.resolve());
   expect(screen.queryByLabelText('Delete all saved data?')).toBeNull();
 });
 
-it('authenticates before deleting an account journal while signed out', () => {
+it('authenticates before deleting an account journal while signed out', async () => {
   mockKind = 'account';
-  const screen = render(<SettingsDataScreen />);
-  fireEvent.press(screen.getByRole('button', { name: 'Delete all my data' }));
-  fireEvent.press(
+  const screen = await render(<SettingsDataScreen />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Delete all my data' }),
+  );
+  await fireEvent.press(
     within(screen.getByLabelText('Delete all saved data?')).getByRole(
       'button',
-      { name: 'Delete all my data' },
+      { name: 'Delete' },
     ),
   );
   expect(mockRouter.push).toHaveBeenCalledWith({

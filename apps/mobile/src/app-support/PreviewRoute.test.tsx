@@ -6,12 +6,24 @@ const mockHapticsLoaded = jest.fn();
 const mockDiagnosticsLoaded = jest.fn();
 const mockWelcomeLoaded = jest.fn();
 const mockWelcomeRendered = jest.fn();
+const mockICloudLoaded = jest.fn();
+const mockICloudRendered = jest.fn();
 const mockPreviewParams = {
   mode: '',
   progressState: 'loading',
   progressDayState: 'initial-error',
   state: '',
 };
+jest.mock('../dev/previews/ICloudSyncPreview', () => {
+  mockICloudLoaded();
+  const { Text } = require('react-native') as typeof import('react-native');
+  return {
+    ICloudSyncPreview: (props: unknown) => {
+      mockICloudRendered(props);
+      return <Text>iCloud preview</Text>;
+    },
+  };
+});
 jest.mock('../dev/previews/WelcomePreview', () => {
   mockWelcomeLoaded();
   const { Text } = require('react-native') as typeof import('react-native');
@@ -63,43 +75,56 @@ afterEach(() => {
   mockPreviewParams.state = '';
 });
 
-it('guards the isolated welcome preview and passes presentation state without account creation', () => {
+it('guards the isolated welcome preview and passes presentation state without account creation', async () => {
   mockPreviewParams.mode = 'welcome';
   mockPreviewParams.state = 'loading';
   development.__DEV__ = false;
-  const screen = render(<PreviewRoute />);
+  const screen = await render(<PreviewRoute />);
   expect(screen.getByText('Redirect: /')).toBeTruthy();
   expect(mockWelcomeLoaded).not.toHaveBeenCalled();
   development.__DEV__ = true;
-  screen.rerender(<PreviewRoute />);
+  await screen.rerender(<PreviewRoute />);
   expect(screen.getByText('Welcome preview')).toBeTruthy();
   expect(mockWelcomeRendered).toHaveBeenLastCalledWith({ state: 'loading' });
   mockPreviewParams.state = 'error';
-  screen.rerender(<PreviewRoute />);
+  await screen.rerender(<PreviewRoute />);
   expect(mockWelcomeRendered).toHaveBeenLastCalledWith({ state: 'error' });
 });
 
-it('loads the haptics screen only through the development guard', () => {
+it('loads the isolated iCloud sheet preview only in development', async () => {
+  mockPreviewParams.mode = 'icloud-sync';
+  mockPreviewParams.state = 'error';
+  development.__DEV__ = false;
+  const screen = await render(<PreviewRoute />);
+  expect(screen.getByText('Redirect: /')).toBeTruthy();
+  expect(mockICloudLoaded).not.toHaveBeenCalled();
+  development.__DEV__ = true;
+  await screen.rerender(<PreviewRoute />);
+  expect(screen.getByText('iCloud preview')).toBeTruthy();
+  expect(mockICloudRendered).toHaveBeenLastCalledWith({ state: 'error' });
+});
+
+it('loads the haptics screen only through the development guard', async () => {
   mockPreviewParams.mode = 'haptics';
   development.__DEV__ = false;
-  const screen = render(<PreviewRoute />);
+  const screen = await render(<PreviewRoute />);
   expect(screen.getByText('Redirect: /')).toBeTruthy();
   expect(mockHapticsLoaded).not.toHaveBeenCalled();
   development.__DEV__ = true;
-  screen.rerender(<PreviewRoute />);
+  await screen.rerender(<PreviewRoute />);
   expect(screen.getByText('Haptics testing')).toBeTruthy();
   expect(mockHapticsLoaded).toHaveBeenCalledTimes(1);
 });
 
-it('does not load developer fixtures in production and preserves the development route', () => {
+it('does not load developer fixtures in production and preserves the development route', async () => {
   development.__DEV__ = false;
-  const screen = render(<PreviewRoute />);
+  const screen = await render(<PreviewRoute />);
   expect(screen.getByText('Redirect: /')).toBeTruthy();
   expect(mockPreviewModuleLoaded).not.toHaveBeenCalled();
   expect(mockPreviewRendered).not.toHaveBeenCalled();
 
   development.__DEV__ = true;
-  screen.rerender(<PreviewRoute />);
+  await screen.rerender(<PreviewRoute />);
   expect(screen.getByText('Development preview')).toBeTruthy();
   expect(mockPreviewModuleLoaded).toHaveBeenCalledTimes(1);
   expect(mockPreviewRendered).toHaveBeenLastCalledWith({
@@ -108,35 +133,35 @@ it('does not load developer fixtures in production and preserves the development
   });
 
   mockPreviewParams.progressDayState = 'offline';
-  screen.rerender(<PreviewRoute />);
+  await screen.rerender(<PreviewRoute />);
   expect(mockPreviewRendered).toHaveBeenLastCalledWith({
     progressState: 'loading',
     progressDayState: 'offline',
   });
 
   mockPreviewParams.progressState = 'syncing';
-  screen.rerender(<PreviewRoute />);
+  await screen.rerender(<PreviewRoute />);
   expect(mockPreviewRendered).toHaveBeenLastCalledWith({
     progressState: 'syncing',
     progressDayState: 'offline',
   });
 
   development.__DEV__ = false;
-  screen.rerender(<PreviewRoute />);
+  await screen.rerender(<PreviewRoute />);
   expect(screen.getByText('Redirect: /')).toBeTruthy();
   expect(screen.queryByText('Development preview')).toBeNull();
   expect(mockPreviewModuleLoaded).toHaveBeenCalledTimes(1);
   expect(mockPreviewRendered).toHaveBeenCalledTimes(3);
 });
 
-it('keeps diagnostic fault injection behind the development-only preview guard', () => {
+it('keeps diagnostic fault injection behind the development-only preview guard', async () => {
   mockPreviewParams.mode = 'diagnostics';
   development.__DEV__ = false;
-  const screen = render(<PreviewRoute />);
+  const screen = await render(<PreviewRoute />);
   expect(screen.getByText('Redirect: /')).toBeTruthy();
   expect(mockDiagnosticsLoaded).not.toHaveBeenCalled();
   development.__DEV__ = true;
-  screen.rerender(<PreviewRoute />);
+  await screen.rerender(<PreviewRoute />);
   expect(screen.getByText('Diagnostics testing')).toBeTruthy();
   expect(mockDiagnosticsLoaded).toHaveBeenCalledTimes(1);
 });

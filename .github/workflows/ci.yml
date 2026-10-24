@@ -70,6 +70,7 @@ jobs:
     env: &database-test-env
       DATABASE_URL: postgresql://justgo_runtime:runtime-ci-only@localhost:5432/justgo_test
       MIGRATION_DATABASE_URL: postgresql://justgo_migrator:migration-ci-only@localhost:5432/justgo_test
+      JUSTGO_TEST_ADMIN_DATABASE_URL: postgresql://postgres:local-ci-only@localhost:5432/justgo_test
       DATABASE_SSL: disable
       JUSTGO_PG_BIN: /usr/lib/postgresql/17/bin
     services: &postgres-service
@@ -158,10 +159,19 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
       - run: npm run export:ios -w @justgo/mobile
+  native-icloud:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Verify native CloudKit regressions
+        run: swift test --package-path apps/mobile/modules/justgo-icloud --scratch-path .local/justgo-icloud-swift --jobs 1
   checks:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    needs: [static, unit, database, journeys, exports]
+    needs: [static, unit, database, journeys, exports, native-icloud]
     if: always()
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

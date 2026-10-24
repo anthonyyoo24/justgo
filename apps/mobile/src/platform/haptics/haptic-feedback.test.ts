@@ -66,7 +66,7 @@ it.each(['accept', 'selection'] as const)(
   },
 );
 it('recreates the four-heavy-tap comparison entirely through Pulsar', async () => {
-  jest.useFakeTimers();
+  jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
   const pending = hapticAdapter.play('completed', () => true);
   expect(mockImpact).toHaveBeenCalledTimes(1);
   await jest.advanceTimersByTimeAsync(69);
@@ -82,7 +82,7 @@ it('recreates the four-heavy-tap comparison entirely through Pulsar', async () =
   expect(jest.getTimerCount()).toBe(0);
 });
 it('stops remaining comparison taps when disabled or fenced', async () => {
-  jest.useFakeTimers();
+  jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
   let allowed = true;
   const pending = hapticAdapter.play('completed', () => allowed);
   await jest.advanceTimersByTimeAsync(70);
@@ -94,7 +94,7 @@ it('stops remaining comparison taps when disabled or fenced', async () => {
   expect(jest.getTimerCount()).toBe(0);
 });
 it('stops a comparison burst when the app leaves the foreground', async () => {
-  jest.useFakeTimers();
+  jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
   const pending = hapticAdapter.play('completed', () => true);
   AppState.currentState = 'background';
   await jest.advanceTimersByTimeAsync(70);
@@ -103,7 +103,7 @@ it('stops a comparison burst when the app leaves the foreground', async () => {
   expect(jest.getTimerCount()).toBe(0);
 });
 it('stops a comparison burst after a native tap fails', async () => {
-  jest.useFakeTimers();
+  jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
   mockImpact
     .mockImplementationOnce(() => {})
     .mockImplementationOnce(() => {
@@ -205,7 +205,7 @@ it('wires the real provider to Pulsar for every product action and respects save
   };
   const wrapper = ({ children }: PropsWithChildren) =>
     createElement(HapticsPreferencesProvider, { storage }, children);
-  const hook = renderHook(useHapticPreferences, { wrapper });
+  const hook = await renderHook(useHapticPreferences, { wrapper });
   await waitFor(() => expect(hook.result.current.loading).toBe(false));
   for (const kind of ['accept', 'selection', 'completed'] as const)
     await act(async () => hook.result.current.feedback(kind));
@@ -227,6 +227,6 @@ it('wires the real provider to Pulsar for every product action and respects save
     'true',
     'false',
   ]);
-  hook.unmount();
+  await hook.unmount();
   expect(mockStop).toHaveBeenCalled();
 });

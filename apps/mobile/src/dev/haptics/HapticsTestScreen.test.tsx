@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Platform, Switch } from 'react-native';
+import { Platform } from 'react-native';
 import { HapticsTestScreen } from './HapticsTestScreen';
 import {
   HapticsContext,
@@ -21,7 +21,7 @@ jest.mock('expo-router', () => {
     Redirect: ({ href }: { href: string }) => <Text>Redirect {href}</Text>,
   };
 });
-function setup(
+async function setup(
   prefs: Partial<HapticPreferences> = {},
   overrides: Partial<CompletionHapticsTesting> = {},
 ) {
@@ -51,36 +51,40 @@ function setup(
       </CompletionHapticsContext.Provider>
     </HapticsContext.Provider>
   );
-  const screen = render(node());
+  const screen = await render(node());
   return {
     ...screen,
     testing,
     preferences,
-    refresh: () => screen.rerender(node()),
+    refresh: async () => await screen.rerender(node()),
   };
 }
 it('shows every requested choice and lets the user preview, stop and go back', async () => {
-  const screen = setup();
+  const screen = await setup();
   expect(screen.getByText(/Reloading restores Batter/)).toBeTruthy();
   expect(screen.getAllByRole('radio')).toHaveLength(10);
-  expect(screen.UNSAFE_queryAllByType(Switch)).toHaveLength(0);
+  expect(
+    screen.container.queryAll((node) => node.type.endsWith('Switch')),
+  ).toHaveLength(0);
   for (const { id, label } of completionHaptics) {
-    fireEvent.press(screen.getByRole('radio', { name: label }));
+    await fireEvent.press(screen.getByRole('radio', { name: label }));
     expect(screen.testing.select).toHaveBeenLastCalledWith(id);
   }
   screen.testing.selected = 'afterglow';
-  screen.refresh();
+  await screen.refresh();
   expect(
     screen.getByRole('radio', { name: 'Afterglow' }).props.accessibilityState
       .checked,
   ).toBe(true);
-  fireEvent.press(screen.getByRole('button', { name: 'Preview Afterglow' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Preview Afterglow' }),
+  );
   await waitFor(() => expect(screen.testing.preview).toHaveBeenCalledTimes(1));
-  fireEvent.press(screen.getByRole('button', { name: 'Stop haptic' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Stop haptic' }));
   expect(screen.testing.stop).toHaveBeenCalledTimes(1);
-  fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
   expect(mockBack).toHaveBeenCalled();
-  screen.unmount();
+  await screen.unmount();
   expect(screen.testing.stop).toHaveBeenCalledTimes(2);
 });
 it.each([
@@ -88,35 +92,35 @@ it.each([
   { loading: true },
   { saving: true },
   { available: false },
-])('disables previews for %p', (prefs) => {
-  const screen = setup(prefs);
+])('disables previews for %p', async (prefs) => {
+  const screen = await setup(prefs);
   expect(screen.getByRole('button', { name: 'Preview Batter' })).toBeDisabled();
-  fireEvent.press(screen.getByRole('button', { name: 'Preview Batter' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Preview Batter' }));
   expect(screen.testing.preview).not.toHaveBeenCalled();
 });
-it('explains the missing native build and browser without promising vibration', () => {
-  const screen = setup({ available: false }, { selected: 'bloom' });
+it('explains the missing native build and browser without promising vibration', async () => {
+  const screen = await setup({ available: false }, { selected: 'bloom' });
   expect(screen.getByText(/Pulsar-enabled/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Preview Bloom' })).toBeDisabled();
   screen.preferences.available = false;
-  screen.refresh();
+  await screen.refresh();
   expect(screen.getByText(/physical iPhone/)).toBeTruthy();
 });
-it('shows a spinner while preparing and an accessible red error on failure', () => {
-  const screen = setup({}, { previewing: true });
+it('shows a spinner while preparing and an accessible red error on failure', async () => {
+  const screen = await setup({}, { previewing: true });
   expect(screen.getByRole('progressbar')).toBeTruthy();
   screen.testing.previewing = false;
   screen.testing.error = 'Couldn’t play this haptic. Please try again.';
-  screen.refresh();
+  await screen.refresh();
   expect(screen.getByRole('alert').props.style.color).toBe('#8B1E32');
   expect(screen.getByRole('button', { name: 'Preview Batter' })).toBeEnabled();
 });
-it('redirects if the development screen is rendered in production', () => {
+it('redirects if the development screen is rendered in production', async () => {
   const development = globalThis as typeof globalThis & { __DEV__: boolean };
   const original = development.__DEV__;
   try {
     development.__DEV__ = false;
-    const screen = setup();
+    const screen = await setup();
     expect(screen.getByText('Redirect /settings')).toBeTruthy();
     expect(screen.queryByText('Completion effect')).toBeNull();
   } finally {
@@ -124,17 +128,26 @@ it('redirects if the development screen is rendered in production', () => {
   }
 });
 
-it('selects a browser radio with Space without scrolling and leaves other keys alone', () => {
+it('selects a browser radio with Space without scrolling and leaves other keys alone', async () => {
   jest.replaceProperty(Platform, 'OS', 'web');
   try {
-    const screen = setup();
+    const screen = await setup();
     const preventDefault = jest.fn();
     const row = screen.getByRole('radio', { name: 'Batter' });
-    fireEvent(row, 'keyDown', { key: 'Tab', preventDefault });
+    await fireEvent(row, 'keyDown', {
+      nativeEvent: { key: 'Tab' },
+      preventDefault,
+    });
     expect(screen.testing.select).not.toHaveBeenCalled();
-    fireEvent(row, 'keyDown', { key: ' ', preventDefault });
+    await fireEvent(row, 'keyDown', {
+      nativeEvent: { key: ' ' },
+      preventDefault,
+    });
     expect(screen.testing.select).toHaveBeenCalledWith('batter');
-    fireEvent(row, 'keyDown', { key: 'Spacebar', preventDefault });
+    await fireEvent(row, 'keyDown', {
+      nativeEvent: { key: 'Spacebar' },
+      preventDefault,
+    });
     expect(preventDefault).toHaveBeenCalledTimes(2);
   } finally {
     jest.restoreAllMocks();

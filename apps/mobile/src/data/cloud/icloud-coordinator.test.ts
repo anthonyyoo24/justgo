@@ -6,10 +6,13 @@ import { CloudDataCoordinator } from './coordinator';
 import type { DataSyncTransport } from './transport';
 import {
   completionData,
+  epochData,
   iCloudDataIdentity,
   type ICloudData,
 } from './icloud-records';
 import {
+  ICLOUD_PAGE_LIMIT,
+  ICLOUD_WRITE_BYTE_LIMIT,
   ICloudError,
   type ICloudSync,
   type ICloudValue,
@@ -66,6 +69,8 @@ function cloud() {
   let generation = uuid(900);
   let revision = 1;
   let wasReset = false;
+  let recovered = false;
+  let missing = false;
   let closed = false;
   let enabled = true;
   let loseAcknowledgement = false;
@@ -84,16 +89,27 @@ function cloud() {
       enabled,
       accountToken,
     })),
-    setEnabled: jest.fn(async (value) => {
+    setEnabled: jest.fn(async (value: boolean) => {
       enabled = value;
     }),
     read: jest.fn(async ({ cursor }) => {
+      if (!enabled) throw new ICloudError('DISABLED');
+      if (missing) {
+        generation = uuid(Number(generation.slice(-12)) + 1);
+        generations.clear();
+        generations.set(generation, new Map());
+        revision++;
+        wasReset = false;
+        recovered = false;
+        missing = false;
+      }
       const offset = cursor ? Number(cursor.slice(1)) : 0;
       const values = [...records().values()];
       return {
         generation,
         revision: String(revision),
         wasReset,
+        recovered,
         closed,
         records: values.slice(offset, offset + 50),
         cursor: `p${offset + 50}`,
@@ -126,6 +142,7 @@ function cloud() {
       revision++;
       generation = uuid(Number(generation.slice(-12)) + 1);
       wasReset = true;
+      recovered = false;
       generations.set(generation, new Map());
       if (loseResetAcknowledgement) {
         loseResetAcknowledgement = false;
@@ -138,6 +155,7 @@ function cloud() {
       check(expected);
       generation = uuid(Number(generation.slice(-12)) + 1);
       wasReset = true;
+      recovered = false;
       closed = true;
       generations.set(generation, new Map());
       return { generation };
@@ -182,6 +200,17 @@ function cloud() {
       failCleanup = true;
     },
     reset: () => transport.reset({ collection: 'guest', generation }),
+    removeExternally: () => {
+      missing = true;
+    },
+    legacyExternalReset: () => {
+      generation = uuid(Number(generation.slice(-12)) + 1);
+      generations.clear();
+      generations.set(generation, new Map());
+      wasReset = true;
+      recovered = true;
+      revision++;
+    },
   };
 }
 afterEach(() =>
@@ -321,6 +350,56 @@ it('resumes handover cleanup without repeating target adoption and retains sourc
   await sync.handoverGuest(otherOwner, imported);
   expect(imported).toHaveBeenCalledTimes(2);
   expect(remote.transport.reset).toHaveBeenCalledTimes(1);
+});
+
+it('restarts an expired persisted handover purge cursor without repeating adoption or resetting new writing', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await repository.complete(input(), card);
+  await sync.synchronize();
+  const imported = jest.fn<
+    Promise<void>,
+    [Awaited<ReturnType<AccountRepository['snapshotData']>>]
+  >(async () => {});
+  jest
+    .mocked(remote.transport.purge)
+    .mockResolvedValueOnce({
+      generation: uuid(901),
+      cursor: 'old-handover-page',
+      hasMore: true,
+    })
+    .mockRejectedValueOnce(new ICloudError('UNAVAILABLE'));
+  await expect(sync.handoverGuest(otherOwner, imported)).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  const page = await remote.transport.read({ collection: 'guest' });
+  await remote.transport.write({
+    collection: 'guest',
+    generation: page.generation,
+    records: [
+      {
+        id: uuid(700),
+        value: JSON.stringify(completionData('guest', attempt(2))),
+      },
+    ],
+  });
+  jest
+    .mocked(remote.transport.purge)
+    .mockRejectedValueOnce(new ICloudError('CURSOR_EXPIRED'));
+  const resumed = setup(remote, owner, 'guest', storage);
+  await resumed.sync.handoverGuest(otherOwner, imported);
+  const requests = jest.mocked(remote.transport.purge).mock.calls;
+  expect(requests.slice(-2).map(([request]) => request)).toEqual([
+    {
+      collection: 'guest',
+      generation: page.generation,
+      cursor: 'old-handover-page',
+    },
+    { collection: 'guest', generation: page.generation },
+  ]);
+  expect(imported).toHaveBeenCalledTimes(1);
+  expect(remote.transport.reset).toHaveBeenCalledTimes(1);
+  expect([...remote.records().keys()]).toEqual([uuid(700)]);
+  expect(remote.generations.size).toBe(1);
 });
 
 it('deletes previously synced data with the toggle off and keeps deletion retries stable', async () => {
@@ -520,6 +599,49 @@ it('uses bounded pages and restores guest data into another phone own guest coll
   expect(first.remote.records().size).toBe(54);
 });
 
+it('delivers large valid writing in byte-bounded batches with durable IDs after a lost acknowledgement', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await repository.restoreJournal(
+    Array.from({ length: 50 }, (_, index) =>
+      journalEntry(owner, {
+        ...attempt(index + 1),
+        instruction: '界'.repeat(10_000),
+        reflection: {
+          feeling: null,
+          text: '界'.repeat(10_000),
+          revision: 1,
+        },
+      }),
+    ),
+  );
+  remote.loseNextAcknowledgement();
+  await expect(sync.synchronize()).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  const metadata = JSON.parse(
+    storage.values.get(`justgo:v1:${owner}:icloud-sync:guest`)!,
+  ) as { versions: Record<string, { id: string }> };
+  const durableIds = Object.values(metadata.versions).map(({ id }) => id);
+  expect(durableIds).toHaveLength(50);
+  expect(remote.records().size).toBeLessThan(50);
+  await sync.synchronize();
+  const calls = jest.mocked(remote.transport.write).mock.calls;
+  expect(calls.length).toBeGreaterThan(1);
+  for (const [request] of calls) {
+    expect(request.records.length).toBeLessThanOrEqual(ICLOUD_PAGE_LIMIT);
+    expect(
+      Buffer.byteLength(JSON.stringify(request.records), 'utf8'),
+    ).toBeLessThanOrEqual(ICLOUD_WRITE_BYTE_LIMIT);
+    for (const { id } of request.records) expect(durableIds).toContain(id);
+  }
+  const deliveredIds = calls.flatMap(([request]) =>
+    request.records.map(({ id }) => id),
+  );
+  expect(new Set(deliveredIds).size).toBe(50);
+  expect(deliveredIds).toHaveLength(50);
+  expect([...remote.records().keys()].sort()).toEqual(durableIds.sort());
+});
+
 it('advances known writing to a remote descendant and preserves concurrent writing as alternatives', async () => {
   const first = setup();
   await first.repository.complete(input(), card);
@@ -581,7 +703,7 @@ it('fences known stale local data after a remote deletion before uploading again
   expect(remote.records().size).toBe(1);
 });
 
-it('retains unknown local writing after a previous iCloud deletion until explicit reset acknowledgement', async () => {
+it('retains unknown phone writing after a genuine JustGO deletion without offering a sync-time erase', async () => {
   const remote = cloud();
   await remote.reset();
   const { repository, sync } = setup(remote);
@@ -597,9 +719,172 @@ it('retains unknown local writing after a previous iCloud deletion until explici
     'Preserve pending choice',
   );
   expect(remote.transport.write).not.toHaveBeenCalled();
-  await sync.acknowledgeReset();
-  expect((await repository.snapshotData()).attempts).toEqual([]);
+  expect((await repository.snapshotData()).attempts).toHaveLength(1);
   expect(remote.records().size).toBe(0);
+});
+
+it.each(['guest', `account:${owner}`] as const)(
+  'retains all phone entries when external iCloud storage is removed for %s',
+  async (collection) => {
+    const { repository, sync, remote } = setup(cloud(), owner, collection);
+    if (collection !== 'guest') await repository.observeDataEpoch(0);
+    await repository.complete(input(), card);
+    await repository.submitReflection(uuid(1), uuid(2), {
+      text: 'Saved before removal',
+    });
+    await sync.synchronize();
+    const clear = jest.spyOn(repository, 'clearData');
+    remote.removeExternally();
+    await repository.submitReflection(uuid(1), uuid(3), {
+      text: 'Recent phone writing',
+    });
+    await sync.synchronize();
+    expect(clear).not.toHaveBeenCalled();
+    expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+      'Recent phone writing',
+    );
+    const second = setup(remote, owner, collection, new MemoryStorage(), 700);
+    if (collection !== 'guest') await second.repository.observeDataEpoch(0);
+    await second.sync.synchronize();
+    expect(second.repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+      'Recent phone writing',
+    );
+  },
+);
+
+it.each(['guest', `account:${owner}`] as const)(
+  'cancels an unfinished legacy recovery clear and keeps %s writing',
+  async (collection) => {
+    const { repository, sync, remote, storage } = setup(
+      cloud(),
+      owner,
+      collection,
+    );
+    if (collection !== 'guest') await repository.observeDataEpoch(0);
+    await repository.complete(input(), card);
+    await repository.submitReflection(uuid(1), uuid(2), {
+      text: 'Keep this phone copy',
+    });
+    await sync.synchronize();
+    sync.stop();
+    remote.legacyExternalReset();
+    const page = await remote.transport.read({ collection });
+    const key = `justgo:v1:${owner}:icloud-sync:${collection}`;
+    const metadata = JSON.parse((await storage.getItem(key))!);
+    await storage.setItem(
+      key,
+      JSON.stringify({
+        ...metadata,
+        generation: page.generation,
+        clearing: true,
+        versions: {},
+        heads: {},
+      }),
+    );
+    const resumed = setup(remote, owner, collection, storage, 800);
+    const clear = jest.spyOn(resumed.repository, 'clearData');
+    await resumed.sync.synchronize();
+    expect(clear).not.toHaveBeenCalled();
+    expect(resumed.repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+      'Keep this phone copy',
+    );
+    expect(JSON.parse((await storage.getItem(key))!).clearing).toBe(false);
+  },
+);
+
+it('keeps iCloud absent while off and copies phone entries when enabled again', async () => {
+  const { repository, sync, remote } = setup();
+  await repository.complete(input(), card);
+  await sync.synchronize();
+  await remote.transport.setEnabled(false);
+  remote.removeExternally();
+  const reads = jest.mocked(remote.transport.read).mock.calls.length;
+  const writes = jest.mocked(remote.transport.write).mock.calls.length;
+  await repository.complete(input(2), card);
+  await repository.submitReflection(uuid(2), uuid(3), {
+    text: 'Phone only while off',
+  });
+  await sync.synchronize();
+  expect(remote.transport.read).toHaveBeenCalledTimes(reads);
+  expect(remote.transport.write).toHaveBeenCalledTimes(writes);
+  expect((await repository.snapshotData()).attempts).toHaveLength(2);
+  await remote.transport.setEnabled(true, async () => {});
+  await sync.synchronize();
+  expect((await repository.snapshotData()).attempts).toHaveLength(2);
+  expect(repository.getAttempt(uuid(2))?.reflection?.text).toBe(
+    'Phone only while off',
+  );
+  expect(remote.records().size).toBe(3);
+});
+
+it('retains phone writing across interrupted upload to recreated iCloud storage', async () => {
+  const { repository, sync, remote } = setup();
+  await repository.complete(input(), card);
+  await repository.submitReflection(uuid(1), uuid(2), {
+    text: 'Retained after retry',
+  });
+  await sync.synchronize();
+  const clear = jest.spyOn(repository, 'clearData');
+  remote.removeExternally();
+  remote.loseNextAcknowledgement();
+  await expect(sync.synchronize()).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  expect(repository.getAttempt(uuid(1))?.reflection?.text).toBe(
+    'Retained after retry',
+  );
+  await sync.synchronize();
+  expect(clear).not.toHaveBeenCalled();
+  expect(remote.records().size).toBe(2);
+});
+
+it('retains a pending authoritative account clear when iCloud storage was removed', async () => {
+  const collection = `account:${owner}` as const;
+  const { repository, sync, remote, storage } = setup(
+    cloud(),
+    owner,
+    collection,
+  );
+  await repository.observeDataEpoch(1);
+  await repository.complete(input(), card);
+  await sync.synchronize();
+  sync.stop();
+  const key = `justgo:v1:${owner}:icloud-sync:${collection}`;
+  const metadata = JSON.parse((await storage.getItem(key))!);
+  await storage.setItem(
+    key,
+    JSON.stringify({ ...metadata, clearing: true, accountEpochFloor: 2 }),
+  );
+  remote.removeExternally();
+  const resumed = setup(remote, owner, collection, storage, 800);
+  await resumed.sync.synchronize();
+  expect((await resumed.repository.snapshotData()).attempts).toHaveLength(0);
+  expect(resumed.repository.store.getState().dataEpoch).toBe(2);
+  expect(
+    [...remote.records().values()].map(({ value }) => JSON.parse(value)),
+  ).toEqual([epochData(collection, 2)]);
+});
+
+it('keeps genuine in-app deletion and account closure effective after an external reset', async () => {
+  const remote = cloud();
+  const first = setup(remote);
+  await first.repository.complete(input(), card);
+  await first.sync.synchronize();
+  remote.legacyExternalReset();
+  await first.sync.synchronize();
+  await remote.reset();
+  await first.sync.synchronize();
+  expect((await first.repository.snapshotData()).attempts).toHaveLength(0);
+  const account = setup(cloud(), owner, `account:${owner}`);
+  await account.repository.observeDataEpoch(0);
+  await account.repository.complete(input(), card);
+  await account.sync.synchronize();
+  await account.sync.deleteAccount();
+  account.remote.removeExternally();
+  await expect(account.sync.synchronize()).rejects.toMatchObject({
+    code: 'COLLECTION_DELETED',
+  });
+  expect((await account.repository.snapshotData()).attempts).toHaveLength(0);
 });
 
 it('persists reset before erasing and resumes physical cleanup after a failure without resetting twice', async () => {
@@ -627,6 +912,107 @@ it('persists reset before erasing and resumes physical cleanup after a failure w
   expect(JSON.parse(storage.values.get(key)!)).toMatchObject({
     deleting: false,
     cleanup: false,
+  });
+});
+
+it.each(['data', 'account'] as const)(
+  'restarts an expired persisted %s deletion cursor while retaining the original fence',
+  async (kind) => {
+    const collection = `account:${owner}` as const;
+    const { repository, sync, remote, storage } = setup(
+      undefined,
+      owner,
+      collection,
+    );
+    await repository.observeDataEpoch(0);
+    await repository.complete(input(), card);
+    await sync.synchronize();
+    jest
+      .mocked(remote.transport.purge)
+      .mockResolvedValueOnce({
+        generation: uuid(901),
+        cursor: 'old-deletion-page',
+        hasMore: true,
+      })
+      .mockRejectedValueOnce(new ICloudError('UNAVAILABLE'));
+    const remove = (coordinator: ICloudDataCoordinator) =>
+      kind === 'data'
+        ? coordinator.deleteData(uuid(750))
+        : coordinator.deleteAccount();
+    await expect(remove(sync)).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+    expect(
+      JSON.parse(
+        storage.values.get(`justgo:v1:${owner}:icloud-sync:${collection}`)!,
+      ),
+    ).toMatchObject({
+      generation: uuid(901),
+      cleanup: true,
+      purgeCursor: 'old-deletion-page',
+    });
+    jest
+      .mocked(remote.transport.purge)
+      .mockRejectedValueOnce(new ICloudError('CURSOR_EXPIRED'));
+    const resumed = setup(remote, owner, collection, storage);
+    await remove(resumed.sync);
+    expect(
+      jest
+        .mocked(remote.transport.purge)
+        .mock.calls.slice(-2)
+        .map(([request]) => request),
+    ).toEqual([
+      { collection, generation: uuid(901), cursor: 'old-deletion-page' },
+      { collection, generation: uuid(901) },
+    ]);
+    expect(remote.transport.reset).toHaveBeenCalledTimes(
+      kind === 'data' ? 1 : 0,
+    );
+    expect(remote.transport.close).toHaveBeenCalledTimes(
+      kind === 'account' ? 1 : 0,
+    );
+    expect((await resumed.repository.snapshotData()).attempts).toEqual([]);
+    expect(
+      JSON.parse(
+        storage.values.get(`justgo:v1:${owner}:icloud-sync:${collection}`)!,
+      ),
+    ).toMatchObject({
+      generation: uuid(901),
+      cleanup: false,
+      purgeCursor: null,
+      closed: kind === 'account',
+    });
+  },
+);
+
+it('bounds repeated purge cursor expiry without repeating the deletion reset', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await repository.complete(input(), card);
+  await sync.synchronize();
+  jest
+    .mocked(remote.transport.purge)
+    .mockResolvedValueOnce({
+      generation: uuid(901),
+      cursor: 'first-page',
+      hasMore: true,
+    })
+    .mockRejectedValueOnce(new ICloudError('CURSOR_EXPIRED'))
+    .mockResolvedValueOnce({
+      generation: uuid(901),
+      cursor: 'second-page',
+      hasMore: true,
+    })
+    .mockRejectedValueOnce(new ICloudError('CURSOR_EXPIRED'));
+  await expect(sync.deleteData(uuid(751))).rejects.toMatchObject({
+    code: 'CURSOR_EXPIRED',
+  });
+  expect(remote.transport.purge).toHaveBeenCalledTimes(4);
+  expect(remote.transport.reset).toHaveBeenCalledTimes(1);
+  expect(
+    JSON.parse(storage.values.get(`justgo:v1:${owner}:icloud-sync:guest`)!),
+  ).toMatchObject({
+    generation: uuid(901),
+    deleting: true,
+    cleanup: true,
+    purgeCursor: 'second-page',
   });
 });
 
@@ -688,7 +1074,7 @@ it('does no upload while toggled off or stopped and fences an old read after acc
   await sync.synchronize();
   expect(remote.transport.write).not.toHaveBeenCalled();
   await expect(sync.deleteData()).rejects.toMatchObject({ code: 'DISABLED' });
-  await remote.transport.setEnabled(true);
+  await remote.transport.setEnabled(true, async () => {});
   let release!: (value: Awaited<ReturnType<ICloudSync['read']>>) => void;
   const reading = jest.spyOn(remote.transport, 'read').mockImplementationOnce(
     () =>

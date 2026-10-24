@@ -1,5 +1,14 @@
 # Bundled assets
 
+- `brand/justgo-mark.png`: approved thick navy GO mark without a wordmark from
+  [the cream launch design in Paper](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0/PH9-0).
+  The GPT Image source's transparent margins were removed by copying its original
+  RGBA pixels into a 425 × 234 asset; the geometry and stroke weight are unchanged.
+  The native launch screen and runtime loading surface both contain this asset in
+  a centered 194-point square over the app's `#F9EFE8` cream, with no animation.
+
+- `illustrations/icloud-progress-cards.png`: transparent cloud and three paper cards prepared with the built-in GPT Image tool from the approved [peach iCloud Sync sheet in Paper](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0/PG0-0) on 2026-10-22. Only the decorative illustration is raster; the sheet heading, disclosure, X and Start Syncing button are native controls. Source and prompt are recorded in `design/source/icloud-sync-illustration.md`.
+
 - `illustrations/disconnected-plugs.png`: transparent illustration prepared with the built-in GPT Image tool from the corrected [initial attempts failure design in Paper](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0/OTO-0) on 2026-09-29. Includes the left plug, right receiving socket, two clouds, and three rays. The source is a flattened screen image, so this cutout is a model-assisted reproduction, not an exact pixel export. Prompt and source details are in `design/source/progress-failure-illustration.md`.
 
 - `illustrations/small-medal.png`: isolated “Illustration — A small medal · Enlarged” from the selected 40B Success screen in [Paper Version 3](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0), exported at 2× on 2026-09-17. Keep the multiply composition used by the source. This user-provided design asset is not an icon/store artwork license assertion.

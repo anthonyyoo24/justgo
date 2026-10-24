@@ -68,10 +68,10 @@ function Probe() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.useFakeTimers({ doNotFake: ['performance'] });
+  jest.useFakeTimers({ doNotFake: ['performance', 'queueMicrotask'] });
 });
 afterEach(async () => {
-  await act(async () => cleanup());
+  await act(async () => await cleanup());
   await runtime.client.queries.cancelQueries();
   runtime.client.queries.clear();
   await act(async () => jest.runOnlyPendingTimersAsync());
@@ -188,7 +188,7 @@ it.each([false, true])(
         <Probe />
       </AppProvider>
     );
-    const screen = render(
+    const screen = await render(
       strict ? <StrictMode>{provider}</StrictMode> : provider,
     );
     await waitFor(() => expect(screen.getByText(session.userId)).toBeTruthy());
@@ -220,7 +220,7 @@ it.each([false, true])(
     const read = expect(
       runtime.client.request('/v1/challenges', catalogSchema),
     ).rejects.toMatchObject({ code: 'ACCOUNT_CHANGED' });
-    await act(async () => screen.unmount());
+    await act(async () => await screen.unmount());
     await read;
     expect(aborted).toBe(true);
     expect(removeListener).toHaveBeenCalledTimes(listeners.mock.calls.length);

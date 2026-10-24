@@ -4,7 +4,7 @@ import { completeChallenge, signInFixture } from './support/managed-account';
 import { localJournalEntries } from './support/journal';
 
 const deletionCopy =
-  'Your account, progress and journal on this phone, in JustGO’s cloud and in associated iCloud copies will be permanently deleted. Downloaded files you saved elsewhere remain under your control.';
+  'Your account, progress and journal on this phone, in JustGO’s cloud and in associated iCloud copies will be permanently deleted. Downloaded files you saved elsewhere remain under your control.\n\nDeleting your account does not cancel an App Store subscription. Manage subscriptions separately in your device’s Settings.';
 
 test('managed account deletion preserves confirmation focus, survives a lost acknowledgement and clears only the deleted owner', async ({
   page,
@@ -28,20 +28,28 @@ test('managed account deletion preserves confirmation focus, survives a lost ack
     .toBe(1);
   await page.getByRole('link', { name: 'Open Settings', exact: true }).click();
   await page.getByRole('link', { name: 'Account', exact: true }).click();
-  await page.getByRole('link', { name: 'Delete account', exact: true }).click();
   const confirmation = page.getByRole('alertdialog', {
     name: 'Delete your account?',
     exact: true,
   });
-  const continueButton = page.getByRole('button', {
-    name: 'Continue to deletion',
+  const deleteAction = page.getByRole('button', {
+    name: 'Delete account',
     exact: true,
   });
   await expect(confirmation).toHaveCount(0);
   await expect(
-    page.getByRole('button', { name: 'Cancel subscription', exact: true }),
-  ).toBeVisible();
-  await continueButton.click();
+    deleteAction.getByText('Delete account', { exact: true }),
+  ).toHaveCSS('color', 'rgb(179, 38, 30)');
+  await expect(deleteAction.locator('svg path')).toHaveCount(1);
+  await expect(deleteAction.locator('svg path')).toHaveAttribute(
+    'stroke',
+    '#B3261E',
+  );
+  await deleteAction.click();
+  await expect(page).toHaveURL(/\/recovery$/);
+  await expect(
+    page.getByRole('button', { name: 'Continue to deletion', exact: true }),
+  ).toHaveCount(0);
   await expect(
     confirmation.getByText(deletionCopy, { exact: true }),
   ).toBeVisible();
@@ -55,15 +63,15 @@ test('managed account deletion preserves confirmation focus, survives a lost ack
   ).toHaveCount(0);
   await cancel.click();
   await expect(confirmation).toHaveCount(0);
-  await expect(continueButton).toBeFocused();
-  await continueButton.click();
+  await expect(deleteAction).toBeFocused();
+  await deleteAction.click();
   await expect(confirmation).toBeVisible();
   await expect(cancel).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(confirmation).toHaveCount(0);
-  await expect(continueButton).toBeFocused();
+  await expect(deleteAction).toBeFocused();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('link', { name: 'Delete account', exact: true }).click();
+  await page.getByRole('link', { name: 'Account', exact: true }).click();
   await expect(confirmation).toHaveCount(0);
 
   await page.route(`${journeyApiUrl}/v1/account`, (route) =>
@@ -76,9 +84,9 @@ test('managed account deletion preserves confirmation focus, survives a lost ack
       }),
     }),
   );
-  await continueButton.click();
+  await deleteAction.click();
   await confirmation
-    .getByRole('button', { name: 'Delete account', exact: true })
+    .getByRole('button', { name: 'Delete', exact: true })
     .click();
   await expect(confirmation.getByRole('alert')).toHaveText(
     'Account deletion is unavailable right now. Your account has not been deleted.',
@@ -123,9 +131,9 @@ test('managed account deletion preserves confirmation focus, survives a lost ack
     }
   });
   try {
-    await continueButton.click();
+    await deleteAction.click();
     const deleteButton = confirmation.getByRole('button', {
-      name: 'Delete account',
+      name: 'Delete',
       exact: true,
     });
     await deleteButton.click();
@@ -160,9 +168,7 @@ test('managed account deletion preserves confirmation focus, survives a lost ack
     }).toPass();
     await cancel.click();
     await expect(confirmation).toHaveCount(0);
-    await page
-      .getByRole('button', { name: 'Finish deletion', exact: true })
-      .click();
+    await deleteAction.click();
     await deleteButton.click();
     await expect(spinner).toBeVisible();
     releaseRetry();

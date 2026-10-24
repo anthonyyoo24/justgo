@@ -21,7 +21,7 @@ export async function saveExportFile(
     folder.create();
     const file = new File(folder, archive.name);
     file.create();
-    file.write(archive.bytes);
+    await file.write(archive.bytes);
     check();
     const result = await Share.share({ url: file.uri });
     return result.action === Share.dismissedAction ? 'cancelled' : 'shared';

@@ -12,20 +12,165 @@ async function signOut(page: Page) {
   await page.goto('/recovery');
   await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await expect(
-    page.getByText(
-      'Log out? Your saved data stays on this phone and account sync stops.',
-      { exact: true },
-    ),
+    page
+      .getByRole('alertdialog', { name: 'Log out?', exact: true })
+      .getByText(
+        'Your saved data will stay on this phone. Account syncing will stop until you sign in again.',
+        { exact: true },
+      ),
   ).toBeVisible();
   await page
-    .getByRole('button', { name: 'Confirm log out', exact: true })
+    .getByRole('alertdialog', { name: 'Log out?', exact: true })
+    .getByRole('button', { name: 'Log out', exact: true })
     .click();
-  await expect(
-    page.getByText('Signed out. Your saved data remains on this phone.', {
-      exact: true,
-    }),
-  ).toBeVisible();
+  for (const provider of ['Apple', 'Google']) {
+    const method = page.getByRole('switch', { name: provider, exact: true });
+    await expect(method).not.toBeChecked();
+    await expect(method).toBeEnabled();
+  }
 }
+
+test('logout uses an isolated modal without expanding Account and retains failure/retry until revocation finishes', async ({
+  page,
+}) => {
+  await signInFixture(page);
+  await page.goto('/recovery');
+  const logout = page.getByRole('button', { name: 'Log out', exact: true });
+  const deleteAccount = page.getByRole('button', {
+    name: 'Delete account',
+    exact: true,
+    includeHidden: true,
+  });
+  await expect(logout).toBeEnabled();
+  const before = await deleteAccount.boundingBox();
+  if (!before) throw new Error('Delete account row must be measurable');
+  await logout.click();
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Log out?',
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Delete account', exact: true }),
+  ).toHaveCount(0);
+  await expect(async () => {
+    const after = await deleteAccount.boundingBox();
+    if (!after)
+      throw new Error('Underlying Account layout must remain measurable');
+    expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
+  }).toPass();
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(logout).toBeEnabled();
+
+  let releaseFailure = () => {};
+  let releaseSuccess = () => {};
+  const failure = new Promise<void>((resolve) => {
+    releaseFailure = resolve;
+  });
+  const success = new Promise<void>((resolve) => {
+    releaseSuccess = resolve;
+  });
+  let requests = 0;
+  await page.route(`${journeyApiUrl}/v1/auth/logout`, async (route) => {
+    requests++;
+    if (requests === 1) {
+      await failure;
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'UNAVAILABLE',
+          requestId: 'logout-modal-fixture',
+        }),
+      });
+    } else {
+      await success;
+      await route.continue();
+    }
+  });
+  try {
+    await logout.click();
+    const confirm = dialog.getByRole('button', {
+      name: 'Log out',
+      exact: true,
+    });
+    await confirm.click();
+    await expect(confirm).toBeDisabled();
+    await expect(confirm).toHaveAttribute('aria-busy', 'true');
+    await expect(
+      dialog.getByRole('progressbar', { name: 'Logging out', exact: true }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole('button', { name: 'Cancel', exact: true }),
+    ).toBeDisabled();
+    releaseFailure();
+    await expect(dialog.getByRole('alert')).toBeVisible();
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+    await expect(confirm).toBeDisabled();
+    await expect(dialog.getByRole('alert')).toHaveCount(0);
+    releaseSuccess();
+    await expect(dialog).toHaveCount(0);
+    await expect(
+      page.getByRole('switch', { name: 'Apple', exact: true }),
+    ).toBeEnabled();
+    await expect(
+      page.getByRole('switch', { name: 'Apple', exact: true }),
+    ).not.toBeChecked();
+    expect(requests).toBe(2);
+  } finally {
+    releaseFailure();
+    releaseSuccess();
+    await page.unrouteAll({ behavior: 'wait' });
+  }
+});
+
+test('provider sign-in failures reset between visits and leave no Account connection footer', async ({
+  page,
+}) => {
+  await continueAsGuest(page);
+  await page.goto('/recovery');
+  await page.route(`${journeyApiUrl}/__fixtures/provider-sessions`, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        code: 'UNAVAILABLE',
+        requestId: 'fixture-sign-in-failure',
+      }),
+    }),
+  );
+  for (const provider of ['Google', 'Apple', 'Apple', 'Google']) {
+    await page.getByRole('switch', { name: provider, exact: true }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/account/sign-in\\?provider=${provider.toLowerCase()}$`),
+    );
+    await expect(
+      page.getByRole('heading', {
+        name: 'Keep your data with your account',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page
+      .getByRole('button', { name: `Sign in with ${provider}`, exact: true })
+      .click();
+    await expect(page.getByRole('alert')).toHaveText(
+      'Couldn’t finish connecting. Please try again. Your saved data was kept.',
+    );
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(page).toHaveURL(/\/recovery$/);
+    await expect(
+      page.getByRole('switch', { name: provider, exact: true }),
+    ).not.toBeChecked();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Retry connection', exact: true }),
+    ).toHaveCount(0);
+  }
+});
 
 test('provider login, logout and returning login preserve local history and isolate different account collections', async ({
   page,

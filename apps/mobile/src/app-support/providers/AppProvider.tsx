@@ -108,7 +108,9 @@ export function createAppRuntime<
     },
   };
 }
-type Runtime = ReturnType<typeof createAppRuntime>;
+// The installed app uses managed accounts. The generic constructor above also
+// exercises retained legacy session compatibility in boundary tests.
+type Runtime = ReturnType<typeof createAppRuntime<ManagedIdentityController>>;
 const Context = createContext<Runtime | null>(null);
 export function AppProvider({ children }: PropsWithChildren) {
   const [runtime] = useState(() =>

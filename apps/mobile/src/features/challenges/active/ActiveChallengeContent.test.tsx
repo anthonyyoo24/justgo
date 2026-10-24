@@ -19,10 +19,10 @@ afterEach(() => jest.restoreAllMocks());
 
 it.each(['load', 'error'])(
   'waits for native layout and both decorative assets before reporting readiness (%s)',
-  (outcome) => {
+  async (outcome) => {
     jest.replaceProperty(Platform, 'OS', 'ios');
     const ready = jest.fn();
-    const screen = render(
+    const screen = await render(
       <ActiveChallengeContent
         start={{
           card,
@@ -46,13 +46,13 @@ it.each(['load', 'error'])(
     const texture = screen.getByTestId('challenge-paper-texture', {
       includeHiddenElements: true,
     });
-    fireEvent(art, outcome);
-    fireEvent(texture, outcome);
+    await fireEvent(art, outcome);
+    await fireEvent(texture, outcome);
     expect(ready).not.toHaveBeenCalled();
-    fireEvent(screen.getByTestId('active-challenge-surface'), 'layout');
+    await fireEvent(screen.getByTestId('active-challenge-surface'), 'layout');
     expect(ready).toHaveBeenCalledTimes(1);
-    fireEvent(art, outcome);
+    await fireEvent(art, outcome);
     expect(ready).toHaveBeenCalledTimes(1);
-    screen.unmount();
+    await screen.unmount();
   },
 );
