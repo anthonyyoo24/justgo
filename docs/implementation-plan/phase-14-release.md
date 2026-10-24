@@ -2,7 +2,7 @@
 
 # Phase 14 — Release validation & launch
 
-**Status:** Hosted owner-device prerequisite ready; SDK 58 prerequisite implemented locally with basic phone smoke passed; beta/release acceptance not started
+**Status:** Beta offline admission implemented locally; SDK 58 basic phone smoke passed; signed beta/release acceptance open
 
 ## Outcome
 
@@ -20,6 +20,7 @@ A free TestFlight beta validates the complete core product; payment activation a
 
 **Free beta checkpoint**
 
+- Preserve the October 24 offline policy: a previously server-approved free-beta tester may start challenges until their approval expires, including cold offline restart. New starts stop at expiry; saved history and an already-started challenge/reflection remain usable. Verify this on a self-contained signed preview/beta build, including cold offline launch, every venue illustration and Success artwork without the Mac. The Metro development client fetches uncached illustrations over HTTP. Anthony waived the separate physical offline-artwork check on October 24, accepting inspected export packaging and confirmed online images; retain that check as waived/unverified and proceed. Cold offline launch and other native acceptance remain open; local browser/export/test evidence does not close them.
 - Define authenticated, server-authorized free tester access in an isolated non-production environment, including coverage for offline use and synchronization. Keep real identity/ownership boundaries, preserve tester history and plan how beta access ends or transitions when payments launch. Do not deploy the local fixture server or rely on a client premium switch. Purchases remain disabled and the beta explains that access is free during testing.
 - Resume the owner-deferred Phase 12 legal-site publication when Anthony is ready to start hosting. Use the approved text and selected Vercel-generated address, resolve applicable hosting terms/plan, finalize effective dates/versions, publish and verify anonymous HTTPS access, then configure/test the app's real legal links and ordinary account flow before distribution. No paid upgrade is authorized yet. Reconcile any changed paid/vendor wording before release; do not request approval of unchanged October 19 text again.
 - The later October 19 owner direction removes legal receipts/version gates entirely. Verify ordinary Continue, direct legal links and absence of legal tracking in the actual release build; the existing test-server removal is recorded in the Phase 10 handoff. This does not close public hosting or signed-device acceptance.

@@ -61,6 +61,24 @@ function localDevelopmentHost(hostname: string) {
     (first === 192 && second === 168)
   );
 }
+/** Canonical API scope shared by transport validation and local access metadata. */
+export function apiOrigin(baseUrl: string | undefined): string | null {
+  try {
+    const base = new URL(baseUrl ?? '');
+    return (base.protocol === 'https:' ||
+      (__DEV__ &&
+        base.protocol === 'http:' &&
+        localDevelopmentHost(base.hostname))) &&
+      !base.username &&
+      !base.password &&
+      !base.search &&
+      !base.hash
+      ? base.origin
+      : null;
+  } catch {
+    return null;
+  }
+}
 export function createHttpClient(
   baseUrl: string | undefined,
   fetcher: typeof fetch = fetch,
@@ -71,29 +89,19 @@ export function createHttpClient(
       schema: z.ZodType<T>,
       options: RequestOptions = {},
     ): Promise<T> {
-      let base: URL;
+      const origin = apiOrigin(baseUrl);
+      if (!origin) throw new ApiError('UNAVAILABLE');
       let target: URL;
       try {
-        base = new URL(baseUrl ?? '');
-        target = new URL(path, base);
+        target = new URL(path, origin);
       } catch {
         throw new ApiError('UNAVAILABLE');
       }
       // Progress reads use encoded query parameters. Resolve the relative path
       // against the trusted API origin so a query cannot redirect the request.
       if (
-        (base.protocol !== 'https:' &&
-          !(
-            __DEV__ &&
-            base.protocol === 'http:' &&
-            localDevelopmentHost(base.hostname)
-          )) ||
-        base.username ||
-        base.password ||
-        base.search ||
-        base.hash ||
         !path.startsWith('/v1/') ||
-        target.origin !== base.origin ||
+        target.origin !== origin ||
         !target.pathname.startsWith('/v1/') ||
         path.includes('#')
       )

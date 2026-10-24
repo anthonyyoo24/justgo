@@ -173,8 +173,8 @@ database/tooling/bundle/native evidence rather than a misleading JS coverage cla
 | API (unit + database) |          82% |        84% |             83% |            76% |
 | Contracts             |          95% |        95% |             95% |            95% |
 
-Independent critical selectors protect the provider and native vault (95% branches/
-lines), account client (85%/95%), HTTP (82%/94%), Progress as a group (90%/92%),
+Independent critical selectors protect the provider, extracted access policy/store/hook
+and native vault (95% branches/lines), account client (85%/95%), HTTP (82%/94%), Progress as a group (90%/92%),
 identity/challenge services (85% branches), retired private PATCH boundary (95%/99%) and Progress
 resources (95%/96%). Controllers/storage retain their own floors. The JSON file
 owns exact paths and thresholds; a move must update its selector without lowering
@@ -393,6 +393,16 @@ rather than bypassing its database guards, request fence or teardown.
 
 Record actual viewport, flow, fixtures, failure and recovery, keeping saved automated
 journeys, one-off walkthroughs, native simulator and physical-device evidence separate.
+
+The Metro development client loads local illustration assets over HTTP from the
+Mac; swiping to an uncached card or opening Success after disconnecting can leave
+its artwork blank. Its access and local saving checks remain separate from offline
+asset acceptance. Use a self-contained preview/release binary with bundled
+JavaScript and assets for cold offline launch and artwork checks; inspect the
+packaged assets and verify every venue variant and the Success illustration on
+the physical phone. A successful export alone does not establish that acceptance.
+See [Expo's asset delivery model](https://docs.expo.dev/develop/user-interface/assets/#how-are-assets-served-locally).
+
 Browser/export/component checks cannot establish Keychain/SQLite/AsyncStorage durability,
 OS lifecycle, gestures, software keyboard, VoiceOver, radio/backup, native
 Apple/Google OAuth, live hosted Auth revocation/deletion or actual CloudKit sync.

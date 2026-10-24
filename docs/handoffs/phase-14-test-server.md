@@ -12,7 +12,7 @@ Current access ends at expiry or revocation. Keep the historical grant and set `
 
 The strict access/OpenAPI contract optionally identifies `source: free_beta`. Unapproved/expired test accounts see a free-testing explanation; Settings identifies the test build. Billing responses without this optional field remain valid. Bring these contract changes into 07A before integrating its separate implementation.
 
-**Offline limit still open:** this prerequisite supplies server-side start-time upload eligibility, not durable offline access admission. The existing mobile guard requires a fresh check within 60 seconds and closes on check failure. Full beta offline start/relaunch/continuation acceptance and any necessary policy implementation remain Phase 14 work; the 07A saved paid-access rules have not been imported or accepted here.
+**Original offline limit, superseded October 24:** this prerequisite originally supplied server-side start-time upload eligibility while mobile admission closed after 60 seconds or a failed recheck. The later mobile beta slice retains fresh server-issued free-beta approval until its expiry, including offline restart and safe continuation; see the [current access boundary](../architecture/APP_SHELL.md#access-verification). Physical cold-launch and remaining release acceptance stay open under Phase 14. The owner-waived offline-artwork check is recorded in [DECISIONS.md](../DECISIONS.md#october-24-offline-artwork-check-waived). The separate 07A paid-access rules have not been imported or accepted here.
 
 ## Hosted cutover and protection
 

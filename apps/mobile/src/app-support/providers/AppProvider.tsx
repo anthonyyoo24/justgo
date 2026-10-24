@@ -14,22 +14,18 @@ import type { JournalStorage } from '../../data/activity/model';
 import { ActivityRuntime } from './activity-runtime';
 import { ProgressRefresh } from './ProgressRefresh';
 import { useActivityStore } from './activity-hooks';
+import { QueryClientProvider, focusManager } from '@tanstack/react-query';
+import { catalogSchema } from '@justgo/contracts';
+import { AccessStore } from '../access/verification/store';
 import {
-  QueryClientProvider,
-  focusManager,
-  useQuery,
-} from '@tanstack/react-query';
-import {
-  hasVerifiedAccess,
-  accessResponseSchema,
-  catalogSchema,
-} from '@justgo/contracts';
-import { readAccess } from '../access/api';
+  canStartChallenge,
+  useAccessState,
+} from '../access/verification/useAccessState';
 import { IdentityController } from '../identity/controller';
 import { ManagedIdentityController } from '../identity/auth/managed-controller';
 import { createManagedIdentityController } from '../identity/auth/create-managed-identity';
-import { AccountClient, accountKey } from '../../lib/network/account-client';
-import { createHttpClient } from '../../lib/network/http';
+import { AccountClient } from '../../lib/network/account-client';
+import { apiOrigin, createHttpClient } from '../../lib/network/http';
 import { createTelemetry } from '../../lib/telemetry';
 
 export function createAppRuntime<
@@ -45,9 +41,16 @@ export function createAppRuntime<
     reject: identity.rejectSession,
   });
   const telemetry = createTelemetry();
+  const access = new AccessStore(apiOrigin(url), storage);
   const managed = identity instanceof ManagedIdentityController;
   const activity = new ActivityRuntime(client, storage, { managed, url });
-  identity.setAccountDataRemover(activity.deleteAccount);
+  identity.setAccountDataRemover(async (owner) => {
+    if (access.getSnapshot().owner?.id === owner) access.changeOwner(null);
+    // Permission metadata shares the erased namespace. Finish its pending writes
+    // before erasing, so a late recovery record cannot recreate an old owner key.
+    await access.settled();
+    await activity.deleteAccount(owner);
+  });
   if (identity instanceof ManagedIdentityController) {
     identity.setGuestDataMerger(activity.mergeGuestData);
     identity.setGuestDataRetirer(activity.retireGuestData);
@@ -76,6 +79,20 @@ export function createAppRuntime<
     }
     client.changeAccount(next);
     client.changeCollection(collection);
+    access.setAuthenticated(!!next);
+    const accessAccount =
+      next ??
+      (identity instanceof ManagedIdentityController
+        ? identity.offlineAccountOwner()
+        : null);
+    access.changeOwner(
+      identity.getSnapshot().deletionStatus || !collection
+        ? null
+        : {
+            id: accessAccount ?? collection,
+            kind: accessAccount ? 'account' : 'guest',
+          },
+    );
     activity.setPendingGuestAdoption(
       'pendingGuestId' in snapshot &&
         typeof snapshot.pendingGuestId === 'string'
@@ -102,6 +119,8 @@ export function createAppRuntime<
     telemetry,
     challenges,
     activity,
+    access,
+    canStartChallenge: () => canStartChallenge(client, access),
     subscribe: () => {
       sync();
       return identity.subscribe(sync);
@@ -121,8 +140,10 @@ export function AppProvider({ children }: PropsWithChildren) {
       AppState.currentState !== 'background' &&
       AppState.currentState !== 'inactive';
     let online = true;
-    const updateEnvironment = () =>
+    const updateEnvironment = () => {
       runtime.activity.setEnvironment({ active, online });
+      runtime.access.setEnvironment({ active, online });
+    };
     runtime.identity.setActive(active);
     updateEnvironment();
     const unsubscribe = runtime.subscribe();
@@ -160,6 +181,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       subscription.remove();
       unsubscribeNetwork();
       runtime.challenges.dispose();
+      runtime.access.setEnvironment({ active: false, online: false });
       // React can restart effects while retaining this state-owned runtime.
       // Parking stops its work and preserves unsaved data for reconnection.
       runtime.activity.changeAccount(null);
@@ -189,60 +211,8 @@ export function useIdentity() {
   );
 }
 export function useAccess() {
-  const { client } = useRuntime();
-  const identity = useIdentity();
-  const { account } = identity;
-  const collectionId =
-    'collectionId' in identity &&
-    typeof identity.collectionId === 'string' &&
-    !identity.needsWelcome
-      ? identity.collectionId
-      : null;
-  const owner = account?.userId ?? collectionId;
-  const query = useQuery({
-    queryKey: accountKey(
-      owner ?? 'disconnected',
-      'access',
-      account ? 'account' : 'guest',
-    ),
-    enabled: !!owner && !identity.deletionStatus,
-    queryFn: ({ signal }) =>
-      account
-        ? readAccess(client, signal)
-        : client.requestGuest('/v1/guest/access', accessResponseSchema, signal),
-    refetchInterval: 30_000,
-  });
-  const [now, setNow] = useState(Date.now);
-  // A fresh server response can be slightly ahead of a phone's clock. Align only
-  // small positive differences; stale or implausibly future checks stay closed.
-  const serverAheadMs = query.data
-    ? Date.parse(query.data.checkedAt) - query.dataUpdatedAt
-    : 0;
-  const clockOffsetMs =
-    serverAheadMs > 0 && serverAheadMs <= 5_000 ? serverAheadMs : 0;
-  useEffect(() => {
-    if (query.data?.status !== 'verified') return;
-    // Expiry/freshness closes the route even if a recheck is unavailable.
-    const expires = Math.min(
-      Date.parse(query.data.expiresAt),
-      Date.parse(query.data.checkedAt) + 60_000,
-    );
-    const timer = setTimeout(
-      () => setNow(Date.now()),
-      Math.max(0, Math.min(expires - (Date.now() + clockOffsetMs), 60_000)),
-    );
-    return () => clearTimeout(timer);
-  }, [query.data, clockOffsetMs]);
-  return {
-    ...query,
-    verified:
-      !!owner &&
-      !query.isError &&
-      hasVerifiedAccess(
-        query.data,
-        Math.max(now, query.dataUpdatedAt) + clockOffsetMs,
-      ),
-  };
+  const { client, access } = useRuntime();
+  return useAccessState(client, access);
 }
 
 export function useJournal() {

@@ -12,6 +12,18 @@
         "branches": 95,
         "lines": 95
       },
+      "src/app-support/access/verification/policy.ts": {
+        "branches": 95,
+        "lines": 95
+      },
+      "src/app-support/access/verification/store.ts": {
+        "branches": 95,
+        "lines": 95
+      },
+      "src/app-support/access/verification/useAccessState.ts": {
+        "branches": 95,
+        "lines": 95
+      },
       "src/app-support/identity/vault.ts": { "branches": 95, "lines": 95 },
       "src/app-support/identity/storage.ts": { "branches": 90, "lines": 95 },
       "src/lib/network/account-client.ts": { "branches": 85, "lines": 95 },

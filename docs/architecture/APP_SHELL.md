@@ -76,16 +76,18 @@ with file watching disabled must be restarted before its bundle proves edits.
 | Old account tools                       | Redirect to the Account page; no key/code/transfer UI.                               |
 | `/preview` and unknown links            | Guarded development fixtures or provider-independent not-found recovery.             |
 
-The root uses `Stack.Protected` for local collection, access and deletion boundaries.
+The root uses `Stack.Protected` for selected-collection and deletion boundaries.
 Its explicit `access` anchor makes SDK 58 protected cold links resolve through
-hydration/admission rather than an alphabetical supporting route. A denied push
-returns through Access; a retained public anchor after deletion cannot reopen the
-deleted account's private history.
+hydration/admission rather than an alphabetical supporting route. Challenge-flow
+routes remain available to the same local owner when admission expires, preserving
+unfinished work. The actual challenge screen requires an in-memory start; result
+and reflection screens require a completion owned by that collection. A retained
+public anchor after deletion cannot reopen the deleted account's private history.
 Home is the sole owner of `/`. Guest Continue selects a durable collection without
 creating an account. Apple/Google entry explains JustGO cloud storage before login;
 the disclosure states that saved phone entries are included. Settings, Data and Account remain outside paid
-admission. Challenge starts require fresh verified access; saved local Progress
-remains available offline or signed out. Pending account deletion removes product
+admission. Challenge starts require verified access under the policy below; saved
+local Progress remains available offline or signed out. Pending account deletion removes product
 routes from Back history until required cleanup finishes.
 
 The browser is a development verification surface. Router 58 supplies zero web
@@ -147,13 +149,47 @@ grants with start/expiry/revocation and earlier-start coverage; client requests
 cannot grant access. [The beta setup](../handoffs/phase-14-test-server.md) owns its
 environment and release limits.
 
-Mobile polls every 30 seconds and accepts a server verification for at most
-60 seconds, never beyond expiry. A failed recheck closes access. A server check
-up to five seconds ahead of receipt uses one bounded clock offset for admission,
-freshness and closure timers. Stale or more distant future checks remain closed;
-clock alignment cannot extend validity. Refresh on foreground.
+`app-support/access/verification/` owns the mobile admission policy, scoped local
+store and query/timer hook. Only a fresh server response with `source: free_beta`
+can create an offline approval. It lasts until that response's expiry, including
+transport failure and cold restart. Storage is scoped by API origin, account/guest
+mode and canonical owner within the existing erasure namespace. Backups, imports
+and iCloud adoption do not copy admission metadata. Slow or failed optional cache
+writes do not block live approval or hold the query's later online rechecks open;
+persistence failures cannot promise approval survives restart.
 
-This current boundary is distinct from the planned persisted paid-access rules in
+Offline recovery requires the cached approval and a separate recovery record
+containing exactly the same serialized bytes. Legacy caches without that matching
+record need one fresh online approval; journal history is unaffected. A successful
+non-approval response closes live admission immediately and writes a durable
+denial independently of optional cache writes/deletion. Once that denial commits,
+failed cleanup or an older pending cache write cannot restore approval on restart.
+A fresh approved cache must commit before its matching recovery record, and both
+completion steps check the current owner and accepted-decision revision. Merely
+starting a later poll does not supersede an accepted decision when its transport
+fails. Storage failures remain visible through the safe storage status; a process
+stopping before any new storage commit cannot make a memory-only decision durable.
+
+Owner/mode changes, logout, provider detachment and deletion fence late reads,
+responses and writes, invalidate the old recovery record and remove old approval
+bytes where possible. Account erasure fences the matching access owner and drains
+both storage queues, including dependent proof work, before erasing its namespace;
+late permission writes cannot recreate deleted owner metadata. Offline account restoration may retain local admission
+without an authenticated session; account access reads and cloud sync wait for
+real session verification. A remote revocation takes effect on the next successful
+online check; an offline approval never exceeds its expiry.
+
+Non-beta verification still lasts at most 60 seconds, never beyond expiry, and
+closes on failed recheck. Access polling remains every 30 seconds while active and
+online, with foreground/reconnection refresh. A server check up to five seconds
+ahead of receipt uses a bounded clock offset for admission and closure timers.
+Stale or more distant future checks remain closed. Expiry timers reschedule within
+JavaScript's maximum delay and foregrounding recomputes admission immediately.
+The actual Accept callback checks the current owner/clock, including delayed swipe
+callbacks. An already-admitted challenge and its reflection may finish after
+expiry without pruning the editor or discarding unsaved writing.
+
+This beta boundary is distinct from the planned persisted paid-access rules in
 [Phase 07A](../implementation-plan/phase-07a-billing.md). Activity upload
 eligibility checks verified coverage for the original start rather than today's
 paid status, through its separate injected reader. Neither an unavailable provider

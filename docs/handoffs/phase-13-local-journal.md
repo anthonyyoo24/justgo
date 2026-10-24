@@ -4,14 +4,14 @@
 
 The continuity/Settings, working-login and private iCloud implementation passed
 reviewed-candidate hosted checks on [PR #43](https://github.com/anthonyyoo24/justgo/pull/43).
-Both Phase 13 PRs are merged, but #43 targeted `codex/phase-13-data-foundation`
-after [#44](https://github.com/anthonyyoo24/justgo/pull/44) had already merged that
-branch into `main`. GitHub `main` at `f7c7a69` therefore still lacks the refinements.
-Local integration `32c66ff` on `codex/phase-13-integration` merges the reviewed
-foundation head `cb8b89c`; its tree exactly matches reviewed candidate `a3a3be2`.
-Anthony authorized a single PR from `codex/phase-14-native-upgrade` into `main`,
-including these reviewed refinements and the completed native upgrade. Remote
-integration remains pending that PR's checks, owner review and merge approval.
+PR #43 had targeted `codex/phase-13-data-foundation` after
+[#44](https://github.com/anthonyyoo24/justgo/pull/44) merged that branch into `main`.
+Local integration `32c66ff` on `codex/phase-13-integration` merged the reviewed
+foundation head `cb8b89c`; its baseline tree matches reviewed candidate `a3a3be2`.
+[PR #46](https://github.com/anthonyyoo24/justgo/pull/46) now integrates the remaining
+refinements and the SDK 58 upgrade into `main` at `2c554f7`. Its final candidate
+`4d39cf2` passed all seven hosted Foundation jobs before merging. Local `main`
+was fast-forwarded to that merge, with the same file tree as the tested candidate.
 The [SDK 58 prerequisite](phase-14-native-upgrade.md) owns the updated
 dependency-health evidence. The October 23 revision removes the rejected recovery
 clear flow and retains phone data when the iCloud copy is removed externally;
@@ -375,8 +375,8 @@ visible platform explanation without creating server accounts. These focused
 checks do not refresh the earlier full phase/coverage evidence. The macOS native
 job subsequently passed on PR #46's initial head `139d27b`. That run's journey
 fixture failure and follow-up are recorded in the
-[SDK upgrade handoff](phase-14-native-upgrade.md); the follow-up still needs its
-own complete required-check result.
+[SDK upgrade handoff](phase-14-native-upgrade.md). The final combined candidate
+`4d39cf2` passed all seven hosted Foundation jobs before PR #46 merged.
 
 ## Open acceptance gates
 
@@ -399,7 +399,7 @@ owner and the Phase 14 release owner before release.
 | Hosted migration and old-client cutover               | Anthony plus release owner before testers                                             | 0019–0023, protected rehearsal and matching staged API are complete; still verify existing-phone migration, real Auth erasure/revocation, incompatible-client retirement and deletion-aware recovery acceptance.                                                                                                                                                                                                                                                               |
 | Public notices/provider/retention                     | Anthony plus privacy/release owner before public distribution                         | Review unpublished candidates, actual private-data processing/retention and App Privacy answers; public URLs/approval remain pending. The external-deletion revision retains the existing optional-iCloud data flow; do not imply that Apple Settings deletion also erases phone data.                                                                                                                                                                                         |
 | Mobile/tooling dependency health                      | Implementation/dependency owner and Phase 14 release owner, before public release     | Follow the separate [SDK 58 handoff](phase-14-native-upgrade.md) for compatible patches and remaining upstream advisories. The corrected API production audit does not establish mobile dependency health.                                                                                                                                                                                                                                                                     |
-| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | Reviewed Phase 13 candidate checks are recorded above. Complete `main` integration through the combined Phase 14 PR's checks, owner review and merge approval; retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and release gates for purchases and paid admission for guests.                                                                                                                                                   |
+| Publication/release validation                        | Implementation owner and Phase 14/07A owners before publication/release               | The combined Phase 13/SDK candidate passed its hosted checks and merged into `main` through PR #46. Retain mobile dependency health, signed storage/accessibility, privacy, diagnostics activation and release gates for purchases and paid admission for guests.                                                                                                                                                                                                              |
 
 Local implementation closeout and the owner's deferrals do not establish release
 acceptance. Preserve the named gates when carrying the candidate into Phase 14.
