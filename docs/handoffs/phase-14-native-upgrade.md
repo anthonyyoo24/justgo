@@ -2,24 +2,23 @@
 
 ## Status and integration boundary
 
-Implemented on `codex/phase-14-native-upgrade` and published in PR #46. The original
-SDK 58.0.17 signed client is installed on the registered iPhone; its native launch
-and owner-observed basic continuity/interaction smoke pass. The current SDK 58.0.19
-patch client is built and signature/configuration verified, but installation and
-its own phone smoke remain pending phone availability. Broader release acceptance
-remains open.
+Integrated into `main` through [PR #46](https://github.com/anthonyyoo24/justgo/pull/46)
+at `2c554f7`. The current SDK 58.0.19 signed client is installed on Anthony’s iPhone
+through the Expo installation link. Anthony confirmed current-app launch, retained
+Progress history, reflection-editor opening/closing, the expected iCloud setting
+and native data-export share-sheet opening/cancellation on October 24. The basic
+upgrade smoke passes; broader release acceptance remains open.
 This is the separate STK-2 prerequisite, not Phase 14 release closeout.
 
-The branch starts at Phase 13 integration `32c66ff`, preserved separately on
-`codex/phase-13-integration`. Its tree exactly matches reviewed candidate
-`a3a3be2`; #44 merged to `main`, while #43 merged to the foundation branch after
-that merge. Remote `main` remains `f7c7a69` and lacks the second part. Local `main`
-tracks the remote. Anthony authorized pushing the Phase 14 branch and opening a
-single PR into `main`, carrying both the missing reviewed Phase 13 refinements
-and the SDK upgrade. The preserved integration branch is a local reference;
-there is no separate integration PR. Merge still requires owner review and
-specific approval. Reviewed Phase 13 hosted checks do not establish hosted
-acceptance of this combined candidate; inspect its own required checks.
+The merged branch started at Phase 13 integration `32c66ff`, preserved separately
+on `codex/phase-13-integration`; that baseline tree matches reviewed candidate
+`a3a3be2`. PR #44 had merged the foundation into `main` before #43 merged its
+refinements into that foundation branch. PR #46 resolves the missing integration
+and includes the SDK upgrade. Its final candidate `4d39cf2` passed all seven
+[hosted Foundation jobs](https://github.com/anthonyyoo24/justgo/actions/runs/40045768208)
+before merging. Local `main` was fast-forwarded to `2c554f7`; the merged file tree
+exactly matches the tested candidate. The preserved integration branch remains a
+local reference; there was no separate integration PR.
 
 ## Runtime and compatibility changes
 
@@ -96,10 +95,15 @@ inspection Git metadata. The downloaded app passes strict/deep signature
 verification and retains the same app/version, provisioning profile, entitlements,
 scene manifest, provider URL schemes and `readRetainingLocal` bridge.
 IPA SHA-256: `0c074b0a1d5c4a0086619c6d14eede196138a5a8de6485c3c5842233083472a9`.
-The Mac could not reach the paired phone for installation. Anthony and the
-implementation owner retain in-place installation, current-bundle launch, saved
-history/Progress interaction and native Files smoke as open checks for this patch
-client; the earlier build's phone evidence does not establish those results.
+The direct Mac installation attempt could not reach the paired phone. Anthony
+instead confirmed installation through the Expo build link, then opened the app
+through a separate development-server QR. The server on LAN port 8088 served the
+current `main` iOS bundle successfully. Anthony confirmed the challenge page,
+retained Progress history, a day’s reflection editor opening/closing without
+changes, the expected iCloud setting, and Download my data opening the native
+share sheet and cancelling normally. These are owner-observed physical checks
+on this patch client. They do not establish archive contents, a full import,
+CloudKit round-trip, deletion/recovery or extended storage/lifecycle acceptance.
 
 ## Verification and dependency health
 
@@ -160,16 +164,15 @@ release; tooling exposure has not been established non-exploitable. See
 
 ## Remaining gates
 
-The original build's basic upgrade smoke passes; the current patch client still
-needs its own installation/phone smoke as recorded above. The implementation owner
-and Anthony retain
-extended scenes/lifecycle, keyboard/accessibility, gestures/haptics, actual Files
-read/write/cancellation, SQLite interruption/durability and secure-session
-acceptance for the release matrix. The confirmed account/history and expected
+The current patch client’s basic upgrade smoke passes. The implementation owner
+and Anthony retain extended scenes/lifecycle, keyboard/accessibility,
+gestures/haptics, full native Files import/export and failure/cancellation cases,
+SQLite interruption/durability and secure-session acceptance for the release
+matrix. The confirmed account/history and expected
 iCloud status do not establish those cases or a new cloud round-trip.
 The broader owner-deferred Phase 13 offline/provider/multi-device/Files/deletion
 matrix and all [Phase 14 release gates](../implementation-plan/phase-14-release.md)
 remain open. Ordinary diagnostics and product analytics remain disabled; signed
 crash/restart payload/cache/header/symbolication acceptance precedes diagnostics
-activation. The authorized PR still requires exact-candidate hosted checks and
-owner review/merge approval; release/distribution permissions remain separate.
+activation. PR #46’s hosted checks and merge are complete; release/distribution
+permissions remain separate.
