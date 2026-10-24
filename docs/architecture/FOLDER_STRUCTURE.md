@@ -33,6 +33,7 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/app-support/access/                              | Startup/access gate.                                                                        |
 | apps/mobile/src/app-support/access/verification/                 | Owner/API-scoped beta approval, strict admission policy, persistence and query timers.      |
 | apps/mobile/src/app-support/loading/                             | Shared quiet loading presentation for fonts, saved data and challenge admission.            |
+| apps/mobile/src/app-support/startup/                             | Native splash lifetime, local provider readiness and startup-error release.                 |
 | apps/mobile/src/app-support/identity/                            | Identity controller, transport, vault and storage.                                          |
 | apps/mobile/src/app-support/identity/auth/                       | Managed sessions, verified provider links and durable guest-adoption lifecycle.             |
 | apps/mobile/src/app-support/identity/account/                    | Managed Account, provider sign-in and disclosure screens.                                   |

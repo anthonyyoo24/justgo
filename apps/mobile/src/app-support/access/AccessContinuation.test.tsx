@@ -63,6 +63,10 @@ jest.mock('expo-crypto', () => ({
     `20000000-0000-4000-8000-${String(++mockSubmission).padStart(12, '0')}`,
 }));
 jest.mock('expo-font', () => ({ useFonts: () => [true, null] }));
+jest.mock('../startup/AppStartup', () => ({
+  AppStartup: ({ children }: { children: ReactNode }) => children,
+  StartupSurface: ({ children }: { children: ReactNode }) => children,
+}));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('react-native-gesture-handler', () => ({
   GestureHandlerRootView: ({ children }: { children: ReactNode }) => children,

@@ -94,7 +94,16 @@ const config: ExpoConfig = {
     // Keep the existing single-bundle web preview and guarded fixture loading.
     ['expo-router', { asyncRoutes: { web: false } }],
     'expo-dev-client',
-    'expo-font',
+    [
+      'expo-font',
+      {
+        fonts: [
+          require.resolve('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
+          require.resolve('@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf'),
+          require.resolve('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
+        ],
+      },
+    ],
     'expo-image',
     [
       'expo-splash-screen',

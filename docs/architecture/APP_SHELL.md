@@ -107,6 +107,14 @@ Settled denial/unavailability keeps the access recovery page; access loading doe
 not cover Progress, Settings or Data, and background refresh does not hide a
 verified challenge screen.
 
+On native, `app-support/startup/` holds the system splash before React mounts and
+releases it after fonts, identity, the selected owner's local journal, preference
+hydration and the root layout are ready. A failed local read or fatal startup
+error exposes the existing recovery UI; an old owner's repository cannot satisfy
+readiness. Server admission is independent and does not hold the native splash.
+Inter 400/500/600 are embedded by `expo-font`, with `useFonts` retaining the
+existing theme aliases on native and web. Web loading stays in the existing app UI.
+
 The separate Apple/Google sign-in page keeps the selected button disabled with a
 centered spinner through native authorization, owner adoption, access verification
 and challenge preparation. It opens Challenges directly once the verified owner's
