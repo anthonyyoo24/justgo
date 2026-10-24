@@ -28,7 +28,7 @@ recommendations are checked separately by the pinned Doctor command.
 | Remote reads                     | TanStack Query 5, account-scoped in-memory queries                                            |
 | Live activity state              | Zustand 5 without persistence middleware                                                      |
 | Completion/cache persistence     | AsyncStorage 2.2 with versioned completion/catalog/deck-preference envelopes                  |
-| Private journal persistence      | Expo SQLite 58.0.13 with per-account databases; IndexedDB development-browser adapter         |
+| Private journal persistence      | Expo SQLite 58.0.14 with per-account databases; IndexedDB development-browser adapter         |
 | Connectivity and saving feedback | NetInfo, Sonner Native and the Sonner web adapter                                             |
 | Optional account sign-in         | Supabase Auth, native Expo Apple Authentication and original Google Sign-In integration       |
 | Managed session storage          | Chunked Expo SecureStore; legacy Swift Keychain proofs retained for internal migration        |

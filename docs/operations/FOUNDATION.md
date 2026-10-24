@@ -18,12 +18,12 @@ Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                                           |
 | TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                                         |
-| Expo / React Native / React      | 58.0.17 / 0.88.0 / 19.3.0                                                                                            |
-| Expo Router / development client | 58.0.25 / 58.0.14                                                                                                    |
+| Expo / React Native / React      | 58.0.19 / 0.88.0 / 19.3.0                                                                                            |
+| Expo Router / development client | 58.0.26 / 58.0.15                                                                                                    |
 | Reanimated / Worklets            | 4.7.1 / 0.13.0; New Architecture required                                                                            |
 | Bottom sheet / Gesture Handler   | 5.2.14 / 3.3.0                                                                                                       |
 | Safe area / Screens / SVG        | 5.10.1 / 4.30.0 / 15.16.0                                                                                            |
-| Activity storage / state         | SQLite 58.0.13 private journal; AsyncStorage 2.2.0 completion/cache state; Zustand 5.0.15                            |
+| Activity storage / state         | SQLite 58.0.14 private journal; AsyncStorage 2.2.0 completion/cache state; Zustand 5.0.15                            |
 | Optional accounts                | Supabase JS 2.118.0 Auth; Expo Apple Authentication, SecureStore and original Google Sign-In                         |
 | Connectivity / saving feedback   | NetInfo 12.0.1 / Sonner Native 0.27.0 / Sonner 2.0.8 web adapter                                                     |
 | React Native Web                 | 0.21.4; development/browser verification only                                                                        |

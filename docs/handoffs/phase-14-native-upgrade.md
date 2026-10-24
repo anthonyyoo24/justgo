@@ -2,9 +2,12 @@
 
 ## Status and integration boundary
 
-Implemented on `codex/phase-14-native-upgrade` and ready for owner review; signed development build
-installed on the registered iPhone. Native launch/current-bundle loading and the
-owner's basic continuity/interaction smoke pass. Broader release acceptance remains open.
+Implemented on `codex/phase-14-native-upgrade` and published in PR #46. The original
+SDK 58.0.17 signed client is installed on the registered iPhone; its native launch
+and owner-observed basic continuity/interaction smoke pass. The current SDK 58.0.19
+patch client is built and signature/configuration verified, but installation and
+its own phone smoke remain pending phone availability. Broader release acceptance
+remains open.
 This is the separate STK-2 prerequisite, not Phase 14 release closeout.
 
 The branch starts at Phase 13 integration `32c66ff`, preserved separately on
@@ -20,7 +23,7 @@ acceptance of this combined candidate; inspect its own required checks.
 
 ## Runtime and compatibility changes
 
-- Expo 58.0.17, React Native 0.88.0 and React 19.3.0, with Expo's compatible
+- Expo 58.0.19, React Native 0.88.0 and React 19.3.0, with Expo's compatible
   native packages. The exact set lives in [FOUNDATION.md](../operations/FOUNDATION.md).
   Preserve iOS 16.4, app/team identity, approved CloudKit/Production configuration,
   provider configuration and static framework linkage. SDK 57 binaries cannot
@@ -76,17 +79,40 @@ multi-device CloudKit, full Files flows or extended lifecycle/accessibility case
 Generated SDK 57 native output was retained under ignored
 local storage; the fresh SDK 58 prebuild includes SceneDelegate.
 
+### Current SDK 58 patch client
+
+Fresh publication validation picked up new SDK 58 patch recommendations for Expo,
+development client, File System, Font, Image, Router and SQLite. The current lock
+uses Expo 58.0.19, Router 58.0.26, development client 58.0.15 and SQLite 58.0.14.
+Core 58.0.26/JSI 58.0.19 change native shared-object handling, and SQLite changes
+native class registration, requiring a rebuilt client. Published native templates
+and Sentry RN 8.28.0/Cocoa 9.29.0 remain unchanged; no JustGO caller or privacy-plugin
+change is needed. Preserve the existing navigation, storage and device gates.
+
+[Development build dc7a7feb](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/dc7a7feb-c0d6-47a5-bd93-a42d100c211f)
+from `f32b7e3` finished October 24, 2026, at 00:27:28 UTC. The inspected archive
+contains 360 source files matching the checkout byte-for-byte, excluding generated
+inspection Git metadata. The downloaded app passes strict/deep signature
+verification and retains the same app/version, provisioning profile, entitlements,
+scene manifest, provider URL schemes and `readRetainingLocal` bridge.
+IPA SHA-256: `0c074b0a1d5c4a0086619c6d14eede196138a5a8de6485c3c5842233083472a9`.
+The Mac could not reach the paired phone for installation. Anthony and the
+implementation owner retain in-place installation, current-bundle launch, saved
+history/Progress interaction and native Files smoke as open checks for this patch
+client; the earlier build's phone evidence does not establish those results.
+
 ## Verification and dependency health
 
 Final local full `check` passes: online Doctor 20/20, all source/test/journey
 typechecks, lint (zero errors, 176 existing warnings), formatting, 270 tooling,
-180 API unit, 1,537 mobile and 35 contract tests. Full coverage includes 272 API
+180 API unit, 1,538 mobile and 35 contract tests. Full coverage includes 272 API
 unit/database/helper/migration cases and passes all aggregate/critical floors:
-mobile 88.90% branches / 94.74% lines, API 88.59% / 96.22%, contracts 100% / 100%.
+mobile 88.92% branches / 94.74% lines, API 88.59% / 96.22%, contracts 100% / 100%.
 The database service was started after an initial connection-refused coverage
 attempt; the complete final run passes against isolated loopback `justgo_test`.
-Root `npm ci` reproduces the locked dependency layout, including CLI/Jest core
-resolution. All 43 saved journeys pass after replacing hidden-text matching in
+The initial upgrade passed root `npm ci`; the current patch build uses EAS
+installation from the lockfile. Current CLI/Jest resolution passes the full
+local check. All 43 saved journeys pass after replacing hidden-text matching in
 the startup regression with accessible heading/control assertions. The ordinary
 production web/iOS JavaScript exports and independent static/no-API-traffic web
 smoke pass. Sentry's
@@ -134,7 +160,9 @@ release; tooling exposure has not been established non-exploitable. See
 
 ## Remaining gates
 
-The basic upgrade smoke passes; the implementation owner and Anthony retain
+The original build's basic upgrade smoke passes; the current patch client still
+needs its own installation/phone smoke as recorded above. The implementation owner
+and Anthony retain
 extended scenes/lifecycle, keyboard/accessibility, gestures/haptics, actual Files
 read/write/cancellation, SQLite interruption/durability and secure-session
 acceptance for the release matrix. The confirmed account/history and expected
