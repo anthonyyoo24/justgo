@@ -80,6 +80,9 @@ export class CompletionRestoreService {
           )
         ).rows[0];
         if (!card) throw new ApiError('INVALID_REQUEST', 400);
+        // One budget entry per bounded batch; fully identical retries stay available.
+        if (added === 0)
+          await this.identity.rateLimitAccount(tx, session.userId, 'write');
         await tx.execute(
           sql`insert into justgo.attempts(user_id,id,challenge_id,venue_id,level_id,started_at,start_time_zone,legacy_display_time_zone,instruction_snapshot,activity_date) values(${session.userId},${attempt.id},${attempt.challengeId},${attempt.venue},${attempt.levelId},${attempt.startedAt}::timestamptz,${attempt.startTimeZone},${attempt.startTimeZone === null ? attempt.displayTimeZone : null},${attempt.instruction},${attempt.activityDate})`,
         );
@@ -93,6 +96,7 @@ export class CompletionRestoreService {
   }
   page(token: string, cursor: string | undefined, limit: number) {
     return this.identity.withSession(token, async (tx, session) => {
+      await this.identity.rateLimitAccount(tx, session.userId, 'export');
       const rows = (
         await tx.execute<CompletionRow>(
           sql`${attemptQuery} where a.user_id=${session.userId} ${cursor ? sql`and a.id>${cursor}::uuid` : sql``} order by a.id limit ${limit + 1}`,

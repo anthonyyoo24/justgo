@@ -1,4 +1,5 @@
 import { useFonts } from 'expo-font';
+import type { ComponentProps } from 'react';
 import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
 import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
@@ -18,13 +19,26 @@ import {
   WelcomeTransition,
   useWelcomeTransition,
 } from '../app-support/identity/welcome/WelcomeTransition';
+import { AppStartup, StartupSurface } from '../app-support/startup/AppStartup';
+import { holdNativeSplash } from '../app-support/startup/native-splash';
+import { RouteErrorScreen } from '../app-support/fallbacks/RouteErrorScreen';
 
-export { RouteErrorScreen as ErrorBoundary } from '../app-support/fallbacks/RouteErrorScreen';
+holdNativeSplash();
+
+export function ErrorBoundary(props: ComponentProps<typeof RouteErrorScreen>) {
+  return (
+    <StartupSurface ready>
+      <RouteErrorScreen {...props} />
+    </StartupSurface>
+  );
+}
 
 // Protected cold links return through access while identity and local data hydrate.
 export const unstable_settings = { anchor: 'access' };
 
 export default function RootLayout() {
+  // Embedded iOS fonts use their PostScript names. Register the established
+  // theme aliases here as well, preserving native and web text styling.
   const [loaded, error] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -32,18 +46,20 @@ export default function RootLayout() {
   });
   if (error)
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          padding: 28,
-          backgroundColor: colors.cream,
-        }}
-      >
-        <Text accessibilityRole="alert">
-          The app’s fonts couldn’t load. Please reopen JustGO.
-        </Text>
-      </View>
+      <StartupSurface ready>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            padding: 28,
+            backgroundColor: colors.cream,
+          }}
+        >
+          <Text accessibilityRole="alert">
+            The app’s fonts couldn’t load. Please reopen JustGO.
+          </Text>
+        </View>
+      </StartupSurface>
     );
   if (!loaded) return <AppLoadingScreen />;
   return (
@@ -52,13 +68,15 @@ export default function RootLayout() {
       <MotionPreferencesProvider>
         <HapticsPreferencesProvider>
           <AppProvider>
-            <SavingFeedbackShell>
-              <WelcomeTransition>
-                <ChallengeActivityProvider>
-                  <Navigation />
-                </ChallengeActivityProvider>
-              </WelcomeTransition>
-            </SavingFeedbackShell>
+            <AppStartup>
+              <SavingFeedbackShell>
+                <WelcomeTransition>
+                  <ChallengeActivityProvider>
+                    <Navigation />
+                  </ChallengeActivityProvider>
+                </WelcomeTransition>
+              </SavingFeedbackShell>
+            </AppStartup>
           </AppProvider>
         </HapticsPreferencesProvider>
       </MotionPreferencesProvider>

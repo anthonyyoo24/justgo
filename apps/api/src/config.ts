@@ -36,6 +36,19 @@ const configSchema = z.object({
     .min(1)
     .max(100)
     .default(30),
+  ACTIVITY_WRITE_RATE_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10000)
+    .default(600),
+  ACCOUNT_EXPORT_RATE_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10000)
+    // Full-history sync/import can enumerate the 50,000-record client limit twice.
+    .default(3000),
 });
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {

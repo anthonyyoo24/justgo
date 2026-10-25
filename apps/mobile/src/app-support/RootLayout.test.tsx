@@ -1,7 +1,8 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { Platform } from 'react-native';
+import { hideAsync, preventAutoHideAsync } from 'expo-splash-screen';
 import RootLayout, { ErrorBoundary } from '../app/_layout';
-import { RouteErrorScreen } from './fallbacks/RouteErrorScreen';
 
 let mockIdentity = {
   deletionStatus: null as 'pending' | 'cleanup' | 'deleted' | null,
@@ -15,8 +16,31 @@ const mockRefreshChallenges = jest.fn(async () => {});
 const mockStackScreenOptions = new Map<string, unknown>();
 let mockFontsLoaded = true;
 let mockFontError: Error | null = null;
+let mockInitialized = true;
+let mockJournalOwner: string | null = 'existing-account';
+let mockJournalReady = true;
+let mockJournalError: string | null = null;
+let mockMotionLoading = false;
+let mockHapticsLoading = false;
+const mockFontMap = jest.fn();
 jest.mock('expo-font', () => ({
-  useFonts: () => [mockFontsLoaded, mockFontError],
+  useFonts: (fonts: unknown) => {
+    mockFontMap(fonts);
+    return [mockFontsLoaded, mockFontError];
+  },
+}));
+jest.mock('expo-splash-screen', () => ({
+  preventAutoHideAsync: jest.fn(async () => true),
+  hideAsync: jest.fn(async () => {}),
+}));
+jest.mock('./diagnostics/start', () => ({
+  errorReporter: { capture: jest.fn() },
+}));
+jest.mock('../platform/motion/motion', () => ({
+  useMotionPreferences: () => ({ loading: mockMotionLoading }),
+}));
+jest.mock('../platform/haptics/haptics', () => ({
+  useHapticPreferences: () => ({ loading: mockHapticsLoading }),
 }));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('react-native-gesture-handler', () => ({
@@ -24,10 +48,17 @@ jest.mock('react-native-gesture-handler', () => ({
 }));
 jest.mock('./providers/AppProvider', () => ({
   AppProvider: ({ children }: { children: ReactNode }) => children,
-  useIdentity: () => ({ ...mockIdentity, initialized: true }),
+  useIdentity: () => ({ ...mockIdentity, initialized: mockInitialized }),
+  useActivityState: () => ({
+    repository: mockJournalOwner ? { accountId: mockJournalOwner } : null,
+    state: mockJournalOwner
+      ? { ready: mockJournalReady, hydrationError: mockJournalError }
+      : null,
+  }),
   useAccess: () => ({ verified: mockVerified, isPending: mockPending }),
   useRuntime: () => ({ challenges: { refresh: mockRefreshChallenges } }),
 }));
+const heldWhileRootLoaded = jest.mocked(preventAutoHideAsync).mock.calls.length;
 jest.mock('./acceptance/AcceptancePreparationCover', () => ({
   AcceptancePreparationCover: ({ onShow }: { onShow: () => void }) => {
     const { View } = require('react-native') as typeof import('react-native');
@@ -84,6 +115,7 @@ jest.mock('expo-router', () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.replaceProperty(Platform, 'OS', 'ios');
   mockStackScreenOptions.clear();
   mockIdentity = {
     deletionStatus: null,
@@ -95,7 +127,14 @@ beforeEach(() => {
   mockPending = false;
   mockFontsLoaded = true;
   mockFontError = null;
+  mockInitialized = true;
+  mockJournalOwner = 'existing-account';
+  mockJournalReady = true;
+  mockJournalError = null;
+  mockMotionLoading = false;
+  mockHapticsLoading = false;
 });
+afterEach(() => jest.restoreAllMocks());
 
 it('keeps the branded loading screen until fonts are ready', async () => {
   mockFontsLoaded = false;
@@ -104,10 +143,19 @@ it('keeps the branded loading screen until fonts are ready', async () => {
     screen.getByRole('progressbar', { name: 'Loading JustGO' }),
   ).toBeTruthy();
   expect(screen.queryByTestId('navigation')).toBeNull();
+  expect(hideAsync).not.toHaveBeenCalled();
   mockFontsLoaded = true;
   await screen.rerender(<RootLayout />);
   expect(screen.queryByRole('progressbar')).toBeNull();
   expect(screen.getByTestId('navigation')).toBeTruthy();
+  expect(hideAsync).not.toHaveBeenCalled();
+  await fireEvent(screen.getByTestId('native-startup-surface'), 'layout');
+  expect(hideAsync).toHaveBeenCalledTimes(1);
+  expect(mockFontMap).toHaveBeenCalledWith({
+    Inter_400Regular: expect.anything(),
+    Inter_500Medium: expect.anything(),
+    Inter_600SemiBold: expect.anything(),
+  });
 });
 
 it('leaves loading for a font error so launch cannot get stuck behind the logo', async () => {
@@ -118,10 +166,75 @@ it('leaves loading for a font error so launch cannot get stuck behind the logo',
   expect(screen.getByRole('alert')).toHaveTextContent(
     'The app’s fonts couldn’t load. Please reopen JustGO.',
   );
+  expect(hideAsync).not.toHaveBeenCalled();
+  await fireEvent(screen.getByTestId('native-startup-surface'), 'layout');
+  expect(hideAsync).toHaveBeenCalledTimes(1);
 });
 
-it('uses the retryable crash screen as the root error boundary', () => {
-  expect(ErrorBoundary).toBe(RouteErrorScreen);
+it('holds native splash at module load and exposes the retryable root error boundary after layout', async () => {
+  expect(heldWhileRootLoaded).toBe(1);
+  const retry = jest.fn(async () => {});
+  const screen = await render(
+    <ErrorBoundary
+      error={new Error('Synthetic startup failure')}
+      retry={retry}
+    />,
+  );
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'JustGO couldn’t show this screen. Try again, or close and reopen the app.',
+  );
+  expect(hideAsync).not.toHaveBeenCalled();
+  await fireEvent(screen.getByTestId('native-startup-surface'), 'layout');
+  expect(hideAsync).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  expect(retry).toHaveBeenCalledTimes(1);
+});
+
+it('keeps native launch covered until identity, its own journal and both preference providers settle', async () => {
+  mockInitialized = false;
+  mockJournalOwner = 'previous-account';
+  mockJournalReady = false;
+  mockMotionLoading = true;
+  mockHapticsLoading = true;
+  const screen = await render(<RootLayout />);
+  await fireEvent(screen.getByTestId('native-startup-surface'), 'layout');
+  expect(
+    screen.getByRole('progressbar', { name: 'Loading saved data' }),
+  ).toBeTruthy();
+  expect(hideAsync).not.toHaveBeenCalled();
+  mockInitialized = true;
+  await screen.rerender(<RootLayout />);
+  expect(hideAsync).not.toHaveBeenCalled();
+  mockJournalReady = true;
+  await screen.rerender(<RootLayout />);
+  expect(hideAsync).not.toHaveBeenCalled();
+  mockJournalOwner = 'existing-account';
+  await screen.rerender(<RootLayout />);
+  expect(hideAsync).not.toHaveBeenCalled();
+  mockMotionLoading = false;
+  await screen.rerender(<RootLayout />);
+  expect(hideAsync).not.toHaveBeenCalled();
+  mockHapticsLoading = false;
+  await screen.rerender(<RootLayout />);
+  expect(hideAsync).toHaveBeenCalledTimes(1);
+  await fireEvent(screen.getByTestId('native-startup-surface'), 'layout');
+  await screen.rerender(<RootLayout />);
+  expect(hideAsync).toHaveBeenCalledTimes(1);
+});
+
+it('releases to recovery after a local hydration error and does not add a native surface on web', async () => {
+  mockJournalReady = false;
+  mockJournalError = 'unreadable';
+  const screen = await render(<RootLayout />);
+  await fireEvent(screen.getByTestId('native-startup-surface'), 'layout');
+  expect(hideAsync).toHaveBeenCalledTimes(1);
+  await screen.unmount();
+  jest.replaceProperty(Platform, 'OS', 'web');
+  jest.mocked(hideAsync).mockClear();
+  const web = await render(<RootLayout />);
+  expect(web.getByTestId('navigation')).toBeTruthy();
+  expect(web.queryByTestId('native-startup-surface')).toBeNull();
+  expect(hideAsync).not.toHaveBeenCalled();
 });
 
 it.each([

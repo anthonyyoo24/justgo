@@ -8,9 +8,9 @@ Phase [12](../implementation-plan/phase-12-legal-documents.md) established legal
 
 A separate iCloud Sync setting is off by default; the native adapter targets Apple's private CloudKit database, with actual configuration and device acceptance still open. It is independent of JustGO sign-in, manual iCloud Drive files and system backup. Data has Download my data, validated Import data preview/confirmation, and Delete all my data. Both deletion actions reuse the confirmation modal with distinct wording. Delete all retains identity/login methods and fences stale replicas; Delete account closes the owner, revokes sessions, hard-deletes the managed Auth user through retryable server cleanup, purges/closes associated app-managed iCloud collections and clears matching local data/credentials. Both actions include previously associated iCloud copies even if Sync is now OFF; unavailable associated Apple accounts leave durable pending cleanup. User-saved files remain, and disconnected devices are not immediately erased. Neither action deletes the Apple/Google account or cancels a subscription. The requested reset concerns old server reflections only and preserves phone journals; **no hosted reset or deployment is established here**.
 
-The [inventory](DATA_INVENTORY.md), [Privacy candidate](PRIVACY_POLICY_DRAFT.md), [Terms candidate](TERMS_DRAFT.md) and [disclosure worksheet](RELEASE_DISCLOSURES.md) now describe this implementation candidate. Both public blocks remain `owner-review-required`, label `2026-10-20-managed-sync-candidate`, effective date pending. Earlier October 19 approval and the later completion-only assessment are superseded for this changed boundary. No current public text, provider configuration, native acceptance or hosted rollout is implied. Production legal rendering continues to fail closed.
+The [inventory](DATA_INVENTORY.md), [Privacy Policy](PRIVACY_POLICY_DRAFT.md), [Terms](TERMS_DRAFT.md) and [disclosure worksheet](RELEASE_DISCLOSURES.md) describe the managed-sync boundary. On October 25 Anthony authorized necessary final wording changes and public hosting on Vercel Hobby. The focused review kept Terms unchanged and added only the legal website's hosting/visitor-connection disclosure to Privacy. Both public blocks are `owner-approved`, label `2026-10-25-beta`, effective October 25, 2026. The production parser still rejects future unapproved or undated candidates. The [Phase 13 handoff](../handoffs/phase-13-local-journal.md) records the separate hosted rollout/provider configuration and basic phone evidence; extended device, provider and regional gates remain open before external beta distribution.
 
-Youngshin Yoo is the personal operator in Ontario, Canada, with temporary contact anthonyyoo24@gmail.com and intended audience 18+. Initial paid storefront exclusions remain EU, UK, Norway, Iceland and Liechtenstein by October 20 owner direction. Actual eligibility, storefronts, rating, required public contacts and regional privacy handling remain Phase 14. Do not infer a public home address. Vercel-generated public address is the selected direction; publication/paid hosting are owner-deferred until closer to launch. No provider contact, upgrade, agreement acceptance or deployment is authorized.
+Youngshin Yoo is the personal operator in Ontario, Canada, with temporary contact anthonyyoo24@gmail.com and intended audience 18+. Initial paid storefront exclusions remain EU, UK, Norway, Iceland and Liechtenstein by October 20 owner direction. Actual eligibility, storefronts, rating, required public contacts and regional privacy handling remain Phase 14. Do not infer a public home address. Owner-directed document hosting is live at [Privacy](https://justgo-legal.vercel.app/privacy/) and [Terms](https://justgo-legal.vercel.app/terms/) in a separate Hobby project. This choice does not settle future commercial eligibility or private-journal processor suitability. No paid upgrade, provider contact or agreement acceptance occurred.
 
 Terms & Privacy has ordinary direct links and Continue, without document-view/agreement receipts or accepted-version gates. Continue is now guest continuation, not a server identity bootstrap. Returning managed accounts require no legal-version check. Analytics and ordinary Sentry delivery remain disabled; their independent activation gates stay open. The first public App Store release is intended to be paid, so 07A/14 must update the beta text for the actual offer and billing before that release.
 
@@ -27,7 +27,7 @@ Terms & Privacy has ordinary direct links and Continue, without document-view/ag
 | Legacy server reset                | Old journal endpoint/UI retired; bounded forward server reset requested; phone data preserved                                                | Approved actual reset/rollout evidence and provider recovery-copy expiry remain separate. No historical content recovery promise.                                                       |
 | Operator/regions/age/EULA          | Existing Ontario personal operator, 18+, standard Apple EULA, exclusions retained                                                            | Actual App Store eligibility/availability, contextual sensitive-data/regional notices and owner/public-text review before publication.                                                  |
 | Telemetry/support                  | Analytics and ordinary Sentry off; support mail only user submitted                                                                          | Existing Sentry/analytics activation gates; owner-operated inbox retention/request process and provider-copy handling.                                                                  |
-| Legal hosting                      | Local candidate only, unapproved, pending dates                                                                                              | Anthony reviews concrete wording, eligible plan/address and separately authorizes hosting. No public URL or fresh approval claimed.                                                     |
+| Legal hosting                      | Owner-directed October 25 publication on separate Vercel Hobby project; both HTTPS pages and logo verified anonymously                       | Signed-iPhone link/accessibility checks remain. Reassess plan eligibility before commercial launch and update disclosures if actual services change.                                    |
 
 ## Apple and regulator research
 
@@ -181,12 +181,13 @@ current DPA is dated August 1, 2026. The [Supabase changelog](https://supabase.c
   official FAQ supports this project-level control. It prevents future sharing
   within that control's scope, not past use or all provider system-data use.
 - [Supabase pricing](https://supabase.com/pricing) lists API/database log retention
-  as one day on Free and seven days on Pro; Vercel's published Hobby runtime-log
-  limit is one hour. These are specific log products, not an expiry promise for
-  all infrastructure/security records.
+  as one day on Free and seven days on Pro; [Vercel runtime logs](https://vercel.com/docs/logs/runtime)
+  list one hour on Hobby and one day on Pro. These are specific log products, not
+  an expiry promise for all infrastructure/security records.
 - Free lacks the included automatic daily backups described in
   [Supabase's backup documentation](https://supabase.com/docs/guides/platform/backups),
-  but [paused Free projects](https://supabase.com/docs/guides/platform/free-project-pausing)
+  and the provider's [upgrade FAQ](https://supabase.com/kb/troubleshooting/will-backups-be-accessible-from-the-dashboard-immediately-after-upgrading-to-a-paid-plan-hXY4rs)
+  says background backups can exist on Free. [Paused Free projects](https://supabase.com/docs/guides/platform/free-project-pausing)
   can be recovered for up to a year from retained provider backups. Do not equate
   no daily-backup entitlement with no provider copies. The revised candidate makes no fixed expiry promise or claim that the
   operator directly removes every provider-controlled copy.
@@ -240,7 +241,7 @@ The remaining tasks are concrete implementation/operations checks:
 
 The candidate explains disclosed first-sign-in adoption, same-journal continuity after logout, separate CloudKit choice, authenticated import, separate Delete all/Delete account and cleanup of previously associated app-managed iCloud copies even when OFF. It retains limits for unavailable Apple accounts, user files, disconnected devices and provider backups. It describes policy updates at the same address and retains legally required notice/choice without promising an unimplemented blanket in-app notice system. It does not claim every third party avoids independent traffic processing. Comparable provider-protection wording remains conditional on supported actual arrangements as described in the Apple assessment.
 
-Both changed public blocks require owner review and keep pending effective dates. This correction does not approve publication, waive deletion duties or establish a provider expiry period.
+The October 25 owner authorization covers the final document wording and hosting. It does not waive deletion duties or establish a provider recovery-copy expiry period.
 
 Montréal API functions and Canada Central database hosting do not establish
 Canada-only processing: provider support, network/security processing and recovery
@@ -267,34 +268,44 @@ Do not admit real users on an assumed answer. Declining contact does not resolve
 
 ## Competitor research and adaptation
 
-Primary documents were read October 19: How We Feel's [Privacy Policy](https://howwefeel.org/privacy)
-and [Terms](https://howwefeel.org/terms), plus Stoic's [Privacy Policy](https://www.getstoic.com/privacy-policy)
-and [Terms](https://www.getstoic.com/terms-and-conditions). The candidate borrows
-their topical organization, not their text or data-handling claims:
+Anthony requested a fresh comparison on October 25, 2026. The current official
+[How We Feel Privacy Policy](https://howwefeel.org/privacy) (July 14, 2025),
+[How We Feel Terms](https://howwefeel.org/terms) (July 26, 2024),
+[Stoic Privacy Policy](https://www.getstoic.com/privacy-policy) and
+[Stoic Terms](https://www.getstoic.com/terms-and-conditions) were reread.
+How We Feel's Terms are client-rendered; the official page's linked
+[Terms content](https://howwefeel.org/assets/TermsOfUseView.8d807661.js) supplied the
+text when the research reader returned an empty page. These sources describe
+what the companies say, not independent evidence of their implementation or
+legal compliance.
 
-- Use a short opening summary, then separate journal/account information,
-  information kept on the phone, technical processing, providers, retention,
-  controls and contact details.
-- How We Feel distinguishes local use from account/cloud processing and separates
-  optional research/AI/sharing. JustGO distinguishes guest-local writing, optional managed account sync, private CloudKit and explicit files; it has none of those
-  optional research/AI/social features.
-- Stoic's readable sections and controls are useful examples. Its personal iCloud model is not evidence of JustGO's implemented CloudKit container, managed account service, file format or retention. Its help pages and newer AI policy also differ; do not import a broad
-  no-server/no-access promise from one of them.
-- Terms cover purpose, eligibility, user ownership, a limited service permission,
-  availability and ending use. Retain JustGO's 18+ audience and free beta; do not
-  copy foreign dispute clauses, blanket waivers, paid features or competitor
-  retention periods.
+The existing candidate already follows their readable topic-based approach.
+This pass makes the storage choices easier to scan, simplifies upgrade/import
+wording and states clearly that the Terms govern use. It preserves the actual
+managed-sync behavior in the [data inventory](DATA_INVENTORY.md).
 
-Inspected Mobbin references were Stoic's [privacy reader](https://mobbin.com/screens/5e6a2d7b-cd5d-41a0-bf2e-8d285848500e)
+| Approach in the references                                                                                                                                         | JustGO adaptation                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How We Feel opens with a plain-language purpose and separates phone-only use from an optional account.                                                             | Privacy opens with four explicit choices: phone use, Apple/Google account sync, separate private CloudKit and a chosen file destination. The account explanation retains automatic adoption of unowned phone entries and separation from other accounts.                |
+| Both policies organize information, purposes, recipients, retention, controls and contact details into distinct sections.                                          | Keep those topics and name the actual providers. Preserve the distinction between product analytics being off and hosting/network providers still processing connection information.                                                                                    |
+| How We Feel explains optional AI, research and friend sharing separately; Stoic describes optional AI processing alongside its ordinary journal-access statements. | Do not import their features, permissions or broad no-access claims. JustGO's synchronized account feelings and reflections are processed by JustGO and its providers; no end-to-end encryption promise is made.                                                        |
+| Both describe user controls and deletion, with provider or backup limitations.                                                                                     | Keep the implemented Settings paths, signout continuity, file export/import and separate Delete all my data/Delete account. Retain pending iCloud cleanup, disconnected-device and user-saved-file limits; do not borrow a competitor's response time or backup period. |
+| Both Terms explain the service, permitted users, account responsibilities and the user's content.                                                                  | Retain JustGO's 18+ audience, content ownership and purpose-limited permission to process chosen copies. Add a clear use-of-service opening; this does not create a stored agreement receipt, an onboarding checkbox or a legal-version gate.                           |
+| The references also contain business-specific paid features, disclaimers and dispute provisions.                                                                   | Keep JustGO's free beta, inactive billing, standard Apple EULA and mandatory consumer/privacy rights. Do not copy Stoic's subscriptions, lifetime/AI allowance or 16+ rule, or How We Feel's US arbitration, liability cap and research permission.                     |
+
+The earlier Mobbin references remain useful for readability only: Stoic's
+[privacy reader](https://mobbin.com/screens/5e6a2d7b-cd5d-41a0-bf2e-8d285848500e)
 and [Your Data flow](https://mobbin.com/flows/95f4700e-158b-43a0-b258-1bae72a831a7).
-They inform readability and grouping only. A captured switch state does not
-establish a default, and neither screenshots nor policies establish a storage
-library or need for additional local encryption.
+They were not rechecked during this text comparison. A captured switch state
+does not establish a default, storage library or need for extra encryption.
 
-Public prose omits internal test tiers, synthetic-report steps and implementation
-details that do not help a user understand processing or choices. Those facts
-remain in the inventory and release gates. The draft makes no seven-day backup,
-end-to-end encryption, completed provider-contract or worldwide-compliance promise.
+The comparison was followed by Anthony's explicit instruction to finalize only
+necessary wording and host the documents on October 25. Their metadata now
+records that authorization and publication date. It does not resolve the provider,
+retention, regional or signed-device gates above. Internal test steps and
+unresolved operational evidence stay outside the marked public blocks; no
+provider-contract, Canada-only processing or worldwide-compliance promise is
+added.
 
 ## Support requests and inbox retention
 
@@ -357,7 +368,15 @@ Do not collect a new account identifier merely to link reports. For a request, a
 
 ## Publication sequence
 
-Resume this sequence when Anthony is ready for hosting; it is currently owner-deferred.
+The October 25 owner-directed publication completed the document build/upload
+and anonymous browser HTTPS checks. Preview EAS variables use the verified URLs,
+and App Store Connect has the Privacy Policy URL saved. Only six public files
+were uploaded: the two document routes/base alias, stylesheet, original logo and
+static host configuration. Environment files/internal review records were
+excluded and their public paths return 404. The new project's model-training
+sharing is off, matching the existing JustGO preference. No domain purchase or
+paid plan was used. Keep the remaining sequence for external-beta acceptance
+and later material updates:
 
 1. Resolve the table's applicable publication blockers and review the actual guest/managed-account/CloudKit collection/configuration. Keep ordinary Sentry and product analytics disabled while their activation gates are open; those gates do not require enabling either service to publish an accurate disabled-state policy. Preserve the recorded SEC-4/5 technical assessments and Phase 14 native checks.
 2. Review the concrete candidate text/site and disclosure worksheet. Confirm public contacts, territories, versions and effective date; use the selected Vercel-generated address. Record fresh review of this materially changed managed-sync/CloudKit candidate; the October 19 approval applies only to the earlier text. Review paid/vendor changes again before their use. Do not substitute automated research for applicable legal/privacy review.
@@ -366,4 +385,4 @@ Resume this sequence when Anthony is ready for hosting; it is currently owner-de
 5. Verify guest continuation, managed sign-in/retry/returning-account sync and data-control access without legal receipt recording or version gates. Document labels do not require an API acceptance-version rollout. Phase 14 enters App Store metadata after verifying the signed bundle's privacy manifests, required-reason APIs, SDKs, tracking/ATT assessment, rating and eligible operator.
 6. Before paid launch, 07A/14 reconcile activated Apple/RevenueCat/billing delivery, offer, cancellation/deletion explanation and changed data. Before Phase 15 analytics, revisit providers, payloads, rights and the actual permission/collection design without backfilling pre-activation history. Continue or a historical receipt grants no future analytics permission; do not silently restore the rejected tracking mechanism.
 
-No public hosting, Git publication, provider activation, plan upgrade, agreement acceptance, billing activation, native signing/upload or App Store submission is authorized by this review record. The earlier [Phase 12 handoff](../handoffs/phase-12-legal-documents.md) is historical; the reopened [Phase 13 handoff](../handoffs/phase-13-local-journal.md) owns current implementation evidence and remaining gates.
+The owner separately authorized the public document hosting described above. This record grants no Git publication, private-journal provider activation, plan upgrade, agreement acceptance, billing activation, native signing/upload or App Store submission. The earlier [Phase 12 handoff](../handoffs/phase-12-legal-documents.md) is historical; the reopened [Phase 13 handoff](../handoffs/phase-13-local-journal.md) owns current implementation evidence and remaining gates.

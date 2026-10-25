@@ -27,6 +27,10 @@ let mockSnapshot = {
 };
 const mockListeners = new Set<() => void>();
 jest.mock('expo-font', () => ({ useFonts: () => [true, null] }));
+jest.mock('./startup/AppStartup', () => ({
+  AppStartup: ({ children }: { children: ReactNode }) => children,
+  StartupSurface: ({ children }: { children: ReactNode }) => children,
+}));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('react-native-gesture-handler', () => ({
   GestureHandlerRootView: ({ children }: { children: ReactNode }) => children,

@@ -173,6 +173,56 @@ privacy review. Managed `/ready` checks the private live-session capability and
 application schema. Actual provider login/hard deletion requires separate staged
 proof with disposable accounts.
 
+## Beta operating controls
+
+October 25 staging maintenance is active on the existing Supabase project. The
+operator migration `enable_beta_identity_retention` enables `pg_cron`; job
+`justgo-identity-retention` runs hourly at minute 17. Its connection uses the
+existing `postgres` scheduler login, then executes `SET LOCAL ROLE
+justgo_migrator` inside a transaction before calling
+`justgo.purge_expired_identity_records(1000)`, with a five-second statement limit.
+No new login secret, schema grant or definer function was introduced. A temporary
+minute cadence established a successful scheduled execution before switching to
+hourly; the separate initial bounded call returned zero rate buckets and zero
+transfers. The existing function removes only buckets older than 30 days and
+unredeemed transfers expired more than 24 hours; it preserves journals, users,
+deletion/revocation records and redeemed transfers. Disable by job name through
+`cron.alter_job`, not direct updates to cron tables. Security advisors report no
+new finding; the pre-existing leaked-password-protection warning remains, while
+the app uses Apple/Google sign-in.
+
+The API has independent per-account write/export budgets, with source defaults
+of 600 new-write batches and 3,000 page reads per ten minutes through
+`ACTIVITY_WRITE_RATE_LIMIT` and `ACCOUNT_EXPORT_RATE_LIMIT`. The read allowance
+covers two full enumerations of the client's 50,000 combined completion/version
+record limit (up to 1,001 pages each at the default page size), as needed around
+an import, plus bounded read/retry headroom. Explicit lower operator overrides
+can interrupt large-history synchronization and should be measured deliberately.
+Completion, journal and restore batches share
+the write budget; accepted identical retries remain available. Limits reuse
+durable HMAC buckets inside the existing owner transaction, including pool size
+one. Failed batches roll back counters and deletion remains reachable. The
+deployment evidence is recorded on [PR #49](https://github.com/anthonyyoo24/justgo/pull/49);
+publish the matching revision and tune from measured beta traffic.
+
+The prepared `.github/workflows/staging-health.yml` probes only the public
+staging `/ready` about every five minutes, without credentials, checkout or
+response-body logging. It activates only after owner-approved publication to
+`main`. Its default-false `test_notification` input deliberately fails one manual
+run without contacting the server, so the owner can confirm notification receipt.
+[GitHub notification preferences](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs)
+and actual email delivery still need verification. Schedules are best-effort and
+[inactive public repositories can lose their schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+This is not a real-time uptime guarantee or API 5xx tracker.
+
+Before external testers, retain the open API deployment/monitoring, 5xx reporting,
+supported private-journal processing and current backup/recovery-copy deletion
+gates. Earlier cutover dumps are not an unattended backup service for the current
+managed-account schema. Off-Mac storage, retention and a separately recoverable
+current deletion/epoch/Auth ledger still need an actual arrangement; local
+database regression tests do not establish hosted disaster recovery. No paid
+upgrade or provider contact was performed.
+
 ## Design and tests
 
 The [design guide](../design/DESIGN.md), `design/source/` and asset README record Paper provenance, editable-source measurements and raster-only uncertainty. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.

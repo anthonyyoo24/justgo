@@ -1,0 +1,165 @@
+name: TestFlight beta
+run-name: 'TestFlight beta ${{ inputs.operation }} from ${{ inputs.tag }}'
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing reviewed release tag reachable from main
+        required: true
+        type: string
+      operation:
+        description: Build first; upload its exact build ID in a separate approved run
+        required: true
+        type: choice
+        options: [build, submit]
+      build_id:
+        description: Exact EAS build ID (required for submit; leave empty for build)
+        required: false
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: testflight-beta
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.tag.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate existing tag and operation
+        id: tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_OPERATION: ${{ inputs.operation }}
+          RELEASE_BUILD_ID: ${{ inputs.build_id }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]
+          git check-ref-format "refs/tags/$RELEASE_TAG"
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          release_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          git merge-base --is-ancestor "$release_sha" refs/remotes/origin/main
+          case "$RELEASE_OPERATION" in
+            build) [[ -z "$RELEASE_BUILD_ID" ]] || exit 1 ;;
+            submit) [[ "$RELEASE_BUILD_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] || exit 1 ;;
+            *) exit 1 ;;
+          esac
+          printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
+          printf 'Beta %s candidate: `%s`\n\nTag: `%s`\n' "$RELEASE_OPERATION" "$release_sha" "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+      - name: Require successful Foundation checks for this commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.tag.outputs.sha }}
+        run: |
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" -f head_sha="$RELEASE_SHA" -f event=push -f branch=main -f per_page=1 > "$RUNNER_TEMP/beta-foundation.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const { workflow_runs: runs } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/beta-foundation.json`, 'utf8'));
+          const run = runs?.[0];
+          if (run?.head_sha !== process.env.RELEASE_SHA || run.head_branch !== 'main' || run.event !== 'push' || run.status !== 'completed' || run.conclusion !== 'success') {
+            throw new Error('The latest Foundation main run for this tag must pass before a beta build or upload.');
+          }
+          NODE
+      # A YAML environment name alone creates no approval protection. Missing or
+      # unreadable protection fails before the job that can access EXPO_TOKEN.
+      - name: Require configured beta approval protection
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/testflight-beta" > "$RUNNER_TEMP/beta-environment.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const environment = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/beta-environment.json`, 'utf8'));
+          const protectedByReview = environment.protection_rules?.some(rule => rule.type === 'required_reviewers' && rule.reviewers?.some(entry => Number.isSafeInteger(entry.reviewer?.id) && entry.reviewer.id > 0));
+          if (environment.name !== 'testflight-beta' || !protectedByReview) {
+            throw new Error('Configure testflight-beta required reviewers before enabling native builds or uploads.');
+          }
+          NODE
+  beta:
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment:
+      name: testflight-beta
+      url: https://justgo-two.vercel.app
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_OPERATION: ${{ inputs.operation }}
+      RELEASE_BUILD_ID: ${{ inputs.build_id }}
+      RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+      IOS_BUNDLE_IDENTIFIER: com.anthonyyoo.justgo
+      EXPO_PUBLIC_API_URL: https://justgo-two.vercel.app
+      EXPO_PUBLIC_SENTRY_ENABLED: 'false'
+    steps:
+      - name: Recheck beta approval protection
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/testflight-beta" > "$RUNNER_TEMP/beta-environment.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const environment = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/beta-environment.json`, 'utf8'));
+          const protectedByReview = environment.protection_rules?.some(rule => rule.type === 'required_reviewers' && rule.reviewers?.some(entry => Number.isSafeInteger(entry.reviewer?.id) && entry.reviewer.id > 0));
+          if (environment.name !== 'testflight-beta' || !protectedByReview) {
+            throw new Error('Beta approval protection changed; stop before accessing the Expo token.');
+          }
+          NODE
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      # Keep EXPO_TOKEN only in the protected environment, never repository scope.
+      # Public profile overrides must match build.beta.env in eas.json. All other
+      # required public inputs come from the reviewed EAS preview environment.
+      - name: Check resolved beta configuration
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false npm --prefix ../.. run release:beta:check' --non-interactive
+      - name: Build signed beta without uploading
+        if: inputs.operation == 'build'
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npm exec --yes --package=eas-cli@25.3.0 -- eas build --platform ios --profile beta --non-interactive --wait --json > "$RUNNER_TEMP/beta-build.json"
+      - name: Read the exact build selected for upload
+        if: inputs.operation == 'submit'
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npm exec --yes --package=eas-cli@25.3.0 -- eas build:view "$RELEASE_BUILD_ID" --json > "$RUNNER_TEMP/beta-build.json"
+      - name: Validate build ownership and commit
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const result = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/beta-build.json`, 'utf8'));
+          const build = Array.isArray(result) && result.length === 1 ? result[0] : result;
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(build?.id) || (process.env.RELEASE_OPERATION === 'submit' && build.id !== process.env.RELEASE_BUILD_ID) || build.app?.id !== '53cf0560-8ab5-446a-9bc6-deb193b337b5' || build.app?.ownerAccount?.name !== 'anthonyyoos-team' || build.appIdentifier !== 'com.anthonyyoo.justgo' || build.platform !== 'IOS' || build.distribution !== 'STORE' || build.buildProfile !== 'beta' || build.isForIosSimulator !== false || build.status !== 'FINISHED' || build.gitCommitHash !== process.env.RELEASE_SHA) {
+            throw new Error('The finished store beta must belong to the existing JustGO app and match the reviewed tag commit.');
+          }
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `EAS beta build: ${build.id}\n\nReviewed commit: ${build.gitCommitHash}\n\nUpload and tester invitations require their separate approvals.\n`);
+          NODE
+      - name: Upload exact beta build to TestFlight
+        if: inputs.operation == 'submit'
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        # EAS defaults to creating an internal tester group; disable that setup.
+        # Do not configure invitations, Beta App Review or App Store release.
+        # Reviewers must also disable App Store Connect automatic distribution.
+        run: npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false eas submit --platform ios --profile beta --id "$RELEASE_BUILD_ID" --non-interactive --wait --no-auto-testflight-setup' --non-interactive

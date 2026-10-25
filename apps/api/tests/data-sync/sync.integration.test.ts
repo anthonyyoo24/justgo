@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, describe, it, expect } from 'vitest';
 import type {
@@ -9,7 +9,10 @@ import type {
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { localTestDatabaseUrl } from '../../scripts/local-test-database.js';
-import { IdentityService } from '../../src/identity/service.js';
+import {
+  IdentityService,
+  type IdentityOptions,
+} from '../../src/identity/service.js';
 import { buildApp } from '../../src/build-app.js';
 import { createBetaAccess } from '../../src/access/beta-access.js';
 import { ApiError } from '../../src/http/api-error.js';
@@ -33,8 +36,9 @@ const verified = new Map<string, VerifiedManagedIdentity>(),
   owners = new Set<string>();
 const failedAuthDeletes = new Set<string>(),
   authDeleteCalls: string[] = [];
-const identity = new IdentityService(db.db, {
-  rateKey: `managed-tests-${randomUUID()}`,
+const rateKey = `managed-tests-${randomUUID()}`;
+const identityOptions: IdentityOptions = {
+  rateKey,
   managedAuthVerifier: async (token) => {
     const result = verified.get(token);
     if (!result) throw new ApiError('UNAUTHORIZED');
@@ -51,7 +55,8 @@ const identity = new IdentityService(db.db, {
         live.delete(subject.sessionId);
       }
   },
-});
+};
+const identity = new IdentityService(db.db, identityOptions);
 const app = buildApp({
   identity,
   logger: loggerOptions('error'),
@@ -144,6 +149,18 @@ const save = (
 ) => request(token, '/journal-sync', 'POST', { expectedEpoch, versions });
 afterAll(async () => {
   try {
+    await admin.query(
+      'delete from justgo.identity_rate_buckets where key = any($1)',
+      [
+        [...owners].flatMap((owner) =>
+          ['write', 'export'].map((lane) =>
+            createHmac('sha256', rateKey)
+              .update(`account-${lane}:${owner}`)
+              .digest('hex'),
+          ),
+        ),
+      ],
+    );
     for (const owner of owners) {
       for (const table of [
         'journal_versions',
@@ -167,6 +184,182 @@ afterAll(async () => {
     await app.close();
     await Promise.all([db.pool.end(), admin.end()]);
   }
+});
+
+function limitedServer(database = db.db) {
+  return buildApp({
+    identity: new IdentityService(database, {
+      ...identityOptions,
+      activityWriteRateLimit: 2,
+      accountExportRateLimit: 2,
+    }),
+    logger: false,
+    checkDatabase: async () => {},
+    uploadEligibilityReader: async () => 'eligible',
+  });
+}
+
+describe('durable account activity budgets', () => {
+  it('shares the write budget across API instances with a one-connection pool, isolates owners and preserves accepted retries', async () => {
+    const single = createDatabase({ ...config, DATABASE_POOL_MAX: 1 });
+    const first = limitedServer(single.db),
+      second = limitedServer(single.db);
+    try {
+      const a = await signIn(),
+        b = await signIn();
+      const entry = await completion();
+      const entries = Array.from({ length: 3 }, () => ({
+        id: randomUUID(),
+        challengeId: entry.challengeId,
+        venue: entry.venue,
+        startedAt: entry.startedAt,
+        startTimeZone: entry.startTimeZone,
+        expectedEpoch: 0,
+      }));
+      const post = (server: typeof first, token: string, input: object) =>
+        server.inject({
+          method: 'POST',
+          url: '/v1/attempts',
+          headers: { authorization: `Bearer ${token}` },
+          payload: input,
+        });
+      const results = await Promise.all(
+        entries.map((input, i) => post(i % 2 ? first : second, a.token, input)),
+      );
+      expect(results.map((response) => response.statusCode).sort()).toEqual([
+        201, 201, 429,
+      ]);
+      const limited = results.find((response) => response.statusCode === 429)!;
+      expect(limited.json().code).toBe('RATE_LIMITED');
+      expect(Number(limited.headers['retry-after'])).toBeGreaterThanOrEqual(1);
+      expect(Number(limited.headers['retry-after'])).toBeLessThanOrEqual(600);
+      expect(limited.body).not.toContain(a.token);
+      const accepted =
+        entries[results.findIndex((response) => response.statusCode === 201)]!;
+      expect((await post(second, a.token, accepted)).statusCode).toBe(200);
+      expect(
+        (await post(second, b.token, { ...entries[0], id: randomUUID() }))
+          .statusCode,
+      ).toBe(201);
+      const key = createHmac('sha256', rateKey)
+        .update(`account-write:${a.session.userId}`)
+        .digest('hex');
+      const count = await admin.query(
+        'select count from justgo.identity_rate_buckets where key=$1',
+        [key],
+      );
+      expect(count.rows[0].count).toBe(2);
+      await admin.query(
+        "update justgo.identity_rate_buckets set window_start=now()-interval '11 minutes' where key=$1",
+        [key],
+      );
+      expect(
+        (await post(first, a.token, { ...entries[0], id: randomUUID() }))
+          .statusCode,
+      ).toBe(201);
+    } finally {
+      await Promise.all([first.close(), second.close()]);
+      await single.pool.end();
+    }
+  });
+
+  it('counts one new-write batch, rolls back failed batches and keeps journal/restore replays available', async () => {
+    const limited = limitedServer();
+    const a = await signIn();
+    const send = (path: string, input: object) =>
+      limited.inject({
+        method: 'POST',
+        url: `/v1${path}`,
+        headers: { authorization: `Bearer ${a.token}` },
+        payload: input,
+      });
+    try {
+      const one = await completion(),
+        two = await completion();
+      const invalid = { ...two, challengeId: 'nonexistent-challenge' };
+      const rejected = await send('/completion-restores', {
+        expectedEpoch: 0,
+        attempts: [one, invalid],
+      });
+      expect(rejected.statusCode).toBe(400);
+      const restored = await send('/completion-restores', {
+        expectedEpoch: 0,
+        attempts: [one, two],
+      });
+      expect(restored.statusCode).toBe(200);
+      expect(restored.json().added).toBe(2);
+      const versions = [version(one.id), version(two.id)];
+      const journal = await send('/journal-sync', {
+        expectedEpoch: 0,
+        versions,
+      });
+      expect(journal.statusCode).toBe(200);
+      expect(journal.json().saved).toBe(2);
+      expect(
+        (
+          await send('/journal-sync', {
+            expectedEpoch: 0,
+            versions: [version(one.id)],
+          })
+        ).statusCode,
+      ).toBe(429);
+      expect(
+        (await send('/journal-sync', { expectedEpoch: 0, versions })).json(),
+      ).toMatchObject({ saved: 0, identical: 2 });
+      expect(
+        (
+          await send('/completion-restores', {
+            expectedEpoch: 0,
+            attempts: [one, two],
+          })
+        ).json(),
+      ).toMatchObject({ added: 0, identical: 2 });
+      expect(
+        (
+          await send('/completion-restores', {
+            expectedEpoch: 0,
+            attempts: [await completion()],
+          })
+        ).statusCode,
+      ).toBe(429);
+    } finally {
+      await limited.close();
+    }
+  });
+
+  it('shares a separate export budget across history/journal pages and keeps deletion reachable', async () => {
+    const limited = limitedServer();
+    const a = await signIn();
+    const get = (path: string) =>
+      limited.inject({
+        url: `/v1${path}`,
+        headers: { authorization: `Bearer ${a.token}` },
+      });
+    try {
+      expect((await get('/account/export')).statusCode).toBe(200);
+      expect((await get('/completion-restores')).statusCode).toBe(200);
+      expect((await get('/journal-sync')).statusCode).toBe(429);
+      const key = createHmac('sha256', rateKey)
+        .update(`account-export:${a.session.userId}`)
+        .digest('hex');
+      await admin.query(
+        "update justgo.identity_rate_buckets set window_start=now()-interval '11 minutes' where key=$1",
+        [key],
+      );
+      expect((await get('/journal-sync')).statusCode).toBe(200);
+      expect((await get('/completion-restores')).statusCode).toBe(200);
+      expect((await get('/account/export')).statusCode).toBe(429);
+      const deleted = await limited.inject({
+        method: 'DELETE',
+        url: '/v1/data',
+        headers: { authorization: `Bearer ${a.token}` },
+        payload: { expectedEpoch: 0 },
+      });
+      expect(deleted.statusCode).toBe(200);
+    } finally {
+      await limited.close();
+    }
+  });
 });
 describe('managed authentication and guest boundary', () => {
   it('maps only verified Auth subjects and replays the exact owner/session/device', async () => {

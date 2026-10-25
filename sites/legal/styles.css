@@ -52,7 +52,6 @@ a:focus-visible {
   transform: none;
 }
 
-.site-header,
 main,
 footer {
   width: min(100% - 3rem, 760px);
@@ -60,8 +59,18 @@ footer {
 }
 
 .site-header {
-  padding-block: 1.6rem;
-  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.6rem clamp(1rem, 3vw, 2rem);
+}
+
+.brand-mark {
+  display: block;
+  width: 3.5rem;
+  height: auto;
+  flex-shrink: 0;
 }
 
 .wordmark {
@@ -88,7 +97,7 @@ footer {
 }
 
 main {
-  padding-block: 2.4rem 3rem;
+  padding-block: 0 3rem;
   overflow-wrap: break-word;
 }
 
@@ -138,7 +147,6 @@ footer p {
 }
 
 @media (max-width: 380px) {
-  .site-header,
   main,
   footer {
     width: calc(100% - 2rem);

@@ -1,7 +1,8 @@
 {
   "cli": {
-    "version": ">= 18.0.0",
-    "appVersionSource": "local"
+    "version": "25.3.0",
+    "appVersionSource": "remote",
+    "requireCommit": true
   },
   "build": {
     "development": {
@@ -25,12 +26,34 @@
       "node": "24.18.0",
       "environment": "preview"
     },
+    "beta": {
+      "distribution": "store",
+      "developmentClient": false,
+      "node": "24.18.0",
+      "environment": "preview",
+      "autoIncrement": true,
+      "env": {
+        "IOS_BUNDLE_IDENTIFIER": "com.anthonyyoo.justgo",
+        "EXPO_PUBLIC_API_URL": "https://justgo-two.vercel.app",
+        "EXPO_PUBLIC_SENTRY_ENABLED": "false",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "staging",
+        "ICLOUD_CONTAINER_ENVIRONMENT": "Production",
+        "EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER": "iCloud.com.anthonyyoo.justgo"
+      }
+    },
     "production": {
       "node": "24.18.0",
-      "environment": "production"
+      "environment": "production",
+      "autoIncrement": true
     }
   },
   "submit": {
+    "beta": {
+      "ios": {
+        "appleTeamId": "NPDYTJS425",
+        "ascAppId": "6821022390"
+      }
+    },
     "production": {}
   }
 }
