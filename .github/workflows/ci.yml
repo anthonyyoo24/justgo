@@ -17,6 +17,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      - name: Validate GitHub workflow definitions
+        run: |
+          curl --fail --silent --show-error --location https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz -o "$RUNNER_TEMP/actionlint.tar.gz"
+          printf '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  %s\n' "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+          # Validate GitHub syntax/contexts without adding separate shell/Python linters.
+          "$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes=
       - uses: ./.github/actions/setup-node
       - run: npm run doctor -w @justgo/mobile
       # Mobile typechecking generates and verifies fresh Expo route declarations

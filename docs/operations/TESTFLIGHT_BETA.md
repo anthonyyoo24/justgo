@@ -38,8 +38,14 @@ or unapproved text stop the process. It prints names, never credential values.
 `RELEASE_OPERATION=submit` additionally checks the App Store ID/team. A pass does
 not prove hosted notices, provider suitability, native behavior or release approval.
 
-The prepared `.github/workflows/testflight-beta.yml` is manual only; tag pushes
-do not build/upload. Use this order:
+The `.github/workflows/testflight-beta.yml` is manual only; tag pushes do not
+build/upload. It compiles on GitHub's standard `macos-26` runner through EAS local
+builds, with Xcode 26.6, pinned Node/npm and EAS 25.3.0. This public repository's
+standard runner compute is free; saved artifacts have separate storage limits.
+The Expo framework, preview variables, managed signing and remote build-number
+allocation remain in use. This route does not consume Expo cloud-build quota.
+
+Use this order:
 
 1. Configure `testflight-beta` with Anthony as a required reviewer and `main` as
    its allowed deployment branch. Actual protection is checked before any Expo
@@ -48,24 +54,34 @@ do not build/upload. Use this order:
    (publish/view the organization's projects), and its validated token is stored
    only as `EXPO_TOKEN` in this protected environment. It is not a project-scoped
    token or the owner's personal session. Rotate/revoke it in Expo when retiring
-   the automation; never copy it into source or logs. Verify/configure remote App
-   Store distribution credentials with the owner: the current valid certificate
-   has an ad hoc profile only, with no App Store profile or assigned submission
-   API key. Keep signing credentials out of the repository.
-3. Obtain the specific Git/build authorization, publish a reviewed tag on `main`,
+   the automation; never copy it into source or logs. The existing App Store
+   profile `U362DZ236F` and distribution certificate are configured. The approved
+   Developer-role App Store Connect key `UYPTP25HP4` is assigned in EAS to the
+   existing Apple team; its private file was removed after import. Keep signing
+   credentials out of the repository. `--freeze-credentials` prevents automated
+   provisioning-profile replacement.
+3. Obtain the applicable Git/build authorization, publish a reviewed tag on `main`,
    and wait for successful Foundation **main push** checks on its exact SHA.
-4. Dispatch from `main` with that tag and operation `build`. Review the immutable
-   candidate SHA in the validation summary before approving the environment job.
-   The job builds without uploading and records the EAS build ID.
+4. Dispatch from `main` with that tag and operation `build`, leaving `build_run_id`
+   empty. Review the immutable candidate SHA before approving the environment job.
+   The job compiles/signs on GitHub without uploading to Apple, verifies the signed
+   app and saves `JustGO.ipa` plus `manifest.json` for seven days. Record the exact
+   GitHub run ID, artifact ID and archive digest from the job summary. This route
+   does not create an EAS cloud build ID.
 5. Inspect the actual signed IPA: source provenance, identity/entitlements, store
    distribution, embedded JavaScript/local artwork/Inter, public configuration,
-   privacy manifests and absence of development/fixture behavior. Ad hoc device
-   checks are preliminary; exports do not establish the installed TestFlight build.
+   privacy manifests and absence of development/fixture behavior. The automated
+   inspector checks signature/profile, identity, Production CloudKit, Apple sign-in,
+   device target, fonts, icon and embedded JavaScript. Detailed configuration and
+   privacy review remain necessary; exports do not establish installed behavior.
 6. Verify App Store Connect has no unintended automatic tester distribution.
-   Obtain separate upload authorization, then dispatch `submit` with the same tag
-   and **exact** EAS ID, never `--latest`. The guard checks project, owner, bundle,
-   platform, distribution, profile, completion status and commit metadata. Matching
-   SHA metadata alone does not certify a manually built dirty archive.
+   Obtain the applicable upload authorization, then dispatch `submit` with the same
+   tag and exact successful GitHub `build_run_id`. The gate requires this repository's
+   successful manual main workflow, current run attempt and unexpired artifact.
+   It verifies GitHub's archive digest before extraction, then the manifest's source,
+   tag, workflow/run identity, IPA size/hash and actual native signature/profile.
+   Submission uses that verified file with `--path`, never `--latest`. Expired or
+   missing artifacts require a new build with a new remote build number.
 7. After Apple processes the uploaded build, perform the actual TestFlight phone
    acceptance below. Submission disables EAS's automatic tester-group setup. Groups/invitations,
    external Beta App Review and public App Store submission remain separate actions.
@@ -75,11 +91,21 @@ store icon at `apps/mobile/assets/brand/justgo-app-icon.png`; the existing brand
 splash is retained. Inspect the icon in the next signed binary alongside the
 native font/splash acceptance. See [icon provenance](../../design/source/app-icon.md).
 
-Environment protection and the owner-approved robot token are configured. The
-published tag, hosted workflow execution, App Store signing/submission credentials,
-signed beta build and upload remain open. PR #49 must be reviewed and merged
-before the main-only workflow can run. Local workflow tests do not establish a
-hosted pass.
+Environment protection, the robot token and App Store signing/submission
+credentials are configured. PR #49 merged into `main` at `04f7b20`; its first
+protected cloud-build attempt stopped at Expo's exhausted free iOS allowance
+before compilation. No IPA or Apple upload resulted. Remote build number 1 was
+initialized; preserve automatic allocation rather than resetting it. The GitHub
+Mac route replaces cloud compilation while preserving reviewed-source and
+separate upload safeguards. Local workflow tests do not establish a hosted build
+or signed-device acceptance.
+
+The local builder fetches signing credentials into a run-owned private temporary
+directory with restrictive permissions. Normal EAS cleanup and an `always()`
+workflow cleanup remove temporary keychains and files; no signing inputs or build
+working directories enter artifacts. GitHub discards the hosted machine afterward.
+Maintain the workflow when Xcode/runner images, Expo or signing requirements change;
+GitHub maintains the underlying machines. Do not add paid/larger runners by default.
 
 The approved notices are hosted at [Privacy](https://justgo-legal.vercel.app/privacy/)
 and [Terms](https://justgo-legal.vercel.app/terms/), with both URLs set in EAS

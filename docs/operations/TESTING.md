@@ -506,7 +506,8 @@ acceptance for changed dependencies stays separate.
 CI runs on pull requests and pushes to `main`, cancels superseded PR runs and keeps
 each main commit's result. Six producer jobs run independently:
 
-- `static`: online Doctor, contracts/type/lint/format/tooling checks and the API
+- `static`: checksum-pinned actionlint validates GitHub workflow syntax/context
+  availability, followed by online Doctor, contracts/type/lint/format/tooling checks and the API
   production-dependency audit.
 - `unit`: mobile, contracts and API unit suites with coverage.
 - `database`: isolated PostgreSQL setup, migrations and every API integration suite,

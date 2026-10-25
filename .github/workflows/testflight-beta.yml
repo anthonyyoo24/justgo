@@ -8,12 +8,12 @@ on:
         required: true
         type: string
       operation:
-        description: Build first; upload its exact build ID in a separate approved run
+        description: Build first; upload its exact GitHub artifact in a separate approved run
         required: true
         type: choice
         options: [build, submit]
-      build_id:
-        description: Exact EAS build ID (required for submit; leave empty for build)
+      build_run_id:
+        description: Exact successful GitHub build run ID (submit only)
         required: false
         type: string
 permissions:
@@ -41,7 +41,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_OPERATION: ${{ inputs.operation }}
-          RELEASE_BUILD_ID: ${{ inputs.build_id }}
+          RELEASE_BUILD_RUN_ID: ${{ inputs.build_run_id }}
         run: |
           [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]
           git check-ref-format "refs/tags/$RELEASE_TAG"
@@ -49,8 +49,8 @@ jobs:
           release_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
           git merge-base --is-ancestor "$release_sha" refs/remotes/origin/main
           case "$RELEASE_OPERATION" in
-            build) [[ -z "$RELEASE_BUILD_ID" ]] || exit 1 ;;
-            submit) [[ "$RELEASE_BUILD_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] || exit 1 ;;
+            build) [[ -z "$RELEASE_BUILD_RUN_ID" ]] || exit 1 ;;
+            submit) [[ "$RELEASE_BUILD_RUN_ID" =~ ^[1-9][0-9]*$ ]] || exit 1 ;;
             *) exit 1 ;;
           esac
           printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
@@ -89,7 +89,9 @@ jobs:
   beta:
     needs: validate
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    # Standard hosted runner: public-repository compute is free. Keep the stable
+    # OS/Xcode explicit instead of following macos-latest or the Xcode preview.
+    runs-on: macos-26
     timeout-minutes: 120
     environment:
       name: testflight-beta
@@ -97,11 +99,13 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.tag }}
       RELEASE_OPERATION: ${{ inputs.operation }}
-      RELEASE_BUILD_ID: ${{ inputs.build_id }}
+      RELEASE_BUILD_RUN_ID: ${{ inputs.build_run_id }}
       RELEASE_SHA: ${{ needs.validate.outputs.sha }}
       IOS_BUNDLE_IDENTIFIER: com.anthonyyoo.justgo
       EXPO_PUBLIC_API_URL: https://justgo-two.vercel.app
       EXPO_PUBLIC_SENTRY_ENABLED: 'false'
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      FASTLANE_SKIP_UPDATE_CHECK: '1'
     steps:
       - name: Recheck beta approval protection
         shell: bash
@@ -130,36 +134,105 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false npm --prefix ../.. run release:beta:check' --non-interactive
-      - name: Build signed beta without uploading
+      - name: Check native build tools
+        if: inputs.operation == 'build'
+        shell: bash
+        run: |
+          [[ "$(xcodebuild -version)" == $'Xcode 26.6\nBuild version 17F113' ]]
+          [[ "$(pod --version)" == '1.17.0' ]]
+          fastlane --version
+          node --version
+          npm --version
+          df -h "$RUNNER_TEMP"
+      - name: Require clean reviewed source
+        shell: bash
+        run: |
+          [[ "$(git rev-parse HEAD)" == "$RELEASE_SHA" ]]
+          [[ -z "$(git status --porcelain)" ]]
+      - name: Build signed beta on GitHub without uploading
         if: inputs.operation == 'build'
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npm exec --yes --package=eas-cli@25.3.0 -- eas build --platform ios --profile beta --non-interactive --wait --json > "$RUNNER_TEMP/beta-build.json"
-      - name: Read the exact build selected for upload
-        if: inputs.operation == 'submit'
-        working-directory: apps/mobile
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npm exec --yes --package=eas-cli@25.3.0 -- eas build:view "$RELEASE_BUILD_ID" --json > "$RUNNER_TEMP/beta-build.json"
-      - name: Validate build ownership and commit
+          TMPDIR: ${{ runner.temp }}/justgo-beta-private
+          EAS_LOCAL_BUILD_WORKINGDIR: ${{ runner.temp }}/justgo-beta-private/work
+          EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ runner.temp }}/justgo-beta-artifact
+        # Managed credentials are fetched into the disposable runner. Freeze them
+        # so an automated build cannot repair/replace Apple signing credentials.
+        run: |
+          umask 077
+          mkdir -p "$TMPDIR" "$RUNNER_TEMP/justgo-beta-artifact"
+          npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false eas build --platform ios --profile beta --local --freeze-credentials --non-interactive --output "$RUNNER_TEMP/justgo-beta-artifact/JustGO.ipa"' --non-interactive
+      - name: Inspect signed beta and record provenance
+        if: inputs.operation == 'build'
         shell: bash
         run: |
-          node --input-type=module <<'NODE'
-          import { appendFileSync, readFileSync } from 'node:fs';
-          const result = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/beta-build.json`, 'utf8'));
-          const build = Array.isArray(result) && result.length === 1 ? result[0] : result;
-          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(build?.id) || (process.env.RELEASE_OPERATION === 'submit' && build.id !== process.env.RELEASE_BUILD_ID) || build.app?.id !== '53cf0560-8ab5-446a-9bc6-deb193b337b5' || build.app?.ownerAccount?.name !== 'anthonyyoos-team' || build.appIdentifier !== 'com.anthonyyoo.justgo' || build.platform !== 'IOS' || build.distribution !== 'STORE' || build.buildProfile !== 'beta' || build.isForIosSimulator !== false || build.status !== 'FINISHED' || build.gitCommitHash !== process.env.RELEASE_SHA) {
-            throw new Error('The finished store beta must belong to the existing JustGO app and match the reviewed tag commit.');
-          }
-          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `EAS beta build: ${build.id}\n\nReviewed commit: ${build.gitCommitHash}\n\nUpload and tester invitations require their separate approvals.\n`);
-          NODE
-      - name: Upload exact beta build to TestFlight
+          [[ -z "$(git status --porcelain)" ]]
+          node scripts/release/inspect-beta-ipa.mjs "$RUNNER_TEMP/justgo-beta-artifact/JustGO.ipa"
+          node scripts/release/github-beta-artifact.mjs record "$RUNNER_TEMP/justgo-beta-artifact"
+      - name: Save only the installable app and public manifest
+        if: inputs.operation == 'build'
+        id: artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: justgo-ios-beta-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/justgo-beta-artifact/JustGO.ipa
+            ${{ runner.temp }}/justgo-beta-artifact/manifest.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Record exact build artifact
+        if: inputs.operation == 'build'
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+        run: |
+          printf 'GitHub beta build run: `%s`\n\nArtifact: `%s`\n\nArchive SHA-256: `%s`\n\nReviewed commit: `%s`\n\nNo Apple upload or tester invitations were performed.\n' "$GITHUB_RUN_ID" "$ARTIFACT_ID" "$ARTIFACT_DIGEST" "$RELEASE_SHA" >> "$GITHUB_STEP_SUMMARY"
+      - name: Select exact successful GitHub build artifact
+        if: inputs.operation == 'submit'
+        id: selected
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/testflight-beta.yml" > "$RUNNER_TEMP/beta-workflow.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RELEASE_BUILD_RUN_ID" > "$RUNNER_TEMP/beta-run.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RELEASE_BUILD_RUN_ID/artifacts?per_page=100" > "$RUNNER_TEMP/beta-artifacts.json"
+          node scripts/release/github-beta-artifact.mjs select "$RUNNER_TEMP"
+      - name: Download and verify the exact installable app
+        if: inputs.operation == 'submit'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.selected.outputs.artifact_id }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > "$RUNNER_TEMP/justgo-beta.zip"
+          node scripts/release/github-beta-artifact.mjs verify-archive "$RUNNER_TEMP/justgo-beta.zip"
+          mkdir "$RUNNER_TEMP/justgo-beta-download"
+          unzip -q "$RUNNER_TEMP/justgo-beta.zip" -d "$RUNNER_TEMP/justgo-beta-download"
+          node scripts/release/github-beta-artifact.mjs verify "$RUNNER_TEMP/justgo-beta-download"
+          node scripts/release/inspect-beta-ipa.mjs "$RUNNER_TEMP/justgo-beta-download/JustGO.ipa"
+      - name: Upload exact beta artifact to TestFlight
         if: inputs.operation == 'submit'
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        # EAS defaults to creating an internal tester group; disable that setup.
-        # Do not configure invitations, Beta App Review or App Store release.
-        # Reviewers must also disable App Store Connect automatic distribution.
-        run: npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false eas submit --platform ios --profile beta --id "$RELEASE_BUILD_ID" --non-interactive --wait --no-auto-testflight-setup' --non-interactive
+        # Disable automatic tester-group setup. Verify App Store Connect automatic
+        # distribution before this separately approved upload; invitations and
+        # external Beta App Review are independent of transferring the binary.
+        run: npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false eas submit --platform ios --profile beta --path "$RUNNER_TEMP/justgo-beta-download/JustGO.ipa" --non-interactive --wait --no-auto-testflight-setup' --non-interactive
+      - name: Remove temporary build and signing files
+        if: always()
+        shell: bash
+        run: |
+          cleanup_status=0
+          if [[ -d "$RUNNER_TEMP/justgo-beta-private" ]]; then
+            while IFS= read -r -d '' keychain; do
+              security delete-keychain "$keychain" || cleanup_status=1
+            done < <(find "$RUNNER_TEMP/justgo-beta-private" -type f \( -name 'eas-build-*.keychain' -o -name 'eas-build-*.keychain-db' \) -print0)
+          fi
+          rm -rf "$RUNNER_TEMP/justgo-beta-private" "$RUNNER_TEMP/justgo-beta-artifact" "$RUNNER_TEMP/justgo-beta-download"
+          rm -f "$RUNNER_TEMP/justgo-beta.zip"
+          exit "$cleanup_status"
