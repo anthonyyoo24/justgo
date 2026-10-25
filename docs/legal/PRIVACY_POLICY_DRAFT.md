@@ -1,10 +1,10 @@
 # Privacy Policy — managed sync candidate, unpublished
 
-<!-- legal-version: 2026-10-20-managed-sync-candidate -->
+<!-- legal-version: 2026-10-25-managed-sync-candidate -->
 <!-- publication-status: owner-review-required -->
 <!-- effective-date: pending -->
 
-Technical wording reconciled October 21, 2026 for the revised Phase 13 local implementation candidate. Earlier owner approval and the completion-only provider assessment do not cover optional managed sign-in, private account synchronization or CloudKit. Fresh owner/public-text and provider review is required. No hosted rollout, provider activation, legal-site publication or signed-device acceptance is established here. The effective date remains pending. The static site renders only the marked public block; review metadata remains internal. See [LEGAL_REVIEW.md](LEGAL_REVIEW.md).
+Readability and competitor approach reconciled October 25, 2026 against the managed-sync data inventory. Earlier owner approval and the completion-only provider assessment do not cover optional managed sign-in, private account synchronization or CloudKit. Fresh owner/public-text and provider review is required. This document does not establish hosted rollout, provider suitability, legal-site publication or signed-device acceptance. The effective date remains pending. The static site renders only the marked public block; review metadata remains internal. See [LEGAL_REVIEW.md](LEGAL_REVIEW.md).
 
 <!-- public:start -->
 
@@ -14,7 +14,14 @@ Technical wording reconciled October 21, 2026 for the revised Phase 13 local imp
 
 JustGO helps adults aged 18 and older practice everyday challenges and keep a private record of their activity. This policy explains what information we handle, why we use it and how you can manage it.
 
-You can use JustGO without signing in. Challenge history, feelings and reflections stay on your phone unless you choose account sign-in, enable iCloud Sync or share a downloaded file. Before signing in with Apple or Google, we explain that your history and journal will synchronize through JustGO's cloud service. Your first successful sign-in automatically adds existing phone entries that do not belong to another JustGO account to the account you choose. Product analytics and automatic crash reporting are disabled.
+You choose where your saved challenge history, feelings and reflections go:
+
+- **Without sign-in:** your journal stays on your phone unless you enable iCloud Sync or save or share a data file.
+- **With an account:** Before signing in with Apple or Google, we explain that your history and journal synchronize through JustGO's cloud service. Your first successful sign-in automatically adds existing phone entries that do not belong to another JustGO account.
+- **With iCloud Sync:** a separate choice, off by default, synchronizes the selected journal through your private Apple CloudKit database. You do not need a JustGO account for this choice.
+- **With a downloaded file:** you choose where to save or share a readable copy. The destination handles that copy under its own settings and practices.
+
+Product analytics and automatic crash reporting are disabled. The sections below explain each choice, the providers involved and how to delete data.
 
 JustGO is operated by Youngshin Yoo in Ontario, Canada. For privacy questions, requests or support, email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com). We do not sell your personal information.
 
@@ -26,7 +33,7 @@ Optional sign-in uses Apple or Google through Supabase Auth. The provider and au
 
 When signed in, your completed challenges, selected venue category, original start time, time zones, activity date, saved feelings and reflection text synchronize with your JustGO account. A venue is a category you select, not a GPS location. You can leave feelings and reflections blank. Differing saved versions can be retained to protect your writing from being overwritten.
 
-Signing out stops JustGO account synchronization and keeps the same saved journal visible and editable on the phone. Signing back into the same account synchronizes changes saved while signed out. Signing into another account does not automatically copy the previous account’s data. Settings → Account shows your verified Apple and Google login methods; you can connect another method or disconnect one while keeping at least one available. Disconnecting a method does not delete your journal or your Apple or Google account. On an upgraded installation, an existing authenticated account proof may link its old account to your verified sign-in; no recovery key or transfer code is needed in the new account screens.
+Signing out stops JustGO account synchronization and keeps the same saved journal visible and editable on the phone. Signing back into the same account synchronizes changes saved while signed out. Signing into another account does not automatically copy the previous account’s data. Settings → Account shows your verified Apple and Google login methods; you can connect another method or disconnect one while keeping at least one available. Disconnecting a method does not delete your journal or your Apple or Google account. When upgrading an older installation, JustGO may use its existing protected account access to connect that account to your verified sign-in; you do not need to enter a recovery key or transfer code in the new account screens.
 
 ## Information kept on your phone
 

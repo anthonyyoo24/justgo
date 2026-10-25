@@ -1,10 +1,10 @@
 # Terms of Use — managed sync candidate, unpublished
 
-<!-- legal-version: 2026-10-20-managed-sync-candidate -->
+<!-- legal-version: 2026-10-25-managed-sync-candidate -->
 <!-- publication-status: owner-review-required -->
 <!-- effective-date: pending -->
 
-Technical wording reconciled October 21, 2026 for the revised Phase 13 local candidate. Optional managed accounts, private cloud synchronization, CloudKit and unified data controls materially supersede the earlier reviewed text. Fresh owner review is required; effective date and public hosting remain pending. The [review record](LEGAL_REVIEW.md) owns provider, regional and signed-release conditions. No deployment or provider activation is authorized by this document. Paid billing is inactive and needs its separate offer/terms update before paid launch.
+Readability and competitor approach reconciled October 25, 2026 against the managed-sync data inventory. Optional managed accounts, private cloud synchronization, CloudKit and unified data controls materially supersede the earlier approved text. Fresh owner review is required; effective date and public hosting remain pending. The [review record](LEGAL_REVIEW.md) owns provider, regional and signed-release conditions. No deployment or provider activation is authorized by this document. Paid billing is inactive and needs its separate offer/terms update before paid launch.
 
 <!-- public:start -->
 
@@ -13,6 +13,8 @@ Technical wording reconciled October 21, 2026 for the revised Phase 13 local can
 ## About JustGO
 
 JustGO is operated by Youngshin Yoo in Ontario, Canada. Contact [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com) for support or questions about these terms.
+
+These terms govern your use of JustGO and its optional account service. By using JustGO, you agree to these terms. If you do not agree, do not use the service.
 
 You must be at least 18 to use JustGO. The app offers everyday social challenges, a timer, optional feelings and reflections, and a private record of your activity in Progress. Choose activities suited to your circumstances and respect other people’s boundaries. JustGO does not provide medical advice, diagnosis, treatment or emergency services.
 
@@ -38,7 +40,7 @@ A saved item waiting to synchronize may exist only on its original phone. Data s
 
 Settings → Data → Download my data creates a restorable snapshot of the selected collection’s saved history, journal and preferences. Signed-in account downloads first synchronize with the service; signed-out downloads include only the phone’s saved account data and may omit newer cloud changes. The ZIP contains readable private content and is not password protected by JustGO. Choose a protected destination and keep it secure. Later edits require another download. Unsaved text and unfinished challenges are excluded.
 
-Import data validates a supported file and asks you to confirm. Account-owned files require sign-in to the same account. Guest files may be added to the selected collection. Duplicate stable completion IDs do not add extra reps, and differing writing is preserved rather than silently replaced. Imports may synchronize with the signed-in account and enabled iCloud copy. Older journal-only files are not complete account backups and cannot recover credentials or recreate a deleted account.
+Import data validates a supported file and asks you to confirm. Account-owned files require sign-in to the same account. Guest files may be added to the selected collection. Importing the same saved completion again does not add an extra rep, and differing writing is preserved rather than silently replaced. Imports may synchronize with the signed-in account and enabled iCloud copy. Older journal-only files are not complete account backups and cannot recover credentials or recreate a deleted account.
 
 Losing a phone, removing the app or clearing its data can lose unsynchronized information without a usable backup. Network, storage, provider and device conditions affect saving and recovery. We may change or interrupt the service for security, maintenance or operational reasons and will provide any notice required by applicable law.
 

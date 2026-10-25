@@ -275,7 +275,7 @@ test('repository public sources use document labels and exclude review records a
     const document = parseDocument(documentSource);
     assert.equal(document.status, 'owner-review-required');
     assert.equal(document.effectiveDate, 'pending');
-    assert.equal(document.version, '2026-10-20-managed-sync-candidate');
+    assert.equal(document.version, '2026-10-25-managed-sync-candidate');
   }
   const privacy = output.get('privacy/index.html');
   const terms = output.get('terms/index.html');

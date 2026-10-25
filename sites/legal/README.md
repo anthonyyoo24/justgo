@@ -37,7 +37,7 @@ Each source document must provide these metadata comments outside exactly one
 `<!-- public:start -->` / `<!-- public:end -->` block:
 
 ```markdown
-<!-- legal-version: 2026-10-20-managed-sync-candidate -->
+<!-- legal-version: 2026-10-25-managed-sync-candidate -->
 <!-- publication-status: owner-review-required -->
 <!-- effective-date: pending -->
 ```
@@ -57,7 +57,7 @@ the text; set the effective date when publication is ready and the checklist in
 production build still grants no hosting, Git or publication authorization.
 
 Anthony selected Vercel with its generated `.vercel.app` address and chose to
-keep the website local until closer to launch. The October 20 managed-sync
+keep the website local until closer to launch. The October 25 managed-sync
 candidates include optional accounts, signed-in journal sync and private CloudKit.
 They supersede the earlier approved text and require new owner review before
 publication. No custom domain is needed now. The actual project

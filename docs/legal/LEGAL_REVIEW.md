@@ -8,7 +8,7 @@ Phase [12](../implementation-plan/phase-12-legal-documents.md) established legal
 
 A separate iCloud Sync setting is off by default; the native adapter targets Apple's private CloudKit database, with actual configuration and device acceptance still open. It is independent of JustGO sign-in, manual iCloud Drive files and system backup. Data has Download my data, validated Import data preview/confirmation, and Delete all my data. Both deletion actions reuse the confirmation modal with distinct wording. Delete all retains identity/login methods and fences stale replicas; Delete account closes the owner, revokes sessions, hard-deletes the managed Auth user through retryable server cleanup, purges/closes associated app-managed iCloud collections and clears matching local data/credentials. Both actions include previously associated iCloud copies even if Sync is now OFF; unavailable associated Apple accounts leave durable pending cleanup. User-saved files remain, and disconnected devices are not immediately erased. Neither action deletes the Apple/Google account or cancels a subscription. The requested reset concerns old server reflections only and preserves phone journals; **no hosted reset or deployment is established here**.
 
-The [inventory](DATA_INVENTORY.md), [Privacy candidate](PRIVACY_POLICY_DRAFT.md), [Terms candidate](TERMS_DRAFT.md) and [disclosure worksheet](RELEASE_DISCLOSURES.md) now describe this implementation candidate. Both public blocks remain `owner-review-required`, label `2026-10-20-managed-sync-candidate`, effective date pending. Earlier October 19 approval and the later completion-only assessment are superseded for this changed boundary. The subsequent [Phase 13 handoff](../handoffs/phase-13-local-journal.md) records hosted rollout/provider configuration and basic single-phone evidence; its extended device and privacy gates remain open. That setup does not approve public wording or establish provider suitability. Production legal rendering continues to fail closed.
+The [inventory](DATA_INVENTORY.md), [Privacy candidate](PRIVACY_POLICY_DRAFT.md), [Terms candidate](TERMS_DRAFT.md) and [disclosure worksheet](RELEASE_DISCLOSURES.md) now describe this implementation candidate. Both public blocks remain `owner-review-required`, label `2026-10-25-managed-sync-candidate`, effective date pending. Earlier October 19 approval and the later completion-only assessment are superseded for this changed boundary. The subsequent [Phase 13 handoff](../handoffs/phase-13-local-journal.md) records hosted rollout/provider configuration and basic single-phone evidence; its extended device and privacy gates remain open. That setup does not approve public wording or establish provider suitability. Production legal rendering continues to fail closed.
 
 Youngshin Yoo is the personal operator in Ontario, Canada, with temporary contact anthonyyoo24@gmail.com and intended audience 18+. Initial paid storefront exclusions remain EU, UK, Norway, Iceland and Liechtenstein by October 20 owner direction. Actual eligibility, storefronts, rating, required public contacts and regional privacy handling remain Phase 14. Do not infer a public home address. Vercel-generated public address is the selected direction; publication/paid hosting are owner-deferred until closer to launch. No provider contact, upgrade, agreement acceptance or deployment is authorized.
 
@@ -267,34 +267,44 @@ Do not admit real users on an assumed answer. Declining contact does not resolve
 
 ## Competitor research and adaptation
 
-Primary documents were read October 19: How We Feel's [Privacy Policy](https://howwefeel.org/privacy)
-and [Terms](https://howwefeel.org/terms), plus Stoic's [Privacy Policy](https://www.getstoic.com/privacy-policy)
-and [Terms](https://www.getstoic.com/terms-and-conditions). The candidate borrows
-their topical organization, not their text or data-handling claims:
+Anthony requested a fresh comparison on October 25, 2026. The current official
+[How We Feel Privacy Policy](https://howwefeel.org/privacy) (July 14, 2025),
+[How We Feel Terms](https://howwefeel.org/terms) (July 26, 2024),
+[Stoic Privacy Policy](https://www.getstoic.com/privacy-policy) and
+[Stoic Terms](https://www.getstoic.com/terms-and-conditions) were reread.
+How We Feel's Terms are client-rendered; the official page's linked
+[Terms content](https://howwefeel.org/assets/TermsOfUseView.8d807661.js) supplied the
+text when the research reader returned an empty page. These sources describe
+what the companies say, not independent evidence of their implementation or
+legal compliance.
 
-- Use a short opening summary, then separate journal/account information,
-  information kept on the phone, technical processing, providers, retention,
-  controls and contact details.
-- How We Feel distinguishes local use from account/cloud processing and separates
-  optional research/AI/sharing. JustGO distinguishes guest-local writing, optional managed account sync, private CloudKit and explicit files; it has none of those
-  optional research/AI/social features.
-- Stoic's readable sections and controls are useful examples. Its personal iCloud model is not evidence of JustGO's implemented CloudKit container, managed account service, file format or retention. Its help pages and newer AI policy also differ; do not import a broad
-  no-server/no-access promise from one of them.
-- Terms cover purpose, eligibility, user ownership, a limited service permission,
-  availability and ending use. Retain JustGO's 18+ audience and free beta; do not
-  copy foreign dispute clauses, blanket waivers, paid features or competitor
-  retention periods.
+The existing candidate already follows their readable topic-based approach.
+This pass makes the storage choices easier to scan, simplifies upgrade/import
+wording and states clearly that the Terms govern use. It preserves the actual
+managed-sync behavior in the [data inventory](DATA_INVENTORY.md).
 
-Inspected Mobbin references were Stoic's [privacy reader](https://mobbin.com/screens/5e6a2d7b-cd5d-41a0-bf2e-8d285848500e)
+| Approach in the references                                                                                                                                         | JustGO adaptation                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How We Feel opens with a plain-language purpose and separates phone-only use from an optional account.                                                             | Privacy opens with four explicit choices: phone use, Apple/Google account sync, separate private CloudKit and a chosen file destination. The account explanation retains automatic adoption of unowned phone entries and separation from other accounts.                |
+| Both policies organize information, purposes, recipients, retention, controls and contact details into distinct sections.                                          | Keep those topics and name the actual providers. Preserve the distinction between product analytics being off and hosting/network providers still processing connection information.                                                                                    |
+| How We Feel explains optional AI, research and friend sharing separately; Stoic describes optional AI processing alongside its ordinary journal-access statements. | Do not import their features, permissions or broad no-access claims. JustGO's synchronized account feelings and reflections are processed by JustGO and its providers; no end-to-end encryption promise is made.                                                        |
+| Both describe user controls and deletion, with provider or backup limitations.                                                                                     | Keep the implemented Settings paths, signout continuity, file export/import and separate Delete all my data/Delete account. Retain pending iCloud cleanup, disconnected-device and user-saved-file limits; do not borrow a competitor's response time or backup period. |
+| Both Terms explain the service, permitted users, account responsibilities and the user's content.                                                                  | Retain JustGO's 18+ audience, content ownership and purpose-limited permission to process chosen copies. Add a clear use-of-service opening; this does not create a stored agreement receipt, an onboarding checkbox or a legal-version gate.                           |
+| The references also contain business-specific paid features, disclaimers and dispute provisions.                                                                   | Keep JustGO's free beta, inactive billing, standard Apple EULA and mandatory consumer/privacy rights. Do not copy Stoic's subscriptions, lifetime/AI allowance or 16+ rule, or How We Feel's US arbitration, liability cap and research permission.                     |
+
+The earlier Mobbin references remain useful for readability only: Stoic's
+[privacy reader](https://mobbin.com/screens/5e6a2d7b-cd5d-41a0-bf2e-8d285848500e)
 and [Your Data flow](https://mobbin.com/flows/95f4700e-158b-43a0-b258-1bae72a831a7).
-They inform readability and grouping only. A captured switch state does not
-establish a default, and neither screenshots nor policies establish a storage
-library or need for additional local encryption.
+They were not rechecked during this text comparison. A captured switch state
+does not establish a default, storage library or need for extra encryption.
 
-Public prose omits internal test tiers, synthetic-report steps and implementation
-details that do not help a user understand processing or choices. Those facts
-remain in the inventory and release gates. The draft makes no seven-day backup,
-end-to-end encryption, completed provider-contract or worldwide-compliance promise.
+Both public drafts remain **owner-review-required** with **pending** effective
+dates. The comparison request is not approval of the resulting wording or
+permission to publish the legal site. It does not resolve the provider,
+retention, regional or signed-device gates above. Internal test steps and
+unresolved operational evidence stay outside the marked public blocks; no
+provider-contract, Canada-only processing or worldwide-compliance promise is
+added.
 
 ## Support requests and inbox retention
 
