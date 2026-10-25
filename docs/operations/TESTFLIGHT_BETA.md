@@ -44,6 +44,12 @@ builds, with Xcode 26.6, pinned Node/npm and EAS 25.3.0. This public repository'
 standard runner compute is free; saved artifacts have separate storage limits.
 The Expo framework, preview variables, managed signing and remote build-number
 allocation remain in use. This route does not consume Expo cloud-build quota.
+Install the exact EAS CLI directly in the disposable runner before invoking it.
+An outer `npm exec --package=eas-cli` exports package-selection settings that break
+the local builder's own nested `npx` command. The first GitHub attempt verified
+tools, preview configuration and Apple profile access, but stopped at that helper
+launch before compilation. Its allocated build number 2 remains consumed; never
+reset the remote sequence when retrying.
 
 Use this order:
 
