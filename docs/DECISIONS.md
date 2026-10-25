@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 23, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 25, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -693,6 +693,22 @@ Anthony selected **JustGo: Ditch Dating Apps** for the existing App Store Connec
 record. Preserve app `6821022390`, bundle `com.anthonyyoo.justgo`, existing Apple
 team and Expo project; this is a store-name update, not a new app/account or a
 change to local journal ownership. The installed app retains the JustGO name.
+
+## October 25 beta notices and build automation
+
+Anthony authorized final necessary wording changes and public document hosting
+on Vercel Hobby for now. Keep Terms unchanged; Privacy additionally explains
+ordinary visits to the legal website. The approved `2026-10-25-beta` notices are
+effective October 25, 2026 at `https://justgo-legal.vercel.app/privacy/` and
+`/terms/`, on a separate static project with model-training sharing off. This
+document-hosting choice does not establish private-journal processor suitability
+or authorize a paid plan, provider contact or external-beta release.
+
+Anthony separately approved the Expo robot `justgo-beta-builder` with Developer
+access (publish/view organization projects), its generated token and storage
+only in GitHub's protected `testflight-beta` environment. Owner approval is still
+required for each release job. Preserve the existing Git hold and separate
+review/merge, signing/upload and external-distribution permissions.
 
 ## Open and settled product decisions
 

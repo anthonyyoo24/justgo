@@ -1,10 +1,10 @@
-# Terms of Use — managed sync candidate, unpublished
+# Terms of Use — free beta
 
-<!-- legal-version: 2026-10-25-managed-sync-candidate -->
-<!-- publication-status: owner-review-required -->
-<!-- effective-date: pending -->
+<!-- legal-version: 2026-10-25-beta -->
+<!-- publication-status: owner-approved -->
+<!-- effective-date: 2026-10-25 -->
 
-Readability and competitor approach reconciled October 25, 2026 against the managed-sync data inventory. Optional managed accounts, private cloud synchronization, CloudKit and unified data controls materially supersede the earlier approved text. Fresh owner review is required; effective date and public hosting remain pending. The [review record](LEGAL_REVIEW.md) owns provider, regional and signed-release conditions. No deployment or provider activation is authorized by this document. Paid billing is inactive and needs its separate offer/terms update before paid launch.
+Anthony authorized final necessary wording changes and public hosting on October 25, 2026 after reviewing the managed-sync drafts and comparison. The focused review retained this public Terms wording without adding arbitration, liability caps or a new forum. The effective date is the document publication date. The [review record](LEGAL_REVIEW.md) retains provider, regional and signed-release conditions; document publication does not close those external-beta gates. Paid billing is inactive and needs its separate offer/terms update before paid launch.
 
 <!-- public:start -->
 

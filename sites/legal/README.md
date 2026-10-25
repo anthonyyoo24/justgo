@@ -1,9 +1,16 @@
-# Local legal site
+# Legal document site
 
 This static reader renders the public sections of the two documents in
 [`docs/legal`](../../docs/legal/). It has no browser JavaScript, hosted fonts,
-embeds, analytics or external asset requests. It creates no hosting project and
-publishes nothing.
+embeds, analytics or external asset requests. The build itself creates no hosting
+project and publishes nothing.
+
+The October 25 owner-directed publication is live at
+[Privacy](https://justgo-legal.vercel.app/privacy/) and
+[Terms](https://justgo-legal.vercel.app/terms/) on the separate Vercel Hobby project
+`justgo-legal`. Its source labels are `2026-10-25-beta`, owner-approved and effective
+October 25, 2026. Public notice hosting does not close the app's external-beta
+provider, regional or signed-device gates.
 
 Run `npm run build:legal` from the repository root. The ignored output lives in
 `sites/legal/dist/`, with `/privacy/` and `/terms/` document pages. The base address
@@ -17,7 +24,6 @@ an external image service. Its empty alternative text avoids repeating the
 visible JustGO name for screen readers.
 Approval status, internal version labels and pending effective dates remain in
 the source files and build validation, without appearing in the reader.
-The site remains local and unpublished until hosting is authorized.
 For local preview, serve that output directory with a static HTTP server. The
 repository's app/API servers and app legal-link environment are independent.
 
@@ -43,7 +49,7 @@ Each source document must provide these metadata comments outside exactly one
 `<!-- public:start -->` / `<!-- public:end -->` block:
 
 ```markdown
-<!-- legal-version: 2026-10-25-managed-sync-candidate -->
+<!-- legal-version: privacy-next-candidate -->
 <!-- publication-status: owner-review-required -->
 <!-- effective-date: pending -->
 ```
@@ -62,12 +68,25 @@ the text; set the effective date when publication is ready and the checklist in
 [`LEGAL_REVIEW.md`](../../docs/legal/LEGAL_REVIEW.md) is satisfied. A successful
 production build still grants no hosting, Git or publication authorization.
 
-Anthony selected Vercel with its generated `.vercel.app` address and chose to
-keep the website local until closer to launch. The October 25 managed-sync
-candidates include optional accounts, signed-in journal sync and private CloudKit.
-They supersede the earlier approved text and require new owner review before
-publication. No custom domain is needed now. The actual project
-URL and effective date/version finalization remain pending. Resume hosting setup,
-publication and anonymous HTTPS/link checks in Phase 14 preparation when he is
-ready; no paid upgrade is authorized now. Keep the API's protected previews and
-guarded development draft routes unchanged.
+## Publishing updates
+
+Keep the document project independent of the API project and preserve the owner's
+Git permissions. Build the approved sources in production mode, then stage only
+the generated public files. The Vercel project uses framework `Other`, empty
+build/install commands and output directory `.`. Set `trailingSlash: true` in the
+staged `vercel.json` so `/privacy/` and `/terms/` remain stable destinations.
+
+Use pinned Vercel CLI `64.5.0` and an explicit `--project justgo-legal --scope
+anthony-youngshin-yoos-projects`; never relink the repository root away from its
+API project. Linking a staging directory can create an OIDC `.env.local`: remove
+that generated local file and exclude all dotfiles from the upload. A dry run
+must contain exactly `index.html`, `privacy/index.html`, `terms/index.html`,
+`styles.css`, `assets/justgo-mark.png` and `vercel.json`. Stop on any other file;
+never upload the source repository, review records or environment files.
+
+After an authorized deploy, verify both stable HTTPS routes anonymously, the
+original logo bytes and footer navigation. The October 25 publication passed
+these checks; `/.env.local` and `/docs/legal/LEGAL_REVIEW.md` returned 404. The
+project's model-training sharing is disabled. EAS preview public legal URLs and
+App Store Connect's Privacy Policy URL use the published destinations. Actual
+signed-iPhone opening/accessibility remains Phase 14 acceptance.

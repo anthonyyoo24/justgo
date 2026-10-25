@@ -320,9 +320,9 @@ test('repository public sources use document labels and exclude review records a
     );
   for (const documentSource of [privacySource, termsSource]) {
     const document = parseDocument(documentSource);
-    assert.equal(document.status, 'owner-review-required');
-    assert.equal(document.effectiveDate, 'pending');
-    assert.equal(document.version, '2026-10-25-managed-sync-candidate');
+    assert.equal(document.status, 'owner-approved');
+    assert.equal(document.effectiveDate, '2026-10-25');
+    assert.equal(document.version, '2026-10-25-beta');
   }
   const privacy = output.get('privacy/index.html');
   const terms = output.get('terms/index.html');
@@ -354,8 +354,11 @@ test('repository public sources use document labels and exclude review records a
     privacy,
     /Product analytics and ordinary automatic crash reporting are disabled/,
   );
-  assert.throws(
-    () => renderSite({ privacySource, termsSource, production: true }),
-    /requires explicit owner approval and an effective date/,
-  );
+  const published = renderSite({
+    privacySource,
+    termsSource,
+    production: true,
+  });
+  for (const html of published.values())
+    assert.doesNotMatch(html, /noindex,nofollow/);
 });

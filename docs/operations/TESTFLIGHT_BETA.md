@@ -44,12 +44,14 @@ do not build/upload. Use this order:
 1. Configure `testflight-beta` with Anthony as a required reviewer and `main` as
    its allowed deployment branch. Actual protection is checked before any Expo
    token step; absent/unreadable protection fails closed. YAML alone is insufficient.
-2. Under owner authorization, provision an appropriately scoped Expo automation
-   credential as that environment's `EXPO_TOKEN`. Do not copy the personal Expo
-   session or put the credential at repository scope. No token is provisioned by
-   this preparation. Verify/configure remote App Store distribution credentials
-   through EAS with the owner: the existing ad hoc development profile does not
-   establish store signing. Keep signing credentials out of the repository.
+2. The owner-approved Expo robot `justgo-beta-builder` uses Developer access
+   (publish/view the organization's projects), and its validated token is stored
+   only as `EXPO_TOKEN` in this protected environment. It is not a project-scoped
+   token or the owner's personal session. Rotate/revoke it in Expo when retiring
+   the automation; never copy it into source or logs. Verify/configure remote App
+   Store distribution credentials with the owner: the current valid certificate
+   has an ad hoc profile only, with no App Store profile or assigned submission
+   API key. Keep signing credentials out of the repository.
 3. Obtain the specific Git/build authorization, publish a reviewed tag on `main`,
    and wait for successful Foundation **main push** checks on its exact SHA.
 4. Dispatch from `main` with that tag and operation `build`. Review the immutable
@@ -57,14 +59,15 @@ do not build/upload. Use this order:
    The job builds without uploading and records the EAS build ID.
 5. Inspect the actual signed IPA: source provenance, identity/entitlements, store
    distribution, embedded JavaScript/local artwork/Inter, public configuration,
-   privacy manifests and absence of development/fixture behavior. Perform the
-   applicable signed-device acceptance; exports are only supporting evidence.
+   privacy manifests and absence of development/fixture behavior. Ad hoc device
+   checks are preliminary; exports do not establish the installed TestFlight build.
 6. Verify App Store Connect has no unintended automatic tester distribution.
    Obtain separate upload authorization, then dispatch `submit` with the same tag
    and **exact** EAS ID, never `--latest`. The guard checks project, owner, bundle,
    platform, distribution, profile, completion status and commit metadata. Matching
    SHA metadata alone does not certify a manually built dirty archive.
-7. Submission disables EAS's automatic tester-group setup. Groups/invitations,
+7. After Apple processes the uploaded build, perform the actual TestFlight phone
+   acceptance below. Submission disables EAS's automatic tester-group setup. Groups/invitations,
    external Beta App Review and public App Store submission remain separate actions.
 
 The owner-selected navy GO mark on cream is configured as an opaque 1024-pixel
@@ -72,9 +75,18 @@ store icon at `apps/mobile/assets/brand/justgo-app-icon.png`; the existing brand
 splash is retained. Inspect the icon in the next signed binary alongside the
 native font/splash acceptance. See [icon provenance](../../design/source/app-icon.md).
 
-Environment protection is configured. The Expo automation token, published tag,
-hosted workflow execution, signed beta build and upload remain unverified. Local
-workflow tests do not establish a hosted pass.
+Environment protection and the owner-approved robot token are configured. The
+published tag, hosted workflow execution, App Store signing/submission credentials,
+signed beta build and upload remain open. PR #49 must be reviewed and merged
+before the main-only workflow can run. Local workflow tests do not establish a
+hosted pass.
+
+The approved notices are hosted at [Privacy](https://justgo-legal.vercel.app/privacy/)
+and [Terms](https://justgo-legal.vercel.app/terms/), with both URLs set in EAS
+preview. The actual remote-environment preflight passes. App Store Connect's
+Privacy Policy URL is saved; App Privacy disclosures are still uncompleted and
+must match the signed binary before publication. Full native link acceptance is
+separate from anonymous browser HTTPS checks.
 
 ## Tester and reviewer package
 
@@ -120,8 +132,9 @@ wording is a local candidate, not saved Apple metadata or a sent invitation.
 
 ## Remaining prerequisites
 
-- New owner review of managed-sync Privacy/Terms, final dates/versions, eligible
-  hosting/publication, anonymous HTTPS and signed-app link checks.
+- Verify the published legal links and accessibility in the signed app. Reconcile
+  any material service/provider changes before distribution; public notice
+  publication is not provider/privacy release clearance.
 - Resolve the existing supported-host arrangement for normal private journal
   traffic before external testers. Vercel's current DPA covers Pro/Enterprise and
   excludes specified sensitive data; Pro alone does not establish journal-content
@@ -130,9 +143,11 @@ wording is a local candidate, not saved Apple metadata or a sent invitation.
 - Verify the configured branded icon and native font/splash behavior on the signed
   build. Root `assets/icon.png` and `assets/splash-icon.png` remain unreferenced Expo
   placeholders.
-- Confirm beta dates/invitees and server API/schema, write limits, retention
-  scheduling, uptime/5xx alerts and safe recovery. Protected hosted-migration/deploy
-  automation and native CI smoke remain open; the beta workflow does not supply them.
+- Confirm beta dates/invitees and the remaining [server operating controls](FOUNDATION.md#beta-operating-controls).
+  Cleanup is active; rate-limit deployment, readiness-monitor activation/email
+  proof, 5xx alerts and current backup/recovery arrangements remain open.
+  Protected hosted-migration/deploy automation and native UI CI smoke remain open;
+  the retained Maestro launch file still targets old entry/account UI.
 - Preserve all applicable separate Git, native build, upload and distribution
   permissions and the original Phase 14 acceptance matrix.
 

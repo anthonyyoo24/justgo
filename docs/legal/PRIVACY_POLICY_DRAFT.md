@@ -1,10 +1,10 @@
-# Privacy Policy — managed sync candidate, unpublished
+# Privacy Policy — free beta
 
-<!-- legal-version: 2026-10-25-managed-sync-candidate -->
-<!-- publication-status: owner-review-required -->
-<!-- effective-date: pending -->
+<!-- legal-version: 2026-10-25-beta -->
+<!-- publication-status: owner-approved -->
+<!-- effective-date: 2026-10-25 -->
 
-Readability and competitor approach reconciled October 25, 2026 against the managed-sync data inventory. Earlier owner approval and the completion-only provider assessment do not cover optional managed sign-in, private account synchronization or CloudKit. Fresh owner/public-text and provider review is required. This document does not establish hosted rollout, provider suitability, legal-site publication or signed-device acceptance. The effective date remains pending. The static site renders only the marked public block; review metadata remains internal. See [LEGAL_REVIEW.md](LEGAL_REVIEW.md).
+Anthony authorized final necessary wording changes and public hosting on October 25, 2026 after reviewing the managed-sync drafts and comparison. Terms wording is retained; this policy additionally describes visits to the legal website. The effective date is the document publication date. This owner-directed document publication does not establish provider suitability or signed-device acceptance for external beta distribution. The static site renders only the marked public block; review metadata remains internal. See [LEGAL_REVIEW.md](LEGAL_REVIEW.md).
 
 <!-- public:start -->
 
@@ -12,7 +12,7 @@ Readability and competitor approach reconciled October 25, 2026 against the mana
 
 ## About this policy
 
-JustGO helps adults aged 18 and older practice everyday challenges and keep a private record of their activity. This policy explains what information we handle, why we use it and how you can manage it.
+JustGO helps adults aged 18 and older practice everyday challenges and keep a private record of their activity. This policy explains what information we handle in the app and on these legal pages, why we use it and how you can manage it.
 
 You choose where your saved challenge history, feelings and reflections go:
 
@@ -69,6 +69,8 @@ We use this information to save and display your activity, synchronize the copie
 
 Hosting and network providers also process connection and request information, which may include IP addresses, request paths and browser or device information. That processing is separate from product analytics.
 
+When you visit these legal pages, Vercel receives ordinary connection information, such as your IP address, requested page and browser information. We do not add product analytics or tracking cookies to these pages. Vercel describes its handling of service and network information in its [Privacy Notice](https://vercel.com/legal/privacy-notice).
+
 ## Analytics and crash reporting
 
 Product analytics and ordinary automatic crash reporting are disabled. We do not send journal content, feelings or reflection-length analytics to PostHog or Sentry. We do not use cross-service advertising tracking.
@@ -81,7 +83,7 @@ If you email us, we receive your address and the message and attachments you cho
 
 ## Service providers and international processing
 
-- **Vercel** hosts the API that processes authenticated account data, including synchronized feelings and reflections.
+- **Vercel** hosts these public legal pages and the API that processes authenticated account data, including synchronized feelings and reflections.
 - **Supabase** provides managed authentication and hosts account, completion and journal records.
 - **Apple** provides Apple sign-in, protected native credential storage and optional private CloudKit synchronization. Apple also handles files you choose to save to iCloud Drive under your Apple settings.
 - **Google** provides Google sign-in. **Google Gmail** hosts the support inbox; messages also pass through your email provider.
@@ -116,6 +118,6 @@ JustGO is intended for adults aged 18 and older. We do not collect a birth date 
 We publish updates at this Privacy Policy address when our practices change and provide any new notice or choice required by applicable law before new processing begins.
 <!-- public:end -->
 
-## Publication conditions
+## Distribution conditions
 
-This is candidate wording, not approved or public legal text. Verify the actual provider arrangements for renewed private-content processing; managed Auth account/profile retention and deletion; CloudKit container, Apple-account isolation and purge behavior; signed-iPhone token/SQLite/temporary-file protection; Files/picker restore; support procedure; regional notice requirements; and actual hosted cutover before approval. Earlier completion-only clearance does not cover this processing. Do not invent provider agreements, backup expiry, end-to-end encryption, public URLs or deployed behavior. Paid billing and future analytics need their separate notices and activation gates.
+Before external beta distribution, verify the actual provider arrangements for private-content processing; managed Auth account/profile retention and deletion; CloudKit container, Apple-account isolation and purge behavior; signed-iPhone token/SQLite/temporary-file protection; Files/picker restore; support procedure; regional notice requirements; and actual hosted cutover. Earlier completion-only clearance does not cover this processing. Do not invent provider agreements, backup expiry, end-to-end encryption or deployed behavior. Update the public policy if the verified arrangements change its disclosures. Paid billing and future analytics need their separate notices and activation gates.
