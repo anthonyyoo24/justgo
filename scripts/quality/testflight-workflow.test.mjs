@@ -127,7 +127,7 @@ test('the tag guard resolves exact existing tags on main and rejects unsafe or u
           ...process.env,
           RELEASE_TAG: tag,
           RELEASE_OPERATION: operation,
-          RELEASE_BUILD_ID: buildId,
+          RELEASE_BUILD_RUN_ID: buildId,
           GITHUB_OUTPUT: output,
           GITHUB_STEP_SUMMARY: join(directory, 'summary'),
         },
@@ -140,11 +140,7 @@ test('the tag guard resolves exact existing tags on main and rejects unsafe or u
     readFileSync(join(directory, 'summary'), 'utf8'),
     new RegExp(sha),
   );
-  assert.equal(
-    check('beta-reviewed', 'submit', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
-      .status,
-    0,
-  );
+  assert.equal(check('beta-reviewed', 'submit', '123456789').status, 0);
   for (const [tag, operation, buildId] of [
     ['missing'],
     ['branch-only'],
@@ -153,7 +149,7 @@ test('the tag guard resolves exact existing tags on main and rejects unsafe or u
     ['beta-reviewed; touch injected'],
     ['$(touch injected)'],
     ['beta-reviewed', 'deploy'],
-    ['beta-reviewed', 'build', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'],
+    ['beta-reviewed', 'build', '123456789'],
     ['beta-reviewed', 'submit', ''],
     ['beta-reviewed', 'submit', '--latest'],
   ]) {
@@ -254,62 +250,6 @@ test('both environment gates reject missing reviewers and unreadable protection 
   );
 });
 
-test('upload guard requires the completed real-device store beta for the correct app, owner and exact SHA', (t) => {
-  const directory = temporary(t);
-  const build = {
-    id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
-    app: {
-      id: '53cf0560-8ab5-446a-9bc6-deb193b337b5',
-      ownerAccount: { name: 'anthonyyoos-team' },
-    },
-    appIdentifier: 'com.anthonyyoo.justgo',
-    platform: 'IOS',
-    distribution: 'STORE',
-    buildProfile: 'beta',
-    isForIosSimulator: false,
-    status: 'FINISHED',
-    gitCommitHash: 'a'.repeat(40),
-  };
-  const check = (value, env = {}) =>
-    runGuard(
-      'Validate build ownership and commit',
-      'beta-build.json',
-      value,
-      {
-        RELEASE_OPERATION: 'submit',
-        RELEASE_BUILD_ID: build.id,
-        RELEASE_SHA: build.gitCommitHash,
-        GITHUB_STEP_SUMMARY: join(directory, 'summary'),
-        ...env,
-      },
-      directory,
-    );
-  assert.equal(check(build).status, 0);
-  assert.equal(
-    check([build], { RELEASE_OPERATION: 'build', RELEASE_BUILD_ID: '' }).status,
-    0,
-  );
-  for (const value of [
-    null,
-    [],
-    [build, build],
-    { ...build, id: 'bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee' },
-    { ...build, app: { ...build.app, id: 'another-project' } },
-    { ...build, app: { ...build.app, ownerAccount: { name: 'another-team' } } },
-    { ...build, appIdentifier: 'dev.justgo.foundation' },
-    { ...build, platform: 'ANDROID' },
-    { ...build, distribution: 'INTERNAL' },
-    { ...build, buildProfile: 'production' },
-    { ...build, isForIosSimulator: true },
-    { ...build, isForIosSimulator: undefined },
-    { ...build, status: 'IN_PROGRESS' },
-    { ...build, status: 'ERRORED' },
-    { ...build, gitCommitHash: 'b'.repeat(40) },
-    { ...build, gitCommitHash: undefined },
-  ])
-    assert.notEqual(check(value).status, 0, JSON.stringify(value));
-});
-
 test('native steps pin EAS, preflight the preview environment and never auto-submit or configure tester groups', () => {
   for (const source of steps.filter((value) => /EXPO_TOKEN:/.test(value))) {
     assert.match(source, /working-directory: apps\/mobile/);
@@ -321,16 +261,12 @@ test('native steps pin EAS, preflight the preview environment and never auto-sub
     /eas env:exec preview .*npm --prefix \.\.\/\.\. run release:beta:check.*--non-interactive/,
   );
   assert.match(
-    step('Build signed beta without uploading'),
-    /eas build --platform ios --profile beta --non-interactive --wait --json/,
+    step('Build signed beta on GitHub without uploading'),
+    /eas build --platform ios --profile beta --local --freeze-credentials --non-interactive --output/,
   );
   assert.match(
-    step('Read the exact build selected for upload'),
-    /eas build:view "\$RELEASE_BUILD_ID" --json/,
-  );
-  assert.match(
-    step('Upload exact beta build to TestFlight'),
-    /eas submit --platform ios --profile beta --id "\$RELEASE_BUILD_ID" --non-interactive --wait --no-auto-testflight-setup/,
+    step('Upload exact beta artifact to TestFlight'),
+    /eas submit --platform ios --profile beta --path "\$RUNNER_TEMP\/justgo-beta-download\/JustGO\.ipa" --non-interactive --wait --no-auto-testflight-setup/,
   );
   assert.doesNotMatch(
     workflow,
@@ -341,4 +277,94 @@ test('native steps pin EAS, preflight the preview environment and never auto-sub
     if (reference.startsWith('./')) continue;
     assert.match(reference, /^actions\/[\w-]+@[a-f0-9]{40}$/);
   }
+});
+
+test('native compilation uses the standard stable macOS runner and explicit supported tools', () => {
+  const beta = workflow.split(/^ {2}beta:$/m)[1];
+  assert.match(beta, /^ {4}runs-on: macos-26$/m);
+  assert.match(
+    beta,
+    /DEVELOPER_DIR: \/Applications\/Xcode_26\.6\.app\/Contents\/Developer/,
+  );
+  assert.match(step('Check native build tools'), /Xcode 26\.6/);
+  assert.match(step('Check native build tools'), /17F113/);
+  assert.match(step('Check native build tools'), /pod --version/);
+  assert.match(step('Check native build tools'), /fastlane --version/);
+  assert.match(step('Require clean reviewed source'), /git rev-parse HEAD/);
+  assert.match(step('Require clean reviewed source'), /git status --porcelain/);
+  assert.doesNotMatch(workflow, /eas build:view|--id |--wait --json/);
+});
+
+test('only the inspected app and public manifest are retained, with bounded storage and cleanup on failure', () => {
+  const inspect = step('Inspect signed beta and record provenance');
+  assert.ok(
+    inspect.indexOf('inspect-beta-ipa.mjs') <
+      inspect.indexOf('github-beta-artifact.mjs record'),
+  );
+  assert.match(inspect, /git status --porcelain/);
+  const upload = step('Save only the installable app and public manifest');
+  assert.match(
+    upload,
+    /name: justgo-ios-beta-\$\{\{ github.run_id \}\}-\$\{\{ github.run_attempt \}\}/,
+  );
+  assert.match(upload, /retention-days: 7/);
+  assert.match(upload, /compression-level: 0/);
+  assert.match(upload, /if-no-files-found: error/);
+  const files = upload
+    .match(/^ {10}path: \|\n((?: {12}.*\n)+)/m)?.[1]
+    .trim()
+    .split('\n')
+    .map((value) => value.trim());
+  assert.deepEqual(files, [
+    '${{ runner.temp }}/justgo-beta-artifact/JustGO.ipa',
+    '${{ runner.temp }}/justgo-beta-artifact/manifest.json',
+  ]);
+  const cleanup = step('Remove temporary build and signing files');
+  assert.match(cleanup, /if: always\(\)/);
+  assert.match(cleanup, /security delete-keychain/);
+  assert.match(
+    step('Build signed beta on GitHub without uploading'),
+    /TMPDIR: \$\{\{ runner.temp \}\}\/justgo-beta-private/,
+  );
+  assert.match(
+    step('Build signed beta on GitHub without uploading'),
+    /umask 077/,
+  );
+  assert.match(
+    cleanup,
+    /rm -rf.*justgo-beta-private.*justgo-beta-artifact.*justgo-beta-download/,
+  );
+  assert.doesNotMatch(
+    workflow,
+    /EAS_LOCAL_BUILD_SKIP_CLEANUP|keyP8|credentials:.*local|security.*dump/,
+  );
+});
+
+test('submission selects a successful run, checks the archive hash before extraction and rechecks signed bytes', () => {
+  const select = step('Select exact successful GitHub build artifact');
+  assert.match(select, /GH_TOKEN: \$\{\{ github.token \}\}/);
+  assert.match(select, /actions\/workflows\/testflight-beta.yml/);
+  assert.match(select, /actions\/runs\/\$RELEASE_BUILD_RUN_ID/);
+  assert.match(select, /github-beta-artifact.mjs select/);
+  const download = step('Download and verify the exact installable app');
+  assert.match(download, /actions\/artifacts\/\$ARTIFACT_ID\/zip/);
+  assert.ok(download.indexOf('verify-archive') < download.indexOf('unzip -q'));
+  assert.ok(
+    download.indexOf('unzip -q') <
+      download.indexOf('github-beta-artifact.mjs verify '),
+  );
+  assert.ok(
+    download.indexOf('github-beta-artifact.mjs verify ') <
+      download.indexOf('inspect-beta-ipa.mjs'),
+  );
+  assert.ok(
+    workflow.indexOf('Download and verify the exact installable app') <
+      workflow.indexOf('Upload exact beta artifact to TestFlight'),
+  );
+  for (const name of [
+    'Select exact successful GitHub build artifact',
+    'Download and verify the exact installable app',
+    'Upload exact beta artifact to TestFlight',
+  ])
+    assert.match(step(name), /if: inputs.operation == 'submit'/);
 });

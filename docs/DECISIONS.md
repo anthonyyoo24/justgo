@@ -710,6 +710,21 @@ only in GitHub's protected `testflight-beta` environment. Owner approval is stil
 required for each release job. Preserve the existing Git hold and separate
 review/merge, signing/upload and external-distribution permissions.
 
+## October 25 GitHub Mac beta builds
+
+After Expo's free iOS cloud-build allowance was exhausted, Anthony selected
+GitHub-hosted macOS builds over local compilation on his 8 GB Mac. He authorized
+completing this setup and its necessary permissions in advance. Use standard
+public-repository runners without a paid plan. Preserve Expo/EAS tooling, existing
+managed credentials, preview configuration and remote build-number increments.
+
+Compile through EAS local builds on stable `macos-26` with explicit Xcode 26.6.
+Protect the Expo token, temporary signing inputs and release environment. Replace
+cloud build-ID dependence with exact GitHub run/artifact provenance and archive/IPA
+hash verification; keep Apple upload separate from compilation and inspection.
+This build-route decision does not authorize tester invitations, external release,
+paid services or claim that signed-device acceptance is complete.
+
 ## Open and settled product decisions
 
 This table was moved from the plan. Resolve open entries before dependent work; settled entries preserve scope and are not new approval requests.
