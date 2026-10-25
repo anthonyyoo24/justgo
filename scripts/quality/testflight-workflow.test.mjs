@@ -251,9 +251,18 @@ test('both environment gates reject missing reviewers and unreadable protection 
 });
 
 test('native steps pin EAS, preflight the preview environment and never auto-submit or configure tester groups', () => {
+  const install = step('Install pinned EAS CLI directly');
+  assert.match(install, /npm install --global eas-cli@25\.3\.0/);
+  assert.match(install, /eas --version/);
+  assert.ok(
+    workflow.indexOf('Install pinned EAS CLI directly') <
+      workflow.indexOf('EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}'),
+  );
   for (const source of steps.filter((value) => /EXPO_TOKEN:/.test(value))) {
     assert.match(source, /working-directory: apps\/mobile/);
-    assert.match(source, /npm exec --yes --package=eas-cli@25\.3\.0 -- eas /);
+    assert.match(source, /(?:run: |\n {10})eas env:exec preview /);
+    // npm exec --package exports package selection that breaks EAS's nested npx.
+    assert.doesNotMatch(source, /npm exec|\bnpx\b/);
     assert.doesNotMatch(source, /\$\{\{\s*inputs\./);
   }
   assert.match(

@@ -126,6 +126,13 @@ jobs:
           ref: ${{ needs.validate.outputs.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-node
+      - name: Install pinned EAS CLI directly
+        shell: bash
+        # EAS local builds launch npx themselves. An outer npm exec --package
+        # leaks package selection into that nested command and prevents launch.
+        run: |
+          npm install --global eas-cli@25.3.0
+          [[ "$(eas --version)" == eas-cli/25.3.0\ * ]]
       # Keep EXPO_TOKEN only in the protected environment, never repository scope.
       # Public profile overrides must match build.beta.env in eas.json. All other
       # required public inputs come from the reviewed EAS preview environment.
@@ -133,7 +140,7 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false npm --prefix ../.. run release:beta:check' --non-interactive
+        run: eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false npm --prefix ../.. run release:beta:check' --non-interactive
       - name: Check native build tools
         if: inputs.operation == 'build'
         shell: bash
@@ -162,7 +169,7 @@ jobs:
         run: |
           umask 077
           mkdir -p "$TMPDIR" "$RUNNER_TEMP/justgo-beta-artifact"
-          npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false eas build --platform ios --profile beta --local --freeze-credentials --non-interactive --output "$RUNNER_TEMP/justgo-beta-artifact/JustGO.ipa"' --non-interactive
+          eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false eas build --platform ios --profile beta --local --freeze-credentials --non-interactive --output "$RUNNER_TEMP/justgo-beta-artifact/JustGO.ipa"' --non-interactive
       - name: Inspect signed beta and record provenance
         if: inputs.operation == 'build'
         shell: bash
@@ -222,7 +229,7 @@ jobs:
         # Disable automatic tester-group setup. Verify App Store Connect automatic
         # distribution before this separately approved upload; invitations and
         # external Beta App Review are independent of transferring the binary.
-        run: npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false eas submit --platform ios --profile beta --path "$RUNNER_TEMP/justgo-beta-download/JustGO.ipa" --non-interactive --wait --no-auto-testflight-setup' --non-interactive
+        run: eas env:exec preview 'EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=false eas submit --platform ios --profile beta --path "$RUNNER_TEMP/justgo-beta-download/JustGO.ipa" --non-interactive --wait --no-auto-testflight-setup' --non-interactive
       - name: Remove temporary build and signing files
         if: always()
         shell: bash
