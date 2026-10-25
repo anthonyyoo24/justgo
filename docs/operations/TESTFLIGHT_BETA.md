@@ -67,6 +67,11 @@ do not build/upload. Use this order:
 7. Submission disables EAS's automatic tester-group setup. Groups/invitations,
    external Beta App Review and public App Store submission remain separate actions.
 
+The owner-selected navy GO mark on cream is configured as an opaque 1024-pixel
+store icon at `apps/mobile/assets/brand/justgo-app-icon.png`; the existing branded
+splash is retained. Inspect the icon in the next signed binary alongside the
+native font/splash acceptance. See [icon provenance](../../design/source/app-icon.md).
+
 Environment protection is configured. The Expo automation token, published tag,
 hosted workflow execution, signed beta build and upload remain unverified. Local
 workflow tests do not establish a hosted pass.
@@ -122,9 +127,9 @@ wording is a local candidate, not saved Apple metadata or a sent invitation.
   excludes specified sensitive data; Pro alone does not establish journal-content
   clearance. Preserve the declined-provider-contact direction. Supabase's
   incorporated DPA does not create a generic missing separate-signature task.
-- Prepare a proper branded store icon. Root `assets/icon.png` and
-  `assets/splash-icon.png` are Expo construction placeholders; the existing branded
-  GO splash is retained. Native font/splash changes still require signed evidence.
+- Verify the configured branded icon and native font/splash behavior on the signed
+  build. Root `assets/icon.png` and `assets/splash-icon.png` remain unreferenced Expo
+  placeholders.
 - Confirm beta dates/invitees and server API/schema, write limits, retention
   scheduling, uptime/5xx alerts and safe recovery. Protected hosted-migration/deploy
   automation and native CI smoke remain open; the beta workflow does not supply them.

@@ -61,6 +61,7 @@ const config: ExpoConfig = {
   slug: 'justgo',
   owner: 'anthonyyoos-team',
   version: '0.1.0',
+  icon: './assets/brand/justgo-app-icon.png',
   scheme: 'justgo',
   orientation: 'portrait',
   userInterfaceStyle: 'light',

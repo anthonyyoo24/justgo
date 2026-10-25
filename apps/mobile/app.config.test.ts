@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 describe('Expo project configuration', () => {
   const originalEnv = process.env;
 
@@ -48,6 +51,18 @@ describe('Expo project configuration', () => {
         resizeMode: 'contain',
       },
     ]);
+  });
+
+  it('packages an opaque 1024-pixel branded store icon', () => {
+    const { default: config } = require('./app.config');
+    expect(config.icon).toBe('./assets/brand/justgo-app-icon.png');
+    const icon = readFileSync(path.resolve(__dirname, config.icon));
+    expect(icon.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect(icon.subarray(12, 16).toString()).toBe('IHDR');
+    expect(icon.readUInt32BE(16)).toBe(1024);
+    expect(icon.readUInt32BE(20)).toBe(1024);
+    // RGB (PNG type 2), rather than a transparent placeholder or alpha channel.
+    expect(icon[25]).toBe(2);
   });
 
   it('requires explicit valid reporting configuration and installs native privacy after Sentry', () => {
