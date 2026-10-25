@@ -88,14 +88,16 @@ Use this order:
    tag, workflow/run identity, IPA size/hash and actual native signature/profile.
    Submission uses that verified file with `--path`, never `--latest`. Expired or
    missing artifacts require a new build with a new remote build number.
+   If an upload is interrupted or its outcome is uncertain, check the EAS
+   submission and Apple's existing version/build before dispatching another upload.
 7. After Apple processes the uploaded build, perform the actual TestFlight phone
    acceptance below. Submission disables EAS's automatic tester-group setup. Groups/invitations,
    external Beta App Review and public App Store submission remain separate actions.
 
 The owner-selected navy GO mark on cream is configured as an opaque 1024-pixel
 store icon at `apps/mobile/assets/brand/justgo-app-icon.png`; the existing branded
-splash is retained. Inspect the icon in the next signed binary alongside the
-native font/splash acceptance. See [icon provenance](../../design/source/app-icon.md).
+splash is retained. Verify the icon on the phone alongside native font/splash
+acceptance. See [icon provenance](../../design/source/app-icon.md).
 
 Environment protection, the robot token and App Store signing/submission
 credentials are configured. PR #49 merged into `main` at `04f7b20`; its first
@@ -106,10 +108,32 @@ Mac route replaces cloud compilation while preserving reviewed-source and
 separate upload safeguards. Local workflow tests do not establish a hosted build
 or signed-device acceptance.
 
+The first successful GitHub Mac candidate is **0.1.0 (3)**, from `a380478` and
+immutable tag `testflight-beta-2026-10-25-3`, after [PR #51](https://github.com/anthonyyoo24/justgo/pull/51)
+and the launch fix in [PR #52](https://github.com/anthonyyoo24/justgo/pull/52).
+The [build run](https://github.com/anthonyyoo24/justgo/actions/runs/40227572059)
+passed native inspection and saved artifact `12611797931`. Downloaded archive and
+IPA hashes matched GitHub metadata and the source/run manifest. IPA SHA-256:
+`0ca3185ce8bbcd9edd5b23cc9a61af249caef82ee388ddcd2ef72dec33aabe60`.
+
+All 14 venue/paper/Success images match source bytes; staging API/Auth, Google and
+legal configuration match the reviewed environment. Hermes uses production mode,
+Preview redirects and fixture markers are absent. Fonts/icon, store signing,
+identity and restricted capabilities pass the automated native gate. Diagnostics
+initialization is disabled; physical behavior and outbound privacy remain open.
+The separate [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/40229823125)
+reverified provenance, hashes and signing, then successfully transferred that IPA
+to Apple on October 25. Submission created no tester groups or invitations.
+Apple processing, owner phone acceptance and any later distribution remain
+separate from successful upload.
+
 The local builder fetches signing credentials into a run-owned private temporary
 directory with restrictive permissions. Normal EAS cleanup and an `always()`
 workflow cleanup remove temporary keychains and files; no signing inputs or build
 working directories enter artifacts. GitHub discards the hosted machine afterward.
+The successful build logged the actual keychain under the private temporary
+directory, its destruction and successful final cleanup. Forced interruption was
+not separately exercised.
 Maintain the workflow when Xcode/runner images, Expo or signing requirements change;
 GitHub maintains the underlying machines. Do not add paid/larger runners by default.
 
@@ -119,6 +143,10 @@ preview. The actual remote-environment preflight passes. App Store Connect's
 Privacy Policy URL is saved; App Privacy disclosures are still uncompleted and
 must match the signed binary before publication. Full native link acceptance is
 separate from anonymous browser HTTPS checks.
+The signed GoogleSignIn manifest declares eight data categories and some Analytics
+purposes. Reconcile [Google's disclosure guidance](https://developers.google.com/identity/sign-in/ios/app-privacy)
+with the app's used scopes and actual processing before final App Privacy answers.
+The archive inspection does not establish all runtime SDK collection behavior.
 
 ## Tester and reviewer package
 
