@@ -13,6 +13,7 @@ export class ExportService {
   // Privacy controls intentionally require identity only, never an entitlement.
   page(token: string, cursor?: string): Promise<CompletionExportPage> {
     return this.identity.withSession(token, async (tx, session) => {
+      await this.identity.rateLimitAccount(tx, session.userId, 'export');
       const userId = session.userId;
       const account = (
         await tx.execute<{

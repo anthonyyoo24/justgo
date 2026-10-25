@@ -26,6 +26,7 @@ import type { ManagedAuthDeletion } from './managed-deletion.js';
 
 type Tx = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
 type Row = Record<string, unknown>;
+type RateBucket = Row & { count: number; retry_after_seconds: number };
 type SessionRow = Row & {
   id: string;
   user_id: string;
@@ -77,6 +78,8 @@ export type IdentityOptions = {
   sessionHours?: number;
   transferMinutes?: number;
   rateLimit?: number;
+  activityWriteRateLimit?: number;
+  accountExportRateLimit?: number;
   rateKey: string;
   // Trusted server-side allocation seam; never supplied by an HTTP caller.
   newUserId?: () => string;
@@ -119,25 +122,43 @@ export class IdentityService {
     lane: string,
     limit = this.options.rateLimit ?? 30,
   ) {
+    const bucket = await this.db.transaction((tx) =>
+      this.rateBucket(tx, address, lane),
+    );
+    this.requireRateBudget(bucket, limit);
+  }
+  /** Reuse the authenticated transaction: a second pool checkout can deadlock a one-connection server. */
+  async rateLimitAccount(tx: Tx, userId: string, lane: 'write' | 'export') {
+    const limit =
+      lane === 'write'
+        ? (this.options.activityWriteRateLimit ?? 600)
+        : (this.options.accountExportRateLimit ?? 600);
+    this.requireRateBudget(
+      await this.rateBucket(tx, userId, `account-${lane}`),
+      limit,
+    );
+  }
+  private requireRateBudget(bucket: RateBucket, limit: number) {
+    if (bucket.count > limit)
+      throw new ApiError('RATE_LIMITED', 429, bucket.retry_after_seconds);
+  }
+  private async rateBucket(tx: Tx, subject: string, lane: string) {
     const key = createHmac('sha256', this.options.rateKey)
-      .update(`${lane}:${address}`)
+      .update(`${lane}:${subject}`)
       .digest('hex');
-    const bucket = await this.db.transaction(async (tx) => {
-      await context(tx, 'app.rate_key', key);
-      const row = await one<{ count: number; retry_after_seconds: number }>(
-        tx,
-        sql`
+    await context(tx, 'app.rate_key', key);
+    const row = await one<RateBucket>(
+      tx,
+      sql`
         insert into justgo.identity_rate_buckets (key,count,window_start) values (${key},1,now())
         on conflict (key) do update set
           count = case when identity_rate_buckets.window_start <= now()-interval '10 minutes' then 1 else identity_rate_buckets.count+1 end,
           window_start = case when identity_rate_buckets.window_start <= now()-interval '10 minutes' then now() else identity_rate_buckets.window_start end
         returning count,
           greatest(1, least(600, ceil(extract(epoch from (window_start + interval '10 minutes' - now())))))::integer as retry_after_seconds`,
-      );
-      return row!;
-    });
-    if (bucket.count > limit)
-      throw new ApiError('RATE_LIMITED', 429, bucket.retry_after_seconds);
+    );
+    if (!row) throw new ApiError('UNAVAILABLE', 503);
+    return row;
   }
   private async owner(tx: Tx, userId: string) {
     // Only called with a server-generated new account or a verified digest-bound identity.

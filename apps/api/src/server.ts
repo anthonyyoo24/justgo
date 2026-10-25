@@ -38,6 +38,8 @@ const app = buildApp(
             sessionHours: config.IDENTITY_SESSION_HOURS,
             transferMinutes: config.IDENTITY_TRANSFER_MINUTES,
             rateLimit: config.IDENTITY_RECOVERY_RATE_LIMIT,
+            activityWriteRateLimit: config.ACTIVITY_WRITE_RATE_LIMIT,
+            accountExportRateLimit: config.ACCOUNT_EXPORT_RATE_LIMIT,
             ...(config.MANAGED_AUTH_ENABLED &&
             config.SUPABASE_URL &&
             config.SUPABASE_PUBLISHABLE_KEY

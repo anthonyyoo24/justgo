@@ -36,6 +36,18 @@ const configSchema = z.object({
     .min(1)
     .max(100)
     .default(30),
+  ACTIVITY_WRITE_RATE_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10000)
+    .default(600),
+  ACCOUNT_EXPORT_RATE_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10000)
+    .default(600),
 });
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {

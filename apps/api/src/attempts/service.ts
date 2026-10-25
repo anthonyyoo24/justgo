@@ -70,6 +70,8 @@ export class AttemptService {
         where c.id=${input.challengeId} and c.level_id='level-1' and exists(select 1 from justgo.venue_cards v where v.challenge_id=c.id and v.venue_id=${input.venue})`)
       ).rows[0];
       if (!card) throw new ApiError('INVALID_REQUEST', 400);
+      // Accepted IDs replay above, including after an uncertain acknowledgement.
+      await this.identity.rateLimitAccount(tx, session.userId, 'write');
       await tx.execute(sql`insert into justgo.attempts(user_id,id,challenge_id,venue_id,level_id,started_at,start_time_zone,instruction_snapshot,activity_date)
         values(${session.userId},${input.id},${input.challengeId},${input.venue},${card.level_id},${input.startedAt}::timestamptz,${input.startTimeZone},${card.instruction},
         to_char(${input.startedAt}::timestamptz at time zone ${input.startTimeZone},'YYYY-MM-DD'))`);

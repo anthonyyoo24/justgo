@@ -138,6 +138,9 @@ export class JournalSyncService {
           )
             throw new ApiError('INVALID_REQUEST', 400);
         }
+        // A batch shares one budget entry; immutable-version replays need no new write budget.
+        if (saved === 0)
+          await this.identity.rateLimitAccount(tx, session.userId, 'write');
         await tx.execute(
           sql`insert into justgo.journal_versions(user_id,version_id,attempt_id,parents,feeling_scale_version,reflection,context) values(${session.userId},${version.versionId},${version.attemptId},${sql.param(version.parents)}::uuid[],${version.feelingScaleVersion},${JSON.stringify(version.reflection)}::jsonb,${JSON.stringify(context)}::jsonb)`,
         );
@@ -150,6 +153,7 @@ export class JournalSyncService {
   page(token: string, cursor: string | undefined, limit: number) {
     return this.identity.withSession(token, async (tx, session) => {
       if (!session.authUserId) throw new ApiError('UNAUTHORIZED');
+      await this.identity.rateLimitAccount(tx, session.userId, 'export');
       const rows = (
         await tx.execute<VersionRow>(
           sql`select ${columns} from justgo.journal_versions where user_id=${session.userId} ${cursor ? sql`and version_id>${cursor}::uuid` : sql``} order by version_id limit ${limit + 1}`,

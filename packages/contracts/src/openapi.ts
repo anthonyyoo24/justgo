@@ -9,6 +9,11 @@ import { completionExportPageSchema } from './data-export.ts';
 import * as managed from './managed-auth.ts';
 import * as sync from './data-sync.ts';
 
+const accountWriteBudget =
+  'Requests adding new records share a server-configured per-account ten-minute write budget; fully identical accepted retries do not consume another slot. Exhaustion returns 429 RATE_LIMITED with Retry-After seconds.';
+const accountExportBudget =
+  'History, journal and account export pages share a separate server-configured per-account ten-minute budget. Exhaustion returns 429 RATE_LIMITED with Retry-After seconds.';
+
 const json = (schema: z.ZodType) => ({
   'application/json': { schema: z.toJSONSchema(schema) },
 });
@@ -105,13 +110,11 @@ export const openApiDocument = {
           true,
           '4 MiB',
         ),
-        description:
-          'Atomic owner-only import of up to 50 bounded completion contexts, without entitlement or private journal fields. expectedEpoch must match. Identical IDs replay; changed contexts conflict; deleted IDs remain blocked unless a user-confirmed import explicitly supplies restoreDeleted:true. Routine sync never sets that flag.',
+        description: `Atomic owner-only import of up to 50 bounded completion contexts, without entitlement or private journal fields. expectedEpoch must match. Identical IDs replay; changed contexts conflict; deleted IDs remain blocked unless a user-confirmed import explicitly supplies restoreDeleted:true. Routine sync never sets that flag. ${accountWriteBudget}`,
       },
       get: {
         ...operation(sync.completionRestorePageSchema),
-        description:
-          'Owner-only UUID-ordered history page, up to 50 records, with dataEpoch and nextCursor. Enumerate from the beginning on a later sync to reconcile concurrent inserts.',
+        description: `Owner-only UUID-ordered history page, up to 50 records, with dataEpoch and nextCursor. Enumerate from the beginning on a later sync to reconcile concurrent inserts. ${accountExportBudget}`,
         parameters: [
           {
             name: 'cursor',
@@ -134,13 +137,11 @@ export const openApiDocument = {
           true,
           '4 MiB',
         ),
-        description:
-          'Managed signed-in journal sync only. Immutable owner-scoped versions and parents preserve concurrent writing. A journal-only entry requires its strict historical context and creates no completion or rep. Existing completion context may be derived for older clients. Atomic batches up to 50 require expectedEpoch; restoreDeleted is reserved for a user-confirmed import.',
+        description: `Managed signed-in journal sync only. Immutable owner-scoped versions and parents preserve concurrent writing. A journal-only entry requires its strict historical context and creates no completion or rep. Existing completion context may be derived for older clients. Atomic batches up to 50 require expectedEpoch; restoreDeleted is reserved for a user-confirmed import. ${accountWriteBudget}`,
       },
       get: {
         ...operation(sync.journalSyncPageSchema),
-        description:
-          'Managed signed-in journal versions, UUID-ordered pages up to 50. A full enumeration on later sync reconciles concurrent inserts.',
+        description: `Managed signed-in journal versions, UUID-ordered pages up to 50. A full enumeration on later sync reconciles concurrent inserts. ${accountExportBudget}`,
         parameters: [
           {
             name: 'cursor',
@@ -178,8 +179,7 @@ export const openApiDocument = {
     '/v1/account/export': {
       get: {
         ...operation(completionExportPageSchema),
-        description:
-          'Owner-only data export, available without paid access. Follow nextCursor until null; pages contain up to 50 completion records without private journal fields in ID order. Each page is read in an owner transaction; concurrent changes on other devices may be reflected between pages. No credentials, session tokens or diagnostics are returned.',
+        description: `Owner-only data export, available without paid access. Follow nextCursor until null; pages contain up to 50 completion records without private journal fields in ID order. Each page is read in an owner transaction; concurrent changes on other devices may be reflected between pages. No credentials, session tokens or diagnostics are returned. ${accountExportBudget}`,
         parameters: [
           {
             name: 'cursor',
@@ -220,6 +220,7 @@ export const openApiDocument = {
           attempts.completionAttemptResultSchema,
           attempts.createAttemptSchema,
         ),
+        description: accountWriteBudget,
         responses: {
           ...operation(
             attempts.completionAttemptResultSchema,
