@@ -281,6 +281,18 @@ test('native steps pin EAS, preflight the preview environment and never auto-sub
 
 test('native compilation uses the standard stable macOS runner and explicit supported tools', () => {
   const beta = workflow.split(/^ {2}beta:$/m)[1];
+  const beforeSteps = beta.split(/^ {4}steps:$/m)[0];
+  // runner is unavailable in job-level env; GitHub rejects the entire workflow.
+  assert.doesNotMatch(beforeSteps, /\$\{\{\s*runner[.[]/);
+  const build = step('Build signed beta on GitHub without uploading');
+  assert.match(
+    build,
+    /EAS_LOCAL_BUILD_WORKINGDIR: \$\{\{ runner.temp \}\}\/justgo-beta-private\/work/,
+  );
+  assert.match(
+    build,
+    /EAS_LOCAL_BUILD_ARTIFACTS_DIR: \$\{\{ runner.temp \}\}\/justgo-beta-artifact/,
+  );
   assert.match(beta, /^ {4}runs-on: macos-26$/m);
   assert.match(
     beta,

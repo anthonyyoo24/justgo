@@ -84,6 +84,27 @@ test('static checks retain fresh route typechecking and audit only API productio
   );
 });
 
+test('static CI checks workflow syntax and context availability with a checksum-pinned validator', () => {
+  const validator = jobs.static.match(
+    / {6}- name: Validate GitHub workflow definitions\n([\s\S]*?)(?= {6}- uses:)/,
+  )?.[1];
+  assert.ok(validator);
+  assert.match(
+    validator,
+    /https:\/\/github.com\/rhysd\/actionlint\/releases\/download\/v1\.7\.12\/actionlint_1\.7\.12_linux_amd64.tar.gz/,
+  );
+  assert.match(
+    validator,
+    /8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8/,
+  );
+  assert.match(validator, /sha256sum --check/);
+  assert.match(
+    validator,
+    /"\$RUNNER_TEMP\/actionlint" -shellcheck= -pyflakes=/,
+  );
+  assert.doesNotMatch(validator, /\|\|\s*true|continue-on-error/);
+});
+
 test('unit and database suites run once and API coverage merges without rerunning tests', () => {
   assert.deepEqual(commands(jobs.unit), [
     'npm run test:coverage -w @justgo/mobile',

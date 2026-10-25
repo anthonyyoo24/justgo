@@ -106,8 +106,6 @@ jobs:
       EXPO_PUBLIC_SENTRY_ENABLED: 'false'
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       FASTLANE_SKIP_UPDATE_CHECK: '1'
-      EAS_LOCAL_BUILD_WORKINGDIR: ${{ runner.temp }}/justgo-beta-private/work
-      EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ runner.temp }}/justgo-beta-artifact
     steps:
       - name: Recheck beta approval protection
         shell: bash
@@ -157,6 +155,8 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           TMPDIR: ${{ runner.temp }}/justgo-beta-private
+          EAS_LOCAL_BUILD_WORKINGDIR: ${{ runner.temp }}/justgo-beta-private/work
+          EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ runner.temp }}/justgo-beta-artifact
         # Managed credentials are fetched into the disposable runner. Freeze them
         # so an automated build cannot repair/replace Apple signing credentials.
         run: |
