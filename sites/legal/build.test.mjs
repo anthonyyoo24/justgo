@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
-import { parseDocument, renderMarkdown, renderSite } from './build.mjs';
+import {
+  buildSite,
+  parseDocument,
+  renderMarkdown,
+  renderSite,
+} from './build.mjs';
 
 const version = 'privacy-preview-v1';
 const termsVersion = 'terms-preview-v2';
@@ -205,11 +212,20 @@ test('generates only Privacy and Terms documents, with Privacy at the base addre
     assert.match(html, /<main id="content" tabindex="-1">/);
     assert.doesNotMatch(
       html,
-      /<script|<iframe|<img|<form|src="https?:|JustGO legal documents|For support or privacy questions|class="document-links"/i,
+      /<script|<iframe|<form|src="https?:|JustGO legal documents|For support or privacy questions|class="document-links"/i,
     );
     const header = /<header\b[^>]*>([\s\S]*?)<\/header>/.exec(html)?.[1];
     assert.ok(header);
     assert.match(header, /JustGO/);
+    assert.match(
+      header,
+      /<img class="brand-mark" src="\/assets\/justgo-mark\.png" width="425" height="234" alt="">/,
+    );
+    assert.deepEqual(
+      [...html.matchAll(/<img\b[^>]*src="([^"]+)"/g)].map((match) => match[1]),
+      ['/assets/justgo-mark.png'],
+    );
+    assert.match(html, /img-src 'self'/);
     assert.doesNotMatch(header, /<nav|<a\b/);
     for (const [, href] of html.matchAll(/href="([^"]+)"/g))
       assert.ok(destinations.has(href), `Unexpected destination: ${href}`);
@@ -217,6 +233,37 @@ test('generates only Privacy and Terms documents, with Privacy at the base addre
   assert.match(output.get('privacy/index.html'), /<h1>Privacy Policy<\/h1>/);
   assert.match(output.get('terms/index.html'), /<h1>Terms of Use<\/h1>/);
   assert.match(output.get('terms/index.html'), /href="\/privacy\/"/);
+});
+
+test('builds a self-contained reader with the original brand asset on every document route', async (context) => {
+  const outputDirectory = await mkdtemp(
+    path.join(os.tmpdir(), 'justgo-legal-'),
+  );
+  context.after(() => rm(outputDirectory, { recursive: true, force: true }));
+  await buildSite({ outputDirectory });
+  assert.deepEqual((await readdir(outputDirectory)).sort(), [
+    'assets',
+    'index.html',
+    'privacy',
+    'styles.css',
+    'terms',
+  ]);
+  const original = await readFile(
+    new URL('../../apps/mobile/assets/brand/justgo-mark.png', import.meta.url),
+  );
+  assert.deepEqual(
+    await readFile(path.join(outputDirectory, 'assets/justgo-mark.png')),
+    original,
+  );
+  for (const route of [
+    'index.html',
+    'privacy/index.html',
+    'terms/index.html',
+  ]) {
+    const html = await readFile(path.join(outputDirectory, route), 'utf8');
+    assert.match(html, /src="\/assets\/justgo-mark\.png"/);
+    assert.match(html, /style-src 'self'; img-src 'self'/);
+  }
 });
 
 test('keeps review status, version labels and effective-date metadata out of rendered pages while retaining publication checks', () => {

@@ -60,8 +60,18 @@ footer {
 }
 
 .site-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   padding-block: 1.6rem;
   border-bottom: 1px solid var(--line);
+}
+
+.brand-mark {
+  display: block;
+  width: 3.5rem;
+  height: auto;
+  flex-shrink: 0;
 }
 
 .wordmark {

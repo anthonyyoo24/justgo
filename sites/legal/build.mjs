@@ -178,14 +178,14 @@ function page({ title, content, production }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${production ? '' : '<meta name="robots" content="noindex,nofollow">'}
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>${escapeHtml(title)} · JustGO</title>
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <a class="skip-link" href="#content">Skip to content</a>
-<header class="site-header"><span class="wordmark">JustGO</span></header>
+<header class="site-header"><img class="brand-mark" src="/assets/justgo-mark.png" width="425" height="234" alt=""><span class="wordmark">JustGO</span></header>
 <main id="content" tabindex="-1">${content}</main>
 <footer><p>JustGO</p><nav aria-label="Legal documents"><a href="/privacy/">Privacy Policy</a><a href="/terms/">Terms of Use</a></nav></footer>
 </body>
@@ -216,22 +216,33 @@ export function renderSite({ privacySource, termsSource, production = false }) {
   ]);
 }
 
-export async function buildSite({ production = false } = {}) {
-  const [privacySource, termsSource, stylesheet] = await Promise.all([
-    readFile(
-      path.join(repositoryDirectory, 'docs/legal/PRIVACY_POLICY_DRAFT.md'),
-      'utf8',
-    ),
-    readFile(
-      path.join(repositoryDirectory, 'docs/legal/TERMS_DRAFT.md'),
-      'utf8',
-    ),
-    readFile(path.join(siteDirectory, 'styles.css'), 'utf8'),
-  ]);
+export async function buildSite({
+  production = false,
+  outputDirectory = path.join(siteDirectory, 'dist'),
+} = {}) {
+  const [privacySource, termsSource, stylesheet, brandMark] = await Promise.all(
+    [
+      readFile(
+        path.join(repositoryDirectory, 'docs/legal/PRIVACY_POLICY_DRAFT.md'),
+        'utf8',
+      ),
+      readFile(
+        path.join(repositoryDirectory, 'docs/legal/TERMS_DRAFT.md'),
+        'utf8',
+      ),
+      readFile(path.join(siteDirectory, 'styles.css'), 'utf8'),
+      readFile(
+        path.join(
+          repositoryDirectory,
+          'apps/mobile/assets/brand/justgo-mark.png',
+        ),
+      ),
+    ],
+  );
   // Validate both source documents before replacing any previous preview output.
   const output = renderSite({ privacySource, termsSource, production });
   output.set('styles.css', stylesheet);
-  const outputDirectory = path.join(siteDirectory, 'dist');
+  output.set('assets/justgo-mark.png', brandMark);
   await rm(outputDirectory, { recursive: true, force: true });
   for (const [relativePath, contents] of output) {
     const destination = path.join(outputDirectory, relativePath);
