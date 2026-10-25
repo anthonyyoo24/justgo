@@ -9,10 +9,12 @@ Run `npm run build:legal` from the repository root. The ignored output lives in
 `sites/legal/dist/`, with `/privacy/` and `/terms/` document pages. The base address
 renders the same Privacy Policy; there is no separate Legal landing page or top
 tab bar. Pages show the document text with cross-document links in the footer.
-The header pairs the existing navy GO mark with the JustGO name. The build copies
-the original transparent mark into `dist/assets/`, so the logo loads from the
-same site without an external image service. Its empty alternative text avoids
-repeating the adjacent JustGO name for screen readers.
+The header places the navy GO mark at the page's left edge and the JustGO name
+at the right, outside the narrower reading column on wide screens. Responsive
+insets keep both visible on small screens. The build copies the original
+transparent mark into `dist/assets/`, so the logo loads from the same site without
+an external image service. Its empty alternative text avoids repeating the
+visible JustGO name for screen readers.
 Approval status, internal version labels and pending effective dates remain in
 the source files and build validation, without appearing in the reader.
 The site remains local and unpublished until hosting is authorized.
