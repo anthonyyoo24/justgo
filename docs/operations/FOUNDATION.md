@@ -191,13 +191,19 @@ deletion/revocation records and redeemed transfers. Disable by job name through
 new finding; the pre-existing leaked-password-protection warning remains, while
 the app uses Apple/Google sign-in.
 
-The local API candidate adds independent per-account write/export budgets,
-defaulting to 600 requests per ten minutes through `ACTIVITY_WRITE_RATE_LIMIT`
-and `ACCOUNT_EXPORT_RATE_LIMIT`. Completion, journal and restore batches share
+The API has independent per-account write/export budgets, with source defaults
+of 600 new-write batches and 3,000 page reads per ten minutes through
+`ACTIVITY_WRITE_RATE_LIMIT` and `ACCOUNT_EXPORT_RATE_LIMIT`. The read allowance
+covers two full enumerations of the client's 50,000 combined completion/version
+record limit (up to 1,001 pages each at the default page size), as needed around
+an import, plus bounded read/retry headroom. Explicit lower operator overrides
+can interrupt large-history synchronization and should be measured deliberately.
+Completion, journal and restore batches share
 the write budget; accepted identical retries remain available. Limits reuse
 durable HMAC buckets inside the existing owner transaction, including pool size
 one. Failed batches roll back counters and deletion remains reachable. The
-source is tested locally but not deployed; tune from measured beta traffic.
+deployment evidence is recorded on [PR #49](https://github.com/anthonyyoo24/justgo/pull/49);
+publish the matching revision and tune from measured beta traffic.
 
 The prepared `.github/workflows/staging-health.yml` probes only the public
 staging `/ready` about every five minutes, without credentials, checkout or

@@ -132,7 +132,7 @@ export class IdentityService {
     const limit =
       lane === 'write'
         ? (this.options.activityWriteRateLimit ?? 600)
-        : (this.options.accountExportRateLimit ?? 600);
+        : (this.options.accountExportRateLimit ?? 3000);
     this.requireRateBudget(
       await this.rateBucket(tx, userId, `account-${lane}`),
       limit,

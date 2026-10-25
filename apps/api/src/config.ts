@@ -47,7 +47,8 @@ const configSchema = z.object({
     .int()
     .min(1)
     .max(10000)
-    .default(600),
+    // Full-history sync/import can enumerate the 50,000-record client limit twice.
+    .default(3000),
 });
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {
