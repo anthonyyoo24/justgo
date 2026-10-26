@@ -36,6 +36,21 @@ async function scrollToRep(page: Page, number: number) {
     })
     .toBe(true);
 }
+async function expectRowAtViewportBottom(page: Page, number: number) {
+  await expect
+    .poll(async () => {
+      const row = page.getByRole('button', {
+        name: new RegExp(`Rep ${number}\\.`),
+      });
+      const [entry, viewport] = await Promise.all([
+        row.locator('..').boundingBox(),
+        page.getByTestId('day-sheet-entry-list').boundingBox(),
+      ]);
+      if (!entry || !viewport || entry.y < viewport.y - 1) return Infinity;
+      return Math.abs(entry.y + entry.height - viewport.y - viewport.height);
+    })
+    .toBeLessThanOrEqual(1);
+}
 test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline Add/Edit reflection', async ({
   page,
   fixtureDatabase,
@@ -146,6 +161,7 @@ test('a tall day sheet reveals all nine entries without scrolling', async ({
       .getByTestId('day-sheet-entry-list')
       .evaluate((element) => element.scrollTop),
   ).toBe(0);
+  await expectRowAtViewportBottom(page, 9);
 });
 
 test('41 attempts keep an unfinished inline reflection while scrolling and saving', async ({
@@ -157,6 +173,12 @@ test('41 attempts keep an unfinished inline reflection while scrolling and savin
   await page.reload();
   await progress(page, 41);
   await openToday(page, 41);
+  await page
+    .getByRole('button', { name: 'Resize day details', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Resize day details', exact: true }),
+  ).toHaveAttribute('aria-expanded', 'true');
   await page.getByRole('button', { name: /Rep 1\..*Add reflection/ }).click();
   const input = page.getByLabel('Your day reflection', { exact: true });
   await input.fill('Disposable 41-attempt draft.');
@@ -191,6 +213,169 @@ test('41 attempts keep an unfinished inline reflection while scrolling and savin
       )
     ).rows,
   ).toEqual([]);
+});
+
+test('handle dragging keeps the chosen height and only X or overlay can request dismissal', async ({
+  page,
+}) => {
+  const current = await account(page);
+  await seed(page, current, 9);
+  await page.reload();
+  await progress(page, 9);
+  await openToday(page, 9);
+  const panel = page.getByTestId('day-sheet-panel');
+  const handle = page.getByTestId('day-sheet-handle');
+  const compact = (844 * 2) / 3;
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height)
+    .toBeCloseTo(compact, 0);
+  const grip = await handle.boundingBox();
+  if (!grip) throw new Error('Day sheet handle missing');
+  const x = grip.x + grip.width / 2;
+  const y = grip.y + grip.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - 100, { steps: 10 });
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(compact + 60);
+  await page.mouse.move(x, y - 280, { steps: 12 });
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height)
+    .toBeCloseTo(832, 0);
+  await scrollToRep(page, 9);
+  await page.getByTestId('day-sheet-entry-list').evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expectRowAtViewportBottom(page, 9);
+  const expandedGrip = await handle.boundingBox();
+  if (!expandedGrip) throw new Error('Expanded day sheet handle missing');
+  await page.mouse.move(x, expandedGrip.y + expandedGrip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, expandedGrip.y + expandedGrip.height / 2 + 250, {
+    steps: 12,
+  });
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height)
+    .toBeCloseTo(832 - 250, 0);
+  await scrollToRep(page, 9);
+  await page.getByRole('button', { name: /Rep 9\..*Add reflection/ }).click();
+  const input = page.getByLabel('Your day reflection', { exact: true });
+  await input.fill('Disposable draft retained after handle dismissal.');
+  const closeGrip = await handle.boundingBox();
+  if (!closeGrip) throw new Error('Day sheet handle missing during edit');
+  await page.mouse.move(x, closeGrip.y + closeGrip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, closeGrip.y + closeGrip.height / 2 + 120, {
+    steps: 10,
+  });
+  await page.mouse.up();
+  await expect(input).toHaveValue(
+    'Disposable draft retained after handle dismissal.',
+  );
+  await expect(
+    page.getByRole('heading', { name: 'Leave your reflection?', exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Close day details', exact: true })
+    .last()
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Leave your reflection?', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+  await expect(input).toHaveValue(
+    'Disposable draft retained after handle dismissal.',
+  );
+  await page
+    .getByTestId('day-sheet-backdrop')
+    .click({ position: { x: 8, y: 8 } });
+  await expect(
+    page.getByRole('heading', { name: 'Leave your reflection?', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Save reflection', exact: true })
+    .click();
+  await expect(input).toHaveCount(0);
+});
+
+test('four-attempt days fit their content and resist stretching into an empty expanded sheet', async ({
+  page,
+}) => {
+  const current = await account(page);
+  await seed(page, current, 4);
+  await page.reload();
+  await progress(page, 4);
+  await openToday(page, 4);
+  const panel = page.getByTestId('day-sheet-panel');
+  const handle = page.getByTestId('day-sheet-handle');
+  await expect(page.getByRole('button', { name: /Rep 4\./ })).toBeInViewport();
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height ?? Infinity)
+    .toBeLessThan((844 * 2) / 3);
+  await expectRowAtViewportBottom(page, 4);
+  const initial = await panel.boundingBox();
+  const grip = await handle.boundingBox();
+  if (!initial || !grip) throw new Error('Short day sheet missing');
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    grip.x + grip.width / 2,
+    grip.y + grip.height / 2 - 100,
+    { steps: 10 },
+  );
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(initial.height + 20);
+  expect((await panel.boundingBox())!.height).toBeLessThanOrEqual(
+    initial.height + 40,
+  );
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height)
+    .toBeCloseTo(initial.height, 0);
+  await expectRowAtViewportBottom(page, 4);
+  const returnedGrip = await handle.boundingBox();
+  if (!returnedGrip) throw new Error('Four-attempt handle missing');
+  const cx = returnedGrip.x + returnedGrip.width / 2;
+  const cy = returnedGrip.y + returnedGrip.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy + 25, { steps: 2 });
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height)
+    .toBeCloseTo(initial.height - 25, 0);
+  const smallerGrip = await handle.boundingBox();
+  if (!smallerGrip) throw new Error('Resizable four-attempt handle missing');
+  await page.mouse.move(cx, smallerGrip.y + smallerGrip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cx, smallerGrip.y + smallerGrip.height / 2 + 450, {
+    steps: 12,
+  });
+  await page.mouse.up();
+  const minimum = await panel.boundingBox();
+  if (!minimum) throw new Error('Dragging below minimum dismissed the sheet');
+  expect(minimum.height).toBeLessThan(initial.height - 100);
+  const minimumGrip = await handle.boundingBox();
+  if (!minimumGrip) throw new Error('Minimum-height handle missing');
+  await page.mouse.move(cx, minimumGrip.y + minimumGrip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cx, minimumGrip.y + minimumGrip.height / 2 + 60, {
+    steps: 6,
+  });
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await panel.boundingBox())?.height)
+    .toBeCloseTo(minimum.height, 0);
+  // The floor follows actual row/header wrapping, rather than a screen fraction.
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expectRowAtViewportBottom(page, 1);
+  }
 });
 
 test('bottom three reflection editors keep their field and actions inside a reduced viewport', async ({
@@ -233,14 +418,22 @@ test('bottom three reflection editors keep their field and actions inside a redu
           save.boundingBox(),
           cancel.boundingBox(),
         ]);
-        if (!viewport || !field || !saveButton || !cancelButton) return false;
-        return [field, saveButton, cancelButton].every(
-          (box) =>
-            box.y >= viewport.y - 1 &&
-            box.y + box.height <= viewport.y + viewport.height + 1,
-        );
+        if (!viewport || !field || !saveButton || !cancelButton)
+          return { visible: false, missing: true };
+        return {
+          visible: [field, saveButton, cancelButton].every(
+            (box) =>
+              box.y >= viewport.y - 1 &&
+              box.y + box.height <= viewport.y + viewport.height + 1,
+          ),
+          number,
+          viewport,
+          field,
+          saveButton,
+          cancelButton,
+        };
       })
-      .toBe(true);
+      .toMatchObject({ visible: true });
     await expect(input).toHaveValue(text);
     await save.click();
     await expect(input).toHaveCount(0);

@@ -212,8 +212,8 @@ it.each([400, 900])(
       expect(
         screen.queryByRole('button', { name: 'Try loading attempts again' }),
       ).toBeNull();
-      expect(screen.getByTestId('day-sheet-panel')).toHaveStyle({
-        minHeight: Math.min(470, height * 0.78),
+      expect(screen.getByTestId('day-sheet-size')).toHaveStyle({
+        height: Math.min(470, (height * 2) / 3, height - 12),
       });
       expect(
         StyleSheet.flatten(

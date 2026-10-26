@@ -318,7 +318,7 @@ it('keeps the marker behind the date and resizes it when the heading reflows', a
     StyleSheet.flatten(entryList.props.contentContainerStyle),
   ).toMatchObject({
     paddingRight: 12,
-    paddingBottom: 24,
+    paddingBottom: 0,
   });
 });
 

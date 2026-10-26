@@ -30,12 +30,16 @@ const nearEnd = {
 it('fills available space in measured batches without scrolling or reusing stale measurements', async () => {
   const onScroll = jest.fn();
   const onScrollOffsetChange = jest.fn();
+  const onContentLayout = jest.fn();
+  const onScrollBeginDrag = jest.fn();
   const screen = await render(
     <DayEntryList
       entries={entries(25)}
       renderEntry={renderEntry}
       onScroll={onScroll}
       onScrollOffsetChange={onScrollOffsetChange}
+      onContentLayout={onContentLayout}
+      onScrollBeginDrag={onScrollBeginDrag}
       footer={<Text>List footer</Text>}
     />,
   );
@@ -43,6 +47,7 @@ it('fills available space in measured batches without scrolling or reusing stale
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(8);
   await fireEvent(list, 'layout', layout(1000));
   await fireEvent(list, 'contentSizeChange', 390, 600);
+  expect(onContentLayout).toHaveBeenLastCalledWith(600, false);
   expect(screen.getAllByText(/^Entry \d+$/)).toHaveLength(16);
 
   // A resize must not reuse the old eight-row height for another batch.
@@ -62,9 +67,14 @@ it('fills available space in measured batches without scrolling or reusing stale
   expect(onScrollOffsetChange).toHaveBeenLastCalledWith(100);
   expect(screen.getByText('Entry 25')).toBeTruthy();
   expect(screen.getByText('List footer')).toBeTruthy();
+  await fireEvent(list, 'contentSizeChange', 390, 1600);
+  expect(onContentLayout).toHaveBeenLastCalledWith(1600, true);
   expect(onScroll).not.toHaveBeenCalled();
   await fireEvent.scroll(list, nearEnd);
   expect(onScroll).toHaveBeenCalledTimes(1);
+  expect(onScrollBeginDrag).not.toHaveBeenCalled();
+  await fireEvent(list, 'scrollBeginDrag');
+  expect(onScrollBeginDrag).toHaveBeenCalledTimes(1);
 });
 
 it('fills when content is measured before the viewport, including an exact fit', async () => {

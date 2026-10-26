@@ -15,7 +15,6 @@ import {
   Modal,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -40,6 +39,8 @@ import {
   DayReflectionViewport,
   useDayReflectionKeyboard,
 } from './useDayReflectionKeyboard';
+import { useDaySheetDrag } from './sheet-motion/useDaySheetDrag';
+import { DaySheetHandle } from './sheet-motion/DaySheetHandle';
 export type ProgressDay = {
   date: string;
   totalReps: number | null;
@@ -226,19 +227,16 @@ export function DaySheet({
     () => (beforeClose ? beforeClose(animateClose) : animateClose()),
     [beforeClose, animateClose],
   );
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_event, gesture) =>
-          gesture.dy > 12 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
-        onPanResponderRelease: (_event, gesture) => {
-          if (gesture.dy > 90 || gesture.vy > 0.8) {
-            close();
-          }
-        },
-      }),
-    [close],
-  );
+  const drag = useDaySheetDrag({
+    visible: date !== null,
+    windowHeight: height,
+    topInset: insets?.top ?? 0,
+    bottomInset: insets?.bottom ?? 0,
+    keyboardVisible: keyboard.keyboardVisible,
+    fallbackHeight: connectionRequired || error ? 470 : 360,
+    hasMore,
+    reduceMotion,
+  });
   const loadNearEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!day || !hasMore || fetching || loadMoreError || !onLoadMore) return;
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -252,6 +250,7 @@ export function DaySheet({
     onLoadMore();
   };
   const canEdit = !!onEditReflection;
+  const { onFirstRowHeightChange } = drag;
   const renderEntry = useCallback(
     ({ item: entry, index }: { item: ProgressEntry; index: number }) => (
       <ProgressEntryRow
@@ -266,6 +265,7 @@ export function DaySheet({
           editingId === entry.attemptId ? editorOpened : undefined
         }
         onToggle={toggleEntry}
+        onSummaryHeightChange={index === 0 ? onFirstRowHeightChange : undefined}
       />
     ),
     [
@@ -277,6 +277,7 @@ export function DaySheet({
       visibleEditor,
       editorOpened,
       toggleEntry,
+      onFirstRowHeightChange,
     ],
   );
   return (
@@ -292,10 +293,7 @@ export function DaySheet({
         {topAccessory}
         <KeyboardAvoidingView
           testID="day-sheet-keyboard-viewport"
-          style={[
-            styles.modalRoot,
-            keyboard.keyboardVisible && { paddingTop: insets?.top ?? 0 },
-          ]}
+          style={[styles.modalRoot, { paddingTop: insets?.top ?? 0 }]}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <Pressable
@@ -305,137 +303,157 @@ export function DaySheet({
             onPress={close}
             style={[styles.backdrop, !backdropVisible && styles.backdropHidden]}
           />
-          <AnimatedSafeAreaView
-            testID="day-sheet-panel"
-            onLayout={open}
-            edges={['bottom']}
-            style={[
-              styles.sheet,
-              keyboard.keyboardVisible && styles.keyboardSheet,
-              (connectionRequired || error) &&
-                !day && { minHeight: Math.min(470, height * 0.78) },
-              { transform: [{ translateY: sheetOffset }] },
-            ]}
+          <View
+            testID="day-sheet-space"
+            pointerEvents="box-none"
+            onLayout={drag.onAvailableLayout}
+            style={styles.sheetSpace}
           >
-            <View {...responder.panHandlers} style={styles.handleArea}>
-              <View style={styles.handle} />
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close day details"
-              onPress={close}
-              style={styles.close}
+            <AnimatedSafeAreaView
+              testID="day-sheet-panel"
+              onLayout={open}
+              edges={['bottom']}
+              style={[
+                styles.sheet,
+                { transform: [{ translateY: sheetOffset }] },
+              ]}
             >
-              <Text style={styles.closeText}>×</Text>
-            </Pressable>
-            {date && <DayHeading date={date} />}
-            {day && (
-              <Text style={styles.repCount}>
-                {day.totalReps === null
-                  ? 'Saved journal · Challenge count unavailable'
-                  : `${day.totalReps} ${day.totalReps === 1 ? 'rep' : 'reps'}`}
-              </Text>
-            )}
-            {connectionRequired ? (
-              <ScrollView
-                testID="day-offline-state"
-                style={styles.offlineScroll}
-                contentContainerStyle={styles.offlineState}
+              {/* Keep JS-driven layout sizing off the native entrance/exit host. */}
+              <Animated.View
+                testID="day-sheet-size"
+                style={{ height: drag.height }}
               >
-                <DisconnectedPlugs />
-                <Text
-                  accessibilityRole="alert"
-                  style={styles.initialErrorTitle}
-                >
-                  You're currently offline
-                </Text>
-                <Text style={styles.initialErrorBody}>
-                  Connect to the internet to view this day’s activity.
-                </Text>
-              </ScrollView>
-            ) : loading && !day ? (
-              <View style={styles.state}>
-                <ActivityIndicator
-                  accessibilityLabel="Loading day details"
-                  color={colors.ink}
-                />
-                <Text style={styles.stateText}>Loading this day…</Text>
-              </View>
-            ) : error && !day ? (
-              <View testID="day-initial-error" style={styles.initialError}>
-                <DisconnectedPlugs />
-                <Text
-                  accessibilityRole="alert"
-                  style={styles.initialErrorTitle}
-                >
-                  Couldn’t load attempts
-                </Text>
-                <Text style={styles.initialErrorBody}>
-                  We couldn’t get your challenge attempts. Please try again.
-                </Text>
-                {onRetry && (
+                <View onLayout={drag.onHeaderLayout} testID="day-sheet-header">
+                  <DaySheetHandle controls={drag} />
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Try loading attempts again"
-                    onPress={onRetry}
-                    style={styles.initialRetry}
+                    accessibilityLabel="Close day details"
+                    onPress={close}
+                    style={styles.close}
                   >
-                    <RetryArrow />
-                    <Text style={styles.initialRetryText}>Try again</Text>
+                    <Text style={styles.closeText}>×</Text>
                   </Pressable>
-                )}
-              </View>
-            ) : day ? (
-              <DayReflectionViewport.Provider value={keyboard.viewportHeight}>
-                <DayEntryList
-                  key={date}
-                  entries={day.entries}
-                  renderEntry={renderEntry}
-                  scrollRef={keyboard.attachScrollView}
-                  onViewportLayout={keyboard.onViewportLayout}
-                  onScrollOffsetChange={keyboard.onScrollOffsetChange}
-                  onScroll={loadNearEnd}
-                  footer={
-                    loadMoreError ? (
-                      <View
-                        testID="day-load-more-error"
-                        style={styles.moreErrorState}
+                  {date && <DayHeading date={date} />}
+                  {day && (
+                    <Text style={styles.repCount}>
+                      {day.totalReps === null
+                        ? 'Saved journal · Challenge count unavailable'
+                        : `${day.totalReps} ${day.totalReps === 1 ? 'rep' : 'reps'}`}
+                    </Text>
+                  )}
+                </View>
+                {connectionRequired ? (
+                  <ScrollView
+                    testID="day-offline-state"
+                    style={styles.offlineScroll}
+                    contentContainerStyle={styles.offlineState}
+                  >
+                    <DisconnectedPlugs />
+                    <Text
+                      accessibilityRole="alert"
+                      style={styles.initialErrorTitle}
+                    >
+                      You're currently offline
+                    </Text>
+                    <Text style={styles.initialErrorBody}>
+                      Connect to the internet to view this day’s activity.
+                    </Text>
+                  </ScrollView>
+                ) : loading && !day ? (
+                  <View style={styles.state}>
+                    <ActivityIndicator
+                      accessibilityLabel="Loading day details"
+                      color={colors.ink}
+                    />
+                    <Text style={styles.stateText}>Loading this day…</Text>
+                  </View>
+                ) : error && !day ? (
+                  <ScrollView
+                    testID="day-initial-error"
+                    style={styles.offlineScroll}
+                    contentContainerStyle={styles.initialError}
+                  >
+                    <DisconnectedPlugs />
+                    <Text
+                      accessibilityRole="alert"
+                      style={styles.initialErrorTitle}
+                    >
+                      Couldn’t load attempts
+                    </Text>
+                    <Text style={styles.initialErrorBody}>
+                      We couldn’t get your challenge attempts. Please try again.
+                    </Text>
+                    {onRetry && (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Try loading attempts again"
+                        onPress={onRetry}
+                        style={styles.initialRetry}
                       >
-                        <Text
-                          accessibilityRole="alert"
-                          style={styles.moreError}
-                        >
-                          Couldn’t load more attempts
-                        </Text>
-                        {onRetry && (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Try loading more attempts again"
-                            onPress={onRetry}
-                            style={styles.moreRetry}
+                        <RetryArrow />
+                        <Text style={styles.initialRetryText}>Try again</Text>
+                      </Pressable>
+                    )}
+                  </ScrollView>
+                ) : day ? (
+                  <DayReflectionViewport.Provider
+                    value={keyboard.viewportHeight}
+                  >
+                    <DayEntryList
+                      key={date}
+                      entries={day.entries}
+                      renderEntry={renderEntry}
+                      scrollRef={keyboard.attachScrollView}
+                      onViewportLayout={keyboard.onViewportLayout}
+                      onScrollOffsetChange={keyboard.onScrollOffsetChange}
+                      onContentLayout={drag.onContentLayout}
+                      onScrollBeginDrag={keyboard.cancelReveal}
+                      onScroll={loadNearEnd}
+                      footer={
+                        loadMoreError ? (
+                          <View
+                            testID="day-load-more-error"
+                            style={styles.moreErrorState}
                           >
-                            <RetryArrow color={colors.ink} />
-                            <Text style={styles.moreRetryText}>Try again</Text>
-                          </Pressable>
-                        )}
-                      </View>
-                    ) : loadingMore ? (
-                      <View
-                        testID="day-loading-more"
-                        style={styles.moreLoading}
-                      >
-                        <ActivityIndicator
-                          accessibilityLabel="Loading more attempts"
-                          color={colors.ink}
-                          size="small"
-                        />
-                      </View>
-                    ) : null
-                  }
-                />
-              </DayReflectionViewport.Provider>
-            ) : null}
-          </AnimatedSafeAreaView>
+                            <Text
+                              accessibilityRole="alert"
+                              style={styles.moreError}
+                            >
+                              Couldn’t load more attempts
+                            </Text>
+                            {onRetry && (
+                              <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Try loading more attempts again"
+                                onPress={onRetry}
+                                style={styles.moreRetry}
+                              >
+                                <RetryArrow color={colors.ink} />
+                                <Text style={styles.moreRetryText}>
+                                  Try again
+                                </Text>
+                              </Pressable>
+                            )}
+                          </View>
+                        ) : loadingMore ? (
+                          <View
+                            testID="day-loading-more"
+                            style={styles.moreLoading}
+                          >
+                            <ActivityIndicator
+                              accessibilityLabel="Loading more attempts"
+                              color={colors.ink}
+                              size="small"
+                            />
+                          </View>
+                        ) : null
+                      }
+                    />
+                  </DayReflectionViewport.Provider>
+                ) : null}
+              </Animated.View>
+            </AnimatedSafeAreaView>
+          </View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -454,6 +472,7 @@ const styles = StyleSheet.create({
   repCount: { ...typography.body, color: '#6B809B', marginTop: 8 },
   stateText: { ...typography.body, color: colors.ink, textAlign: 'center' },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
+  sheetSpace: { flex: 1, justifyContent: 'flex-end' },
   backdrop: {
     position: 'absolute',
     top: 0,
@@ -468,17 +487,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 23,
-    maxHeight: '78%',
-    minHeight: 360,
+    maxHeight: '100%',
+    minHeight: 0,
   },
-  keyboardSheet: { maxHeight: '100%', minHeight: 0 },
-  handleArea: {
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 10,
-  },
-  handle: { width: 52, height: 6, borderRadius: 3, backgroundColor: '#DDDAD6' },
   close: {
     position: 'absolute',
     right: 8,
@@ -495,7 +506,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     lineHeight: 40,
   },
-  dayHeading: { paddingTop: 10, paddingRight: 20, paddingBottom: 14 },
+  dayHeading: { paddingRight: 20, paddingBottom: 14 },
   dayTitleLayer: { zIndex: 1 },
   dayTitle: {
     fontFamily: fontFamilies.editorial,

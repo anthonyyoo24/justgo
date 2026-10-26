@@ -740,6 +740,24 @@ This table was moved from the plan. Resolve open entries before dependent work; 
 | Apple account & offer           | Apple setup from 01; billing in post-beta 07A | Enrollment, bundle ID/app record and signing start early. Configure subscription products and RevenueCat mapping after the free beta, during 07A; settle offer/paywall rules before billing validation.                                   |
 | Supporting designs & formatting | Relevant phase                                | Home color variants, remaining Settings controls, Phase 08 haptic preferences, duration rounding and outstanding small-screen/accessibility design states. See the owning phase and handoff before treating an older design note as open. |
 
+## October 26 day-sheet resizing
+
+Anthony selected continuous resizing from the top grip. Open short days at their
+content height and longer days around two-thirds of the screen. Keep the released
+height within a minimum showing the complete first attempt row and a
+content/safe-area maximum; cap short days
+without stretching them into mostly empty space. Scroll challenge rows inside the
+sheet independently. Measure the first summary row and its padding for the
+minimum, adapting to wrapped/scaled text. Allow light upward stretching beyond
+short content before returning to its content height on release.
+
+Only the overlay and X are sheet dismissal controls. Dragging downward shrinks the
+sheet until its minimum, and cannot close it regardless of distance or speed.
+Retain dirty-reflection confirmation on dismissal. With the keyboard open, a
+downward grip gesture hides the keyboard first and preserves the editor and chosen
+height. This replaces the earlier proposed drag-to-dismiss behavior and does not
+close the existing physical-device/accessibility release gates.
+
 ## October 26 separate iPhone development app
 
 Anthony selected a separate **JustGO Dev** app alongside TestFlight, built on

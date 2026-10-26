@@ -28,6 +28,8 @@ export function DayEntryList({
   scrollRef,
   onViewportLayout,
   onScrollOffsetChange,
+  onContentLayout,
+  onScrollBeginDrag,
 }: {
   entries: ProgressEntry[];
   renderEntry: (item: { item: ProgressEntry; index: number }) => ReactNode;
@@ -36,6 +38,8 @@ export function DayEntryList({
   scrollRef?: Ref<ScrollViewInstance>;
   onViewportLayout?: (event: LayoutChangeEvent) => void;
   onScrollOffsetChange?: (y: number) => void;
+  onContentLayout?: (height: number, complete: boolean) => void;
+  onScrollBeginDrag?: () => void;
 }) {
   const [visibleCount, setVisibleCount] = useState(rowBatch);
   const fillingAhead = useRef(false);
@@ -45,13 +49,14 @@ export function DayEntryList({
   const measureContent = useCallback(
     (_: number, height: number) => {
       const rows = Math.min(visibleCount, entries.length);
+      onContentLayout?.(height, rows === entries.length);
       setContent((measured) =>
         measured.height === height && measured.rows === rows
           ? measured
           : { height, rows },
       );
     },
-    [entries.length, visibleCount],
+    [entries.length, visibleCount, onContentLayout],
   );
   useLayoutEffect(() => {
     const appended = entries.length > previousLength.current;
@@ -77,6 +82,7 @@ export function DayEntryList({
       contentContainerStyle={styles.entries}
       scrollEventThrottle={16}
       keyboardShouldPersistTaps="handled"
+      onScrollBeginDrag={onScrollBeginDrag}
       onLayout={(event) => {
         setViewportHeight(event.nativeEvent.layout.height);
         onViewportLayout?.(event);
@@ -111,5 +117,5 @@ export function DayEntryList({
 
 const styles = StyleSheet.create({
   scroll: { marginTop: 12 },
-  entries: { paddingRight: 12, paddingBottom: 24 },
+  entries: { paddingRight: 12, paddingBottom: 0 },
 });
