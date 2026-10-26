@@ -227,8 +227,9 @@ upgrade or provider contact was performed.
 
 The separate [JustGO Dev workflow](DEVELOPMENT_BUILDS.md) owns the current
 side-by-side physical-phone setup and `npm run dev:mobile` launcher. Its separate
-provider/signing configuration and first GitHub-built installation are pending;
-historical same-identifier binaries below are not that app.
+provider/signing configuration is recorded in that guide; the first GitHub-built
+installation awaits owner review/merge. Historical same-identifier binaries below
+are not that app.
 
 The [design guide](../design/DESIGN.md), `design/source/` and asset README record Paper provenance, editable-source measurements and raster-only uncertainty. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.
 

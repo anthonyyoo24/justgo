@@ -80,6 +80,10 @@ owner approval, and shares signing concurrency with the beta job. No new
 repository-wide token or paid/larger runner is needed. It inspects actual signed
 identity, ad hoc provisioning, native launchers, callbacks, Keychain, CloudKit,
 Apple permissions, fonts and icon without logging device IDs or profile contents.
+EAS itself prints device identifiers during ad hoc credential preparation. Before
+that command, the workflow reads registered devices into its private temporary
+folder and masks their identifiers/names in GitHub. Missing, malformed or capped
+device lists stop before the signing summary; the existing cleanup removes the file.
 
 `manifest.json` records the source/tag, workflow/run/attempt and IPA SHA-256/size.
 The exact file is verified again before `eas upload`. `install.json` must contain
@@ -118,12 +122,36 @@ differs from the **installation** QR. Ordinary UI/JS changes reload; native
 module/configuration changes require another Dev binary. Restart with `--clear`
 after configuration/module-path changes and verify the iOS manifest's LAN host.
 
+## Configured account prerequisites
+
+The October 26 setup registered the Dev App ID under the existing team and grouped
+its Apple sign-in identity with the original primary app. Supabase Apple retains
+the original audience and now also accepts the Dev bundle. The dedicated Google
+client **JustGO Dev iPhone** is registered for that bundle/team in `justgo-512319`;
+Supabase retains the web client first and original iOS client, with the Dev client
+appended. Existing provider secrets, email options and nonce settings are unchanged.
+Console readback and the public Auth settings endpoint confirm configured
+providers; actual native sign-in is still unverified.
+
+The separate container is assigned only to the Dev App ID. The existing schema
+definitions were imported without records and deployed to its Production
+environment. Production readback confirms `JustGoValue.value` is Encrypted String;
+both custom types grant only creator writes, with no public custom-type access.
+The original app/container were preserved.
+
+Ad hoc profile `6934C4555G` is active for the Dev bundle and the existing registered
+iPhone, using the existing distribution certificate `GTLA7CW372`. EAS reports all
+credentials ready. Only the development environment was updated; before/after
+comparisons verified preview and production variables unchanged. The remote and
+pulled local Dev public configurations pass preflight. Keep the new signing
+profile separate from the TestFlight profile; freeze credentials during builds.
+
 ## Acceptance still required
 
-The local implementation prepares the workflow. This task has not saved a new
-Dev App ID, Google client, CloudKit schema/profile or Auth audience. Git publication
-and the first hosted Dev compile/upload are pending. Record the actual build/run,
-inspected digest and installation URL after success. Verify side-by-side install,
-both providers' first/returning sign-in/cancellation, retained TestFlight data,
-Dev-container iCloud round trip and live Metro on the phone. Plugin introspection
-and browser previews do not establish native acceptance or close Phase 14 gates.
+[PR #54](https://github.com/anthonyyoo24/justgo/pull/54) publishes the workflow for
+owner review. The first hosted Dev compile/upload awaits that review and separate
+merge approval. Record the actual build/run, inspected digest and installation URL
+after success. Verify side-by-side install, both providers' first/returning
+sign-in/cancellation, retained TestFlight data, Dev-container iCloud round trip and
+live Metro on the phone. Account configuration, plugin introspection and browser
+previews do not establish native acceptance or close Phase 14 gates.

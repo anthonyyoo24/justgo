@@ -755,7 +755,7 @@ Compile through EAS local builds with frozen managed credentials and upload the
 inspected exact IPA through `eas upload` for its installation link. Hosting uses
 the separate uploaded-build allowance; no Expo cloud compilation or TestFlight
 submission occurs. Native callback/entitlement inspection and explicit Metro
-environment isolation protect the app boundary. Account setup, Git publication,
-the first hosted build and physical acceptance remain pending under the
+environment isolation protect the app boundary. The first hosted build and
+physical acceptance remain pending under the
 [development-build procedure](operations/DEVELOPMENT_BUILDS.md). Existing owner
 review, Git permissions and Phase 14 release gates remain in force.

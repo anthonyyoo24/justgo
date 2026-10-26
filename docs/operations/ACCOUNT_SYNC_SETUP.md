@@ -1,5 +1,11 @@
 # Optional accounts and cloud synchronization setup
 
+The separate [JustGO Dev setup](DEVELOPMENT_BUILDS.md) now uses its own native app,
+Google iOS client and CloudKit container with the same staging API/Auth. Both
+native app audiences are accepted; the original provider settings are retained.
+EAS development now belongs to the separate Dev app, while preview retains the
+TestFlight inputs. The original Phase 13 setup/build records below are historical.
+
 This is the operator checklist for Phase 13. The owner authorized the current
 staging provider/API setup and a compatible internal development build. Git
 publication, public distribution, purchases and scheduling retain their separate
