@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useContext,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -25,13 +26,20 @@ import {
 } from 'react-native';
 import { useSheetMotion } from '../../../platform/modals/useSheetMotion';
 import { useReduceMotion } from '../../../platform/motion/motion';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  SafeAreaInsetsContext,
+} from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import type { ProgressEntry } from '../types';
 import { colors, fontFamilies, typography } from '../../../theme/tokens';
 import { dayLabel } from '../calendar-dates';
 import { ProgressEntryRow } from './entries/ProgressEntryRow';
 import { DayEntryList } from './entries/DayEntryList';
+import {
+  DayReflectionViewport,
+  useDayReflectionKeyboard,
+} from './useDayReflectionKeyboard';
 export type ProgressDay = {
   date: string;
   totalReps: number | null;
@@ -186,6 +194,27 @@ export function DaySheet({
     onClose();
   }, [onClose]);
   const reduceMotion = useReduceMotion();
+  const insets = useContext(SafeAreaInsetsContext);
+  const keyboard = useDayReflectionKeyboard(editingId, reduceMotion);
+  const { editorRef, revealEditor } = keyboard;
+  const visibleEditor = useMemo(
+    () =>
+      editor ? (
+        <View
+          ref={editorRef}
+          collapsable={false}
+          onLayout={revealEditor}
+          onFocus={revealEditor}
+        >
+          {editor}
+        </View>
+      ) : null,
+    [editor, editorRef, revealEditor],
+  );
+  const editorOpened = useCallback(() => {
+    onEditorOpened?.();
+    revealEditor();
+  }, [onEditorOpened, revealEditor]);
   const {
     offset: sheetOffset,
     open,
@@ -231,10 +260,10 @@ export function DaySheet({
         expanded={expanded === entry.attemptId || editingId === entry.attemptId}
         reduceMotion={reduceMotion}
         onEdit={canEdit ? editEntry : undefined}
-        editor={editingId === entry.attemptId ? editor : undefined}
+        editor={editingId === entry.attemptId ? visibleEditor : undefined}
         editing={editingId === entry.attemptId}
         onEditorOpened={
-          editingId === entry.attemptId ? onEditorOpened : undefined
+          editingId === entry.attemptId ? editorOpened : undefined
         }
         onToggle={toggleEntry}
       />
@@ -245,8 +274,8 @@ export function DaySheet({
       reduceMotion,
       canEdit,
       editEntry,
-      editor,
-      onEditorOpened,
+      visibleEditor,
+      editorOpened,
       toggleEntry,
     ],
   );
@@ -262,7 +291,11 @@ export function DaySheet({
       <View style={{ flex: 1 }} accessibilityViewIsModal>
         {topAccessory}
         <KeyboardAvoidingView
-          style={styles.modalRoot}
+          testID="day-sheet-keyboard-viewport"
+          style={[
+            styles.modalRoot,
+            keyboard.keyboardVisible && { paddingTop: insets?.top ?? 0 },
+          ]}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <Pressable
@@ -278,6 +311,7 @@ export function DaySheet({
             edges={['bottom']}
             style={[
               styles.sheet,
+              keyboard.keyboardVisible && styles.keyboardSheet,
               (connectionRequired || error) &&
                 !day && { minHeight: Math.min(470, height * 0.78) },
               { transform: [{ translateY: sheetOffset }] },
@@ -352,11 +386,14 @@ export function DaySheet({
                 )}
               </View>
             ) : day ? (
-              <>
+              <DayReflectionViewport.Provider value={keyboard.viewportHeight}>
                 <DayEntryList
                   key={date}
                   entries={day.entries}
                   renderEntry={renderEntry}
+                  scrollRef={keyboard.attachScrollView}
+                  onViewportLayout={keyboard.onViewportLayout}
+                  onScrollOffsetChange={keyboard.onScrollOffsetChange}
                   onScroll={loadNearEnd}
                   footer={
                     loadMoreError ? (
@@ -396,7 +433,7 @@ export function DaySheet({
                     ) : null
                   }
                 />
-              </>
+              </DayReflectionViewport.Provider>
             ) : null}
           </AnimatedSafeAreaView>
         </KeyboardAvoidingView>
@@ -434,6 +471,7 @@ const styles = StyleSheet.create({
     maxHeight: '78%',
     minHeight: 360,
   },
+  keyboardSheet: { maxHeight: '100%', minHeight: 0 },
   handleArea: {
     height: 32,
     alignItems: 'center',

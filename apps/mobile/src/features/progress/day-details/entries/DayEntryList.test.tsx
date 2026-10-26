@@ -29,11 +29,13 @@ const nearEnd = {
 
 it('fills available space in measured batches without scrolling or reusing stale measurements', async () => {
   const onScroll = jest.fn();
+  const onScrollOffsetChange = jest.fn();
   const screen = await render(
     <DayEntryList
       entries={entries(25)}
       renderEntry={renderEntry}
       onScroll={onScroll}
+      onScrollOffsetChange={onScrollOffsetChange}
       footer={<Text>List footer</Text>}
     />,
   );
@@ -55,6 +57,9 @@ it('fills available space in measured batches without scrolling or reusing stale
   expect(onScroll).not.toHaveBeenCalled();
 
   await fireEvent.scroll(list, nearEnd);
+  // Keyboard reveal needs the real offset even while local batches still
+  // intercept scrolling before backend pagination receives events.
+  expect(onScrollOffsetChange).toHaveBeenLastCalledWith(100);
   expect(screen.getByText('Entry 25')).toBeTruthy();
   expect(screen.getByText('List footer')).toBeTruthy();
   expect(onScroll).not.toHaveBeenCalled();

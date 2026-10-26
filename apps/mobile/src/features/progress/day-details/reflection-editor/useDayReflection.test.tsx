@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { ReactElement, RefObject } from 'react';
-import { Platform, Pressable, type TextInput } from 'react-native';
+import { Platform, Pressable, StyleSheet, type TextInput } from 'react-native';
 import { AccountRepository } from '../../../../data/activity/repository';
 import {
   MemoryStorage,
@@ -20,6 +20,7 @@ import {
 import { useDayReflection } from './useDayReflection';
 import { DayReflectionEditor } from './DayReflectionEditor';
 import { ReflectionController } from '../../../reflections/controller';
+import { DayReflectionViewport } from '../useDayReflectionKeyboard';
 
 jest.mock('expo-crypto', () => ({
   randomUUID: () => '30000000-0000-4000-8000-000000000001',
@@ -341,4 +342,49 @@ it('does not mount an editor when the account deactivates during older-row adopt
   expect(repository.store.getState().flowAttemptId).toBeNull();
   await screen.unmount();
   adopt.mockRestore();
+});
+
+it('bounds long writing to leave room for measured actions and errors as the viewport shrinks', async () => {
+  const controller = new ReflectionController(
+    repository,
+    attempt().id,
+    () => {},
+  );
+  controller.setText('Disposable long reflection. '.repeat(100));
+  const state = controller.getSnapshot();
+  const renderEditor = (height: number) => (
+    <DayReflectionViewport.Provider value={height}>
+      <DayReflectionEditor
+        controller={controller}
+        state={state}
+        onKeepEditing={() => {}}
+      />
+    </DayReflectionViewport.Provider>
+  );
+  const screen = await render(renderEditor(400));
+  const input = () => screen.getByLabelText('Your day reflection');
+  expect(StyleSheet.flatten(input().props.style)).toMatchObject({
+    minHeight: 76,
+    maxHeight: 160,
+  });
+  await screen.rerender(renderEditor(200));
+  expect(StyleSheet.flatten(input().props.style).maxHeight).toBe(108);
+  await fireEvent(screen.getByTestId('day-reflection-actions'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 340, height: 86 } },
+  });
+  expect(StyleSheet.flatten(input().props.style).maxHeight).toBe(78);
+  expect(78 + 86 + 36).toBe(200);
+  await screen.rerender(renderEditor(180));
+  expect(StyleSheet.flatten(input().props.style)).toMatchObject({
+    minHeight: 58,
+    maxHeight: 58,
+  });
+  expect(input().props.scrollEnabled).toBe(true);
+  expect(input().props.value).toBe(state.text);
+  expect(screen.getByRole('button', { name: 'Save reflection' })).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Cancel reflection' }),
+  ).toBeTruthy();
+  await screen.unmount();
+  controller.dispose();
 });

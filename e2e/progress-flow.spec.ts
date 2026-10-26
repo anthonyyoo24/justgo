@@ -193,6 +193,73 @@ test('41 attempts keep an unfinished inline reflection while scrolling and savin
   ).toEqual([]);
 });
 
+test('bottom three reflection editors keep their field and actions inside a reduced viewport', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.name));
+  const current = await account(page);
+  await seed(page, current, 9);
+  await page.reload();
+  await progress(page, 9);
+  await openToday(page, 9);
+  for (const number of [9, 8, 7]) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await scrollToRep(page, number);
+    await page
+      .getByRole('button', {
+        name: new RegExp(`Rep ${number}\\..*Add reflection`),
+      })
+      .click();
+    const input = page.getByLabel('Your day reflection', { exact: true });
+    const text = `Disposable reflection ${number}. `.repeat(60);
+    await input.fill(text);
+    // Browser resizing checks real layout/scroll integration. Native keyboard
+    // notifications and occlusion are covered separately, not simulated here.
+    await page.setViewportSize({ width: 390, height: 500 });
+    const save = page.getByRole('button', {
+      name: 'Save reflection',
+      exact: true,
+    });
+    const cancel = page.getByRole('button', {
+      name: 'Cancel reflection',
+      exact: true,
+    });
+    await expect
+      .poll(async () => {
+        const [viewport, field, saveButton, cancelButton] = await Promise.all([
+          page.getByTestId('day-sheet-entry-list').boundingBox(),
+          input.boundingBox(),
+          save.boundingBox(),
+          cancel.boundingBox(),
+        ]);
+        if (!viewport || !field || !saveButton || !cancelButton) return false;
+        return [field, saveButton, cancelButton].every(
+          (box) =>
+            box.y >= viewport.y - 1 &&
+            box.y + box.height <= viewport.y + viewport.height + 1,
+        );
+      })
+      .toBe(true);
+    await expect(input).toHaveValue(text);
+    await save.click();
+    await expect(input).toHaveCount(0);
+    await page
+      .getByRole('button', { name: 'Edit reflection', exact: true })
+      .click();
+    await expect(input).toHaveValue(text);
+    await cancel.click();
+    await expect(input).toHaveCount(0);
+    // Collapse this saved entry before moving to the next one.
+    await page
+      .getByRole('button', {
+        name: new RegExp(`Rep ${number}\\..*Hide Reflection`),
+      })
+      .click();
+  }
+  expect(errors).toEqual([]);
+});
+
 test('complete historical pages stay available offline after sync and logout keeps the same local collection', async ({
   page,
   context,

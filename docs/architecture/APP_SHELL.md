@@ -361,6 +361,17 @@ modals use no system slide animation. Reduce Motion settles the panel immediatel
 `ConnectedDayReflectionEditor` owns draft
 subscriptions so typing updates stay inside the active editor.
 
+`day-details/useDayReflectionKeyboard` measures the full active form against the
+list viewport and keyboard, then scrolls only enough to reveal its field, Cancel
+and Save actions. Focus, keyboard changes, viewport/editor layouts and completed
+row expansion retry fresh geometry; ordinary list filling does not pull a manually
+scrolled list back to the draft. List remounts reset the tracked offset, and editor
+changes/unmounts fence late measurements. While editing with the keyboard open,
+the sheet can fill the available height below the outer top safe area. The field
+caps its height using the viewport and measured action/error area, retaining long
+writing through internal input scrolling. Scrolling honors Reduce Motion; browser
+adapters can omit native keyboard metrics/visibility APIs.
+
 `DayEntryList` initially mounts eight rows, fills ahead of scrolling and requests
 further backend pages. Visited rows stay mounted until the day closes so animated
 heights/drafts survive. Fill underfull viewports using layout/content measurements
