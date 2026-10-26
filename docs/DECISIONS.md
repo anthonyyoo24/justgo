@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 25, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 26, 2026. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                        | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -739,3 +739,23 @@ This table was moved from the plan. Resolve open entries before dependent work; 
 | Reading saved reflections       | Settled; 06/07.4                              | Per-attempt reading and inline text Add/Edit are implemented; feelings remain immutable after submission.                                                                                                                                 |
 | Apple account & offer           | Apple setup from 01; billing in post-beta 07A | Enrollment, bundle ID/app record and signing start early. Configure subscription products and RevenueCat mapping after the free beta, during 07A; settle offer/paywall rules before billing validation.                                   |
 | Supporting designs & formatting | Relevant phase                                | Home color variants, remaining Settings controls, Phase 08 haptic preferences, duration rounding and outstanding small-screen/accessibility design states. See the owning phase and handoff before treating an older design note as open. |
+
+## October 26 separate iPhone development app
+
+Anthony selected a separate **JustGO Dev** app alongside TestFlight, built on
+GitHub's standard Mac runner because Expo's iOS cloud allowance is exhausted.
+He requested full Apple/Google sign-in and iCloud support. Use bundle
+`com.anthonyyoo.justgo.dev`, scheme `justgo-dev`, a dedicated Google iOS client
+and private container `iCloud.com.anthonyyoo.justgo.dev`; preserve the original
+app's identity, storage and provider configuration. Keep the existing Expo
+project and staging API/Auth. The same signed-in account still shares backend
+history/deletion effects, so destructive testing uses disposable accounts.
+
+Compile through EAS local builds with frozen managed credentials and upload the
+inspected exact IPA through `eas upload` for its installation link. Hosting uses
+the separate uploaded-build allowance; no Expo cloud compilation or TestFlight
+submission occurs. Native callback/entitlement inspection and explicit Metro
+environment isolation protect the app boundary. The first hosted build and
+physical acceptance remain pending under the
+[development-build procedure](operations/DEVELOPMENT_BUILDS.md). Existing owner
+review, Git permissions and Phase 14 release gates remain in force.

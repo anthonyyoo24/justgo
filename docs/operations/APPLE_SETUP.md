@@ -1,5 +1,11 @@
 # Apple, Expo and RevenueCat setup
 
+The separate [JustGO Dev setup](DEVELOPMENT_BUILDS.md) configures a second app with
+its own identifier, Google iOS client, CloudKit container and ad hoc profile. Its
+account prerequisites are configured; the first GitHub-built installation awaits
+owner review/merge. Same-identifier development build records below are historical;
+the new development profile must not reuse their original provider/container inputs.
+
 Started September 17, 2026. Owner: **Anthony**. **October 11 verification:** The signed-in Apple Developer side panel confirms an active individual membership for Youngshin Yoo, team `NPDYTJS425`, renewing September 19, 2027. Apple already has the explicit JustGo identifier `com.anthonyyoo.justgo`; Expo's development environment already has that matching `IOS_BUNDLE_IDENTIFIER`. The existing Expo project `justgo` (`53cf0560-8ab5-446a-9bc6-deb193b337b5`) and owner access to `@anthonyyoos-team/justgo` were reverified through EAS CLI and the side panel. Anthony's iPhone was registered with Apple with his explicit permission and imported into Expo by Anthony. EAS created a distribution certificate and an ad hoc provisioning profile containing that phone. The first physical development build **succeeded** and Anthony reports installation and development-launcher opening. Developer Mode and live phone bundle loading are verified. The current hosted application-staging API is reachable, the owner-confirmed account has a private 30-day test grant, and physical feature acceptance is in progress.
 
 | Item                                                                                  | Status                                                                                                                                                                                                                     | Required by                  |
