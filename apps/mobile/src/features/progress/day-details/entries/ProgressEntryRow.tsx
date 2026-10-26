@@ -9,6 +9,7 @@ import { activityTime } from '../../calendar-dates';
 import { SlidingEntryDetails } from './SlidingEntryDetails';
 import { DayReflectionPlaceholder } from '../reflection-editor/DayReflectionEditor';
 const entryMetaInk = '#5F7391';
+const entryVerticalPadding = 12;
 const feelingLabel = (feeling: FeelingCode | null) =>
   feelingChoices.find((option) => option.code === feeling)?.label ??
   'Not recorded';
@@ -102,6 +103,7 @@ type EntryRowProps = {
   editor?: ReactNode;
   editing?: boolean;
   onEditorOpened?: (() => void) | undefined;
+  onSummaryHeightChange?: ((height: number) => void) | undefined;
 };
 
 export const ProgressEntryRow = memo(function ProgressEntryRow({
@@ -114,6 +116,7 @@ export const ProgressEntryRow = memo(function ProgressEntryRow({
   editor,
   editing = !!editor,
   onEditorOpened,
+  onSummaryHeightChange,
 }: EntryRowProps) {
   const submitted = entry.reflectionStatus === 'submitted';
   const feeling = submitted ? entry.feeling : null;
@@ -134,6 +137,17 @@ export const ProgressEntryRow = memo(function ProgressEntryRow({
   return (
     <View style={styles.entry}>
       <Row
+        onLayout={
+          onSummaryHeightChange
+            ? ({ nativeEvent: { layout } }) =>
+                onSummaryHeightChange(
+                  Math.max(
+                    styles.entry.minHeight,
+                    layout.y + layout.height + entryVerticalPadding,
+                  ),
+                )
+            : undefined
+        }
         accessible
         accessibilityRole={actionable ? 'button' : undefined}
         accessibilityLabel={`Rep ${index + 1}. ${entry.instruction}. ${time}. Feeling: ${feelingLabel(feeling)}${actionable ? `. ${action}` : ''}`}
@@ -264,7 +278,8 @@ function sameEntryRow(previous: EntryRowProps, next: EntryRowProps) {
     previous.editor === next.editor &&
     previous.onToggle === next.onToggle &&
     previous.onEdit === next.onEdit &&
-    previous.onEditorOpened === next.onEditorOpened
+    previous.onEditorOpened === next.onEditorOpened &&
+    previous.onSummaryHeightChange === next.onSummaryHeightChange
   );
 }
 
@@ -273,7 +288,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E8E3DE',
     minHeight: 73,
-    paddingVertical: 12,
+    paddingVertical: entryVerticalPadding,
   },
   entryRow: { flexDirection: 'row', gap: 9 },
   ordinal: {

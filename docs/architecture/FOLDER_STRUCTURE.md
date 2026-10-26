@@ -57,6 +57,7 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | apps/mobile/src/features/progress/                               | Summary/calendar/day-detail screen and query composition.                                   |
 | apps/mobile/src/features/progress/calendar/                      | Calendar presentation and loading state.                                                    |
 | apps/mobile/src/features/progress/day-details/entries/           | Progressive list, row/details and native/shared entry motion.                               |
+| apps/mobile/src/features/progress/day-details/sheet-motion/      | Measured sheet sizing, native/web grip adapters and resizing tests.                         |
 | apps/mobile/src/features/progress/day-details/reflection-editor/ | Inline text editor and session orchestration.                                               |
 | apps/mobile/src/data/journal/                                    | Durable private entries, atomic edits/imports and native SQLite/browser IndexedDB adapters. |
 | apps/mobile/src/data/cloud/                                      | Account/iCloud synchronization, durable guest handover and prior-copy cleanup.              |

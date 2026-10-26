@@ -361,6 +361,53 @@ modals use no system slide animation. Reduce Motion settles the panel immediatel
 `ConnectedDayReflectionEditor` owns draft
 subscriptions so typing updates stay inside the active editor.
 
+`day-details/useDayReflectionKeyboard` measures the full active form against the
+list viewport and keyboard, then scrolls only enough to reveal its field, Cancel
+and Save actions. Focus, keyboard changes, viewport/editor layouts and completed
+row expansion retry fresh geometry; ordinary list filling does not pull a manually
+scrolled list back to the draft. List remounts reset the tracked offset, and editor
+changes/unmounts fence late measurements. While editing with the keyboard open,
+the sheet can fill the available height below the outer top safe area. The field
+caps its height using the viewport and measured action/error area, retaining long
+writing through internal input scrolling. Scrolling honors Reduce Motion; browser
+adapters can omit native keyboard metrics/visibility APIs.
+Reveal requests coalesce after layout on an owned animation frame. Automatic
+focus scrolling or scroll-range clamping may invalidate a measurement, but must
+retry that pending request; an unchanged scroll-end offset must not invalidate it.
+An explicit list drag cancels the pending reveal, and settled scrolling never
+starts a new reveal. Cancel frames and fence measurements when the list/editor
+changes or unmounts.
+
+`day-details/sheet-motion` owns measured sheet sizing and grip input. A complete
+short day opens at its content height; longer days start around two-thirds of the
+screen. The lower bound fits the header, list top margin and the full first
+attempt summary row including its padding. Measure only that row's summary, so
+wrapped/scaled text adjusts the floor without including expanded reflection
+details. Before row measurement, retain the bounded loading fallback. The upper
+bound respects content height and the available safe area. A drag keeps its
+released height between those bounds. Extra upward travel has light resistance;
+downward travel stops at the minimum and never requests dismissal. X and the
+backdrop retain the existing dirty-reflection guard. Native accessibility actions
+resize the sheet without closing it.
+When loading, error or offline content replaces the list, discard both its content
+and first-row measurements even if the selected date is unchanged. Restored rows
+must establish fresh bounds instead of inheriting the previous list's size.
+Keep trailing list padding at zero: without a paging footer, the final row's
+bottom aligns with the viewport when the content fits or the list reaches its
+end. The bottom safe area remains outside the list viewport, matching the
+first-row minimum alignment.
+
+Native grip input uses one adjustable View with touch ownership from the start;
+the browser adapter uses pointer capture and fences the click that can follow a
+drag. List scrolling stays independent. Keep the inner animated layout height on a
+separate host from the outer native-driven entrance/exit transform. Content
+remeasurements during a drag must not steal finger ownership: retain its bounds
+until release, then apply current content limits. A real space/keyboard change
+cancels safely. A downward grip gesture with the keyboard open only hides the
+keyboard; it cannot also resize or close the sheet. Keyboard layout temporarily
+expands the editor area, preserving the chosen height for afterward. Automatic
+settling honors Reduce Motion; direct manipulation continues to follow the finger.
+
 `DayEntryList` initially mounts eight rows, fills ahead of scrolling and requests
 further backend pages. Visited rows stay mounted until the day closes so animated
 heights/drafts survive. Fill underfull viewports using layout/content measurements

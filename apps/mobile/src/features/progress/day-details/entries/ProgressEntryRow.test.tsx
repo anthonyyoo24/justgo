@@ -21,6 +21,32 @@ const savedEntry: ProgressEntry = {
   reflectionText: null,
 };
 
+it('reports the summary height with row padding and updates a replaced measurement callback', async () => {
+  const onSummaryHeightChange = jest.fn();
+  const props = {
+    entry: savedEntry,
+    index: 0,
+    expanded: false,
+    onToggle: jest.fn(),
+    reduceMotion: true,
+    onSummaryHeightChange,
+  };
+  const screen = await render(<ProgressEntryRow {...props} />);
+  const event = {
+    nativeEvent: { layout: { x: 0, y: 13, width: 300, height: 80 } },
+  };
+  await fireEvent(screen.getByLabelText(/^Rep 1\./), 'layout', event);
+  expect(onSummaryHeightChange).toHaveBeenLastCalledWith(105);
+  const nextMeasurement = jest.fn();
+  await screen.rerender(
+    <ProgressEntryRow {...props} onSummaryHeightChange={nextMeasurement} />,
+  );
+  await fireEvent(screen.getByLabelText(/^Rep 1\./), 'layout', event);
+  expect(nextMeasurement).toHaveBeenLastCalledWith(105);
+  expect(onSummaryHeightChange).toHaveBeenCalledTimes(1);
+  await screen.unmount();
+});
+
 it('opens Add from the title, ordinal, feeling and metadata with padded row coverage', async () => {
   const onEdit = jest.fn();
   const onToggle = jest.fn();

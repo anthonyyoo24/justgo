@@ -1,5 +1,12 @@
-import { fireEvent, render } from '@testing-library/react-native';
-import { Animated, StyleSheet, TextInput } from 'react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
+import {
+  Animated,
+  Keyboard,
+  StyleSheet,
+  TextInput,
+  type KeyboardEvent,
+} from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import * as calendar from '../calendar-dates';
 import type { ProgressEntry } from '../types';
 import { DaySheet } from './DaySheet';
@@ -14,6 +21,62 @@ beforeEach(() => {
 jest.mock('./entries/useEntryMotion', () =>
   jest.requireActual('./entries/useEntryMotion.ts'),
 );
+
+it('expands above the keyboard while keeping the header below the top safe area', async () => {
+  const listeners: ((event: KeyboardEvent) => void)[] = [];
+  const listen = Keyboard.addListener.bind(Keyboard);
+  const spy = jest
+    .spyOn(Keyboard, 'addListener')
+    .mockImplementation((event, callback) => {
+      if (event === 'keyboardWillShow') listeners.push(callback);
+      return listen(event, callback);
+    });
+  try {
+    const screen = await render(
+      <SafeAreaInsetsContext.Provider
+        value={{ top: 59, bottom: 34, left: 0, right: 0 }}
+      >
+        <DaySheet
+          date="2026-10-10"
+          loading={false}
+          error={false}
+          loadMoreError={false}
+          hasMore={false}
+          loadingMore={false}
+          fetching={false}
+          onClose={() => {}}
+          editingId="attempt-1"
+        />
+      </SafeAreaInsetsContext.Provider>,
+    );
+    await act(() => {
+      for (const listener of listeners)
+        listener({
+          duration: 250,
+          easing: 'keyboard',
+          isEventFromThisApp: true,
+          startCoordinates: {
+            screenX: 0,
+            screenY: 844,
+            height: 344,
+            width: 390,
+          },
+          endCoordinates: { screenX: 0, screenY: 500, height: 344, width: 390 },
+        });
+    });
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('day-sheet-keyboard-viewport').props.style,
+      ).paddingTop,
+    ).toBe(59);
+    expect(
+      StyleSheet.flatten(screen.getByTestId('day-sheet-panel').props.style),
+    ).toMatchObject({ maxHeight: '100%', minHeight: 0 });
+    await screen.unmount();
+  } finally {
+    spy.mockRestore();
+  }
+});
 
 it('bounds initial mounting for 41 attempts and updates only the selected row with current callbacks', async () => {
   const entries: ProgressEntry[] = Array.from({ length: 41 }, (_, index) => ({
@@ -149,8 +212,8 @@ it.each([400, 900])(
       expect(
         screen.queryByRole('button', { name: 'Try loading attempts again' }),
       ).toBeNull();
-      expect(screen.getByTestId('day-sheet-panel')).toHaveStyle({
-        minHeight: Math.min(470, height * 0.78),
+      expect(screen.getByTestId('day-sheet-size')).toHaveStyle({
+        height: Math.min(470, (height * 2) / 3, height - 12),
       });
       expect(
         StyleSheet.flatten(
