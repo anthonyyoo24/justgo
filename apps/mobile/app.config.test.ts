@@ -8,6 +8,7 @@ describe('Expo project configuration', () => {
     jest.resetModules();
     process.env = { ...originalEnv };
     delete process.env.EAS_BUILD_PROFILE;
+    delete process.env.JUSTGO_APP_VARIANT;
     delete process.env.IOS_BUNDLE_IDENTIFIER;
     delete process.env.EXPO_PUBLIC_SENTRY_ENABLED;
     delete process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -260,5 +261,68 @@ describe('Expo project configuration', () => {
     expect(config.ios.infoPlist).not.toHaveProperty(
       'JustGoICloudContainerIdentifier',
     );
+  });
+
+  it('isolates the device development app without registering the shared launcher scheme', () => {
+    const eas = require('./eas.json');
+    process.env = {
+      ...process.env,
+      ...eas.build.development.env,
+      EAS_BUILD_PROFILE: 'development',
+    };
+    const { default: config } = require('./app.config');
+    expect(config.name).toBe('JustGO Dev');
+    expect(config.ios.bundleIdentifier).toBe('com.anthonyyoo.justgo.dev');
+    expect(config.scheme).toBe('justgo-dev');
+    expect(config.plugins).toContainEqual([
+      'expo-dev-client',
+      { addGeneratedScheme: false },
+    ]);
+    expect(config.plugins).not.toContain('expo-dev-client');
+    expect(config.ios.usesAppleSignIn).toBe(true);
+    expect(
+      config.ios.entitlements[
+        'com.apple.developer.icloud-container-identifiers'
+      ],
+    ).toEqual(['iCloud.com.anthonyyoo.justgo.dev']);
+    expect(config.extra.eas.projectId).toBe(
+      '53cf0560-8ab5-446a-9bc6-deb193b337b5',
+    );
+  });
+
+  it.each([
+    ['IOS_BUNDLE_IDENTIFIER', 'com.anthonyyoo.justgo'],
+    ['EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER', 'iCloud.com.anthonyyoo.justgo'],
+    ['ICLOUD_CONTAINER_ENVIRONMENT', 'Development'],
+    ['EAS_BUILD_PROFILE', 'beta'],
+  ])('rejects a development variant with conflicting %s', (key, value) => {
+    const eas = require('./eas.json');
+    process.env = {
+      ...process.env,
+      ...eas.build.development.env,
+      [key]: value,
+    };
+    expect(() => require('./app.config')).toThrow(
+      'separate app and iCloud identities',
+    );
+  });
+
+  it('keeps the TestFlight app identity and launcher unchanged', () => {
+    const eas = require('./eas.json');
+    process.env = {
+      ...process.env,
+      ...eas.build.beta.env,
+      EAS_BUILD_PROFILE: 'beta',
+    };
+    const { default: config } = require('./app.config');
+    expect(config.name).toBe('JustGO');
+    expect(config.scheme).toBe('justgo');
+    expect(config.ios.bundleIdentifier).toBe('com.anthonyyoo.justgo');
+    expect(config.plugins).toContain('expo-dev-client');
+    expect(
+      config.ios.entitlements[
+        'com.apple.developer.icloud-container-identifiers'
+      ],
+    ).toEqual(['iCloud.com.anthonyyoo.justgo']);
   });
 });

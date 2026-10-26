@@ -5,6 +5,18 @@ import { diagnosticConfiguration } from './src/app-support/diagnostics/configura
 const projectId = '53cf0560-8ab5-446a-9bc6-deb193b337b5';
 const bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER;
 const profile = process.env.EAS_BUILD_PROFILE;
+const developmentVariant = process.env.JUSTGO_APP_VARIANT === 'development';
+if (
+  developmentVariant &&
+  (bundleIdentifier !== 'com.anthonyyoo.justgo.dev' ||
+    process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER !==
+      'iCloud.com.anthonyyoo.justgo.dev' ||
+    process.env.ICLOUD_CONTAINER_ENVIRONMENT !== 'Production' ||
+    (profile && profile !== 'development'))
+)
+  throw new Error(
+    'JustGO Dev requires its separate app and iCloud identities.',
+  );
 const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
 // The fixture simulator profile never inherits the device environment's CloudKit access.
 const iCloudContainer =
@@ -57,12 +69,12 @@ if (
   );
 
 const config: ExpoConfig = {
-  name: 'JustGO',
+  name: developmentVariant ? 'JustGO Dev' : 'JustGO',
   slug: 'justgo',
   owner: 'anthonyyoos-team',
   version: '0.1.0',
   icon: './assets/brand/justgo-app-icon.png',
-  scheme: 'justgo',
+  scheme: developmentVariant ? 'justgo-dev' : 'justgo',
   orientation: 'portrait',
   userInterfaceStyle: 'light',
   platforms: ['ios', 'web'],
@@ -94,7 +106,14 @@ const config: ExpoConfig = {
   plugins: [
     // Keep the existing single-bundle web preview and guarded fixture loading.
     ['expo-router', { asyncRoutes: { web: false } }],
-    'expo-dev-client',
+    ...(developmentVariant
+      ? [
+          ['expo-dev-client', { addGeneratedScheme: false }] as [
+            string,
+            Record<string, unknown>,
+          ],
+        ]
+      : ['expo-dev-client']),
     [
       'expo-font',
       {

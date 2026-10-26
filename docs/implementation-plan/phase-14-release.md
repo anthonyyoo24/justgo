@@ -70,3 +70,13 @@ Put the production database on the Supabase Pro plan and confirm 7-day daily bac
 ## Open gates for Phase 14
 
 All unchecked acceptance items in this phase remain release gates until evidenced; beta acceptance does not establish paid-launch acceptance.
+
+## Separate development app for UI iteration
+
+- [ ] Configure and build the owner-requested JustGO Dev app on GitHub's standard
+      Mac runner, including its separate app/provider/CloudKit identities, full
+      sign-in/iCloud support, exact-IPA hosting, and live Metro connection. Preserve
+      TestFlight installation/data and the existing Git review permissions. The
+      implementation owner handles setup/builds; Anthony supplies physical phone
+      acceptance. Follow [the development-build procedure](../operations/DEVELOPMENT_BUILDS.md).
+      Local implementation/tests do not close this task or reopen phase closeout.

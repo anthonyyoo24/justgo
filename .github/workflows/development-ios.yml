@@ -1,0 +1,152 @@
+name: iPhone development build
+run-name: 'JustGO Dev from ${{ inputs.tag }}'
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing reviewed tag reachable from main
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: testflight-beta
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.tag.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate reviewed tag
+        id: tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]
+          git check-ref-format "refs/tags/$RELEASE_TAG"
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          release_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          git merge-base --is-ancestor "$release_sha" refs/remotes/origin/main
+          printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
+      - name: Require successful Foundation checks
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.tag.outputs.sha }}
+        run: |
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" -f head_sha="$RELEASE_SHA" -f event=push -f branch=main -f per_page=1 > "$RUNNER_TEMP/dev-foundation.json"
+          node scripts/development/workflow-guards.mjs checks "$RUNNER_TEMP/dev-foundation.json"
+      - name: Require configured signing approval
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/testflight-beta" > "$RUNNER_TEMP/dev-environment.json"
+          node scripts/development/workflow-guards.mjs environment "$RUNNER_TEMP/dev-environment.json"
+  development:
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    timeout-minutes: 120
+    # Reuse the existing reviewed signing-token boundary, not repository secrets.
+    environment:
+      name: testflight-beta
+      url: https://justgo-two.vercel.app
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+      JUSTGO_APP_VARIANT: development
+      IOS_BUNDLE_IDENTIFIER: com.anthonyyoo.justgo.dev
+      EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER: iCloud.com.anthonyyoo.justgo.dev
+      ICLOUD_CONTAINER_ENVIRONMENT: Production
+      EXPO_NO_DOTENV: '1'
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      FASTLANE_SKIP_UPDATE_CHECK: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      - name: Recheck signing approval before Expo access
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/testflight-beta" > "$RUNNER_TEMP/dev-environment.json"
+          node scripts/development/workflow-guards.mjs environment "$RUNNER_TEMP/dev-environment.json"
+      - uses: ./.github/actions/setup-node
+      - name: Install pinned EAS CLI and check native tools
+        shell: bash
+        run: |
+          npm install --global eas-cli@25.3.0
+          [[ "$(eas --version)" == eas-cli/25.3.0\ * ]]
+          [[ "$(xcodebuild -version)" == $'Xcode 26.6\nBuild version 17F113' ]]
+          [[ "$(pod --version)" == '1.17.0' ]]
+          fastlane --version
+      - name: Check development configuration and clean source
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          [[ "$(git rev-parse HEAD)" == "$RELEASE_SHA" ]]
+          [[ -z "$(git status --porcelain)" ]]
+          eas env:exec development 'node ../../scripts/development/configuration.mjs' --non-interactive
+      - name: Compile signed Dev app on GitHub
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          TMPDIR: ${{ runner.temp }}/justgo-dev-private
+          EAS_LOCAL_BUILD_WORKINGDIR: ${{ runner.temp }}/justgo-dev-private/work
+          EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ runner.temp }}/justgo-dev-artifact
+        run: |
+          umask 077
+          mkdir -p "$TMPDIR" "$RUNNER_TEMP/justgo-dev-artifact"
+          eas env:exec development 'eas build --platform ios --profile development --local --freeze-credentials --non-interactive --output "$RUNNER_TEMP/justgo-dev-artifact/JustGO-Dev.ipa"' --non-interactive
+      - name: Inspect signed Dev app and record provenance
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas env:exec development 'node ../../scripts/development/artifact.mjs record "$RUNNER_TEMP/justgo-dev-artifact"' --non-interactive
+      - name: Upload exact Dev app for phone installation
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        # Hosting an inspected local build uses the separate upload allowance.
+        # This is not cloud compilation or an App Store/TestFlight submission.
+        run: |
+          node ../../scripts/development/artifact.mjs verify "$RUNNER_TEMP/justgo-dev-artifact"
+          eas upload --platform ios --build-path "$RUNNER_TEMP/justgo-dev-artifact/JustGO-Dev.ipa" --non-interactive --json > "$RUNNER_TEMP/justgo-dev-artifact/install.json"
+          node ../../scripts/development/artifact.mjs receipt "$RUNNER_TEMP/justgo-dev-artifact" >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain only the inspected app and public receipts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: justgo-ios-development-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/justgo-dev-artifact/JustGO-Dev.ipa
+            ${{ runner.temp }}/justgo-dev-artifact/manifest.json
+            ${{ runner.temp }}/justgo-dev-artifact/install.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Remove temporary build and signing files
+        if: always()
+        shell: bash
+        run: |
+          cleanup_status=0
+          if [[ -d "$RUNNER_TEMP/justgo-dev-private" ]]; then
+            while IFS= read -r -d '' keychain; do
+              security delete-keychain "$keychain" || cleanup_status=1
+            done < <(find "$RUNNER_TEMP/justgo-dev-private" -type f \( -name 'eas-build-*.keychain' -o -name 'eas-build-*.keychain-db' \) -print0)
+          fi
+          rm -rf "$RUNNER_TEMP/justgo-dev-private" "$RUNNER_TEMP/justgo-dev-artifact"
+          exit "$cleanup_status"

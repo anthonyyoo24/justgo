@@ -9,7 +9,17 @@
       "developmentClient": true,
       "distribution": "internal",
       "node": "24.18.0",
-      "environment": "development"
+      "environment": "development",
+      "autoIncrement": true,
+      "env": {
+        "JUSTGO_APP_VARIANT": "development",
+        "IOS_BUNDLE_IDENTIFIER": "com.anthonyyoo.justgo.dev",
+        "EXPO_PUBLIC_API_URL": "https://justgo-two.vercel.app",
+        "EXPO_PUBLIC_SENTRY_ENABLED": "false",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "staging",
+        "ICLOUD_CONTAINER_ENVIRONMENT": "Production",
+        "EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER": "iCloud.com.anthonyyoo.justgo.dev"
+      }
     },
     "development-simulator": {
       "extends": "development",
@@ -17,6 +27,7 @@
         "simulator": true
       },
       "env": {
+        "JUSTGO_APP_VARIANT": "simulator",
         "IOS_BUNDLE_IDENTIFIER": "dev.justgo.foundation",
         "EXPO_PUBLIC_API_URL": "http://localhost:3000"
       }
