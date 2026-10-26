@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import {
   validateFoundationChecks,
   validateSigningEnvironment,
+  deviceLogMasks,
 } from './workflow-guards.mjs';
 
 test('only the latest successful main push for the exact source is accepted', () => {
@@ -29,6 +33,56 @@ test('only the latest successful main push for the exact source is accepted', ()
       ),
     );
   assert.throws(() => validateFoundationChecks({}, run.head_sha));
+});
+test('registered device identifiers and names are masked before EAS output, with command-data escaping', () => {
+  const identifier = '00000000-0000000000000000';
+  assert.deepEqual(
+    deviceLogMasks([
+      { identifier, name: 'Test phone%\r\n::warning::text' },
+      { identifier, name: null },
+    ]),
+    [
+      '::add-mask::' + identifier,
+      '::add-mask::Test phone%25%0D%0A::warning::text',
+    ],
+  );
+  assert.deepEqual(deviceLogMasks([{ identifier: 'a'.repeat(40) }]), [
+    '::add-mask::' + 'a'.repeat(40),
+  ]);
+  for (const devices of [
+    null,
+    {},
+    [],
+    [{}],
+    [{ identifier: 'invalid\n::error::' }],
+    [{ identifier, name: {} }],
+    Array.from({ length: 100 }, () => ({ identifier })),
+  ])
+    assert.throws(() => deviceLogMasks(devices));
+});
+test('the device masking CLI emits only runner commands and refuses local value output', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'justgo-device-mask-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const file = join(directory, 'devices.json');
+  const identifier = '00000000-0000000000000000';
+  writeFileSync(file, JSON.stringify([{ identifier }]));
+  const execute = (actions) =>
+    spawnSync(
+      process.execPath,
+      [
+        new URL('./workflow-guards.mjs', import.meta.url).pathname,
+        'devices',
+        file,
+      ],
+      { env: { ...process.env, GITHUB_ACTIONS: actions }, encoding: 'utf8' },
+    );
+  const denied = execute('false');
+  assert.notEqual(denied.status, 0);
+  assert.equal(denied.stdout, '');
+  assert.ok(!denied.stderr.includes(identifier));
+  const accepted = execute('true');
+  assert.equal(accepted.status, 0, accepted.stderr);
+  assert.equal(accepted.stdout, `::add-mask::${identifier}\n`);
 });
 test('missing owner review, environment or branch protection stops before credentials', () => {
   const value = {
@@ -80,6 +134,14 @@ test('the workflow compiles on the standard GitHub Mac, freezes signing and host
     workflow.indexOf('artifact.mjs verify') < workflow.indexOf('eas upload'),
   );
   assert.match(workflow, /artifact.mjs receipt/);
+  assert.match(
+    workflow,
+    /eas device:list --apple-team-id NPDYTJS425 --limit 100 --json --non-interactive > "\$RUNNER_TEMP\/justgo-dev-private\/devices.json"/,
+  );
+  assert.ok(
+    workflow.indexOf('workflow-guards.mjs devices') <
+      workflow.indexOf('eas build --platform ios'),
+  );
   assert.match(workflow, /if: always\(\)/);
   assert.match(workflow, /security delete-keychain/);
   assert.match(workflow, /retention-days: 7/);

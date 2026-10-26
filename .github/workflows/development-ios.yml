@@ -101,6 +101,15 @@ jobs:
           [[ "$(git rev-parse HEAD)" == "$RELEASE_SHA" ]]
           [[ -z "$(git status --porcelain)" ]]
           eas env:exec development 'node ../../scripts/development/configuration.mjs' --non-interactive
+      - name: Mask registered devices before credential logging
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/justgo-dev-private"
+          eas device:list --apple-team-id NPDYTJS425 --limit 100 --json --non-interactive > "$RUNNER_TEMP/justgo-dev-private/devices.json"
+          node ../../scripts/development/workflow-guards.mjs devices "$RUNNER_TEMP/justgo-dev-private/devices.json"
       - name: Compile signed Dev app on GitHub
         working-directory: apps/mobile
         env:

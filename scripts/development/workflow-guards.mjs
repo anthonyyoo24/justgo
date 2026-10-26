@@ -32,6 +32,38 @@ export function validateSigningEnvironment(value) {
       'The existing signing environment must retain owner review and branch protection.',
     );
 }
+
+/** Register private device values before EAS prints its credential summary. */
+export function deviceLogMasks(devices) {
+  if (
+    !Array.isArray(devices) ||
+    devices.length === 0 ||
+    devices.length >= 100 ||
+    devices.some(
+      (device) =>
+        !/^(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{8}-[a-fA-F0-9]{16})$/.test(
+          device?.identifier ?? '',
+        ) ||
+        (device.name !== null &&
+          device.name !== undefined &&
+          typeof device.name !== 'string'),
+    )
+  ) {
+    throw new Error(
+      'Expected a complete, nonempty registered-device list before EAS logging.',
+    );
+  }
+  const values = new Set(
+    devices.flatMap((device) => [
+      device.identifier,
+      ...(device.name ? [device.name] : []),
+    ]),
+  );
+  return [...values].map(
+    (value) =>
+      `::add-mask::${value.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}`,
+  );
+}
 if (
   process.argv[1] &&
   pathToFileURL(process.argv[1]).href === import.meta.url
@@ -44,7 +76,13 @@ if (
     if (operation === 'checks')
       validateFoundationChecks(value, process.env.RELEASE_SHA);
     else if (operation === 'environment') validateSigningEnvironment(value);
-    else throw new Error('Unknown development workflow guard.');
+    else if (operation === 'devices') {
+      if (process.env.GITHUB_ACTIONS !== 'true')
+        throw new Error(
+          'Device masks may only be emitted to the GitHub runner.',
+        );
+      for (const command of deviceLogMasks(value)) console.info(command);
+    } else throw new Error('Unknown development workflow guard.');
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
