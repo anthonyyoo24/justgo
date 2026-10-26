@@ -1,4 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
+import type { ComponentProps } from 'react';
 import {
   Animated,
   Keyboard,
@@ -68,25 +69,27 @@ async function setup(beforeClose?: (work: () => void) => void) {
     reset: jest.fn(),
   }));
   const onClose = jest.fn();
-  const screen = await render(
+  const props: ComponentProps<typeof DaySheet> = {
+    date: '2026-10-10',
+    day: { date: '2026-10-10', totalReps: 41, entries },
+    loading: false,
+    error: false,
+    loadMoreError: false,
+    hasMore: false,
+    loadingMore: false,
+    fetching: false,
+    onClose,
+    onEditReflection: () => {},
+    beforeClose,
+  };
+  const sheet = (overrides: Partial<typeof props> = {}) => (
     <SafeAreaInsetsContext.Provider
       value={{ top: 40, bottom: 20, left: 0, right: 0 }}
     >
-      <DaySheet
-        date="2026-10-10"
-        day={{ date: '2026-10-10', totalReps: 41, entries }}
-        loading={false}
-        error={false}
-        loadMoreError={false}
-        hasMore={false}
-        loadingMore={false}
-        fetching={false}
-        onClose={onClose}
-        onEditReflection={() => {}}
-        beforeClose={beforeClose}
-      />
-    </SafeAreaInsetsContext.Provider>,
+      <DaySheet {...props} {...overrides} />
+    </SafeAreaInsetsContext.Provider>
   );
+  const screen = await render(sheet());
   await fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', layout(360));
   await fireEvent(screen.getByTestId('day-sheet-space'), 'layout', layout(860));
   await fireEvent(
@@ -133,11 +136,58 @@ async function setup(beforeClose?: (work: () => void) => void) {
     panelTop,
     beginDrag,
     releaseDrag,
+    rerender: (overrides: Partial<typeof props>) =>
+      screen.rerender(sheet(overrides)),
     cleanup,
   };
 }
 
 afterEach(() => jest.restoreAllMocks());
+
+it.each([
+  ['offline', { day: undefined, connectionRequired: true }, 450],
+  ['loading', { day: undefined, loading: true }, 340],
+  ['initial error', { day: undefined, error: true }, 450],
+  ['offline with retained day data', { connectionRequired: true }, 450],
+] satisfies [string, Partial<ComponentProps<typeof DaySheet>>, number][])(
+  'forgets list measurements when the same date becomes %s and measures restored entries afresh',
+  async (_state, overrides, fallbackHeight) => {
+    const t = await setup();
+    expect(t.panelHeight()).toBe(580);
+    await t.rerender(overrides);
+    expect(t.screen.queryByTestId('day-sheet-entry-list')).toBeNull();
+    expect(t.panelHeight()).toBe(fallbackHeight);
+    await t.beginDrag(2000);
+    await t.releaseDrag(2000);
+    expect(t.panelHeight()).toBe(340);
+
+    await t.rerender({
+      day: { date: '2026-10-10', totalReps: 3, entries: entries.slice(0, 3) },
+    });
+    await fireEvent(
+      t.screen.getByRole('button', { name: /Rep 1\./ }),
+      'layout',
+      { nativeEvent: { layout: { x: 0, y: 13, width: 320, height: 75 } } },
+    );
+    await fireEvent(
+      t.screen.getByTestId('day-sheet-entry-list'),
+      'contentSizeChange',
+      390,
+      300,
+    );
+    await fireEvent(
+      t.screen.getByRole('adjustable', { name: 'Resize day details' }),
+      'accessibilityAction',
+      { nativeEvent: { actionName: 'increment' } },
+    );
+    expect(t.panelHeight()).toBe(452);
+    expect(t.screen.getAllByRole('button', { name: /Rep \d+\./ })).toHaveLength(
+      3,
+    );
+    expect(t.onClose).not.toHaveBeenCalled();
+    await t.cleanup();
+  },
+);
 
 it.each(['default', 'expanded'] as const)(
   'resizes from the %s height and keeps the released height without requesting dismissal',

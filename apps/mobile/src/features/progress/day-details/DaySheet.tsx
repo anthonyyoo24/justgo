@@ -237,6 +237,14 @@ export function DaySheet({
     hasMore,
     reduceMotion,
   });
+  const { onContentLayout, onFirstRowHeightChange } = drag;
+  const hasDayContent = !!day && !connectionRequired;
+  useLayoutEffect(() => {
+    if (!hasDayContent) {
+      onContentLayout(0, false);
+      onFirstRowHeightChange(0);
+    }
+  }, [hasDayContent, onContentLayout, onFirstRowHeightChange]);
   const loadNearEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!day || !hasMore || fetching || loadMoreError || !onLoadMore) return;
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -250,7 +258,6 @@ export function DaySheet({
     onLoadMore();
   };
   const canEdit = !!onEditReflection;
-  const { onFirstRowHeightChange } = drag;
   const renderEntry = useCallback(
     ({ item: entry, index }: { item: ProgressEntry; index: number }) => (
       <ProgressEntryRow
@@ -406,7 +413,7 @@ export function DaySheet({
                       scrollRef={keyboard.attachScrollView}
                       onViewportLayout={keyboard.onViewportLayout}
                       onScrollOffsetChange={keyboard.onScrollOffsetChange}
-                      onContentLayout={drag.onContentLayout}
+                      onContentLayout={onContentLayout}
                       onScrollBeginDrag={keyboard.cancelReveal}
                       onScroll={loadNearEnd}
                       footer={

@@ -389,6 +389,9 @@ released height between those bounds. Extra upward travel has light resistance;
 downward travel stops at the minimum and never requests dismissal. X and the
 backdrop retain the existing dirty-reflection guard. Native accessibility actions
 resize the sheet without closing it.
+When loading, error or offline content replaces the list, discard both its content
+and first-row measurements even if the selected date is unchanged. Restored rows
+must establish fresh bounds instead of inheriting the previous list's size.
 Keep trailing list padding at zero: without a paging footer, the final row's
 bottom aligns with the viewport when the content fits or the list reaches its
 end. The bottom safe area remains outside the list viewport, matching the
