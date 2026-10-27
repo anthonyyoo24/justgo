@@ -88,8 +88,9 @@ probes and promotion. Concurrent jobs are also serialized by GitHub.
 ## Candidate and promotion safeguards
 
 Node/npm follow the pinned repository setup. Vercel CLI **64.5.0** and its
-transitive graph are locked separately in
-[`scripts/release/vercel-cli`](../../scripts/release/vercel-cli/package.json).
+transitive graph are pinned by the separate
+[tool manifest](../../scripts/release/vercel-cli/package.json) and
+[dependency lockfile](../../scripts/release/vercel-cli/package-lock.json).
 The protected job runs `npm ci --prefix scripts/release/vercel-cli` before provider
 credentials are exposed, then prepends that installation's binary directory to
 `GITHUB_PATH`. The root/app install and API upload do not include this toolset.
