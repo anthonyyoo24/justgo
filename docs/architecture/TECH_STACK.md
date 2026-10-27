@@ -199,6 +199,27 @@ and allowlisted diagnostics live in the API http owner. SQLSTATE diagnostics
 expose only validated five-character codes through wrapped driver failures.
 Migration setup failures add fixed allowlisted reason codes, without exposing
 environment values or driver messages.
+
+Each completed 5xx response emits one fixed `HTTP_SERVER_ERROR` log event with
+its status, generated request ID and optional validated SQLSTATE. The optional
+server reporter receives only that classification, never a request or exception.
+Its attempt is awaited before sending the response, once per request, while the
+completed-response hook retains the existing local log contract. Reporting
+failure cannot change the response or create recursive diagnostic events.
+
+API Sentry delivery defaults off. Explicit `API_SENTRY_ENABLED=true` requires a
+canonical public US ingestion DSN, a lowercase 40-character commit SHA in
+`API_SENTRY_RELEASE`, and the configured staging/production environment. Built-in
+`fetch` sends rebuilt single-event envelopes without SDK instrumentation. Events
+contain fixed error classification, status, optional SQLSTATE, generated request
+and event IDs, timestamp, environment and `justgo-api@<sha>` release; IP is
+explicitly `0.0.0.0`. No URL, headers, body, account, SQL, raw exception/stack or
+device data enters the envelope. Each warm instance permits two concurrent sends
+and 20 events per minute, with a 1.5-second abort/deadline and a one-minute default
+outage backoff; provider rate limits are honored. There is no persistent queue,
+retry or background delivery. Activation still requires matching approved
+notices/provider review and verified hosted delivery.
+
 The mobile HTTP client fetches the exact admitted URL. It accepts JSON media
 types before reading a body and treats malformed/proxy responses as unavailable;
 only transport failures are network errors. Typed JSON errors retain their
@@ -210,6 +231,10 @@ credentials or extend upload cooldowns through their headers.
 privileges; enabling managed mode requires Auth URL/public configuration and a
 server-only administrative deletion secret. Actual hosted provider/admin behavior
 still requires separate acceptance.
+When the reviewed deployment supplies optional `JUSTGO_SOURCE_SHA`, GET `/health`
+and `/ready` also expose `x-justgo-source-sha` and `x-justgo-environment`. The SHA
+must be exactly 40 lowercase hexadecimal characters. Other routes and deployments
+without configured source evidence omit these headers; probe bodies are unchanged.
 
 <a id="9-analytics-and-sensitive-data"></a>
 

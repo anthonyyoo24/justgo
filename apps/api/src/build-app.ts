@@ -18,7 +18,12 @@ import {
   healthResponseSchema,
   readinessResponseSchema,
 } from '@justgo/contracts';
-import { loggerOptions, logServerErrorResponse } from './http/diagnostics.js';
+import {
+  loggerOptions,
+  logServerErrorResponse,
+  reportServerErrorResponse,
+} from './http/diagnostics.js';
+import type { ServerErrorReporter } from './http/server-error-reporter.js';
 import type { IdentityService } from './identity/service.js';
 import { identityRoutes } from './identity/routes.js';
 import { accessRoutes } from './access/routes.js';
@@ -43,6 +48,11 @@ export function buildApp(
     checkDatabase: () => Promise<void>;
     origins?: string[];
     logger?: FastifyServerOptions['logger'];
+    reportServerError?: ServerErrorReporter;
+    releaseIdentity?: {
+      sourceSha: string;
+      environment: 'staging' | 'production';
+    };
     identity?: IdentityService;
     onVercel?: boolean;
     entitlementReader?: EntitlementReader;
@@ -53,6 +63,14 @@ export function buildApp(
   },
   createServer: typeof Fastify = Fastify,
 ) {
+  const releaseIdentity = options.releaseIdentity;
+  if (
+    releaseIdentity &&
+    (releaseIdentity.sourceSha.length !== 40 ||
+      !/^[a-f0-9]{40}$/.test(releaseIdentity.sourceSha) ||
+      !['staging', 'production'].includes(releaseIdentity.environment))
+  )
+    throw new Error('Invalid API release identity');
   const app = createServer({
     logger: options.logger ?? loggerOptions(),
     genReqId: () => randomUUID(),
@@ -71,7 +89,24 @@ export function buildApp(
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
     reply.header('cache-control', 'no-store');
+    if (
+      releaseIdentity &&
+      request.method === 'GET' &&
+      ['/health', '/ready'].includes(request.routeOptions.url ?? '')
+    ) {
+      reply.header('x-justgo-source-sha', releaseIdentity.sourceSha);
+      reply.header('x-justgo-environment', releaseIdentity.environment);
+    }
   });
+  if (options.reportServerError)
+    app.addHook('onSend', async (request, reply, payload) => {
+      await reportServerErrorResponse(
+        request,
+        reply,
+        options.reportServerError,
+      );
+      return payload;
+    });
   app.addHook('onResponse', logServerErrorResponse);
   app.get('/health', async () =>
     healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
