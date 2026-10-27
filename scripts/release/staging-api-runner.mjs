@@ -19,6 +19,11 @@ import {
   validateUpload,
   candidateReceipt,
   isSourceSha,
+  StagingRunnerFailure,
+} from './staging-api.mjs';
+export {
+  StagingRunnerFailure,
+  stagingRunnerFailureCode,
 } from './staging-api.mjs';
 
 // All child output stays private: provider failures can contain credentials/content.
@@ -33,10 +38,11 @@ export async function privateCommand(command, args, options = {}) {
     });
     return result.stdout;
   } catch {
-    throw new Error('STAGING_COMMAND_FAILED');
+    throw new StagingRunnerFailure('STAGING_COMMAND_FAILED');
   }
 }
 export async function stagingApi(operation, options = {}) {
+  const phase = { promotionAttempted: false };
   const env = options.env ?? process.env;
   const context = releaseContext(env);
   requireRelease(Boolean(env.VERCEL_TOKEN), 'STAGING_VERCEL_TOKEN_REQUIRED');
@@ -48,32 +54,41 @@ export async function stagingApi(operation, options = {}) {
   // mapping so the pinned CLI does not try that unrelated identity lookup.
   const directory = mkdtempSync(join(env.RUNNER_TEMP, 'justgo-api-cli-'));
   try {
-    const config = join(directory, 'com.vercel.cli');
-    mkdirSync(config, { mode: 0o700 });
-    writeFileSync(
-      join(config, 'config.json'),
-      JSON.stringify({
-        currentTeam: target.team,
-        cachedTeamIds: { [target.scope]: target.team },
-        cachedTeamSlugs: {
-          [target.team]: { slug: target.scope, savedAt: Date.now() },
+    try {
+      const config = join(directory, 'com.vercel.cli');
+      mkdirSync(config, { mode: 0o700 });
+      writeFileSync(
+        join(config, 'config.json'),
+        JSON.stringify({
+          currentTeam: target.team,
+          cachedTeamIds: { [target.scope]: target.team },
+          cachedTeamSlugs: {
+            [target.team]: { slug: target.scope, savedAt: Date.now() },
+          },
+          updates: { auto: false },
+        }),
+        { mode: 0o600, flag: 'wx' },
+      );
+      return await runStagingApi(operation, {
+        ...options,
+        context,
+        phase,
+        env: {
+          ...env,
+          XDG_CONFIG_HOME: directory,
+          XDG_DATA_HOME: directory,
+          XDG_CACHE_HOME: directory,
         },
-        updates: { auto: false },
-      }),
-      { mode: 0o600, flag: 'wx' },
-    );
-    return await runStagingApi(operation, {
-      ...options,
-      context,
-      env: {
-        ...env,
-        XDG_CONFIG_HOME: directory,
-        XDG_DATA_HOME: directory,
-        XDG_CACHE_HOME: directory,
-      },
-    });
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  } catch (error) {
+    // Once the provider has been asked to promote, even a timeout/readback or
+    // cleanup failure requires inspecting remote state before another attempt.
+    if (phase.promotionAttempted)
+      throw new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED');
+    throw error;
   }
 }
 async function runStagingApi(
@@ -85,6 +100,7 @@ async function runStagingApi(
     signal,
     beforePromote,
     context,
+    phase,
     summary = (text) => {
       if (env.GITHUB_STEP_SUMMARY)
         appendFileSync(env.GITHUB_STEP_SUMMARY, text);
@@ -257,6 +273,7 @@ async function runStagingApi(
     );
     await beforePromote();
     requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
+    phase.promotionAttempted = true;
     await vc(['promote', candidate.id]);
     requireRelease(
       validateDeployment(await deployment(target.alias), context).id ===

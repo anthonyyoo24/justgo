@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
 import { stagingApi } from '../../../scripts/release/staging-api-runner.mjs';
-import { sqlState } from '../src/http/diagnostics.js';
+import { stagingReleaseDiagnostic } from './staging-release-diagnostic.js';
 import {
   hostedMigrationOptions,
   requireVerifiedTls,
@@ -81,15 +81,7 @@ try {
     },
   );
 } catch (error) {
-  console.error(
-    JSON.stringify({
-      event: 'staging_release_failed',
-      ...(error instanceof StagingReleaseFailure
-        ? { reason: error.reason }
-        : {}),
-      ...(sqlState(error) ? { sqlState: sqlState(error) } : {}),
-    }),
-  );
+  console.error(JSON.stringify(stagingReleaseDiagnostic(error)));
   process.exitCode = 1;
 } finally {
   try {

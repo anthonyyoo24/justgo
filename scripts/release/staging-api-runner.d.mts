@@ -1,4 +1,8 @@
 export type StagingBaseline = { deploymentId: string; sourceSha: string };
+export class StagingRunnerFailure extends Error {
+  constructor(code: string);
+}
+export function stagingRunnerFailureCode(error: unknown): string | undefined;
 export type StagingReceipt = {
   sourceSha: string;
   deploymentId: string;

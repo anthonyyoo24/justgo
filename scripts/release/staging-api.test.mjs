@@ -22,8 +22,42 @@ import {
   validateDeployment,
   releaseContext,
   candidateReceipt,
+  requireRelease,
+  StagingRunnerFailure,
+  stagingRunnerFailureCode,
 } from './staging-api.mjs';
 import { stagingApi, privateCommand } from './staging-api-runner.mjs';
+
+test('only branded allowlisted failures expose codes, independent of error text', () => {
+  const failure = new StagingRunnerFailure('STAGING_SOURCE_NOT_CLEAN');
+  failure.message = 'PRIVATE_PROVIDER_CREDENTIAL';
+  failure.code = 'PRIVATE_PROVIDER_CREDENTIAL';
+  assert.equal(stagingRunnerFailureCode(failure), 'STAGING_SOURCE_NOT_CLEAN');
+  for (const error of [
+    new Error('STAGING_SOURCE_NOT_CLEAN'),
+    new Error('PRIVATE_PROVIDER_CREDENTIAL'),
+    {
+      code: 'STAGING_SOURCE_NOT_CLEAN',
+      message: 'PRIVATE_PROVIDER_CREDENTIAL',
+    },
+    Object.create(StagingRunnerFailure.prototype),
+    new SyntaxError('PRIVATE_PROVIDER_CREDENTIAL'),
+    'PRIVATE_PROVIDER_CREDENTIAL',
+    undefined,
+  ])
+    assert.equal(stagingRunnerFailureCode(error), undefined);
+  const unknown = new StagingRunnerFailure('PRIVATE_PROVIDER_CREDENTIAL');
+  assert.equal(unknown.message, 'STAGING_RUNNER_FAILED');
+  assert.equal(stagingRunnerFailureCode(unknown), 'STAGING_RUNNER_FAILED');
+  assert.throws(
+    () => requireRelease(false, 'STAGING_BASELINE_CHANGED'),
+    (error) => {
+      assert.equal(error.message, 'STAGING_BASELINE_CHANGED');
+      assert.equal(stagingRunnerFailureCode(error), 'STAGING_BASELINE_CHANGED');
+      return true;
+    },
+  );
+});
 
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
@@ -322,6 +356,12 @@ function fixture(t, failure) {
         });
       if (args[1].includes(target.alias)) {
         aliasReads++;
+        if (promoted && failure === 'promotion-readback')
+          throw new Error('PRIVATE_PROVIDER_CREDENTIAL');
+        if (promoted && failure === 'promotion-json')
+          return 'PRIVATE_PROVIDER_CREDENTIAL';
+        if (promoted && failure === 'promotion-metadata')
+          return JSON.stringify(metadata('dpl_unconfirmed'));
         return JSON.stringify(
           promoted
             ? metadata()
@@ -521,13 +561,39 @@ for (const failure of [
   'receipt-url-mismatch',
   'public-probe',
   'promotion-timeout',
+  'promotion-readback',
+  'promotion-json',
+  'promotion-metadata',
 ])
   test(`release fails closed for ${failure} without automatic rollback or private output`, async (t) => {
     const f = fixture(t, failure);
-    await assert.rejects(stagingApi('deploy', f));
+    const uncertain = [
+      'public-probe',
+      'promotion-timeout',
+      'promotion-readback',
+      'promotion-json',
+      'promotion-metadata',
+    ].includes(failure);
+    await assert.rejects(stagingApi('deploy', f), (error) => {
+      if (uncertain) {
+        assert.equal(error.message, 'STAGING_PROMOTION_UNCONFIRMED');
+        assert.equal(
+          stagingRunnerFailureCode(error),
+          'STAGING_PROMOTION_UNCONFIRMED',
+        );
+      } else {
+        assert.notEqual(stagingRunnerFailureCode(error), undefined);
+        assert.notEqual(
+          stagingRunnerFailureCode(error),
+          'STAGING_RUNNER_FAILED',
+        );
+      }
+      assert.ok(!JSON.stringify(error).includes('PRIVATE_PROVIDER_CREDENTIAL'));
+      return true;
+    });
     assert.equal(
       f.calls.filter((c) => c.args[0] === 'promote').length,
-      ['public-probe', 'promotion-timeout'].includes(failure) ? 1 : 0,
+      uncertain ? 1 : 0,
     );
     assert.ok(
       !f.calls.some((c) => c.args[0] === 'rollback' || c.args[0] === 'remove'),
@@ -555,8 +621,32 @@ test('private command failures never expose provider output or argument secrets'
         '-e',
         'throw new Error("private-secret-fixture")',
       ]),
-    (error) => error.message === 'STAGING_COMMAND_FAILED',
+    (error) =>
+      error.message === 'STAGING_COMMAND_FAILED' &&
+      stagingRunnerFailureCode(error) === 'STAGING_COMMAND_FAILED',
   );
+});
+test('failures before promotion preserve their own classification, while a failed receipt write is uncertain', async (t) => {
+  const f = fixture(t);
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      env: { ...f.env, STAGING_BASELINE_ID: 'dpl_wrong' },
+    }),
+    (error) => stagingRunnerFailureCode(error) === 'STAGING_BASELINE_CHANGED',
+  );
+  assert.ok(!f.calls.some((call) => call.args[0] === 'promote'));
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      summary: () => {
+        throw new Error('PRIVATE_PROVIDER_CREDENTIAL');
+      },
+    }),
+    (error) =>
+      stagingRunnerFailureCode(error) === 'STAGING_PROMOTION_UNCONFIRMED',
+  );
+  assert.equal(f.calls.filter((call) => call.args[0] === 'promote').length, 1);
 });
 test('lost DB connection during candidate build prevents all later provider operations', async (t) => {
   const f = fixture(t);

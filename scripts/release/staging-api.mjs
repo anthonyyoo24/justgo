@@ -12,8 +12,57 @@ export const stagingTarget = Object.freeze({
   environment: 'justgo-staging',
   reviewer: '51426358',
 });
+
+const failureCodes = new Set([
+  'STAGING_RUNNER_FAILED',
+  'INVALID_STAGING_RELEASE_CONTEXT',
+  'FOUNDATION_MAIN_PUSH_REQUIRED',
+  'STAGING_OWNER_MAIN_PROTECTION_REQUIRED',
+  'INVALID_API_UPLOAD',
+  'API_UPLOAD_PATH_MISMATCH',
+  'UNSAFE_API_UPLOAD',
+  'API_UPLOAD_HASH_MISMATCH',
+  'WRONG_STAGING_DEPLOYMENT',
+  'UNSAFE_DEPLOYMENT_URL',
+  'STAGING_DEPLOYMENT_PROVENANCE_MISMATCH',
+  'INVALID_CANDIDATE_RECEIPT',
+  'INVALID_STAGING_PROBE',
+  'INVALID_STAGING_PROBE_HEADERS',
+  'STAGING_AUTH_FENCE_FAILED',
+  'STAGING_RUNTIME_IDENTITY_MISMATCH',
+  'STAGING_READINESS_FAILED',
+  'INVALID_STAGING_GUARD_ARGUMENTS',
+  'STAGING_COMMAND_FAILED',
+  'STAGING_VERCEL_TOKEN_REQUIRED',
+  'STAGING_EXISTING_BYPASS_SECRET_REQUIRED',
+  'STAGING_DATABASE_LEASE_LOST',
+  'STAGING_BASELINE_SOURCE_REQUIRED',
+  'STAGING_SOURCE_NOT_CLEAN',
+  'STAGING_BASELINE_CHANGED',
+  'PINNED_VERCEL_REQUIRED',
+  'STAGING_PROJECT_CONFIGURATION_MISMATCH',
+  'CANDIDATE_RECEIPT_PROVENANCE_MISMATCH',
+  'STAGING_ALIAS_CHANGED_DURING_CANDIDATE_BUILD',
+  'STAGING_ALIAS_CHANGED_BEFORE_PROMOTION',
+  'STAGING_PROMOTION_UNCONFIRMED',
+]);
+const trustedFailures = new WeakMap();
+
+/** A closed diagnostic vocabulary, independent of any provider error text. */
+export class StagingRunnerFailure extends Error {
+  constructor(code) {
+    const safeCode = failureCodes.has(code) ? code : 'STAGING_RUNNER_FAILED';
+    super(safeCode);
+    trustedFailures.set(this, safeCode);
+  }
+}
+
+export function stagingRunnerFailureCode(error) {
+  return trustedFailures.get(error);
+}
+
 export function requireRelease(condition, code) {
-  if (!condition) throw new Error(code);
+  if (!condition) throw new StagingRunnerFailure(code);
 }
 export function isSourceSha(value) {
   return (
@@ -177,7 +226,7 @@ export function candidateReceipt(output) {
   try {
     receipt = JSON.parse(output);
   } catch {
-    throw new Error('INVALID_CANDIDATE_RECEIPT');
+    throw new StagingRunnerFailure('INVALID_CANDIDATE_RECEIPT');
   }
   const value = receipt?.deployment;
   requireRelease(
@@ -198,7 +247,7 @@ export function validateProbe({ status, headers, body }, kind, sha) {
   try {
     value = JSON.parse(body);
   } catch {
-    throw new Error('INVALID_STAGING_PROBE');
+    throw new StagingRunnerFailure('INVALID_STAGING_PROBE');
   }
   requireRelease(
     headers['cache-control'] === 'no-store' &&
@@ -248,7 +297,7 @@ if (
         values[1],
         process.env.EXPECTED_REVIEWER_ID,
       );
-    else throw new Error('INVALID_STAGING_GUARD_ARGUMENTS');
+    else throw new StagingRunnerFailure('INVALID_STAGING_GUARD_ARGUMENTS');
   } catch {
     console.error('Staging release prerequisite failed.');
     process.exitCode = 1;
