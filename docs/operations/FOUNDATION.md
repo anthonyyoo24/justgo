@@ -18,8 +18,8 @@ Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                                           |
 | TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                                         |
-| Expo / React Native / React      | 58.0.19 / 0.88.0 / 19.3.0                                                                                            |
-| Expo Router / development client | 58.0.26 / 58.0.15                                                                                                    |
+| Expo / React Native / React      | 58.0.20 / 0.88.0 / 19.3.0                                                                                            |
+| Expo Router / development client | 58.0.27 / 58.0.16                                                                                                    |
 | Reanimated / Worklets            | 4.7.1 / 0.13.0; New Architecture required                                                                            |
 | Bottom sheet / Gesture Handler   | 5.2.14 / 3.3.0                                                                                                       |
 | Safe area / Screens / SVG        | 5.10.1 / 4.30.0 / 15.16.0                                                                                            |
@@ -47,6 +47,21 @@ remaining device/release gates are recorded in the
 [native-upgrade handoff](../handoffs/phase-14-native-upgrade.md). The iOS minimum
 remains 16.4. File export/import now awaits SDK 58's asynchronous write/read APIs
 before sharing, checking ownership or closing the file handle.
+
+The October 27 patch alignment updates Expo to 58.0.20, development client to
+58.0.16, File System to 58.0.12 and Router to 58.0.27. The lock also resolves
+modules-core 58.0.27 and JSI 58.0.20, including native shared-object/event changes.
+Sentry remains 8.28.0 with the same privacy plugin. These packages require a new
+signed binary; the installed build's earlier device evidence does not establish
+acceptance of this patched runtime. Preserve the owner-deferred phone checks
+and separate build/deployment permissions.
+
+The October 27 dependency audit passes the 87-entry API production graph with
+zero advisories. The root graph retains seven findings (three high, four moderate)
+in Expo CLI/Zod 3 and Drizzle development-tool dependencies; the patch lock now
+resolves node-forge 1.4.2. Preserve SDK 58 and the current Drizzle boundary while
+tracking compatible repairs before public release. Green application checks do
+not close the remaining tooling-advisory or native/device gates.
 
 Android is excluded from app platforms and has no package identifier, EAS profile, signing or test evidence. Shared dependencies do not establish Android support. When scheduled, select the SDK's Android minimum/target/compile levels, JDK/Gradle, New Architecture and recovery adapter together, and recheck current Play requirements. Do not infer an Android release promise from the Expo template.
 

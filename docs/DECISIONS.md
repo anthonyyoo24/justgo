@@ -836,3 +836,15 @@ a manual diagnostic after the workflow change is merged. GitHub continues to
 report build/test failures. No Slack integration is needed. Supabase Pro, current
 restorable/off-Mac backups, private-journal provider assessment and deferred
 physical-device/simulator checks retain their separately recorded status.
+
+## October 27 release-publication patch follow-up
+
+Anthony requested implementation of the remaining patch work, pushing the branch
+and opening its PR. Include the SDK 58 compatibility alignment as a separately
+reviewable commit with the prepared error-alert and release work. Expo, development
+client, File System and Router patch versions follow the refreshed supported set;
+React, React Native, the Sentry version and app identities remain unchanged.
+The updated native core/JSI still requires a newly signed binary and later phone
+acceptance. Keep those deferred release gates explicit. This instruction authorizes
+the current push and PR; merge, server deployment, native build/upload and outside
+tester invitations retain their separate approval.
