@@ -124,8 +124,32 @@ initialization is disabled; physical behavior and outbound privacy remain open.
 The separate [upload run](https://github.com/anthonyyoo24/justgo/actions/runs/40229823125)
 reverified provenance, hashes and signing, then successfully transferred that IPA
 to Apple on October 25. Submission created no tester groups or invitations.
-Apple processing, owner phone acceptance and any later distribution remain
-separate from successful upload.
+Apple subsequently processed build 3, and the existing internal **Owner
+validation** group has one owner tester with that build installed. External
+distribution and phone acceptance remain separate from successful upload.
+
+The October 26 UI update is **0.1.0 (4)** from reviewed/merged [PR #55](https://github.com/anthonyyoo24/justgo/pull/55),
+`main` commit `9bdd97734d8bc801847b28e21f8311be4d18277e` and immutable tag
+`testflight-beta-2026-10-26-1`. Exact-source
+[Foundation checks](https://github.com/anthonyyoo24/justgo/actions/runs/40418107224),
+[GitHub Mac build](https://github.com/anthonyyoo24/justgo/actions/runs/40418884414)
+and separate [upload](https://github.com/anthonyyoo24/justgo/actions/runs/40422595293)
+passed. Artifact `12697329152` has archive SHA-256
+`13903a5d24cb37811e1fad44b6e58b455e591c1466ace4f4ed0b3d3cc9781e24`;
+the inspected IPA SHA-256 is
+`0ebf9fb5b58f6fc92ff3d31b1e50afab87989fb2a607683afa3707e8b42a951d`.
+Signature, identity, capabilities, staging configuration and all 14 artwork files
+pass inspection. All 18 normalized privacy manifests match build 3, including
+Google's eight linked data categories and Analytics purposes; this does not
+establish runtime SDK behavior.
+
+Apple processed build 4, its saved build-specific What to Test notes cover the
+sheet/editor fixes, and the existing **Owner validation** group's Builds page
+shows **Testing**. The group remains internal with one existing tester and manual
+build distribution. No external groups, new tester invitations or external Beta
+App Review request were created. Anthony deferred physical-phone checks for now;
+this is not passing device acceptance. The separate server-diagnostics change is
+not part of this native build and has not been deployed to the API.
 
 The local builder fetches signing credentials into a run-owned private temporary
 directory with restrictive permissions. Normal EAS cleanup and an `always()`
@@ -167,28 +191,39 @@ server for standalone launch testing. Use disposable data for destructive cases.
   writing, credentials and backup contents from screenshots or feedback.
 
 The separate physical offline-artwork check remains owner-waived/unverified;
-cold offline launch and other native acceptance remain open.
+cold offline launch and other native acceptance remain open. Anthony deferred the
+remaining physical-phone walkthrough on October 26; preserve these checks for
+later acceptance rather than treating the deferral as a pass.
 
-Beta description candidate:
+Beta description saved in App Store Connect on October 26:
 
-> JustGo offers small real-world social challenges. Browse a venue, choose a
-> challenge, and optionally record how it went. Progress shows completed
-> challenges and saved reflections. You can start without signing in; optional
+> JustGO offers small real-world social challenges. Choose a venue, try a
+> challenge, and optionally save how it went. Progress shows completed
+> challenges and saved reflections. You can use the app without signing in; optional
 > Apple or Google sign-in synchronizes your account journal. This beta provides
-> free access during its test period. Purchases are disabled.
+> free access during its testing period. Purchases are disabled.
 
-Reviewer notes candidate:
+Reviewer notes saved in App Store Connect:
 
 > Continue offers guest use without a required account. Apple/Google sign-in is
-> optional for account synchronization. The build uses isolated application staging
-> with server-authorized, time-bounded beta access. Private iCloud Sync is optional
-> and off by default, separate from account sync and manual files. Purchases,
-> product analytics and ordinary Sentry delivery are disabled. Confirm the approved
-> access window covers review before requesting external Beta App Review.
+> optional for account synchronization. Private iCloud Sync is optional and off by
+> default, separate from account sync and manual backup files. Purchases, JustGO
+> product analytics and ordinary Sentry delivery are disabled. This build uses
+> application staging with server-authorized, time-limited free beta access. Guest
+> access is currently configured through November 10, 2026 at 15:23 UTC. Use
+> disposable entries for testing; never use the owner's real provider credentials.
 
-Feedback contact is the already selected `anthonyyoo24@gmail.com`. Obtain private
-reviewer-contact details from the owner when needed; do not commit them. This
-wording is a local candidate, not saved Apple metadata or a sent invitation.
+The selected feedback email and privacy URL are saved. Anthony supplied the
+review-contact phone directly to Apple; contact completeness and the saved notes
+were verified after reload without recording private contact details. Sign-in
+Required remains unchecked because guest use is available. App Privacy
+disclosures remain unfinished; these saved Test Information fields do not finish
+that separate questionnaire or request beta review.
+
+Recommended external cohort: five trusted iPhone users for 14 days, starting after
+readiness clears. Anthony still needs to select the actual invitees. Verify the
+server access window covers the chosen dates and Apple review before inviting;
+the current guest expiry is not an approved date for a future cohort.
 
 ## Remaining prerequisites
 
@@ -200,12 +235,15 @@ wording is a local candidate, not saved Apple metadata or a sent invitation.
   excludes specified sensitive data; Pro alone does not establish journal-content
   clearance. Preserve the declined-provider-contact direction. Supabase's
   incorporated DPA does not create a generic missing separate-signature task.
+  Anthony deferred the hosting/spending decision on October 26; no paid setup or
+  migration is authorized by the current internal TestFlight update.
 - Verify the configured branded icon and native font/splash behavior on the signed
   build. Root `assets/icon.png` and `assets/splash-icon.png` remain unreferenced Expo
   placeholders.
 - Confirm beta dates/invitees and the remaining [server operating controls](FOUNDATION.md#beta-operating-controls).
-  Cleanup is active; rate-limit deployment, readiness-monitor activation/email
-  proof, 5xx alerts and current backup/recovery arrangements remain open.
+  Cleanup and rate limits are deployed, and the readiness monitor is active.
+  Reliable monitoring cadence, actual notification receipt, deployed 5xx reporting
+  and alert delivery, and current backup/recovery arrangements remain open.
   Protected hosted-migration/deploy automation and native UI CI smoke remain open;
   the retained Maestro launch file still targets old entry/account UI.
 - Preserve all applicable separate Git, native build, upload and distribution

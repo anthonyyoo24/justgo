@@ -189,7 +189,9 @@ unredeemed transfers expired more than 24 hours; it preserves journals, users,
 deletion/revocation records and redeemed transfers. Disable by job name through
 `cron.alter_job`, not direct updates to cron tables. Security advisors report no
 new finding; the pre-existing leaked-password-protection warning remains, while
-the app uses Apple/Google sign-in.
+the app uses Apple/Google sign-in. The October 26 audit found 34 successful
+scheduled executions in the preceding 48 hours; this supplements the initial
+execution proof without changing the function's deletion scope.
 
 The API has independent per-account write/export budgets, with source defaults
 of 600 new-write batches and 3,000 page reads per ten minutes through
@@ -202,26 +204,45 @@ Completion, journal and restore batches share
 the write budget; accepted identical retries remain available. Limits reuse
 durable HMAC buckets inside the existing owner transaction, including pool size
 one. Failed batches roll back counters and deletion remains reachable. The
-deployment evidence is recorded on [PR #49](https://github.com/anthonyyoo24/justgo/pull/49);
-publish the matching revision and tune from measured beta traffic.
+October 26 audit verified source `f91db327` deployed to application staging as
+`dpl_EzhBCSPwxficKtW4z6wtvv8n8gfq`, with the 600/3,000 defaults. Historical
+implementation evidence is recorded on
+[PR #49](https://github.com/anthonyyoo24/justgo/pull/49); tune limits from measured
+beta traffic.
 
-The prepared `.github/workflows/staging-health.yml` probes only the public
-staging `/ready` about every five minutes, without credentials, checkout or
-response-body logging. It activates only after owner-approved publication to
-`main`. Its default-false `test_notification` input deliberately fails one manual
-run without contacting the server, so the owner can confirm notification receipt.
+The active `.github/workflows/staging-health.yml` probes only the public staging
+`/ready`, without credentials, checkout or response-body logging. It is configured
+for every five minutes, but the October 26 audit found only eight historical runs
+with gaps as long as 6.11 hours. This is best-effort scheduling, not evidence of a
+five-minute detection interval. Its default-false `test_notification` input
+deliberately fails one manual run without contacting the server. The
+[synthetic notification test](https://github.com/anthonyyoo24/justgo/actions/runs/40421509765)
+failed as intended without a network request; the subsequent
+[recovery run](https://github.com/anthonyyoo24/justgo/actions/runs/40421734104)
+passed. Actual receipt of the failure email by Anthony remains unverified.
 [GitHub notification preferences](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs)
-and actual email delivery still need verification. Schedules are best-effort and
+still need verification, and
 [inactive public repositories can lose their schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 This is not a real-time uptime guarantee or API 5xx tracker.
 
-Before external testers, retain the open API deployment/monitoring, 5xx reporting,
-supported private-journal processing and current backup/recovery-copy deletion
-gates. Earlier cutover dumps are not an unattended backup service for the current
-managed-account schema. Off-Mac storage, retention and a separately recoverable
-current deletion/epoch/Auth ledger still need an actual arrangement; local
-database regression tests do not establish hosted disaster recovery. No paid
-upgrade or provider contact was performed.
+The API response hook records every completed 5xx response exactly once,
+including direct replies: the generated request ID (`reqId`), `statusCode`,
+`HTTP_SERVER_ERROR` classification and an optional validated PostgreSQL SQLSTATE.
+It excludes raw exceptions, request/response bodies and URLs. Local tests cover
+the reporting boundary; hosted deployment, 5xx reporting and delivery to an
+external alert destination remain open.
+
+Before external testers, retain the open monitoring-cadence/notification,
+diagnostics deployment/5xx alert delivery, supported private-journal processing
+and current backup/recovery-copy deletion gates. The October 21 operator snapshot
+predates five current managed-Auth/journal/deletion tables and excludes the
+`auth` schema. Its historical restore proof does not establish restoration of the
+current schema, and earlier cutover dumps are not an unattended backup service.
+There is no current full-restore, off-Mac storage or independently recoverable
+deletion/epoch/Auth-ledger evidence. Storage, retention and recovery still need an
+actual arrangement; local database regression tests do not establish hosted
+disaster recovery. Hosting choice and paid setup await owner authorization. No
+paid upgrade or provider contact was performed.
 
 ## Design and tests
 

@@ -18,7 +18,7 @@ import {
   healthResponseSchema,
   readinessResponseSchema,
 } from '@justgo/contracts';
-import { loggerOptions } from './http/diagnostics.js';
+import { loggerOptions, logServerErrorResponse } from './http/diagnostics.js';
 import type { IdentityService } from './identity/service.js';
 import { identityRoutes } from './identity/routes.js';
 import { accessRoutes } from './access/routes.js';
@@ -72,6 +72,7 @@ export function buildApp(
     reply.header('x-request-id', request.id);
     reply.header('cache-control', 'no-store');
   });
+  app.addHook('onResponse', logServerErrorResponse);
   app.get('/health', async () =>
     healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
   );
@@ -163,15 +164,11 @@ export function buildApp(
         ),
       { prefix: '/v1/attempts' },
     );
-  app.get('/ready', async (request, reply) => {
+  app.get('/ready', async (_request, reply) => {
     try {
       await options.checkDatabase();
       return readinessResponseSchema.parse({ status: 'ready' });
     } catch {
-      request.log.warn(
-        { event: 'database_unavailable' },
-        'Readiness check failed',
-      );
       return reply
         .code(503)
         .send(readinessResponseSchema.parse({ status: 'unavailable' }));

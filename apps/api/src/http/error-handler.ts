@@ -1,7 +1,7 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import type { IdentityErrorCode } from '@justgo/contracts';
 import { ApiError } from './api-error.js';
-import { sqlState } from './diagnostics.js';
+import { captureServerErrorSqlState, sqlState } from './diagnostics.js';
 
 /** Typed codes for request errors Fastify raises before route code runs. */
 const requestErrorCodes: Partial<Record<number, IdentityErrorCode>> = {
@@ -43,15 +43,18 @@ export function errorHandler(
       return;
     }
     const { status, code } = versionedFailure(error);
-    request.log.error({ err: error }, 'API operation failed');
+    // The response hook owns 5xx reporting, including failures sent without a throw.
+    if (status < 500) request.log.error({ err: error }, 'API operation failed');
+    else captureServerErrorSqlState(request, error);
     void reply.code(status).send({ code, requestId: request.id });
     return;
   }
-  request.log.error({ err: error }, 'Request failed');
   const statusCode =
     error.statusCode && error.statusCode >= 400 && error.statusCode < 500
       ? error.statusCode
       : 500;
+  if (statusCode < 500) request.log.error({ err: error }, 'Request failed');
+  else captureServerErrorSqlState(request, error);
   void reply.code(statusCode).send({
     error: statusCode < 500 ? 'Invalid request' : 'Internal server error',
     requestId: request.id,
