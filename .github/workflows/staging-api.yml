@@ -93,8 +93,10 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/environments/justgo-staging/deployment-branch-policies" > "$RUNNER_TEMP/staging-branches.json"
           node scripts/release/staging-api.mjs environment "$RUNNER_TEMP/staging-environment.json" "$RUNNER_TEMP/staging-branches.json"
       - uses: ./.github/actions/setup-node
-      - name: Install pinned Vercel CLI
-        run: npm install --global vercel@64.5.0
+      - name: Install lockfile-pinned Vercel CLI
+        run: |
+          npm ci --prefix scripts/release/vercel-cli
+          printf '%s\n' "$GITHUB_WORKSPACE/scripts/release/vercel-cli/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Guard database history and release exact staging candidate
         env:
           RELEASE_SHA: ${{ needs.validate.outputs.sha }}

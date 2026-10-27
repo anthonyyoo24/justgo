@@ -87,7 +87,23 @@ probes and promotion. Concurrent jobs are also serialized by GitHub.
 
 ## Candidate and promotion safeguards
 
-Node/npm follow the pinned repository setup; Vercel CLI is pinned to **64.5.0**.
+Node/npm follow the pinned repository setup. Vercel CLI **64.5.0** and its
+transitive graph are locked separately in
+[`scripts/release/vercel-cli`](../../scripts/release/vercel-cli/package.json).
+The protected job runs `npm ci --prefix scripts/release/vercel-cli` before provider
+credentials are exposed, then prepends that installation's binary directory to
+`GITHUB_PATH`. The root/app install and API upload do not include this toolset.
+Weekly Dependabot checks cover both the workspace and this standalone lock.
+
+The isolated tool manifest overrides `tar` to 7.5.22 while the CLI's container
+helper pins an older vulnerable patch. This removes the critical archive-parser
+DoS and related tar findings without changing the reviewed CLI major version.
+See the [node-tar advisory](https://github.com/advisories/GHSA-23hp-3jrh-7fpw).
+The October 27 standalone CLI audit still reports 32 upstream findings (20 high,
+12 moderate), separately from the root tooling and zero-finding API production
+graph. Track compatible vendor repairs before public release; neither a lockfile
+nor a clean API audit establishes that all deployment-tool dependencies are clear.
+
 That CLI accepts `VERCEL_TOKEN` without a saved owner login. Project-scoped tokens
 can read their project/deployments but cannot read `/user`; the CLI's uncached
 `--scope` bootstrap otherwise fails there with `User not found (404)`. For each
@@ -178,6 +194,14 @@ backup gates block pending hosted migrations, not code-only deployment when the
 live migration history already matches.
 
 ## Failures and uncertain outcomes
+
+Failure records preserve the database guard's existing `reason` and validated
+SQLSTATE, plus a `code` only for the runner's branded, closed-vocabulary failures.
+A provider error message is never accepted merely because it looks like an
+uppercase code. Once promotion has been attempted, command, probe, receipt or
+cleanup failures report `STAGING_PROMOTION_UNCONFIRMED`; read back the alias and
+runtime identity before retrying. Earlier guard failures retain their specific
+codes. These diagnostics do not authorize rollback or further deployment.
 
 Before promotion, a failed candidate/probe leaves the stable alias untouched;
 verify its actual target rather than relying on CLI wording. Successful pending

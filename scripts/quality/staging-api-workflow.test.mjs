@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { productionPath } from '../release/staging-api.mjs';
 const workflow = readFileSync(
   new URL('../../.github/workflows/staging-api.yml', import.meta.url),
   'utf8',
@@ -23,7 +24,7 @@ test('staging release is manual, serialized, main-only and checks protection bef
   );
   assert.match(workflow, /name: justgo-staging/);
   assert.match(workflow, /ref: \$\{\{ needs\.validate\.outputs\.sha \}\}/);
-  assert.match(workflow, /vercel@64\.5\.0/);
+  assert.match(workflow, /npm ci --prefix scripts\/release\/vercel-cli/);
   assert.match(
     workflow,
     /node --import tsx apps\/api\/scripts\/staging-release\.ts/,
@@ -47,6 +48,54 @@ test('staging release is manual, serialized, main-only and checks protection bef
     /upload-artifact|supabase db push|db:local|test:db|--public|--debug/,
   );
   assert.match(workflow, /if: always\(\)/);
+});
+test('the deployment CLI uses its isolated dependency lock before provider credentials', () => {
+  const tool = JSON.parse(
+    readFileSync(
+      new URL('../release/vercel-cli/package.json', import.meta.url),
+    ),
+  );
+  const lock = JSON.parse(
+    readFileSync(
+      new URL('../release/vercel-cli/package-lock.json', import.meta.url),
+    ),
+  );
+  assert.equal(tool.private, true);
+  assert.deepEqual(tool.dependencies, { vercel: '64.5.0' });
+  assert.equal(lock.packages[''].dependencies.vercel, tool.dependencies.vercel);
+  assert.equal(
+    lock.packages['node_modules/vercel'].version,
+    tool.dependencies.vercel,
+  );
+  assert.ok(lock.packages['node_modules/vercel'].integrity);
+  assert.equal(
+    productionPath('scripts/release/vercel-cli/package.json'),
+    false,
+  );
+  assert.equal(
+    productionPath('scripts/release/vercel-cli/package-lock.json'),
+    false,
+  );
+  assert.equal(tool.overrides.tar, '7.5.22');
+  for (const [path, dependency] of Object.entries(lock.packages))
+    if (path.endsWith('/tar'))
+      assert.equal(dependency.version, tool.overrides.tar);
+  assert.match(
+    workflow,
+    /\$GITHUB_WORKSPACE\/scripts\/release\/vercel-cli\/node_modules\/\.bin/,
+  );
+  assert.doesNotMatch(workflow, /npm install --global vercel|npx .*vercel/);
+  assert.ok(
+    workflow.indexOf('npm ci --prefix scripts/release/vercel-cli') <
+      workflow.indexOf('secrets.VERCEL_TOKEN'),
+  );
+  assert.match(
+    readFileSync(
+      new URL('../../.github/dependabot.yml', import.meta.url),
+      'utf8',
+    ),
+    /directories:\s*\n\s*- \/\s*\n\s*- \/scripts\/release\/vercel-cli/,
+  );
 });
 test('actual tag shell rejects missing/unreviewed refs and shell syntax without executing it', (t) => {
   const root = mkdtempSync(join(tmpdir(), 'justgo-staging-tag-'));
