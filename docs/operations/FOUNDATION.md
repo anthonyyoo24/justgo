@@ -241,8 +241,13 @@ current schema, and earlier cutover dumps are not an unattended backup service.
 There is no current full-restore, off-Mac storage or independently recoverable
 deletion/epoch/Auth-ledger evidence. Storage, retention and recovery still need an
 actual arrangement; local database regression tests do not establish hosted
-disaster recovery. Hosting choice and paid setup await owner authorization. No
-paid upgrade or provider contact was performed.
+disaster recovery. The October 27 [operating decision](../DECISIONS.md#october-27-hosting-backups-and-simulator-test-direction)
+retains Vercel and Supabase, with no hosting migration selected. Supabase Pro is
+the selected managed daily-backup plan with seven days of history; upgrade and
+spending wait until Anthony is ready for outside testers or App Store release
+preparation. This choice does not close the processing/recovery gates. No paid
+upgrade, provider contact or new alert/deployment implementation is authorized by
+the side-chat explanation.
 
 ## Design and tests
 

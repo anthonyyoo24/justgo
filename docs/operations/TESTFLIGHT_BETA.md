@@ -235,8 +235,11 @@ the current guest expiry is not an approved date for a future cohort.
   excludes specified sensitive data; Pro alone does not establish journal-content
   clearance. Preserve the declined-provider-contact direction. Supabase's
   incorporated DPA does not create a generic missing separate-signature task.
-  Anthony deferred the hosting/spending decision on October 26; no paid setup or
-  migration is authorized by the current internal TestFlight update.
+  The October 27 [operating decision](../DECISIONS.md#october-27-hosting-backups-and-simulator-test-direction)
+  retains Vercel and Supabase; do not pursue a hosting migration. Supabase Pro is
+  selected for daily backups with seven days of history, but upgrade/spending wait
+  until Anthony is ready for outside testers or App Store release preparation.
+  No purchase or upgrade is authorized now; provider suitability remains open.
 - Verify the configured branded icon and native font/splash behavior on the signed
   build. Root `assets/icon.png` and `assets/splash-icon.png` remain unreferenced Expo
   placeholders.
@@ -244,8 +247,11 @@ the current guest expiry is not an approved date for a future cohort.
   Cleanup and rate limits are deployed, and the readiness monitor is active.
   Reliable monitoring cadence, actual notification receipt, deployed 5xx reporting
   and alert delivery, and current backup/recovery arrangements remain open.
-  Protected hosted-migration/deploy automation and native UI CI smoke remain open;
-  the retained Maestro launch file still targets old entry/account UI.
+  Protected hosted-migration/deploy automation remains open. The October 27 owner
+  direction defers the automated iOS simulator smoke test; do not implement it
+  now or mark it passed. The retained Maestro launch file still targets old
+  entry/account UI. The side-chat explanation authorizes no new alert/deployment
+  implementation, account changes or purchases.
 - Preserve all applicable separate Git, native build, upload and distribution
   permissions and the original Phase 14 acceptance matrix.
 

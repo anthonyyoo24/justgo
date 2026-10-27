@@ -777,3 +777,24 @@ environment isolation protect the app boundary. The first hosted build and
 physical acceptance remain pending under the
 [development-build procedure](operations/DEVELOPMENT_BUILDS.md). Existing owner
 review, Git permissions and Phase 14 release gates remain in force.
+
+## October 27 hosting, backups and simulator-test direction
+
+The owner-requested side-chat decision handoff selects the existing providers:
+Vercel for the API/server and Supabase for database/authentication. Keep that
+arrangement as the working plan; do not pursue a hosting migration. Cloudflare
+R2, Backblaze B2 and AWS were discussed, but none was selected. This provider
+choice does not establish private-journal processing suitability or close the
+existing privacy/recovery gates.
+
+Supabase Pro is the selected managed-backup plan, with automatic daily backups
+and seven days of accessible history. Defer the upgrade and spending until Anthony
+is ready for outside testers or App Store release preparation. No purchase or
+upgrade is authorized now; current backup, recovery-copy retention and
+deletion-safe restore evidence remain separate requirements.
+
+Defer the automated iOS simulator smoke test [TST-2] for now. Do not implement
+that CI test under the current scope; record it as deferred/unverified, never
+passed. This does not supply physical-device evidence. The side-chat explanation
+of alerts and deployment automation authorizes no new implementation, account
+changes or purchases.
