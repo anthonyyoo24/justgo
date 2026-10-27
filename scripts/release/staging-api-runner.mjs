@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { setTimeout as pause } from 'node:timers/promises';
 import {
   stagingTarget as target,
   releaseContext,
@@ -101,6 +102,7 @@ async function runStagingApi(
     beforePromote,
     context,
     phase,
+    wait = pause,
     summary = (text) => {
       if (env.GITHUB_STEP_SUMMARY)
         appendFileSync(env.GITHUB_STEP_SUMMARY, text);
@@ -274,12 +276,34 @@ async function runStagingApi(
     await beforePromote();
     requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
     phase.promotionAttempted = true;
-    await vc(['promote', candidate.id]);
+    // The promote subcommand reads team-wide metadata before its project-bound
+    // POST. Avoid that unrelated lookup for project-scoped tokens. Send the no-rebuild
+    // request directly; success may be empty/queued, so only alias readback proves
+    // completion. Never retry the mutation automatically.
+    const promotion = await vc([
+      'api',
+      `/v10/projects/${target.project}/promote/${candidate.id}?teamId=${target.team}`,
+      '--method',
+      'POST',
+      '--include',
+      '--silent',
+    ]);
     requireRelease(
-      validateDeployment(await deployment(target.alias), context).id ===
-        candidate.id,
+      /^HTTP (201|202)(?: [^\r\n]*)?\r?\n/.test(promotion),
       'STAGING_PROMOTION_UNCONFIRMED',
     );
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const current = validateDeployment(await deployment(target.alias));
+      if (current.id === candidate.id) {
+        validateDeployment(current, context);
+        break;
+      }
+      requireRelease(
+        current.id === baseline.id && attempt < 29,
+        'STAGING_PROMOTION_UNCONFIRMED',
+      );
+      await wait(2000, undefined, { signal });
+    }
     await probe('/health', 'health', true);
     await probe('/ready', 'ready', true);
     await probe('/v1/journal-sync?limit=1', 'unauthorized', true);

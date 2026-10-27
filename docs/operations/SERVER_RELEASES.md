@@ -118,6 +118,22 @@ metadata, protected health and `deploy --dry`; it does not broaden that token's
 permissions. XDG paths avoid passing `--global-config` to curl, which would
 forward that unsupported option instead of using it as a CLI flag.
 
+The CLI's `promote` subcommand also reads team-wide metadata before sending its
+project-specific promotion request. Scope caches do not eliminate that extra
+lookup. The runner instead sends one authenticated project-bound
+`POST /v10/projects/{projectId}/promote/{deploymentId}` through `vercel api`,
+using the same fixed project, team and inspected production candidate. The
+[promotion endpoint](https://vercel.com/docs/rest-api/projects/point-production-traffic-to-a-given-deployment)
+preserves the existing build and uses the configured project-only credential.
+`--include --silent` captures only private response headers;
+the runner requires documented HTTP 201 or 202 without parsing an empty body.
+A successful response may be queued, so the
+runner polls the stable alias at two-second intervals, for at most 30 reads,
+and requires its exact deployment/source/run identity before public probes.
+It accepts the previous baseline only while waiting; another deployment fails
+closed. The same database lease remains held, abort cancels the wait, and the
+mutation is never retried automatically.
+
 The helper runs from
 the checked-out repository root and validates the actual `deploy --dry --json`
 upload paths and file hashes against tracked production sources. Preserve
