@@ -11,6 +11,7 @@ import {
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as pause } from 'node:timers/promises';
+import { promoteStagingCandidate } from './staging-promotion.mjs';
 import {
   stagingTarget as target,
   releaseContext,
@@ -103,6 +104,7 @@ async function runStagingApi(
     context,
     phase,
     wait = pause,
+    promote = promoteStagingCandidate,
     summary = (text) => {
       if (env.GITHUB_STEP_SUMMARY)
         appendFileSync(env.GITHUB_STEP_SUMMARY, text);
@@ -276,22 +278,9 @@ async function runStagingApi(
     await beforePromote();
     requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
     phase.promotionAttempted = true;
-    // The promote subcommand reads team-wide metadata before its project-bound
-    // POST. Avoid that unrelated lookup for project-scoped tokens. Send the no-rebuild
-    // request directly; success may be empty/queued, so only alias readback proves
-    // completion. Never retry the mutation automatically.
-    const promotion = await vc([
-      'api',
-      `/v10/projects/${target.project}/promote/${candidate.id}?teamId=${target.team}`,
-      '--method',
-      'POST',
-      '--include',
-      '--silent',
-    ]);
-    requireRelease(
-      /^HTTP (201|202)(?: [^\r\n]*)?\r?\n/.test(promotion),
-      'STAGING_PROMOTION_UNCONFIRMED',
-    );
+    // The CLI's API client retries mutations internally. Use the single-request
+    // transport; the existing alias checks still own completion evidence.
+    await promote(candidate.id, { token: env.VERCEL_TOKEN, signal });
     for (let attempt = 0; attempt < 30; attempt++) {
       const current = validateDeployment(await deployment(target.alias));
       if (current.id === candidate.id) {

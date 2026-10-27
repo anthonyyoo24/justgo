@@ -62,11 +62,8 @@ test('only branded allowlisted failures expose codes, independent of error text'
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
 const context = { sha, runId: '123', attempt: '1' };
-const promotionPath = `/v10/projects/${target.project}/promote/dpl_candidate?teamId=${target.team}`;
 const isPromotion = (call) =>
-  call.command === 'vercel' &&
-  call.args[0] === 'api' &&
-  call.args[1] === promotionPath;
+  call.command === 'promotion' && call.args[0] === 'dpl_candidate';
 const env = {
   GITHUB_ACTIONS: 'true',
   GITHUB_REPOSITORY: target.repository,
@@ -353,20 +350,6 @@ function fixture(t, failure) {
           : '';
     if (command === 'vercel' && args[0] === '--version') return '64.5.0';
     if (command === 'vercel' && args[0] === 'api') {
-      if (args[1] === promotionPath) {
-        assert.equal(args[args.indexOf('--method') + 1], 'POST');
-        assert.ok(args.includes('--include') && args.includes('--silent'));
-        promoted = true;
-        if (failure === 'promotion-timeout')
-          throw new Error('private-provider-error');
-        if (failure === 'promotion-rejected')
-          return 'HTTP 403 Forbidden\n\nPRIVATE_PROVIDER_CREDENTIAL';
-        if (failure === 'promotion-malformed')
-          return 'PRIVATE_PROVIDER_CREDENTIAL';
-        return failure === 'promotion-delay'
-          ? 'HTTP 202 Accepted\n\n'
-          : 'HTTP 201 Created\n\n';
-      }
       if (args[1].startsWith('/v9/projects/'))
         return JSON.stringify({
           id: target.project,
@@ -468,6 +451,19 @@ function fixture(t, failure) {
     path,
     calls,
     waits,
+    promote: async (id, options) => {
+      calls.push({ command: 'promotion', args: [id] });
+      assert.equal(options.token, env.VERCEL_TOKEN);
+      promoted = true;
+      if (
+        [
+          'promotion-timeout',
+          'promotion-rejected',
+          'promotion-malformed',
+        ].includes(failure)
+      )
+        throw new Error('PRIVATE_PROVIDER_CREDENTIAL');
+    },
     wait: async (milliseconds) => {
       waits.push(milliseconds);
     },
@@ -531,12 +527,15 @@ test('release verifies candidate, promotes only exact inspected ID, verifies pub
     ),
   );
   assert.deepEqual(
-    f.calls.filter(isPromotion).map((c) => c.args[1]),
-    [promotionPath],
+    f.calls.filter(isPromotion).map((c) => c.args[0]),
+    ['dpl_candidate'],
   );
   assert.ok(
     !f.calls.some(
-      (c) => c.args[0] === 'promote' || c.args[1]?.startsWith('/teams/'),
+      (c) =>
+        c.args[0] === 'promote' ||
+        c.args[1]?.startsWith('/teams/') ||
+        c.args[1]?.includes('/promote/'),
     ),
   );
   assert.equal(f.calls.filter((c) => c.command === 'curl').length, 3);

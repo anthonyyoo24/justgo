@@ -121,13 +121,18 @@ forward that unsupported option instead of using it as a CLI flag.
 The CLI's `promote` subcommand also reads team-wide metadata before sending its
 project-specific promotion request. Scope caches do not eliminate that extra
 lookup. The runner instead sends one authenticated project-bound
-`POST /v10/projects/{projectId}/promote/{deploymentId}` through `vercel api`,
+`POST /v10/projects/{projectId}/promote/{deploymentId}` through Node's core HTTPS
+request API,
 using the same fixed project, team and inspected production candidate. The
 [promotion endpoint](https://vercel.com/docs/rest-api/projects/point-production-traffic-to-a-given-deployment)
 preserves the existing build and uses the configured project-only credential.
-`--include --silent` captures only private response headers;
-the runner requires documented HTTP 201 or 202 without parsing an empty body.
-A successful response may be queued, so the
+The CLI's API client retries transport/5xx failures internally, so it must not
+send this mutation. The dedicated transport constructs one request, follows no
+redirects, and never retries rate limits, server errors or lost responses. The
+token stays in the in-memory authorization header, outside process arguments,
+files and logs. A 20-second wall-clock deadline or lost database lease destroys
+the request. Response bodies are discarded without buffering or logging; only a
+complete HTTP 201 or 202 is accepted. A successful response may be queued, so the
 runner polls the stable alias at two-second intervals, for at most 30 reads,
 and requires its exact deployment/source/run identity before public probes.
 It accepts the previous baseline only while waiting; another deployment fails
@@ -168,7 +173,7 @@ The probes require:
 
 After those checks, the runner rechecks the stable alias and verifies the advisory
 lock in the **same live database backend** immediately before promotion. Handled
-database error/end events abort active asynchronous provider commands. Only the
+database error/end events abort active asynchronous provider operations. Only the
 inspected production candidate's exact ID is promoted. Public readiness/auth
 checks and alias readback then establish the final target. Raw provider errors,
 response bodies, credentials and private journal data stay out of logs; temporary
