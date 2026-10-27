@@ -148,8 +148,8 @@ sheet/editor fixes, and the existing **Owner validation** group's Builds page
 shows **Testing**. The group remains internal with one existing tester and manual
 build distribution. No external groups, new tester invitations or external Beta
 App Review request were created. Anthony deferred physical-phone checks for now;
-this is not passing device acceptance. The separate server-diagnostics fix remains
-local at the owner's direction and is not part of this native build or deployed API.
+this is not passing device acceptance. The separate server-diagnostics change is
+not part of this native build and has not been deployed to the API.
 
 The local builder fetches signing credentials into a run-owned private temporary
 directory with restrictive permissions. Normal EAS cleanup and an `always()`

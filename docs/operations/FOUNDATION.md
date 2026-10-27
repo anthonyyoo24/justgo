@@ -225,12 +225,12 @@ still need verification, and
 [inactive public repositories can lose their schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 This is not a real-time uptime guarantee or API 5xx tracker.
 
-The current local API patch records every completed 5xx response exactly once,
+The API response hook records every completed 5xx response exactly once,
 including direct replies: the generated request ID (`reqId`), `statusCode`,
 `HTTP_SERVER_ERROR` classification and an optional validated PostgreSQL SQLSTATE.
-It excludes raw exceptions, request/response bodies and URLs. This patch has not
-been pushed or deployed; hosted 5xx reporting and delivery to an external alert
-destination remain open.
+It excludes raw exceptions, request/response bodies and URLs. Local tests cover
+the reporting boundary; hosted deployment, 5xx reporting and delivery to an
+external alert destination remain open.
 
 Before external testers, retain the open monitoring-cadence/notification,
 diagnostics deployment/5xx alert delivery, supported private-journal processing
