@@ -211,6 +211,200 @@ test('profile values override unrelated shell build settings, matching EAS prece
   assert.deepEqual(checkBetaRelease(value), []);
 });
 
+test('iOS env overrides common diagnostics mode in both enabled and disabled candidates', () => {
+  for (const [factory, enabled] of [
+    [candidate, 'true'],
+    [diagnosticsCandidate, 'false'],
+  ]) {
+    const value = factory();
+    value.eas.build.beta.ios = {
+      env: { EXPO_PUBLIC_SENTRY_ENABLED: enabled },
+    };
+    assert.ok(
+      checkBetaRelease(value).some((error) =>
+        error.includes('selected diagnostics mode'),
+      ),
+    );
+  }
+  const ordinary = candidate();
+  ordinary.environment.EXPO_PUBLIC_SENTRY_ENABLED = 'true';
+  ordinary.eas.build.beta.ios = {
+    env: { EXPO_PUBLIC_SENTRY_ENABLED: 'false' },
+  };
+  ordinary.eas.build['beta-diagnostics'].ios = {
+    env: { EXPO_PUBLIC_SENTRY_ENABLED: 'true' },
+  };
+  assert.deepEqual(checkBetaRelease(ordinary), []);
+});
+
+test('inherits iOS env before applying platform overrides, including child iOS precedence', () => {
+  const value = diagnosticsCandidate();
+  const dsn = value.environment.EXPO_PUBLIC_SENTRY_DSN;
+  delete value.environment.EXPO_PUBLIC_SENTRY_DSN;
+  value.eas.build['beta-diagnostics'].env.EXPO_PUBLIC_SENTRY_ENVIRONMENT =
+    'production';
+  value.eas.build.beta.ios = {
+    env: {
+      EXPO_PUBLIC_SENTRY_DSN: dsn,
+      EXPO_PUBLIC_SENTRY_ENVIRONMENT: 'staging',
+      EXPO_PUBLIC_SENTRY_ENABLED: 'false',
+    },
+  };
+  value.eas.build['beta-diagnostics'].ios = {
+    env: { EXPO_PUBLIC_SENTRY_ENABLED: 'true' },
+  };
+  assert.deepEqual(checkBetaRelease(value), []);
+  value.eas.build['beta-diagnostics'].ios.env.EXPO_PUBLIC_SENTRY_DSN =
+    'https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@o123.ingest.us.sentry.io/123';
+  assert.ok(
+    checkBetaRelease(value).some((error) =>
+      error.includes('reviewed mobile US project DSN'),
+    ),
+  );
+});
+
+test('checks the effective iOS build settings after platform overrides', () => {
+  const value = diagnosticsCandidate();
+  Object.assign(value.eas.build.beta, {
+    node: '20.0.0',
+    environment: 'production',
+    autoIncrement: false,
+    ios: { node: '24.18.0', environment: 'preview', autoIncrement: true },
+  });
+  assert.deepEqual(checkBetaRelease(value), []);
+  value.eas.build['beta-diagnostics'].ios = { node: '22.0.0' };
+  assert.ok(
+    checkBetaRelease(value).some((error) =>
+      error.includes('pinned Node runtime'),
+    ),
+  );
+});
+
+test('checks effective iOS identity/API/Auth and enabled diagnostics destinations', () => {
+  for (const factory of [candidate, diagnosticsCandidate]) {
+    for (const profile of [
+      'beta',
+      ...(factory === diagnosticsCandidate ? ['beta-diagnostics'] : []),
+    ]) {
+      for (const [key, setting] of [
+        ['IOS_BUNDLE_IDENTIFIER', 'another.app'],
+        ['EXPO_PUBLIC_API_URL', 'https://another-api.vercel.app'],
+        ['EXPO_PUBLIC_SUPABASE_URL', 'https://another.supabase.co'],
+        ...(factory === diagnosticsCandidate
+          ? [
+              [
+                'EXPO_PUBLIC_SENTRY_DSN',
+                'https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@o123.ingest.us.sentry.io/123',
+              ],
+            ]
+          : []),
+      ]) {
+        const value = factory();
+        value.eas.build[profile].ios = { env: { [key]: setting } };
+        assert.ok(
+          checkBetaRelease(value).length,
+          `Unsafe ${profile}.ios.env.${key} passed`,
+        );
+      }
+    }
+  }
+});
+
+test('rejects effective upload bypasses at each common and iOS inheritance level', () => {
+  for (const profile of ['beta', 'beta-diagnostics']) {
+    for (const platform of [false, true]) {
+      for (const key of [
+        'SENTRY_DISABLE_AUTO_UPLOAD',
+        'SENTRY_ALLOW_FAILURE',
+      ]) {
+        const value = diagnosticsCandidate();
+        value.environment[key] = '';
+        const owner = platform
+          ? (value.eas.build[profile].ios = { env: {} })
+          : value.eas.build[profile];
+        owner.env[key] = 'true';
+        assert.ok(
+          checkBetaRelease(value).some((error) =>
+            error.includes('must not bypass'),
+          ),
+          `${profile}${platform ? '.ios' : ''}.env.${key}`,
+        );
+      }
+    }
+  }
+});
+
+test('profile env cannot embed trusted upload credentials or publication attestations', () => {
+  for (const profile of ['beta', 'beta-diagnostics']) {
+    for (const platform of [false, true]) {
+      for (const key of [
+        'SENTRY_AUTH_TOKEN',
+        'BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION',
+      ]) {
+        const value = diagnosticsCandidate();
+        const owner = platform
+          ? (value.eas.build[profile].ios = { env: {} })
+          : value.eas.build[profile];
+        owner.env[key] = 'embedded-trusted-input';
+        const errors = checkBetaRelease(value);
+        assert.ok(
+          errors.some((error) =>
+            error.includes('trusted external environment'),
+          ),
+        );
+        assert.ok(!errors.join().includes('embedded-trusted-input'));
+        delete value.environment[key];
+        owner.env[key] =
+          key === 'SENTRY_AUTH_TOKEN'
+            ? 'embedded-trusted-input'
+            : 'synthetic-beta';
+        assert.ok(
+          checkBetaRelease(value).some((error) =>
+            error.includes(
+              key === 'SENTRY_AUTH_TOKEN'
+                ? 'private SENTRY_AUTH_TOKEN'
+                : 'attest its exact version',
+            ),
+          ),
+        );
+      }
+    }
+  }
+});
+
+test('iOS CloudKit overrides retain the guarded container/environment pair', () => {
+  for (const factory of [candidate, diagnosticsCandidate]) {
+    for (const profile of [
+      'beta',
+      ...(factory === diagnosticsCandidate ? ['beta-diagnostics'] : []),
+    ]) {
+      for (const key of [
+        'EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER',
+        'ICLOUD_CONTAINER_ENVIRONMENT',
+      ]) {
+        const value = factory();
+        value.eas.build[profile].ios = {
+          env: { [key]: value.eas.build.beta.env[key] },
+        };
+        assert.ok(
+          checkBetaRelease(value).some((error) =>
+            error.includes('must be paired'),
+          ),
+        );
+      }
+      const value = factory();
+      value.eas.build[profile].ios = {
+        env: {
+          EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER:
+            'iCloud.com.anthonyyoo.justgo',
+          ICLOUD_CONTAINER_ENVIRONMENT: 'Production',
+        },
+      };
+      assert.deepEqual(checkBetaRelease(value), []);
+    }
+  }
+});
+
 test('rejects the wrong distribution, inherited/dev/simulator build and unsafe versions', () => {
   for (const mutate of [
     (value) => {

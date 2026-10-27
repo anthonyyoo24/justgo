@@ -73,6 +73,13 @@ or unapproved text stop the process. It prints names, never credential values.
 `RELEASE_OPERATION=submit` additionally checks the App Store ID/team. A pass does
 not prove hosted notices, provider suitability, native behavior or release approval.
 
+Preflight follows pinned EAS 25.3.0 iOS resolution: inherit common and iOS settings
+and their environment maps first, then apply the resolved iOS overrides. Identity,
+services, diagnostics and upload-bypass checks use that effective environment.
+Keep CloudKit container/environment overrides paired at both common and iOS
+levels. Upload credentials and publication attestation belong only to the trusted
+external environment, never a committed profile environment map.
+
 The `.github/workflows/testflight-beta.yml` is manual only; tag pushes do not
 build/upload. It compiles on GitHub's standard `macos-26` runner through EAS local
 builds, with Xcode 26.6, pinned Node/npm and EAS 25.3.0. This public repository's

@@ -62,6 +62,16 @@ function publicAuthKey(value) {
   }
 }
 
+// Match pinned EAS 25.3 inheritance: env and ios merge within the profile
+// chain, then the resolved iOS platform configuration overrides common values.
+function mergeIosProfile(base, update) {
+  const result = { ...base, ...update };
+  if (base?.env && update?.env) result.env = { ...base.env, ...update.env };
+  if (base?.ios && update?.ios)
+    result.ios = mergeIosProfile(base.ios, update.ios);
+  return result;
+}
+
 /** Validate the resolved public build inputs; errors contain names, not values. */
 export function checkBetaRelease({
   eas,
@@ -80,15 +90,24 @@ export function checkBetaRelease({
   );
   const base = eas.build?.beta;
   const selected = diagnostics ? eas.build?.['beta-diagnostics'] : base;
-  const profile = diagnostics
-    ? {
-        ...base,
-        ...selected,
-        env: { ...base?.env, ...selected?.env },
-        ios: { ...base?.ios, ...selected?.ios },
-      }
-    : base;
+  const inherited = diagnostics ? mergeIosProfile(base, selected) : base;
+  const profile = mergeIosProfile(inherited, inherited?.ios);
   const env = { ...environment, ...profile?.env };
+  const profileEnvironments = [
+    base?.env,
+    selected?.env,
+    base?.ios?.env,
+    selected?.ios?.env,
+  ];
+  check(
+    profileEnvironments.every(
+      (value) =>
+        !value ||
+        (!Object.hasOwn(value, 'SENTRY_AUTH_TOKEN') &&
+          !Object.hasOwn(value, 'BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION')),
+    ),
+    'SENTRY_AUTH_TOKEN and publication attestation must come only from the trusted external environment.',
+  );
   check(
     !base?.extends && (!diagnostics || selected?.extends === 'beta'),
     'Only the diagnostics profile may inherit the explicit beta profile.',
@@ -103,9 +122,9 @@ export function checkBetaRelease({
   check(
     profile?.distribution === 'store' &&
       profile.developmentClient === false &&
-      !profile.ios?.simulator &&
-      (!profile.ios?.buildConfiguration ||
-        profile.ios.buildConfiguration === 'Release') &&
+      !profile.simulator &&
+      (!profile.buildConfiguration ||
+        profile.buildConfiguration === 'Release') &&
       (!profile.extends || (diagnostics && profile.extends === 'beta')),
     'Beta must be an explicit store build without a development client.',
   );
@@ -152,10 +171,10 @@ export function checkBetaRelease({
     'Preserve the approved private CloudKit container and Production environment.',
   );
   check(
-    [base, selected].every(
+    profileEnvironments.every(
       (value) =>
-        !!value?.env?.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER ===
-        !!value?.env?.ICLOUD_CONTAINER_ENVIRONMENT,
+        !!value?.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER ===
+        !!value?.ICLOUD_CONTAINER_ENVIRONMENT,
     ),
     'Profile CloudKit overrides must be paired before EAS loads remote variables.',
   );
@@ -175,8 +194,7 @@ export function checkBetaRelease({
       'Diagnostics needs the reviewed mobile US project DSN and staging environment.',
     );
     check(
-      !environment.SENTRY_DISABLE_AUTO_UPLOAD &&
-        !environment.SENTRY_ALLOW_FAILURE,
+      !env.SENTRY_DISABLE_AUTO_UPLOAD && !env.SENTRY_ALLOW_FAILURE,
       'Diagnostics builds must not bypass source-map or debug-symbol uploads.',
     );
     if (operation === 'build')
