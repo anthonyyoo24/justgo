@@ -1,4 +1,4 @@
-name: Staging health
+name: Staging readiness diagnostic
 
 on:
   workflow_dispatch:
@@ -7,8 +7,7 @@ on:
         description: 'Intentionally fail one run to verify owner notifications'
         type: boolean
         default: false
-  schedule:
-    - cron: '2-59/5 * * * *'
+# Sentry owns recurring uptime checks; keep this manual diagnostic available.
 
 permissions: {}
 
