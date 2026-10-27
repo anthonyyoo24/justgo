@@ -1,10 +1,11 @@
 # Privacy Policy — free beta
 
-<!-- legal-version: 2026-10-25-beta -->
+<!-- legal-version: 2026-10-27-essential-errors -->
 <!-- publication-status: owner-approved -->
-<!-- effective-date: 2026-10-25 -->
+<!-- effective-date: 2026-10-27 -->
+<!-- diagnostics-scope: essential-errors-only -->
 
-Anthony authorized final necessary wording changes and public hosting on October 25, 2026 after reviewing the managed-sync drafts and comparison. Terms wording is retained; this policy additionally describes visits to the legal website. The effective date is the document publication date. This owner-directed document publication does not establish provider suitability or signed-device acceptance for external beta distribution. The static site renders only the marked public block; review metadata remains internal. See [LEGAL_REVIEW.md](LEGAL_REVIEW.md).
+Anthony approved the exact essential-errors candidate wording and authorized publication at the existing Privacy Policy URL on October 27, 2026, with that date effective. The Terms wording remains unchanged. This record establishes content and publication authorization; it does not establish completed publication, provider suitability, actual diagnostics activation or signed-device acceptance. The static site renders only the marked public block; review metadata remains internal. See [LEGAL_REVIEW.md](LEGAL_REVIEW.md).
 
 <!-- public:start -->
 
@@ -21,7 +22,7 @@ You choose where your saved challenge history, feelings and reflections go:
 - **With iCloud Sync:** a separate choice, off by default, synchronizes the selected journal through your private Apple CloudKit database. You do not need a JustGO account for this choice.
 - **With a downloaded file:** you choose where to save or share a readable copy. The destination handles that copy under its own settings and practices.
 
-Product analytics and automatic crash reporting are disabled. The sections below explain each choice, the providers involved and how to delete data.
+Product analytics is disabled. We use limited technical error reporting as described below; your journal is excluded from those reports. The sections below explain each choice, the providers involved and how to delete data.
 
 JustGO is operated by Youngshin Yoo in Ontario, Canada. For privacy questions, requests or support, email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com). We do not sell your personal information.
 
@@ -71,9 +72,17 @@ Hosting and network providers also process connection and request information, w
 
 When you visit these legal pages, Vercel receives ordinary connection information, such as your IP address, requested page and browser information. We do not add product analytics or tracking cookies to these pages. Vercel describes its handling of service and network information in its [Privacy Notice](https://vercel.com/legal/privacy-notice).
 
-## Analytics and crash reporting
+## Analytics and error reporting
 
-Product analytics and ordinary automatic crash reporting are disabled. We do not send journal content, feelings or reflection-length analytics to PostHog or Sentry. We do not use cross-service advertising tracking.
+Product analytics remains disabled. We do not send journal content, feelings or reflection-length analytics to PostHog or Sentry. We do not use cross-service advertising tracking.
+
+We use Sentry to investigate application crashes, unhandled errors and server failures. App versions with crash reporting enabled send limited technical reports, including before you enter the app or sign in. Reports can include a random event identifier and time, a generic error classification, technical stack locations, app version and build, operating system version and the testing or production environment. They exclude your account and persistent device identifiers, email, journal content, feelings, authentication secrets, request URLs and bodies, screenshots, attachments and interaction history. We do not enable session replay, product activity tracking or performance profiling through this reporting.
+
+Sanitized server error reports contain a generated request identifier, HTTP status, a safe error classification and, when applicable, a validated database error code. They exclude account identifiers, raw error messages, database queries, journal content, credentials, request URLs, headers and bodies.
+
+Sentry processes these reports in the United States. It receives the connecting network address when a report is delivered; our report settings prevent storing that address in the event. This does not mean the address is absent from all network or security processing. On iOS, the operating system and crash-reporting component can keep an original local crash report until a later launch, before JustGO filters what is sent. That local capture is distinct from the limited exported report.
+
+Technical reports are kept under the Sentry project's configured retention period; provider recovery copies follow its deletion processes. Because exported app reports contain no account identifier, deleting a JustGO account does not identify its technical reports for deletion. Contact us with the approximate report time and app version if you want us to investigate a report or handle a privacy request. We will explain any identification or deletion limits without asking for an authentication secret.
 
 Before enabling additional collection, we will review its purpose and providers, update the relevant notices and obtain any permission required by law. We will not replay earlier activity into analytics. Continuing through Terms & Privacy or opening a document does not record an agreement, accepted legal version or analytics permission.
 
@@ -85,6 +94,7 @@ If you email us, we receive your address and the message and attachments you cho
 
 - **Vercel** hosts these public legal pages and the API that processes authenticated account data, including synchronized feelings and reflections.
 - **Supabase** provides managed authentication and hosts account, completion and journal records.
+- **Sentry** processes the limited technical error reports described above in the United States.
 - **Apple** provides Apple sign-in, protected native credential storage and optional private CloudKit synchronization. Apple also handles files you choose to save to iCloud Drive under your Apple settings.
 - **Google** provides Google sign-in. **Google Gmail** hosts the support inbox; messages also pass through your email provider.
 - Other file destinations you choose handle the copies you save or share with them.

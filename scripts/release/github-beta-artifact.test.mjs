@@ -213,6 +213,8 @@ test('records and verifies byte identity together with source and build provenan
   assert.equal(manifest.workflowSha, workflowSha);
   assert.equal(manifest.sourceSha, sourceSha);
   assert.equal(manifest.buildProfile, 'beta');
+  assert.equal(manifest.schemaVersion, 2);
+  assert.equal(manifest.diagnosticsEnabled, false);
   assert.equal(manifest.distribution, 'STORE');
   await assert.rejects(recordBetaArtifact(directory, env));
   await writeFile(join(directory, 'JustGO.ipa'), 'altered app fixture\n');
@@ -222,7 +224,7 @@ test('records and verifies byte identity together with source and build provenan
 test('rejects a substituted app, source, tag, workflow, run, attempt or malformed manifest', async (t) => {
   const { directory, manifest, selected } = await recorded(t);
   for (const [name, value] of Object.entries({
-    schemaVersion: 2,
+    schemaVersion: 3,
     operation: 'submit',
     projectId: 'other-app',
     owner: 'other-owner',
@@ -258,6 +260,38 @@ test('rejects a substituted app, source, tag, workflow, run, attempt or malforme
     await writeFile(join(directory, 'manifest.json'), JSON.stringify(value));
     await assert.rejects(verifyBetaArtifact(directory, selected));
   }
+});
+
+test('diagnostics provenance preserves exact bytes and mode without requiring pre-upload phone acceptance', async (t) => {
+  const directory = await temporary(t);
+  await writeFile(join(directory, 'JustGO.ipa'), 'synthetic diagnostics app');
+  const modeEnv = { ...env, RELEASE_DIAGNOSTICS: 'true' };
+  const manifest = await recordBetaArtifact(directory, modeEnv);
+  assert.equal(manifest.buildProfile, 'beta-diagnostics');
+  assert.equal(manifest.diagnosticsEnabled, true);
+  const selected = selection({ env: modeEnv });
+  assert.deepEqual(await verifyBetaArtifact(directory, selected), manifest);
+  await assert.rejects(verifyBetaArtifact(directory, selection()));
+  await assert.rejects(
+    verifyBetaArtifact(directory, { ...selected, buildProfile: 'beta' }),
+  );
+  await writeFile(join(directory, 'JustGO.ipa'), 'substituted diagnostics app');
+  await assert.rejects(verifyBetaArtifact(directory, selected));
+});
+
+test('original schema-one artifacts remain valid only on the diagnostics-off route', async (t) => {
+  const { directory, manifest, selected } = await recorded(t);
+  const legacy = { ...manifest, schemaVersion: 1 };
+  delete legacy.diagnosticsEnabled;
+  await writeFile(join(directory, 'manifest.json'), JSON.stringify(legacy));
+  assert.deepEqual(await verifyBetaArtifact(directory, selected), legacy);
+  await assert.rejects(
+    verifyBetaArtifact(directory, {
+      ...selected,
+      diagnosticsEnabled: true,
+      buildProfile: 'beta-diagnostics',
+    }),
+  );
 });
 
 test('artifact boundaries reject extra files, empty apps and symlinks', async (t) => {

@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 const workflow = readFileSync(
   new URL('../../.github/workflows/testflight-beta.yml', import.meta.url),
@@ -263,7 +264,11 @@ test('native steps pin EAS, preflight the preview environment and never auto-sub
     assert.match(source, /(?:run: |\n {10})eas env:exec preview /);
     // npm exec --package exports package selection that breaks EAS's nested npx.
     assert.doesNotMatch(source, /npm exec|\bnpx\b/);
-    assert.doesNotMatch(source, /\$\{\{\s*inputs\./);
+    // Typed mode/operation may control secret exposure in env, never shell text.
+    assert.doesNotMatch(
+      source.split(/^ {8}run:/m)[1] ?? '',
+      /\$\{\{\s*inputs\./,
+    );
   }
   assert.match(
     step('Check resolved beta configuration'),
@@ -271,11 +276,11 @@ test('native steps pin EAS, preflight the preview environment and never auto-sub
   );
   assert.match(
     step('Build signed beta on GitHub without uploading'),
-    /eas build --platform ios --profile beta --local --freeze-credentials --non-interactive --output/,
+    /eas build --platform ios --profile \$BETA_BUILD_PROFILE --local --freeze-credentials --non-interactive --output/,
   );
   assert.match(
     step('Upload exact beta artifact to TestFlight'),
-    /eas submit --platform ios --profile beta --path "\$RUNNER_TEMP\/justgo-beta-download\/JustGO\.ipa" --non-interactive --wait --no-auto-testflight-setup/,
+    /eas submit --platform ios --profile beta --path .*justgo-beta-download\/JustGO\.ipa.*--non-interactive --wait --no-auto-testflight-setup/,
   );
   assert.doesNotMatch(
     workflow,
@@ -285,6 +290,101 @@ test('native steps pin EAS, preflight the preview environment and never auto-sub
   for (const [, reference] of workflow.matchAll(/\buses: ([^\s]+)/g)) {
     if (reference.startsWith('./')) continue;
     assert.match(reference, /^actions\/[\w-]+@[a-f0-9]{40}$/);
+  }
+});
+
+test('diagnostics is opt-in and its private build credential stays in the protected steps', () => {
+  assert.match(
+    workflow,
+    /diagnostics:\n {8}description:[^\n]+\n {8}required: false\n {8}type: boolean\n {8}default: false/,
+  );
+  assert.match(
+    workflow,
+    /BETA_BUILD_PROFILE: \$\{\{ inputs.diagnostics && 'beta-diagnostics' \|\| 'beta' \}\}/,
+  );
+  assert.match(
+    workflow,
+    /BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION: \$\{\{ vars\./,
+  );
+  assert.doesNotMatch(workflow, /BETA_DIAGNOSTICS_ACCEPTED_IPA_SHA256/);
+  for (const name of [
+    'Check resolved beta configuration',
+    'Build signed beta on GitHub without uploading',
+  ])
+    assert.match(
+      step(name),
+      /SENTRY_AUTH_TOKEN: \$\{\{ inputs.diagnostics && .*secrets.SENTRY_AUTH_TOKEN/,
+    );
+  assert.doesNotMatch(
+    step('Upload exact beta artifact to TestFlight'),
+    /SENTRY_AUTH_TOKEN:/,
+  );
+});
+
+test('resolved EAS commands preserve explicit mode, native signing and the unchanged upload target', (t) => {
+  const directory = temporary(t);
+  const fakeEas = join(directory, 'eas');
+  const output = join(directory, 'eas-args.json');
+  writeFileSync(
+    fakeEas,
+    `#!${process.execPath}\nrequire('node:fs').writeFileSync(process.env.EAS_TEST_OUTPUT, JSON.stringify(process.argv.slice(2)));\n`,
+    { mode: 0o700 },
+  );
+  for (const diagnostics of ['false', 'true']) {
+    for (const name of [
+      'Check resolved beta configuration',
+      'Build signed beta on GitHub without uploading',
+      'Upload exact beta artifact to TestFlight',
+    ]) {
+      const result = spawnSync(
+        'bash',
+        ['-e', '-o', 'pipefail', '-c', script(name)],
+        {
+          cwd: fileURLToPath(new URL('../../apps/mobile/', import.meta.url)),
+          env: {
+            ...process.env,
+            PATH: `${directory}:${process.env.PATH}`,
+            EAS_TEST_OUTPUT: output,
+            RELEASE_DIAGNOSTICS: diagnostics,
+            BETA_BUILD_PROFILE:
+              diagnostics === 'true' ? 'beta-diagnostics' : 'beta',
+            RELEASE_OPERATION: name.startsWith('Upload') ? 'submit' : 'build',
+            RUNNER_TEMP: directory,
+            TMPDIR: join(directory, 'private-build'),
+          },
+          encoding: 'utf8',
+        },
+      );
+      assert.equal(result.status, 0, result.stderr);
+      const args = JSON.parse(readFileSync(output, 'utf8'));
+      assert.equal(args[0], 'env:exec');
+      assert.equal(args[1], 'preview');
+      assert.equal(args[3], '--non-interactive');
+      assert.match(
+        args[2],
+        new RegExp(`EXPO_PUBLIC_SENTRY_ENABLED=${diagnostics}\\b`),
+      );
+      if (name.startsWith('Check')) {
+        assert.match(
+          args[2],
+          new RegExp(`RELEASE_DIAGNOSTICS=${diagnostics}\\b`),
+        );
+        assert.match(args[2], /run release:beta:check/);
+      } else if (name.startsWith('Build')) {
+        assert.match(
+          args[2],
+          new RegExp(
+            `--profile ${diagnostics === 'true' ? 'beta-diagnostics' : 'beta'} --local --freeze-credentials`,
+          ),
+        );
+      } else {
+        assert.match(
+          args[2],
+          /eas submit --platform ios --profile beta --path/,
+        );
+        assert.match(args[2], /--no-auto-testflight-setup/);
+      }
+    }
   }
 });
 

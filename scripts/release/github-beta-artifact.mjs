@@ -10,6 +10,7 @@ import {
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { betaDiagnosticsMode } from './check-beta.mjs';
 
 const workflowPath = '.github/workflows/testflight-beta.yml';
 const ipaName = 'JustGO.ipa';
@@ -22,7 +23,6 @@ const identity = {
   appleTeamId: 'NPDYTJS425',
   platform: 'IOS',
   distribution: 'STORE',
-  buildProfile: 'beta',
   isForIosSimulator: false,
 };
 
@@ -67,6 +67,7 @@ export function betaArtifactName(runId, runAttempt) {
 /** Trust GitHub's run metadata before accepting any artifact-supplied claims. */
 export function selectBetaArtifact({ run, workflow, artifacts, env }) {
   const context = sourceContext(env);
+  const mode = betaDiagnosticsMode(env);
   const runId = positiveId(env.RELEASE_BUILD_RUN_ID);
   requireValue(
     run?.id === runId &&
@@ -115,6 +116,7 @@ export function selectBetaArtifact({ run, workflow, artifacts, env }) {
   );
   return {
     ...context,
+    ...mode,
     runId,
     runAttempt,
     workflowSha: run.head_sha,
@@ -150,6 +152,7 @@ async function requireFiles(directory, names) {
 /** Record the already inspected IPA; the workflow supplies the trusted context. */
 export async function recordBetaArtifact(directory, env) {
   const context = sourceContext(env);
+  const mode = betaDiagnosticsMode(env);
   requireValue(
     /^[a-f0-9]{40}$/.test(env.GITHUB_SHA ?? ''),
     'Missing workflow commit.',
@@ -158,9 +161,10 @@ export async function recordBetaArtifact(directory, env) {
   const path = join(directory, ipaName);
   const info = await regularFile(path, maxIpaBytes);
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     operation: 'build',
     ...identity,
+    ...mode,
     ...context,
     runId: positiveId(env.GITHUB_RUN_ID),
     runAttempt: positiveId(env.GITHUB_RUN_ATTEMPT),
@@ -210,10 +214,25 @@ export async function verifyBetaArtifact(directory, selected) {
   const manifest = JSON.parse(
     await readFile(join(directory, manifestName), 'utf8'),
   );
+  requireValue(
+    typeof selected.diagnosticsEnabled === 'boolean' &&
+      selected.buildProfile ===
+        (selected.diagnosticsEnabled ? 'beta-diagnostics' : 'beta'),
+    'The selected diagnostics mode must match its build profile.',
+  );
+  // Original off-mode artifacts remain usable; they cannot establish enabled mode.
+  const legacy = manifest?.schemaVersion === 1;
+  requireValue(
+    (!legacy || !selected.diagnosticsEnabled) &&
+      (legacy || manifest?.schemaVersion === 2),
+    'Unsupported or mismatched beta artifact diagnostics provenance.',
+  );
   const expected = {
-    schemaVersion: 1,
+    schemaVersion: legacy ? 1 : 2,
     operation: 'build',
     ...identity,
+    buildProfile: selected.buildProfile,
+    ...(legacy ? {} : { diagnosticsEnabled: selected.diagnosticsEnabled }),
     repository: selected.repository,
     repositoryId: selected.repositoryId,
     sourceSha: selected.sourceSha,

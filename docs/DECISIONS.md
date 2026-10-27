@@ -798,3 +798,41 @@ that CI test under the current scope; record it as deferred/unverified, never
 passed. This does not supply physical-device evidence. The side-chat explanation
 of alerts and deployment automation authorizes no new implementation, account
 changes or purchases.
+
+## October 27 error alerts and approved server releases
+
+Anthony subsequently approved implementing Sentry for sanitized API errors and
+app crashes, Sentry uptime checks of the public staging readiness endpoint, email
+notifications, and GitHub Actions server releases with an owner approval button.
+This later instruction supersedes the earlier explanation-only restriction for
+these controls. It does not authorize paid upgrades, a provider migration, Git
+push/PR/merge, a server deployment or a new native build by itself.
+
+Use the existing US `anthony-corp` organization with separate `justgo-api` and
+`justgo-mobile` projects. Keep product analytics, replay, tracing and profiling
+disabled. Rebuild API reports from the safe diagnostic classification only; do
+not forward exceptions, request context, account identifiers or journal content.
+Keep mobile payload/native filters and a separate explicit diagnostics build
+profile. Existing TestFlight 0.1.0 (4) has reporting disabled. Native acceptance
+remains open before external testing; browser tests cannot establish it.
+
+The owner confirmed receipt of Sentry's test email and personally accepted DPA
+v5.1.0 on October 27. He approved the reviewed Privacy Policy wording and its
+publication at the existing URL, effective October 27, version
+`2026-10-27-essential-errors`. The Terms remain unchanged. Account configuration
+and notice approval do not establish signed-build acceptance or final Apple
+privacy disclosures.
+
+Use the protected `justgo-staging` GitHub environment for reviewed main-branch
+releases, a project-restricted Vercel credential and the existing restricted
+migrator. Deploy-only must refuse pending migrations; migration/deploy additionally
+requires current, source-bound recovery evidence. Preserve the database advisory
+lock through candidate validation and promotion. Read back an uncertain promotion
+before any further action; never automatically roll back a changed schema.
+See [server releases](operations/SERVER_RELEASES.md) for the operating procedure.
+
+Sentry owns recurring uptime monitoring; retain the GitHub readiness workflow as
+a manual diagnostic after the workflow change is merged. GitHub continues to
+report build/test failures. No Slack integration is needed. Supabase Pro, current
+restorable/off-Mac backups, private-journal provider assessment and deferred
+physical-device/simulator checks retain their separately recorded status.

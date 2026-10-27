@@ -52,6 +52,12 @@
         "EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER": "iCloud.com.anthonyyoo.justgo"
       }
     },
+    "beta-diagnostics": {
+      "extends": "beta",
+      "env": {
+        "EXPO_PUBLIC_SENTRY_ENABLED": "true"
+      }
+    },
     "production": {
       "node": "24.18.0",
       "environment": "production",

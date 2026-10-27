@@ -23,6 +23,38 @@ prevent repeated store build numbers. Paid production setup remains separate.
 Keep the inline CloudKit container/environment pair together: EAS evaluates the
 dynamic app config once before fetching the remote preview variables.
 
+## Optional crash-reporting profile
+
+The ordinary `beta` and `development` profiles keep app crash reporting off.
+The optional `beta-diagnostics` profile inherits the same store identity,
+application-staging services and signing configuration, enabling only the existing
+filtered Sentry crash/error path. Installed TestFlight build 4 remains off; this
+profile requires a new signed build and does not change that installed binary.
+Product analytics, replay, tracing, profiling and attachments remain disabled.
+
+The manual workflow's `diagnostics` input defaults to `false`. Select `true` for
+both the build run and its later submit run to use this optional path. Preflight
+requires the reviewed mobile US project DSN, staging diagnostic environment and
+the approved essential-errors Privacy Policy source. Anthony approved that policy
+and publication on October 27, 2026: version `2026-10-27-essential-errors`, effective
+October 27. Anonymous HTTPS reads on October 27 matched the approved generated
+Privacy bytes; Terms was unchanged. `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`
+must match that version in the protected `testflight-beta` environment. Reporting-enabled builds also require
+private `SENTRY_AUTH_TOKEN` there for mandatory source-map/dSYM uploads; token
+creation/configuration is still pending. No upload bypass is permitted.
+
+Manifest schema 2 records the exact selected profile and diagnostics mode alongside
+the existing source/run/signature and file-hash checks. Submit must match that
+mode and upload the exact verified artifact. Original schema-1 artifacts remain
+valid only for the ordinary off route. The existing protected environment review
+continues to approve builds and uploads separately.
+
+Upload the reviewed store-signed artifact for internal TestFlight testing before
+performing phone acceptance. Native crash/restart delivery, cache and envelope
+privacy, symbolication, outage behavior and cached-crash attribution remain
+deferred checks before external testing. An internal upload does not mark those
+checks passed or invite external testers.
+
 ## Preflight and release procedure
 
 From `apps/mobile`, check the resolved remote public settings:
@@ -32,7 +64,7 @@ npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'npm --prefix ..
 ```
 
 The check verifies the explicit store profile, known staging API/Auth project,
-provider/CloudKit inputs, disabled diagnostics, no fixture markers and public
+provider/CloudKit inputs, the selected diagnostics mode, no fixture markers and public
 HTTPS notice destinations. It reuses the site's production parser: pending dates
 or unapproved text stop the process. It prints names, never credential values.
 `RELEASE_OPERATION=submit` additionally checks the App Store ID/team. A pass does
@@ -69,7 +101,8 @@ Use this order:
 3. Obtain the applicable Git/build authorization, publish a reviewed tag on `main`,
    and wait for successful Foundation **main push** checks on its exact SHA.
 4. Dispatch from `main` with that tag and operation `build`, leaving `build_run_id`
-   empty. Review the immutable candidate SHA before approving the environment job.
+   empty and `diagnostics` false unless using the optional profile above. Review
+   the immutable candidate SHA before approving the environment job.
    The job compiles/signs on GitHub without uploading to Apple, verifies the signed
    app and saves `JustGO.ipa` plus `manifest.json` for seven days. Record the exact
    GitHub run ID, artifact ID and archive digest from the job summary. This route
@@ -82,7 +115,7 @@ Use this order:
    privacy review remain necessary; exports do not establish installed behavior.
 6. Verify App Store Connect has no unintended automatic tester distribution.
    Obtain the applicable upload authorization, then dispatch `submit` with the same
-   tag and exact successful GitHub `build_run_id`. The gate requires this repository's
+   tag, diagnostics mode and exact successful GitHub `build_run_id`. The gate requires this repository's
    successful manual main workflow, current run attempt and unexpired artifact.
    It verifies GitHub's archive digest before extraction, then the manifest's source,
    tag, workflow/run identity, IPA size/hash and actual native signature/profile.
@@ -213,6 +246,10 @@ Reviewer notes saved in App Store Connect:
 > access is currently configured through November 10, 2026 at 15:23 UTC. Use
 > disposable entries for testing; never use the owner's real provider credentials.
 
+These saved notes describe build 4. Update their Sentry sentence for any later
+diagnostics-enabled build before its external review; purchases and product
+analytics remain disabled.
+
 The selected feedback email and privacy URL are saved. Anthony supplied the
 review-contact phone directly to Apple; contact completeness and the saved notes
 were verified after reload without recording private contact details. Sign-in
@@ -245,13 +282,16 @@ the current guest expiry is not an approved date for a future cohort.
   placeholders.
 - Confirm beta dates/invitees and the remaining [server operating controls](FOUNDATION.md#beta-operating-controls).
   Cleanup and rate limits are deployed, and the readiness monitor is active.
-  Reliable monitoring cadence, actual notification receipt, deployed 5xx reporting
-  and alert delivery, and current backup/recovery arrangements remain open.
-  Protected hosted-migration/deploy automation remains open. The October 27 owner
+  The October 27 Sentry uptime monitor is active, API/mobile email alert rules are
+  verified and Anthony confirmed the test email. Ordinary API Sentry collection
+  and protected hosted-migration/deploy automation are prepared locally, with
+  publication/deployment and current backup/recovery arrangements still open.
+  The October 27 owner
   direction defers the automated iOS simulator smoke test; do not implement it
   now or mark it passed. The retained Maestro launch file still targets old
-  entry/account UI. The side-chat explanation authorizes no new alert/deployment
-  implementation, account changes or purchases.
+  entry/account UI. His later explicit authorization covers filtered Sentry errors,
+  included uptime/email alerts and protected deployment preparation; no paid
+  upgrade or simulator smoke test is authorized.
 - Preserve all applicable separate Git, native build, upload and distribution
   permissions and the original Phase 14 acceptance matrix.
 

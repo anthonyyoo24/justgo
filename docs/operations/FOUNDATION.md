@@ -210,29 +210,41 @@ implementation evidence is recorded on
 [PR #49](https://github.com/anthonyyoo24/justgo/pull/49); tune limits from measured
 beta traffic.
 
-The active `.github/workflows/staging-health.yml` probes only the public staging
-`/ready`, without credentials, checkout or response-body logging. It is configured
-for every five minutes, but the October 26 audit found only eight historical runs
-with gaps as long as 6.11 hours. This is best-effort scheduling, not evidence of a
-five-minute detection interval. Its default-false `test_notification` input
-deliberately fails one manual run without contacting the server. The
-[synthetic notification test](https://github.com/anthonyyoo24/justgo/actions/runs/40421509765)
-failed as intended without a network request; the subsequent
-[recovery run](https://github.com/anthonyyoo24/justgo/actions/runs/40421734104)
-passed. Actual receipt of the failure email by Anthony remains unverified.
-[GitHub notification preferences](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs)
-still need verification, and
-[inactive public repositories can lose their schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
-This is not a real-time uptime guarantee or API 5xx tracker.
+Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/)
+checks only the public staging `/ready` over HTTPS, without account credentials,
+at one-minute intervals with a five-second timeout. Three consecutive failures
+open an issue; one success resolves it. Assertions require a successful HTTP
+status and JSON `status: ready`. The API and mobile projects have explicit owner
+email rules for new issues, regressions and recovery. Anthony confirmed receipt
+of the Sentry test notification on October 27. Dashboard success metrics establish
+observed reachability, not a real-outage notification rehearsal or an uptime SLA.
+The monitor fits the included single-monitor allowance; no paid upgrade was made.
 
-The API response hook records every completed 5xx response exactly once,
-including direct replies: the generated request ID (`reqId`), `statusCode`,
-`HTTP_SERVER_ERROR` classification and an optional validated PostgreSQL SQLSTATE.
-It excludes raw exceptions, request/response bodies and URLs. Local tests cover
-the reporting boundary; hosted deployment, 5xx reporting and delivery to an
-external alert destination remain open.
+The prepared `.github/workflows/staging-health.yml` removes its unreliable cron
+and retains a manual readiness diagnostic/test-notification input. That change
+is not live until merged. GitHub remains the destination for build/test failures;
+actual GitHub failure-email receipt remains unverified. The historical October 26
+cron audit found gaps of up to 6.11 hours and is not a five-minute detection proof.
 
-Before external testers, retain the open monitoring-cadence/notification,
+The API response hook records each completed 5xx response exactly once, including
+direct replies: random request ID, status, `HTTP_SERVER_ERROR` classification
+and optional validated PostgreSQL SQLSTATE. The new optional Sentry reporter
+reconstructs only those fields with release/environment metadata, bounds delivery
+and backs off on provider failures. It never forwards an exception, request body,
+URL or account context. The local implementation/tests are ready; the existing
+hosted deployment does not yet contain it. Sentry account configuration, DPA and
+email test are verified. The owner-approved October 27 Privacy Policy is published
+and anonymous public bytes match the reviewed source; Terms remain unchanged.
+Deployed API error delivery remains open.
+
+[Server releases](SERVER_RELEASES.md) documents the prepared manual, owner-approved
+GitHub lane, reviewed source/CI checks, fixed Vercel target, candidate probes and
+restricted migrator. The protected `justgo-staging` environment exists, but
+credential provisioning and a hosted run must be verified separately. A pending
+migration requires current recovery evidence; an old dump cannot satisfy that
+gate. Existing TestFlight 0.1.0 (4) still has app reporting disabled.
+
+Before external testers, retain the open real-outage notification rehearsal,
 diagnostics deployment/5xx alert delivery, supported private-journal processing
 and current backup/recovery-copy deletion gates. The October 21 operator snapshot
 predates five current managed-Auth/journal/deletion tables and excludes the
@@ -246,8 +258,9 @@ retains Vercel and Supabase, with no hosting migration selected. Supabase Pro is
 the selected managed daily-backup plan with seven days of history; upgrade and
 spending wait until Anthony is ready for outside testers or App Store release
 preparation. This choice does not close the processing/recovery gates. No paid
-upgrade, provider contact or new alert/deployment implementation is authorized by
-the side-chat explanation.
+upgrade or provider contact is authorized. The later October 27 error-alert and
+release instruction authorizes that implementation separately; it does not close
+the recovery or private-journal processing gates.
 
 ## Design and tests
 
