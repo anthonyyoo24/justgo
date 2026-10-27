@@ -235,13 +235,17 @@ URL or account context. The local implementation/tests are ready; the existing
 hosted deployment does not yet contain it. Sentry account configuration, DPA and
 email test are verified. The owner-approved October 27 Privacy Policy is published
 and anonymous public bytes match the reviewed source; Terms remain unchanged.
-Deployed API error delivery remains open.
+A synthetic report from the local reporter reached Sentry and its status, release
+and redacted IP were verified; this was not a hosted API request. Deployed API
+error delivery remains open.
 
 [Server releases](SERVER_RELEASES.md) documents the prepared manual, owner-approved
 GitHub lane, reviewed source/CI checks, fixed Vercel target, candidate probes and
-restricted migrator. The protected `justgo-staging` environment exists, but
-credential provisioning and a hosted run must be verified separately. A pending
-migration requires current recovery evidence; an old dump cannot satisfy that
+restricted migrator. The protected `justgo-staging` environment and its four
+deployment credentials are configured. The
+project-only Vercel token passed fixed-project REST reads; isolated CLI/team-cache
+bootstrap and candidate probe behavior are verified without an owner login. A
+hosted release run remains unverified. A pending migration requires current recovery evidence; an old dump cannot satisfy that
 gate. Existing TestFlight 0.1.0 (4) still has app reporting disabled.
 
 Before external testers, retain the open real-outage notification rehearsal,

@@ -114,4 +114,4 @@ jobs:
       - name: Remove private release files
         if: always()
         shell: bash
-        run: rm -rf .vercel "$RUNNER_TEMP"/justgo-api-probes-*
+        run: rm -rf .vercel "$RUNNER_TEMP"/justgo-api-probes-* "$RUNNER_TEMP"/justgo-api-cli-*

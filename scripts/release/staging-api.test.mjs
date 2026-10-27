@@ -6,6 +6,8 @@ import {
   writeFileSync,
   rmSync,
   readdirSync,
+  readFileSync,
+  existsSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -481,6 +483,35 @@ test('release requires an existing bypass credential before any CLI request, nev
   );
   assert.deepEqual(f.calls, []);
 });
+test('project-scoped CLI calls use fresh nonsecret scope config without an owner auth session and clean it on return', async (t) => {
+  const f = fixture(t);
+  const directories = new Set();
+  const run = (command, args, options) => {
+    if (command === 'vercel') {
+      const directory = options.env.XDG_CONFIG_HOME;
+      directories.add(directory);
+      assert.ok(directory.startsWith(join(f.root, 'justgo-api-cli-')));
+      assert.equal(options.env.XDG_DATA_HOME, directory);
+      assert.equal(options.env.XDG_CACHE_HOME, directory);
+      const config = JSON.parse(
+        readFileSync(join(directory, 'com.vercel.cli', 'config.json'), 'utf8'),
+      );
+      assert.deepEqual(config.cachedTeamIds, { [target.scope]: target.team });
+      assert.equal(config.currentTeam, target.team);
+      assert.equal(config.cachedTeamSlugs[target.team].slug, target.scope);
+      assert.equal(config.updates.auto, false);
+      assert.ok(!existsSync(join(directory, 'com.vercel.cli', 'auth.json')));
+      assert.ok(!args.includes('--global-config'));
+    }
+    return f.run(command, args, options);
+  };
+  await stagingApi('preflight', { ...f, run });
+  assert.equal(directories.size, 1);
+  for (const directory of directories) assert.ok(!existsSync(directory));
+  await stagingApi('deploy', { ...f, run });
+  assert.equal(directories.size, 2);
+  for (const directory of directories) assert.ok(!existsSync(directory));
+});
 for (const failure of [
   'metadata',
   'candidate-probe',
@@ -511,7 +542,10 @@ for (const failure of [
         'An unverified candidate/public alias must not be probed',
       );
     assert.ok(
-      !readdirSync(f.root).some((p) => p.startsWith('justgo-api-probes-')),
+      !readdirSync(f.root).some(
+        (p) =>
+          p.startsWith('justgo-api-probes-') || p.startsWith('justgo-api-cli-'),
+      ),
     );
   });
 test('private command failures never expose provider output or argument secrets', async () => {

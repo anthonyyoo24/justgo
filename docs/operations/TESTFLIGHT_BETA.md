@@ -40,8 +40,11 @@ and publication on October 27, 2026: version `2026-10-27-essential-errors`, effe
 October 27. Anonymous HTTPS reads on October 27 matched the approved generated
 Privacy bytes; Terms was unchanged. `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`
 must match that version in the protected `testflight-beta` environment. Reporting-enabled builds also require
-private `SENTRY_AUTH_TOKEN` there for mandatory source-map/dSYM uploads; token
-creation/configuration is still pending. No upload bypass is permitted.
+private `SENTRY_AUTH_TOKEN` there for mandatory source-map/dSYM uploads. On
+October 27, the owner-approved `org:ci` token was created, verified with Sentry
+CLI and stored in that protected environment; the matching published-notice
+variable was also verified. Native symbol-upload/build evidence still requires
+an actual diagnostics build. No upload bypass is permitted.
 
 Manifest schema 2 records the exact selected profile and diagnostics mode alongside
 the existing source/run/signature and file-hash checks. Submit must match that

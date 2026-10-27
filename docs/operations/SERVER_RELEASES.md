@@ -41,6 +41,12 @@ Store these only in the `justgo-staging` GitHub environment:
 | `DATABASE_CA_CERT`                | Trusted PEM CA for that hosted database; hostname/certificate verification remains enabled                |
 | `STAGING_RECOVERY_ATTESTATION`    | Optional reviewed recovery attestation, absent by default; required only when pending migrations will run |
 
+The October 27 setup configured and verified metadata for the four required
+environment secrets. The optional recovery attestation remains unset. The initial
+project-scoped Vercel token expires **January 25, 2027**; replace it under the
+owner's credential authorization before expiry. Configured credentials and local
+preflight evidence do not establish a successful hosted workflow run.
+
 The bypass secret must belong to the API project, not the separate legal site.
 The helper refuses to proceed when it is absent. Vercel CLI's curl implementation
 can otherwise create a bypass token automatically; release probes must reuse an
@@ -82,7 +88,20 @@ probes and promotion. Concurrent jobs are also serialized by GitHub.
 ## Candidate and promotion safeguards
 
 Node/npm follow the pinned repository setup; Vercel CLI is pinned to **64.5.0**.
-That CLI accepts `VERCEL_TOKEN` without a saved owner login. The helper runs from
+That CLI accepts `VERCEL_TOKEN` without a saved owner login. Project-scoped tokens
+can read their project/deployments but cannot read `/user`; the CLI's uncached
+`--scope` bootstrap otherwise fails there with `User not found (404)`. For each
+invocation, the helper creates a fresh private XDG directory containing only the
+fixed nonsecret team/scope mapping, its reverse cache and disabled CLI automatic
+updates. It copies no owner profile or authentication file. Backend authorization
+still uses the narrow token, and the normal project/team checks remain required.
+The temporary config is removed on success/failure, with workflow cleanup as a
+fallback. This bootstrap was checked with the project-only token against project
+metadata, protected health and `deploy --dry`; it does not broaden that token's
+permissions. XDG paths avoid passing `--global-config` to curl, which would
+forward that unsupported option instead of using it as a CLI flag.
+
+The helper runs from
 the checked-out repository root and validates the actual `deploy --dry --json`
 upload paths and file hashes against tracked production sources. Preserve
 [`.vercelignore`](../../.vercelignore): migrations, operator scripts, tests,
