@@ -8,8 +8,10 @@ project and publishes nothing.
 The October 25 owner-directed publication is live at
 [Privacy](https://justgo-legal.vercel.app/privacy/) and
 [Terms](https://justgo-legal.vercel.app/terms/) on the separate Vercel Hobby project
-`justgo-legal`. Its source labels are `2026-10-25-beta`, owner-approved and effective
-October 25, 2026. Public notice hosting does not close the app's external-beta
+`justgo-legal`. The October 27 privacy update is published as
+`2026-10-27-essential-errors`, owner-approved and effective October 27, 2026;
+it describes the approved minimal Sentry app/server reports and local iOS crash
+cache. Terms retain `2026-10-25-beta` and their October 25 effective date. Public notice hosting does not close the app's external-beta
 provider, regional or signed-device gates.
 
 Run `npm run build:legal` from the repository root. The ignored output lives in
@@ -85,8 +87,8 @@ must contain exactly `index.html`, `privacy/index.html`, `terms/index.html`,
 never upload the source repository, review records or environment files.
 
 After an authorized deploy, verify both stable HTTPS routes anonymously, the
-original logo bytes and footer navigation. The October 25 publication passed
-these checks; `/.env.local` and `/docs/legal/LEGAL_REVIEW.md` returned 404. The
+original logo bytes and footer navigation. The October 27 privacy update passed anonymous byte checks for both documents
+and the root Privacy page; Terms were unchanged. The publication also confirmed `/.env.local` and `/docs/legal/LEGAL_REVIEW.md` returned 404. The
 project's model-training sharing is disabled. EAS preview public legal URLs and
 App Store Connect's Privacy Policy URL use the published destinations. Actual
 signed-iPhone opening/accessibility remains Phase 14 acceptance.

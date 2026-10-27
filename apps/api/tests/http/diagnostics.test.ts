@@ -1,7 +1,15 @@
 import { Writable } from 'node:stream';
 import pino from 'pino';
-import { describe, expect, it } from 'vitest';
-import { loggerOptions, sqlState } from '../../src/http/diagnostics.js';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  captureServerErrorSqlState,
+  loggerOptions,
+  logServerErrorResponse,
+  reportServerErrorResponse,
+  sqlState,
+} from '../../src/http/diagnostics.js';
+import type { ServerErrorReporter } from '../../src/http/server-error-reporter.js';
 
 describe('safe PostgreSQL diagnostics', () => {
   it.each(['23505', '08006', '40P01'])(
@@ -18,6 +26,7 @@ describe('safe PostgreSQL diagnostics', () => {
     '23505',
     { code: 'private' },
     { code: '23505 private' },
+    { code: '23505\n' },
     { code: 'abcde' },
   ])('rejects non-SQLSTATE data', (error) => {
     expect(sqlState(error)).toBeUndefined();
@@ -66,5 +75,66 @@ describe('safe PostgreSQL diagnostics', () => {
       sqlState: '23505',
     });
     expect(output).not.toContain('private');
+  });
+});
+
+describe('server reporter seam', () => {
+  it('prevents duplicate and reentrant reports while preserving completed-response logging', async () => {
+    const error = vi.fn();
+    const request = {
+      id: 'a8bcb93b-c662-4119-80ac-3fc9775d5082',
+      log: { error },
+      body: { reflection: 'private' },
+      headers: { authorization: 'private' },
+    } as unknown as FastifyRequest;
+    const reply = { statusCode: 503 } as FastifyReply;
+    captureServerErrorSqlState(
+      request,
+      new Error('private', { cause: { code: '08006', query: 'private' } }),
+    );
+    const reporter: ServerErrorReporter = vi.fn(async (diagnostic) => {
+      expect(Object.isFrozen(diagnostic)).toBe(true);
+      await reportServerErrorResponse(request, reply, reporter);
+      throw new Error('private provider failure');
+    });
+    await Promise.all([
+      reportServerErrorResponse(request, reply, reporter),
+      reportServerErrorResponse(request, reply, reporter),
+    ]);
+    await reportServerErrorResponse(request, reply, reporter);
+    expect(reporter).toHaveBeenCalledExactlyOnceWith({
+      statusCode: 503,
+      requestId: request.id,
+      sqlState: '08006',
+    });
+    await logServerErrorResponse(request, reply);
+    expect(error).toHaveBeenCalledExactlyOnceWith(
+      {
+        statusCode: 503,
+        code: 'HTTP_SERVER_ERROR',
+        sqlState: '08006',
+      },
+      'HTTP server failure',
+    );
+    expect(
+      JSON.stringify((reporter as ReturnType<typeof vi.fn>).mock.calls),
+    ).not.toContain('private');
+  });
+
+  it('never forwards an unvalidated request identifier or a success/client status', async () => {
+    const reporter = vi.fn<ServerErrorReporter>().mockResolvedValue();
+    for (const [id, statusCode] of [
+      ['private', 503],
+      ['a8bcb93b-c662-4119-80ac-3fc9775d5082', 200],
+      ['a8bcb93b-c662-4119-80ac-3fc9775d5082', 499],
+    ] as const) {
+      const request = { id } as FastifyRequest;
+      await reportServerErrorResponse(
+        request,
+        { statusCode } as FastifyReply,
+        reporter,
+      );
+    }
+    expect(reporter).not.toHaveBeenCalled();
   });
 });

@@ -24,9 +24,9 @@ const script = match[1]
   .map((line) => line.slice(10))
   .join('\n');
 
-test('staging monitoring uses only the public readiness endpoint without credentials or repository access', () => {
+test('the manual diagnostic uses only public readiness while Sentry owns recurring checks', () => {
   assert.match(workflow, /^ {2}workflow_dispatch:$/m);
-  assert.match(workflow, /cron: '2-59\/5 \* \* \* \*'/);
+  assert.doesNotMatch(workflow, /^ {2}(?:schedule|push|pull_request):/m);
   assert.match(workflow, /^permissions: \{\}$/m);
   assert.match(
     workflow,

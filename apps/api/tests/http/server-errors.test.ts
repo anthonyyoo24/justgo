@@ -1,18 +1,21 @@
 import { Writable } from 'node:stream';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/build-app.js';
 import { ApiError } from '../../src/http/api-error.js';
 import { loggerOptions } from '../../src/http/diagnostics.js';
+import type { ServerErrorReporter } from '../../src/http/server-error-reporter.js';
 
 const privateValue = 'private-server-error-fixture';
 
 function setup(
   checkDatabase: () => Promise<void> = async () => {},
   level: 'error' | 'info' = 'error',
+  reportServerError?: ServerErrorReporter,
 ) {
   let output = '';
   const app = buildApp({
     checkDatabase,
+    ...(reportServerError ? { reportServerError } : {}),
     logger: {
       ...loggerOptions(level),
       stream: new Writable({
@@ -72,7 +75,8 @@ describe('sanitized server response diagnostics', () => {
   ])(
     'reports $kind $status responses once with no request or exception data',
     async ({ kind, path, status }) => {
-      const { app, records, output } = setup(undefined, 'info');
+      const reporter = vi.fn<ServerErrorReporter>().mockResolvedValue();
+      const { app, records, output } = setup(undefined, 'info', reporter);
       // Nested routes inherit the app-wide response boundary too.
       app.register(async (scope) => {
         scope.post(path, async (_request, reply) => {
@@ -107,6 +111,12 @@ describe('sanitized server response diagnostics', () => {
           kind === 'database' ? '08006' : undefined,
         );
         expect(output()).not.toContain(privateValue);
+        expect(reporter).toHaveBeenCalledExactlyOnceWith({
+          statusCode: status,
+          requestId: response.headers['x-request-id'],
+          ...(kind === 'database' ? { sqlState: '08006' } : {}),
+        });
+        expect(JSON.stringify(reporter.mock.calls)).not.toContain(privateValue);
         if (kind !== 'direct')
           expect(response.json()).toEqual(
             path.startsWith('/v1/')
@@ -172,9 +182,14 @@ describe('sanitized server response diagnostics', () => {
 
   it('reports readiness failures at error level and leaves readiness responses unchanged', async () => {
     let available = true;
-    const { app, records, output } = setup(async () => {
-      if (!available) throw new Error(privateValue);
-    }, 'info');
+    const reporter = vi.fn<ServerErrorReporter>().mockResolvedValue();
+    const { app, records, output } = setup(
+      async () => {
+        if (!available) throw new Error(privateValue);
+      },
+      'info',
+      reporter,
+    );
     try {
       expect((await app.inject('/ready')).json()).toEqual({ status: 'ready' });
       expect(records().filter((record) => Number(record.level) >= 40)).toEqual(
@@ -189,6 +204,10 @@ describe('sanitized server response diagnostics', () => {
       expect(unavailable.json()).toEqual({ status: 'unavailable' });
       expect(unavailable.headers['cache-control']).toBe('no-store');
       expectServerError(records(), 503, unavailable.headers['x-request-id']);
+      expect(reporter).toHaveBeenCalledExactlyOnceWith({
+        statusCode: 503,
+        requestId: unavailable.headers['x-request-id'],
+      });
       available = true;
       expect((await app.inject('/ready')).json()).toEqual({ status: 'ready' });
       expectServerError(records(), 503, unavailable.headers['x-request-id']);
@@ -201,13 +220,15 @@ describe('sanitized server response diagnostics', () => {
   it.each([200, 204, 400, 401, 404, 409, 429, 499])(
     'does not report a successful or client-error %s response as a server failure',
     async (status) => {
-      const { app, records } = setup();
+      const reporter = vi.fn<ServerErrorReporter>().mockResolvedValue();
+      const { app, records } = setup(undefined, 'error', reporter);
       app.get('/response', async (_request, reply) =>
         reply.code(status).send(),
       );
       try {
         expect((await app.inject('/response')).statusCode).toBe(status);
         expect(records()).toEqual([]);
+        expect(reporter).not.toHaveBeenCalled();
       } finally {
         await app.close();
       }

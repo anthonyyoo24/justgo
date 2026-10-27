@@ -1,8 +1,14 @@
 import { z } from 'zod';
 import { readBetaAccessWindow, readBetaGrants } from './access/beta-access.js';
+import { serverDiagnosticConfiguration } from './http/sentry-configuration.js';
 
 const configSchema = z.object({
   APP_ENVIRONMENT: z.enum(['production', 'staging']).default('production'),
+  JUSTGO_SOURCE_SHA: z
+    .string()
+    .length(40)
+    .regex(/^[a-f0-9]{40}$/)
+    .optional(),
   BETA_ACCESS_GRANTS: z.string().default('[]'),
   BETA_ACCESS_WINDOW: z.string().default('null'),
   NODE_ENV: z
@@ -16,6 +22,12 @@ const configSchema = z.object({
   LOG_LEVEL: z
     .enum(['silent', 'error', 'warn', 'info', 'debug'])
     .default('info'),
+  API_SENTRY_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  API_SENTRY_DSN: z.string().optional(),
+  API_SENTRY_RELEASE: z.string().optional(),
   CORS_ORIGINS: z.string().default(''),
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
@@ -94,6 +106,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   }
   return {
     ...config,
+    API_SENTRY: serverDiagnosticConfiguration(
+      config.API_SENTRY_ENABLED,
+      config.API_SENTRY_DSN,
+      config.API_SENTRY_RELEASE,
+      config.APP_ENVIRONMENT,
+    ),
     BETA_ACCESS_GRANTS: grants,
     BETA_ACCESS_WINDOW: accessWindow,
   };

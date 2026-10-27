@@ -18,8 +18,8 @@ Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Node / npm                       | 24.18.0 LTS / 11.16.0; Vercel runtime 24.x                                                                           |
 | TypeScript                       | 6.0.3, strict plus unchecked-index and exact-optional checks                                                         |
-| Expo / React Native / React      | 58.0.19 / 0.88.0 / 19.3.0                                                                                            |
-| Expo Router / development client | 58.0.26 / 58.0.15                                                                                                    |
+| Expo / React Native / React      | 58.0.20 / 0.88.0 / 19.3.0                                                                                            |
+| Expo Router / development client | 58.0.27 / 58.0.16                                                                                                    |
 | Reanimated / Worklets            | 4.7.1 / 0.13.0; New Architecture required                                                                            |
 | Bottom sheet / Gesture Handler   | 5.2.14 / 3.3.0                                                                                                       |
 | Safe area / Screens / SVG        | 5.10.1 / 4.30.0 / 15.16.0                                                                                            |
@@ -47,6 +47,21 @@ remaining device/release gates are recorded in the
 [native-upgrade handoff](../handoffs/phase-14-native-upgrade.md). The iOS minimum
 remains 16.4. File export/import now awaits SDK 58's asynchronous write/read APIs
 before sharing, checking ownership or closing the file handle.
+
+The October 27 patch alignment updates Expo to 58.0.20, development client to
+58.0.16, File System to 58.0.12 and Router to 58.0.27. The lock also resolves
+modules-core 58.0.27 and JSI 58.0.20, including native shared-object/event changes.
+Sentry remains 8.28.0 with the same privacy plugin. These packages require a new
+signed binary; the installed build's earlier device evidence does not establish
+acceptance of this patched runtime. Preserve the owner-deferred phone checks
+and separate build/deployment permissions.
+
+The October 27 dependency audit passes the 87-entry API production graph with
+zero advisories. The root graph retains seven findings (three high, four moderate)
+in Expo CLI/Zod 3 and Drizzle development-tool dependencies; the patch lock now
+resolves node-forge 1.4.2. Preserve SDK 58 and the current Drizzle boundary while
+tracking compatible repairs before public release. Green application checks do
+not close the remaining tooling-advisory or native/device gates.
 
 Android is excluded from app platforms and has no package identifier, EAS profile, signing or test evidence. Shared dependencies do not establish Android support. When scheduled, select the SDK's Android minimum/target/compile levels, JDK/Gradle, New Architecture and recovery adapter together, and recheck current Play requirements. Do not infer an Android release promise from the Expo template.
 
@@ -210,29 +225,45 @@ implementation evidence is recorded on
 [PR #49](https://github.com/anthonyyoo24/justgo/pull/49); tune limits from measured
 beta traffic.
 
-The active `.github/workflows/staging-health.yml` probes only the public staging
-`/ready`, without credentials, checkout or response-body logging. It is configured
-for every five minutes, but the October 26 audit found only eight historical runs
-with gaps as long as 6.11 hours. This is best-effort scheduling, not evidence of a
-five-minute detection interval. Its default-false `test_notification` input
-deliberately fails one manual run without contacting the server. The
-[synthetic notification test](https://github.com/anthonyyoo24/justgo/actions/runs/40421509765)
-failed as intended without a network request; the subsequent
-[recovery run](https://github.com/anthonyyoo24/justgo/actions/runs/40421734104)
-passed. Actual receipt of the failure email by Anthony remains unverified.
-[GitHub notification preferences](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs)
-still need verification, and
-[inactive public repositories can lose their schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
-This is not a real-time uptime guarantee or API 5xx tracker.
+Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/)
+checks only the public staging `/ready` over HTTPS, without account credentials,
+at one-minute intervals with a five-second timeout. Three consecutive failures
+open an issue; one success resolves it. Assertions require a successful HTTP
+status and JSON `status: ready`. The API and mobile projects have explicit owner
+email rules for new issues, regressions and recovery. Anthony confirmed receipt
+of the Sentry test notification on October 27. Dashboard success metrics establish
+observed reachability, not a real-outage notification rehearsal or an uptime SLA.
+The monitor fits the included single-monitor allowance; no paid upgrade was made.
 
-The API response hook records every completed 5xx response exactly once,
-including direct replies: the generated request ID (`reqId`), `statusCode`,
-`HTTP_SERVER_ERROR` classification and an optional validated PostgreSQL SQLSTATE.
-It excludes raw exceptions, request/response bodies and URLs. Local tests cover
-the reporting boundary; hosted deployment, 5xx reporting and delivery to an
-external alert destination remain open.
+The prepared `.github/workflows/staging-health.yml` removes its unreliable cron
+and retains a manual readiness diagnostic/test-notification input. That change
+is not live until merged. GitHub remains the destination for build/test failures;
+actual GitHub failure-email receipt remains unverified. The historical October 26
+cron audit found gaps of up to 6.11 hours and is not a five-minute detection proof.
 
-Before external testers, retain the open monitoring-cadence/notification,
+The API response hook records each completed 5xx response exactly once, including
+direct replies: random request ID, status, `HTTP_SERVER_ERROR` classification
+and optional validated PostgreSQL SQLSTATE. The new optional Sentry reporter
+reconstructs only those fields with release/environment metadata, bounds delivery
+and backs off on provider failures. It never forwards an exception, request body,
+URL or account context. The local implementation/tests are ready; the existing
+hosted deployment does not yet contain it. Sentry account configuration, DPA and
+email test are verified. The owner-approved October 27 Privacy Policy is published
+and anonymous public bytes match the reviewed source; Terms remain unchanged.
+A synthetic report from the local reporter reached Sentry and its status, release
+and redacted IP were verified; this was not a hosted API request. Deployed API
+error delivery remains open.
+
+[Server releases](SERVER_RELEASES.md) documents the prepared manual, owner-approved
+GitHub lane, reviewed source/CI checks, fixed Vercel target, candidate probes and
+restricted migrator. The protected `justgo-staging` environment and its four
+deployment credentials are configured. The
+project-only Vercel token passed fixed-project REST reads; isolated CLI/team-cache
+bootstrap and candidate probe behavior are verified without an owner login. A
+hosted release run remains unverified. A pending migration requires current recovery evidence; an old dump cannot satisfy that
+gate. Existing TestFlight 0.1.0 (4) still has app reporting disabled.
+
+Before external testers, retain the open real-outage notification rehearsal,
 diagnostics deployment/5xx alert delivery, supported private-journal processing
 and current backup/recovery-copy deletion gates. The October 21 operator snapshot
 predates five current managed-Auth/journal/deletion tables and excludes the
@@ -241,8 +272,14 @@ current schema, and earlier cutover dumps are not an unattended backup service.
 There is no current full-restore, off-Mac storage or independently recoverable
 deletion/epoch/Auth-ledger evidence. Storage, retention and recovery still need an
 actual arrangement; local database regression tests do not establish hosted
-disaster recovery. Hosting choice and paid setup await owner authorization. No
-paid upgrade or provider contact was performed.
+disaster recovery. The October 27 [operating decision](../DECISIONS.md#october-27-hosting-backups-and-simulator-test-direction)
+retains Vercel and Supabase, with no hosting migration selected. Supabase Pro is
+the selected managed daily-backup plan with seven days of history; upgrade and
+spending wait until Anthony is ready for outside testers or App Store release
+preparation. This choice does not close the processing/recovery gates. No paid
+upgrade or provider contact is authorized. The later October 27 error-alert and
+release instruction authorizes that implementation separately; it does not close
+the recovery or private-journal processing gates.
 
 ## Design and tests
 

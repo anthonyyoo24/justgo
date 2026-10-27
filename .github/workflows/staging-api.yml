@@ -1,0 +1,119 @@
+name: Staging API release
+run-name: 'Staging API ${{ inputs.operation }} from ${{ inputs.tag }}'
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing reviewed tag reachable from main
+        required: true
+        type: string
+      operation:
+        description: Code-only deploy, or explicitly reviewed migrations followed by deploy
+        required: true
+        type: choice
+        options: [deploy, migrate-deploy]
+      migration_plan_sha256:
+        description: Exact reviewed pending-plan digest (migrate-deploy only)
+        required: false
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: justgo-staging-release
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.repository == 'anthonyyoo24/justgo' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.tag.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve reviewed tag and operation
+        id: tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_OPERATION: ${{ inputs.operation }}
+          MIGRATION_PLAN_SHA256: ${{ inputs.migration_plan_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]
+          git check-ref-format "refs/tags/$RELEASE_TAG"
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          release_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          git merge-base --is-ancestor "$release_sha" refs/remotes/origin/main
+          case "$RELEASE_OPERATION" in
+            deploy) [[ -z "$MIGRATION_PLAN_SHA256" ]] || exit 1 ;;
+            migrate-deploy) [[ "$MIGRATION_PLAN_SHA256" =~ ^[a-f0-9]{64}$ ]] || exit 1 ;;
+            *) exit 1 ;;
+          esac
+          printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
+          printf 'Staging candidate: `%s`\nOperation: `%s`\n' "$release_sha" "$RELEASE_OPERATION" >> "$GITHUB_STEP_SUMMARY"
+      - name: Require exact successful Foundation main push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.tag.outputs.sha }}
+        run: |
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" -f head_sha="$RELEASE_SHA" -f event=push -f branch=main -f per_page=1 > "$RUNNER_TEMP/staging-foundation.json"
+          node scripts/release/staging-api.mjs checks "$RUNNER_TEMP/staging-foundation.json"
+      - name: Require owner and main-only environment protection
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_REVIEWER_ID: ${{ github.repository_owner_id }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/justgo-staging" > "$RUNNER_TEMP/staging-environment.json"
+          gh api "repos/$GITHUB_REPOSITORY/environments/justgo-staging/deployment-branch-policies" > "$RUNNER_TEMP/staging-branches.json"
+          node scripts/release/staging-api.mjs environment "$RUNNER_TEMP/staging-environment.json" "$RUNNER_TEMP/staging-branches.json"
+  release:
+    needs: validate
+    if: github.repository == 'anthonyyoo24/justgo' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: justgo-staging
+      url: https://justgo-two.vercel.app
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      - name: Recheck protection before accessing provider credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_REVIEWER_ID: ${{ github.repository_owner_id }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/justgo-staging" > "$RUNNER_TEMP/staging-environment.json"
+          gh api "repos/$GITHUB_REPOSITORY/environments/justgo-staging/deployment-branch-policies" > "$RUNNER_TEMP/staging-branches.json"
+          node scripts/release/staging-api.mjs environment "$RUNNER_TEMP/staging-environment.json" "$RUNNER_TEMP/staging-branches.json"
+      - uses: ./.github/actions/setup-node
+      - name: Install lockfile-pinned Vercel CLI
+        run: |
+          npm ci --prefix scripts/release/vercel-cli
+          printf '%s\n' "$GITHUB_WORKSPACE/scripts/release/vercel-cli/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Guard database history and release exact staging candidate
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+          RELEASE_OPERATION: ${{ inputs.operation }}
+          MIGRATION_PLAN_SHA256: ${{ inputs.migration_plan_sha256 }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          VERCEL_ORG_ID: team_fAS7k1lpUEvk1jtNAz0SJhnq
+          VERCEL_PROJECT_ID: prj_j3ubtzyuYsCbpuGjKNmm5dLB8YZB
+          VERCEL_TELEMETRY_DISABLED: '1'
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+          STAGING_RECOVERY_ATTESTATION: ${{ secrets.STAGING_RECOVERY_ATTESTATION }}
+        run: |
+          umask 077
+          node --import tsx apps/api/scripts/staging-release.ts
+      - name: Remove private release files
+        if: always()
+        shell: bash
+        run: rm -rf .vercel "$RUNNER_TEMP"/justgo-api-probes-* "$RUNNER_TEMP"/justgo-api-cli-*

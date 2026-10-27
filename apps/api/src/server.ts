@@ -7,6 +7,7 @@ import {
   createDatabase,
 } from './db/client.js';
 import { loggerOptions } from './http/diagnostics.js';
+import { createServerErrorReporter } from './http/server-error-reporter.js';
 import { IdentityService } from './identity/service.js';
 import { createBetaAccess } from './access/beta-access.js';
 import { createManagedAuthVerifier } from './identity/managed-verifier.js';
@@ -18,6 +19,15 @@ const database = config.DATABASE_URL ? createDatabase(config) : undefined;
 const app = buildApp(
   {
     logger: loggerOptions(config.LOG_LEVEL),
+    reportServerError: createServerErrorReporter(config.API_SENTRY),
+    ...(config.JUSTGO_SOURCE_SHA
+      ? {
+          releaseIdentity: {
+            sourceSha: config.JUSTGO_SOURCE_SHA,
+            environment: config.APP_ENVIRONMENT,
+          },
+        }
+      : {}),
     onVercel: process.env.VERCEL === '1',
     legacyIdentityEnabled: !config.MANAGED_AUTH_ENABLED,
     developmentLegalDrafts:

@@ -318,11 +318,14 @@ test('repository public sources use document labels and exclude review records a
       html,
       /\[REVIEW|<!--|DATA_INVENTORY|LEGAL_REVIEW|public:start|acceptance record|accepted versions|account acceptance|acceptance time|launch-candidate|pending publication|Text approved|Local preview|Not published|document version|effective date appear above/i,
     );
-  for (const documentSource of [privacySource, termsSource]) {
+  for (const [documentSource, effectiveDate, version] of [
+    [privacySource, '2026-10-27', '2026-10-27-essential-errors'],
+    [termsSource, '2026-10-25', '2026-10-25-beta'],
+  ]) {
     const document = parseDocument(documentSource);
     assert.equal(document.status, 'owner-approved');
-    assert.equal(document.effectiveDate, '2026-10-25');
-    assert.equal(document.version, '2026-10-25-beta');
+    assert.equal(document.effectiveDate, effectiveDate);
+    assert.equal(document.version, version);
   }
   const privacy = output.get('privacy/index.html');
   const terms = output.get('terms/index.html');
@@ -350,10 +353,8 @@ test('repository public sources use document labels and exclude review records a
     /Back up journal|Restore journal|Recover earlier journal|This export cannot be restored/,
   );
   assert.match(privacy, /Sentry/);
-  assert.match(
-    privacy,
-    /Product analytics and ordinary automatic crash reporting are disabled/,
-  );
+  assert.match(privacy, /Product analytics remains disabled/);
+  assert.match(privacy, /App versions with crash reporting enabled/);
   const published = renderSite({
     privacySource,
     termsSource,
@@ -361,4 +362,47 @@ test('repository public sources use document labels and exclude review records a
   });
   for (const html of published.values())
     assert.doesNotMatch(html, /noindex,nofollow/);
+});
+
+test('the approved canonical essential-errors notice retains strict publication boundaries', async () => {
+  const approved = await readFile(
+    new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
+    'utf8',
+  );
+  const document = parseDocument(approved, true);
+  assert.equal(document.status, 'owner-approved');
+  assert.equal(document.effectiveDate, '2026-10-27');
+  assert.equal(document.version, '2026-10-27-essential-errors');
+  assert.match(
+    approved,
+    /^<!-- diagnostics-scope: essential-errors-only -->$/m,
+  );
+  assert.throws(
+    () =>
+      parseDocument(
+        approved.replace('owner-approved', 'owner-review-required'),
+        true,
+      ),
+    /explicit owner approval/,
+  );
+  assert.throws(
+    () =>
+      parseDocument(
+        approved.replace(
+          'effective-date: 2026-10-27',
+          'effective-date: pending',
+        ),
+        true,
+      ),
+    /effective date/,
+  );
+  assert.match(document.html, /App versions with crash reporting enabled/);
+  assert.match(document.html, /Sanitized server error reports/);
+  assert.match(document.html, /United States/);
+  assert.match(document.html, /original local crash report/);
+  assert.match(document.html, /Product analytics remains disabled/);
+  assert.doesNotMatch(
+    document.html,
+    /ordinary automatic crash reporting are disabled/,
+  );
 });

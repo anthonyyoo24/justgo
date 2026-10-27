@@ -1,13 +1,32 @@
 import { readFile } from 'node:fs/promises';
 import { isIP } from 'node:net';
+import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { parseDocument } from '../../sites/legal/build.mjs';
+
+// Node 24 can require this synchronous TS module without reclassifying the
+// CommonJS mobile package or changing Metro's package semantics.
+const { diagnosticConfiguration } = createRequire(import.meta.url)(
+  '../../apps/mobile/src/app-support/diagnostics/configuration.ts',
+);
 
 const root = new URL('../../', import.meta.url);
 export const betaApiOrigin = 'https://justgo-two.vercel.app';
 const authOrigin = 'https://kmcpcauaxlgpevkkenwd.supabase.co';
 const bundle = 'com.anthonyyoo.justgo';
 const googleSuffix = '.apps.googleusercontent.com';
+
+/** A missing flag preserves the original route, including older build artifacts. */
+export function betaDiagnosticsMode(environment) {
+  const value = environment.RELEASE_DIAGNOSTICS ?? 'false';
+  if (!['true', 'false'].includes(value))
+    throw new Error('RELEASE_DIAGNOSTICS must be true or false.');
+  const diagnosticsEnabled = value === 'true';
+  return {
+    diagnosticsEnabled,
+    buildProfile: diagnosticsEnabled ? 'beta-diagnostics' : 'beta',
+  };
+}
 
 function publicUrl(value) {
   try {
@@ -43,19 +62,56 @@ function publicAuthKey(value) {
   }
 }
 
+// Match pinned EAS 25.3 inheritance: env and ios merge within the profile
+// chain, then the resolved iOS platform configuration overrides common values.
+function mergeIosProfile(base, update) {
+  const result = { ...base, ...update };
+  if (base?.env && update?.env) result.env = { ...base.env, ...update.env };
+  if (base?.ios && update?.ios)
+    result.ios = mergeIosProfile(base.ios, update.ios);
+  return result;
+}
+
 /** Validate the resolved public build inputs; errors contain names, not values. */
 export function checkBetaRelease({
   eas,
   environment,
   documents,
   operation = 'build',
+  diagnostics = false,
 }) {
   const errors = [];
   const check = (condition, message) => {
     if (!condition) errors.push(message);
   };
-  const profile = eas.build?.beta;
+  check(
+    typeof diagnostics === 'boolean',
+    'Select an explicit diagnostics mode.',
+  );
+  const base = eas.build?.beta;
+  const selected = diagnostics ? eas.build?.['beta-diagnostics'] : base;
+  const inherited = diagnostics ? mergeIosProfile(base, selected) : base;
+  const profile = mergeIosProfile(inherited, inherited?.ios);
   const env = { ...environment, ...profile?.env };
+  const profileEnvironments = [
+    base?.env,
+    selected?.env,
+    base?.ios?.env,
+    selected?.ios?.env,
+  ];
+  check(
+    profileEnvironments.every(
+      (value) =>
+        !value ||
+        (!Object.hasOwn(value, 'SENTRY_AUTH_TOKEN') &&
+          !Object.hasOwn(value, 'BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION')),
+    ),
+    'SENTRY_AUTH_TOKEN and publication attestation must come only from the trusted external environment.',
+  );
+  check(
+    !base?.extends && (!diagnostics || selected?.extends === 'beta'),
+    'Only the diagnostics profile may inherit the explicit beta profile.',
+  );
   check(['build', 'submit'].includes(operation), 'Unknown release operation.');
   check(eas.cli?.version === '25.3.0', 'Pin EAS CLI to 25.3.0.');
   check(eas.cli?.appVersionSource === 'remote', 'Use remote app versions.');
@@ -66,10 +122,10 @@ export function checkBetaRelease({
   check(
     profile?.distribution === 'store' &&
       profile.developmentClient === false &&
-      !profile.ios?.simulator &&
-      (!profile.ios?.buildConfiguration ||
-        profile.ios.buildConfiguration === 'Release') &&
-      !profile.extends,
+      !profile.simulator &&
+      (!profile.buildConfiguration ||
+        profile.buildConfiguration === 'Release') &&
+      (!profile.extends || (diagnostics && profile.extends === 'beta')),
     'Beta must be an explicit store build without a development client.',
   );
   check(
@@ -115,14 +171,39 @@ export function checkBetaRelease({
     'Preserve the approved private CloudKit container and Production environment.',
   );
   check(
-    !!profile?.env?.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER ===
-      !!profile?.env?.ICLOUD_CONTAINER_ENVIRONMENT,
+    profileEnvironments.every(
+      (value) =>
+        !!value?.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER ===
+        !!value?.ICLOUD_CONTAINER_ENVIRONMENT,
+    ),
     'Profile CloudKit overrides must be paired before EAS loads remote variables.',
   );
   check(
-    env.EXPO_PUBLIC_SENTRY_ENABLED === 'false',
-    'Ordinary Sentry delivery must stay disabled for this candidate.',
+    env.EXPO_PUBLIC_SENTRY_ENABLED === (diagnostics ? 'true' : 'false'),
+    'Sentry configuration must match the explicitly selected diagnostics mode.',
   );
+  if (diagnostics) {
+    check(
+      !!diagnosticConfiguration(
+        env.EXPO_PUBLIC_SENTRY_ENABLED,
+        env.EXPO_PUBLIC_SENTRY_DSN,
+        env.EXPO_PUBLIC_SENTRY_ENVIRONMENT,
+      ) &&
+        env.EXPO_PUBLIC_SENTRY_ENVIRONMENT === 'staging' &&
+        (!env.SENTRY_ENVIRONMENT || env.SENTRY_ENVIRONMENT === 'staging'),
+      'Diagnostics needs the reviewed mobile US project DSN and staging environment.',
+    );
+    check(
+      !env.SENTRY_DISABLE_AUTO_UPLOAD && !env.SENTRY_ALLOW_FAILURE,
+      'Diagnostics builds must not bypass source-map or debug-symbol uploads.',
+    );
+    if (operation === 'build')
+      check(
+        typeof environment.SENTRY_AUTH_TOKEN === 'string' &&
+          environment.SENTRY_AUTH_TOKEN.trim().length > 0,
+        'Diagnostics Release builds require private SENTRY_AUTH_TOKEN.',
+      );
+  }
   check(
     !env.JUSTGO_JOURNEY_FIXTURES && !env.EXPO_PUBLIC_JUSTGO_JOURNEY_FIXTURE,
     'Disposable journey fixtures must not enter a beta build.',
@@ -139,7 +220,19 @@ export function checkBetaRelease({
     );
     try {
       // Reuse the site's actual publication boundary, including dates and placeholders.
-      parseDocument(documents[filename], true);
+      const document = parseDocument(documents[filename], true);
+      if (diagnostics && filename === 'PRIVACY_POLICY_DRAFT.md') {
+        const scopes = documents[filename].match(
+          /^<!-- diagnostics-scope: [^\r\n]+ -->$/gm,
+        );
+        check(
+          scopes?.length === 1 &&
+            scopes[0] === '<!-- diagnostics-scope: essential-errors-only -->' &&
+            environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION ===
+              document.version,
+          'Publish the approved essential-errors notice and attest its exact version before diagnostics builds.',
+        );
+      }
     } catch {
       errors.push(
         `${filename} needs approved public wording and a final effective date.`,
@@ -176,6 +269,7 @@ async function main() {
     environment: process.env,
     documents,
     operation: process.env.RELEASE_OPERATION ?? 'build',
+    diagnostics: betaDiagnosticsMode(process.env).diagnosticsEnabled,
   });
   if (errors.length) {
     console.error(`Beta preflight blocked (${errors.length} items):`);
@@ -186,7 +280,7 @@ async function main() {
       'Beta public configuration and legal-source preflight passed.',
     );
     console.info(
-      'Native acceptance, hosted readiness and release authorization remain separate gates.',
+      'Native device acceptance remains open before external testing; build/upload authorization is separate.',
     );
   }
 }

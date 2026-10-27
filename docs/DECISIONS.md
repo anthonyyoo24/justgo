@@ -777,3 +777,74 @@ environment isolation protect the app boundary. The first hosted build and
 physical acceptance remain pending under the
 [development-build procedure](operations/DEVELOPMENT_BUILDS.md). Existing owner
 review, Git permissions and Phase 14 release gates remain in force.
+
+## October 27 hosting, backups and simulator-test direction
+
+The owner-requested side-chat decision handoff selects the existing providers:
+Vercel for the API/server and Supabase for database/authentication. Keep that
+arrangement as the working plan; do not pursue a hosting migration. Cloudflare
+R2, Backblaze B2 and AWS were discussed, but none was selected. This provider
+choice does not establish private-journal processing suitability or close the
+existing privacy/recovery gates.
+
+Supabase Pro is the selected managed-backup plan, with automatic daily backups
+and seven days of accessible history. Defer the upgrade and spending until Anthony
+is ready for outside testers or App Store release preparation. No purchase or
+upgrade is authorized now; current backup, recovery-copy retention and
+deletion-safe restore evidence remain separate requirements.
+
+Defer the automated iOS simulator smoke test [TST-2] for now. Do not implement
+that CI test under the current scope; record it as deferred/unverified, never
+passed. This does not supply physical-device evidence. The side-chat explanation
+of alerts and deployment automation authorizes no new implementation, account
+changes or purchases.
+
+## October 27 error alerts and approved server releases
+
+Anthony subsequently approved implementing Sentry for sanitized API errors and
+app crashes, Sentry uptime checks of the public staging readiness endpoint, email
+notifications, and GitHub Actions server releases with an owner approval button.
+This later instruction supersedes the earlier explanation-only restriction for
+these controls. It does not authorize paid upgrades, a provider migration, Git
+push/PR/merge, a server deployment or a new native build by itself.
+
+Use the existing US `anthony-corp` organization with separate `justgo-api` and
+`justgo-mobile` projects. Keep product analytics, replay, tracing and profiling
+disabled. Rebuild API reports from the safe diagnostic classification only; do
+not forward exceptions, request context, account identifiers or journal content.
+Keep mobile payload/native filters and a separate explicit diagnostics build
+profile. Existing TestFlight 0.1.0 (4) has reporting disabled. Native acceptance
+remains open before external testing; browser tests cannot establish it.
+
+The owner confirmed receipt of Sentry's test email and personally accepted DPA
+v5.1.0 on October 27. He approved the reviewed Privacy Policy wording and its
+publication at the existing URL, effective October 27, version
+`2026-10-27-essential-errors`. The Terms remain unchanged. Account configuration
+and notice approval do not establish signed-build acceptance or final Apple
+privacy disclosures.
+
+Use the protected `justgo-staging` GitHub environment for reviewed main-branch
+releases, a project-restricted Vercel credential and the existing restricted
+migrator. Deploy-only must refuse pending migrations; migration/deploy additionally
+requires current, source-bound recovery evidence. Preserve the database advisory
+lock through candidate validation and promotion. Read back an uncertain promotion
+before any further action; never automatically roll back a changed schema.
+See [server releases](operations/SERVER_RELEASES.md) for the operating procedure.
+
+Sentry owns recurring uptime monitoring; retain the GitHub readiness workflow as
+a manual diagnostic after the workflow change is merged. GitHub continues to
+report build/test failures. No Slack integration is needed. Supabase Pro, current
+restorable/off-Mac backups, private-journal provider assessment and deferred
+physical-device/simulator checks retain their separately recorded status.
+
+## October 27 release-publication patch follow-up
+
+Anthony requested implementation of the remaining patch work, pushing the branch
+and opening its PR. Include the SDK 58 compatibility alignment as a separately
+reviewable commit with the prepared error-alert and release work. Expo, development
+client, File System and Router patch versions follow the refreshed supported set;
+React, React Native, the Sentry version and app identities remain unchanged.
+The updated native core/JSI still requires a newly signed binary and later phone
+acceptance. Keep those deferred release gates explicit. This instruction authorizes
+the current push and PR; merge, server deployment, native build/upload and outside
+tester invitations retain their separate approval.
