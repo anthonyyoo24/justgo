@@ -22,6 +22,7 @@ async function fixture(t, respond) {
   const requests = [];
   const received = Promise.withResolvers();
   const responseHeaders = Promise.withResolvers();
+  const requestClosed = Promise.withResolvers();
   const server = createServer((incoming, response) => {
     requests.push({ method: incoming.method, path: incoming.url });
     assert.equal(incoming.headers.authorization, `Bearer ${token}`);
@@ -47,10 +48,12 @@ async function fixture(t, respond) {
     // Only this test adapter redirects the fixed HTTPS destination to a local
     // HTTP fixture; production always uses node:https with normal TLS checks.
     const local = new URL(`http://127.0.0.1:${server.address().port}${path}`);
-    return httpRequest(local, options, (response) => {
+    const outgoing = httpRequest(local, options, (response) => {
       callback(response);
       responseHeaders.resolve();
     });
+    outgoing.once('close', requestClosed.resolve);
+    return outgoing;
   };
   return {
     request,
@@ -58,6 +61,7 @@ async function fixture(t, respond) {
     constructions,
     received: received.promise,
     responseHeaders: responseHeaders.promise,
+    requestClosed: requestClosed.promise,
   };
 }
 
@@ -179,6 +183,33 @@ test('invalid target, credential, or deadline sends no request', async () => {
     );
   assert.equal(calls, 0);
 });
+
+test(
+  'deadline rejects an unsolicited upgrade after the request has already closed',
+  { timeout: 5000 },
+  async (t) => {
+    const f = await fixture(t, (_incoming, response) => {
+      response.writeHead(101, {
+        connection: 'Upgrade',
+        upgrade: 'unexpected-protocol',
+      });
+      response.end();
+    });
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const rejected = assert.rejects(
+      promoteStagingCandidate(deployment, {
+        token,
+        request: f.request,
+      }),
+      safeFailure,
+    );
+    await f.requestClosed;
+    t.mock.timers.tick(20_000);
+    await rejected;
+    assert.equal(f.requests.length, 1);
+    assert.equal(f.constructions.length, 1);
+  },
+);
 
 test('synchronous transport errors are redacted and not retried', async () => {
   let calls = 0;

@@ -59,7 +59,13 @@ export async function promoteStagingCandidate(
         },
       );
       outgoing.on('error', () => reject(failure()));
-      timer = setTimeout(() => outgoing.destroy(failure()), timeoutMs);
+      timer = setTimeout(() => {
+        // A closed/upgraded request may emit no further error on destroy.
+        // Settle the deadline independently of the transport's event sequence.
+        const error = failure();
+        reject(error);
+        outgoing.destroy(error);
+      }, timeoutMs);
       outgoing.end();
     });
   } catch {
