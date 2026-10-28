@@ -73,6 +73,13 @@ or unapproved text stop the process. It prints names, never credential values.
 `RELEASE_OPERATION=submit` additionally checks the App Store ID/team. A pass does
 not prove hosted notices, provider suitability, native behavior or release approval.
 
+EAS reads the app configuration to identify the project before `env:exec` fetches
+preview variables. Keep the workflow's initial `EXPO_PUBLIC_SENTRY_ENABLED` false
+while that configuration has no remote DSN. Each inner `env:exec` command then
+applies `RELEASE_DIAGNOSTICS` after preview loads, so the preflight, native build
+and upload still use the selected mode. Enabling the initial flag instead stops
+project resolution before the diagnostic configuration can be fetched.
+
 Preflight follows pinned EAS 25.3.0 iOS resolution: inherit common and iOS settings
 and their environment maps first, then apply the resolved iOS overrides. Identity,
 services, diagnostics and upload-bypass checks use that effective environment.

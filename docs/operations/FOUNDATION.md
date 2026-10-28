@@ -231,13 +231,17 @@ at one-minute intervals with a five-second timeout. Three consecutive failures
 open an issue; one success resolves it. Assertions require a successful HTTP
 status and JSON `status: ready`. The API and mobile projects have explicit owner
 email rules for new issues, regressions and recovery. Anthony confirmed receipt
-of the Sentry test notification on October 27. Dashboard success metrics establish
-observed reachability, not a real-outage notification rehearsal or an uptime SLA.
+of the Sentry test notification on October 27. A controlled assertion-failure
+rehearsal then opened [JUSTGO-API-3](https://anthony-corp.sentry.io/issues/7815386993/)
+and resolved it after the normal `status: ready` assertion was restored. The API
+stayed available; the alert rule recorded two triggers, and Anthony confirmed both
+incident/recovery emails arrived. This proves the monitor's
+failure/recovery path, not actual API downtime or an uptime SLA.
 The monitor fits the included single-monitor allowance; no paid upgrade was made.
 
-The prepared `.github/workflows/staging-health.yml` removes its unreliable cron
-and retains a manual readiness diagnostic/test-notification input. That change
-is not live until merged. GitHub remains the destination for build/test failures;
+The merged `.github/workflows/staging-health.yml` removes its unreliable cron
+and retains a manual readiness diagnostic/test-notification input.
+GitHub remains the destination for build/test failures;
 actual GitHub failure-email receipt remains unverified. The historical October 26
 cron audit found gaps of up to 6.11 hours and is not a five-minute detection proof.
 

@@ -10,6 +10,8 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { setTimeout as pause } from 'node:timers/promises';
+import { promoteStagingCandidate } from './staging-promotion.mjs';
 import {
   stagingTarget as target,
   releaseContext,
@@ -101,6 +103,8 @@ async function runStagingApi(
     beforePromote,
     context,
     phase,
+    wait = pause,
+    promote = promoteStagingCandidate,
     summary = (text) => {
       if (env.GITHUB_STEP_SUMMARY)
         appendFileSync(env.GITHUB_STEP_SUMMARY, text);
@@ -274,12 +278,21 @@ async function runStagingApi(
     await beforePromote();
     requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
     phase.promotionAttempted = true;
-    await vc(['promote', candidate.id]);
-    requireRelease(
-      validateDeployment(await deployment(target.alias), context).id ===
-        candidate.id,
-      'STAGING_PROMOTION_UNCONFIRMED',
-    );
+    // The CLI's API client retries mutations internally. Use the single-request
+    // transport; the existing alias checks still own completion evidence.
+    await promote(candidate.id, { token: env.VERCEL_TOKEN, signal });
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const current = validateDeployment(await deployment(target.alias));
+      if (current.id === candidate.id) {
+        validateDeployment(current, context);
+        break;
+      }
+      requireRelease(
+        current.id === baseline.id && attempt < 29,
+        'STAGING_PROMOTION_UNCONFIRMED',
+      );
+      await wait(2000, undefined, { signal });
+    }
     await probe('/health', 'health', true);
     await probe('/ready', 'ready', true);
     await probe('/v1/journal-sync?limit=1', 'unauthorized', true);
