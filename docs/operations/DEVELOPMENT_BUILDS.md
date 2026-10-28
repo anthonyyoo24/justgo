@@ -14,6 +14,12 @@ builds its framework against the current Pods headers. This policy requires a
 new binary; Metro reloads and JavaScript exports do not validate it. See the
 [native linkage policy](../architecture/APP_SHELL.md#app-error-reporting).
 
+For a local rebuild with an existing `apps/mobile/ios/` directory, use the intended
+variant and public build environment to run `npx expo prebuild --platform ios`
+from `apps/mobile`, then rebuild the app. Omit `--clean` to update the generated
+files in place. `expo run:ios` skips prebuild when the native project already
+exists, so rebuilding alone can retain the old generated settings.
+
 ## App and data boundaries
 
 | Setting                    | JustGO Dev                         | TestFlight                     |
