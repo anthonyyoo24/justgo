@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
-import { exportPageSchema } from '@justgo/contracts';
+import { completionExportPageSchema } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { IdentityService } from '../../src/identity/service.js';
@@ -75,7 +75,7 @@ afterAll(async () => {
 });
 
 describe('authenticated data export on the real restricted database role', () => {
-  it('exports all pages, older history, feelings and exact reflection text without paid access or another owner', async () => {
+  it('exports all pages and older completion history without private journal fields without paid access or another owner', async () => {
     const a = await account(),
       b = await account();
     const ids = await history(a.userId, 51);
@@ -83,8 +83,14 @@ describe('authenticated data export on the real restricted database role', () =>
     const first = await request(a.sessionToken);
     expect(first.statusCode).toBe(200);
     expect(first.headers['cache-control']).toBe('no-store');
-    const page = exportPageSchema.parse(first.json());
+    const page = completionExportPageSchema.parse(first.json());
     expect(page.account.id).toBe(a.userId);
+    expect(Object.keys(page.account).sort()).toEqual([
+      'analyticsRestricted',
+      'createdAt',
+      'id',
+    ]);
+    expect(page.account.analyticsRestricted).toBe(false);
     expect(page.devices.map((d) => d.id)).toEqual([a.deviceId]);
     expect(page.attempts.map((x) => x.id)).toEqual(ids.slice(0, 50));
     expect(page.attempts[0]).toMatchObject({
@@ -92,13 +98,10 @@ describe('authenticated data export on the real restricted database role', () =>
       activityDate: '2024-11-03',
       startTimeZone: null,
       displayTimeZone: 'America/Toronto',
-      reflection: {
-        feeling: 'a_little_better',
-        text: 'Synthetic export note, "quotes"\n여행 🌱',
-        revision: 2,
-      },
     });
-    const last = exportPageSchema.parse(
+    expect(page.attempts[0]).not.toHaveProperty('reflection');
+    expect(first.body).not.toContain('Synthetic export note');
+    const last = completionExportPageSchema.parse(
       (await request(a.sessionToken, '?cursor=' + page.nextCursor)).json(),
     );
     expect(last.attempts.map((x) => x.id)).toEqual(ids.slice(50));
@@ -115,19 +118,39 @@ describe('authenticated data export on the real restricted database role', () =>
       expect(first.body).not.toContain(forbidden);
     // Even a cursor obtained from another account cannot change trusted ownership.
     expect(
-      exportPageSchema.parse(
+      completionExportPageSchema.parse(
         (await request(b.sessionToken, '?cursor=' + page.nextCursor)).json(),
       ).account.id,
     ).toBe(b.userId);
+  });
+  it('does not expose the retired legacy journal route with or without credentials', async () => {
+    const a = await account();
+    await history(a.userId, 1);
+    for (const token of [undefined, a.sessionToken]) {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/journal/legacy',
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.body).not.toContain('Synthetic export note');
+    }
   });
   it('returns a complete empty export and safe revoked-device metadata', async () => {
     const a = await account();
     const deviceId = randomUUID();
     await admin.query(
+      'update justgo.users set analytics_restricted_at=now() where id=$1',
+      [a.userId],
+    );
+    await admin.query(
       'insert into justgo.devices (user_id,id,revoked_at) values ($1,$2,now())',
       [a.userId, deviceId],
     );
-    const page = exportPageSchema.parse((await request(a.sessionToken)).json());
+    const page = completionExportPageSchema.parse(
+      (await request(a.sessionToken)).json(),
+    );
+    expect(page.account.analyticsRestricted).toBe(true);
     expect(page.attempts).toEqual([]);
     expect(page.nextCursor).toBeNull();
     expect(page.devices.find((d) => d.id === deviceId)?.revokedAt).toEqual(

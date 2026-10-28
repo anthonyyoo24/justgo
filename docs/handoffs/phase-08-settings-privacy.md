@@ -50,7 +50,7 @@ identity retention function; and the October 16 pre-merge stability fixes.
 - **Free-beta admission:** `BETA_ACCESS_WINDOW` (staging only) admits any account
   during a configured interval; explicit `BETA_ACCESS_GRANTS` still take
   precedence (October 16). TestFlight controls who can install.
-- **Monitoring** moved to the Phase 11 free beta using existing tools; Phase 08
+- **Monitoring** moved to the Phase 14 free beta using existing tools; Phase 08
   keeps only diagnostic redaction (October 16).
 - **API client errors:** on `/v1/`, any 4xx without its own code keeps its status
   with `INVALID_REQUEST`; only failures without a client status become
@@ -83,7 +83,7 @@ identity retention function; and the October 16 pre-merge stability fixes.
 - The reflection editor scrolls its heading into view on focus and keeps
   Skip/Save in a footer above the keyboard. Anthony confirmed this on his iPhone
   on October 14.
-- Two analytics rows remain visibly unavailable; Phase 09 removes them.
+- Two analytics rows remain visibly unavailable; Phase 10 removes them.
 
 ## Invariants to preserve
 
@@ -140,13 +140,11 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 ## Setup or environment changes
 
-- The hosted test API (`justgo-two.vercel.app`) already serves `DELETE
-/v1/account` (checked October 16). It does not yet have the 4xx change or
-  migration 0016's owner-only transfer DELETE restriction.
-- Apply through forward migration `0016_transfer_delete_owner` on the next
-  authorized hosted update. It makes transfer DELETE owner-only even with a
-  matching code digest; keep already-applied migration 0014 unchanged. The
-  migration runner also applies 0015, but retention scheduling stays deferred.
+- The October 18 owner-authorized [Phase 10 rollout](phase-10-acceptance.md)
+  updated `justgo-two.vercel.app` with the current API, including the 4xx mapping,
+  and applied forward migrations 0015–0017. The owner-only transfer DELETE
+  restriction is verified; migration 0014 remains unchanged. Retention scheduling
+  stays deferred, and the installed cleanup function was not invoked.
 - New API variable `BETA_ACCESS_WINDOW` (JSON `{startsAt, expiresAt}` or `null`);
   configuration rejects it outside `APP_ENVIRONMENT=staging`.
 - Native builds need item-scoped Keychain removal for deletion and the
@@ -154,7 +152,7 @@ identity retention function; and the October 16 pre-merge stability fixes.
   October 12 signed build predates these capabilities. Anthony's reported
   Phase 08 physical acceptance is recorded in
   [DECISIONS.md](../DECISIONS.md#october-16-codebase-assessment-follow-up);
-  Phase 11 must verify the capabilities in the actual beta/release build.
+  Phase 14 must verify the capabilities in the actual beta/release build.
 - Journeys accept `JUSTGO_JOURNEY_API_PORT` and `JUSTGO_JOURNEY_APP_PORT` (defaults
   3000/8081). The root `check:static` script is what CI runs before coverage.
 
@@ -162,13 +160,12 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 | Gate                                                                                              | Owner                         | Phase  | Done when                                                                            |
 | ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------ |
-| Redeploy the API with the 4xx mapping and apply migration 0016's transfer DELETE restriction      | Anthony authorizes            | 11     | Forward migrations through 0016 applied; deployment probed                           |
-| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 11     | Schedule runs on the hosted database; first run's counts recorded                    |
-| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 10, 11 | Dashboard matches FOUNDATION.md before Phase 10 publishes wording                    |
+| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 14     | Schedule runs on the hosted database; first run's counts recorded                    |
+| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 12, 14 | Dashboard matches FOUNDATION.md before Phase 14 publishes the verified wording       |
 | Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                                     |
-| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 11     | Simulator or device check                                                            |
-| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 11     | Paid-launch checkpoint                                                               |
-| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–11  | See [Phase 11](../implementation-plan/phase-11-release.md#phase-11) and Phase 09/07A |
+| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 14     | Simulator or device check                                                            |
+| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 14     | Paid-launch checkpoint                                                               |
+| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–15  | See [Phase 14](../implementation-plan/phase-14-release.md#phase-14) and Phase 15/07A |
 
 ## Final verification
 

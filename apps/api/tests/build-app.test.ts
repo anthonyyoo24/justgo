@@ -62,7 +62,7 @@ describe('health and readiness', () => {
       await app.close();
     }
   });
-  it.each(['PATCH', 'DELETE'])(
+  it.each(['PUT', 'PATCH', 'DELETE'])(
     'allows %s preflight from the configured app origin only',
     async (method) => {
       const app = buildApp({
@@ -87,7 +87,7 @@ describe('health and readiness', () => {
           'http://localhost:8081',
         );
         expect(allowed.headers['access-control-allow-methods']).toBe(
-          'GET, POST, PATCH, DELETE',
+          'GET, POST, PUT, PATCH, DELETE',
         );
         const denied = await preflight('https://unknown.example');
         expect(denied.headers['access-control-allow-origin']).toBeUndefined();
@@ -99,6 +99,24 @@ describe('health and readiness', () => {
 });
 
 describe('safe operational configuration', () => {
+  it('keeps managed Auth disabled until explicitly enabled with matching public configuration', () => {
+    expect(readConfig({}).MANAGED_AUTH_ENABLED).toBe(false);
+    expect(() => readConfig({ MANAGED_AUTH_ENABLED: 'true' })).toThrow(
+      'Managed Auth requires',
+    );
+    expect(() =>
+      readConfig({ SUPABASE_URL: 'https://example.supabase.co' }),
+    ).toThrow('must include');
+    expect(
+      readConfig({
+        MANAGED_AUTH_ENABLED: 'true',
+        SUPABASE_URL: 'https://example.supabase.co',
+        SUPABASE_PUBLISHABLE_KEY: 'public',
+        SUPABASE_AUTH_SECRET_KEY:
+          'server-only-fixture-secret-key-32-characters',
+      }).MANAGED_AUTH_ENABLED,
+    ).toBe(true);
+  });
   it('rejects production without a database and remote plaintext connections', () => {
     expect(() => readConfig({ NODE_ENV: 'production' })).toThrow();
     expect(() =>

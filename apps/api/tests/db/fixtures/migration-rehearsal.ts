@@ -203,7 +203,11 @@ async function compareMetadata(index: number) {
       ? [`${table.name}_pkey`]
       : [];
     expect(constraints.rows.map((value) => value.name).sort()).toEqual(
-      [...expectedNames, ...expectedPrimary].sort(),
+      // PostgreSQL stores at most 63 bytes of an identifier. Drizzle retains its
+      // full generated ASCII foreign-key name in the snapshot.
+      [...expectedNames, ...expectedPrimary]
+        .map((name) => name.slice(0, 63))
+        .sort(),
     );
     const policies = await admin.query<{
       name: string;

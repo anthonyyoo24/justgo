@@ -6,3 +6,8 @@ export { createJournalTransport } from '../../apps/mobile/src/data/activity/sync
 export { AccountClient } from '../../apps/mobile/src/lib/network/account-client';
 export { createHttpClient } from '../../apps/mobile/src/lib/network/http';
 export { MemoryStorage } from '../../apps/mobile/test-support/journal';
+
+export {
+  memoryLocalJournal,
+  memoryJournalBackend,
+} from '../../apps/mobile/test-support/local-journal';

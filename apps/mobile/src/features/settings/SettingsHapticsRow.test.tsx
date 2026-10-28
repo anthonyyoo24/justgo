@@ -90,7 +90,7 @@ it.each([
   'loads only a valid installation preference %s',
   async (initial, enabled) => {
     const { wrapper, storage } = setup(memory(initial));
-    const screen = render(<SettingsHapticsRow />, { wrapper });
+    const screen = await render(<SettingsHapticsRow />, { wrapper });
     await waitFor(() =>
       expect(screen.getByRole('switch', { name: 'Haptics' })).toBeEnabled(),
     );
@@ -106,31 +106,31 @@ it('waits for slow hydration and ignores early feedback and toggles', async () =
     getItem: () => read.promise,
     setItem: jest.fn(async () => {}),
   });
-  const hook = renderHook(useHapticPreferences, { wrapper });
+  const hook = await renderHook(useHapticPreferences, { wrapper });
   expect(hook.result.current.loading).toBe(true);
-  act(() => hook.result.current.feedback('accept'));
+  await act(() => hook.result.current.feedback('accept'));
   await act(async () => hook.result.current.setEnabled(false));
   expect(storage.setItem).not.toHaveBeenCalled();
   expect(adapter.play).not.toHaveBeenCalled();
   await act(async () => read.resolve('false'));
   expect(hook.result.current.enabled).toBe(false);
-  act(() => hook.result.current.feedback('completed'));
+  await act(() => hook.result.current.feedback('completed'));
   expect(adapter.play).not.toHaveBeenCalled();
 });
 it('saves off and restores it after remount, without playing on hydration', async () => {
   const storage = memory();
   const { wrapper, adapter } = setup(storage);
-  const screen = render(<SettingsHapticsRow />, { wrapper });
+  const screen = await render(<SettingsHapticsRow />, { wrapper });
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
     expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
       false,
     ),
   );
   expect(storage.setItem).toHaveBeenCalledWith(hapticsPreferenceKey, 'false');
-  screen.unmount();
-  const fresh = render(<SettingsHapticsRow />, { wrapper });
+  await screen.unmount();
+  const fresh = await render(<SettingsHapticsRow />, { wrapper });
   await waitFor(() => expect(fresh.getByRole('switch')).toBeEnabled());
   expect(fresh.getByRole('switch').props.accessibilityState.checked).toBe(
     false,
@@ -141,9 +141,9 @@ it('saves off and restores it after remount, without playing on hydration', asyn
 it('keeps the haptics control static when the effective motion preference is reduced', async () => {
   const timing = jest.spyOn(Animated, 'timing');
   const { wrapper } = setup(memory('true'), true, true);
-  const screen = render(<SettingsHapticsRow />, { wrapper });
+  const screen = await render(<SettingsHapticsRow />, { wrapper });
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
-  fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
     expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
       false,
@@ -153,7 +153,7 @@ it('keeps the haptics control static when the effective motion preference is red
 });
 it('plays a selection preview only after successfully enabling', async () => {
   const { wrapper, adapter } = setup(memory('false'));
-  const hook = renderHook(useHapticPreferences, { wrapper });
+  const hook = await renderHook(useHapticPreferences, { wrapper });
   await waitFor(() => expect(hook.result.current.loading).toBe(false));
   await act(async () => hook.result.current.setEnabled(true));
   await waitFor(() => expect(adapter.play).toHaveBeenCalledTimes(1));
@@ -167,12 +167,12 @@ it('blocks duplicate writes and feedback while saving, then fences older events'
     getItem: async () => 'true',
     setItem: jest.fn(() => write.promise),
   });
-  const hook = renderHook(useHapticPreferences, { wrapper });
+  const hook = await renderHook(useHapticPreferences, { wrapper });
   await waitFor(() => expect(hook.result.current.loading).toBe(false));
   await act(async () => hook.result.current.feedback('accept'));
   const stillAllowed = adapter.play.mock.calls[0]![1];
   let pending!: Promise<void>;
-  act(() => {
+  await act(() => {
     pending = hook.result.current.setEnabled(false);
   });
   expect(stillAllowed()).toBe(false);
@@ -189,7 +189,7 @@ it('blocks duplicate writes and feedback while saving, then fences older events'
 });
 it('contains native promise and synchronous failures without changing the preference', async () => {
   const { wrapper, adapter } = setup();
-  const hook = renderHook(useHapticPreferences, { wrapper });
+  const hook = await renderHook(useHapticPreferences, { wrapper });
   await waitFor(() => expect(hook.result.current.loading).toBe(false));
   adapter.play.mockRejectedValueOnce(new Error('unavailable'));
   await act(async () => hook.result.current.feedback('completed'));
@@ -205,7 +205,7 @@ it('contains read/write failures and leaves retry usable with red feedback', asy
   storage.getItem.mockRejectedValueOnce(new Error('read'));
   storage.setItem.mockRejectedValueOnce(new Error('write'));
   const { wrapper, adapter } = setup(storage);
-  const screen = render(<SettingsHapticsRow />, { wrapper });
+  const screen = await render(<SettingsHapticsRow />, { wrapper });
   await waitFor(() =>
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Your haptics preference couldn’t load. Try saving it again.',
@@ -214,7 +214,7 @@ it('contains read/write failures and leaves retry usable with red feedback', asy
   expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
     false,
   );
-  fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Your haptics preference couldn’t save. Please try again.',
@@ -225,7 +225,7 @@ it('contains read/write failures and leaves retry usable with red feedback', asy
   });
   expect(screen.getByRole('switch')).toBeEnabled();
   expect(adapter.play).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
     expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
       true,
@@ -235,10 +235,10 @@ it('contains read/write failures and leaves retry usable with red feedback', asy
 });
 it('keeps the preference usable without a native module and clearly explains availability', async () => {
   const { wrapper, adapter } = setup(memory(), false);
-  const screen = render(<SettingsHapticsRow />, { wrapper });
+  const screen = await render(<SettingsHapticsRow />, { wrapper });
   await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
   expect(screen.getByText(/Touch feedback needs an updated/)).toBeTruthy();
-  fireEvent.press(screen.getByRole('switch'));
+  await fireEvent.press(screen.getByRole('switch'));
   await waitFor(() =>
     expect(screen.getByRole('switch').props.accessibilityState.checked).toBe(
       false,
@@ -252,9 +252,9 @@ it('fences delayed reads, feedback and callbacks after unmount', async () => {
     getItem: () => read.promise,
     setItem: jest.fn(async () => {}),
   });
-  const hook = renderHook(useHapticPreferences, { wrapper });
+  const hook = await renderHook(useHapticPreferences, { wrapper });
   const old = hook.result.current;
-  hook.unmount();
+  await hook.unmount();
   await act(async () => read.resolve('true'));
   await old.setEnabled(true);
   old.feedback('completed');
@@ -267,13 +267,13 @@ it('ignores a late write after unmount and does not play its preview', async () 
     getItem: async () => 'false',
     setItem: () => write.promise,
   });
-  const hook = renderHook(useHapticPreferences, { wrapper });
+  const hook = await renderHook(useHapticPreferences, { wrapper });
   await waitFor(() => expect(hook.result.current.loading).toBe(false));
   let pending!: Promise<void>;
-  act(() => {
+  await act(() => {
     pending = hook.result.current.setEnabled(true);
   });
-  hook.unmount();
+  await hook.unmount();
   await act(async () => {
     write.resolve();
     await pending;

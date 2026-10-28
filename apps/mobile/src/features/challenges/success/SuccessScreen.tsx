@@ -12,11 +12,16 @@ import { SuccessView } from './SuccessView';
 export function SuccessScreen() {
   const { attemptId } = useLocalSearchParams<{ attemptId?: string }>();
   const { challenges } = useRuntime();
-  const { account } = useIdentity();
+  const identity = useIdentity();
+  const owner =
+    identity.account?.userId ??
+    ('collectionId' in identity && typeof identity.collectionId === 'string'
+      ? identity.collectionId
+      : null);
   const repository = useJournal();
   const router = useRouter();
   const attempt =
-    account && attemptId && repository?.accountId === account.userId
+    owner && attemptId && repository?.accountId === owner
       ? repository.getAttempt(attemptId)
       : undefined;
   if (attempt)

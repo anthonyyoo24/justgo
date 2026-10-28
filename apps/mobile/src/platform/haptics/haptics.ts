@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { PulsarPreset } from './completion/completion-haptics';
+export const hapticsPreferenceKey = 'justgo:haptics:v1';
 
 export type HapticFeedback = 'accept' | 'completed' | 'selection';
 export type HapticAdapter = {

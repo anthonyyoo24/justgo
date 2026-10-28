@@ -1,240 +1,241 @@
-# Activity data, saving and reconciliation
+# Activity data, saving and synchronization
 
-This is the implemented activity boundary, including the settled persistence design
-formerly embedded in Phase 07's plan. [APP_SHELL.md](APP_SHELL.md) owns runtime/UI
-composition; [TECH_STACK.md](TECH_STACK.md) owns technologies and database roles.
-Product behavior lives in [CHALLENGES.md](../product/CHALLENGES.md) and the [PRD](../product/PRD.md).
-The [handoff index](../handoffs/README.md) owns verification and open release gates.
+This describes the revised Phase 13 local implementation candidate. Hosted services
+and installed clients keep their earlier behavior until the coordinated rollout.
+[IDENTITY.md](IDENTITY.md) owns account access, [APP_SHELL.md](APP_SHELL.md) owns
+runtime composition, and the [handoff](../handoffs/phase-13-local-journal.md) records
+actual verification and open device/hosting gates.
 
-## Public resources
+## Ownership and durable saving
 
-All writes derive ownership from a verified bearer session. Strict Zod contracts
-reject caller-selected account IDs and obsolete lifecycle/revision fields.
+Every saved collection has a stable UUID and a guest or account owner. Guest use
+creates no JustGO account and sends no journal/history to JustGO. After the sign-in
+disclosure, the unconsumed guest source is adopted into the verified canonical
+account collection. Successful handover retires that source; there is no guest-data
+selector. Signing out stops account uploads while retaining the same editable,
+owner-bound local journal. Signing back into that account synchronizes later local
+edits. Another account never inherits those account-owned entries.
 
-| Resource                                        | Contract                                                                                                                                                  |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /v1/challenges`                            | All active Level 1 challenges and venue placements, stable IDs/positions, current instruction/subtext/duration; local cycling requires no further request |
-| `POST /v1/attempts`                             | Client UUID, challenge, venue, original `startedAt` and `startTimeZone`; 201 new, 200 matching replay, 409 changed reuse                                  |
-| `PATCH /v1/attempts/:id`                        | `submissionId`, `expectedReflectionRevision`, nested `reflection`; canonical attempt and applied-submission acknowledgement                               |
-| `GET /v1/progress/summary?timeZone=...`         | Today/zone, total reps, current/best streak and compact streak context, independent of selected month                                                     |
-| `GET /v1/progress/calendar?month=YYYY-MM`       | Monthly reps, active days and date/count pairs, without account totals/streaks                                                                            |
-| `GET /v1/attempts?date=...&limit=20&cursor=...` | Owner/date-filtered canonical entries, total and next cursor; limit 1–50, self-contained date/start-time/UUID cursor                                      |
+`data/activity/` owns completion history and shared live state. `data/journal/`
+owns private entries and preserved alternatives, using SQLite on iOS and IndexedDB
+on web. `data/cloud/` owns JustGO synchronization and optional iCloud coordination;
+`data/backup/` owns portable file formats. Features cannot maintain competing queues
+or bypass these owners. Storage, transport, time and randomness have controllable
+boundaries. Credentials stay in secure identity storage, outside exported data.
 
-Canonical attempts project `id`, `challengeId`, `venue`, `levelId`, `instruction`,
-`startedAt`, `startTimeZone`, `displayTimeZone`, `activityDate` and nullable
-`reflection: {feeling,text,revision}`. Instruction comes from the current linked
-challenge. New records capture both their start and display zone; migrated records
-retain a nullable unknown start zone and a historical display fallback.
+Completed alone creates a rep. Its UUID is generated once before saving and reused
+through retries. Start/Give up create no rep. The captured start/time zone freezes
+`activityDate`; a later save, upload, import or travel cannot move it. Historical
+instruction text survives catalog changes. An orphan private entry retains its
+context without creating a completion or inflating counts. Timeless import/context
+validation accepts equivalent ISO fractional-second formatting while retaining real
+microsecond differences and rejecting inconsistent date/zone attribution.
 
-An initial reflection contains a feeling, nonblank text or both. The five feeling
-codes and 10,000-character text bound are shared contracts. Normalize blank text
-consistently on phone/server. Later edits omit feeling and cannot change it,
-including adding one to a text-only reflection. Text can clear only when a saved
-feeling remains; text-only reflections cannot become empty/deleted entries.
+Private entries contain owner/attempt IDs, historical context, feeling-scale version
+1, feeling/text and local revision. Blank text normalizes to null; a saved entry must
+retain a feeling or nonblank text. Text is limited to 10,000 characters. Progress
+edits preserve feeling and cannot empty text-only entries. Explicit saves await a
+local transaction. Failure retains editor input and reports the phone-storage error;
+there is no private network fallback or draft autosave.
 
-An absent reflection has revision 0; its first accepted submission becomes revision 1,
-and each accepted text edit increments it. PATCH checks an existing matching receipt
-before expected revision, so an accepted
-request with a lost response replays successfully. Changed payload reuse or a
-truly stale revision conflicts. Conflict responses contain owner-scoped current
-data only. An older acknowledgement cannot overwrite a newer local submission.
-There is no separate reflection GET, draft/final/skip endpoint, combined Progress
-endpoint or server Start/Finish/Give up protocol.
+Native SQLite uses WAL, FULL synchronization and exclusive transactions. Browser
+IndexedDB uses both stores in one strict-durability transaction. Serialize edits,
+imports and snapshots. Invalid/unreadable private records fail without resetting
+storage. Native durability, Data Protection and OS backup need signed-device proof.
+A commit accepted before backgrounding may finish for its original owner; actual
+account changes fence stale UI adoption and reload durable state on return.
 
-## Stable content and time attribution
+Managed guest/account modes retain complete completion history locally. They do
+not prune acknowledged history into a bounded cache. Progress totals, calendars,
+streaks and day rows derive from unique saved completion IDs, with private content
+joined by ID. All downloaded history remains readable offline. Local journal-only
+rows never invent reps. A failed cloud read cannot replace local data with an empty
+result. Legacy bounded aggregate reconciliation remains an internal compatibility
+path, not the managed model.
 
-The account/attempt key is `(user_id,id)`. Stable challenge, venue and Level 1
-references preserve pending uploads/history; inactive referenced content remains.
-A previously downloaded activity is not rejected solely because its challenge
-became inactive or minor wording changed. Minor wording edits appear in history;
-a substantially different activity receives a new challenge ID.
+The completion envelope is separate from the private database. Legacy phone rows,
+cached private versions and submission receipts are preserved in the private store
+before private queues are scrubbed. Preserve the original source through failed
+migration and rollover. Retired private PATCH operations never replay.
 
-Only Completed creates a saved rep. Its UUID is generated once before the phone
-write and reused through retries/restarts. Start and Give up remain memory-only.
-The countdown derives from captured start + original duration, and zero waits for
-an explicit outcome. Completed, reflection and upload time never move the rep to
-another calendar day: new `activityDate` freezes the original start in its captured
-zone. There is no saved finish timestamp, elapsed metric or server deadline.
+### Guest source handover
 
-The API bounds implausibly future starts and checks the original start against
-account-owned verified coverage through the upload-eligibility reader. Current
-paid admission and permission to upload a valid earlier rep are separate rules.
-No online Start or arbitrary upload-age limit is required. Deliberately backdated
-offline activity cannot be fully disproved; that trust limitation is accepted.
-The default provider remains unavailable; actual subscription coverage integration
-belongs to [Phase 07A](../implementation-plan/phase-07a-billing.md).
+`guestAdoption` persists `pending`, `copied` and `consumed` stages in the identity
+owner. The runtime drains already accepted source writes and source/destination
+coordinator work before copying. It discards cached destination coordinators so
+their earlier epoch metadata cannot clear newly accepted account writing. A source
+write fence spans copying through durable destination selection; failures retain
+recoverable input and retry state rather than switching to an empty journal.
 
-## Repository and storage ownership
+The target first reconciles its cloud history and deletion epoch. Adoption uses
+ordinary tombstone protection, never the explicit-file `restoreDeleted` override.
+Deleted IDs remain deleted, while independent undeleted records can proceed.
+The guest iCloud handover binds the same destination, verifies copied snapshots,
+then resets/purges the old copy with durable cursor/generation state. A disabled
+sync toggle does not exempt a previously associated guest copy from this cleanup.
+An unfinished handover blocks ordinary guest iCloud delivery, preventing the
+retiring source from being uploaded again.
 
-`data/activity/` owns one repository per account, live Zustand state, versioned
-schemas, persistence and upload coordination. Features consume its interface;
-screens cannot mutate a competing queue. Storage, transport, clock and randomness
-are controllable boundaries for tests. Credentials remain in secure identity
-storage, outside this repository.
+Only after the verified destination is durably selected does local source erasure
+finish and mark adoption consumed. Crash/retry cannot adopt that source twice or
+reopen it as an independent journal. A parked guest source may be adopted while a
+different account is selected, but that account's own data stays isolated. Older
+managed state with unknown adoption must pass through the disclosure again before
+copying its previously excluded guest writing.
 
-The account prefix is `justgo:v1:<accountId>`, with separate `:catalog` and
-`:journal` keys. The catalog stores validated downloaded content. Venue selection
-and cycling order remain memory-only. One serialized journal envelope contains
-submitted display records, immutable operation payloads, version/receipt state,
-change generation and bounded summary/calendar/today snapshots. Display and upload
-intent therefore commit in one write; multi-key AsyncStorage writes are not treated
-as a database transaction.
+## JustGO account synchronization
 
-Live record version, phone-persisted version and server-acknowledged version remain
-separate. Serialized persistence merges completion back into current live state
-without erasing later submissions/acknowledgements. Acknowledged operations clear
-only when their acknowledgement is committed. An unreadable pending journal is
-preserved with a recovery state, never silently reset. A malformed replaceable
-catalog can download again. Refresh replaces downloaded catalog content; an optional
-cache-write failure cannot discard the committed journal or block already available
-challenges.
+All authenticated resources derive ownership from the verified bearer session and
+live session/deletion state. Strict schemas reject caller-selected owners. Guest
+catalog/access GETs create no account and preserve paid-access policy.
 
-Hydrate/validate the account envelope before use, while preserving any newer live
-memory. Controllers reconcile when subscribing as well as on later notifications.
-Account changes cancel/fence reads/uploads, hide the old views and hydrate only the
-new owner. Parked memory-only work remains in its original partition while the
-process survives. It never uploads using another account's session.
+| Resource                                           | Behavior                                                                                                               |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/guest/access`, `GET /v1/guest/challenges` | Anonymous access/catalog; only explicit staging beta windows grant guest access.                                       |
+| `GET /v1/challenges`                               | Authenticated catalog with ordinary access checks.                                                                     |
+| `GET /v1/completion-restores`                      | Cursor-paged complete owner history plus data epoch.                                                                   |
+| `POST /v1/completion-restores`                     | Bounded historical completion merge with stable IDs, expected epoch and frozen context validation.                     |
+| `GET /v1/journal-sync`                             | Cursor-paged immutable private versions and epoch.                                                                     |
+| `POST /v1/journal-sync`                            | Owner-isolated versions, parent ancestry and historical context; private fields are separate from completion payloads. |
+| `DELETE /v1/data`                                  | Idempotent expected-epoch activity/journal reset; retains account and entitlement.                                     |
+| `PATCH /v1/attempts/:id`                           | Retired with 410 before private body parsing.                                                                          |
 
-## Normal saving and failed device writes
+Existing completion/progress APIs remain for compatibility; managed clients use the
+full-history resources. No recovery-earlier-journal route or UI remains. Server
+reflection reset is a separate forward migration, limited to old private fields and
+receipts; it preserves completion history/accounts and does not touch phone writing.
 
-Normal Completed and explicit reflection saves await device persistence before
-continuing. They do not await ordinary HTTP acknowledgement. Interaction guards
-and delayed accessible feedback cover an unfinished phone write; reflection input
-can still accept newer text and dirty-close Save retains that newer input.
+The coordinator saves locally first, downloads every page against one stable epoch,
+merges, then delivers missing records in bounded batches. It refuses inconsistent
+pages, oversized enumerations and conflicting completion identity. Stable version
+UUIDs and canonical fingerprints are persisted before delivery, so a lost response
+can replay the same version. Private fingerprints remain in owner sync metadata,
+never diagnostics. Immutable parent ancestry permits a known successor to replace
+its ancestor only while that local version is unchanged. Concurrent writing is
+preserved as alternatives instead of choosing a timestamp winner.
 
-When a device write fails, discard only disposable confirmed day/calendar cache
-payloads and retry the same save once. Keep catalog, summary/reconciliation state,
-submitted content, pending/dependent operations and retry identities. Never clear
-all AsyncStorage or delete a pending rep to make room.
+Synchronization is coalesced and fenced by active/online state, owner, session and
+epoch. Logout aborts requests and stops account synchronization. Foreground,
+reconnect and a sparse active timer retry; failures retain local data. Guest data
+can enter an account only through the disclosed handover. Signed-out account
+writing stays with its owner and never uses another account's credentials.
 
-If both writes fail, retain submitted content/operations in account memory. When
-online, attempt the same create/PATCH against the API in dependency order and await
-its bounded outcome. Confirmed cloud saving is durable, even if the phone cache
-still fails; it does not establish offline availability. A fetch cannot save new
-content and a timeout does not prove success. If neither path confirms saving,
-allow continuation with a truthful dismissible loss-risk banner. Completed cannot
-then become Give up, and repeated presses cannot create another rep.
+Delete-all records a durable operation UUID before remote work and blocks new local
+writes/imports while pending. The JustGO reset retains its original expected epoch;
+a lost acknowledgement/restart cannot turn a retry into a second reset of newly
+created remote data. Clear local data only through the coordinated operation, then
+remove the pending intent. Other devices observing a newer epoch discard obsolete
+local copies before upload. Server tombstones reject deleted IDs from background
+sync. Only an explicit validated file import uses `restoreDeleted` to restore them.
 
-Banner dismissal never stops recovery or reopens the warning for each new submission
-in the same unresolved episode. Retry phone persistence on later explicit
-submissions, foreground and sparse capped opportunities while active with endangered
-content, including offline. Coalesce work through the repository and cancel account/
-lifecycle timers. A recovery snapshot must cover all retained versions; saving one
-entry cannot clear another's risk. Full recovery closes a visible warning and emits
-one account-scoped confirmation even if dismissed earlier.
+## Optional iCloud copy
 
-An acknowledgement-write failure retains the older durable intent for replay.
-Direct cloud fallback can sequence dependent operations using authoritative server
-acknowledgements while preserving those durable intents for later reconciliation.
-It cannot introduce a second sender or claim restart recovery for unwritten memory.
-Force termination can lose memory-only submissions and another phone cannot recover
-a copy that never reached shared history.
+The native `justgo-icloud` Expo module uses the user's private CloudKit database,
+separate owner zones and encrypted record payload fields. Sync defaults off. It is
+an additional copy of the selected collection, independent of JustGO login. Turning
+it off stops updates and retains local data and the previous iCloud copy. Destructive
+cleanup uses a bounded maintenance operation for previously associated Apple
+accounts without enabling ordinary sync. It checks the recorded Apple account;
+unavailable or changed accounts leave cleanup retryable. Web reports unsupported; its tests do
+not simulate native acceptance. Apple account changes fail closed rather than
+uploading to a new iCloud owner silently.
 
-## Ordered uploads and retry ownership
+First activation saves off before temporarily allowing the coordinator to sync.
+Only a complete successful pass can persist the version-2 enabled preference;
+failure, account/visit changes or cancellation leave it off. Maintenance cannot
+borrow a pending activation. Earlier enabled preferences have no success proof
+and migrate to off without deleting any records. Verified enabled choices survive
+later transient background failures; their errors remain inside the Settings sheet.
 
-Use one account sender, one operation in flight per attempt, ordered create → first
-reflection PATCH → later text PATCH. A genuinely new explicit save receives a new
-submission UUID; unchanged retries retain immutable ID/input. Dependent edits bind
-the expected revision after their predecessor's acknowledgement, persist that bound
-payload and reuse it. Normal persisted delivery waits for a device-durable
-acknowledgement before sending its dependent operation.
+Uploads are bounded by both record count and serialized UTF-8 bytes. The native
+writer splits oversized batches finitely and refetches the root/change tag before
+every atomic attempt; successful partial delivery retains immutable IDs for retry.
+Collect per-record save/delete failures together with the final operation failure
+before sanitizing errors. A quota rejection must retain `QUOTA_EXCEEDED` so Settings
+can explain that the user's iCloud storage is full; unknown failures stay unavailable.
+Expired CloudKit cursors restart reads. For deletion and guest handover, restart
+only physical cleanup once per invocation and persist the cleared cursor first;
+retain the original fenced generation, reset/closure intent and accepted adoption.
+Never repeat a deletion reset merely to recover pagination.
 
-Transient delivery starts immediately, retries approximately two and five seconds
-later, then pauses. Reconnect/restart/foreground can start a coalesced bounded cycle;
-sparse due-work opportunities permit active/online recovery without another user
-action. Respect cooldown and Retry-After, avoid overlapping bursts, suspend when
-inactive/offline/no work and cancel timers on ownership changes. The app cannot
-promise execution after termination. Independent query/mutation retries remain off.
-Only headers accompanying validated API error envelopes may extend the cooldown;
-malformed or unexpected proxy responses use the existing retry backoff.
+Generation-based conditional writes, stable reset IDs and per-account data epochs
+prevent stale devices restoring deleted data. A newer JustGO epoch replaces stale
+iCloud records without deleting fresh local history. A signed-out collection can
+adopt a verified newer iCloud epoch; a signed-in unexpected future epoch fails for
+reconciliation. Permanent account closure markers fence later uploads. Reset
+uncertainty requires an explicit user decision. Lost reset acknowledgements retry
+the original operation rather than deleting newer records.
 
-Lost responses are unknown outcomes: replay the same attempt/submission identity.
-Matching create/receipt results confirm the earlier operation without another rep
-or revision increment. Overlay newer queued reflection over older canonical data.
-Authentication uses serialized same-account renewal/recovery and pauses if ownership
-cannot be restored. Permanent validation/ownership/revision failures stop transient
-retries, preserve submitted content and expose redacted actionable recovery.
+Removing JustGO's iCloud data through Apple's Settings is a cloud-only action.
+It never authorizes erasing phone entries. While sync remains enabled, ordinary
+reads may recreate an absent zone/root with reset marker 0, and the coordinator
+rebuilds cloud version bookkeeping while retaining completions, current writing
+and alternatives. Turning sync off stops uploads and keeps phone data. There is
+no clear-phone action, reset confirmation or clearing recovery method in the
+sync sheet; the normal Start Syncing/X flow remains.
 
-A genuinely stale reflection PATCH adopts the latest backend reflection and settles
-the superseded dependency chain automatically. It is never rebased onto different
-backend text or exposed as a multi-phone merge chooser. A rejected reflection
-cannot remove accepted completion credit. Resolve uncertain creation outcomes by
-safe replay before treating existing accepted activity as definitively rejected.
+Real Delete all my data/Delete account operations remain separate and retain
+conditional generations, account closure and authenticated account-epoch fences.
+Native reset/close always write the existing INT64 marker 1, including roots
+left with legacy external-recovery marker 2. Decode legacy 2 without treating it
+as permission to clear phone entries. New native reads use `readRetainingLocal`;
+the adapter requires that capability before reads or mutations so a superseded
+binary cannot retain the previous marker-2 deletion behavior.
 
-## Progress reconciliation and limited offline history
+An unfinished local clear from the rejected recovery flow is cancelled when the
+cloud copy is fresh/externally reset and no actual deletion/cleanup/replacement
+or unobserved account-epoch clear is pending. Persist that cancellation before
+upload. Genuine deletion intents and newer server epochs still finish their
+clearing. Unknown history after a genuine in-app deletion remains fenced rather
+than silently re-uploading deleted entries; syncing offers no destructive escape.
+The October 23 decision supersedes the earlier clear-and-sync design. Physical
+cloud-removal/off/on acceptance stays distinct from native package and browser
+proof, and the other owner-deferred Phase 13 manual cases remain open.
 
-Day rows merge by attempt UUID; the latest explicitly submitted local reflection
-wins until acknowledged. Summary/calendar use a canonical server baseline and
-separate local-ID addition sets. A retained confirmed row is not an extra rep.
-Memory-only submissions participate immediately; definitive completion rejection
-removes provisional credit once while retaining content. Ordinary delays preserve
-that credit, and reflection rejection cannot reduce it.
+## Download, import and deletion
 
-Do not install a new aggregate while relevant creates have unknown outcomes.
-Drain/replay them first, capture generation when refreshing and reject a response
-if new local activity arrived meanwhile. Once acknowledged, accept a fresh baseline
-and remove covered additions together in the journal. Failed refresh keeps the old
-baseline/additions: 10 + 1 stays 11 before upload, after acknowledgement and after
-refresh. Day lookups can still merge by UUID while uploads are pending.
+Download produces one `justgo-data` format-1 stored ZIP: `data.json`, `journal.json`,
+`activity.csv`, and `README.txt`. It includes complete completion history, current
+private entries, alternatives and supported motion/haptics preferences. It excludes
+credentials, sessions, upload queues and cached aggregate counts. CSV is formula
+escaped and includes journal-only writing without representing it as completed reps.
 
-Summary additions affect totals; calendar additions use frozen activity dates.
-Monthly reps/active days derive from known counts plus additions. Compact streak
-context includes its month, the run ending immediately before it and the earlier
-best run. Combine this with current-month dates; if context is unavailable, retain
-verified streak figures until coherent refresh rather than inventing a result.
-Responses are fenced by account, date/month, time zone and generation. Before a
-confirmed older-day edit is pruned, transfer its canonical reflection into in-memory
-query pages. Lower revisions cannot erase newer writing; authoritative conflict
-data can replace optimistic text.
+The importer checks CRC/UTF-8, exact members, format, ownership, IDs, context and
+bounds before preview/commit: 32 MiB archive, 50,000 combined records, 64 KiB per
+record. Guest backups can move into the chosen collection; account files require
+sign-in to that owner. A signed-out account collection routes to owner-bound
+sign-in before opening the picker, then returns to Data for a new import action.
+Possession of a file is never authentication. Legacy journal
+ZIPs and older full exports preserve supported writing, including orphan/rejected
+private rows, without inventing completion history. Missing entries are added;
+identical imports are idempotent; conflicting versions are retained.
 
-After account hydration, refresh/preload the latest summary, current month and
-today's required pages in the background when online/access permits; do not prefetch
-every calendar day. Persist the downloaded catalog, latest summary, current-month
-counts and today's available pages only. Today's pages share date/zone/cursor/completeness metadata.
-Older day details, including another day in this month, and other months require
-online in-memory reads even after viewing. Available today content has no fabricated
-partial-history warning. Unavailable offline requests show connection-required
-state rather than fabricated zero history. An active older-day editor may retain
-its own accepted input.
+For a signed-in account, import reconciles current cloud state and explicitly
+restores validated completion/private versions before local adoption. Partial
+failures can retry stable identities. Preferences apply after data succeeds.
+External saved files remain user-controlled snapshots; Files/iCloud Drive is a
+possible destination, distinct from automatic CloudKit sync.
 
-Account activation, foreground and day boundaries refresh date/zone coordination.
-After rollover, select the new period's keys, remove obsolete confirmed snapshots
-and retain pending entries on their frozen dates. Yesterday's snapshot cannot be
-relabeled today. An unavailable new-period query is not a successful empty result.
+Delete all my data erases the current local collection, its JustGO account data and
+its previously associated iCloud copies while retaining access and purchase entitlement. Signed-out
+account data requires sign-in before remote reset. Account deletion additionally
+closes access, hard-deletes the Supabase Auth user through retryable server cleanup,
+and permanently fences associated iCloud account copies even with sync off. Neither
+action reports completion while required cleanup is unavailable. Accepted writes drain
+before local stores/preferences/temporary files are erased. External downloads and
+provider retention copies require the separate disclosure/retention process in the
+[rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
 
-## Pruning and deletion safety
+## Deck preferences and compatibility
 
-Prune a full record only after its latest content is backend-confirmed, dependent
-operations/required acknowledgement writes settle and current flow/today/aggregate
-reconciliation no longer need it. Keep compact reconciliation metadata when needed.
-Evaluate after settlement/reconciliation, leaving the flow and period rollover,
-including foreground after inactive rollover. Removing an acknowledged operation
-is separate from deleting its displayed record.
+`DeckPreferencesStorage` remains independent best-effort local state. Persist venue
+and placement order, keep surviving cards across catalog refresh, add new cards
+behind the front and rotate only the matching active front. Owner generations fence
+late preference reads/writes. A preference failure cannot enter journal saving or
+claim private data loss. Deletion drains writes before removing the owner's keys.
 
-Never prune unuploaded, rejected-preserved or memory-only work because of age,
-list size, banner dismissal or ordinary cache cleanup. Retain consistent recovery
-metadata if the pruning write fails. Measure serialization/write size with realistic
-queues/long reflections before changing envelope partitioning or claiming capacity.
-Account deletion stops senders, drains accepted writes and removes selected-account
-keys only after durable deletion confirmation; [IDENTITY.md](IDENTITY.md) owns that
-separate destructive lifecycle.
-
-## Database migration and protocol cutover
-
-Immutable expansion/backfill migrations 0010–0012 precede registered contraction 0013. Preserve completed owner/ID/date/start sets, submitted feeling/text and positive
-revisions, and inactive references. Legacy unknown start zones remain null with the
-historical display fallback; never invent original zones or recalculate old dates.
-Draft/skipped rows do not become submitted reflections. Preserve the owner/date/
-start-time/UUID history index and foreign-key indexes. Choose the canonical current
-catalog explicitly if old venue placements disagree; an arbitrary ID sort cannot
-decide historical content.
-
-Stop old writers before the final comparison, deploy API/contracts/mobile together
-and retire old clients' write protocols. Contraction removes obsolete lifecycle,
-queues/preferences/skips, content revisions, separate reflections and old receipts;
-targeted PATCH receipts remain. Never edit applied migration history or fake fields
-to satisfy old constraints. Keep a tested pre-cutover snapshot and restoration path.
-The [rollout runbook](../operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients)
-and [migration rehearsal](../operations/TESTING.md#migration-preservation-rehearsal)
-own operational steps. A local pass does not establish hosted deployment or old-client
-retirement.
+Legacy senders retain bounded create retry/backoff and coverage checks for their
+original protocol. Managed complete-history restore does not re-enable old private
+PATCH or remove paid admission for starting challenges. Historical migrations remain
+immutable; registered 0019–0023 and matching API/mobile changes require one approved
+coordinated rollout with deletion/revocation-aware restoration.

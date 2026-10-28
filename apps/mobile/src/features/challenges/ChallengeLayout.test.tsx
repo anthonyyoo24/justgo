@@ -4,8 +4,8 @@ import { ChallengeLayout } from './ChallengeLayout';
 
 jest.mock('expo-router', () => ({ Link: () => null }));
 
-it('uses the Paper cream as the challenge screen surface', () => {
-  const screen = render(
+it('uses the Paper cream as the challenge screen surface', async () => {
+  const screen = await render(
     <ChallengeLayout title="Find a challenge">
       <Text>Card area</Text>
     </ChallengeLayout>,

@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
-import { type Attempt } from '@justgo/contracts';
+import { type Attempt, type CompletionAttempt } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
 export type Tx = Parameters<Parameters<IdentityService['withSession']>[1]>[0];
-export type AttemptRow = Record<string, unknown> & {
+export type CompletionRow = Record<string, unknown> & {
   id: string;
   challenge_id: string;
   venue_id: Attempt['venue'];
@@ -13,17 +13,16 @@ export type AttemptRow = Record<string, unknown> & {
   start_time_zone: string | null;
   legacy_display_time_zone: string | null;
   activity_date: string;
-  reflection_feeling: NonNullable<Attempt['reflection']>['feeling'];
-  reflection_text: string | null;
-  reflection_revision: number;
 };
-export const attemptQuery = sql`select a.*, to_char(a.started_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_started_at,c.text as instruction from justgo.attempts a join justgo.challenges c on c.id=a.challenge_id`;
+// Normal reads deliberately never load private columns into API projections.
+export const attemptQuery = sql`select a.id,a.challenge_id,a.venue_id,a.level_id,a.started_at,a.start_time_zone,a.legacy_display_time_zone,a.activity_date,
+  to_char(a.started_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_started_at,
+  coalesce(a.instruction_snapshot,c.text) as instruction from justgo.attempts a join justgo.challenges c on c.id=a.challenge_id`;
 /**
  * Project stored history without losing start-time precision or date attribution.
- * Unknown legacy start zones retain their recorded display zone; revision zero
- * represents an absent reflection rather than a draft.
+ * Unknown legacy start zones retain their recorded display zone.
  */
-export const projectAttempt = (row: AttemptRow): Attempt => ({
+export const projectCompletion = (row: CompletionRow): CompletionAttempt => ({
   id: row.id,
   challengeId: row.challenge_id,
   venue: row.venue_id,
@@ -34,14 +33,6 @@ export const projectAttempt = (row: AttemptRow): Attempt => ({
   startTimeZone: row.start_time_zone,
   displayTimeZone: (row.start_time_zone ?? row.legacy_display_time_zone)!,
   activityDate: row.activity_date,
-  reflection:
-    row.reflection_revision === 0
-      ? null
-      : {
-          feeling: row.reflection_feeling,
-          text: row.reflection_text,
-          revision: row.reflection_revision,
-        },
 });
 /**
  * Read an attempt within the supplied owner transaction.
@@ -49,7 +40,7 @@ export const projectAttempt = (row: AttemptRow): Attempt => ({
  */
 export const readAttempt = async (tx: Tx, userId: string, id: string) =>
   (
-    await tx.execute<AttemptRow>(
+    await tx.execute<CompletionRow>(
       sql`${attemptQuery} where a.user_id=${userId} and a.id=${id}`,
     )
   ).rows[0];

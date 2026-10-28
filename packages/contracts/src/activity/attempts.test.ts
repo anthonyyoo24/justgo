@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   createAttemptSchema,
+  completionAttemptSchema,
+  completionAttemptResultSchema,
   patchAttemptSchema,
   attemptSchema,
   reflectionConflictSchema,
@@ -9,9 +11,11 @@ import { catalogSchema } from './challenges.ts';
 import { reflectionSchema, normalizeReflectionText } from './reflections.ts';
 import {
   progressDayQuerySchema,
+  completionProgressDayResponseSchema,
   progressSummaryQuerySchema,
   progressCalendarQuerySchema,
 } from './progress.ts';
+import { completionExportPageSchema } from '../data-export.ts';
 import { openApiDocument } from '../openapi.ts';
 const id = '00000000-0000-4000-8000-000000000001';
 const create = {
@@ -34,6 +38,9 @@ describe('completed attempt resource contracts', () => {
     expect(createAttemptSchema.parse(create)).toEqual(create);
     for (const extra of [
       { userId: id },
+      { reflection: { text: 'private' } },
+      { feeling: 'about_the_same' },
+      { reflectionLength: 7 },
       { status: 'completed' },
       { deadlineAt: create.startedAt },
       { endedAt: create.startedAt },
@@ -137,15 +144,68 @@ describe('completed attempt resource contracts', () => {
         .success,
     ).toBe(false);
   });
-  it('publishes only canonical resources and their replay/conflict statuses', () => {
+  it('rejects private fields from every ordinary wire response', () => {
+    const completion = {
+      ...create,
+      levelId: 'level-1',
+      instruction: 'Say hello.',
+      displayTimeZone: create.startTimeZone,
+      activityDate: '2026-10-03',
+    };
+    expect(completionAttemptSchema.parse(completion)).toEqual(completion);
+    expect(
+      completionAttemptResultSchema.parse({ attempt: completion }).attempt,
+    ).toEqual(completion);
+    const day = {
+      date: '2026-10-03',
+      totalReps: 1,
+      entries: [completion],
+      nextCursor: null,
+    };
+    expect(completionProgressDayResponseSchema.parse(day)).toEqual(day);
+    const exported = {
+      account: { id, createdAt: create.startedAt },
+      devices: [],
+      attempts: [completion],
+      nextCursor: null,
+    };
+    expect(completionExportPageSchema.parse(exported)).toEqual(exported);
+    for (const reflection of [
+      null,
+      { feeling: 'about_the_same', text: 'private', revision: 1 },
+    ]) {
+      const privateAttempt = { ...completion, reflection };
+      expect(completionAttemptSchema.safeParse(privateAttempt).success).toBe(
+        false,
+      );
+      expect(
+        completionAttemptResultSchema.safeParse({ attempt: privateAttempt })
+          .success,
+      ).toBe(false);
+      expect(
+        completionProgressDayResponseSchema.safeParse({
+          ...day,
+          entries: [privateAttempt],
+        }).success,
+      ).toBe(false);
+      expect(
+        completionExportPageSchema.safeParse({
+          ...exported,
+          attempts: [privateAttempt],
+        }).success,
+      ).toBe(false);
+    }
+  });
+  it('publishes only canonical resources and their completion/retirement statuses', () => {
     expect(openApiDocument.paths['/v1/attempts'].post.responses).toHaveProperty(
       '201',
     );
     expect(
       openApiDocument.paths['/v1/attempts/{id}'].patch.responses,
-    ).toHaveProperty('409');
+    ).toHaveProperty('410');
     expect(openApiDocument.paths).not.toHaveProperty('/v1/challenges/state');
     expect(openApiDocument.paths).not.toHaveProperty('/v1/progress');
+    expect(openApiDocument.paths).not.toHaveProperty('/v1/journal/legacy');
     expect(openApiDocument.paths['/v1/challenges']).toHaveProperty('get');
   });
 });

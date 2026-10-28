@@ -1,15 +1,12 @@
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
-import {
-  useSafeAreaInsets,
-  type EdgeInsets,
-} from 'react-native-safe-area-context';
+import type { ReactNode } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { welcomeArtwork, welcomeBackgroundColor } from './welcome-artwork';
@@ -23,20 +20,19 @@ import {
 } from '../../../theme/tokens';
 
 export function WelcomeView({
-  busy = false,
+  disabled = false,
   error = '',
-  busyLabel = 'Creating your account',
-  insets: measuredInsets,
   onContinue,
+  signInButtons,
+  onRetry,
 }: {
-  busy?: boolean;
+  disabled?: boolean;
   error?: string;
-  busyLabel?: string;
-  insets?: EdgeInsets;
   onContinue: () => void;
+  signInButtons?: ReactNode;
+  onRetry?: (() => void) | undefined;
 }) {
-  const inheritedInsets = useSafeAreaInsets();
-  const insets = measuredInsets ?? inheritedInsets;
+  const insets = useSafeAreaInsets();
   const { height, fontScale } = useWindowDimensions();
   const wordmarkGrowth = 66 * (Math.min(fontScale, 1.5) - 1);
   return (
@@ -85,24 +81,26 @@ export function WelcomeView({
               {error}
             </Text>
           )}
+          {!!error && onRetry && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Retry connection"
+              onPress={onRetry}
+              style={styles.retry}
+            >
+              <Text style={styles.buttonLabel}>Retry connection</Text>
+            </Pressable>
+          )}
+          {signInButtons}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Continue"
-            accessibilityState={{ disabled: busy, busy }}
-            disabled={busy}
+            accessibilityState={{ disabled }}
+            disabled={disabled}
             onPress={onContinue}
             style={({ pressed }) => [styles.button, pressed && styles.pressed]}
           >
-            {busy ? (
-              <ActivityIndicator
-                color={colors.ink}
-                accessible
-                accessibilityRole="progressbar"
-                accessibilityLabel={busyLabel}
-              />
-            ) : (
-              <Text style={styles.buttonLabel}>Continue</Text>
-            )}
+            <Text style={styles.buttonLabel}>Continue</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -158,6 +156,13 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   pressed: { opacity: 0.7 },
+  retry: {
+    minHeight: layout.minTouchTarget,
+    backgroundColor: '#FFFDF9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+  },
   error: {
     fontFamily: fontFamilies.regular,
     fontSize: 14,

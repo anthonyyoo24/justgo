@@ -1,7 +1,5 @@
-import { AccountToolsScreen } from '../../app-support/identity/account/AccountToolsScreen';
-import { useRuntime } from '../../app-support/providers/AppProvider';
+import { Redirect } from 'expo-router';
 
 export default function AccountTroubleshootingRoute() {
-  const { identity } = useRuntime();
-  return <AccountToolsScreen controller={identity} tool="troubleshooting" />;
+  return <Redirect href="/recovery" />;
 }

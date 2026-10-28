@@ -8,16 +8,13 @@ import {
   render,
   waitFor,
 } from '@testing-library/react-native';
-import {
-  QueryClient,
-  QueryClientProvider,
-  notifyManager,
-} from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type {
   ProgressSummary,
   ProgressCalendar,
   ProgressDayResponse,
 } from '@justgo/contracts';
+import { memoryLocalJournal } from '../local-journal';
 import { AccountRepository } from '../../src/data/activity/repository';
 import {
   MemoryStorage,
@@ -106,6 +103,7 @@ async function repository(accountId = owner) {
   const repo = new AccountRepository({
     accountId,
     storage,
+    localJournal: memoryLocalJournal(accountId, storage),
     transport,
     today,
     timeZone: zone,
@@ -115,8 +113,8 @@ async function repository(accountId = owner) {
   await repo.hydrate();
   return repo;
 }
-const mount = () =>
-  render(
+const mount = async () =>
+  await render(
     <QueryClientProvider client={mockClient.queries}>
       <ProgressRefresh
         client={mockClient as unknown as AccountClient}
@@ -128,8 +126,7 @@ const mount = () =>
 const requests = (resource: string) =>
   mockClient.request.mock.calls.filter(([path]) => path.includes(resource));
 beforeEach(async () => {
-  jest.useFakeTimers();
-  notifyManager.setNotifyFunction((notify) => act(notify));
+  jest.useFakeTimers({ doNotFake: ['queueMicrotask'] });
   storage = new MemoryStorage();
   transport = backend();
   transport.records.set(uuid(1), attempt());
@@ -148,7 +145,7 @@ beforeEach(async () => {
   };
 });
 afterEach(async () => {
-  cleanup();
+  await cleanup();
   repositories.forEach((r) => r.dispose());
   repositories.length = 0;
   await mockClient.queries.cancelQueries();
@@ -156,7 +153,6 @@ afterEach(async () => {
   await act(async () => {
     await jest.runOnlyPendingTimersAsync();
   });
-  notifyManager.setNotifyFunction((notify) => notify());
   jest.useRealTimers();
 });
 async function online() {
@@ -167,8 +163,8 @@ async function online() {
 async function loaded() {
   await waitFor(() => expect(mockClient.queries.isFetching()).toBe(0));
 }
-const openToday = (screen: ReturnType<typeof render>) =>
-  fireEvent.press(
+const openToday = async (screen: Awaited<ReturnType<typeof render>>) =>
+  await fireEvent.press(
     screen.getByRole('button', { name: /Monday, October 5, today, 8 reps/ }),
   );
 export const harness = {

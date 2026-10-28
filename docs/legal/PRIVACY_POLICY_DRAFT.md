@@ -1,89 +1,133 @@
-# JustGO Privacy Policy Draft
+# Privacy Policy — free beta
 
-**Review draft prepared October 9, 2026. Not approved for publication.** This draft describes the intended initial iOS release. Bracketed review notes identify choices or behavior that must be settled before publication. Current implementation and planned services are recorded in the [data inventory](DATA_INVENTORY.md).
+<!-- legal-version: 2026-10-27-essential-errors -->
+<!-- publication-status: owner-approved -->
+<!-- effective-date: 2026-10-27 -->
+<!-- diagnostics-scope: essential-errors-only -->
 
-**Effective date:** [Set when the reviewed policy is published]
+Anthony approved the exact essential-errors candidate wording and authorized publication at the existing Privacy Policy URL on October 27, 2026, with that date effective. The Terms wording remains unchanged. This record establishes content and publication authorization; it does not establish completed publication, provider suitability, actual diagnostics activation or signed-device acceptance. The static site renders only the marked public block; review metadata remains internal. See [LEGAL_REVIEW.md](LEGAL_REVIEW.md).
 
-## Who operates JustGO
+<!-- public:start -->
 
-JustGO is operated by Youngshin Yoo in Canada. For privacy questions or requests, contact [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com).
+# Privacy Policy
 
-[REVIEW: Add any legally required public contact address, applicable representative details and regional notices after confirming the operator's province and intended distribution.]
+## About this policy
 
-JustGO is intended for adults aged 18 and older in countries and regions where it is available. It provides practice prompts and a private journal.
+JustGO helps adults aged 18 and older practice everyday challenges and keep a private record of their activity. This policy explains what information we handle in the app and on these legal pages, why we use it and how you can manage it.
 
-## Your account and recovery
+You choose where your saved challenge history, feelings and reflections go:
 
-JustGO creates an account without requiring an email address, password or social login. We use random account and device identifiers to keep your records connected to your account. These identifiers are persistent; your data is not anonymous simply because you do not provide a name.
+- **Without sign-in:** your journal stays on your phone unless you enable iCloud Sync or save or share a data file.
+- **With an account:** Before signing in with Apple or Google, we explain that your history and journal synchronize through JustGO's cloud service. Your first successful sign-in automatically adds existing phone entries that do not belong to another JustGO account.
+- **With iCloud Sync:** a separate choice, off by default, synchronizes the selected journal through your private Apple CloudKit database. You do not need a JustGO account for this choice.
+- **With a downloaded file:** you choose where to save or share a readable copy. The destination handles that copy under its own settings and practices.
 
-The app uses securely stored credentials to connect to your account. Recovery credentials may synchronize between approved Apple devices through iCloud Keychain, depending on your Apple settings and availability. Recovery keys and device transfer provide other recovery options. The server stores digests of authentication secrets with related expiry and revocation information.
+Product analytics is disabled. We use limited technical error reporting as described below; your journal is excluded from those reports. The sections below explain each choice, the providers involved and how to delete data.
 
-Keep recovery keys private. A purchase receipt can restore eligible paid access, but does not by itself recover your private journal.
+JustGO is operated by Youngshin Yoo in Ontario, Canada. For privacy questions, requests or support, email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com). We do not sell your personal information.
 
-## Information you save
+## Guest use and optional accounts
 
-When you complete a challenge, JustGO records the challenge, the venue category you selected, its start time, time zone and activity date. You can choose to save a feeling response and typed reflection. You can also leave these optional responses blank.
+Continuing without sign-in creates a random local collection identifier and does not create a JustGO server account. Signing in connects this journal to your account after the cloud-storage explanation. Data already associated with a different JustGO account stays separate.
 
-Submitted activity is saved on your phone and uploaded to your account so it can appear in Progress and be recovered on another device. Recovery restores uploaded history; activity still waiting to upload may exist only on the original phone. Unsubmitted screen input and unfinished challenge activity are not a cloud backup.
+Optional sign-in uses Apple or Google through Supabase Auth. The provider and authentication service process the provider account identifier, authentication tokens and information the provider supplies, which may include an email address or basic profile information. JustGO uses verified identity to connect the correct account; an email address supplied by someone else does not grant account access. Apple and Google also process sign-in under their own terms and privacy practices.
 
-We process your saved content to provide the journal, display Progress and synchronize accepted changes. Other app users cannot view your journal through their accounts. The cloud journal is not end-to-end encrypted: the service and its authorized providers process stored content to operate it.
+When signed in, your completed challenges, selected venue category, original start time, time zones, activity date, saved feelings and reflection text synchronize with your JustGO account. A venue is a category you select, not a GPS location. You can leave feelings and reflections blank. Differing saved versions can be retained to protect your writing from being overwritten.
 
-Your Reduce Motion and Haptics choices are saved locally on this phone. We also read the phone's accessibility setting so the app can respect it. These preferences are not sent to our servers or analytics services.
+Signing out stops JustGO account synchronization and keeps the same saved journal visible and editable on the phone. Signing back into the same account synchronizes changes saved while signed out. Signing into another account does not automatically copy the previous account’s data. Settings → Account shows your verified Apple and Google login methods; you can connect another method or disconnect one while keeping at least one available. Disconnecting a method does not delete your journal or your Apple or Google account. When upgrading an older installation, JustGO may use its existing protected account access to connect that account to your verified sign-in; you do not need to enter a recovery key or transfer code in the new account screens.
 
-## Analytics
+## Information kept on your phone
 
-[REVIEW: October 15 owner direction replaces both planned Settings choices with one Terms & Privacy onboarding acceptance for the disclosed analytics scope. No analytics Settings switches or later analytics prompt are planned. The following describes intended Phase 09 behavior, not current collection: export remains disabled. Phase 10 must review the final page, exact fields, regional sufficiency, applicable withdrawal/objection process and publication. If analytics remains disabled, describe that actual behavior.]
+The phone stores saved history, feelings and reflections, including their challenge and historical date context. A completion or reflection waiting to synchronize may exist only on that phone. Unsaved editor input and unfinished challenges are not included in recovery or downloads.
 
-After you accept the Terms & Privacy page, we share limited events with PostHog to understand use of features such as challenge completion and Progress and improve JustGO. These events can use a random, persistent identifier linked to your JustGO account; they are not anonymous simply because they omit your name or email.
+Your last venue, shuffled challenge order and current card stay on the phone. Haptics and the app’s Reduce Motion preference are also local preferences and can be included in a requested data file. The phone’s system motion accessibility setting takes priority.
 
-The planned scope includes submitted feeling selections and coarse reflection-length categories. These categories describe approximate word counts, not the words you wrote. We do not send raw reflection text, recovery credentials, support messages or payment details to analytics, and we do not record replay videos of your app sessions. [REVIEW: Retain only the fields actually disclosed, reviewed and implemented.]
+Losing the phone, deleting the app or clearing its data can lose information that has not been synchronized or preserved in a usable file. Signing in cannot recover guest writing that you kept only on a different phone.
 
-There is no analytics on/off switch in Settings. Contact us about applicable privacy requests using the details below. Analytics delivery failures do not prevent cloud saving or eligible paid access. [REVIEW: Specify the request-handling/suppression process, treatment of previously collected events, vendor retention and deletion. Do not imply that onboarding acceptance waives applicable rights.]
+## Optional iCloud Sync
 
-## Security and technical information
+Settings → Data provides a separate iCloud Sync choice, off by default. If enabled and available, it synchronizes the selected collection’s saved challenge history, feelings and reflections through a private CloudKit database associated with your Apple account. This can be used without a JustGO sign-in. CloudKit is separate from JustGO account synchronization, iCloud Drive files and iPhone system backup.
 
-We process authentication and limited technical information to keep accounts secure, limit abuse and operate the service. This includes session status, request identifiers and safe failure information. Network providers may process IP addresses and connection/request metadata. The app's identity rate limits use keyed hashes of addresses rather than storing raw addresses in their rate-limit records.
+Apple handles the private iCloud copy under your Apple account and settings. Availability depends on your Apple account, device, network and storage. Turning synchronization off stops further synchronization; it does not by itself erase the existing iCloud copy. Changing Apple accounts does not authorize combining unrelated copies. We do not promise end-to-end encryption or a particular system-backup behavior for these copies.
 
-Application logs exclude journal text, authentication secrets and request bodies. [REVIEW: Verify hosting logs and any enabled crash/performance service; add its actual fields, purposes, retention and privacy basis before enabling it.]
+## Downloading and importing data
 
-## Support and feature suggestions
+Settings → Data → Download my data creates a restorable ZIP with saved challenge history, all current and preserved alternative journal entries, historical context, and Haptics and Reduce Motion preferences. It excludes passwords, authentication tokens, account sessions and unsaved input. You choose a destination through Files or sharing, including iCloud Drive. The file is readable private content and is not password protected by JustGO; use a destination you trust.
 
-If you email us for help or to suggest a feature, we receive your email address and the content and attachments you choose to send. We use them to respond and manage the request. The app does not automatically attach your journal, history or recovery information. Please do not send passwords or recovery keys.
+A signed-in account download first synchronizes with the cloud and needs a working connection. A guest or signed-out download contains the selected phone collection; a signed-out account download may omit newer cloud changes. Each file is a snapshot, and later changes need another download. Concurrent changes on another device may arrive after it is created.
 
-Our support inbox uses Google Gmail, and your message also passes through your email provider.
+Import data validates the file and shows a preview before you confirm. Account-owned files require sign-in to the same account; possession of a file does not authenticate you. A guest file may be added to the currently selected collection after confirmation. Identical records do not create extra completions, and differing journal versions are preserved. Restoring an account’s data can send the validated records through account synchronization, and enabled iCloud Sync can synchronize imported data. Older supported journal-only files restore writing rather than a complete account history.
+
+## Security and recovery
+
+Native sign-in tokens use the operating system’s protected credential storage. The service verifies live sessions and ownership before providing account data. Provider sign-in restores the corresponding uploaded account data; downloaded files and private iCloud copies are separate recovery sources. Reinstalling or restoring a purchase does not itself authenticate a JustGO account.
+
+We use protected connections and account access controls. JustGO and its service providers can process synchronized account content, including feelings and reflections. It is not an end-to-end encrypted service. No storage or transmission method eliminates every security risk. Keep your phone, Apple or Google account and downloaded files secure, and never email authentication secrets to us.
+
+## How we use information
+
+We use this information to save and display your activity, synchronize the copies you choose, authenticate accounts, preserve differing writing, create or import requested files, prevent abuse and respond to support or privacy requests. Application logs exclude journal text, authentication secrets and request bodies. Abuse controls use protected address hashes rather than raw IP addresses in those records.
+
+Hosting and network providers also process connection and request information, which may include IP addresses, request paths and browser or device information. That processing is separate from product analytics.
+
+When you visit these legal pages, Vercel receives ordinary connection information, such as your IP address, requested page and browser information. We do not add product analytics or tracking cookies to these pages. Vercel describes its handling of service and network information in its [Privacy Notice](https://vercel.com/legal/privacy-notice).
+
+## Analytics and error reporting
+
+Product analytics remains disabled. We do not send journal content, feelings or reflection-length analytics to PostHog or Sentry. We do not use cross-service advertising tracking.
+
+We use Sentry to investigate application crashes, unhandled errors and server failures. App versions with crash reporting enabled send limited technical reports, including before you enter the app or sign in. Reports can include a random event identifier and time, a generic error classification, technical stack locations, app version and build, operating system version and the testing or production environment. They exclude your account and persistent device identifiers, email, journal content, feelings, authentication secrets, request URLs and bodies, screenshots, attachments and interaction history. We do not enable session replay, product activity tracking or performance profiling through this reporting.
+
+Sanitized server error reports contain a generated request identifier, HTTP status, a safe error classification and, when applicable, a validated database error code. They exclude account identifiers, raw error messages, database queries, journal content, credentials, request URLs, headers and bodies.
+
+Sentry processes these reports in the United States. It receives the connecting network address when a report is delivered; our report settings prevent storing that address in the event. This does not mean the address is absent from all network or security processing. On iOS, the operating system and crash-reporting component can keep an original local crash report until a later launch, before JustGO filters what is sent. That local capture is distinct from the limited exported report.
+
+Technical reports are kept under the Sentry project's configured retention period; provider recovery copies follow its deletion processes. Because exported app reports contain no account identifier, deleting a JustGO account does not identify its technical reports for deletion. Contact us with the approximate report time and app version if you want us to investigate a report or handle a privacy request. We will explain any identification or deletion limits without asking for an authentication secret.
+
+Before enabling additional collection, we will review its purpose and providers, update the relevant notices and obtain any permission required by law. We will not replay earlier activity into analytics. Continuing through Terms & Privacy or opening a document does not record an agreement, accepted legal version or analytics permission.
+
+## Support
+
+If you email us, we receive your address and the message and attachments you choose to send. We use them to respond and manage the request. JustGO does not automatically attach your journal or credentials. Please do not send passwords, tokens or other authentication secrets.
 
 ## Service providers and international processing
 
-We use service providers to host and operate JustGO. These include Vercel for the API and Supabase for database hosting. Apple provides the device and optional iCloud Keychain services used for recovery. PostHog receives analytics only after the onboarding acceptance described above and within the reviewed scope.
+- **Vercel** hosts these public legal pages and the API that processes authenticated account data, including synchronized feelings and reflections.
+- **Supabase** provides managed authentication and hosts account, completion and journal records.
+- **Sentry** processes the limited technical error reports described above in the United States.
+- **Apple** provides Apple sign-in, protected native credential storage and optional private CloudKit synchronization. Apple also handles files you choose to save to iCloud Drive under your Apple settings.
+- **Google** provides Google sign-in. **Google Gmail** hosts the support inbox; messages also pass through your email provider.
+- Other file destinations you choose handle the copies you save or share with them.
 
-[REVIEW: Finalize the active-provider list for the beta or paid release. Add Apple/RevenueCat subscription processing and Upstash billing delivery only when active. Confirm contracts, subprocessors and actual regions. Remove providers that are not enabled.]
-
-Information may be processed outside your country, including in Canada and countries where our active providers operate. It can be subject to the laws and lawful access requirements of those countries. [REVIEW: Identify actual processing locations and applicable international-transfer safeguards. Do not imply that all data stays in Canada.]
+Providers may process information outside Canada, including through their networks and support operations. Information processed abroad may be subject to foreign laws and lawful-access requirements. Contact us with questions about providers and international processing. We may disclose information when required by law.
 
 ## Retention and deletion
 
-[REVIEW: This section is proposed release behavior. Account deletion and local cleanup are implemented locally; native acceptance, hosted rollout, final retention periods and backup handling remain unaccepted. See the Phase 08 account-deletion handoff.]
+Saved phone collections remain until you delete them or remove the app’s data. Signing out keeps the selected account’s local data. Online account records remain until deleted, subject to limited security records and provider recovery copies.
 
-We retain your personal journal while your account exists. You can request deletion directly in the app through Settings → Delete account. Deletion revokes account access and removes associated journal records and account data, subject to the limited retention described below.
+Settings → Data → Delete all my data asks for confirmation, then removes the selected journal's saved challenge history, feelings and reflections from the phone, its signed-in JustGO account and app-managed iCloud copies previously associated with it, even if iCloud Sync is now off. It keeps the account and its login methods available for future use. Account data requires sign-in for cloud deletion. Devices reconcile deletion before synchronizing again. If the associated Apple account or iCloud service is unavailable, cleanup remains pending and can be retried when available. This action is distinct from closing the account.
 
-Some data may remain temporarily in restricted backups until they expire. We may retain limited security records to prevent revoked credentials from recreating an account, and records necessary to satisfy legal obligations. These exceptions do not permit continued ordinary use of deleted journal content.
+Settings → Account → Delete account asks for confirmation, then closes the JustGO account, removes its active history and journal, revokes signed-in sessions, removes the managed authentication account, and clears that owner’s local data, sign-in credentials and previously associated app-managed iCloud copies, even if iCloud Sync is now off. The operation keeps a durable deletion result so an uncertain response or interrupted cleanup can be retried, including cleanup waiting for the associated Apple account. It does not delete your Apple or Google account or cancel an Apple subscription.
 
-[REVIEW: State the deletion completion period, backup expiry, vendor cleanup period, analytics retention, support retention and the exact purpose/duration of each security or legal exception. Explain how pending cleanup is shown to the user.]
+We retain limited security records, such as account and authentication identifiers, deletion/revocation dates and cryptographic digests, to prevent deleted account data or revoked sessions from becoming active again. They contain no journal content, feelings or challenge history, but persistent identifiers may still be personal information.
 
-Removing the app from your phone does not delete your cloud account. When paid subscriptions are offered, deleting your app account does not cancel an Apple subscription; cancellation is managed through Apple.
+Provider-controlled recovery copies may retain older information under their retention processes. Before a restored service becomes active, deletion and revocation records must be reconciled so deleted data does not return. We do not promise that deleting active records immediately erases every provider backup.
 
-## Your privacy choices and requests
+Deleting the app does not close your cloud account. Neither deletion action can remotely erase user-saved files or a disconnected device immediately. Files saved to Files, iCloud Drive or another chosen destination remain under your control; protect them and delete them separately where appropriate. Operational logs are kept for troubleshooting and security under configured provider retention. Support emails are deleted after 12 months unless a request remains open or a specific legal obligation requires longer retention.
 
-You can choose whether to submit a feeling or reflection. Settings → Export my data creates a ZIP with your saved activity and reflections, including changes waiting to upload from your current phone. Choose where to save or share this private file. Exporting does not delete your data. [REVIEW: Export is implemented locally; verify physical-iPhone delivery before publication. The Terms & Privacy acceptance page and analytics forwarding remain unimplemented in this checkout. In-app deletion requires native-build/device acceptance and hosted rollout before publication. Verify these paths before describing them as available; analytics Settings switches are no longer planned.]
+## Your choices and requests
 
-Contact us with questions or requests to access, correct or delete personal information. We may need to verify that a request concerns your account, without asking you to email a recovery secret. Depending on the laws that apply, you may also have rights to portability, restriction or objection, to withdraw consent, and to complain to a privacy regulator. [REVIEW: Add applicable legal bases, regional rights, complaint contacts and response periods for worldwide distribution.]
+You can continue without signing in, choose sign-in after the cloud-storage explanation, sign out while keeping the same phone journal, leave feelings and reflections blank, keep iCloud Sync off, download or import data, delete the selected journal’s data, or close the account. Account and data controls remain available independently of paid challenge access. Restoring an older file after deleting data is an explicit import choice; it does not recreate a deleted account.
 
-## Users under 18
+Email [anthonyyoo24@gmail.com](mailto:anthonyyoo24@gmail.com) to request access, correction or deletion, or ask about processing. We may need to verify that a request concerns your account, but will not ask you to email an authentication secret. Depending on applicable law, you may also have rights to portability, restriction, objection, withdrawal of consent and a complaint to a privacy regulator. Withdrawing consent does not change the lawfulness of earlier processing. We will explain any applicable limits or necessary retention when responding. For Canadian privacy concerns, you may contact the [Office of the Privacy Commissioner of Canada](https://www.priv.gc.ca/en/report-a-concern/).
 
-JustGO is intended for adults 18 and older. If you believe someone under 18 has provided personal information through JustGO, contact us so we can review and address it.
+## Age and changes
 
-[REVIEW: Align eligibility, age-related product behavior and the App Store rating. The app does not currently verify date of birth or collect identity documents.]
+JustGO is intended for adults aged 18 and older. We do not collect a birth date or identity document. If you believe someone under 18 has provided information through JustGO, contact us so we can review it.
 
-## Changes to this policy
+We publish updates at this Privacy Policy address when our practices change and provide any new notice or choice required by applicable law before new processing begins.
+<!-- public:end -->
 
-We will update this policy when our practices change and show the effective date of the revised version. Where a change requires a new choice or notice, we will provide it before the new processing begins.
+## Distribution conditions
+
+Before external beta distribution, verify the actual provider arrangements for private-content processing; managed Auth account/profile retention and deletion; CloudKit container, Apple-account isolation and purge behavior; signed-iPhone token/SQLite/temporary-file protection; Files/picker restore; support procedure; regional notice requirements; and actual hosted cutover. Earlier completion-only clearance does not cover this processing. Do not invent provider agreements, backup expiry, end-to-end encryption or deployed behavior. Update the public policy if the verified arrangements change its disclosures. Paid billing and future analytics need their separate notices and activation gates.

@@ -14,6 +14,25 @@ focused tests/typechecks for the changed behavior and affected consumers; correc
 failures before extending the implementation. Review important uncovered branches
 without automatically collecting whole-project coverage after every edit.
 
+Choose the scope before running checks. Classify the actual behavior and boundary
+changed, rather than the directory, phase label or presence of a handoff edit.
+A routine follow-up does not reopen phase closeout.
+
+| Change                               | Default verification                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Documentation only                   | Scoped formatting, local links and consistency with the owning rules; no app tests, builds or UI checks.                                                                                                                                                                                                                                                                                                                                         |
+| Routine contained fix                | Meaningful regression tests for affected behavior, success/failure cases and consumers; affected workspace typechecks, repository lint and changed-file formatting. Run saved critical journeys affected by the change; add one grouped in-app walkthrough for UI behavior changes.                                                                                                                                                              |
+| Boundary or configuration change     | Widen checks to the affected consumers and boundary failures. Contracts, tsconfig, ESLint or `e2e/support` changes require the root contracts build and all-workspace typecheck. Backend/shared protocol or data-boundary changes require `test:db` against loopback `justgo_test`, including applicable ownership, replay, failure and migration/policy cases. Dependency/native changes retain applicable Doctor, build and device acceptance. |
+| Actual phase closeout or publication | Full `check`, full coverage and applicable saved journeys/exports; `test:db` at phase closeout and for backend/shared boundaries. Publication also requires fresh online dependency validation and Doctor immediately before pushing. Keep required hosted, staging and physical-device gates.                                                                                                                                                   |
+
+Routine fixes do not automatically run the full root suite, Doctor, aggregate
+coverage, database suites, all journeys or both platform exports. Expand for a
+concrete failure, affected boundary/configuration, explicit owner request or
+required phase/publication gate; briefly state the trigger without adding an
+approval checkpoint. Keep meaningful regression coverage, thresholds and affected
+consumers intact. After the scoped checks, relevant UI verification, fixture
+cleanup and changed-directory review pass, finish without optional extra checks.
+
 | Command                                | Purpose                                                                                                   |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `npm run test -w <workspace>`          | Workspace unit/component/contract tests; API default excludes database integration                        |
@@ -27,17 +46,30 @@ without automatically collecting whole-project coverage after every edit.
 | `npm run test:coverage`                | All-source workspace coverage, including database suites, then combined floors                            |
 | `npm run test:journey`                 | Saved actual-app/API/database browser and repository journeys                                             |
 | `npm run test:migrations`              | Standalone preservation/restoration rehearsal                                                             |
+| `npm run build:legal`                  | Build local static legal candidates; `-- --production` refuses unapproved source/date metadata            |
 | `npm run export:web -w @justgo/mobile` | Cold web export                                                                                           |
 | `npm run test:exported-web`            | Smoke the existing production web export without API/database traffic                                     |
 | `npm run export:ios -w @justgo/mobile` | Cold iOS JavaScript/assets export                                                                         |
+
+Legal-reader regressions run with `node --test sites/legal/*.test.mjs` and are included
+in `test:architecture`. The public Markdown blocks, independent document labels, link
+safety and approval/date checks are verified without a hosted deployment. The
+local static output still needs an in-app browser readability/navigation check;
+that is separate from anonymous HTTPS phone verification after publication.
 
 Pass `-- --runTestsByPath src/...test.tsx` to the mobile test script, or
 `-- path/to/test.ts` to API/contracts Vitest scripts, for focused tests. A slice
 changing contracts, tsconfig, ESLint configuration or `e2e/support` also runs
 `npm run build:contracts && npm run typecheck` at the root, covering all consumers
-and journeys. Before phase handoff/publication, run `npm run check`, full coverage
-and applicable saved journeys/exports; `test:db` is required for backend/shared
-boundaries and phase closeout. Earlier native/staging gates stay open until evidenced.
+and journeys. Use the scope matrix above for broader gates; editing a handoff is
+not itself a phase-closeout trigger. A mobile UI/navigation fix alone does not
+change a server protocol or data boundary. Earlier native/staging gates stay open
+until evidenced.
+
+Account for checks included in broader commands instead of repeating a passed
+standalone check merely for final reporting. Repeat when inputs changed, results
+are stale or a failure needs investigation. Required phase/publication commands
+still run in full; overlapping internals do not authorize skipping their gates.
 
 ## Type and lint environments
 
@@ -58,7 +90,7 @@ objects, unnecessary assertions and redundant unions to production TypeScript. N
 assertions warn. Mobile React rules protect list keys, nested component definitions
 and leaked conditional rendering. Testing Library rules require awaited async
 queries/utilities and reject awaited synchronous queries or promises passed to
-`fireEvent`; native renderer `findByType` inspection remains synchronous. Focused
+`fireEvent`; host renderer inspection remains synchronous. Focused
 lint fixtures prove that each configured rule detects its intended failure.
 
 Relative imports in API/contracts TypeScript use `.js` for NodeNext's emitted
@@ -96,10 +128,25 @@ a gate verified.
 
 ## Coverage policy
 
+Run the full aggregate gate at actual phase closeout and before publication.
+Run it earlier when coverage configuration, source inclusion/exclusion rules,
+critical selectors or thresholds change in a way that can invalidate the gate,
+or when an affected boundary, concrete failure or owner request requires it.
+Ordinary files or branches under unchanged coverage rules do not alone trigger
+whole-project coverage. Review important affected branches and use focused
+coverage when needed; never exclude an affected consumer or lower a floor to
+make a focused run pass.
+
 The root coverage command builds contracts, runs workspaces sequentially and
 enforces [coverage-thresholds.json](../../scripts/quality/coverage-thresholds.json).
 API coverage includes unit/database suites and the migration rehearsal, so prepare
-the same local database first. Individual workspace coverage scripts generate
+the same local database first. The private Auth-session helper integration also
+requires `JUSTGO_TEST_ADMIN_DATABASE_URL` for a `postgres` connection to loopback
+`justgo_test`, with SSL disabled. New `db:local` environments and shared CI database
+jobs supply it; existing local `.env` files need that test-only value added.
+The test refuses occupied Auth/helper schemas, executes the actual operator SQL
+inside a rollback-only fixture transaction and never targets hosted Auth. Never
+deploy this test operator URL on Vercel or mobile. Individual workspace coverage scripts generate
 reports; the root command applies the combined gate. Reports are ignored generated
 output under `coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
 Jest uses Istanbul; Vitest's V8 provider is pinned with its Vitest version.
@@ -126,9 +173,9 @@ database/tooling/bundle/native evidence rather than a misleading JS coverage cla
 | API (unit + database) |          82% |        84% |             83% |            76% |
 | Contracts             |          95% |        95% |             95% |            95% |
 
-Independent critical selectors protect the provider and native vault (95% branches/
-lines), account client (85%/95%), HTTP (82%/94%), Progress as a group (90%/92%),
-identity/challenge services (85% branches), reflection PATCH (95%/99%) and Progress
+Independent critical selectors protect the provider, extracted access policy/store/hook
+and native vault (95% branches/lines), account client (85%/95%), HTTP (82%/94%), Progress as a group (90%/92%),
+identity/challenge services (85% branches), retired private PATCH boundary (95%/99%) and Progress
 resources (95%/96%). Controllers/storage retain their own floors. The JSON file
 owns exact paths and thresholds; a move must update its selector without lowering
 protection.
@@ -141,6 +188,18 @@ justified change with before/after evidence and review uncovered behavior: execu
 a schema declaration does not establish input rejection or ownership isolation.
 
 ## Async tests and boundary regressions
+
+React Native Testing Library 14 uses `test-renderer`, with asynchronous `render`,
+`renderHook`, events, `act`, rerenders and unmounts. Await these operations and
+Router test navigation; do not hide unfinished updates behind synchronous helpers
+or a global async notifier callback that its caller cannot await. Prefer accessible
+host queries. SDK 58 web stacks retain inactive screens in the DOM; use role/name
+queries to assert the active accessible screen instead of matching hidden text.
+The authored SVG host fixture permits geometry assertions at that explicit
+boundary without inspecting composite implementation instances. The modal web
+adapter test creates a narrow JSDOM document in the Node test environment because
+RN 0.88's preset conflicts with Jest 30's nonconfigurable jsdom window property.
+It still exercises real DOM isolation and restores the document after each test.
 
 Provider tests mount the actual provider/controller/client with controllable
 vault/fetch/AppState boundaries. Fake timers govern expiry/polling. Unmount,
@@ -172,10 +231,25 @@ validation is not a fix. Use synthetic compatibility/account-preservation fixtur
 
 The Playwright suite exercises the actual browser app/API/disposable database and
 bundled production repository/transport. It covers explicit saving/Progress,
-offline/reconnect, write-failure/cloud fallback/memory recovery, lost acknowledgements,
-ordered reflection edits, aggregate reconciliation, limited history, account/session
-recovery, export and deletion. It is distinct from presentation fixtures,
+offline/reconnect, completion write-failure/cloud fallback/memory recovery, lost
+completion acknowledgements, durable private saves with no cloud fallback,
+ordered local reflection edits, legacy boundary regressions, aggregate reconciliation,
+offline saved history, guest entry, managed sign-in/logout/account ownership,
+signed-in completion/journal sync, complete data download/import and deletion.
+External Apple/Google authorization is replaced only at the guarded provider
+boundary; the app's managed controller, canonical API mapping, owner transactions,
+database RLS and sync routes are real. No external-provider/native claim follows
+from that seam. Saved journeys are distinct from presentation fixtures,
 one-off interactive walkthroughs and native checks.
+
+Install failure routes before navigation/bootstrap can start the targeted work.
+For one-shot faults after an authenticated page, first stop the old document
+(for example, navigate to `about:blank` in the same context) so its background
+requests cannot consume the fault. Gate and observe the intended request before
+releasing its failure; assert no file/output and require a separate explicit
+retry. Keep that user action distinct from transport-level read replays and
+queued background synchronization. Use these observable barriers instead of
+sleeps, larger timeouts or suite retries.
 
 Install pinned Chromium with `npx playwright install chromium`; Linux CI uses the
 shared setup action to install system dependencies on every run and Chromium on
@@ -200,28 +274,65 @@ Do not assume CLI API overrides defeat Expo's virtual dotenv environment. Preser
 the guarded public-environment adapter and request-origin fence, and validate the
 browser's resolved API origin as well as database settings. Synthetic proofs must
 never reach hosted APIs. The `JUSTGO_JOURNEY_FIXTURES` Metro seam permits controlled
-journal failures only for guarded web fixtures; normal/native/production resolution
-cannot load those fault adapters. There are no product UI failure switches or
-production paid-access bypasses.
+journal failures and the synthetic managed provider only for guarded web fixtures;
+normal/native/production resolution cannot load those adapters. The fixture API
+injects its run-owned provider verifier, live-session reader and hard-delete
+adapter. It retains legacy endpoints only for repository compatibility tests.
+Guest catalog access uses the explicit disposable fixture beta policy. There are
+no product UI failure switches or production paid-access bypasses.
+
+Completion AsyncStorage and private IndexedDB fault seams are independent. A
+private commit failure must retain the editor input, report the phone save failure
+and make no PATCH/fallback request. The outbound fixture fence allows only strict
+completion POST payloads for attempt mutations and reports method/path without
+private bodies. Managed completion import and private journal delivery use their
+own strict restore/sync contracts, never the retired private PATCH. Journal adapters have transaction, rollback, account-fencing,
+concurrent edit/import, deletion and relaunch regressions; native adapter tests
+use Node SQLite and cannot establish iOS file protection or OS interruption.
+
+Backup tests cover the complete versioned data-only ZIP, full history, writing,
+preserved alternatives/preferences, bounds/CRC/UTF-8/schema/frozen-context and
+owner validation, cancellation, missing/identical/conflicting records, rollback
+and replay without duplicate reps or raw queue import. Compatible journal-only
+files preserve private context without fabricating completion counts. Browser
+journeys exercise downloaded files and actual IndexedDB reloads. Signed Files /
+iCloud Drive, temporary-file/device-backup and actual optional private CloudKit
+multi-device/account-change/quota/deletion evidence remain separate gates in
+[account/sync setup](ACCOUNT_SYNC_SETUP.md) and the
+[rollout runbook](LOCAL_JOURNAL_ROLLOUT.md#device-and-manual-file-acceptance).
+
+Journey builds enable the real Sentry SDK with a fixed fake ingestion key and
+intercept all hosted Sentry requests. `diagnostics.spec.ts` inspects scrubbed
+payloads for route errors and unhandled rejections and verifies root recovery even
+when ingestion returns 503. Unit/component suites use the explicit SDK boundary
+mock; those mocks do not establish real SDK or native behavior. Any real-provider
+probe must use disposable synthetic errors only, with ordinary delivery disabled.
 
 The fixture registry owns every created account UUID independently of browser
 requests and response delivery. Teardown deletes only that registry's accounts;
 registry failure fails cleanup instead of trusting browser IDs. Failed creations
 can leave absent rows, safely deleted as no-ops. The registry endpoint is absent
-from deployable API. Browser identity is memory-only; reload tests recover the
-same synthetic account while the activity adapter retains its separate journal.
+from deployable API. Managed provider fixtures retain disposable sessions/opaque
+subject handles in browser sessionStorage so reload and returning sign-in can
+exercise the actual controller. Only server-allocated run-owned subjects may be
+selected; client UUIDs never authorize ownership or teardown. Legacy repository
+fixtures retain their separate synthetic proof behavior. This is no native token
+storage or real OAuth acceptance evidence.
 
-Before each database-backed case, reset only the fixture run's two hashed rate
-buckets. Keep real limits active during each case and retain unrelated buckets.
+Before each database-backed case, reset only the fixture run's three hashed rate
+buckets: identity, recovery and managed Auth. Keep real limits active during each
+case and retain unrelated buckets.
 Cases that exhaust an identity allowance cannot contaminate the next case. No
 production rate limit or cleanup authority changes.
 
 Seed dated activity inside the browser's intended local day using
 `e2e/support/seed-times.ts`; counting backward from wall-clock now crosses midnight
 in UTC CI. Use deliberate previous-month fixtures when a case needs an older
-month, including on the first day of a month or year. Older-month calendar data is
-unavailable offline: open an older day online and await its entries before testing
-the transition to its offline message. Layout assertions wait for usable controls
+month, including on the first day of a month or year. Managed full-history download
+persists completion history and private versions; previously downloaded history
+and guest/signed-out writing remain available offline beyond the current month.
+Data never downloaded to that phone still requires a connection. Journal-only
+history must not invent completion counts. Test these cases independently. Layout assertions wait for usable controls
 and retry fresh geometry after navigation;
 missing/detached controls keep failing. Preserve alignment limits rather than adding
 sleeps or weakening assertions.
@@ -272,13 +383,47 @@ configuration and API origin before reusing a server. Honor side-panel-only requ
 record unavailable capabilities rather than switching browsers against preference.
 Keep screenshots/recordings in ignored `.local/` unless explicitly requested for Git.
 
+Group related affected states and screenshots into one walkthrough. Prefer the
+existing guarded launchers and saved specs over building a harness for a one-off
+fix. Reuse a running fixture only after verifying its ownership, current served
+code, configuration and run-specific cleanup authority. Do not adopt another
+run's account registry or leave accounts behind when a check fails. The saved
+journey wrapper owns its service lifecycle; pass affected specs to that wrapper
+rather than bypassing its database guards, request fence or teardown.
+
 Record actual viewport, flow, fixtures, failure and recovery, keeping saved automated
 journeys, one-off walkthroughs, native simulator and physical-device evidence separate.
-Browser/export/component checks cannot establish Keychain/AsyncStorage durability,
-OS lifecycle, gestures, software keyboard, VoiceOver, radio/backup or physical recovery.
-Large folder moves require cold web/iOS bundles and an owned Metro restart with
-`--clear` before reloading the existing installed development app; an unrelated
-export does not refresh its live dependency graph.
+
+The Metro development client loads local illustration assets over HTTP from the
+Mac; swiping to an uncached card or opening Success after disconnecting can leave
+its artwork blank. Its access and local saving checks remain separate from offline
+asset acceptance. Use a self-contained preview/release binary with bundled
+JavaScript and assets for cold offline launch and artwork checks; inspect the
+packaged assets and verify every venue variant and the Success illustration on
+the physical phone. A successful export alone does not establish that acceptance.
+See [Expo's asset delivery model](https://docs.expo.dev/develop/user-interface/assets/#how-are-assets-served-locally).
+
+Browser/export/component checks cannot establish Keychain/SQLite/AsyncStorage durability,
+OS lifecycle, gestures, software keyboard, VoiceOver, radio/backup, native
+Apple/Google OAuth, live hosted Auth revocation/deletion or actual CloudKit sync.
+The native module requires a compatible signed binary, real private-container
+capabilities and physical multi-device/account-change/failure/deletion checks;
+in-memory cloud adapters establish domain decisions only.
+Use the [move checks](#file-moves-and-bundle-checks) when module or asset paths change.
+
+The private CloudKit bridge also has a dependency-free SwiftPM regression target:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test \
+  --package-path apps/mobile/modules/justgo-icloud \
+  --scratch-path .local/justgo-icloud-swift --jobs 1
+```
+
+Use the installed Xcode toolchain locally without changing the global developer
+directory. The target compiles production CloudKit code against controllable I/O;
+its tests cover byte bounds, atomic generation/account fences and sanitized cursor
+errors. It excludes the Expo bridge, requires no Apple login and does not contact
+CloudKit. A signed EAS build and actual phone checks still verify those boundaries.
 
 The [native-testing checkpoint](../handoffs/phase-07-3a-testing-checkpoint.md) and
 [browser assessment](../checks/phase-07-3a-browser-testing-assessment.md) remain the
@@ -287,7 +432,31 @@ fixture safeguards and coverage floors until a native replacement proves equival
 actual-app/API/database cases and its authorized commit's hosted gate. Retain the
 Maestro launch smoke (`APP_ID=... npm run test:native -w @justgo/mobile`) and relevant
 manual simulator checks meanwhile. Device/staging gates belong in
-[Phase 11](../implementation-plan/phase-11-release.md) and the applicable handoffs.
+[Phase 14](../implementation-plan/phase-14-release.md) and the applicable handoffs.
+
+## File moves and bundle checks
+
+Every move updates affected imports, dynamic loaders, test discovery, coverage
+selectors, fixtures, assets, packaging/upload allowlists, scripts and documentation
+links in the same change. Keep tests and native/web adapter pairs beside their
+owner; preserve all boundary checks and coverage floors.
+
+For a small move within the same resolver and packaging rules, run affected
+tests, typechecks and import/discovery/packaging checks. Cold-bundle an affected
+platform when those checks cannot establish module or asset resolution; both
+platform exports are not automatic for every move.
+
+Large moves and platform-sensitive moves affecting adapter resolution,
+entrypoints, shared assets or packaging require cold web and iOS exports.
+Run the production exported-web smoke after the web export, before the iOS export
+replaces `dist/`. Changes to coverage inclusion/exclusion rules or selectors also
+follow the coverage policy above.
+
+After source/asset moves, restart the owned running Metro server with `--clear`
+and reload the existing installed development app to clear stale module/asset
+paths. A separate successful export does not refresh that server's live graph.
+Keep functional changes and moves separately reviewable, and review the complete
+file lists only in touched directories; unrelated cleanup remains follow-up work.
 
 <a id="migration-preservation-rehearsal-071"></a>
 
@@ -311,6 +480,20 @@ This is a local/CI acceptance tool, not deployment authorization. The
 [cutover/old-client/restore runbook](FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients)
 owns operational rollout and recovery.
 
+The forward chain verifies 0019's historical instruction snapshots, byte-preserved
+old journal/receipts and private column write freeze before applying the separate
+0020 owner-approved old-server-private reset. That reset preserves identity,
+completion context/history and phone journals. The rehearsal then checks 0021
+managed mappings/sessions/epochs/immutable private versions/tombstones, 0022
+independent historical journal context and 0023 durable Auth deletion cleanup,
+including clean installation through the current journal and snapshot metadata.
+API integration covers real runtime-role owner isolation, immutable/idempotent
+completion and version sync, epoch/tombstone rejection, orphan journal context,
+legacy linking/revocation and lost-response/provider-cleanup account deletion.
+Injected provider boundaries establish application behavior, not real hosted Auth
+provider capability. The [Phase 13 rollout](LOCAL_JOURNAL_ROLLOUT.md) and
+[account setup](ACCOUNT_SYNC_SETUP.md) keep hosted changes separately authorized.
+
 ## Publication and hosted CI
 
 Before publication, install with `npm ci` in a clean checkout and run `npm run check`.
@@ -321,9 +504,10 @@ never hide live metadata changes with offline mode/exclusions. Native/device
 acceptance for changed dependencies stays separate.
 
 CI runs on pull requests and pushes to `main`, cancels superseded PR runs and keeps
-each main commit's result. Five producer jobs run independently:
+each main commit's result. Six producer jobs run independently:
 
-- `static`: online Doctor, contracts/type/lint/format/tooling checks and the API
+- `static`: checksum-pinned actionlint validates GitHub workflow syntax/context
+  availability, followed by online Doctor, contracts/type/lint/format/tooling checks and the API
   production-dependency audit.
 - `unit`: mobile, contracts and API unit suites with coverage.
 - `database`: isolated PostgreSQL setup, migrations and every API integration suite,
@@ -331,6 +515,7 @@ each main commit's result. Five producer jobs run independently:
 - `journeys`: isolated PostgreSQL and the actual app/API/database journeys. Their
   wrapper owns migration and fixture service startup.
 - `exports`: production web export, its independent static smoke, then iOS export.
+- `native-icloud`: the pure Swift CloudKit regressions on macOS, without npm setup.
 
 The final `checks` job runs even when a producer fails, is skipped or is cancelled;
 any such result fails the aggregate status. After all producers pass, it downloads
@@ -352,8 +537,20 @@ and leaves npm major upgrades for manual scope/native acceptance. Updates do not
 merge automatically. The audit gate is scoped to API production dependencies:
 
 ```sh
-npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low
+npm run audit:api
 ```
+
+The helper projects the API's declared production graph from the shared lockfile
+into a temporary workspace, preserving locked versions, integrity, nested
+resolution and workspace dependencies. Normal dependencies, available optional
+runtime dependencies and required peers remain included. Optional peers supplied
+solely by another workspace (such as Drizzle's unused Expo SQLite driver) do not
+become API roots; a provider declared or required by the API graph is included.
+Manifest/lock drift and missing required packages fail closed. Ordinary npm audit
+runs with the unchanged low severity threshold and propagates failures; no advisory
+is filtered or ignored. This audit does not establish mobile/tooling dependency
+health or inspect the deployed Vercel artifact. Those remain separate release
+responsibilities.
 
 The workflow and setup actions own exact job limits, versions and prerequisites;
 clean runners must not rely on ignored environment files or existing artifacts.

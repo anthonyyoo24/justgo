@@ -3,7 +3,7 @@ import {
   hasVerifiedAccess,
   type ProgressSummary,
   type ProgressCalendar,
-  type ProgressDayResponse,
+  type CompletionProgressDayResponse,
 } from '@justgo/contracts';
 import { z } from 'zod';
 import type { IdentityService } from '../identity/service.js';
@@ -11,8 +11,8 @@ import { ApiError } from '../http/api-error.js';
 import type { EntitlementReader } from '../access/service.js';
 import {
   attemptQuery,
-  projectAttempt,
-  type AttemptRow,
+  projectCompletion,
+  type CompletionRow,
   type Tx,
 } from '../attempts/model.js';
 const cursorSchema = z.tuple([z.iso.date(), z.iso.datetime(), z.uuid()]);
@@ -42,7 +42,7 @@ export class ProgressResources {
    */
   private run<T>(token: string, work: (tx: Tx, userId: string) => Promise<T>) {
     return this.identity.withSession(token, async (tx, session) => {
-      // The owner lock also serializes creates/PATCHes across devices, so totals
+      // The owner lock also serializes completion creates across devices, so totals
       // and rows in these multi-query reads share one product-write boundary.
       const access = await this.entitlement?.(tx);
       if (!hasVerifiedAccess(access))
@@ -128,30 +128,33 @@ export class ProgressResources {
    */
   day(token: string, date: string, limit: number, encodedCursor?: string) {
     const cursor = encodedCursor ? decodeCursor(encodedCursor, date) : null;
-    return this.run(token, async (tx, userId): Promise<ProgressDayResponse> => {
-      const total = (
-        await tx.execute<{ count: number }>(
-          sql`select count(*)::integer as count from justgo.attempts where user_id=${userId} and activity_date=${date}`,
-        )
-      ).rows[0]!.count;
-      const rows = (
-        await tx.execute<AttemptRow>(sql`${attemptQuery} where a.user_id=${userId} and a.activity_date=${date}
+    return this.run(
+      token,
+      async (tx, userId): Promise<CompletionProgressDayResponse> => {
+        const total = (
+          await tx.execute<{ count: number }>(
+            sql`select count(*)::integer as count from justgo.attempts where user_id=${userId} and activity_date=${date}`,
+          )
+        ).rows[0]!.count;
+        const rows = (
+          await tx.execute<CompletionRow>(sql`${attemptQuery} where a.user_id=${userId} and a.activity_date=${date}
         ${cursor ? sql`and (a.started_at,a.id)>(${cursor[1]}::timestamptz,${cursor[2]}::uuid)` : sql``}
         order by a.started_at,a.id limit ${limit + 1}`)
-      ).rows;
-      const page = rows.slice(0, limit),
-        last = page.at(-1);
-      return {
-        date,
-        totalReps: total,
-        entries: page.map(projectAttempt),
-        nextCursor:
-          rows.length > limit && last
-            ? Buffer.from(
-                JSON.stringify([date, last.cursor_started_at, last.id]),
-              ).toString('base64url')
-            : null,
-      };
-    });
+        ).rows;
+        const page = rows.slice(0, limit),
+          last = page[page.length - 1];
+        return {
+          date,
+          totalReps: total,
+          entries: page.map(projectCompletion),
+          nextCursor:
+            rows.length > limit && last
+              ? Buffer.from(
+                  JSON.stringify([date, last.cursor_started_at, last.id]),
+                ).toString('base64url')
+              : null,
+        };
+      },
+    );
   }
 }

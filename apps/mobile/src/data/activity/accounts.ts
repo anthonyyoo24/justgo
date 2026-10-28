@@ -8,17 +8,25 @@ export class AccountRepositories {
   constructor(
     private readonly create: (accountId: string) => AccountRepository,
   ) {}
+  get(accountId: string): AccountRepository {
+    let account = this.accounts.get(accountId);
+    if (!account) {
+      account = this.create(accountId);
+      this.accounts.set(accountId, account);
+    }
+    return account;
+  }
   activate(
     accountId: string | null,
     environment: { active: boolean; online: boolean },
   ): AccountRepository | null {
     if (this.current?.accountId !== accountId) {
+      this.current?.setAccountCurrent(false);
       this.current?.setEnvironment({ active: false, online: false });
-      this.current = accountId
-        ? (this.accounts.get(accountId) ?? this.create(accountId))
-        : null;
+      this.current = accountId ? this.get(accountId) : null;
       if (this.current) this.accounts.set(this.current.accountId, this.current);
     }
+    this.current?.setAccountCurrent(true);
     this.current?.setEnvironment(environment);
     return this.current;
   }

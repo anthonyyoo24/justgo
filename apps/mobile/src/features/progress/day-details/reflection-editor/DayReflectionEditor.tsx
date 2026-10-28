@@ -1,4 +1,9 @@
-import { useSyncExternalStore, type RefObject } from 'react';
+import {
+  useContext,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -7,6 +12,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   View,
 } from 'react-native';
 import { useReduceMotion } from '../../../../platform/motion/motion';
@@ -16,6 +22,7 @@ import type {
 } from '../../../reflections/controller';
 import { useDelayedBusy } from '../../../../lib/useDelayedBusy';
 import { colors, fontFamilies } from '../../../../theme/tokens';
+import { DayReflectionViewport } from '../useDayReflectionKeyboard';
 
 const reflectionHint = 'What stood out to you?';
 const inputPadding = 14;
@@ -69,12 +76,20 @@ export function DayReflectionEditor({
 }: {
   controller: ReflectionController;
   state: ReflectionSnapshot;
-  inputRef?: RefObject<TextInput | null>;
+  inputRef?: RefObject<TextInputInstance | null>;
   inputReady?: boolean;
   onKeepEditing: () => void;
 }) {
   const savingVisible = useDelayedBusy(state.submitting);
   const reduceMotion = useReduceMotion();
+  const viewportHeight = useContext(DayReflectionViewport);
+  const [actionsHeight, setActionsHeight] = useState(56);
+  // Reserve the actual action/error area and list padding. Long writing scrolls
+  // inside the field instead of pushing Save and Cancel below the keyboard.
+  const maxInputHeight =
+    viewportHeight > 0
+      ? Math.max(49, Math.min(160, viewportHeight - actionsHeight - 36))
+      : 160;
   const hasChanges = controller.hasChanges();
   // Saved → Edit already has an open panel. Measure its real input before
   // resizing, so saved writing never swaps between Text and TextInput baselines.
@@ -106,7 +121,13 @@ export function DayReflectionEditor({
           value={state.text}
           onChangeText={controller.setText}
           maxLength={10000}
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              minHeight: Math.min(76, maxInputHeight),
+              maxHeight: maxInputHeight,
+            },
+          ]}
         />
         {Platform.OS === 'ios' && !state.text && (
           // iOS's UILabel placeholder has a different baseline from Text.
@@ -122,54 +143,61 @@ export function DayReflectionEditor({
           </Text>
         )}
       </View>
-      {!!state.error && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {state.error}
-        </Text>
-      )}
-      <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Cancel reflection"
-          accessibilityState={{ disabled: state.submitting }}
-          disabled={state.submitting}
-          onPress={controller.close}
-          style={styles.cancel}
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            savingVisible ? 'Saving reflection' : 'Save reflection'
-          }
-          accessibilityState={{ disabled, busy: savingVisible }}
-          disabled={disabled}
-          hitSlop={4}
-          onPress={() => void controller.submit()}
-          style={[
-            styles.save,
-            disabled && !state.submitting && styles.disabled,
-          ]}
-        >
-          {savingVisible ? (
-            <ActivityIndicator
-              testID="day-reflection-spinner"
-              accessible={false}
-              color={colors.white}
-              size="small"
-            />
-          ) : (
-            <Text
-              style={[
-                styles.saveText,
-                disabled && !state.submitting && styles.disabledText,
-              ]}
-            >
-              Save reflection
-            </Text>
-          )}
-        </Pressable>
+      <View
+        testID="day-reflection-actions"
+        onLayout={({ nativeEvent }) =>
+          setActionsHeight(nativeEvent.layout.height)
+        }
+      >
+        {!!state.error && (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {state.error}
+          </Text>
+        )}
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cancel reflection"
+            accessibilityState={{ disabled: state.submitting }}
+            disabled={state.submitting}
+            onPress={controller.close}
+            style={styles.cancel}
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              savingVisible ? 'Saving reflection' : 'Save reflection'
+            }
+            accessibilityState={{ disabled, busy: savingVisible }}
+            disabled={disabled}
+            hitSlop={4}
+            onPress={() => void controller.submit()}
+            style={[
+              styles.save,
+              disabled && !state.submitting && styles.disabled,
+            ]}
+          >
+            {savingVisible ? (
+              <ActivityIndicator
+                testID="day-reflection-spinner"
+                accessible={false}
+                color={colors.white}
+                size="small"
+              />
+            ) : (
+              <Text
+                style={[
+                  styles.saveText,
+                  disabled && !state.submitting && styles.disabledText,
+                ]}
+              >
+                Save reflection
+              </Text>
+            )}
+          </Pressable>
+        </View>
       </View>
       <Modal
         visible={state.dismissOpen}

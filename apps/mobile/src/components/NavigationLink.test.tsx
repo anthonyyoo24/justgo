@@ -7,7 +7,7 @@ const mockNavigate = jest.fn();
 jest.mock('expo-router', () => {
   const { Text } = require('react-native') as typeof import('react-native');
   return {
-    Link: ({ href, replace, children, ...props }: LinkProps) => (
+    Link: ({ href, replace, children, ...props }: Omit<LinkProps, 'ref'>) => (
       <Text
         {...props}
         accessibilityRole="link"
@@ -21,24 +21,24 @@ jest.mock('expo-router', () => {
 
 beforeEach(() => mockNavigate.mockClear());
 
-it('keeps the Settings destination, accessible name and minimum touch height', () => {
-  const screen = render(<SettingsLink />);
+it('keeps the Settings destination, accessible name and minimum touch height', async () => {
+  const screen = await render(<SettingsLink />);
   const link = screen.getByRole('link', { name: 'Open Settings' });
   expect(StyleSheet.flatten(link.props.style).minHeight).toBeGreaterThanOrEqual(
     44,
   );
-  fireEvent.press(link);
+  await fireEvent.press(link);
   expect(mockNavigate).toHaveBeenCalledWith('/settings', false);
 });
 
-it('preserves replacement navigation and caller styling for the recovery return link', () => {
-  const screen = render(
+it('preserves replacement navigation and caller styling for the recovery return link', async () => {
+  const screen = await render(
     <NavigationLink href="/" replace style={{ textAlign: 'center' }}>
       Back to app
     </NavigationLink>,
   );
   const link = screen.getByRole('link', { name: 'Back to app' });
   expect(StyleSheet.flatten(link.props.style).textAlign).toBe('center');
-  fireEvent.press(link);
+  await fireEvent.press(link);
   expect(mockNavigate).toHaveBeenCalledWith('/', true);
 });

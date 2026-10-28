@@ -9,6 +9,7 @@ export const challengeDisplayFont = Platform.select({
   default: fontFamilies.display,
 });
 export const challengeScale = (width: number) => Math.min(width / 320, 1.2);
+export const challengeDeckStage = { height: 303, paddingTop: 18 } as const;
 export const timerOutline =
   'M23 4C58 3 117 0 149 2C172 3 179 14 179 34L178 60C177 79 166 83 149 84C109 87 56 85 23 82C7 80 1 73 1 60L2 22C3 10 9 5 23 4Z';
 // The source peach panel is raster artwork. Preserve its gently uneven silhouette

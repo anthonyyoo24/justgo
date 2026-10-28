@@ -1,0 +1,50 @@
+name: Staging readiness diagnostic
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_notification:
+        description: 'Intentionally fail one run to verify owner notifications'
+        type: boolean
+        default: false
+# Sentry owns recurring uptime checks; keep this manual diagnostic available.
+
+permissions: {}
+
+concurrency:
+  group: staging-health
+  cancel-in-progress: false
+
+jobs:
+  readiness:
+    if: github.repository == 'anthonyyoo24/justgo' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Check staging readiness
+        shell: bash
+        env:
+          NOTIFICATION_TEST: ${{ github.event_name == 'workflow_dispatch' && inputs.test_notification && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+          if [ "$NOTIFICATION_TEST" = true ]; then
+            echo 'Synthetic notification-delivery test: this failure is intentional; no readiness request was made.'
+            exit 1
+          fi
+          response="$(mktemp "$RUNNER_TEMP/justgo-readiness.XXXXXX")"
+          trap 'rm -f "$response"' EXIT
+          curl --fail --silent --show-error --max-time 15 --retry 2 --retry-delay 2 \
+            --output "$response" 'https://justgo-two.vercel.app/ready'
+          READINESS_RESPONSE="$response" node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          try {
+            const body = JSON.parse(await readFile(process.env.READINESS_RESPONSE, 'utf8'));
+            if (body?.status !== 'ready' || Object.keys(body).length !== 1)
+              throw new Error('Unexpected readiness response');
+            console.log('Staging readiness passed.');
+          } catch {
+            // Response bodies and provider errors can contain private details.
+            console.error('Staging readiness failed. Inspect the service dashboard.');
+            process.exitCode = 1;
+          }
+          NODE

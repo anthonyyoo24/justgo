@@ -9,7 +9,7 @@ const session: SessionSource = {
   reject: jest.fn(),
 };
 
-it.each(['PATCH', 'DELETE'] as const)(
+it.each(['PUT', 'PATCH', 'DELETE'] as const)(
   'never transiently replays explicit %s requests, including bodyless writes',
   async (method) => {
     for (const body of [undefined, { value: 'unchanged' }]) {

@@ -20,3 +20,7 @@ export async function saveExportFile(
     URL.revokeObjectURL(url);
   }
 }
+
+export async function clearExportFiles(): Promise<void> {
+  // Browser exports release their object URL in the owning share operation.
+}

@@ -246,7 +246,7 @@ acceptance and explicit owner merge approval remain open.
 
 Anthony requested fixing the assessed review findings and pushing the updates.
 The handoffs, index and plan now reference inspected hosted results, the six
-future handoff tasks remain unchecked, and Phase 11 requires all reviewed
+future handoff tasks remain unchecked, and Phase 14 requires all reviewed
 migrations including 0013 under the coordinated stopped-writer/backup/repair
 procedure. The existing migrations are unchanged.
 
@@ -278,7 +278,7 @@ uninspected bot percentage is claimed.
 
 ## Release rollout and repair
 
-Phase 11 owns external integration/deployment. Before accepting contraction on a
+Phase 14 owns external integration/deployment. Before accepting contraction on a
 valuable database: retire/block incompatible API/mobile writers, take and verify
 a protected restorable backup, pause writes, apply reviewed 0013, and accept the
 canonical API/mobile together. Old identity action and challenge/reflection/deck
@@ -304,7 +304,7 @@ Keep the owner-approved 07.3A deferral and earlier physical-device, Keychain/iCl
 backup, actual radio, software keyboard, VoiceOver/focus, scaled-text/reduced-motion,
 staging and release gates explicit. Native simulator evidence, when available,
 does not close physical-device or new-binary acceptance. Phase 08 owns the working
-support destination; Phase 11 owns physical-device and release integration.
+support destination; Phase 14 owns physical-device and release integration.
 
 Local implementation is not full phase acceptance until required evidence and
 owner review are reconciled. No publication or merge is implied by passing tests.

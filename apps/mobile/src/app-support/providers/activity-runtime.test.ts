@@ -2,6 +2,8 @@ import { ActivityRuntime } from './activity-runtime';
 import { AccountClient } from '../../lib/network/account-client';
 import { createHttpClient } from '../../lib/network/http';
 import { journalSchema, type JournalClock } from '../../data/activity/model';
+import { clearExportFiles } from '../../platform/export/export-file';
+import { clearBackupFiles } from '../../platform/backup/backup-file';
 import {
   MemoryStorage,
   card,
@@ -11,6 +13,14 @@ import {
   otherOwner,
   zone,
 } from '../../../test-support/journal';
+jest.mock('../../platform/export/export-file', () => ({
+  clearExportFiles: jest.fn(),
+}));
+jest.mock('../../platform/backup/backup-file', () => ({
+  clearBackupFiles: jest.fn(),
+}));
+const cleanExports = jest.mocked(clearExportFiles);
+const cleanBackups = jest.mocked(clearBackupFiles);
 function createRuntime(
   storage = new MemoryStorage(),
   options: { clock?: JournalClock; timeZone?: () => string } = {},
@@ -24,11 +34,104 @@ function createRuntime(
   });
   return { runtime: new ActivityRuntime(client, storage, options), client };
 }
-beforeEach(() => jest.useFakeTimers());
+beforeEach(() => {
+  jest.useFakeTimers();
+  cleanExports.mockReset().mockResolvedValue(undefined);
+  cleanBackups.mockReset();
+});
 afterEach(() => {
   jest.restoreAllMocks();
   jest.useRealTimers();
 });
+
+it.each(['exports', 'backups'] as const)(
+  'keeps startup usable when %s cleanup throws synchronously',
+  async (source) => {
+    const cleanup = source === 'exports' ? cleanExports : cleanBackups;
+    cleanup.mockImplementationOnce(() => {
+      throw new Error('Synthetic cache cleanup failure');
+    });
+    const { runtime, client } = createRuntime();
+    try {
+      await jest.advanceTimersByTimeAsync(0);
+      expect(cleanExports).toHaveBeenCalledTimes(1);
+      expect(cleanBackups).toHaveBeenCalledTimes(1);
+      runtime.setEnvironment({ active: true, online: false });
+      runtime.changeAccount(owner);
+      await runtime.getRepository()!.hydrate();
+      expect(runtime.getRepository()!.store.getState().ready).toBe(true);
+    } finally {
+      runtime.dispose();
+      client.changeAccount(null);
+    }
+  },
+);
+
+it.each(['exports', 'backups'] as const)(
+  'propagates %s cleanup failure during deletion and permits an isolated retry',
+  async (source) => {
+    const storage = new MemoryStorage();
+    storage.values.set(`justgo:v1:${otherOwner}:unrelated`, 'preserve');
+    const { runtime, client } = createRuntime(storage);
+    try {
+      await jest.advanceTimersByTimeAsync(0);
+      runtime.setEnvironment({ active: true, online: false });
+      runtime.changeAccount(owner);
+      await runtime.getRepository()!.complete(input(), card);
+      const cleanup = source === 'exports' ? cleanExports : cleanBackups;
+      cleanup.mockImplementationOnce(() => {
+        throw new Error('Synthetic deletion cleanup failure');
+      });
+      await expect(runtime.deleteAccount(owner)).rejects.toThrow(
+        'Synthetic deletion cleanup failure',
+      );
+      expect(runtime.getRepository()).toBeNull();
+      await expect(runtime.deleteAccount(owner)).resolves.toBeUndefined();
+      expect(storage.values.get(`justgo:v1:${otherOwner}:unrelated`)).toBe(
+        'preserve',
+      );
+      expect(
+        [...storage.values.keys()].some((key) =>
+          key.startsWith(`justgo:v1:${owner}:`),
+        ),
+      ).toBe(false);
+    } finally {
+      runtime.dispose();
+      client.changeAccount(null);
+    }
+  },
+);
+it('never reads a cloud journal during startup, reconnection or explicit synchronization', async () => {
+  const fetcher = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>(
+    async () => {
+      throw new Error('Unexpected HTTP request for an empty local journal');
+    },
+  );
+  const client = new AccountClient(
+    createHttpClient('http://127.0.0.1:3000', fetcher),
+    {
+      current: () => ({ userId: owner, token: 'synthetic-session' }),
+      renew: jest.fn(),
+      reject: jest.fn(),
+    },
+  );
+  client.changeAccount(owner);
+  const runtime = new ActivityRuntime(client, new MemoryStorage());
+  try {
+    runtime.changeAccount(owner);
+    await runtime.getRepository()!.hydrate();
+    runtime.setEnvironment({ active: true, online: false });
+    runtime.setEnvironment({ active: false, online: true });
+    runtime.setEnvironment({ active: true, online: true });
+    await runtime.getRepository()!.synchronize();
+    await jest.advanceTimersByTimeAsync(0);
+    expect(fetcher).not.toHaveBeenCalled();
+  } finally {
+    runtime.dispose();
+    client.changeAccount(null);
+  }
+});
+
 it('uses the supplied clock and fences late rollover failures after an account change', async () => {
   let now = Date.parse('2026-10-31T23:59:59.500-04:00');
   const { runtime, client } = createRuntime(new MemoryStorage(), {

@@ -13,5 +13,9 @@
   "0011_compatibility_history_index.sql": "5bdafd3512ad747e6f53cf53190ad0345f5c46c16a0c6bca8f10256745331b68",
   "0012_normalize_reflection_whitespace.sql": "5aa3c19bc38a755b72e3dbd98ffbfd71e1e7e9fd66e11ed1e982e50815f297e1",
   "0013_attempt_resources_contract.sql": "18baf2df6785044635b84284a62fe88555cc065b23ee67f4f6935fc4bc05ddd7",
-  "0014_account_deletion.sql": "83ba7345ad55e54dadc8b3c5a5009ad791385c45c5eeecd63c9429e6bb860c35"
+  "0014_account_deletion.sql": "83ba7345ad55e54dadc8b3c5a5009ad791385c45c5eeecd63c9429e6bb860c35",
+  "0015_identity_retention.sql": "d52ed58d60eb64053701c640570e84a5bd2862c9a47af365b1f16b41e116ac17",
+  "0016_transfer_delete_owner.sql": "44d0f8a140093f12a3cec3bfe33d078bcfbc7cf53706459c4dffdf730b2ac5b8",
+  "0017_account_acceptance.sql": "b2d6efd65dde39c27d02544655f72a1a08ac09b4178197cdc9ee359f6e2577c3",
+  "0018_remove_account_acceptance.sql": "1191e3d370c36cd3eef4232eaf29cb78b8c3354877ae3bac5896847bed518eb8"
 }

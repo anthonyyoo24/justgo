@@ -58,7 +58,7 @@ export function ChallengeFlowScreen() {
   const completed = !!state.success;
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ gestureEnabled: completed }} />
+      <Stack.Screen options={{ gestureEnabled: false }} />
       {/* Prepare layout/artwork beneath the opaque active surface. Revealing the
           existing view avoids a first-frame inset shift or image decode flash. */}
       <View

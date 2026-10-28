@@ -1,6 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import { Pool } from 'pg';
 import { z } from 'zod';
+import { createAttemptSchema } from '@justgo/contracts';
 import {
   journeyApiUrl,
   journeyAppUrl,
@@ -10,7 +11,7 @@ import {
 const fixtureRegistry = z
   .object({
     userIds: z.array(z.uuid()),
-    rateBucketKeys: z.array(z.string().regex(/^[a-f0-9]{64}$/)).length(2),
+    rateBucketKeys: z.array(z.string().regex(/^[a-f0-9]{64}$/)).length(3),
   })
   .strict();
 
@@ -47,6 +48,11 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
   page: async ({ page, fixtureDatabase }, use, testInfo) => {
     // Keep the database fixture alive until screenshot/page teardown completes.
     void fixtureDatabase;
+    // No journey diagnostic may reach a hosted provider. Individual diagnostics
+    // cases fulfill the intercepted request locally to inspect its real SDK payload.
+    await page.route('https://*.sentry.io/**', (route) =>
+      route.abort('blockedbyclient'),
+    );
     await page.route('**/v1/**', async (route) => {
       if (new URL(route.request().url()).origin !== journeyApiUrl) {
         await route.abort('blockedbyclient');
@@ -54,8 +60,25 @@ export const test = base.extend<{ fixtureDatabase: Pool }>({
       }
       await route.continue();
     });
+    const invalidActivityWrites: string[] = [];
+    page.on('request', (request) => {
+      const path = new URL(request.url()).pathname;
+      if (!path.startsWith('/v1/attempts') || request.method() === 'GET')
+        return;
+      let valid = false;
+      try {
+        valid =
+          path === '/v1/attempts' &&
+          request.method() === 'POST' &&
+          createAttemptSchema.safeParse(request.postDataJSON()).success;
+      } catch {
+        /* Invalid bodies must fail the privacy boundary assertion. */
+      }
+      if (!valid) invalidActivityWrites.push(`${request.method()} ${path}`);
+    });
     try {
       await use(page);
+      expect(invalidActivityWrites).toEqual([]);
     } finally {
       try {
         if (testInfo.status !== testInfo.expectedStatus && !page.isClosed()) {
@@ -93,6 +116,11 @@ async function removeFixtureAccounts(database: Pool) {
     await database.query('begin');
     try {
       for (const table of [
+        'journal_versions',
+        'managed_auth_deletions',
+        'deleted_completion_ids',
+        'managed_auth_sessions',
+        'managed_auth_accounts',
         'attempt_patch_receipts',
         'attempts',
         'device_transfers',

@@ -1,6 +1,12 @@
 import { useCallback } from 'react';
 import { Redirect, useFocusEffect } from 'expo-router';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  type KeyDownEvent,
+} from 'react-native';
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import {
   SettingsActionRow,
@@ -95,11 +101,11 @@ export function HapticsTestScreen() {
               ? {
                   // RN Web activates radio Pressables with Enter; add Space
                   // without passing a DOM keyboard prop to the native view.
-                  onKeyDown: (event: {
-                    key: string;
-                    preventDefault: () => void;
-                  }) => {
-                    if (event.key === ' ' || event.key === 'Spacebar') {
+                  onKeyDown: (event: KeyDownEvent) => {
+                    if (
+                      event.nativeEvent.key === ' ' ||
+                      event.nativeEvent.key === 'Spacebar'
+                    ) {
                       event.preventDefault();
                       testing.select(id);
                     }

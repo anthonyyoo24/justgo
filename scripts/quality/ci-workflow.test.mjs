@@ -11,7 +11,14 @@ import {
 } from './ci-workflow-fixture.mjs';
 
 const [triggers] = workflow.split(/^permissions:$/m);
-const producers = ['static', 'unit', 'database', 'journeys', 'exports'];
+const producers = [
+  'static',
+  'unit',
+  'database',
+  'journeys',
+  'exports',
+  'native-icloud',
+];
 
 test('pushes run only for main, PRs cancel older revisions, and main results stay independent', () => {
   assert.match(triggers, /^ {2}push:\n {4}branches: \[main\]$/m);
@@ -27,14 +34,15 @@ test('pushes run only for main, PRs cancel older revisions, and main results sta
 test('independent bounded producer jobs feed one always-evaluated required status', () => {
   assert.deepEqual(Object.keys(jobs), [...producers, 'checks']);
   for (const name of producers) assert.doesNotMatch(jobs[name], /^ {4}needs:/m);
-  for (const job of Object.values(jobs)) {
+  for (const [name, job] of Object.entries(jobs)) {
     assert.match(job, /^ {4}timeout-minutes: [1-9]\d*$/m);
     assert.match(job, /persist-credentials: false/);
-    assert.match(job, /uses: \.\/\.github\/actions\/setup-node/);
+    if (name !== 'native-icloud')
+      assert.match(job, /uses: \.\/\.github\/actions\/setup-node/);
   }
   assert.match(
     jobs.checks,
-    /^ {4}needs: \[static, unit, database, journeys, exports\]$/m,
+    /^ {4}needs: \[static, unit, database, journeys, exports, native-icloud\]$/m,
   );
   assert.match(jobs.checks, /^ {4}if: always\(\)$/m);
   assert.match(
@@ -44,22 +52,57 @@ test('independent bounded producer jobs feed one always-evaluated required statu
   assert.match(jobs.checks, /JUSTGO_CI_RESULTS: \$\{\{ toJSON\(needs\) \}\}/);
 });
 
+test('native iCloud regressions run on a bounded macOS producer without npm prerequisites', () => {
+  const job = jobs['native-icloud'];
+  assert.match(job, /^ {4}runs-on: macos-15$/m);
+  assert.match(job, /^ {4}timeout-minutes: 10$/m);
+  assert.match(
+    job,
+    /uses: actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/,
+  );
+  assert.deepEqual(commands(job), [
+    'swift test --package-path apps/mobile/modules/justgo-icloud --scratch-path .local/justgo-icloud-swift --jobs 1',
+  ]);
+  assert.doesNotMatch(job, /setup-node|\bnpm\b|\bnode\b|continue-on-error/);
+});
+
 test('static checks retain fresh route typechecking and audit only API production dependencies', () => {
   const runs = commands(jobs.static);
   assert.ok(
     runs.indexOf('npm run doctor -w @justgo/mobile') <
       runs.indexOf('npm run check:static'),
   );
-  assert.ok(
-    runs.includes(
-      'npm audit --workspace @justgo/api --omit=dev --include-workspace-root=false --audit-level=low',
-    ),
+  assert.ok(runs.includes('npm run audit:api'));
+  assert.equal(
+    rootPackage.scripts['audit:api'],
+    'node scripts/quality/audit-api-dependencies.mjs',
   );
   assert.match(rootPackage.scripts['check:static'], /npm run typecheck/);
   assert.match(
     rootPackage.scripts['check:static'],
     /npm run test:architecture$/,
   );
+});
+
+test('static CI checks workflow syntax and context availability with a checksum-pinned validator', () => {
+  const validator = jobs.static.match(
+    / {6}- name: Validate GitHub workflow definitions\n([\s\S]*?)(?= {6}- uses:)/,
+  )?.[1];
+  assert.ok(validator);
+  assert.match(
+    validator,
+    /https:\/\/github.com\/rhysd\/actionlint\/releases\/download\/v1\.7\.12\/actionlint_1\.7\.12_linux_amd64.tar.gz/,
+  );
+  assert.match(
+    validator,
+    /8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8/,
+  );
+  assert.match(validator, /sha256sum --check/);
+  assert.match(
+    validator,
+    /"\$RUNNER_TEMP\/actionlint" -shellcheck= -pyflakes=/,
+  );
+  assert.doesNotMatch(validator, /\|\|\s*true|continue-on-error/);
 });
 
 test('unit and database suites run once and API coverage merges without rerunning tests', () => {
@@ -94,6 +137,10 @@ test('database and journey prerequisites share isolated roles without ignored en
   assert.match(
     jobs.database,
     /justgo_migrator:migration-ci-only@localhost:5432\/justgo_test/,
+  );
+  assert.match(
+    jobs.database,
+    /JUSTGO_TEST_ADMIN_DATABASE_URL: postgresql:\/\/postgres:local-ci-only@localhost:5432\/justgo_test/,
   );
   assert.match(jobs.database, /DATABASE_SSL: disable/);
   assert.match(jobs.journeys, /^ {4}env: \*database-test-env$/m);

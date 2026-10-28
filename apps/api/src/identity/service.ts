@@ -8,16 +8,25 @@ import {
 import { sql, type SQL } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
-  BootstrapRequest,
+  BootstrapSessionRequest,
   CredentialCreate,
   IdentityErrorCode,
   SessionProposal,
   SessionResponse,
   TransferStart,
+  ManagedSessionRequest,
+  ManagedSessionResponse,
 } from '@justgo/contracts';
+import {
+  ManagedIdentityService,
+  type ManagedLiveSessionReader,
+} from './managed-service.js';
+import type { ManagedAuthVerifier } from './managed-verifier.js';
+import type { ManagedAuthDeletion } from './managed-deletion.js';
 
 type Tx = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
 type Row = Record<string, unknown>;
+type RateBucket = Row & { count: number; retry_after_seconds: number };
 type SessionRow = Row & {
   id: string;
   user_id: string;
@@ -69,11 +78,20 @@ export type IdentityOptions = {
   sessionHours?: number;
   transferMinutes?: number;
   rateLimit?: number;
+  activityWriteRateLimit?: number;
+  accountExportRateLimit?: number;
   rateKey: string;
   // Trusted server-side allocation seam; never supplied by an HTTP caller.
   newUserId?: () => string;
+  managedAuthVerifier?: ManagedAuthVerifier;
+  managedLiveSessionReader?: ManagedLiveSessionReader;
+  managedAuthDeletion?: ManagedAuthDeletion;
 };
+export type AuthenticatedSession = SessionResponse &
+  Partial<Pick<ManagedSessionResponse, 'authUserId' | 'dataEpoch'>>;
 export class IdentityService {
+  readonly managed?: ManagedIdentityService;
+  readonly managedAuthDeletion: ManagedAuthDeletion | undefined;
   private readonly sessionHours: number;
   private readonly transferMinutes: number;
   constructor(
@@ -82,6 +100,21 @@ export class IdentityService {
   ) {
     this.sessionHours = options.sessionHours ?? 168;
     this.transferMinutes = options.transferMinutes ?? 10;
+    this.managedAuthDeletion = options.managedAuthDeletion;
+    if (options.managedAuthVerifier)
+      this.managed = new ManagedIdentityService(
+        db,
+        options.managedAuthVerifier,
+        async (tx, token, linkedOwner) => {
+          const row = await this.findSession(tx, token);
+          // A replay confirms a link already owned by the verified Auth subject;
+          // revoked legacy material never authorizes a new mapping.
+          if (row.user_id !== linkedOwner) await this.active(tx, row);
+          return row.user_id;
+        },
+        options.managedLiveSessionReader,
+        options.newUserId,
+      );
   }
   // Durable, atomic, shared across API instances. Never store raw addresses or bearer secrets.
   async rateLimit(
@@ -89,25 +122,43 @@ export class IdentityService {
     lane: string,
     limit = this.options.rateLimit ?? 30,
   ) {
+    const bucket = await this.db.transaction((tx) =>
+      this.rateBucket(tx, address, lane),
+    );
+    this.requireRateBudget(bucket, limit);
+  }
+  /** Reuse the authenticated transaction: a second pool checkout can deadlock a one-connection server. */
+  async rateLimitAccount(tx: Tx, userId: string, lane: 'write' | 'export') {
+    const limit =
+      lane === 'write'
+        ? (this.options.activityWriteRateLimit ?? 600)
+        : (this.options.accountExportRateLimit ?? 3000);
+    this.requireRateBudget(
+      await this.rateBucket(tx, userId, `account-${lane}`),
+      limit,
+    );
+  }
+  private requireRateBudget(bucket: RateBucket, limit: number) {
+    if (bucket.count > limit)
+      throw new ApiError('RATE_LIMITED', 429, bucket.retry_after_seconds);
+  }
+  private async rateBucket(tx: Tx, subject: string, lane: string) {
     const key = createHmac('sha256', this.options.rateKey)
-      .update(`${lane}:${address}`)
+      .update(`${lane}:${subject}`)
       .digest('hex');
-    const bucket = await this.db.transaction(async (tx) => {
-      await context(tx, 'app.rate_key', key);
-      const row = await one<{ count: number; retry_after_seconds: number }>(
-        tx,
-        sql`
+    await context(tx, 'app.rate_key', key);
+    const row = await one<RateBucket>(
+      tx,
+      sql`
         insert into justgo.identity_rate_buckets (key,count,window_start) values (${key},1,now())
         on conflict (key) do update set
           count = case when identity_rate_buckets.window_start <= now()-interval '10 minutes' then 1 else identity_rate_buckets.count+1 end,
           window_start = case when identity_rate_buckets.window_start <= now()-interval '10 minutes' then now() else identity_rate_buckets.window_start end
         returning count,
           greatest(1, least(600, ceil(extract(epoch from (window_start + interval '10 minutes' - now())))))::integer as retry_after_seconds`,
-      );
-      return row!;
-    });
-    if (bucket.count > limit)
-      throw new ApiError('RATE_LIMITED', 429, bucket.retry_after_seconds);
+    );
+    if (!row) throw new ApiError('UNAVAILABLE', 503);
+    return row;
   }
   private async owner(tx: Tx, userId: string) {
     // Only called with a server-generated new account or a verified digest-bound identity.
@@ -148,8 +199,12 @@ export class IdentityService {
   }
   async withSession<T>(
     token: string,
-    work: (tx: Tx, session: SessionResponse) => Promise<T>,
+    work: (tx: Tx, session: AuthenticatedSession) => Promise<T>,
   ): Promise<T> {
+    if (token.includes('.')) {
+      if (!this.managed) throw new ApiError('UNAUTHORIZED');
+      return this.managed.withSession(token, work);
+    }
     return this.db.transaction(async (tx) => {
       const row = await this.findSession(tx, token);
       await this.active(tx, row);
@@ -161,6 +216,31 @@ export class IdentityService {
     token: string,
     work: (tx: Tx, userId: string, deletedAt: Date | null) => Promise<T>,
   ): Promise<T> {
+    if (token.includes('.')) {
+      const receipt = () =>
+        this.db.transaction(async (tx) => {
+          await context(tx, 'app.session_digest', digest(token));
+          const row = await one<{ id: string; deleted_at: Date }>(
+            tx,
+            sql`select id,deleted_at from justgo.users where deletion_session_digest=${digest(token)} and deleted_at is not null`,
+          );
+          if (!row) return undefined;
+          await context(tx, 'app.user_id', row.id);
+          return { value: await work(tx, row.id, row.deleted_at) };
+        });
+      const previous = await receipt();
+      if (previous) return previous.value;
+      if (!this.managed) throw new ApiError('UNAUTHORIZED');
+      try {
+        return await this.managed.withSession(token, (tx, session) =>
+          work(tx, session.userId, null),
+        );
+      } catch (error) {
+        const committed = await receipt();
+        if (committed) return committed.value;
+        throw error;
+      }
+    }
     return this.db.transaction(async (tx) => {
       const hash = digest(token);
       await context(tx, 'app.session_digest', hash);
@@ -192,6 +272,10 @@ export class IdentityService {
         return work(tx, committed.id, committed.deleted_at);
       }
     });
+  }
+  exchangeManaged(token: string, input: ManagedSessionRequest) {
+    if (!this.managed) throw new ApiError('UNAVAILABLE', 503);
+    return this.managed.exchange(token, input);
   }
   private async issue(
     tx: Tx,
@@ -227,7 +311,7 @@ export class IdentityService {
     );
     return response(row!);
   }
-  async bootstrap(input: BootstrapRequest, create = true) {
+  async bootstrap(input: BootstrapSessionRequest, create = true) {
     return this.db.transaction(async (tx) => {
       const hash = digest(input.credential);
       // Serialize missing-row creation; unique digest remains the final invariant.
@@ -259,7 +343,12 @@ export class IdentityService {
     });
   }
   me(token: string) {
-    return this.withSession(token, async (_tx, session) => session);
+    return this.withSession(token, async (_tx, session) => ({
+      userId: session.userId,
+      deviceId: session.deviceId,
+      sessionId: session.sessionId,
+      expiresAt: session.expiresAt,
+    }));
   }
   async renew(
     token: string,

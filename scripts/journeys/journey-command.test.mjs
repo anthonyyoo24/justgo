@@ -24,6 +24,12 @@ test('journey command checks ports and prerequisites before services and preserv
     },
     run: async (command, args, env) => {
       assert.equal(env.NO_COLOR, undefined);
+      assert.equal(env.EXPO_PUBLIC_SENTRY_ENABLED, 'true');
+      assert.equal(env.EXPO_PUBLIC_SENTRY_ENVIRONMENT, 'development');
+      assert.equal(
+        env.EXPO_PUBLIC_SENTRY_DSN,
+        'https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@o123.ingest.us.sentry.io/4512279181459456',
+      );
       calls.push([command, ...args]);
       return command === 'npx' ? 23 : 0;
     },

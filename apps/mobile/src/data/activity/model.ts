@@ -7,6 +7,7 @@ import {
   progressCalendarSchema,
   progressDayResponseSchema,
   type Catalog,
+  type Attempt,
   timeZoneSchema,
   activityDateSchema,
   catalogSchema,
@@ -193,7 +194,13 @@ export type WarningEpisode = {
   online: boolean;
 };
 export type JournalState = {
+  dataMode?: 'legacy' | 'local' | 'cloud';
+  syncStatus?: 'idle' | 'syncing' | 'error';
+  dataEpoch?: number | null;
+  dataDeletionPending?: boolean;
   ready: boolean;
+  localEntries?: Record<string, Attempt>;
+  localJournalReady?: boolean;
   hydrationError: 'unreadable' | null;
   coordinatorError: 'UNAVAILABLE' | null;
   journal: Journal;

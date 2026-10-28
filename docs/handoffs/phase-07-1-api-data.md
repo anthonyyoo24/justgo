@@ -193,7 +193,7 @@ writers, compare both protocols again, generate/review final metadata and accept
 removal of old state. Before a real cutover, take a protected restorable backup;
 use a new forward-repair migration on failure. Do not reset a deployed database
 or blindly revert to pre-07.1 app writers after accepting canonical records.
-Coordinated release rollout and old-client retirement remain Phase 11 work.
+Coordinated release rollout and old-client retirement remain Phase 14 work.
 
 ## Saved journey foundation — 07.1B, local only
 
@@ -303,5 +303,5 @@ preservation, fixtures/CI and documents, with no remaining 07.1 blocker.
   dates after summary.today only for current streak, preserving counts and best
   streak. This is part of the existing travel/rollover acceptance task.
 - Keep the original device, Keychain, native accessibility/storage/gesture and
-  staging gates open in their source handoffs and Phase 11. Browser evidence and
+  staging gates open in their source handoffs and Phase 14. Browser evidence and
   bundle exports do not close them.

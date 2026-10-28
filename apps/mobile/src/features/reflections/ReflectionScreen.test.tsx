@@ -1,5 +1,9 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { ReflectionScreen } from './ReflectionScreen';
+import {
+  memoryLocalJournal,
+  memoryJournalBackend,
+} from '../../../test-support/local-journal';
 import { AccountRepository } from '../../data/activity/repository';
 import {
   MemoryStorage,
@@ -49,6 +53,7 @@ beforeEach(async () => {
   mockRepository = new AccountRepository({
     accountId: owner,
     storage,
+    localJournal: memoryLocalJournal(owner, storage),
     transport: backend(),
     today,
     timeZone: zone,
@@ -66,14 +71,18 @@ afterEach(() => {
   mockRepository?.dispose();
   jest.useRealTimers();
 });
-it('plays selection feedback only for a user change, without sending feeling or reflection data', () => {
-  const screen = render(<ReflectionScreen />);
+it('plays selection feedback only for a user change, without sending feeling or reflection data', async () => {
+  const screen = await render(<ReflectionScreen />);
   expect(mockFeedback).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole('radio', { name: 'A little bit better' }));
+  await fireEvent.press(
+    screen.getByRole('radio', { name: 'A little bit better' }),
+  );
   expect(mockFeedback.mock.calls).toEqual([['selection']]);
-  fireEvent.press(screen.getByRole('radio', { name: 'A little bit better' }));
+  await fireEvent.press(
+    screen.getByRole('radio', { name: 'A little bit better' }),
+  );
   expect(mockFeedback.mock.calls).toEqual([['selection'], ['selection']]);
-  fireEvent.changeText(
+  await fireEvent.changeText(
     screen.getByLabelText('Your reflection'),
     'Disposable test note',
   );
@@ -87,13 +96,14 @@ it('replaces the missing-activity message with a working editor after a slow jou
   mockRepository = new AccountRepository({
     accountId: owner,
     storage,
+    localJournal: memoryLocalJournal(owner, storage),
     transport: backend(),
     today,
     timeZone: zone,
   });
   mockRepository.setEnvironment({ active: true, online: false });
   const hydration = mockRepository.hydrate();
-  const screen = render(<ReflectionScreen />);
+  const screen = await render(<ReflectionScreen />);
   expect(
     screen.getByText(
       'Open a completed challenge to add or edit its reflection.',
@@ -108,24 +118,40 @@ it('replaces the missing-activity message with a working editor after a slow jou
       'Open a completed challenge to add or edit its reflection.',
     ),
   ).toBeNull();
-  fireEvent.press(screen.getByRole('radio', { name: 'A lot better' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
+  await fireEvent.press(screen.getByRole('radio', { name: 'A lot better' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save Reflection' }),
+  );
   await waitFor(() => expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1));
   expect(mockRepository.getAttempt(uuid(1))?.reflection?.feeling).toBe(
     'a_lot_better',
   );
 });
 it('opens a local reflection immediately and saves without HTTP gating', async () => {
-  const screen = render(<ReflectionScreen />);
+  const screen = await render(<ReflectionScreen />);
   expect(screen.getByRole('button', { name: 'Skip' })).toBeEnabled();
-  fireEvent.press(screen.getByRole('radio', { name: 'A lot better' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
+  await fireEvent.press(screen.getByRole('radio', { name: 'A lot better' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save Reflection' }),
+  );
   await waitFor(() => expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1));
   expect(screen.getByText('How do you feel?')).toBeTruthy();
   expect(mockRepository?.getAttempt(uuid(1))?.reflection?.feeling).toBe(
     'a_lot_better',
   );
   expect(mockChallenges.dismissSuccess).toHaveBeenCalledTimes(1);
+});
+it('skips only through the bottom action without writing an empty reflection', async () => {
+  const submit = jest.spyOn(mockRepository!, 'submitReflection');
+  const screen = await render(<ReflectionScreen />);
+  expect(screen.getAllByRole('button')).toHaveLength(1);
+  expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Close reflection' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'Skip' }));
+  expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(tabs)');
+  expect(mockChallenges.dismissSuccess).toHaveBeenCalledTimes(1);
+  expect(submit).not.toHaveBeenCalled();
+  expect(mockRepository?.getAttempt(uuid(1))?.reflection).toBeNull();
 });
 it.each(['progress', 'recovery'])(
   'keeps a different completion flow when saving an older reflection from %s',
@@ -134,12 +160,14 @@ it.each(['progress', 'recovery'])(
     mockSuccessId = uuid(99);
     await mockRepository!.complete(input(99), card);
     await mockRepository!.setFlowAttempt(uuid(99));
-    const screen = render(<ReflectionScreen />);
-    fireEvent.changeText(
+    const screen = await render(<ReflectionScreen />);
+    await fireEvent.changeText(
       screen.getByLabelText('Your reflection'),
       'Reviewed old reflection',
     );
-    fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Save Reflection' }),
+    );
     if (source === 'progress')
       await waitFor(() =>
         expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(tabs)/progress'),
@@ -154,12 +182,16 @@ it.each(['progress', 'recovery'])(
 );
 it('shows slow local-save feedback, coalesces taps and retains newer typing', async () => {
   jest.useFakeTimers();
-  const screen = render(<ReflectionScreen />);
-  fireEvent.changeText(screen.getByLabelText('Your reflection'), 'First');
+  const screen = await render(<ReflectionScreen />);
+  await fireEvent.changeText(screen.getByLabelText('Your reflection'), 'First');
   const block = deferred<void>();
-  storage.blocked = block;
-  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
+  memoryJournalBackend(storage).beforeCommit = () => block.promise;
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save Reflection' }),
+  );
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save Reflection' }),
+  );
   expect(screen.queryByText('Saving…')).toBeNull();
   expect(screen.queryByTestId('reflection-submit-spinner')).toBeNull();
   await act(async () => jest.advanceTimersByTimeAsync(199));
@@ -171,7 +203,7 @@ it('shows slow local-save feedback, coalesces taps and retains newer typing', as
   expect(screen.getByTestId('reflection-submit-spinner')).toBeTruthy();
   expect(screen.queryByText('Save Reflection')).toBeNull();
   expect(screen.queryByText('Saving…')).toBeNull();
-  fireEvent.changeText(screen.getByLabelText('Your reflection'), 'Newer');
+  await fireEvent.changeText(screen.getByLabelText('Your reflection'), 'Newer');
   await act(async () => block.resolve());
   expect(mockRouter.dismissTo).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Your reflection').props.value).toBe('Newer');
@@ -180,24 +212,26 @@ it('shows slow local-save feedback, coalesces taps and retains newer typing', as
 });
 it('cleans delayed feedback on unmount and fences late navigation', async () => {
   jest.useFakeTimers();
-  const screen = render(<ReflectionScreen />);
-  fireEvent.changeText(screen.getByLabelText('Your reflection'), 'First');
+  const screen = await render(<ReflectionScreen />);
+  await fireEvent.changeText(screen.getByLabelText('Your reflection'), 'First');
   const block = deferred<void>();
-  storage.blocked = block;
-  fireEvent.press(screen.getByRole('button', { name: 'Save Reflection' }));
-  screen.unmount();
+  memoryJournalBackend(storage).beforeCommit = () => block.promise;
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Save Reflection' }),
+  );
+  await screen.unmount();
   await act(async () => block.resolve());
   await act(async () => jest.advanceTimersByTimeAsync(201));
   expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 });
-it('handles missing local activity without a server lookup', () => {
+it('handles missing local activity without a server lookup', async () => {
   mockId = undefined;
-  const screen = render(<ReflectionScreen />);
+  const screen = await render(<ReflectionScreen />);
   expect(
     screen.getByText(
       'Open a completed challenge to add or edit its reflection.',
     ),
   ).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Back to Home' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Back to Home' }));
   expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(tabs)');
 });

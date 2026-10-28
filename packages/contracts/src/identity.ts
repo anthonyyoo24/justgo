@@ -125,6 +125,10 @@ export const transferCancelResponseSchema = z.union([
 export type SessionCreate = z.infer<typeof sessionCreateSchema>;
 export type SessionProposal = z.infer<typeof sessionProposalSchema>;
 export type BootstrapRequest = z.infer<typeof bootstrapSchema>;
+export type BootstrapSessionRequest = Omit<
+  Extract<SessionCreate, { kind: 'bootstrap' }>,
+  'kind'
+>;
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 export type TransferStart = z.infer<typeof transferStartSchema>;
 export type TransferInspectionResponse = z.infer<

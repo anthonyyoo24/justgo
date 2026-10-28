@@ -71,52 +71,50 @@ export function SavingNotice({
             >
               {unreadable && (
                 <Text accessibilityRole="alert" style={styles.copy}>
-                  Saved activity on this phone couldn’t be read. The original
-                  copy has been kept. Connect to view previously uploaded
-                  history. New activity can still be recorded.
+                  Saved data on this phone couldn’t be read or migrated. The
+                  original copy has been kept. Free storage or reopen the app,
+                  then retry from Journal in Settings. Cloud recovery restores
+                  completion history.
                 </Text>
               )}
               {operations.map((operation) => {
                 const record = state.journal.records[operation.attemptId]!;
+                const attempt =
+                  repository.getAttempt(operation.attemptId) ?? record.attempt;
                 return (
                   <View key={operation.id} style={styles.entry}>
                     <Text style={styles.copy}>
-                      {record.attempt.instruction} ·{' '}
-                      {record.attempt.activityDate}
+                      {attempt.instruction} · {attempt.activityDate}
                     </Text>
                     <Text accessibilityRole="alert" style={styles.copy}>
                       {operationProblem(operation)}
                     </Text>
-                    {!!record.attempt.reflection?.text && (
-                      <Text style={styles.copy}>
-                        {record.attempt.reflection.text}
-                      </Text>
+                    {!!attempt.reflection?.text && (
+                      <Text style={styles.copy}>{attempt.reflection.text}</Text>
                     )}
                     {!!operation.requestId && (
                       <Text style={styles.copy}>
                         Reference: {operation.requestId}
                       </Text>
                     )}
-                    {navigationEnabled &&
-                      operation.kind === 'patch' &&
-                      operation.code === 'INVALID_REQUEST' && (
-                        <Pressable
-                          accessibilityRole="button"
-                          style={styles.action}
-                          onPress={() => {
-                            onNavigate?.();
-                            router.push({
-                              pathname: '/reflection',
-                              params: {
-                                attemptId: operation.attemptId,
-                                source: 'recovery',
-                              },
-                            });
-                          }}
-                        >
-                          <Text style={styles.link}>Review reflection</Text>
-                        </Pressable>
-                      )}
+                    {navigationEnabled && !!attempt.reflection && (
+                      <Pressable
+                        accessibilityRole="button"
+                        style={styles.action}
+                        onPress={() => {
+                          onNavigate?.();
+                          router.push({
+                            pathname: '/reflection',
+                            params: {
+                              attemptId: operation.attemptId,
+                              source: 'recovery',
+                            },
+                          });
+                        }}
+                      >
+                        <Text style={styles.link}>Review reflection</Text>
+                      </Pressable>
+                    )}
                     {navigationEnabled && operation.state === 'auth' && (
                       <Pressable
                         accessibilityRole="button"

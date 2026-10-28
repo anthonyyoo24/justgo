@@ -1,56 +1,410 @@
-# JustGO legal document review and publication
+# JustGO legal review and publication
 
-**October 14 phase ownership:** [Phase 10](../implementation-plan/phase-10-legal-documents.md#phase-10) owns this review, final Privacy Policy/Terms, public hosting and disclosure preparation. Phase 08 supplies verified data-control/retention behavior, Phase 09 supplies actual analytics facts, and Phase 11 verifies the signed release and submits final metadata. Existing drafts and open review decisions are preserved.
+Phase [12](../implementation-plan/phase-12-legal-documents.md) established legal text and disclosure preparation; [Phase 13](../implementation-plan/phase-13-local-journal.md) updates them for guest-local use, optional managed account journal sync, optional private CloudKit and unified data controls. Phase 14 owns approved rollout, final public review/hosting and signed-release evidence. This record separates researched requirements, verified implementation and unresolved approval. It is not a legal opinion or evidence of worldwide compliance.
 
-The next step is owner review of the [data inventory](DATA_INVENTORY.md), [Privacy Policy draft](PRIVACY_POLICY_DRAFT.md) and [Terms of Use draft](TERMS_DRAFT.md). Youngshin Yoo is the confirmed personal operator in Canada. The intended draft scope is adults 18 and older across available App Store countries and regions. No public pages or App Store settings were changed by this drafting work.
+## Current review package
 
-## Decisions needed before publication
+**October 21 technical reconciliation of the revised Phase 13 candidate:** Continue enters a durable local journal without creating a server account. Welcome places Sign in with Apple and Sign in with Google with their logos above Continue. Optional Supabase Auth sign-in maps the verified provider subject to a canonical JustGO account; signed-in completion history AND private journal synchronize through the API/database. After the cloud-storage disclosure, first sign-in automatically adopts unowned phone entries without an unchecked merge choice. Durable handover state protects source writing until target acceptance and retirement; old parked guest sources use the disclosed flow. Signout keeps the same journal visible and editable; the same account synchronizes later edits, while different real accounts remain isolated. Account has verified Apple/Google login-method switches, Log out and red Delete account. Linking/unlinking preserves the owner and protects the final usable provider method. No View guest data, key/code/transfer UI or Recover earlier journal remains. This is a technical wording update, not a refreshed legal assessment or approval.
 
-| Item                                      | Owner and phase                                                            | Required result                                                                                                                                                                                                                                                                                                                |
-| ----------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Canadian jurisdiction and contact details | Youngshin Yoo / Phase 10 review                                            | Confirm province, applicable Canadian rules and required public contact details.                                                                                                                                                                                                                                               |
-| Individual developer eligibility          | Youngshin Yoo + release reviewer / 10–11                                   | Assess whether Apple's legal-entity requirement for apps requiring sensitive information applies to JustGO's structured feeling/journal features; personal-operator confirmation alone does not settle App Review eligibility.                                                                                                 |
-| Worldwide regional review                 | Youngshin Yoo with qualified privacy/legal reviewer / 10                   | Assess relevant EU/UK and other regional requirements, including sensitive self-reports, processing grounds, rights, representatives, transfers and provider agreements. Evaluate US state-law applicability rather than asserting every statute applies.                                                                      |
-| Minimum age                               | Youngshin Yoo + product/release implementation / 10–11                     | Confirm 18+ eligibility, appropriate product treatment and App Store age rating. No new onboarding or collection of birth dates/ID is authorized by this draft.                                                                                                                                                                |
-| Analytics and diagnostics                 | Youngshin Yoo + implementer / 08 diagnostics, 09 analytics; 10 disclosures | Review the October 15 single Terms & Privacy onboarding acceptance, with no analytics Settings switches or later analytics prompt, against the actual fields (including feelings/length if included), identifiers, regional requirements, privacy requests, vendor regions and retention. Describe disabled services honestly. |
-| Retention                                 | Youngshin Yoo + implementer / 08 storage, 09 analytics; 10 disclosures     | Choose and configure journal, analytics, logs, support, backups and necessary security/legal record periods. The architecture's 90-day event retention is a proposal.                                                                                                                                                          |
-| Export and deletion                       | Implementer; owner acceptance / 08; disclosure review / 10                 | Verify authenticated owner isolation, immediate revocation, local/server cleanup, failed-vendor retries and blocked resurrection. Explain retained data and pending cleanup.                                                                                                                                                   |
-| Provider facts                            | Youngshin Yoo + implementer / 09–10, release verification 11; 07A billing  | Verify production regions, subprocessors, contracts and SDK data. Staging's Canada location does not establish all services' locations.                                                                                                                                                                                        |
-| License and service terms                 | Youngshin Yoo with legal reviewer / 10; paid-stage update 07A/11           | Review the standard Apple EULA plus JustGO terms, eligibility and mandatory consumer protections. Add final paid-offer wording when 07A activates.                                                                                                                                                                             |
-| Public hosting                            | Youngshin Yoo / 10                                                         | Select the public host/domain and approve the reviewed content and publication.                                                                                                                                                                                                                                                |
+A separate iCloud Sync setting is off by default; the native adapter targets Apple's private CloudKit database, with actual configuration and device acceptance still open. It is independent of JustGO sign-in, manual iCloud Drive files and system backup. Data has Download my data, validated Import data preview/confirmation, and Delete all my data. Both deletion actions reuse the confirmation modal with distinct wording. Delete all retains identity/login methods and fences stale replicas; Delete account closes the owner, revokes sessions, hard-deletes the managed Auth user through retryable server cleanup, purges/closes associated app-managed iCloud collections and clears matching local data/credentials. Both actions include previously associated iCloud copies even if Sync is now OFF; unavailable associated Apple accounts leave durable pending cleanup. User-saved files remain, and disconnected devices are not immediately erased. Neither action deletes the Apple/Google account or cancels a subscription. The requested reset concerns old server reflections only and preserves phone journals; **no hosted reset or deployment is established here**.
 
-Worldwide availability is an intended product scope, not proof of compliance everywhere. GDPR can apply to a Canadian operator offering services to people in the EU; the review must assess the actual activity. [European Commission scope guidance](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/application-gdpr_en). Use the [ICO guidance](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/) for the UK and the [California Attorney General's applicability guidance](https://oag.ca.gov/privacy/ccpa) as starting points for those regions.
+The [inventory](DATA_INVENTORY.md), [Privacy Policy](PRIVACY_POLICY_DRAFT.md), [Terms](TERMS_DRAFT.md) and [disclosure worksheet](RELEASE_DISCLOSURES.md) describe the managed-sync boundary. On October 25 Anthony authorized necessary final wording changes and public hosting on Vercel Hobby. The focused review kept Terms unchanged and added only the legal website's hosting/visitor-connection disclosure to Privacy. Anthony subsequently approved the exact essential-errors Privacy Policy wording and publication on October 27, 2026. Privacy is now `owner-approved`, version `2026-10-27-essential-errors`, effective October 27; the update was published and verified against the approved generated bytes on October 27. Terms remains unchanged as `2026-10-25-beta`, effective October 25. The production parser still rejects future unapproved or undated candidates. The [Phase 13 handoff](../handoffs/phase-13-local-journal.md) records the separate hosted rollout/provider configuration and basic phone evidence; extended device, provider and regional gates remain open before external beta distribution.
 
-For Canadian review, begin with the [OPC's meaningful-consent guidance](https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/appropriate-handling-of-personal-information/collecting-personal-information-and-consent/consent/gl_omc_201805/). Optional sharing needs an understandable choice; a long policy does not replace the actual consent experience. Cross-border service processing also needs clear disclosure and safeguards. [OPC outsourcing guidance](https://www.priv.gc.ca/en/privacy-topics/employers-and-employees/outsourcing/02_05_d_57_os_01/).
+Youngshin Yoo is the personal operator in Ontario, Canada, with temporary contact anthonyyoo24@gmail.com and intended audience 18+. Initial paid storefront exclusions remain EU, UK, Norway, Iceland and Liechtenstein by October 20 owner direction. Actual eligibility, storefronts, rating, required public contacts and regional privacy handling remain Phase 14. Do not infer a public home address. Owner-directed document hosting is live at [Privacy](https://justgo-legal.vercel.app/privacy/) and [Terms](https://justgo-legal.vercel.app/terms/) in a separate Hobby project. This choice does not settle future commercial eligibility or private-journal processor suitability. No paid upgrade or provider contact occurred. The separate October 27 Sentry DPA acceptance is recorded below; it does not resolve private-journal provider suitability.
 
-## October 15 onboarding acceptance review
+Terms & Privacy has ordinary direct links and Continue, without document-view/agreement receipts or accepted-version gates. Continue is now guest continuation, not a server identity bootstrap. Returning managed accounts require no legal-version check. Product analytics remains disabled. Installed TestFlight build 4 keeps ordinary app Sentry delivery off; an optional filtered diagnostics build and sanitized API errors are prepared, with normal API collection not enabled. Native phone acceptance follows internal upload and remains deferred before external testing. The first public App Store release is intended to be paid, so 07A/14 must update the beta text for the actual offer and billing before that release.
 
-The owner approved one Terms & Privacy onboarding page as the only permission request for the Phase 09 analytics scope, replacing the two planned Settings choices. See the [planning handoff and draft copy](../handoffs/phase-09-analytics.md). Review whether that experience supports the exact collection in the intended release regions; do not treat a competitor screenshot or agreement to general terms as proof. Keep applicable withdrawal/objection rights and an effective request-handling process in the review even though no Settings switch is planned. If required changes affect the approved experience or distribution, record the issue for the owner rather than silently declaring it resolved.
+## Review outcomes and remaining conditions
 
-Copy must describe phone plus cloud storage, product-analysis purposes and persistent account linkage accurately. The proposed statement about not selling data without permission is draft copy, not authorization for any sale. Material future scope changes and AI-context sharing are outside this acceptance.
+| Topic                              | Local candidate                                                                                                                              | Remaining owner/gate                                                                                                                                                                                              |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Private cloud/provider suitability | Normal signed-in journal traffic again includes feelings/text, not merely legacy responses                                                   | Release owner/privacy reviewer /14 must reassess actual Vercel/Supabase arrangements and sensitive-content scope before real users. Earlier completion-only clearance cannot be reused.                           |
+| Managed Auth                       | Supabase Auth adds provider subject, tokens and possible email/profile data; canonical ownership and login switches remain server verified   | Provider configuration, exact audiences, actual profile/session retention, revocation/linking/unlinking, final-method protection and hard-delete/retry acceptance remain open.                                    |
+| CloudKit                           | Separate off-by-default private Apple database and native module are implemented locally                                                     | Container/capability/provisioning, Apple-account changes, conflicts/quota/offline/relaunch, deletion generations/permanent closure and real device evidence remain open.                                          |
+| Guest/local privacy                | No server account created by Continue; disclosed first sign-in adopts unowned phone entries; logout retains the same editable journal        | Native persistence/lock/system-backup proof, interrupted adoption/source retirement, no cross-account remap; selected file destinations reviewed separately.                                                      |
+| Download/import                    | One restorable history/journal/preferences ZIP; account-owner validation and explicit preview                                                | Signed Files/picker/cancel/cleanup, duplicate/conflict/oversize/wrong-owner tests and truthful online-complete versus phone-snapshot scope.                                                                       |
+| Deletion                           | Separate Delete all and Delete account with durable intents/epochs/receipts and cleanup of previously associated iCloud copies even when OFF | Hosted managed Auth deletion cleanup, stale-device/backup-ledger replay, CloudKit purge, unavailable-account pending/retry and external/provider-copy boundaries.                                                 |
+| Legacy server reset                | Old journal endpoint/UI retired; bounded forward server reset requested; phone data preserved                                                | Approved actual reset/rollout evidence and provider recovery-copy expiry remain separate. No historical content recovery promise.                                                                                 |
+| Operator/regions/age/EULA          | Existing Ontario personal operator, 18+, standard Apple EULA, exclusions retained                                                            | Actual App Store eligibility/availability, contextual sensitive-data/regional notices and owner/public-text review before publication.                                                                            |
+| Telemetry/support                  | October 27 essential-errors policy approved; current build 4 is off, optional app/API error paths prepared; support mail is user submitted   | Matching notice publication, actual deployment/ingestion and signed-native cache/envelope/symbolication checks remain open. DPA 5.1.0 is signed; retention and request/deletion handling still need verification. |
+| Legal hosting                      | Owner-directed October 25 publication on separate Vercel Hobby project; both HTTPS pages and logo verified anonymously                       | Signed-iPhone link/accessibility checks remain. Reassess plan eligibility before commercial launch and update disclosures if actual services change.                                                              |
 
-## Apple requirements to reconcile
+## Apple and regulator research
 
-- Make the Privacy Policy reachable in the app and in the App Store Connect Privacy Policy URL field. Explain collection/use, sharing, retention and deletion. [App Review privacy guidance](https://developer.apple.com/app-store/review/guidelines/#privacy).
-- Review guideline 5.1.1(ix) against the actual data and service. A nonclinical description alone does not resolve whether an app requires sensitive information or must be submitted by a legal entity. [Apple's data-collection guidance](https://developer.apple.com/app-store/review/guidelines/#data-collection-and-storage).
-- Provide in-app deletion for the automatically created account. A support email cannot replace it. When paid billing is active, explain subscription cancellation separately while preserving immediate account deletion. [Apple account-deletion guidance](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion/).
-- Review App Privacy answers against actual first-party and partner collection. Check the signed binary's privacy manifests and required-reason API declarations separately. [Apple App Privacy guidance](https://developer.apple.com/app-store/app-privacy-details/).
-- Apple's standard EULA applies if no custom license is supplied. Make the chosen Terms/EULA and Privacy Policy links functional in the app and required subscription metadata; the purchase flow must explain its actual offer. [Apple license setup](https://developer.apple.com/help/app-store-connect/manage-app-information/provide-a-custom-license-agreement/), [subscription guidance](https://developer.apple.com/app-store/review/guidelines/#subscriptions).
-- Complete the content-rating questionnaire accurately and apply an appropriate higher rating for the intended age policy. A rating and a written eligibility rule do not establish identity or date-of-birth verification. [Apple age-rating guidance](https://developer.apple.com/help/app-store-connect/manage-app-information/set-an-app-age-rating/).
+Primary guidance checked October 9 and rechecked October 18; the Apple/license,
+age and focused regional assessments below were refreshed October 20, 2026:
+
+- [Apple App Review §5.1.1](https://developer.apple.com/app-store/review/guidelines/#data-collection-and-storage): accessible in-app/metadata policy; collection/use, sharing, equivalent provider protection, retention/deletion, consent and withdrawal. §5.1.1(ii)'s exception requires compliance with the applicable law, not merely calling diagnostics essential. §5.1.1(ix) addresses sensitive-information/legal-entity eligibility.
+- [Apple security](https://developer.apple.com/app-store/review/guidelines/#data-security) and [App Transport Security](https://developer.apple.com/news/?id=jxky8h89): protect user data and hosted connections. These sources do not prescribe a Canada-only hosting vendor or a universal additional journal-vault implementation.
+- [Apple App Privacy](https://developer.apple.com/app-store/app-privacy-details/): server persistence for app functionality counts as collection; include SDK partners. Generic free-form text uses Other User Content rather than every possible topic. Feeling categories require contextual assessment. Labels, actual notices and binary behavior must agree.
+- [Apple account deletion](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion/): in-app deletion also applies to automatically created accounts; support email alone cannot replace it. Subscription cancellation is separate when billing is active.
+- [Apple license setup](https://developer.apple.com/help/app-store-connect/manage-app-information/provide-a-custom-license-agreement/) and [standard EULA](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/): use the standard license unless a reviewed custom one is supplied; do not treat its technical-data clause as blanket privacy consent.
+- [Apple age rating](https://developer.apple.com/help/app-store-connect/manage-app-information/set-an-app-age-rating/) and [EU trader requirements](https://developer.apple.com/help/app-store-connect/manage-compliance-information/manage-european-union-digital-services-act-trader-requirements/): final questionnaire, higher age override and applicable verified public trader contacts remain actual App Store tasks.
+- [OPC PIPEDA overview](https://www.priv.gc.ca/en/privacy-topics/privacy-laws-in-canada/the-personal-information-protection-and-electronic-documents-act-pipeda/pipeda_brief/), [meaningful consent](https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/appropriate-handling-of-personal-information/collecting-personal-information-and-consent/consent/gl_omc_201805/) and [cross-border outsourcing](https://www.priv.gc.ca/en/privacy-topics/employers-and-employees/outsourcing/02_05_d_57_os_01/): assess actual commercial activity, contextual sensitivity, optional processing, accountability and foreign processing safeguards. Not requiring a name does not anonymize the journal.
+- [EU GDPR](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng), especially Articles 3, 6, 9, 11–13, 27–28 and 44 onward: scope, bases/special categories, identification limits, transparency, representatives, processors and transfers. [Commission grounds](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/legal-grounds-processing-data_en) and [CNIL mobile guidance](https://www.cnil.fr/sites/default/files/2025-05/recommendation-mobiles-app.pdf) support a separate necessity/terminal-access assessment.
+- [ICO storage/access exceptions](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/what-are-the-exceptions/): technical-fault prevention can qualify in a proportionate requested-service context; Sentry has no automatic blanket exemption. [ICO UK guidance](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/) and [California applicability](https://oag.ca.gov/privacy/ccpa) are regional starting points, not assertions that every statute applies.
+
+[Termly](https://termly.io/products/privacy-policy-generator/) and [iubenda](https://www.iubenda.com/en/privacy-and-cookie-policy-generator/) remain optional drafting resources from the earlier review. No generator output, competitor screenshot or general Terms acceptance establishes App Store approval or worldwide sufficiency.
+
+### Apple assessment
+
+October 20 assessment: retain Apple's standard EULA, supplementary service Terms,
+18+ audience and the current individual-operator implementation assumption. The
+Terms now expressly preserve Apple's precedence for the app license. No direct
+conflict was found in the existing service/content/deletion provisions. This is a
+reasoned compatibility assessment, not an App Review eligibility determination.
+Optional, nonclinical entries support the current approach; §5.1.1(ix) does not
+provide a journal-specific bright line that conclusively clears this app or
+automatically requires incorporation. Actual rating/override and App Store setup
+remain Phase 14 tasks; managed provider identity/profile collection must now be included in the actual release assessment; no custom EULA is implied.
+
+Section 5.1.1(i) also expects the policy to confirm comparable protection by
+receiving third parties. The provider list alone does not say that. After the
+actual arrangements support it, add and review this narrow public statement:
+
+> We require service providers that handle personal information for us to protect
+> it consistently with this policy and applicable requirements.
+
+Do not insert that assurance while Vercel's processor/sensitive-data scope remains
+unresolved. It is a conditional publication correction, not a current safeguard
+or permission to accept a provider agreement.
+
+### Regional assessment
+
+The October 20 review narrows the remaining questions; it does not certify every
+remaining intended country. The owner subsequently excluded the UK, Norway,
+Iceland and Liechtenstein initially; their expansion requirements below are
+retained for later review, not initial-release territory decisions still awaiting
+an answer. No App Store setting was changed.
+
+- **Canada:** the candidate covers the operator/contact, guest-local, optional account/CloudKit journal and support data,
+  purposes, recipients, foreign processing, retention and controls. OPC
+  [meaningful-consent guidance](https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/appropriate-handling-of-personal-information/collecting-personal-information-and-consent/consent/gl_omc_201805/)
+  requires a contextual sensitivity assessment. For the candidate, the notice separates guest-local history, optional managed-account private journal sync, separate private CloudKit and user-selected files. Disclosed sign-in with automatic adoption of unowned phone entries, separate iCloud and file choices relate to those requested purposes; the earlier
+  upload notice cannot authorize a new unrelated use. No new legal-consent checkbox or legal receipt system is proposed. This does not authorize
+  unrelated profiling, advertising or future AI use. Phase 14 verifies the actual
+  notice/save flow on the signed build. [Cross-border guidance](https://www.priv.gc.ca/en/privacy-topics/airports-and-borders/gl_dab_090127/)
+  allows accountable outsourcing for the disclosed purpose; Canada-only hosting
+  and separate transfer consent are not universal requirements. Existing named
+  operator/email is the contact; no rule identified here establishes a universal
+  need to publish a home address.
+- **UK / non-EU EEA — deferred expansion:** the owner explicitly excluded the UK,
+  Norway, Iceland and Liechtenstein initially in his October 20 reply.
+  [UK territorial scope](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/personal-information-what-is-it/who-does-the-uk-gdpr-apply-to/)
+  and [EEA GDPR incorporation](https://www.efta.int/media-resources/news/general-data-protection-regulation-gdpr-entered-force-eea)
+  mean EU exclusion alone does not settle these markets. If targeting rules
+  apply, the ongoing journal service is difficult to classify as only occasional
+  processing for the representative exception. Resolve any required UK/EEA
+  representative, purpose-specific lawful bases and actual transfer safeguards
+  before that availability. The generic rights paragraph is not sufficient for
+  the [required privacy information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/the-right-to-be-informed/what-privacy-information-should-we-provide/).
+  A contract basis for requested storage does not replace a separate condition
+  where submitted text reveals [special-category information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/special-category-data/what-are-the-conditions-for-processing/).
+  Do not invent bases/representative contacts or restore legal tracking. Review
+  these requirements before any proposed expansion; the initial exclusion choice
+  is settled.
+- **United States — reassessed boundary:** the product still offers social practice, generic retrospective feeling choices and optional free text, without diagnosis, HealthKit, health scores or health inference. Normal online completion data is not automatically health data. Local journal text can nevertheless reveal health. Washington's [definitions](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.010) include access, retention and processing, and regulate entities determining purposes and means. **Assessment:** device-only processing does not by itself establish an exemption; confirm the operator's role for the implemented local store/manual files, separately from normal signed-in private journal processing and Apple private CloudKit. Nevada's [NRS 603A.420–.465](https://www.leg.state.nv.us/NRS/NRS-603A.html) similarly defines collection broadly but ties health data to its use to identify health status. The absence of health inference matters; it is not a blanket clearance. Keep the regional gate open for the release/privacy reviewer with these concrete facts, not an unanswered generic request for the owner to research.
+- **Account sync and support:** handling health-revealing cloud text still requires applicable purpose limitation, notices, requests and processor/copy deletion. Voluntary health details emailed to support require their own handling; do not ask users to attach their journal as a shortcut. The existing [requested-service provision](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.030) may support necessary requested actions; broad Terms agreement is not a substitute for consent where separately required. No new checkbox, acceptance tracking or private-content classification is introduced.
+- **California:** no known facts establish [CCPA thresholds](https://www.cppa.ca.gov/faq.html). The ordinary mobile-policy disclosure duties are separate. Candidate text describes local/cloud/manual-file processing and how updates are published, without inventing cross-service advertising or an email notice list. Final effective dates and supported notice delivery remain publication tasks.
+
+### Consumer-health notice disposition for optional cloud processing
+
+Earlier blanket cloud-only wording and the intermediate completion-only/local-only assessment are both superseded. The actual candidate has guest-local processing, optional full account journal synchronization, optional private CloudKit and user-selected files. No automatic third public page or conclusion of regional inapplicability follows from the architecture choice.
+
+Before affected real-user rollout, the release/privacy reviewer must settle territorial scope, contextual sensitivity, each provider's role, notices/choices and request/deletion handling for these actual flows. If Washington applies, [RCW 19.373.020](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.020) and [Attorney General guidance](https://www.atg.wa.gov/protecting-washingtonians-personal-health-data-and-privacy) retain the distinct prominent notice question. Nevada's [.495 and .505–.520 provisions](https://www.leg.state.nv.us/NRS/NRS-603A.html) require their own applicable notice/request assessment. The support procedures below preserve the previously researched deadlines; they are not a declaration of compliance.
+
+Prepare concrete wording for Anthony's review if a supplement is required. Do not claim that disclosed optional sign-in with automatic phone-data adoption, ordinary Terms links or lack of HealthKit automatically supplies every necessary legal permission. For purely local data or user-controlled files, do not demand journal uploads as a support shortcut. No regional notice publication, new legal receipt mechanism, provider contact or legal clearance is authorized here.
+
+### Retained security records
+
+The implementation retains account/credential identifiers, relevant timestamps
+and digests, canonical provider mappings and live-session revocation markers so old identity material cannot reactivate a deleted owner. Recovery
+credentials are long-lived; expiring the markers on an arbitrary calendar date
+would remove that protection. The deletion timestamp/session digest also makes a
+lost-response retry return the same deletion outcome. See the
+[identity boundary](../architecture/IDENTITY.md#iphone-storage-and-browser-preview)
+and [deletion implementation](../../apps/api/src/identity/delete-account.ts).
+No journal content is retained in these markers, and the runtime cannot delete
+them. These facts support the engineering purpose, not a claim that permanent
+personal-data retention is automatically proportionate in every jurisdiction.
+Removing an old credential marker could allow a revoked proof to bootstrap a new
+empty account; it does not by itself restore the deleted journal. Keep this
+distinction when explaining the protection.
+
+Current disposition: retain the approved limited security records for the
+specific credential-reuse and deletion-retry functions above; no arbitrary expiry
+is introduced. The implementation owner must reassess when those functions or
+the credential protocol change. The managed mode now retires legacy bootstrap/key/transfer UI while preserving authenticated upgrade linking and old deletion proof replay. Reassess each retained legacy marker and new managed mapping against those actual functions before proposing retention changes; do not remove a marker merely because its former screen is gone. No expiry rule,
+scheduled review already in operation or schema change is claimed here.
+
+## Hosting agreements and recovery copies
+
+Official terms rechecked October 20 clarify the actual questions rather than
+assuming every provider needs a separately signed PDF. Vercel's Terms page is
+updated October 19; its DPA is dated March 17, effective March 31. Supabase's
+current DPA is dated August 1, 2026. The [Supabase changelog](https://supabase.com/changelog) was also checked; the earlier custom-identity-only assessment no longer describes the candidate. It now uses Supabase Auth in addition to a private PostgreSQL schema; provider subjects, sessions, possible profile fields and Auth deletion must be assessed. No .NET SDK is used.
+
+- The separate legal reader can use Vercel's automatically assigned
+  [`.vercel.app` domain](https://vercel.com/docs/domains/working-with-domains);
+  buying a custom domain is optional. However, [Hobby fair use](https://vercel.com/docs/limits/fair-use-guidelines#commercial-usage)
+  permits only personal, non-commercial use and defines commercial use by the
+  purpose of financial gain. Technical capacity for two static documents does
+  not establish eligibility for a future paid app's legal site. Clarify that
+  applicability or select hosting that permits the intended use before choosing
+  the public destination; no upgrade or hosting purchase is authorized.
+- [Supabase Terms §7(b)](https://supabase.com/terms) incorporates its
+  [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum).
+  The DPA forms part of the agreement and §12.2 gives agreement acceptance the
+  effect of signing applicable SCCs. Confirm the actual customer/applicable
+  account terms; a missing separate signature alone is not an established gap.
+  The DPA has no stated Free-plan exclusion. Section 4 permits sensitive-data
+  processing subject to lawful handling, notices and necessary explicit consent;
+  it does not establish that JustGO's current notice resolves every sensitive
+  submission. HIPAA-defined protected health information needs a separate BAA;
+  an ordinary consumer journal is not automatically subject to HIPAA.
+- [Vercel Terms §11.1](https://vercel.com/legal/terms) incorporates its
+  [DPA](https://vercel.com/legal/dpa), but that DPA's processor application
+  expressly covers Enterprise and Pro customers. The observed Hobby plan cannot
+  be marked covered from incorporation alone. Clarify the applicable processor
+  arrangement and Schedule 1's sensitive-data restriction for the actual journal
+  scope before real-user hosting. Normal account journal request/response transit is processing even when the database is elsewhere. A generic optional reflection is not automatically
+  a special category, but users can reveal health, beliefs or other sensitive
+  information. Buying Pro alone does not settle the restriction.
+- Vercel's [March 2026 terms explanation](https://vercel.com/changelog/updates-to-terms-of-service-march-2026)
+  describes model-training use on Hobby/trials and an opt-out. Its listed scope
+  includes code/agent chats, deployment errors and aggregate traffic statistics;
+  it does not establish that journal text is used for training. October 20
+  side-panel team settings initially showed sharing enabled. JustGO's own
+  Project Settings → Data Preferences also showed **Improve models with this
+  project’s data** enabled. The narrower project opt-out was saved and verified
+  disabled after reload; team settings and other projects were left alone. The
+  official FAQ supports this project-level control. It prevents future sharing
+  within that control's scope, not past use or all provider system-data use.
+- [Supabase pricing](https://supabase.com/pricing) lists API/database log retention
+  as one day on Free and seven days on Pro; [Vercel runtime logs](https://vercel.com/docs/logs/runtime)
+  list one hour on Hobby and one day on Pro. These are specific log products, not
+  an expiry promise for all infrastructure/security records.
+- Free lacks the included automatic daily backups described in
+  [Supabase's backup documentation](https://supabase.com/docs/guides/platform/backups),
+  and the provider's [upgrade FAQ](https://supabase.com/kb/troubleshooting/will-backups-be-accessible-from-the-dashboard-immediately-after-upgrading-to-a-paid-plan-hXY4rs)
+  says background backups can exist on Free. [Paused Free projects](https://supabase.com/docs/guides/platform/free-project-pausing)
+  can be recovered for up to a year from retained provider backups. Do not equate
+  no daily-backup entitlement with no provider copies. The revised candidate makes no fixed expiry promise or claim that the
+  operator directly removes every provider-controlled copy.
+
+Supabase DPA §11.2's 30-day export-request window concerns agreement termination,
+not expiry of a deleted user's rows in a continuing project. The published backup
+access periods likewise do not establish every recovery copy's expiry. The revised unpublished policy removes the earlier unsupported operator-control
+assurance; its narrower wording does not replace the actual deletion requirement. Keep operator exports access-restricted,
+give them a purpose/expiry, and reconcile deletions/revocations before reopening a
+restored database. No new backup service or purchase was selected.
+
+Supabase's October 6 [data residency/deletion FAQ](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq)
+also ties backup retention to the plan and describes project deletion within
+30 days. That is useful provider evidence, but whole-project deletion is not a
+per-account erasure process for an ongoing shared database. Confirm the actual
+configured backup/expiry path and operator exports; do not use either the
+termination window or whole-project deletion as the journal-row deadline.
+
+### Hosting recommendation without provider contact
+
+**Local implementation direction:** retain Vercel for the API and Supabase for managed Auth/private PostgreSQL, subject to fresh eligible-plan/processor and sensitive-content review. Normal signed-in journal synchronization again carries feelings/text through these services. Strict completion contracts still exclude journal fields, but a separate authorized journal endpoint is content-bearing; the earlier completion-only reduction cannot clear the full system. Private access and log scrubbing do not eliminate provider processing.
+
+Actual Vercel sensitive-data coverage remains unresolved. Buying Pro alone is not proof of an exception; a published [HIPAA arrangement](https://vercel.com/kb/guide/hipaa-compliance-guide-vercel) or [BAA](https://vercel.com/legal/baa) is not a blanket consumer-journal permission. Supabase's incorporated DPA likewise does not establish that the actual notices, choices, Auth/profile retention and copy deletion have been satisfied. Private CloudKit introduces a separate Apple role/configuration review.
+
+No provider was contacted or configured by this local implementation. Before real-user rollout, the release owner must establish an actual supported arrangement for **normal** account journal traffic or explicitly select and verify an alternative API host. [Supabase Edge routing](https://supabase.com/docs/guides/functions/routing), [database connections](https://supabase.com/docs/guides/functions/connect-to-postgres) and [handler authentication](https://supabase.com/docs/guides/functions/auth) remain engineering options, not a selected/completed migration or automatic DPA clearance. Any runtime port must preserve private-schema ownership, transaction locks, managed JWT verification, deletion ledgers, request bounds, safe logs and origin/path fences, with independent local and staging evidence. No port, deployment, purchase or provider contact is authorized by this record.
+
+### Specific deletion and publication preparation
+
+The remaining tasks are concrete implementation/operations checks:
+
+1. Record the selected processor agreement and actual configuration against
+   purpose-limited processing, access restrictions, request assistance and
+   deletion obligations ([Washington processor requirements](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.060)).
+   Supabase's incorporated DPA covers these subjects; verify the actual account
+   terms and recovery-copy path rather than requiring a separate PDF by default.
+2. Inventory database recovery copies, any journal-bearing API copies and
+   operator exports. For covered health submissions, [RCW 19.373.040](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.040)
+   requires recipient deletion notices and permits backup deletion delay of no
+   more than six months after authentication. Tombstone replay prevents restored
+   active access but is not proof that archived content has been erased. Obtain
+   documented expiry/deletion evidence before affected use; an accessible
+   seven-day backup list or paid-plan name alone is insufficient.
+3. Rehearse a stale synthetic snapshot followed by deletion and isolated restore.
+   Reapply current migrations and the preserved deletion/revocation ledger;
+   verify deleted journals stay absent and old recovery proofs fail before
+   reopening. If the newer ledger is unavailable, keep the service closed. See
+   the corrected [restore checklist](../operations/FOUNDATION.md#backup-restore-checklist).
+4. Operate the request/support procedure below. Earlier legacy deletion evidence does not establish the new managed Auth hard-delete, private CloudKit purge or epoch-reset boundaries. Verify those actual hosted/native operations and durable retries before marking them accepted.
+   Scheduled expired-transfer/rate-bucket cleanup remains a separate Phase 14
+   setup task, not the mechanism that deletes journals.
+
+The candidate explains disclosed first-sign-in adoption, same-journal continuity after logout, separate CloudKit choice, authenticated import, separate Delete all/Delete account and cleanup of previously associated app-managed iCloud copies even when OFF. It retains limits for unavailable Apple accounts, user files, disconnected devices and provider backups. It describes policy updates at the same address and retains legally required notice/choice without promising an unimplemented blanket in-app notice system. It does not claim every third party avoids independent traffic processing. Comparable provider-protection wording remains conditional on supported actual arrangements as described in the Apple assessment.
+
+The October 25 owner authorization covers the final document wording and hosting. It does not waive deletion duties or establish a provider recovery-copy expiry period.
+
+Montréal API functions and Canada Central database hosting do not establish
+Canada-only processing: provider support, network/security processing and recovery
+copies have separate scopes. October 20 Vercel Security & Privacy also shows IP
+visibility enabled in its dashboard and drains; that is a visibility setting, not
+proof of a configured drain or a universal retention period. No request logs or
+private journal records were inspected.
+
+The only account-setting change was JustGO's project-specific model-training
+opt-out. No contract was accepted, plan upgraded or production configuration
+established by this review. Applicable hosting terms/scope and
+recovery-copy handling remain concrete pre-real-user deployment conditions; they
+are not closed by a draft policy or a local test pass.
+
+### Vercel clarification prepared for the owner
+
+Anthony declined provider contact October 20. The earlier residual-legacy-only draft is superseded because full private account synchronization is now in the local candidate. The following remains **unsent**, for a future separately authorized inquiry to [privacy@vercel.com](https://vercel.com/legal/privacy-notice#contact-us); it includes no private samples, identities or credentials:
+
+> JustGO is an adult consumer social-challenge app with optional feeling selections and free-text reflections. Users may stay local or sign in to synchronize private account history and journal through our API on Vercel and private Supabase storage. It provides no diagnosis, treatment or health profiling. Application logs exclude content, bodies and credentials, but users may write about health, beliefs or other sensitive subjects.
+>
+> Does this normal authenticated private-journal request/response processing fit DPA Schedule 1 §6.1? Which actual plan/processor agreement or supported arrangement covers it? What payload/security-log/recovery-copy retention, deletion and secondary-use scope applies? The observed team uses Hobby; we understand upgrading alone may not settle sensitive-data coverage.
+
+Do not admit real users on an assumed answer. Declining contact does not resolve provider suitability, and this draft authorizes no message or purchase. If the current host cannot support the scope, present a verified alternative before dependent deployment.
+
+## Competitor research and adaptation
+
+Anthony requested a fresh comparison on October 25, 2026. The current official
+[How We Feel Privacy Policy](https://howwefeel.org/privacy) (July 14, 2025),
+[How We Feel Terms](https://howwefeel.org/terms) (July 26, 2024),
+[Stoic Privacy Policy](https://www.getstoic.com/privacy-policy) and
+[Stoic Terms](https://www.getstoic.com/terms-and-conditions) were reread.
+How We Feel's Terms are client-rendered; the official page's linked
+[Terms content](https://howwefeel.org/assets/TermsOfUseView.8d807661.js) supplied the
+text when the research reader returned an empty page. These sources describe
+what the companies say, not independent evidence of their implementation or
+legal compliance.
+
+The existing candidate already follows their readable topic-based approach.
+This pass makes the storage choices easier to scan, simplifies upgrade/import
+wording and states clearly that the Terms govern use. It preserves the actual
+managed-sync behavior in the [data inventory](DATA_INVENTORY.md).
+
+| Approach in the references                                                                                                                                         | JustGO adaptation                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How We Feel opens with a plain-language purpose and separates phone-only use from an optional account.                                                             | Privacy opens with four explicit choices: phone use, Apple/Google account sync, separate private CloudKit and a chosen file destination. The account explanation retains automatic adoption of unowned phone entries and separation from other accounts.                |
+| Both policies organize information, purposes, recipients, retention, controls and contact details into distinct sections.                                          | Keep those topics and name the actual providers. Preserve the distinction between product analytics being off and hosting/network providers still processing connection information.                                                                                    |
+| How We Feel explains optional AI, research and friend sharing separately; Stoic describes optional AI processing alongside its ordinary journal-access statements. | Do not import their features, permissions or broad no-access claims. JustGO's synchronized account feelings and reflections are processed by JustGO and its providers; no end-to-end encryption promise is made.                                                        |
+| Both describe user controls and deletion, with provider or backup limitations.                                                                                     | Keep the implemented Settings paths, signout continuity, file export/import and separate Delete all my data/Delete account. Retain pending iCloud cleanup, disconnected-device and user-saved-file limits; do not borrow a competitor's response time or backup period. |
+| Both Terms explain the service, permitted users, account responsibilities and the user's content.                                                                  | Retain JustGO's 18+ audience, content ownership and purpose-limited permission to process chosen copies. Add a clear use-of-service opening; this does not create a stored agreement receipt, an onboarding checkbox or a legal-version gate.                           |
+| The references also contain business-specific paid features, disclaimers and dispute provisions.                                                                   | Keep JustGO's free beta, inactive billing, standard Apple EULA and mandatory consumer/privacy rights. Do not copy Stoic's subscriptions, lifetime/AI allowance or 16+ rule, or How We Feel's US arbitration, liability cap and research permission.                     |
+
+The earlier Mobbin references remain useful for readability only: Stoic's
+[privacy reader](https://mobbin.com/screens/5e6a2d7b-cd5d-41a0-bf2e-8d285848500e)
+and [Your Data flow](https://mobbin.com/flows/95f4700e-158b-43a0-b258-1bae72a831a7).
+They were not rechecked during this text comparison. A captured switch state
+does not establish a default, storage library or need for extra encryption.
+
+The comparison was followed by Anthony's explicit instruction to finalize only
+necessary wording and host the documents on October 25. That publication recorded
+the original authorization/date. The later October 27 essential-errors Privacy
+update has its own approval, version and effective date; Terms is unchanged. It does not resolve the provider,
+retention, regional or signed-device gates above. Internal test steps and
+unresolved operational evidence stay outside the marked public blocks; no
+provider-contract, Canada-only processing or worldwide-compliance promise is
+added.
+
+## Support requests and inbox retention
+
+The public policy's 12-month support retention rule needs an owner-run inbox
+process before real-user support. This procedure is prepared; operation in the
+actual Gmail inbox remains unverified:
+
+1. Review incoming privacy requests and record the request date, type, relevant
+   response deadline and status in a restricted support record. Assess the
+   applicable deadline rather than promising one worldwide period. Keep journal
+   contents and authentication/recovery secrets out of that record.
+2. Direct users to Settings for export or account deletion where possible. For
+   manual help, verify account authority through an appropriate secure process;
+   never request a recovery key or session secret by email. A report cannot be
+   treated as verified solely because someone supplies an account identifier.
+   If a manual request cannot be verified through existing authenticated controls,
+   arrange a secure authenticated support route before acting; do not invent an
+   operational verification capability or collect recovery secrets as a shortcut.
+   Requests can concern narrower deletion, stopping optional collection or
+   recipient information, not only whole-account deletion.
+3. Record the action and response, then mark the request closed. For any necessary
+   legal hold or ongoing request, record the reason, owner and next review date;
+   keep an exception only while needed.
+4. Review the inbox monthly and remove support messages and attachments older
+   than 12 months unless an ongoing request or specific legal obligation requires
+   retention. Remove operator-controlled copies and check Gmail Trash expiry;
+   preserve the policy's distinction between active data and provider recovery
+   copies. Review exceptions again at the next monthly pass.
+5. For Washington-covered requests, track 45 days from receipt; authentication
+   does not restart or extend that clock. A justified one-time extension of up to
+   45 additional days needs notice within the initial period. Give written reasons for
+   refusals and accept appeals through the same inbox with “Privacy appeal”.
+   Decide appeals within 45 days and include the
+   [Attorney General complaint route](https://www.atg.wa.gov/file-complaint)
+   when denied. These periods come from [RCW 19.373.040](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.040),
+   not a new worldwide response guarantee. Keep the provider deletion/expiry
+   record with the request, without copying journal content into the support log.
+6. For Nevada-covered requests, track active deletion within 30 days of
+   authentication separately from the general request clock. Follow
+   [NRS 603A.510–.520](https://www.leg.state.nv.us/NRS/NRS-603A.html) for responses
+   and appeals and provide [Nevada Attorney General contact information](https://ag.nv.gov/Contact/Contact/)
+   after a denied appeal. Apply the stricter six-month backup target where the
+   same submission is handled under the Washington proposal; Nevada's longer
+   permitted backup delay does not relax the Washington condition.
+
+The implementation owner prepares and verifies any authenticated manual-request
+route. Anthony confirms who monitors the inbox and performs the prepared
+procedure before claiming inbox operation has passed. No inbox access,
+message deletion, outbound email or recurring automation was performed here.
+
+## Sentry activation notice and request process
+
+Anthony approved essential app/server error reporting and the exact updated
+Privacy Policy wording/publication on October 27. The canonical policy is
+`2026-10-27-essential-errors`, effective October 27, published at the existing
+Privacy URL. Anonymous HTTPS reads matched the approved generated bytes. It distinguishes reporting-enabled app versions from installed build 4,
+which remains off, and describes filtered technical fields, US processing,
+connection-address handling, native local crash capture and request limits.
+Product analytics, replay, tracing and profiling remain disabled.
+
+The October 27 account verification confirmed Sentry DPA 5.1.0 signed, aggregated
+identifying-data sharing off, and default scrubbing/IP-storage prevention enabled
+for both mobile and API projects. Minidumps inherit Disabled. The Business trial
+had five days remaining, with no card or invoice; no paid upgrade occurred.
+Published Free error retention is 30 days and paid Team/Business retention is
+90 days, but the account's actual event-retention setting and trial/downgrade
+behavior were not verified. Do not promise the paid retention period for this
+trial or treat DPA acceptance as full privacy clearance.
+
+The optional `beta-diagnostics` path requires the matching published notice and
+private build upload credential. Keep its source-map/dSYM uploads and existing
+artifact/provenance and protected build/submit approvals. Internal TestFlight
+upload comes before native phone checks; crash/restart delivery, cache/envelope
+privacy, symbolication, outage behavior and cached-crash attribution remain
+open before external testing. No diagnostics-enabled signed build or normal API
+ingestion is established by preparing this code or approving the notice.
+
+Do not collect a new account identifier merely to link reports. For a request, assess requester-provided event ID/time and technical details that can identify an issue. Sentry's [erasure guidance](https://www.sentry.help/en/articles/16187006-how-do-i-complete-a-gdpr-erasure-request-for-a-user-in-sentry) describes whole-issue deletion rather than deletion of one error event, and separate backup expiry. Verify authority and process with synthetic data before activation. Account deletion cannot automatically locate these unlinked reports. Never ask users to email recovery secrets or promise account-linked Sentry erasure. The separate owner action accepting Sentry DPA 5.1.0 was completed and verified October 27. Anthony authorized deletion of synthetic JUSTGO-API-2 on October 27. Operator access and whole-issue erasure were verified: Sentry returned to an empty project feed and the direct issue URL then showed issue not found. Provider retention and recovery-copy handling remain separate open checks; the UI result does not prove removal from backups.
 
 ## Publication sequence
 
-1. Resolve the review notes and verify the promised behavior for the build being released. Recheck the draft if analytics, diagnostics or billing activation changes.
-2. Review the resulting public text, remove all draft/review notes and set its effective date. Keep the approved version in version control.
-3. Prepare a simple public static site with stable HTTPS routes for Privacy and Terms. A separate public site can use the existing hosting account. Keep the protected API preview's deployment protection intact; it is not a public legal-page destination.
-4. Publish after the owner's content and hosting approval. The pages should need no login, work on a phone, use readable text and avoid unnecessary cookies, analytics or third-party embeds. Basic hosting still processes network requests; assess its logs.
-5. Open both public URLs without an authenticated developer session, then configure the app links and App Store metadata. Check links from the actual iPhone build and purchase/recovery surfaces. Verify that the posted policy matches App Privacy answers.
-6. For the free beta, describe its actual services and free access. Before paid launch, update the documents and disclosures for enabled billing providers and the final offer. Material new processing may need updated notice or consent; do not silently reuse old wording.
+The October 27 essential-errors Privacy update was published at the same public URL. Anonymous `/privacy/` and root responses matched the approved generated HTML exactly, Terms remained byte-identical, and private environment/internal-review paths returned 404. This publication does not activate reporting or establish signed-native acceptance.
 
-This drafting step does not select a domain, create a website, send email, enable a vendor or authorize Git publication. The subsequently authorized Settings layout and existing recovery/contact actions are now locally verified, as recorded in the [Phase 08 handoff](../handoffs/phase-08-settings-privacy.md). Remaining data controls stay in [Phase 08](../implementation-plan/phase-08-settings-privacy.md#phase-08), analytics in [Phase 09](../implementation-plan/phase-09-analytics.md#phase-09), legal review/publication in [Phase 10](../implementation-plan/phase-10-legal-documents.md#phase-10), and broader physical-device/release acceptance in [Phase 11](../implementation-plan/phase-11-release.md#phase-11). Their existing open gates remain open.
+The October 25 owner-directed publication completed the document build/upload
+and anonymous browser HTTPS checks. Preview EAS variables use the verified URLs,
+and App Store Connect has the Privacy Policy URL saved. Only six public files
+were uploaded: the two document routes/base alias, stylesheet, original logo and
+static host configuration. Environment files/internal review records were
+excluded and their public paths return 404. The new project's model-training
+sharing is off, matching the existing JustGO preference. No domain purchase or
+paid plan was used. Keep the remaining sequence for external-beta acceptance
+and later material updates:
 
-## Drafting resources
+1. Resolve the table's applicable publication blockers and review the actual guest/managed-account/CloudKit collection/configuration. Keep ordinary Sentry and product analytics disabled while their activation gates are open; those gates do not require enabling either service to publish an accurate disabled-state policy. Preserve the recorded SEC-4/5 technical assessments and Phase 14 native checks.
+2. Review the concrete candidate text/site and disclosure worksheet. Confirm public contacts, territories, versions and effective date; use the selected Vercel-generated address. Record fresh review of this materially changed managed-sync/CloudKit candidate; the October 19 approval applies only to the earlier text. Review paid/vendor changes again before their use. Do not substitute automated research for applicable legal/privacy review.
+3. Set approval/date metadata only after that review, regenerate/check the static output and approve the separate hosting publication. Preserve the API's protected preview settings. Inspect the upload boundary so public pages contain no internal review files or credentials.
+4. Publish the standalone static directory to the approved host. Verify both stable HTTPS pages anonymously on a phone; configure `EXPO_PUBLIC_TERMS_URL` and `EXPO_PUBLIC_PRIVACY_POLICY_URL` only with the real verified destinations. Test Settings/acceptance opening and failures; obtain the actual signed-iPhone link/accessibility evidence in Phase 14.
+5. Verify guest continuation, managed sign-in/retry/returning-account sync and data-control access without legal receipt recording or version gates. Document labels do not require an API acceptance-version rollout. Phase 14 enters App Store metadata after verifying the signed bundle's privacy manifests, required-reason APIs, SDKs, tracking/ATT assessment, rating and eligible operator.
+6. Before paid launch, 07A/14 reconcile activated Apple/RevenueCat/billing delivery, offer, cancellation/deletion explanation and changed data. Before Phase 15 analytics, revisit providers, payloads, rights and the actual permission/collection design without backfilling pre-activation history. Continue or a historical receipt grants no future analytics permission; do not silently restore the rejected tracking mechanism.
 
-[Termly](https://termly.io/products/privacy-policy-generator/) and [iubenda](https://www.iubenda.com/en/privacy-and-cookie-policy-generator/) can help structure a questionnaire-based draft. The inventory should supply the answers. Review generated clauses for the actual app, region and provider configuration; a generator's output is not evidence of App Store acceptance or worldwide compliance.
-
-Primary guidance was checked October 9, 2026. Recheck it before publication, especially after SDK, provider or distribution changes. This is a document preparation record, not a legal opinion or release acceptance.
+The owner separately authorized the public document hosting described above. This record grants no Git publication, private-journal provider activation, plan upgrade, agreement acceptance, billing activation, native signing/upload or App Store submission. The earlier [Phase 12 handoff](../handoffs/phase-12-legal-documents.md) is historical; the reopened [Phase 13 handoff](../handoffs/phase-13-local-journal.md) owns current implementation evidence and remaining gates.

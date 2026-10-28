@@ -33,6 +33,7 @@ type Snapshot = {
   busy: boolean;
   busyInBackground: boolean;
   initialized: boolean;
+  needsWelcome: boolean;
   hasPending: boolean;
   cancellationPending: boolean;
   account: SessionResponse | null;
@@ -101,6 +102,7 @@ export class IdentityController {
     busy: false,
     busyInBackground: false,
     initialized: false,
+    needsWelcome: false,
     hasPending: false,
     cancellationPending: false,
     account: null,
@@ -391,7 +393,9 @@ export class IdentityController {
           this.update({ message: 'Choose a recovery method to continue.' });
           return;
         }
-        if (this.vault.kind === 'keychain') await this.newAccount();
+        // Creating an account requires an explicit Continue action.
+        // Discovering an empty vault alone never creates a server account.
+        this.update({ needsWelcome: true });
       },
       { resumeDeletion: true },
     );
@@ -422,8 +426,18 @@ export class IdentityController {
   }
   createAccount = () =>
     this.run(async () => {
-      await this.ensureData();
-      await this.newAccount();
+      const pending = this.data!.pending;
+      if (pending?.kind === 'bootstrap') {
+        // Retain the original proof after an uncertain account-creation response.
+        await this.resume();
+      } else if (
+        !pending ||
+        pending.kind === 'recover' ||
+        pending.kind === 'renew'
+      ) {
+        // An explicit separate-account choice retains the old credentials.
+        await this.newAccount();
+      } else throw new IdentityClientError('CONFLICT');
     });
   private async finish(
     info: SessionResponse,
@@ -451,6 +465,7 @@ export class IdentityController {
     this.transferActive = false;
     this.update({
       account: info,
+      needsWelcome: false,
       deletionStatus: null,
       devices: [],
       recoveryKeys: [],
@@ -528,9 +543,11 @@ export class IdentityController {
     // Foreground refresh has nothing to reconnect after completed deletion.
     // A pending replacement account must still resume with its saved proof.
     if (
-      this.snapshot.deletionStatus === 'deleted' &&
-      !this.data?.pending &&
-      !this.data?.session
+      (this.snapshot.deletionStatus === 'deleted' ||
+        this.snapshot.needsWelcome) &&
+      this.data !== null &&
+      !this.data.pending &&
+      !this.data.session
     )
       return Promise.resolve();
     return this.run(

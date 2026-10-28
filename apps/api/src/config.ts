@@ -1,8 +1,14 @@
 import { z } from 'zod';
 import { readBetaAccessWindow, readBetaGrants } from './access/beta-access.js';
+import { serverDiagnosticConfiguration } from './http/sentry-configuration.js';
 
 const configSchema = z.object({
   APP_ENVIRONMENT: z.enum(['production', 'staging']).default('production'),
+  JUSTGO_SOURCE_SHA: z
+    .string()
+    .length(40)
+    .regex(/^[a-f0-9]{40}$/)
+    .optional(),
   BETA_ACCESS_GRANTS: z.string().default('[]'),
   BETA_ACCESS_WINDOW: z.string().default('null'),
   NODE_ENV: z
@@ -16,7 +22,20 @@ const configSchema = z.object({
   LOG_LEVEL: z
     .enum(['silent', 'error', 'warn', 'info', 'debug'])
     .default('info'),
+  API_SENTRY_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  API_SENTRY_DSN: z.string().optional(),
+  API_SENTRY_RELEASE: z.string().optional(),
   CORS_ORIGINS: z.string().default(''),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
+  SUPABASE_AUTH_SECRET_KEY: z.string().min(32).optional(),
+  MANAGED_AUTH_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   IDENTITY_RATE_LIMIT_KEY: z
     .string()
     .min(32)
@@ -29,12 +48,35 @@ const configSchema = z.object({
     .min(1)
     .max(100)
     .default(30),
+  ACTIVITY_WRITE_RATE_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10000)
+    .default(600),
+  ACCOUNT_EXPORT_RATE_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10000)
+    // Full-history sync/import can enumerate the 50,000-record client limit twice.
+    .default(3000),
 });
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   const result = configSchema.safeParse(env);
   if (!result.success) throw new Error('Invalid API environment configuration');
   const config = result.data;
+  if (config.MANAGED_AUTH_ENABLED && !config.SUPABASE_URL)
+    throw new Error('Managed Auth requires Supabase configuration');
+  if (config.MANAGED_AUTH_ENABLED && !config.SUPABASE_AUTH_SECRET_KEY)
+    throw new Error(
+      'Managed Auth requires server-only Auth deletion credentials',
+    );
+  if (Boolean(config.SUPABASE_URL) !== Boolean(config.SUPABASE_PUBLISHABLE_KEY))
+    throw new Error(
+      'Supabase Auth configuration must include URL and publishable key',
+    );
   const grants = readBetaGrants(config.BETA_ACCESS_GRANTS);
   const accessWindow = readBetaAccessWindow(config.BETA_ACCESS_WINDOW);
   if (
@@ -64,6 +106,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   }
   return {
     ...config,
+    API_SENTRY: serverDiagnosticConfiguration(
+      config.API_SENTRY_ENABLED,
+      config.API_SENTRY_DSN,
+      config.API_SENTRY_RELEASE,
+      config.APP_ENVIRONMENT,
+    ),
     BETA_ACCESS_GRANTS: grants,
     BETA_ACCESS_WINDOW: accessWindow,
   };

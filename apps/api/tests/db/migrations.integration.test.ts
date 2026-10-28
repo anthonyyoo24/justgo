@@ -537,12 +537,296 @@ describe('Phase 07 expansion, final contraction and disposable restoration', () 
     await migration(16);
     await compareMetadata(16);
     expect(await canonicalRows()).toEqual(normalizedBefore);
+    await migration(17);
+    await compareMetadata(17);
+    expect(await canonicalRows()).toEqual(normalizedBefore);
+    // Existing legal receipts are deliberately discarded, while every other
+    // table keeps its data, including journal text, live proofs, deleted-owner
+    // tombstones and an independent analytics restriction.
+    const deviceId = randomUUID();
+    const deletedOwner = randomUUID();
+    await admin.query(
+      `INSERT INTO ${schema}.account_acceptances
+        (user_id,terms_version,privacy_version,analytics_scope_version)
+        VALUES ($1,'legacy-terms','legacy-privacy','legacy-scope'),
+               ($2,'legacy-terms','legacy-privacy','legacy-scope')`,
+      [owner, otherOwner],
+    );
+    await admin.query(
+      `UPDATE ${schema}.users SET analytics_restricted_at='2026-10-17T12:00:00Z' WHERE id=$1`,
+      [owner],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.devices (id,user_id) VALUES ($1,$2)`,
+      [deviceId, owner],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.device_sessions (id,user_id,device_id,digest,expires_at)
+       VALUES ($1,$2,$3,repeat('a',64),now()+interval '1 day')`,
+      [randomUUID(), owner, deviceId],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.users (id,deleted_at,deletion_session_digest)
+       VALUES ($1,'2026-10-17T12:00:00Z',repeat('f',64))`,
+      [deletedOwner],
+    );
+    await admin.query(
+      `INSERT INTO ${schema}.recovery_credentials (id,user_id,digest,kind,revoked_at)
+       VALUES ($1,$2,repeat('b',64),'key',NULL),
+              ($3,$4,repeat('c',64),'sync','2026-10-17T12:00:00Z')`,
+      [randomUUID(), owner, randomUUID(), deletedOwner],
+    );
+    const preservedTables = [
+      'users',
+      'devices',
+      'device_sessions',
+      'recovery_credentials',
+      'device_transfers',
+      'identity_rate_buckets',
+      'attempts',
+      'attempt_patch_receipts',
+      'challenges',
+      'venue_cards',
+      'levels',
+      'venues',
+    ];
+    const preservedRows = new Map<string, unknown[]>();
+    for (const table of preservedTables)
+      preservedRows.set(
+        table,
+        (
+          await admin.query(
+            `SELECT * FROM ${schema}.${table} t ORDER BY to_jsonb(t)::text`,
+          )
+        ).rows,
+      );
+    await migration(18);
+    await compareMetadata(18);
+    expect(
+      (
+        await admin.query('SELECT to_regclass($1) AS table_name', [
+          `${schema}.account_acceptances`,
+        ])
+      ).rows[0].table_name,
+    ).toBeNull();
+    for (const table of preservedTables)
+      expect(
+        (
+          await admin.query(
+            `SELECT * FROM ${schema}.${table} t ORDER BY to_jsonb(t)::text`,
+          )
+        ).rows,
+      ).toEqual(preservedRows.get(table));
+    // Phase 13 preserves every old value and freezes the available historical
+    // wording before retiring runtime private writes. The operator alone may
+    // perform a later approved contraction; a download never deletes content.
+    const beforeLocalJournal = join(
+      rehearsal.snapshotFolder,
+      'pre-local-journal.sql',
+    );
+    await execute(
+      pgTool('pg_dump'),
+      [
+        '--schema',
+        schema,
+        '--enable-row-security',
+        '--inserts',
+        '--no-owner',
+        '--file',
+        beforeLocalJournal,
+      ],
+      { env: pgEnvironment() },
+    );
+    const verifyLocalJournal = async () => {
+      await compareMetadata(19);
+      expect(await canonicalRows()).toEqual(normalizedBefore);
+      for (const table of preservedTables) {
+        const rows = (
+          await admin.query(
+            `SELECT * FROM ${schema}.${table} t ORDER BY to_jsonb(t)::text`,
+          )
+        ).rows;
+        const withoutSnapshot = rows.map((row: Record<string, unknown>) => {
+          const copy = { ...row };
+          delete copy.instruction_snapshot;
+          return copy;
+        });
+        expect(withoutSnapshot).toEqual(preservedRows.get(table));
+      }
+      expect(
+        (
+          await admin.query(
+            `SELECT count(*)::int AS n FROM ${schema}.attempts a JOIN ${schema}.challenges c ON a.challenge_id=c.id WHERE a.instruction_snapshot IS DISTINCT FROM c.text`,
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      await expect(
+        owned(owner, (client) =>
+          client.query(
+            `UPDATE ${schema}.attempts SET reflection_text='blocked' WHERE user_id=$1`,
+            [owner],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        owned(owner, (client) =>
+          client.query(
+            `INSERT INTO ${schema}.attempt_patch_receipts (user_id,id,attempt_id,input_digest,applied_revision) VALUES ($1,$2,$3,repeat('a',64),1)`,
+            [owner, randomUUID(), ids[0]],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+      const attempt = (
+        await admin.query(
+          `SELECT * FROM ${schema}.attempts WHERE user_id=$1 LIMIT 1`,
+          [owner],
+        )
+      ).rows[0];
+      await expect(
+        owned(owner, (client) =>
+          client.query(
+            `INSERT INTO ${schema}.attempts (user_id,id,challenge_id,venue_id,level_id,started_at,start_time_zone,activity_date,reflection_text,reflection_revision) VALUES ($1,$2,$3,$4,$5,now(),'UTC','2026-10-20','blocked',1)`,
+            [
+              owner,
+              randomUUID(),
+              attempt.challenge_id,
+              attempt.venue_id,
+              attempt.level_id,
+            ],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+      const id = randomUUID();
+      await owned(owner, (client) =>
+        client.query(
+          `INSERT INTO ${schema}.attempts (user_id,id,challenge_id,venue_id,level_id,started_at,start_time_zone,activity_date,instruction_snapshot) VALUES ($1,$2,$3,$4,$5,now(),'UTC','2026-10-20','Synthetic completion')`,
+          [owner, id, attempt.challenge_id, attempt.venue_id, attempt.level_id],
+        ),
+      );
+      await owned(owner, (client) =>
+        client.query(
+          `DELETE FROM ${schema}.attempts WHERE user_id=$1 AND id=$2`,
+          [owner, id],
+        ),
+      );
+    };
+    await migration(19);
+    await verifyLocalJournal();
+    const nonPrivateAttempts = async () =>
+      (
+        await admin.query(
+          `SELECT to_jsonb(a)-'reflection_feeling'-'reflection_text'-'reflection_revision' AS data FROM ${schema}.attempts a ORDER BY user_id,id`,
+        )
+      ).rows;
+    const completionBeforeReset = await nonPrivateAttempts();
+    const identitiesBeforeReset = (
+      await admin.query(`SELECT * FROM ${schema}.users ORDER BY id`)
+    ).rows;
+    await migration(20);
+    await compareMetadata(20);
+    expect(await nonPrivateAttempts()).toEqual(completionBeforeReset);
+    expect(
+      (await admin.query(`SELECT * FROM ${schema}.users ORDER BY id`)).rows,
+    ).toEqual(identitiesBeforeReset);
+    expect(
+      (
+        await admin.query(
+          `SELECT id FROM ${schema}.attempts WHERE reflection_feeling IS NOT NULL OR reflection_text IS NOT NULL OR reflection_revision<>0`,
+        )
+      ).rows,
+    ).toEqual([]);
+    expect(
+      (await admin.query(`SELECT id FROM ${schema}.attempt_patch_receipts`))
+        .rows,
+    ).toEqual([]);
+    await migration(21);
+    await compareMetadata(21);
+    expect(await nonPrivateAttempts()).toEqual(completionBeforeReset);
+    expect(
+      (
+        await admin.query(
+          `SELECT data_epoch,data_deleted_at FROM ${schema}.users`,
+        )
+      ).rows.every(
+        (row: { data_epoch: number; data_deleted_at: Date | null }) =>
+          row.data_epoch === 0 && row.data_deleted_at === null,
+      ),
+    ).toBe(true);
+    // New sync resources remain private, owner scoped and immutable at the SQL boundary.
+    const authSubject = randomUUID(),
+      versionId = randomUUID();
+    await admin.query(
+      `INSERT INTO ${schema}.managed_auth_accounts(auth_user_id,user_id) VALUES($1,$2)`,
+      [authSubject, owner],
+    );
+    expect(
+      (
+        await owned(otherOwner, (client) =>
+          client.query(`SELECT user_id FROM ${schema}.managed_auth_accounts`),
+        )
+      ).rows,
+    ).toEqual([]);
+    await owned(owner, async (client) => {
+      await client.query("SELECT set_config('app.auth_user_id',$1,true)", [
+        authSubject,
+      ]);
+      expect(
+        (
+          await client.query(
+            `SELECT user_id FROM ${schema}.managed_auth_accounts`,
+          )
+        ).rows,
+      ).toEqual([{ user_id: owner }]);
+      await client.query(
+        `INSERT INTO ${schema}.journal_versions(user_id,version_id,attempt_id,parents,feeling_scale_version,reflection) VALUES($1,$2,$3,'{}',1,$4::jsonb)`,
+        [
+          owner,
+          versionId,
+          ids[0],
+          JSON.stringify({
+            feeling: null,
+            text: 'Synthetic version',
+            revision: 1,
+          }),
+        ],
+      );
+    });
+    expect(
+      (
+        await owned(otherOwner, (client) =>
+          client.query(`SELECT version_id FROM ${schema}.journal_versions`),
+        )
+      ).rows,
+    ).toEqual([]);
+    await expect(
+      owned(owner, (client) =>
+        client.query(
+          `UPDATE ${schema}.journal_versions SET reflection='{}'::jsonb WHERE version_id=$1`,
+          [versionId],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await migration(22);
+    await compareMetadata(22);
+    await migration(23);
+    await compareMetadata(23);
+    // Restore the pre-cutover protected snapshot, then apply the same registered
+    // migration again. This proves forward recovery without discarding journals.
+    await admin.query(`DROP SCHEMA ${schema} CASCADE`);
+    await execute(
+      pgTool('psql'),
+      ['--no-psqlrc', '--set', 'ON_ERROR_STOP=1', '--file', beforeLocalJournal],
+      { env: pgEnvironment() },
+    );
+    await compareMetadata(18);
+    await migration(19);
+    await verifyLocalJournal();
     // Clean installation also applies the complete immutable journal.
     await admin.query(
       `DROP SCHEMA ${schema} CASCADE; CREATE SCHEMA ${schema} AUTHORIZATION justgo_migrator; REVOKE ALL ON SCHEMA ${schema} FROM public; GRANT USAGE ON SCHEMA ${schema} TO justgo_runtime`,
     );
-    for (let index = 0; index <= 16; index++) await migration(index);
-    await compareMetadata(16);
+    for (let index = 0; index <= 23; index++) await migration(index);
+    await compareMetadata(23);
     expect(
       (
         await admin.query(

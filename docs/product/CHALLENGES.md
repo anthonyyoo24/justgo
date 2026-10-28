@@ -9,7 +9,7 @@
 - **Difficulty:** Level 1, the easiest version. Each challenge starts an interaction with a small greeting, comment, or question. Continuing the conversation is optional.
 - **Duration:** Five-minute attempt window for all cards. The interaction may be much shorter; reaching zero does not automatically mark the attempt failed or completed.
 - **Subtext:** The accompanying line below the challenge text. Example wording can be adapted naturally; bracketed words such as `[item]` or `[name]` are conversational placeholders.
-- **Venue stacks:** Each account has an independent in-memory card order for each venue, reset on fresh launch. Streets is selected on fresh launch. Skipping or completing a card moves it to the back of that venue's stack. A shared challenge's card in another venue stays in place. Each new completed repetition has its own attempt history; Start/Give up create no saved record.
+- **Venue stacks:** Each account's decks shuffle once on this phone and save their independent order, front card and last selected venue for relaunch. New accounts or missing/unknown saved venue values start in Streets. Skip, completion and give-up move the matching front placement to the back of its venue's stack; a shared challenge's card in another venue stays in place. Each new completed repetition has its own attempt history; Start/Give up create no saved attempt. Preferences stay on the phone and are not uploaded or sent to analytics.
 - **Shared content:** A challenge can supply content for multiple venue cards without coupling their ordering. The overlap index below identifies related actions while preserving the reviewed wording for every card.
 - **Card copy length:** Review each new batch on the actual card at the standard type size, including database, preview, and demo text. Every challenge should render in two to four complete lines without scrolling; character count alone cannot reliably predict wrapping.
 
@@ -17,16 +17,22 @@ The earlier no-replay and grouped-venue proposals are superseded by the venue li
 
 ## Challenge loop and content
 
-These current decisions consolidate the September 24 scope approval and its
-October 8 reconciliation after Phase 07. They supersede earlier general-only,
+These current decisions consolidate the September 24 scope approval, its
+October 8 reconciliation after Phase 07 and the October 15 continuity changes
+implemented in Phase 09. They supersede earlier general-only,
 grouped-venue and no-replay proposals. [Phase 04](../handoffs/phase-04-challenge-loop.md)
 records the original implementation evidence; [Phase 07](../handoffs/phase-07-api-offline.md)
 records the current local-save protocol.
 
 Venue pills filter manually and scroll horizontally when needed. There is no
 GPS selection or additional Anywhere/All venue. Venue selection and per-venue
-cycling order stay in process memory; no server preferences, personal queues or
-per-skip requests remain. A venue change cannot restart an active attempt.
+cycling order are account-scoped phone preferences; no server preferences,
+personal queues or per-skip requests remain. Catalog refresh keeps surviving order
+and the front card, inserts new placements randomly behind it, and removes missing
+or inactive placements. If an active card disappears, its outcome must leave the
+untouched next card in place. Invalid or unreadable preferences fall back to a
+fresh shuffle; failed preference writes leave the live deck usable without activity
+saving or loss-risk warnings. A venue change cannot restart an active attempt.
 
 Start captures the selected challenge, start timestamp, named time zone and
 original duration in React memory. The full-screen active view hides Settings and
@@ -85,14 +91,14 @@ created under server-verifiable coverage. Saved/pending activity keeps its accou
 owner. Recovery and always-available account/data controls remain reachable.
 Production paid access remains unavailable until provider verification is connected.
 The current staging beta admission and its separate offline limits are recorded in
-the [test-server handoff](../handoffs/phase-11-test-server.md).
+the [test-server handoff](../handoffs/phase-14-test-server.md).
 
 Before billing, exercise the real loop with disposable local/test entitlement
 fixtures. Presentation previews make no domain writes and cannot become a
 production access bypass. Apple membership, signing and the installed development
 build are recorded in [APPLE_SETUP.md](../operations/APPLE_SETUP.md); a successful
 build does not establish two-iPhone recovery, native accessibility or release
-acceptance. Retain those gates in [Phase 11](../implementation-plan/phase-11-release.md).
+acceptance. Retain those gates in [Phase 14](../implementation-plan/phase-14-release.md).
 
 ## Subtext writing guidance
 

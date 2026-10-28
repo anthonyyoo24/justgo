@@ -3,6 +3,7 @@ import { accountKey } from '../../../lib/network/account-client';
 import { reconcileDayQueries, preserveDayRead } from './progress-read-cache';
 import { progressCalendar, progressDay, progressMetrics } from './progress';
 import { AccountRepository } from '../repository';
+import { journalEntry } from '../private-journal';
 import { ApiError } from '../../../lib/network/http';
 import type {
   ProgressSummary,
@@ -152,7 +153,7 @@ it('corrects a definitive rejection once, keeps writing and sends independent en
   );
   expect(
     progressDay(repo.store.getState(), today)?.entries.map((a) => a.id),
-  ).toEqual([uuid(2)]);
+  ).toEqual([uuid(1), uuid(2)]);
   expect(repo.getAttempt(uuid(1))?.reflection?.text).toBe(
     'Retained rejected writing.',
   );
@@ -253,6 +254,47 @@ it('same-ID day merging and stale downloaded/acknowledged reflections cannot era
       month: '2026-09',
     }),
   ).toBeUndefined();
+});
+it.each([
+  ['2026-09-01', false, 0],
+  ['2026-10-02', true, 0],
+  ['2026-10-03', true, 2],
+] as const)(
+  'distinguishes the offline %s journal count from unavailable remote activity',
+  async (date, repCountKnown, totalReps) => {
+    const { repo } = await setup();
+    await repo.restoreJournal([
+      journalEntry(owner, {
+        ...attempt(),
+        activityDate: date,
+        startedAt: `${date}T14:00:00.000Z`,
+        reflection: {
+          feeling: null,
+          text: 'Restored synthetic journal',
+          revision: 1,
+        },
+      }),
+    ]);
+    expect(progressDay(repo.store.getState(), date)).toMatchObject({
+      totalReps,
+      repCountKnown,
+      entries: [expect.objectContaining({ id: uuid(1) })],
+    });
+    expect(progressMetrics(repo.store.getState())?.totalReps).toBe(10);
+    expect(repo.store.getState().journal.operations).toEqual([]);
+  },
+);
+it('recognizes a zero-count day response independently of local journal entries', async () => {
+  const { repo } = await setup();
+  repo.store.setState({ online: true });
+  expect(
+    progressDay(repo.store.getState(), '2026-09-01', {
+      date: '2026-09-01',
+      totalReps: 0,
+      entries: [],
+      nextCursor: null,
+    }),
+  ).toMatchObject({ totalReps: 0, repCountKnown: true });
 });
 it('today paging retains later pages and higher revisions through refresh and offline restart', async () => {
   const { repo, storage } = await setup();
@@ -392,7 +434,7 @@ it('preserves earlier frozen dates and retires an older snapshot until its gener
   ).toBe(1);
 });
 
-it('keeps day query edits through stale reads, adopts backend-wins corrections and isolates owners', async () => {
+it('keeps durable day edits through stale reads and isolates owners', async () => {
   const { repo } = await setup();
   const queries = new QueryClient();
   const key = accountKey(owner, 'progress', 'day', today);
@@ -417,33 +459,11 @@ it('keeps day query edits through stale reads, adopts backend-wins corrections a
     expect(
       preserveDayRead(queries, otherKey, page).entries[0]?.reflection,
     ).toBeNull();
-    // Canonical conflict recovery intentionally supersedes optimistic text.
-    const journal = structuredClone(repo.store.getState().journal);
-    journal.records[uuid(1)]!.attempt.reflection = {
-      feeling: null,
-      text: 'Backend wins.',
-      revision: 2,
-    };
-    repo.store.setState({ journal });
+    await repo.adoptAttempt(attempt());
     reconcileDayQueries(queries, owner, repo.store.getState());
     expect(
       preserveDayRead(queries, key, page).entries[0]?.reflection?.text,
-    ).toBe('Backend wins.');
-    expect(
-      preserveDayRead(queries, key, {
-        ...page,
-        entries: [
-          {
-            ...attempt(),
-            reflection: {
-              feeling: null,
-              text: 'Newest cloud text.',
-              revision: 4,
-            },
-          },
-        ],
-      }).entries[0]?.reflection?.text,
-    ).toBe('Newest cloud text.');
+    ).toBe('Confirmed newer text.');
   } finally {
     queries.clear();
   }

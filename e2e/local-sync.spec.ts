@@ -1,10 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
-import {
-  catalogSchema,
-  sessionResponseSchema,
-  patchAttemptResponseSchema,
-} from '@justgo/contracts';
+import { catalogSchema, sessionResponseSchema } from '@justgo/contracts';
 import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 import type { JournalClock } from '../apps/mobile/src/data/activity/model';
@@ -21,6 +17,8 @@ const {
   AccountClient,
   createHttpClient,
   MemoryStorage,
+  memoryLocalJournal,
+  memoryJournalBackend,
 } = (await import(
   new URL('../.local/journey-repository.mjs', import.meta.url).href
 )) as typeof import('./support/activity-entry');
@@ -68,6 +66,7 @@ function repository(
   const repo = new AccountRepository({
     accountId,
     storage,
+    localJournal: memoryLocalJournal(accountId, storage),
     transport: createJournalTransport(client, accountId),
     today: new Date().toISOString().slice(0, 10),
     timeZone: 'UTC',
@@ -119,7 +118,7 @@ test('offline journal replays a lost acknowledgement through the real transport 
       feeling: 'a_little_better',
       text: 'Disposable synchronization fixture.',
     });
-    expect(repo.store.getState().journal.operations).toHaveLength(2);
+    expect(repo.store.getState().journal.operations).toHaveLength(1);
     expect(calls).toBe(0);
     repo.setEnvironment({ active: true, online: true });
     await repo.synchronize();
@@ -148,7 +147,7 @@ test('offline journal replays a lost acknowledgement through the real transport 
       const rows = await fixtureDatabase.query<{
         id: string;
         reflection_revision: number;
-        reflection_text: string;
+        reflection_text: string | null;
       }>(
         'select id,reflection_revision,reflection_text from justgo.attempts where user_id=$1',
         [account.userId],
@@ -156,8 +155,8 @@ test('offline journal replays a lost acknowledgement through the real transport 
       expect(rows.rows).toEqual([
         {
           id: completion.id,
-          reflection_revision: 1,
-          reflection_text: 'Disposable synchronization fixture.',
+          reflection_revision: 0,
+          reflection_text: null,
         },
       ]);
       expect(calls).toBe(2);
@@ -169,13 +168,18 @@ test('offline journal replays a lost acknowledgement through the real transport 
   }
 });
 
-test('failed device writes use ordered cloud fallback and typed backend-wins reflection recovery', async ({
+test('private journal failures preserve input locally and never fall back to the real API', async ({
   fixtureDatabase,
 }) => {
   const { token, account, card } = await fixtureAccount();
   const storage = new MemoryStorage();
-  storage.fail = true;
-  const { repo, close } = repository(account.userId, token, storage);
+  const writes: string[] = [];
+  const fetcher: typeof fetch = async (url, options) => {
+    if (options?.method && options.method !== 'GET')
+      writes.push(String(options.body ?? ''));
+    return fetch(url, options);
+  };
+  const { repo, close } = repository(account.userId, token, storage, fetcher);
   try {
     await repo.hydrate();
     const completion = {
@@ -186,54 +190,42 @@ test('failed device writes use ordered cloud fallback and typed backend-wins ref
       startTimeZone: 'UTC',
     };
     await repo.complete(completion, card);
+    await repo.synchronize();
+    memoryJournalBackend(storage).failCommit = true;
+    await expect(
+      repo.submitReflection(completion.id, randomUUID(), {
+        text: 'Private failed save fixture.',
+      }),
+    ).rejects.toMatchObject({ code: 'STORAGE' });
+    expect(repo.getAttempt(completion.id)?.reflection).toBeNull();
+    memoryJournalBackend(storage).failCommit = false;
     await repo.submitReflection(completion.id, randomUUID(), {
-      text: 'Initial fixture.',
-    });
-    expect(repo.store.getState().warning).toBeNull();
-    expect(
-      repo.store.getState().journal.records[completion.id]?.phoneVersion,
-    ).toBe(0);
-    const changed = await fetch(
-      `${journeyApiUrl}/v1/attempts/${completion.id}`,
-      {
-        method: 'PATCH',
-        headers: {
-          authorization: `Bearer ${token}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          submissionId: randomUUID(),
-          expectedReflectionRevision: 1,
-          reflection: { text: 'Authoritative backend fixture.' },
-        }),
-      },
-    );
-    if (!changed.ok) throw new Error('Fixture canonical patch failed');
-    const canonical = patchAttemptResponseSchema.parse(await changed.json());
-    await repo.submitReflection(completion.id, randomUUID(), {
-      text: 'Stale local fixture.',
-    });
-    expect(repo.getAttempt(completion.id)?.reflection).toEqual(
-      canonical.attempt.reflection,
-    );
-    expect(repo.store.getState().warning).toBeNull();
-    storage.fail = false;
-    // An explicit new save also recovers all retained journal versions/receipts.
-    await repo.submitReflection(completion.id, randomUUID(), {
-      text: 'New explicit fixture.',
+      text: 'Private failed save fixture.',
     });
     await repo.synchronize();
-    expect(repo.store.getState().journal.operations).toHaveLength(0);
-    const rows = await fixtureDatabase.query<{
-      reflection_revision: number;
-      reflection_text: string;
-    }>(
-      'select reflection_revision,reflection_text from justgo.attempts where user_id=$1 and id=$2',
-      [account.userId, completion.id],
+    expect(repo.getAttempt(completion.id)?.reflection?.text).toBe(
+      'Private failed save fixture.',
     );
-    expect(rows.rows).toEqual([
-      { reflection_revision: 3, reflection_text: 'New explicit fixture.' },
-    ]);
+    expect(
+      writes.every((body) => !body.includes('Private failed save fixture.')),
+    ).toBe(true);
+    expect(writes.every((body) => !body.includes('reflection'))).toBe(true);
+    expect(
+      (
+        await fixtureDatabase.query(
+          'select reflection_text,reflection_revision from justgo.attempts where user_id=$1',
+          [account.userId],
+        )
+      ).rows,
+    ).toEqual([{ reflection_text: null, reflection_revision: 0 }]);
+    expect(
+      (
+        await fixtureDatabase.query(
+          'select id from justgo.attempt_patch_receipts where user_id=$1',
+          [account.userId],
+        )
+      ).rows,
+    ).toEqual([]);
   } finally {
     close();
   }
@@ -268,7 +260,9 @@ test('ten long offline submissions persist and recover with measured serializati
     JSON.stringify(repo.store.getState().journal);
     const serializationMs = performance.now() - serializedAt;
     expect(Object.keys(repo.store.getState().journal.records)).toHaveLength(10);
-    expect(repo.store.getState().journal.operations).toHaveLength(20);
+    expect(repo.store.getState().journal.operations).toHaveLength(10);
+    expect(await repo.listJournalEntries()).toHaveLength(10);
+    expect(envelope).not.toContain('x'.repeat(100));
     // Regression budgets for this representative fixture; not an eviction limit.
     expect(encodedBytes).toBeLessThan(400_000);
     expect(serializationMs).toBeLessThan(100);

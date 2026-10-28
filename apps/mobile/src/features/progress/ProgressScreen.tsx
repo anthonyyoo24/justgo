@@ -65,13 +65,13 @@ function AccountProgress({ repository }: { repository: AccountRepository }) {
   const editingAttempt = reflection.editingId
     ? repository.getAttempt(reflection.editingId)
     : undefined;
-  // An in-progress editor keeps its accepted text when connectivity changes;
-  // closing it returns older-day lookups to the connection-required state.
-  const shownDay =
-    day ??
-    (editingAttempt && selectedDate
-      ? { date: selectedDate, totalReps: 1, entries: [editingAttempt] }
-      : undefined);
+  // Keep an in-progress editor visible if its day projection is temporarily
+  // unavailable, without treating the editor as evidence of a completion count.
+  const shownDay = day
+    ? { ...day, totalReps: day.repCountKnown ? day.totalReps : null }
+    : editingAttempt && selectedDate
+      ? { date: selectedDate, totalReps: null, entries: [editingAttempt] }
+      : undefined;
   const online = state!.online;
   return (
     <ProgressView
@@ -89,9 +89,12 @@ function AccountProgress({ repository }: { repository: AccountRepository }) {
           </>
         ) : undefined
       }
+      journalDates={Object.values(state!.localEntries ?? {}).map(
+        (entry) => entry.activityDate,
+      )}
       month={month}
       data={
-        metrics || calendar
+        metrics || calendar || Object.keys(state!.localEntries ?? {}).length
           ? {
               month,
               today: state!.period.today,

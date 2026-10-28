@@ -1,5 +1,5 @@
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import {
@@ -12,18 +12,33 @@ import { useHapticPreferences } from '../../../platform/haptics/haptics';
 import { saveExportFile } from '../../../platform/export/export-file';
 import { ApiError } from '../../../lib/network/http';
 import { collectExport } from './data-export';
+import { JournalBackupError } from '../../../data/backup/journal-backup';
 import { colors, spacing, typography } from '../../../theme/tokens';
 import type { AccountRepository } from '../../../data/activity/repository';
 import { SettingsRowContent } from '../../../components/settings/SettingsRows';
 
-export function SettingsExportRow() {
-  const { account } = useIdentity();
+type RowOptions = {
+  disabled?: boolean;
+  onBusyChange?: ((busy: boolean) => void) | undefined;
+};
+export function SettingsExportRow({
+  disabled = false,
+  onBusyChange,
+}: RowOptions = {}) {
+  const identity = useIdentity();
   const repository = useJournal();
   return (
     <ExportSession
-      key={account?.userId ?? 'disconnected'}
-      accountId={account?.userId ?? null}
+      key={repository?.accountId ?? 'disconnected'}
+      accountId={repository?.accountId ?? null}
+      ownerKind={
+        'collectionKind' in identity && identity.collectionKind === 'guest'
+          ? 'guest'
+          : 'account'
+      }
       repository={repository}
+      disabled={disabled}
+      onBusyChange={onBusyChange}
     />
   );
 }
@@ -31,25 +46,39 @@ export function SettingsExportRow() {
 function ExportSession({
   accountId,
   repository,
+  ownerKind,
+  disabled,
+  onBusyChange,
 }: {
+  ownerKind: 'guest' | 'account';
   accountId: string | null;
   repository: AccountRepository | null;
+  disabled: boolean;
+  onBusyChange: ((busy: boolean) => void) | undefined;
 }) {
   const { client } = useRuntime();
+  const localAccountSnapshot =
+    !!accountId && ownerKind === 'account' && !client.ownsAccount(accountId);
   const router = useRouter();
-  const { reduceMotion } = useMotionPreferences();
+  const motion = useMotionPreferences();
+  const reduceMotion = motion.requestedReduceMotion ?? motion.reduceMotion;
   const {
     enabled: haptics,
     loading: hapticsLoading,
     saving: hapticsSaving,
   } = useHapticPreferences();
-  const preferencesPending = hapticsLoading || hapticsSaving;
+  const preferencesPending =
+    hapticsLoading || hapticsSaving || motion.loading || motion.saving;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
     kind: 'success' | 'error';
   } | null>(null);
   const active = useRef<AbortController | null>(null);
+  useEffect(() => {
+    onBusyChange?.(busy);
+    return () => onBusyChange?.(false);
+  }, [busy, onBusyChange]);
   useFocusEffect(
     useCallback(
       () => () => {
@@ -63,7 +92,7 @@ function ExportSession({
   );
 
   const start = async () => {
-    if (active.current || preferencesPending) return;
+    if (active.current || preferencesPending || disabled) return;
     if (!repository || !accountId) {
       router.push('/recovery');
       return;
@@ -74,13 +103,14 @@ function ExportSession({
     setMessage(null);
     const check = () => {
       if (controller.signal.aborted) throw new ApiError('CANCELLED');
-      if (!client.ownsAccount(repository.accountId))
+      if (!client.ownsCollection(repository.accountId))
         throw new ApiError('ACCOUNT_CHANGED');
     };
     try {
       const archive = await collectExport({
         client,
         repository,
+        ownerKind,
         reduceMotion,
         haptics,
         signal: controller.signal,
@@ -95,22 +125,28 @@ function ExportSession({
               kind: 'success',
               text:
                 result === 'downloaded'
-                  ? 'Your ZIP download has started.'
-                  : 'Your export was shared.',
+                  ? localAccountSnapshot
+                    ? 'Your phone’s saved data download has started. Sign in to include the latest cloud data.'
+                    : 'Your ZIP download has started.'
+                  : localAccountSnapshot
+                    ? 'Your phone’s saved data was shared. Sign in to include the latest cloud data.'
+                    : 'Your data download was shared.',
             },
       );
     } catch (error) {
       if (
         controller.signal.aborted ||
-        !client.ownsAccount(repository.accountId)
+        !client.ownsCollection(repository.accountId)
       )
         return;
       setMessage({
         kind: 'error',
         text:
-          error instanceof ApiError && error.code === 'STORAGE'
-            ? 'Some saved data on this phone could not be read. Try reopening the app before exporting.'
-            : 'Couldn’t export your data. Please try again.',
+          error instanceof JournalBackupError
+            ? error.message
+            : error instanceof ApiError && error.code === 'STORAGE'
+              ? 'Some saved data on this phone could not be read. Try reopening the app before exporting.'
+              : 'Couldn’t download your data. Please try again.',
       });
     } finally {
       if (active.current === controller) {
@@ -123,17 +159,19 @@ function ExportSession({
     <View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Export my data"
+        accessibilityLabel="Download my data"
         accessibilityHint={
           accountId && repository
-            ? 'Create a ZIP with your saved challenges, feelings and reflections'
-            : 'Connect your account to export your data'
+            ? localAccountSnapshot
+              ? 'Save this phone’s challenge history, journal and preferences. Sign in to include the latest cloud data.'
+              : 'Save your complete challenge history, journal and preferences in a restorable ZIP'
+            : 'Continue on this phone before downloading your saved data'
         }
         accessibilityState={{
-          disabled: busy || preferencesPending,
+          disabled: busy || preferencesPending || disabled,
           busy: busy || preferencesPending,
         }}
-        disabled={busy || preferencesPending}
+        disabled={busy || preferencesPending || disabled}
         style={({ pressed }) => pressed && styles.pressed}
         onPress={() => {
           // This action handles export failures before presenting feedback.
@@ -142,14 +180,14 @@ function ExportSession({
       >
         <SettingsRowContent
           icon="export"
-          label="Export my data"
+          label="Download my data"
           accessory={
             busy ? (
               <ActivityIndicator
                 color={colors.ink}
                 accessible
                 accessibilityRole="progressbar"
-                accessibilityLabel="Export my data in progress"
+                accessibilityLabel="Download my data in progress"
               />
             ) : undefined
           }

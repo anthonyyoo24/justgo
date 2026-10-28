@@ -7,8 +7,7 @@ import ts from 'typescript';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const fixtureRoots = [
-  'apps/mobile/test-support/progress',
-  'apps/mobile/test-support/identity',
+  'apps/mobile/test-support',
   'apps/api/tests/identity/fixtures',
   'apps/api/tests/db/fixtures',
 ];
@@ -95,4 +94,8 @@ test('the database command still selects every split identity integration suite'
       `Database gate omits ${suite}`,
     );
   assert.ok(!script.includes('tests/identity/identity.integration.test.ts'));
+  assert.ok(
+    script.includes('tests/db/managed-session-check.integration.test.ts'),
+    'Database gate must exercise the actual private Auth-session capability',
+  );
 });

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { EntitlementReader } from './service.js';
 import type { UploadEligibilityReader } from '../attempts/service.js';
+import type { GuestAccessReader } from './guest.js';
 
 const grantSchema = z
   .object({
@@ -62,6 +63,7 @@ export function createBetaAccess(
 ): {
   entitlementReader: EntitlementReader;
   uploadEligibilityReader: UploadEligibilityReader;
+  guestAccessReader: GuestAccessReader;
 } {
   const approved = new Map(
     betaGrantsSchema.parse(grants).map((g) => [g.userId, g]),
@@ -85,6 +87,18 @@ export function createBetaAccess(
       )
     ).rows[0]?.user_id;
   return {
+    guestAccessReader: async () => {
+      const time = now(),
+        checkedAt = new Date(time).toISOString();
+      return window && covers(window, time)
+        ? {
+            status: 'verified',
+            source: 'free_beta',
+            checkedAt,
+            expiresAt: window.expiresAt,
+          }
+        : { status: 'unpaid', source: 'free_beta', checkedAt };
+    },
     entitlementReader: async (tx) => {
       const userId = await owner(tx);
       const grant = interval(userId);

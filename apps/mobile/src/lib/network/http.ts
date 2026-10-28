@@ -13,6 +13,7 @@ export type ClientErrorCode =
   | 'TIMEOUT'
   | 'CANCELLED'
   | 'ACCOUNT_CHANGED'
+  | 'INVALID_RESPONSE'
   | 'DELETION_UNAVAILABLE'
   | 'DELETION_REJECTED';
 export class ApiError extends Error {
@@ -25,7 +26,7 @@ export class ApiError extends Error {
     super(code);
   }
 }
-export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type RequestOptions = {
   method?: HttpMethod;
   body?: unknown;
@@ -46,6 +47,38 @@ function retryAfterDelay(header: string | null | undefined) {
   return Number.isFinite(delay) && delay >= 0 ? delay : undefined;
 }
 export type HttpClient = ReturnType<typeof createHttpClient>;
+function localDevelopmentHost(hostname: string) {
+  if (['localhost', '127.0.0.1', '[::1]'].includes(hostname)) return true;
+  // Physical phones reach Metro's API through the Mac's private LAN address.
+  // Match canonical IPv4 hosts only; public addresses and host suffixes stay closed.
+  const ipv4 = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(hostname);
+  if (!ipv4) return false;
+  const first = Number(ipv4[1]);
+  const second = Number(ipv4[2]);
+  return (
+    first === 10 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
+}
+/** Canonical API scope shared by transport validation and local access metadata. */
+export function apiOrigin(baseUrl: string | undefined): string | null {
+  try {
+    const base = new URL(baseUrl ?? '');
+    return (base.protocol === 'https:' ||
+      (__DEV__ &&
+        base.protocol === 'http:' &&
+        localDevelopmentHost(base.hostname))) &&
+      !base.username &&
+      !base.password &&
+      !base.search &&
+      !base.hash
+      ? base.origin
+      : null;
+  } catch {
+    return null;
+  }
+}
 export function createHttpClient(
   baseUrl: string | undefined,
   fetcher: typeof fetch = fetch,
@@ -56,29 +89,19 @@ export function createHttpClient(
       schema: z.ZodType<T>,
       options: RequestOptions = {},
     ): Promise<T> {
-      let base: URL;
+      const origin = apiOrigin(baseUrl);
+      if (!origin) throw new ApiError('UNAVAILABLE');
       let target: URL;
       try {
-        base = new URL(baseUrl ?? '');
-        target = new URL(path, base);
+        target = new URL(path, origin);
       } catch {
         throw new ApiError('UNAVAILABLE');
       }
       // Progress reads use encoded query parameters. Resolve the relative path
       // against the trusted API origin so a query cannot redirect the request.
       if (
-        (base.protocol !== 'https:' &&
-          !(
-            __DEV__ &&
-            base.protocol === 'http:' &&
-            ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)
-          )) ||
-        base.username ||
-        base.password ||
-        base.search ||
-        base.hash ||
         !path.startsWith('/v1/') ||
-        target.origin !== base.origin ||
+        target.origin !== origin ||
         !target.pathname.startsWith('/v1/') ||
         path.includes('#')
       )

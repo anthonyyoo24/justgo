@@ -76,14 +76,16 @@ it.each([false, true])(
       .mockRejectedValueOnce(new Error('native detail'))
       .mockResolvedValueOnce(undefined);
     mockRepository.store.setState({ hydrationError: 'unreadable' });
-    const screen = render(sheet ? <SavingSheetSurface /> : <SavingNotice />);
-    fireEvent.press(
+    const screen = await render(
+      sheet ? <SavingSheetSurface /> : <SavingNotice />,
+    );
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'Review activity that couldn’t upload',
       }),
     );
     const help = screen.getByRole('button', { name: 'Get help' });
-    fireEvent.press(help);
+    await fireEvent.press(help);
     await waitFor(() =>
       expect(showMessageToast).toHaveBeenCalledWith(
         sheet ? 'activity-sheet' : 'activity',
@@ -91,19 +93,19 @@ it.each([false, true])(
       ),
     );
     expect(help.props.accessibilityState.disabled).toBe(false);
-    fireEvent.press(help);
+    await fireEvent.press(help);
     await waitFor(() => expect(help.props.accessibilityState.busy).toBe(false));
     expect(open).toHaveBeenNthCalledWith(2, supportContact);
     open.mockRestore();
   },
 );
-it('removes account presentation on disconnection and ignores recovery while the account is parked', () => {
-  const screen = render(
+it('removes account presentation on disconnection and ignores recovery while the account is parked', async () => {
+  const screen = await render(
     <SavingFeedbackShell>
       <Text>App</Text>
     </SavingFeedbackShell>,
   );
-  act(() =>
+  await act(() =>
     mockRepository.store.setState({
       warning: {
         visible: true,
@@ -116,31 +118,31 @@ it('removes account presentation on disconnection and ignores recovery while the
   );
   expect(screen.getByTestId('saving-risk-banner')).toBeTruthy();
   mockConnected = false;
-  screen.rerender(
+  await screen.rerender(
     <SavingFeedbackShell>
       <Text>Recovery route</Text>
     </SavingFeedbackShell>,
   );
   expect(screen.queryByTestId('saving-risk-banner')).toBeNull();
   expect(dismissActivityToasts).toHaveBeenCalled();
-  act(() =>
+  await act(() =>
     mockRepository.store.setState({ warning: null, recoverySequence: 1 }),
   );
   mockConnected = true;
-  screen.rerender(
+  await screen.rerender(
     <SavingFeedbackShell>
       <Text>Recovered account</Text>
     </SavingFeedbackShell>,
   );
   expect(showRecoveryToast).not.toHaveBeenCalled();
 });
-it('reserves space for risk, allows manual dismissal, and announces exactly one full recovery even after dismissal', () => {
-  const screen = render(
+it('reserves space for risk, allows manual dismissal, and announces exactly one full recovery even after dismissal', async () => {
+  const screen = await render(
     <SavingFeedbackShell>
       <Text>Route content</Text>
     </SavingFeedbackShell>,
   );
-  act(() =>
+  await act(() =>
     mockRepository.store.setState({
       warning: {
         visible: true,
@@ -155,16 +157,18 @@ it('reserves space for risk, allows manual dismissal, and announces exactly one 
   expect(
     screen.getByText(/Your phone is offline and storage is full/),
   ).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Close saving warning' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Close saving warning' }),
+  );
   expect(screen.queryByTestId('saving-risk-banner')).toBeNull();
-  act(() => mockRepository.store.setState({ remoteRefreshSequence: 1 }));
+  await act(() => mockRepository.store.setState({ remoteRefreshSequence: 1 }));
   expect(showRecoveryToast).not.toHaveBeenCalled();
-  act(() =>
+  await act(() =>
     mockRepository.store.setState({ warning: null, recoverySequence: 1 }),
   );
   expect(showRecoveryToast).toHaveBeenCalledTimes(1);
   expect(showRecoveryToast).toHaveBeenCalledWith('activity', `${owner}:1`);
-  screen.rerender(
+  await screen.rerender(
     <SavingFeedbackShell>
       <Text>Another route</Text>
     </SavingFeedbackShell>,
@@ -209,19 +213,19 @@ it('does not confuse a backend outage with an offline phone or infer storage ful
     }),
   ).toMatch(/offline/);
 });
-it('presents notices within a covering sheet and routes the sole toast to that host', () => {
-  const screen = render(
+it('presents notices within a covering sheet and routes the sole toast to that host', async () => {
+  const screen = await render(
     <SavingFeedbackShell>
       <SavingSheetSurface />
     </SavingFeedbackShell>,
   );
   expect(mockActivity.toastChannel).toBe('activity-sheet');
-  act(() => mockRepository.store.setState({ recoverySequence: 1 }));
+  await act(() => mockRepository.store.setState({ recoverySequence: 1 }));
   expect(showRecoveryToast).toHaveBeenCalledWith(
     'activity-sheet',
     `${owner}:1`,
   );
-  screen.rerender(
+  await screen.rerender(
     <SavingFeedbackShell>
       <Text>Closed sheet</Text>
     </SavingFeedbackShell>,
@@ -229,7 +233,7 @@ it('presents notices within a covering sheet and routes the sole toast to that h
   expect(mockActivity.toastChannel).toBe('activity');
   expect(showRecoveryToast).toHaveBeenCalledTimes(1);
 });
-it('mirrors a saving notice in a temporary native cover without duplicating or releasing the destination toast host', () => {
+it('mirrors a saving notice in a temporary native cover without duplicating or releasing the destination toast host', async () => {
   mockRepository.store.setState({
     warning: {
       visible: true,
@@ -245,18 +249,18 @@ it('mirrors a saving notice in a temporary native cover without duplicating or r
       <SavingSheetSurface key="destination" />
     </>
   );
-  const screen = render(surfaces(true));
+  const screen = await render(surfaces(true));
   expect(screen.getAllByTestId('saving-risk-banner')).toHaveLength(2);
   expect(screen.getAllByTestId('toast-host-activity-sheet')).toHaveLength(1);
   expect(mockActivity.toastChannel).toBe('activity-sheet');
-  screen.rerender(surfaces(false));
+  await screen.rerender(surfaces(false));
   expect(screen.getAllByTestId('saving-risk-banner')).toHaveLength(1);
   expect(mockActivity.toastChannel).toBe('activity-sheet');
-  screen.unmount();
+  await screen.unmount();
   expect(mockActivity.toastChannel).toBe('activity');
 });
-it('clears stale account feedback without treating switching accounts as recovery', () => {
-  const screen = render(
+it('clears stale account feedback without treating switching accounts as recovery', async () => {
+  const screen = await render(
     <SavingFeedbackShell>
       <Text>Account A</Text>
     </SavingFeedbackShell>,
@@ -270,7 +274,7 @@ it('clears stale account feedback without treating switching accounts as recover
     timeZone: zone,
   });
   mockRepository.store.setState({ recoverySequence: 3 });
-  screen.rerender(
+  await screen.rerender(
     <SavingFeedbackShell>
       <Text>Account B</Text>
     </SavingFeedbackShell>,
@@ -279,10 +283,12 @@ it('clears stale account feedback without treating switching accounts as recover
   expect(showRecoveryToast).not.toHaveBeenCalled();
   old.dispose();
 });
-it('keeps unreadable storage and retained failed records discoverable outside the editor', () => {
-  const screen = render(<SavingNotice />);
-  act(() => mockRepository.store.setState({ hydrationError: 'unreadable' }));
-  fireEvent.press(
+it('keeps unreadable storage and retained failed records discoverable outside the editor', async () => {
+  const screen = await render(<SavingNotice />);
+  await act(() =>
+    mockRepository.store.setState({ hydrationError: 'unreadable' }),
+  );
+  await fireEvent.press(
     screen.getByRole('button', {
       name: 'Review activity that couldn’t upload',
     }),
@@ -293,50 +299,56 @@ it('keeps unreadable storage and retained failed records discoverable outside th
   operation.state = 'rejected';
   operation.code = 'ACCESS_REQUIRED';
   operation.requestId = 'safe-reference';
-  act(() => mockRepository.store.setState({ journal }));
+  await act(() => mockRepository.store.setState({ journal }));
   expect(screen.getByText(/subscription coverage/)).toBeTruthy();
   expect(screen.getByText('Reference: safe-reference')).toBeTruthy();
   operation.code = 'NOT_FOUND';
-  act(() =>
+  await act(() =>
     mockRepository.store.setState({ journal: structuredClone(journal) }),
   );
   expect(screen.getByText(/server couldn’t find/)).toBeTruthy();
   operation.code = 'INVALID_REQUEST';
-  act(() =>
+  await act(() =>
     mockRepository.store.setState({ journal: structuredClone(journal) }),
   );
   expect(screen.getByText(/Repeating the same request/)).toBeTruthy();
   operation.state = 'auth';
-  act(() =>
+  await act(() =>
     mockRepository.store.setState({ journal: structuredClone(journal) }),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'Recover account' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Recover account' }),
+  );
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
 });
-it('opens a retained rejected reflection for an explicit correction', async () => {
+it('opens locally preserved writing alongside a rejected completion', async () => {
   await mockRepository.submitReflection(
     input().id,
     '20000000-0000-4000-8000-000000000002',
     { text: 'Retained writing' },
   );
   const journal = structuredClone(mockRepository.store.getState().journal);
-  const operation = journal.operations[1]!;
+  const operation = journal.operations[0]!;
   operation.state = 'rejected';
   operation.code = 'INVALID_REQUEST';
   mockRepository.store.setState({ journal });
-  const screen = render(<SavingNotice />);
-  fireEvent.press(
+  const screen = await render(<SavingNotice />);
+  await fireEvent.press(
     screen.getByRole('button', {
       name: 'Review activity that couldn’t upload',
     }),
   );
   expect(screen.getByText('Retained writing')).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Review reflection' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Review reflection' }),
+  );
   expect(mockRouter.push).toHaveBeenCalledWith({
     pathname: '/reflection',
     params: { attemptId: input().id, source: 'recovery' },
   });
-  fireEvent.press(screen.getByRole('button', { name: 'Hide saving details' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Hide saving details' }),
+  );
   expect(screen.queryByText('Retained writing')).toBeNull();
 });
 
@@ -347,12 +359,12 @@ it('keeps retained problems readable in the active modal without offering page n
     { text: 'Retained active-modal writing' },
   );
   const journal = structuredClone(mockRepository.store.getState().journal);
-  const operation = journal.operations[1]!;
+  const operation = journal.operations[0]!;
   operation.state = 'rejected';
   operation.code = 'INVALID_REQUEST';
   mockRepository.store.setState({ journal });
-  const screen = render(<SavingSheetSurface navigationEnabled={false} />);
-  fireEvent.press(
+  const screen = await render(<SavingSheetSurface navigationEnabled={false} />);
+  await fireEvent.press(
     screen.getByRole('button', {
       name: 'Review activity that couldn’t upload',
     }),
@@ -362,12 +374,14 @@ it('keeps retained problems readable in the active modal without offering page n
     screen.queryByRole('button', { name: 'Review reflection' }),
   ).toBeNull();
   operation.state = 'auth';
-  act(() =>
+  await act(() =>
     mockRepository.store.setState({ journal: structuredClone(journal) }),
   );
   expect(screen.queryByRole('button', { name: 'Recover account' })).toBeNull();
   expect(mockRouter.push).not.toHaveBeenCalled();
-  screen.rerender(<SavingSheetSurface />);
-  fireEvent.press(screen.getByRole('button', { name: 'Recover account' }));
+  await screen.rerender(<SavingSheetSurface />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Recover account' }),
+  );
   expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
 });

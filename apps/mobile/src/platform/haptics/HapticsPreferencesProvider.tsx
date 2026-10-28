@@ -12,11 +12,12 @@ import { useCompletionHaptics } from './completion/useCompletionHaptics';
 import { CompletionHapticsContext } from './completion/completion-haptics';
 import {
   HapticsContext,
+  hapticsPreferenceKey,
   type HapticAdapter,
   type HapticFeedback,
 } from './haptics';
 
-export const hapticsPreferenceKey = 'justgo:haptics:v1';
+export { hapticsPreferenceKey } from './haptics';
 export type HapticsStorage = Pick<typeof AsyncStorage, 'getItem' | 'setItem'>;
 
 export function HapticsPreferencesProvider({

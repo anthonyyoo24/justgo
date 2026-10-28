@@ -1,7 +1,5 @@
-import { AccountToolsScreen } from '../../app-support/identity/account/AccountToolsScreen';
-import { useRuntime } from '../../app-support/providers/AppProvider';
+import { Redirect } from 'expo-router';
 
 export default function TransferAccountRoute() {
-  const { identity } = useRuntime();
-  return <AccountToolsScreen controller={identity} tool="transfer" />;
+  return <Redirect href="/recovery" />;
 }

@@ -82,6 +82,7 @@ function setup(
 it('confirms once, clears only matching credentials and prevents automatic account recreation after relaunch', async () => {
   const s = setup();
   await s.controller.initialize();
+  await s.controller.createAccount();
   const other = { id: id(), secret: secret() };
   await s.vault.add(other);
   const recoveryMetadata = {
@@ -124,6 +125,7 @@ it('confirms once, clears only matching credentials and prevents automatic accou
 it('persists an uncertain request, disconnects uploads and resumes the same proof after restart', async () => {
   const s = setup();
   await s.controller.initialize();
+  await s.controller.createAccount();
   const token = s.controller.currentSession()!.token;
   s.deletion.mockRejectedValueOnce(new IdentityClientError('NETWORK'));
   await s.controller.deleteAccount();
@@ -145,6 +147,7 @@ it('persists an uncertain request, disconnects uploads and resumes the same proo
 it('retains confirmed cleanup across storage failure, blocks account replacement and retries without another delete', async () => {
   const s = setup();
   await s.controller.initialize();
+  await s.controller.createAccount();
   s.remove.mockRejectedValueOnce(new Error('fixture storage failure'));
   await s.controller.deleteAccount();
   expect(s.controller.getSnapshot().deletionStatus).toBe('cleanup');
@@ -163,6 +166,7 @@ it('does not send deletion from a native binary that cannot erase credentials', 
   delete vault.remove;
   const s = setup(vault);
   await s.controller.initialize();
+  await s.controller.createAccount();
   await s.controller.deleteAccount();
   expect(s.deletion).not.toHaveBeenCalled();
   expect(s.controller.getSnapshot().account?.userId).toBe(s.userId);
@@ -176,6 +180,7 @@ it.each([
   async (code, message) => {
     const s = setup();
     await s.controller.initialize();
+    await s.controller.createAccount();
     const session = s.controller.currentSession();
     const credentials = await s.vault.credentials();
     const disconnectedStates: boolean[] = [];
@@ -213,6 +218,7 @@ it.each([
 it('restores the saved account when a pending deletion is rejected after relaunch', async () => {
   const s = setup();
   await s.controller.initialize();
+  await s.controller.createAccount();
   const session = s.controller.currentSession();
   s.deletion.mockRejectedValueOnce(new IdentityClientError('NETWORK'));
   await s.controller.deleteAccount();
@@ -233,6 +239,7 @@ it('restores the saved account when a pending deletion is rejected after relaunc
 it('does not restore access if the saved session was revoked after a rejected deletion', async () => {
   const s = setup();
   await s.controller.initialize();
+  await s.controller.createAccount();
   s.deletion.mockRejectedValueOnce(new IdentityClientError('NOT_FOUND'));
   const calls = s.calls.getMockImplementation()!;
   s.calls.mockImplementation(async (method, path, body, token) => {
@@ -248,12 +255,14 @@ it('does not restore access if the saved session was revoked after a rejected de
 it('keeps local data on a definitive server rejection and rejects a receipt for another account', async () => {
   const s = setup();
   await s.controller.initialize();
+  await s.controller.createAccount();
   s.deletion.mockRejectedValueOnce(new IdentityClientError('SESSION_REVOKED'));
   await s.controller.deleteAccount();
   expect((await s.vault.read())?.pending).toBeNull();
   expect(s.remove).not.toHaveBeenCalled();
   const other = setup();
   await other.controller.initialize();
+  await other.controller.createAccount();
   other.deletion.mockResolvedValueOnce({
     userId: id(),
     deletedAt: '2026-10-14T10:00:00.000Z',
@@ -283,6 +292,7 @@ it.each(['pending', 'cleanup'] as const)(
   async (stage) => {
     const s = setup();
     await s.controller.initialize();
+    await s.controller.createAccount();
     if (stage === 'pending')
       s.deletion.mockRejectedValueOnce(new IdentityClientError('NETWORK'));
     else s.remove.mockRejectedValueOnce(new Error('Synthetic cleanup failure'));
@@ -319,6 +329,7 @@ it.each(['pending', 'cleanup'] as const)(
 it('retries the saved replacement bootstrap before unrelated cancellation reconciliation', async () => {
   const s = setup();
   await s.controller.initialize();
+  await s.controller.createAccount();
   await s.controller.deleteAccount();
   const replacementOwner = id();
   const calls = s.calls.getMockImplementation()!;

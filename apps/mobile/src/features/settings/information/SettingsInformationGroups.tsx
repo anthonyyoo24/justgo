@@ -6,7 +6,7 @@ import {
   supportContact,
 } from '../../../app-support/contact';
 import { getCommunityLinks } from './community-links';
-import { getLegalLinks } from './legal-links';
+import { getLegalLinks } from '../../../lib/legal-links';
 import type { SettingsIconName } from '../../../components/settings/SettingsIcon';
 import {
   SettingsGroup,

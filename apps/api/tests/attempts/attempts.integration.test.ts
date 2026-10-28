@@ -4,10 +4,10 @@ import { Pool } from 'pg';
 import { sql } from 'drizzle-orm';
 import type {
   AccessResponse,
-  Attempt,
+  CompletionAttempt,
   CreateAttempt,
   Catalog,
-  ProgressDayResponse,
+  CompletionProgressDayResponse,
 } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
@@ -116,7 +116,10 @@ async function create(token: string, data?: CreateAttempt) {
   const body = data ?? (await input(token));
   const result = await request(token, '/v1/attempts', 'POST', body);
   expect(result.statusCode, result.body).toBe(201);
-  return { body, attempt: result.json<{ attempt: Attempt }>().attempt };
+  return {
+    body,
+    attempt: result.json<{ attempt: CompletionAttempt }>().attempt,
+  };
 }
 const patch = (
   token: string,
@@ -305,7 +308,7 @@ describe('completed attempt resources', () => {
           text: 'Earlier paid rep',
         })
       ).statusCode,
-    ).toBe(200);
+    ).toBe(410);
     for (const startedAt of [
       '2026-09-17T23:59:59.999Z',
       '2026-09-19T00:00:00.000Z',
@@ -365,6 +368,9 @@ describe('completed attempt resources', () => {
     for (const changed of [
       { userId: a.userId },
       { status: 'completed' },
+      { reflection: { text: 'private' } },
+      { feeling: 'a_little_better' },
+      { reflectionLength: 7 },
       { id: 'bad' },
       { startTimeZone: 'nonsense' },
       { challengeId: 'missing' },
@@ -408,8 +414,8 @@ describe('completed attempt resources', () => {
   });
 });
 
-describe('inline reflection rules and history', () => {
-  it('keeps inactive references uploadable and projects live challenge wording', async () => {
+describe('retired journal writes and completion history', () => {
+  it('keeps inactive references uploadable and freezes challenge wording', async () => {
     const a = await account(),
       body = await input(a.sessionToken);
     const original = (
@@ -437,8 +443,8 @@ describe('inline reflection rules and history', () => {
       expect(
         (
           await request(a.sessionToken, '/v1/attempts?date=2026-09-18')
-        ).json<ProgressDayResponse>().entries[0]?.instruction,
-      ).toBe('Disposable newest wording');
+        ).json<CompletionProgressDayResponse>().entries[0]?.instruction,
+      ).toBe('Disposable revised wording');
     } finally {
       await admin.query(
         'update justgo.challenges set text=$2,active=$3 where id=$1',
@@ -446,138 +452,66 @@ describe('inline reflection rules and history', () => {
       );
     }
   });
-  it('supports feeling-only, text-only and combined submissions with no mutable feeling on edits', async () => {
-    const a = await account();
-    for (const reflection of [
-      { feeling: 'a_little_better' },
-      { text: 'Text only' },
-      { feeling: 'about_the_same', text: 'Both' },
-    ]) {
-      const { attempt } = await create(a.sessionToken),
-        saved = await patch(a.sessionToken, attempt.id, 0, reflection);
-      expect(saved.statusCode, saved.body).toBe(200);
-      expect(saved.json().attempt.reflection.revision).toBe(1);
-      const edited = await patch(a.sessionToken, attempt.id, 1, {
-        text: 'Edited',
-      });
-      expect(edited.statusCode, edited.body).toBe(200);
-      expect(edited.json().attempt.reflection.feeling).toBe(
-        saved.json().attempt.reflection.feeling,
-      );
-      expect(
-        (
-          await patch(a.sessionToken, attempt.id, 2, {
-            feeling: 'a_lot_better',
-            text: 'Edited',
-          })
-        ).statusCode,
-      ).toBe(400);
-      const cleared = await patch(a.sessionToken, attempt.id, 2, {
-        text: '   ',
-      });
-      expect(cleared.statusCode).toBe('feeling' in reflection ? 200 : 400);
-      if ('feeling' in reflection)
-        expect(cleared.json().attempt.reflection.text).toBeNull();
-    }
-    const { attempt } = await create(a.sessionToken);
-    for (const reflection of [
-      {},
-      { text: null },
-      { text: '  ', feeling: null },
-      { text: 'a'.repeat(10001) },
-    ])
-      expect(
-        (await patch(a.sessionToken, attempt.id, 0, reflection)).statusCode,
-      ).toBe(400);
-  });
-  it('replays matching receipts before checking revisions without regressing canonical content', async () => {
+  it('permanently rejects all old private writes without replaying receipts or changing content', async () => {
     const a = await account(),
-      { attempt } = await create(a.sessionToken),
-      submission = randomUUID();
-    const first = await patch(
-      a.sessionToken,
-      attempt.id,
-      0,
-      { text: 'First' },
-      submission,
+      b = await account();
+    const { attempt } = await create(a.sessionToken);
+    await admin.query(
+      "update justgo.attempts set reflection_text='Retained legacy note',reflection_revision=1 where user_id=$1 and id=$2",
+      [a.userId, attempt.id],
     );
-    expect(first.statusCode).toBe(200);
-    const next = await patch(a.sessionToken, attempt.id, 1, { text: 'Second' });
-    expect(next.statusCode).toBe(200);
-    const replay = await patch(
-      a.sessionToken,
-      attempt.id,
-      0,
-      { text: 'First' },
-      submission,
-    );
-    expect(replay.statusCode).toBe(200);
-    expect(replay.json()).toMatchObject({
-      attempt: { reflection: { text: 'Second', revision: 2 } },
-      acknowledgement: { submissionId: submission, appliedRevision: 1 },
-    });
-    expect(
-      (
-        await patch(
-          a.sessionToken,
-          attempt.id,
-          0,
-          { text: 'Changed' },
-          submission,
-        )
-      ).json().code,
-    ).toBe('CONFLICT');
-    const another = await create(a.sessionToken);
-    expect(
-      (
-        await patch(
-          a.sessionToken,
-          another.attempt.id,
-          0,
-          { text: 'First' },
-          submission,
-        )
-      ).json().code,
-    ).toBe('CONFLICT');
+    for (const token of [a.sessionToken, b.sessionToken, 'unknown']) {
+      const result = await patch(token, attempt.id, 1, {
+        text: 'Rejected private input',
+      });
+      expect(result.statusCode).toBe(410);
+      expect(result.json().code).toBe('PRIVATE_JOURNAL_LOCAL');
+      expect(result.body).not.toContain('private input');
+      expect(result.json()).not.toHaveProperty('currentAttempt');
+    }
     expect(
       (
         await admin.query(
-          'select count(*)::int as n from justgo.attempt_patch_receipts where user_id=$1',
-          [a.userId],
+          'select reflection_text,reflection_revision from justgo.attempts where user_id=$1 and id=$2',
+          [a.userId, attempt.id],
         )
-      ).rows[0].n,
-    ).toBe(2);
-  });
-  it('returns latest owner-scoped canonical content for genuine revision conflicts and serializes competing edits', async () => {
-    const a = await account(),
-      { attempt } = await create(a.sessionToken);
-    const results = await Promise.all([
-      patch(a.sessionToken, attempt.id, 0, { text: 'One' }),
-      patch(a.sessionToken, attempt.id, 0, { text: 'Two' }),
+      ).rows,
+    ).toEqual([
+      { reflection_text: 'Retained legacy note', reflection_revision: 1 },
     ]);
-    expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
-    const winner = results.find((r) => r.statusCode === 200)!.json().attempt;
-    expect(results.find((r) => r.statusCode === 409)!.json()).toMatchObject({
-      code: 'REFLECTION_CONFLICT',
-      currentAttempt: winner,
-    });
-    const b = await account(),
-      other = await patch(b.sessionToken, attempt.id, 0, { text: 'Attack' });
-    expect(other.statusCode).toBe(404);
-    expect(other.json()).not.toHaveProperty('currentAttempt');
-    expect(
-      (await patch(a.sessionToken, randomUUID(), 0, { text: 'Missing' }))
-        .statusCode,
-    ).toBe(404);
+    const day = await request(a.sessionToken, '/v1/attempts?date=2026-09-18');
+    expect(day.json().entries[0]).not.toHaveProperty('reflection');
+    expect(day.body).not.toContain('Retained legacy note');
+    const replay = await request(
+      a.sessionToken,
+      '/v1/attempts',
+      'POST',
+      await input(a.sessionToken, { id: attempt.id }),
+    );
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json().attempt).not.toHaveProperty('reflection');
     expect(
       (
-        await request(a.sessionToken, '/v1/attempts/not-an-id', 'PATCH', {
-          submissionId: randomUUID(),
-          expectedReflectionRevision: 0,
-          reflection: { text: 'x' },
-        })
-      ).statusCode,
-    ).toBe(400);
+        await admin.query(
+          'select id from justgo.attempt_patch_receipts where user_id=$1',
+          [a.userId],
+        )
+      ).rows,
+    ).toEqual([]);
+    await expect(
+      identity.withSession(a.sessionToken, (tx) =>
+        tx.execute(
+          sql`update justgo.attempts set reflection_text='blocked' where user_id=${a.userId}`,
+        ),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      identity.withSession(a.sessionToken, (tx) =>
+        tx.execute(
+          sql`insert into justgo.attempts(user_id,id,venue_id,challenge_id,level_id,started_at,activity_date,start_time_zone,reflection_text,reflection_revision) values (${a.userId},${randomUUID()},${attempt.venue},${attempt.challengeId},'level-1',now(),'2026-09-18','UTC','blocked',1)`,
+        ),
+      ),
+    ).rejects.toThrow();
   });
   it('pages by precise start time and UUID, keeps cursors self-contained and rejects invalid or cross-date cursors', async () => {
     const a = await account();
@@ -596,7 +530,7 @@ describe('inline reflection rules and history', () => {
     );
     const first = (
       await request(a.sessionToken, '/v1/attempts?date=2026-09-18&limit=1')
-    ).json<ProgressDayResponse>();
+    ).json<CompletionProgressDayResponse>();
     expect(first.entries[0]?.id).toBe(ids[0]);
     expect(first.totalReps).toBe(3);
     const next = (
@@ -604,14 +538,14 @@ describe('inline reflection rules and history', () => {
         a.sessionToken,
         `/v1/attempts?date=2026-09-18&limit=1&cursor=${first.nextCursor}`,
       )
-    ).json<ProgressDayResponse>();
+    ).json<CompletionProgressDayResponse>();
     expect(next.entries[0]?.id).toBe(ids[1]);
     const last = (
       await request(
         a.sessionToken,
         `/v1/attempts?date=2026-09-18&cursor=${next.nextCursor}`,
       )
-    ).json<ProgressDayResponse>();
+    ).json<CompletionProgressDayResponse>();
     expect(last.entries.map((e) => e.id)).toEqual([third.attempt.id]);
     expect(last.nextCursor).toBeNull();
     for (const suffix of [

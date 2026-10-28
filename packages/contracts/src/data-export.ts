@@ -1,13 +1,19 @@
 import { z } from 'zod';
-import { attemptSchema } from './activity/attempts.ts';
+import { attemptSchema, completionAttemptSchema } from './activity/attempts.ts';
 
-// Fixed-size pages keep private journal responses within the API response budget.
+// Fixed-size pages bound account export responses.
 export const exportPageQuerySchema = z
   .object({ cursor: z.uuid().optional() })
   .strict();
 export const exportPageSchema = z
   .object({
-    account: z.object({ id: z.uuid(), createdAt: z.iso.datetime() }).strict(),
+    account: z
+      .object({
+        id: z.uuid(),
+        createdAt: z.iso.datetime(),
+        analyticsRestricted: z.boolean().optional(),
+      })
+      .strict(),
     devices: z.array(
       z
         .object({
@@ -22,3 +28,8 @@ export const exportPageSchema = z
   })
   .strict();
 export type ExportPage = z.infer<typeof exportPageSchema>;
+
+export const completionExportPageSchema = exportPageSchema.extend({
+  attempts: z.array(completionAttemptSchema).max(50),
+});
+export type CompletionExportPage = z.infer<typeof completionExportPageSchema>;

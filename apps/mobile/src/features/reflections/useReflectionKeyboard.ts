@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   type LayoutChangeEvent,
-  type ScrollView,
+  type ScrollViewInstance,
 } from 'react-native';
 import { MotionContext } from '../../platform/motion/motion';
 
@@ -13,7 +13,7 @@ const editorBottomInset = 16;
 export function useReflectionKeyboard(defaultInputHeight: number) {
   // Standalone presentation fixtures stay still until a preference is available.
   const reduceMotion = useContext(MotionContext)?.reduceMotion ?? true;
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const focusedRef = useRef(false);
   const sectionTop = useRef(0);
   const [focused, setFocused] = useState(false);

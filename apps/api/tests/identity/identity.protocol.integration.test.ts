@@ -58,6 +58,42 @@ it('rejects malformed or mixed session proofs and all retired identity action ro
   }
 });
 
+it('creates and replays ordinary accounts without legal receipts and exposes no agreement routes', async () => {
+  const input = request();
+  const created = await post('/sessions', { kind: 'bootstrap', ...input });
+  expect(created.statusCode).toBe(200);
+  const session = created.json<{ userId: string }>();
+  users.add(session.userId);
+  expect(
+    (await post('/sessions', { kind: 'bootstrap', ...input })).json(),
+  ).toEqual(session);
+  expect(created.body).not.toMatch(/acceptance|termsVersion|acceptedAt/);
+  expect(
+    (
+      await admin.query(
+        "select to_regclass('justgo.account_acceptances') as table_name",
+      )
+    ).rows[0].table_name,
+  ).toBeNull();
+  const rejected = await post('/sessions', {
+    kind: 'bootstrap',
+    ...input,
+    acceptance: { termsVersion: 'legacy' },
+  });
+  expect(rejected.statusCode).toBe(400);
+  expect(rejected.json().code).toBe('INVALID_REQUEST');
+  for (const method of ['GET', 'PUT'] as const) {
+    const response = await app.inject({
+      method,
+      url: '/v1/account/acceptance',
+      headers: { authorization: `Bearer ${input.sessionToken}` },
+      ...(method === 'PUT' ? { payload: { termsVersion: 'legacy' } } : {}),
+    });
+    expect(response.statusCode).toBe(404);
+  }
+  expect(await service.me(input.sessionToken)).toEqual(session);
+});
+
 it('rate limits full receiver cancellation proofs before mutating the transfer', async () => {
   const t = await start(),
     ip = `receiver-${randomUUID()}`;

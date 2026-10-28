@@ -12,15 +12,17 @@
   },
   "packageManager": "npm@11.16.0",
   "scripts": {
-    "dev:mobile": "npm run start -w @justgo/mobile",
+    "dev:mobile": "node scripts/development/start-mobile.mjs",
     "dev:web": "npm run web -w @justgo/mobile",
     "dev:api": "npm run dev -w @justgo/api",
     "typecheck": "npm run typecheck --workspaces && npm run typecheck:journey",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "audit:api": "node scripts/quality/audit-api-dependencies.mjs",
     "test": "npm run test:architecture && npm run test --workspaces",
-    "test:architecture": "node --test scripts/quality/*.test.mjs scripts/journeys/*.test.mjs",
+    "test:architecture": "node --test scripts/quality/*.test.mjs scripts/journeys/*.test.mjs scripts/release/*.test.mjs scripts/development/*.test.mjs sites/legal/*.test.mjs",
+    "release:beta:check": "node scripts/release/check-beta.mjs",
     "test:db": "npm run test:db -w @justgo/api",
     "db:migrate": "npm run db:migrate -w @justgo/api",
     "db:generate": "npm run db:generate -w @justgo/api",
@@ -29,6 +31,7 @@
     "db:local": "node scripts/local-database.mjs",
     "db:stop": "node scripts/local-database.mjs --stop",
     "build:contracts": "npm run build -w @justgo/contracts",
+    "build:legal": "node sites/legal/build.mjs",
     "prepare": "npm run build:contracts",
     "test:coverage": "npm run build:contracts && npm run test:coverage --workspaces && npm run coverage:check",
     "coverage:check": "node scripts/quality/check-coverage.mjs",
@@ -41,23 +44,23 @@
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
     "@types/node": "24.19.2",
-    "@vitest/coverage-v8": "5.0.1",
+    "@vitest/coverage-v8": "5.0.5",
     "esbuild": "0.28.2",
     "eslint": "10.10.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-x": "5.28.0",
     "eslint-plugin-testing-library": "7.16.2",
-    "expo-doctor": "1.20.4",
+    "expo-doctor": "1.21.5",
     "globals": "17.13.0",
     "prettier": "3.9.7",
     "tsx": "4.23.13",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0",
-    "vitest": "5.0.1"
+    "vitest": "5.0.5"
   },
   "overrides": {
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-test-renderer": "19.2.3"
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "test-renderer": "1.3.0"
   }
 }

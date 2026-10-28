@@ -17,6 +17,7 @@ let repository: AccountRepository;
 let controller: ChallengeController;
 let storage: MemoryStorage;
 const capture = {
+  canStart: () => true,
   now: () => Date.parse(`${today}T23:59:00Z`),
   timeZone: () => zone,
 };
@@ -48,7 +49,9 @@ afterEach(() => {
 });
 
 it('captures one local start, freezes its card/duration, and gives up without a saved attempt', async () => {
-  const screen = renderHook(() => useActiveChallenge(controller, capture));
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, capture),
+  );
   await act(async () => {
     await screen.result.current.onAction(1);
     await screen.result.current.onAction(1);
@@ -80,29 +83,33 @@ it('captures one local start, freezes its card/duration, and gives up without a 
   expect(screen.result.current.active).toBeNull();
   expect(controller.getSnapshot().queues.streets?.turn).toBe(1);
   expect(repository.store.getState().journal.operations).toEqual([]);
-  screen.unmount();
+  await screen.unmount();
 });
 it('ignores empty decks and skips locally before accepting', async () => {
-  const screen = renderHook(() => useActiveChallenge(controller, capture));
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, capture),
+  );
   await act(async () => screen.result.current.onAction(-1));
   expect(mockFeedback).not.toHaveBeenCalled();
   expect(controller.getSnapshot().queues.streets?.turn).toBe(1);
   await act(async () => screen.result.current.onAction(1));
   expect(screen.result.current.active?.turn).toBe(1);
-  screen.unmount();
+  await screen.unmount();
   controller.changeAccount(null);
-  const empty = renderHook(() => useActiveChallenge(controller, capture));
+  const empty = await renderHook(() => useActiveChallenge(controller, capture));
   await act(async () => empty.result.current.onAction(1));
   expect(empty.result.current.active).toBeNull();
-  empty.unmount();
+  await empty.unmount();
 });
 it('preserves original start values through a slow completion, refuses give-up and writes one rep', async () => {
-  const screen = renderHook(() => useActiveChallenge(controller, capture));
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, capture),
+  );
   await act(async () => screen.result.current.onAction(1));
   const block = deferred<void>();
   storage.blocked = block;
   let first!: Promise<void>, duplicate!: Promise<void>;
-  act(() => {
+  await act(() => {
     first = screen.result.current.finish('completed');
     duplicate = screen.result.current.finish('completed');
   });
@@ -124,24 +131,28 @@ it('preserves original start values through a slow completion, refuses give-up a
   expect(mockFeedback.mock.calls).toEqual([['accept'], ['completed']]);
   await act(async () => screen.result.current.finish('completed'));
   expect(mockFeedback).toHaveBeenCalledTimes(2);
-  screen.unmount();
+  await screen.unmount();
 });
 it('resets unfinished activity on remount and ignores callbacks retained after unmount', async () => {
-  const screen = renderHook(() => useActiveChallenge(controller, capture));
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, capture),
+  );
   await act(async () => screen.result.current.onAction(1));
   const old = screen.result.current;
-  screen.unmount();
+  await screen.unmount();
   await old.onAction(1);
   await old.finish('completed');
   expect(mockFeedback.mock.calls).toEqual([['accept']]);
-  const fresh = renderHook(() => useActiveChallenge(controller, capture));
+  const fresh = await renderHook(() => useActiveChallenge(controller, capture));
   expect(fresh.result.current.active).toBeNull();
   expect(repository.store.getState().journal.operations).toEqual([]);
-  fresh.unmount();
+  await fresh.unmount();
 });
 
 it('does not celebrate a failed local completion and celebrates its successful retry once', async () => {
-  const screen = renderHook(() => useActiveChallenge(controller, capture));
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, capture),
+  );
   await act(async () => screen.result.current.onAction(1));
   jest
     .spyOn(repository, 'complete')
@@ -152,22 +163,105 @@ it('does not celebrate a failed local completion and celebrates its successful r
   await act(async () => screen.result.current.finish('completed'));
   expect(controller.getSnapshot().success).not.toBeNull();
   expect(mockFeedback.mock.calls).toEqual([['accept'], ['completed']]);
-  screen.unmount();
+  await screen.unmount();
 });
 
 it('does not play late completion feedback after leaving the account flow', async () => {
-  const screen = renderHook(() => useActiveChallenge(controller, capture));
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, capture),
+  );
   await act(async () => screen.result.current.onAction(1));
   const block = deferred<void>();
   storage.blocked = block;
   let completion!: Promise<void>;
-  act(() => {
+  await act(() => {
     completion = screen.result.current.finish('completed');
   });
-  screen.unmount();
+  await screen.unmount();
   await act(async () => {
     block.resolve();
     await completion;
   });
   expect(mockFeedback.mock.calls).toEqual([['accept']]);
+});
+
+it.each(['given_up', 'completed'] as const)(
+  'does not skip an untouched front when an active placement is removed before %s',
+  async (outcome) => {
+    await controller.refresh();
+    const screen = await renderHook(() =>
+      useActiveChallenge(controller, capture),
+    );
+    await act(async () => screen.result.current.onAction(1));
+    const active = screen.result.current.active!;
+    await act(async () =>
+      repository.cacheCatalog({
+        cards: [
+          ...catalog.cards.filter((card) => card.id !== active.card.id),
+          { ...active.card, id: 'replacement', position: 99 },
+        ],
+      }),
+    );
+    const before = controller.getSnapshot().queues.streets!;
+    expect(before.cards).toHaveLength(2);
+    const ids = before.cards.map((card) => card.id);
+    await act(async () => screen.result.current.finish(outcome));
+    await repository.deckPreferences.settled();
+    expect(
+      controller.getSnapshot().queues.streets?.cards.map((card) => card.id),
+    ).toEqual(ids);
+    expect(controller.getSnapshot().queues.streets?.turn).toBe(before.turn);
+    expect((await repository.deckPreferences.read())?.orders.streets).toEqual(
+      ids,
+    );
+    expect(repository.store.getState().journal.operations).toHaveLength(
+      outcome === 'completed' ? 1 : 0,
+    );
+    await screen.unmount();
+  },
+);
+
+it('checks live admission when a queued accept arrives after expiry', async () => {
+  let permitted = true;
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, {
+      ...capture,
+      canStart: () => permitted,
+    }),
+  );
+  const queuedAccept = screen.result.current.onAction;
+  permitted = false;
+  await act(async () => queuedAccept(1));
+  expect(screen.result.current.active).toBeNull();
+  expect(mockFeedback).not.toHaveBeenCalled();
+  expect(repository.store.getState().journal.operations).toEqual([]);
+  permitted = true;
+  await act(async () => queuedAccept(1));
+  expect(screen.result.current.active).not.toBeNull();
+  await screen.unmount();
+});
+
+it('finishes an admitted challenge once after expiry with its original start', async () => {
+  let permitted = true;
+  const screen = await renderHook(() =>
+    useActiveChallenge(controller, {
+      ...capture,
+      canStart: () => permitted,
+    }),
+  );
+  await act(async () => screen.result.current.onAction(1));
+  permitted = false;
+  await act(async () => {
+    await screen.result.current.finish('completed');
+    await screen.result.current.finish('completed');
+  });
+  expect(Object.keys(repository.store.getState().journal.records)).toHaveLength(
+    1,
+  );
+  expect(repository.getAttempt(uuid(1))).toMatchObject({
+    startedAt: `${today}T23:59:00.000Z`,
+    startTimeZone: zone,
+  });
+  expect(mockFeedback.mock.calls).toEqual([['accept'], ['completed']]);
+  await screen.unmount();
 });

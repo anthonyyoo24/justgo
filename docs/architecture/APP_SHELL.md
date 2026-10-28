@@ -2,7 +2,7 @@
 
 This guide describes navigation, mobile runtime composition and platform-facing
 presentation. [ACTIVITY_DATA.md](ACTIVITY_DATA.md) owns activity persistence and
-reconciliation; [IDENTITY.md](IDENTITY.md) owns account proofs and recovery;
+reconciliation; [IDENTITY.md](IDENTITY.md) owns managed account access and legacy migration;
 [TECH_STACK.md](TECH_STACK.md) owns installed technologies/server boundaries.
 The [plan](../implementation-plan/README.md) owns future behavior and the
 [handoffs](../handoffs/README.md) own verification and open release gates.
@@ -10,9 +10,9 @@ The [plan](../implementation-plan/README.md) owns future behavior and the
 ## Implemented folder responsibilities
 
 `src/app/` connects Expo Router to screens and layouts. `app-support/` composes
-providers, startup/access, identity/account recovery and saving feedback. Product
+providers, startup/access, managed identity/account access and saving feedback. Product
 capabilities live in `features/`; shared saved activity and synchronization live
-in `data/activity/`. Shared UI, general infrastructure, design tokens and reusable
+in `data/activity/`, `data/journal/`, `data/cloud/` and `data/backup/`. Shared UI, general infrastructure, design tokens and reusable
 platform adapters live in `components/`, `lib/`, `theme/` and `platform/`.
 [FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md) owns the complete current path map.
 
@@ -33,10 +33,21 @@ Installation-level Motion and Haptics providers sit outside account/access guard
 
 Account changes synchronously advance the request generation, abort pending
 requests and clear queries/mutations before exposing the next account. Late
-responses are fenced even when transport cancellation is ignored. Same-account
-automatic session recovery preserves that owner boundary; explicit recovery resets
-it. Memory-only submissions stay parked in their original account partition while
+responses are fenced even when transport cancellation is ignored. Same-account session refresh preserves that boundary. The durable local collection
+is distinct from the authenticated account; logout retains its local content while
+stopping account uploads. Signing back into the same account keeps its journal and
+delivers edits made while signed out. Disclosed sign-in adopts an unconsumed guest
+source; choosing a different account never transfers the previous account's data.
+There is no guest-collection selector. Memory-only submissions stay parked in their original account partition while
 the process survives. They never migrate to the next account or use its session.
+
+Guest handover drains source writes and existing source/target sync work, discards
+stale target coordinator caches and fences new source writes until the identity
+controller durably selects the destination. Pending/copy/retirement state survives
+restart; the original source remains recoverable on failure. Identity owns the
+`pending`/`copied`/`consumed` transition, while the activity runtime owns copying and
+source cleanup. [ACTIVITY_DATA.md](ACTIVITY_DATA.md#guest-source-handover) describes
+the deletion-epoch and iCloud handover rules.
 
 A runtime created before async hydration must reconcile the current snapshot when
 connecting and subscribe to later changes. A construction-to-subscription gap
@@ -52,32 +63,74 @@ with file watching disabled must be restarted before its bundle proves edits.
 
 ## Navigation and access
 
-| Route                                                               | Responsibility                                                                  |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `/access`                                                           | Restore identity and verify access; distinguish loading, unavailable and unpaid |
-| `/` Home in `/(tabs)` and `/progress`                               | Catalog/deck and independent Progress reads with the shared local overlay       |
-| `/challenge`                                                        | iOS Active → Success flow; empty/restarted start context returns Home           |
-| `/success`, `/reflection`                                           | Current-account completed result and explicit reflection submission             |
-| `/settings`, `/recovery`                                            | Preferences, recovery hub, direct export and support outside paid access        |
-| `/account/recover`, `/account/keys`                                 | Explicit existing-account recovery and recovery-key management                  |
-| `/account/devices`, `/account/transfer`, `/account/troubleshooting` | Device management, transfer and connection tools outside paid access            |
-| `/delete-account`, `/welcome`                                       | Durable deletion/cleanup and safe entry after deletion                          |
-| `/preview`                                                          | Guarded development fixtures and haptics tools                                  |
-| Unknown links                                                       | Provider-independent `+not-found` screen with Go home                           |
+| Route                                   | Responsibility                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `/access`                               | Resolve selected local collection and verify challenge admission.                    |
+| `/` and `/progress`                     | Catalog/deck and durable full local history, including signed-out use.               |
+| `/challenge`, `/success`, `/reflection` | Selected-collection challenge/result and explicit private save.                      |
+| `/settings`, `/data`                    | Preferences and unified iCloud/download/import/delete-all controls.                  |
+| `/recovery`                             | Account page: verified Apple/Google login switches, Log out and Delete account.      |
+| `/account/sign-in`, `/auth/callback`    | Cloud/phone-data disclosure, owner-bound sign-in return and provider callback.       |
+| `/acceptance`                           | Terms/Privacy links and guest Continue, without legal receipts.                      |
+| `/delete-account`, `/welcome`           | Durable deletion cleanup and entry with branded Apple/Google buttons above Continue. |
+| Old account tools                       | Redirect to the Account page; no key/code/transfer UI.                               |
+| `/preview` and unknown links            | Guarded development fixtures or provider-independent not-found recovery.             |
 
-The root layout uses `Stack.Protected` for account/access/deletion boundaries.
-Home is the sole owner of `/`. When a product route is inaccessible, the first
-available root screen is `/access`, which restores identity or redirects to
-recovery, deletion or welcome as needed. Static account files own only the listed
-URLs; unknown account tools and the removed `/export-data` route use not found.
-Challenge, Success and reflection files share a `(challenge)` directory without
-another layout, so the root stack owns their gestures and transitions directly.
-Group names do not change their public URLs.
+The root uses `Stack.Protected` for selected-collection and deletion boundaries.
+Its explicit `access` anchor makes SDK 58 protected cold links resolve through
+hydration/admission rather than an alphabetical supporting route. Challenge-flow
+routes remain available to the same local owner when admission expires, preserving
+unfinished work. The actual challenge screen requires an in-memory start; result
+and reflection screens require a completion owned by that collection. A retained
+public anchor after deletion cannot reopen the deleted account's private history.
+Home is the sole owner of `/`. Guest Continue selects a durable collection without
+creating an account. Apple/Google entry explains JustGO cloud storage before login;
+the disclosure states that saved phone entries are included. Settings, Data and Account remain outside paid
+admission. Challenge starts require verified access under the policy below; saved
+local Progress remains available offline or signed out. Pending account deletion removes product
+routes from Back history until required cleanup finishes.
 
-Pending deletion removes the selected account's product screens from Back history;
-welcome becomes available only after required cleanup. Route visits cannot invent
-completed attempts or restore unsaved drafts. Settings, recovery, export and
-deletion remain reachable without paid access.
+The browser is a development verification surface. Router 58 supplies zero web
+safe-area metrics even in the synchronous single-page mode; keep the native
+provider boundary and do not insert an extra web provider to force measurements.
+Notched mobile-web layouts remain unverified and are not an iOS acceptance claim.
+
+Fonts, saved-collection hydration and the first challenge-access request use a
+static navy GO mark on cream, without visible text, a spinner or animation. The
+bundled transparent mark and its 194-point contained image frame match the native
+`expo-splash-screen` configuration. Home sends pending admission to `/access`
+outside the tab scene so startup stays centered in the full screen. Loading has
+an accessible busy label. Native launch configuration requires a rebuilt binary
+and release-build/device verification; a browser preview cannot establish it.
+Pending access does not show account status, recovery actions or development-preview links.
+Settled denial/unavailability keeps the access recovery page; access loading does
+not cover Progress, Settings or Data, and background refresh does not hide a
+verified challenge screen.
+
+On native, `app-support/startup/` holds the system splash before React mounts and
+releases it after fonts, identity, the selected owner's local journal, preference
+hydration and the root layout are ready. A failed local read or fatal startup
+error exposes the existing recovery UI; an old owner's repository cannot satisfy
+readiness. Server admission is independent and does not hold the native splash.
+Inter 400/500/600 are embedded by `expo-font`, with `useFonts` retaining the
+existing theme aliases on native and web. Web loading stays in the existing app UI.
+
+The separate Apple/Google sign-in page keeps the selected button disabled with a
+centered spinner through native authorization, owner adoption, access verification
+and challenge preparation. It opens Challenges directly once the verified owner's
+repository and selected deck are usable. Cancelled/failed authorization restores
+the button; catalog failure offers retry without repeating provider login. Real
+access denial/unavailability still uses the access page. Handoff results are fenced
+by route focus, canonical owner and app session, and owner-authenticated Data
+returns skip challenge admission. Explicit provider entry cancels the Terms cover,
+including after deletion; later guest Continue retains its normal preparation.
+
+Welcome transition keeps Terms above navigation until the first selected collection's
+deck paints. Catalog preparation and unfinished challenge state key off the active
+collection, including guest/signed-out owners, rather than requiring a session.
+Switching collections cannot retain another owner's unfinished challenge. Route
+visits cannot fabricate completion or restore unsaved drafts. Root challenge files
+share a group without a nested layout; iOS gestures remain owned by the root stack.
 
 `experiments.typedRoutes` enables generated navigation types. Mobile typechecking
 runs the installed Expo CLI's `customize tsconfig.json` command without starting
@@ -97,28 +150,118 @@ URL with the protected `/` can be a no-op when access is unavailable.
 ### Access verification
 
 `AccessService` calls `IdentityService.withSession` and supplies that same verified
-owner transaction to an entitlement reader. The default provider returns
-unavailable. Explicit application staging can compose operator-approved free beta
+owner transaction to an entitlement reader. The authenticated default provider returns unavailable. Anonymous guest access
+uses explicit staging beta windows only; production guest admission remains unpaid
+until the billing policy is implemented. Guest mode is not a paid-access bypass. Explicit application staging can compose operator-approved free beta
 grants with start/expiry/revocation and earlier-start coverage; client requests
-cannot grant access. [The beta setup](../handoffs/phase-11-test-server.md) owns its
+cannot grant access. [The beta setup](../handoffs/phase-14-test-server.md) owns its
 environment and release limits.
 
-Mobile polls every 30 seconds and accepts a server verification for at most
-60 seconds, never beyond expiry. A failed recheck closes access. A server check
-up to five seconds ahead of receipt uses one bounded clock offset for admission,
-freshness and closure timers. Stale or more distant future checks remain closed;
-clock alignment cannot extend validity. Refresh on foreground.
+`app-support/access/verification/` owns the mobile admission policy, scoped local
+store and query/timer hook. Only a fresh server response with `source: free_beta`
+can create an offline approval. It lasts until that response's expiry, including
+transport failure and cold restart. Storage is scoped by API origin, account/guest
+mode and canonical owner within the existing erasure namespace. Backups, imports
+and iCloud adoption do not copy admission metadata. Slow or failed optional cache
+writes do not block live approval or hold the query's later online rechecks open;
+persistence failures cannot promise approval survives restart.
 
-This current boundary is distinct from the planned persisted paid-access rules in
+Offline recovery requires the cached approval and a separate recovery record
+containing exactly the same serialized bytes. Legacy caches without that matching
+record need one fresh online approval; journal history is unaffected. A successful
+non-approval response closes live admission immediately and writes a durable
+denial independently of optional cache writes/deletion. Once that denial commits,
+failed cleanup or an older pending cache write cannot restore approval on restart.
+A fresh approved cache must commit before its matching recovery record, and both
+completion steps check the current owner and accepted-decision revision. Merely
+starting a later poll does not supersede an accepted decision when its transport
+fails. Storage failures remain visible through the safe storage status; a process
+stopping before any new storage commit cannot make a memory-only decision durable.
+
+Owner/mode changes, logout, provider detachment and deletion fence late reads,
+responses and writes, invalidate the old recovery record and remove old approval
+bytes where possible. Account erasure fences the matching access owner and drains
+both storage queues, including dependent proof work, before erasing its namespace;
+late permission writes cannot recreate deleted owner metadata. Offline account restoration may retain local admission
+without an authenticated session; account access reads and cloud sync wait for
+real session verification. A remote revocation takes effect on the next successful
+online check; an offline approval never exceeds its expiry.
+
+Non-beta verification still lasts at most 60 seconds, never beyond expiry, and
+closes on failed recheck. Access polling remains every 30 seconds while active and
+online, with foreground/reconnection refresh. A server check up to five seconds
+ahead of receipt uses a bounded clock offset for admission and closure timers.
+Stale or more distant future checks remain closed. Expiry timers reschedule within
+JavaScript's maximum delay and foregrounding recomputes admission immediately.
+The actual Accept callback checks the current owner/clock, including delayed swipe
+callbacks. An already-admitted challenge and its reflection may finish after
+expiry without pruning the editor or discarding unsaved writing.
+
+This beta boundary is distinct from the planned persisted paid-access rules in
 [Phase 07A](../implementation-plan/phase-07a-billing.md). Activity upload
 eligibility checks verified coverage for the original start rather than today's
 paid status, through its separate injected reader. Neither an unavailable provider
 nor a navigation guard grants production paid access.
 
+## App error reporting
+
+`apps/mobile/index.ts` initializes the optional diagnostics owner before loading
+Expo Router. The provider-independent root ErrorBoundary reports through that
+owner and retains its generic message and Retry action. Reporter and transport
+failures never join product saving, account recovery or access decisions.
+
+The JavaScript `beforeSend` callback rebuilds an allowlisted error, and the custom
+transport repeats that boundary immediately before exporting one event. It drops
+other envelope items, raw messages, arbitrary paths/symbols, user/account IDs,
+headers, URLs, context, breadcrumbs and attachments. Only canonical bundle names,
+numeric locations, debug UUIDs, error handling state, event ID/time and trusted
+app/build/OS/environment metadata survive. Source-mapped development paths are
+discarded; signed-build stack usefulness and symbolication require release proof.
+JS delivery is memory-only, capped at two requests with five-second aborts and a
+one-minute pause after provider/network failures; it has no persistent retry queue.
+
+Native crashes bypass JS callbacks. The reviewed iOS config plugin owns early
+Cocoa initialization and independently reconstructs native events with numeric
+addresses/debug UUIDs and generic reasons. JS uses `autoInitializeNativeSdk: false`
+so it cannot replace that callback. Replay, screenshots, view hierarchy, network
+capture, automatic sessions, logs, tracing and profiling remain disabled. SDK or
+native API additions, including manual attachments, require renewed privacy review.
+Cocoa 9.29 installs integrations internally. The plugin disables automatic
+sources, memory introspection and all-thread attachment, drops logs/metrics/spans,
+and clears `Hint.attachments` in `beforeSendWithHint` before rebuilding the event.
+Replay sampling remains zero. Initialization stays in AppDelegate before the
+SDK 58 SceneDelegate starts React Native. The plugin refuses unreviewed RN/Cocoa
+versions. Global processors and envelope metadata run after the callback;
+native envelope headers, cached payloads and replay exclusion still require
+signed-device delivery inspection. Do not add native user/segment/replay scope
+or manual span APIs without reviewing that separate header boundary.
+The native crash cache can retain original crash details locally until the next
+launch; outbound reconstruction is separate from that local capture.
+
+Native builds use `expo-build-properties` with `ios.useFrameworks: 'static'`.
+Cocoa 9.29's prebuilt framework and the attachment-aware Swift callback retain
+that linkage requirement. Keep framework modules rather than removing the
+attachment-clearing callback or weakening the privacy options. The signed SDK 58
+development build verifies this configuration compiles;
+physical diagnostics acceptance and activation remain separate gates.
+
+Explicit enabled/DSN/environment settings control JS delivery; native settings are
+baked into the binary and require a rebuild to change. An OTA JS disable does not
+disable native reporting in an already enabled binary. Neither path sets an
+account/device identifier. No account-owned diagnostics queue or identifier needs
+resetting on account changes/deletion. Anthony approved minimal essential
+reporting under the Privacy Policy before entry into the app. The legal reader
+records no agreement or permission. Real-user activation stays off until
+Phase 12 completes matching notices/provider review and Phase 14 verifies the
+signed build. See the [field inventory](../legal/DATA_INVENTORY.md#sentry-diagnostic-boundary)
+and [setup/handoff](../handoffs/phase-11-crash-reporting.md).
+
 ## Request policy
 
-The shared HTTP transport validates HTTPS URLs, with HTTP allowed only for
-development loopback, validates strict response schemas, bounds the whole operation
+The shared HTTP transport validates HTTPS URLs, with HTTP allowed only in
+development for loopback and private IPv4 LAN addresses (10/8, 172.16/12 and
+192.168/16). This lets a physical phone reach the Mac's local API; public HTTP
+hosts remain rejected and release builds always require HTTPS. It validates strict response schemas, bounds the whole operation
 including body parsing to ten seconds, and supports cancellation even when a
 transport ignores AbortSignal. Credentials stay in headers/bodies, never URLs or
 logs. Transport messages and response bodies cannot become diagnostics.
@@ -126,7 +269,8 @@ logs. Transport messages and response bodies cannot become diagnostics.
 The account client owns at most two sends in one ten-second total budget for an
 eligible GET retry or authentication replay. It classifies reads by resolved
 method, so a bodyless DELETE is a write. It never retries an uncertain write;
-the persisted activity sender owns completion/PATCH replay. Validation, conflict,
+the persisted activity sender owns completion-create replay. Private journal edits
+commit only through the local database and never enter HTTP retry handling. Validation, conflict,
 rate-limit, revoked-session and typed 413/415 failures do not become outage retries.
 Authentication replay retains the original serialized body.
 
@@ -148,12 +292,23 @@ enforce owner and matching-input idempotency.
 [CHALLENGES.md](../product/CHALLENGES.md#challenge-loop-and-content) owns the
 six-venue cycling rules and product behavior. The challenge controller owns
 account-scoped catalog/deck continuity and accepted completion context.
+Its decks shuffle once per account on this phone, restoring saved order/front and
+last venue through the repository's optional `:decks` preferences. New accounts or
+missing/unknown saved venue values start in Streets. Catalog refresh preserves
+surviving order/front, inserts added placements behind the front at random positions
+and drops removed/inactive placements. Outcome rotation checks the original
+placement so a removed active card cannot advance the untouched next card.
+Preference failures keep the live deck usable without activity saving/loss-risk
+feedback; [ACTIVITY_DATA.md](ACTIVITY_DATA.md#ownership-and-durable-saving)
+owns storage, account fencing and deletion draining.
+
 `ChallengeActivityProvider`, above the navigator, owns the in-memory active start
 across Home and `/challenge`. Start freezes the card, timestamp and time zone;
 countdown samples start + original duration once per second and on foreground.
 Background/lock retain it while the process survives. Fresh mount/account change/
 process restart discard unfinished activity. Zero waits for explicit Completed or
-Give up; Give up records nothing.
+Give up; Give up creates no saved attempt or rep, while its deck rotation can save
+optional phone preferences.
 
 On iOS, keep the outgoing deck's identity when Home loses focus. A focus-based key
 would remount its resting state before the destination covers it and flash the
@@ -165,9 +320,10 @@ second toast host; the account-owned provider acknowledges presentation.
 
 `ChallengeFlowScreen` prepares Success beneath opaque active content, with hidden
 input/accessibility until completion. Completed reveals Success in place, avoiding
-an intermediate native modal dismissal or route blend. Active disables back gestures;
-Success enables them. Continue replaces `/challenge` with `/reflection`; returning
-Home clears its active/result context. Standalone `/success` remains available for
+an intermediate native modal dismissal or route blend. Active and Success both
+disable back gestures; the standalone `/success` route does too. Continue is the
+only exit from a valid Success result and replaces `/challenge` (or `/success`)
+with `/reflection`; returning Home clears its active/result context. Standalone `/success` remains available for
 restored results and Android/web completion.
 
 Android/web use `ActiveChallengeModal` and focus-based dismissal. Native input/
@@ -181,18 +337,76 @@ repeated native openings; browser/component evidence cannot prove inset timing.
 ## Reflections and Progress presentation
 
 Completed waits for repository saving; ordinary local success never waits for HTTP.
-The reflection controller owns validation, dirty-close decisions and newer-input
-protection. Only explicit saves enter the journal; there is no draft autosave or
-URL-based completion recovery. `useReflectionKeyboard` measures the section and
+The shared reflection controller owns validation and newer-input protection, plus
+the Progress editor's dirty-close decisions. Post-challenge Reflection exposes no
+top Back/X or discard dialog, and its root route disables swipe-back. Its only exit
+is bottom Skip when empty or Save Reflection otherwise. The Progress day-sheet
+editor retains its Save / Keep editing / Discard prompt. Explicit saves commit
+feelings/text and historical context in the account SQLite journal. A phone-write
+failure keeps the editor available with storage feedback; it never uploads private
+content or claims a cloud fallback. There is no draft autosave or URL-based
+completion recovery.
+`useReflectionKeyboard` measures the section and
 available viewport, adds trailing scroll space and brings the focused editor into
 view. The bounded internally scrolling input and fixed Skip/Save footer preserve
 access on reduced viewports; focus scrolling honors effective Reduce Motion.
 
 `ProgressScreen` owns selected date/editor coordination; independent read hooks
 accept repository data. `ProgressView` composes the calendar, day sheet and entry
-rows. The day-details group keeps sheet/motion, entry expansion and reflection
-editor responsibilities together. `ConnectedDayReflectionEditor` owns draft
+rows. The day-details group keeps the sheet, entry expansion and reflection
+editor responsibilities together. Shared `platform/modals/useSheetMotion` owns
+calendar/iCloud panel entry, exit and interruption: the full-screen backdrop appears
+immediately, while only the panel moves (280 ms in, 220 ms out). Covering native
+modals use no system slide animation. Reduce Motion settles the panel immediately.
+`ConnectedDayReflectionEditor` owns draft
 subscriptions so typing updates stay inside the active editor.
+
+`day-details/useDayReflectionKeyboard` measures the full active form against the
+list viewport and keyboard, then scrolls only enough to reveal its field, Cancel
+and Save actions. Focus, keyboard changes, viewport/editor layouts and completed
+row expansion retry fresh geometry; ordinary list filling does not pull a manually
+scrolled list back to the draft. List remounts reset the tracked offset, and editor
+changes/unmounts fence late measurements. While editing with the keyboard open,
+the sheet can fill the available height below the outer top safe area. The field
+caps its height using the viewport and measured action/error area, retaining long
+writing through internal input scrolling. Scrolling honors Reduce Motion; browser
+adapters can omit native keyboard metrics/visibility APIs.
+Reveal requests coalesce after layout on an owned animation frame. Automatic
+focus scrolling or scroll-range clamping may invalidate a measurement, but must
+retry that pending request; an unchanged scroll-end offset must not invalidate it.
+An explicit list drag cancels the pending reveal, and settled scrolling never
+starts a new reveal. Cancel frames and fence measurements when the list/editor
+changes or unmounts.
+
+`day-details/sheet-motion` owns measured sheet sizing and grip input. A complete
+short day opens at its content height; longer days start around two-thirds of the
+screen. The lower bound fits the header, list top margin and the full first
+attempt summary row including its padding. Measure only that row's summary, so
+wrapped/scaled text adjusts the floor without including expanded reflection
+details. Before row measurement, retain the bounded loading fallback. The upper
+bound respects content height and the available safe area. A drag keeps its
+released height between those bounds. Extra upward travel has light resistance;
+downward travel stops at the minimum and never requests dismissal. X and the
+backdrop retain the existing dirty-reflection guard. Native accessibility actions
+resize the sheet without closing it.
+When loading, error or offline content replaces the list, discard both its content
+and first-row measurements even if the selected date is unchanged. Restored rows
+must establish fresh bounds instead of inheriting the previous list's size.
+Keep trailing list padding at zero: without a paging footer, the final row's
+bottom aligns with the viewport when the content fits or the list reaches its
+end. The bottom safe area remains outside the list viewport, matching the
+first-row minimum alignment.
+
+Native grip input uses one adjustable View with touch ownership from the start;
+the browser adapter uses pointer capture and fences the click that can follow a
+drag. List scrolling stays independent. Keep the inner animated layout height on a
+separate host from the outer native-driven entrance/exit transform. Content
+remeasurements during a drag must not steal finger ownership: retain its bounds
+until release, then apply current content limits. A real space/keyboard change
+cancels safely. A downward grip gesture with the keyboard open only hides the
+keyboard; it cannot also resize or close the sheet. Keyboard layout temporarily
+expands the editor area, preserving the chosen height for afterward. Automatic
+settling honors Reduce Motion; direct manipulation continues to follow the finger.
 
 `DayEntryList` initially mounts eight rows, fills ahead of scrolling and requests
 further backend pages. Visited rows stay mounted until the day closes so animated
@@ -208,34 +422,97 @@ heights and scrolling require native evidence.
 loss-risk/intervention presentation. Warnings reserve layout space and permit
 manual dismissal while recovery continues. Full recovery closes the warning and
 emits one account-scoped toast, including after dismissal. Authentication,
-unreadable storage and rejected records remain discoverable; correctable reflection
-input reopens in the existing editor. Genuine revision conflicts adopt backend
-reflection data automatically. [ACTIVITY_DATA.md](ACTIVITY_DATA.md) owns the rules.
+unreadable completion storage and rejected completion records remain discoverable.
+Private save errors stay with the editor; imported conflicts keep current writing
+and report differing IDs. Server refreshes cannot replace saved private writing.
+[ACTIVITY_DATA.md](ACTIVITY_DATA.md) owns the rules.
 
-Connected account screens share the Settings page/group/row components. Recovery
-keys, device transfer and device management are focused tools; troubleshooting
-contains account details and manual refresh/renewal. `useIdentityAction` places a
-spinner on the initiating control while the identity controller serializes actions,
-timeouts and failures. Busy primary buttons preserve accessible names. Revocation
-confirmation closes before its request; existing-account recovery confirmation
-stays mounted through Confirm. The receiving form survives until its request
-settles. Return-key submission, key hiding and explicit revocation confirmation
-remain accessible. Header Back uses history with Settings fallback.
+Connected Account and Data screens share Settings page/group/row components.
+Account shows a Login methods group with Apple/Google logos and switches driven by
+verified linked identities. There is no separate signed-in status sentence. An off
+switch signs in when signed out, or links that method when signed in. An on switch
+requests unlinking; removing the last login method is rejected with feedback.
+Log out is separate. Old key/code/device routes redirect
+there. Sign-out keeps the same local journal; there is no View guest data action.
+Actions preserve accessible names while busy and show retryable errors.
+Sign-in failures stay on the separate provider-entry page. The signed-out Account
+page omits connection messages and the generic Retry connection button. Signed-in
+provider-action feedback and pending account-deletion retries remain available.
+Provider-entry errors belong to the current attempt and reset on a new visit or
+provider change; a late result cannot add feedback to a later visit.
 
-Settings owns Preferences, Account & data, Privacy, Support and About. Support/
-feature-request actions create private email drafts. Legal/social/rating destinations
-use configured URLs or honest unavailable states. The current analytics rows are
-unavailable and telemetry exports nothing; planned acceptance/analytics changes
-belong to [Phase 09](../implementation-plan/phase-09-analytics.md).
+Settings keeps Preferences, Account & data, Support and About. Account & data contains
+only Account and Data links. Support actions open private email drafts; legal/social
+links use configured URLs or honest unavailable states. No legal-view/agreement
+receipts or analytics switches are introduced; diagnostics/analytics stay gated.
+The shared `SettingsPage` keeps its safe-area title and Back button above the
+scrollable body, preserving navigation while longer pages scroll. Header and body
+share the same content width and enlarged-text layout rules.
 
-The direct export action keeps Export my data visible with a spinner and delivers
-CSV/JSON in a ZIP through the native share sheet or browser download. Dismissal
-resets quietly; failures remain inline for retry. Duplicate taps, focus loss,
-cancellation and account changes fence collection/presentation. Local accepted
-changes are captured independently of pruning/upload. The authenticated API pages
-at most 50 owner-scoped attempts plus safe account/device metadata; pending local
-copies and cloud versions are labeled separately. CSV formula escaping, read-interval
-notes and private temporary-file cleanup are part of the export boundary.
+Welcome's branded Apple and Google buttons appear above Continue. Continue opens
+Terms & Privacy, then selects a local guest collection. It creates no account.
+Provider entry explains the signed-in cloud destination and inclusion of saved
+phone entries without an optional merge switch. Older accounts with unknown guest
+adoption require this disclosed sign-in before automatic source adoption. Welcome
+preparation remains covered until access and the selected
+collection's first deck paint. Readiness is owner/attempt-fenced; catalog failure
+retries preparation without creating another account. Navigation waits for identity
+hydration before mounting protected routes, preserving cold saved-history links.
+
+Data contains iCloud Sync, Download my data, Import data and Delete all my data.
+Descriptions live in action flows instead of paragraphs beneath every Settings row.
+Download and Import use matching down/up tray icons; iCloud uses a cloud with a
+circular arrow. While its initial status is unknown, the row shows a neutral
+loading indicator. The switch mounts directly in the confirmed on/off position
+without an activation animation; later value changes keep their normal motion.
+Tapping an unavailable iCloud switch opens its configuration,
+platform or Apple-account explanation in the sheet with Start Syncing disabled.
+Enabling available iCloud Sync opens the peach `ICloudSyncSheet`, with
+live disclosure text, decorative cloud/cards artwork, X and Start Syncing.
+The artwork has a fixed height for the viewport and cannot flex smaller when
+feedback appears. An always-present message area reserves two scaled text lines
+below it; concise shared copy fits standard phone text sizes without truncation.
+Larger accessibility text may wrap further and remains available through scrolling.
+Its backdrop stays fixed while the panel uses the same motion as calendar day details.
+Opening or dismissing it does not enable sync. Start Syncing retains the sheet
+with a centered spinner through the existing native/coordinator operation. The
+toggle stays off until first sync succeeds. Sync errors and retry stay inside the
+sheet; the Data row never expands with an error or Retry iCloud Sync action.
+The sheet never offers to erase phone entries after an iCloud reset or removal.
+Removing the iCloud copy in Apple's Settings retains phone data; enabled sync may
+recreate that copy. Turning sync off preserves local writing and stops uploads.
+Start Syncing and X are the normal actions, with Try Again retained only for a
+failed disable. A superseded native bridge gets the build-update message inside
+the sheet. Consent remains scoped to the route visit, collection and Apple account
+through the final preference write.
+Turning an enabled switch off remains direct. Delete all sits at the
+bottom. Both deletion rows use red labels and trash icons, omit chevrons and open
+their confirmation modal directly on the current page. Both flows reuse
+`components/modals/ConfirmationModal` with destructive styling, their own consequence text and
+retry behavior. The Account modal retains the subscription warning. The
+`/delete-account` route remains available for deep links and interrupted cleanup;
+normal Account deletion does not navigate there. The modal preserves input and
+accessibility isolation, busy dismissal protection and large-text action layout.
+Log out uses the same modal with neutral Cancel/Log out actions, leaving the
+Account layout fixed. Its spinner stays visible until controller-confirmed logout
+finishes, including after the local account is fenced. Failures remain in the
+modal for retry. Route, owner and session changes dismiss stale confirmations.
+Native download uses the share sheet; the browser downloads directly. Import uses
+DocumentPicker/Files or the web file chooser, validates before preview/commit and
+preserves current differing writing. It accepts the full-data backup, adding real
+completion history without duplicate counts. A file never restores identity proofs.
+For a signed-out account, Import and Delete all route through sign-in bound to that
+owner and return to Data. Import authenticates before opening Files; returning from
+sign-in does not automatically open a picker, import a file or confirm deletion.
+Full format/ownership/deletion rules live in [ACTIVITY_DATA.md](ACTIVITY_DATA.md).
+
+Duplicate taps, focus loss, cancellation and collection changes fence file work and
+stale presentation. Backgrounding for Files alone does not change ownership.
+Temporary files are cleaned up independently. Unfinished delete-all remains visible
+after relaunch and blocks competing import/cloud/download actions until retry
+finishes. Browser unsupported iCloud is distinct from native CloudKit acceptance.
+Required deletion of previously associated iCloud copies remains pending until
+cleanup succeeds, even when ordinary iCloud Sync is off.
 
 ## Installation preferences and accessibility
 

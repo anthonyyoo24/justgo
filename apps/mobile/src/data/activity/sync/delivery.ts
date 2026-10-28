@@ -1,4 +1,4 @@
-import type { Attempt, PatchAttemptResponse } from '@justgo/contracts';
+import type { Attempt } from '@justgo/contracts';
 import type { ApiError } from '../../../lib/network/http';
 import type { Journal, Operation } from '../model';
 import { SHORT_RETRY_MS, sparseRetryDelay } from './retry';
@@ -8,7 +8,6 @@ const transient = new Set([
   'TIMEOUT',
   'UNAVAILABLE',
   'RATE_LIMITED',
-  'REFLECTION_CONFLICT',
   'CANCELLED',
 ]);
 const authentication = new Set([
@@ -20,12 +19,11 @@ const authentication = new Set([
 ]);
 export type DeliveryResponse = {
   attempt: Attempt;
-  acknowledgement: PatchAttemptResponse['acknowledgement'] | null;
 };
 
 export function acknowledge(
   journal: Journal,
-  sent: Operation,
+  sent: Extract<Operation, { kind: 'create' }>,
   response: DeliveryResponse,
 ): void {
   const current = journal.operations.find((item) => item.id === sent.id);
@@ -33,58 +31,21 @@ export function acknowledge(
   current.state = 'acknowledged';
   const record = journal.records[sent.attemptId]!;
   record.created = true;
-  if (sent.kind === 'patch')
-    journal.submissions[sent.id]!.appliedRevision =
-      response.acknowledgement!.appliedRevision;
   record.serverVersion = Math.max(record.serverVersion, sent.version);
-  record.serverRevision = Math.max(
-    record.serverRevision,
-    response.attempt.reflection?.revision ?? 0,
-    response.acknowledgement?.appliedRevision ?? 0,
-  );
-  const reflection =
-    record.version > sent.version ||
-    (record.attempt.reflection?.revision ?? 0) >
-      (response.attempt.reflection?.revision ?? 0)
-      ? record.attempt.reflection
-      : response.attempt.reflection;
-  record.attempt = { ...response.attempt, reflection };
+  // The completion response has no authority over saved private content, even
+  // when an old fixture/proxy supplies it. Local storage owns all revisions.
+  record.attempt = {
+    ...response.attempt,
+    reflection: record.attempt.reflection,
+  };
 }
 export function recordFailure(
   journal: Journal,
-  sent: Operation,
+  sent: Extract<Operation, { kind: 'create' }>,
   failure: ApiError,
-  through: number,
   now: number,
   random: () => number,
 ): void {
-  const canonical = failure.currentAttempt;
-  if (
-    failure.code === 'REFLECTION_CONFLICT' &&
-    sent.kind === 'patch' &&
-    canonical?.id === sent.attemptId
-  ) {
-    const record = journal.records[sent.attemptId]!;
-    record.serverRevision = canonical.reflection?.revision ?? 0;
-    record.serverVersion = Math.max(record.serverVersion, through);
-    record.attempt = {
-      ...canonical,
-      reflection:
-        record.version > through
-          ? record.attempt.reflection
-          : canonical.reflection,
-    };
-    for (const pending of journal.operations) {
-      if (pending.attemptId !== sent.attemptId || pending.kind !== 'patch')
-        continue;
-      if (pending.version <= through) {
-        pending.state = 'acknowledged';
-        journal.submissions[pending.id]!.appliedRevision =
-          canonical.reflection?.revision ?? null;
-      } else pending.bound = false;
-    }
-    return;
-  }
   const current = journal.operations.find((item) => item.id === sent.id);
   if (!current) return;
   current.code = failure.code;
@@ -100,7 +61,6 @@ export function recordFailure(
   } else {
     current.state = 'rejected';
     if (
-      current.kind === 'create' &&
       ['ATTEMPT_INELIGIBLE', 'INVALID_REQUEST', 'NOT_FOUND'].includes(
         failure.code,
       )

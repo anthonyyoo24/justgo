@@ -1,7 +1,9 @@
 import { createContext, useContext } from 'react';
+export const motionPreferenceKey = 'justgo:reduce-motion:v1';
 
 export type MotionPreferences = {
   reduceMotion: boolean;
+  requestedReduceMotion?: boolean;
   systemReduced: boolean | null;
   loading: boolean;
   saving: boolean;

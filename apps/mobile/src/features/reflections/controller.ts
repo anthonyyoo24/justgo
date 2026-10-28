@@ -1,4 +1,5 @@
 import { randomUUID } from 'expo-crypto';
+import { ApiError } from '../../lib/network/http';
 import { normalizeReflectionText, type FeelingCode } from '@justgo/contracts';
 import type { AccountRepository } from '../../data/activity/repository';
 
@@ -47,21 +48,8 @@ export class ReflectionController {
       editing: !!attempt?.reflection,
       submitting: false,
       dismissOpen: false,
-      error: this.rejectedReflection()
-        ? 'This reflection request wasn’t accepted. Your submitted writing is retained.'
-        : null,
+      error: null,
     };
-  }
-  private rejectedReflection() {
-    return this.repository.store
-      .getState()
-      .journal.operations.find(
-        (operation) =>
-          operation.attemptId === this.attemptId &&
-          operation.kind === 'patch' &&
-          operation.state === 'rejected' &&
-          operation.code === 'INVALID_REQUEST',
-      );
   }
   connect() {
     if (this.unsubscribe || !this.alive) return;
@@ -79,9 +67,7 @@ export class ReflectionController {
           ...form,
           phase: 'ready',
           editing: !!latest.reflection,
-          error: this.rejectedReflection()
-            ? 'This reflection request wasn’t accepted. Your submitted writing is retained.'
-            : null,
+          error: null,
         });
       else if (untouched)
         this.update({ ...form, editing: !!latest.reflection });
@@ -144,13 +130,6 @@ export class ReflectionController {
       text: this.snapshot.text,
     };
     if (same(submitted, this.saved)) {
-      if (this.rejectedReflection()) {
-        this.update({
-          error:
-            'This reflection request was rejected. Your writing is retained; an unchanged submission cannot be retried.',
-        });
-        return Promise.resolve();
-      }
       this.finish();
       return Promise.resolve();
     }
@@ -196,9 +175,14 @@ export class ReflectionController {
             feeling: this.saved.feeling,
             dismissOpen: false,
           });
-      } catch {
+      } catch (error) {
         if (this.alive)
-          this.update({ error: 'Check your reflection and try saving again.' });
+          this.update({
+            error:
+              error instanceof ApiError && error.code === 'STORAGE'
+                ? 'Couldn’t save on this phone. Your writing is still here. Free some storage and try again.'
+                : 'Check your reflection and try saving again.',
+          });
       } finally {
         this.pending = undefined;
         this.update({ submitting: false });

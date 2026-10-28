@@ -7,6 +7,66 @@ const jsonResponse = (mediaType = 'application/json') =>
   });
 
 it.each([
+  'localhost',
+  '127.0.0.1',
+  '[::1]',
+  '10.0.0.101',
+  '172.16.0.1',
+  '172.31.255.254',
+  '192.168.1.2',
+])('allows development HTTP access to local host %s', async (host) => {
+  const fetcher = jest.fn().mockResolvedValue(jsonResponse());
+  await expect(
+    createHttpClient(`http://${host}:3000`, fetcher).request(
+      '/v1/guest/access',
+      okSchema,
+    ),
+  ).resolves.toEqual({ ok: true });
+  expect(fetcher).toHaveBeenCalledWith(
+    `http://${host}:3000/v1/guest/access`,
+    expect.objectContaining({ method: 'GET' }),
+  );
+});
+
+it.each([
+  '8.8.8.8',
+  '172.15.255.255',
+  '172.32.0.1',
+  '192.169.1.2',
+  '169.254.1.2',
+  '10.0.0.101.example.test',
+])('keeps development HTTP closed for nonlocal host %s', async (host) => {
+  const fetcher = jest.fn();
+  await expect(
+    createHttpClient(`http://${host}:3000`, fetcher).request(
+      '/v1/guest/access',
+      okSchema,
+    ),
+  ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+it.each(['localhost', '127.0.0.1', '[::1]', '10.0.0.101', '192.168.1.2'])(
+  'requires HTTPS for %s in release builds',
+  async (host) => {
+    const original = __DEV__;
+    Object.defineProperty(globalThis, '__DEV__', { value: false });
+    const fetcher = jest.fn();
+    try {
+      await expect(
+        createHttpClient(`http://${host}:3000`, fetcher).request(
+          '/v1/guest/access',
+          okSchema,
+        ),
+      ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(globalThis, '__DEV__', { value: original });
+    }
+  },
+);
+
+it.each([
   {
     base: 'https://API.EXAMPLE.TEST:443/prefix/',
     path: '/v1/progress?timeZone=America%2FToronto',

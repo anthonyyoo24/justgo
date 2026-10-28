@@ -1,6 +1,21 @@
 # JustGO
 
-An iOS-first social-confidence app with no-signup credential recovery, six venue decks, local challenge/countdown flow, optional explicit reflections and Progress history. Phase 07 saves completed activity on the phone before background uploads and limits downloaded offline history to the latest summary/current-month counts/today's pages. The [app-shell guide](docs/architecture/APP_SHELL.md) describes the implemented boundaries; the [Phase 07 handoff](docs/handoffs/phase-07-api-offline.md) records evidence and remaining gates. Native billing remains Phase 07A, Settings/data controls Phase 08, analytics/consent Phase 09, legal documents/disclosures Phase 10, and physical-device/staging/release acceptance Phase 11. Phase 09 plans one Terms & Privacy onboarding acceptance and no analytics Settings switches; welcome/questionnaire onboarding and 07.3A native journey migration remain deferred. `npm ci` builds shared contracts for Node; re-run `npm run build:contracts` after contract edits during API development.
+An iOS-first social-confidence app with local guest use, optional Apple/Google
+accounts, six venue decks, explicit reflections and durable Progress history.
+Signed-in collections synchronize history and journal through JustGO's API;
+optional iCloud Sync and complete Download/Import controls are separate. The
+[app-shell guide](docs/architecture/APP_SHELL.md) describes the implemented boundaries.
+
+Phase 13's revised local implementation replaces recovery keys/codes with managed
+provider sign-in, one continuous journal through login/logout, verified login
+switches and simple Account/Data pages. Real provider setup, a compatible
+signed native build, CloudKit/device acceptance and coordinated hosted rollout remain
+open; existing installed clients/hosted services keep their earlier behavior. See
+[the handoff](docs/handoffs/phase-13-local-journal.md) and
+[setup](docs/operations/ACCOUNT_SYNC_SETUP.md). Phase 14 owns release acceptance;
+07A billing and post-launch analytics retain their gates. Guest Continue creates no
+account or legal-view/agreement receipts. Diagnostics and analytics stay disabled.
+`npm ci` builds contracts; rerun `npm run build:contracts` after contract edits.
 
 See the [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) for the current directory groupings and responsibilities.
 
@@ -23,7 +38,7 @@ npm run dev:web
 
 The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 07A, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
 
-To exercise the implemented challenge/reflection/Progress flow with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Create a disposable account using the normal recovery screen and choose Back to app. The presentation-only screen preview still makes no challenge writes. Apply all registered migrations first. See [testing guidance](docs/operations/TESTING.md) for fixtures and the current native/device gates.
+To exercise the implemented challenge/reflection/Progress flow with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Use the guarded journey launcher for synthetic provider sign-in or guest entry; external-provider fixtures never ship in native/production resolution. The presentation-only screen preview still makes no challenge writes. Apply all registered migrations first. See [testing guidance](docs/operations/TESTING.md) for fixtures and the current native/device gates.
 
 For environment-managed development, copy the workspace `.env.example` files to `.env` and configure the separate runtime and migration URLs. Never commit credentials. Identity traffic requires HTTPS, except loopback during development. A physical iPhone needs a reachable HTTPS API route; `localhost` on a phone refers to the phone. Do not embed a Vercel protection bypass secret in the app.
 
@@ -63,7 +78,7 @@ The local Expo module is auto-linked from `apps/mobile/modules/justgo-keychain`;
 
 A native smoke flow lives in `apps/mobile/e2e/launch.yaml`. With Maestro installed, a running development build, Metro and healthy API, run `APP_ID=dev.justgo.foundation npm run test:native -w @justgo/mobile`. The command requires a nonempty `APP_ID` and passes it explicitly to Maestro with `-e`; use the identifier of your installed development app. This is a launch harness, not proof of physical-device recovery or purchases. The [phase handoff](docs/archive/handoffs/phase-01-foundation.md) owns actual results.
 
-[Phase 07.3A — hybrid/native testing](docs/implementation-plan/phase-07-api-offline.md#phase-07-3a) was deferred by Anthony on October 7. Its checkpoint and [removal assessment](docs/checks/phase-07-3a-browser-testing-assessment.md) remain reference material; it is not a prerequisite for 07.4/07.5. Retain browser journeys/adapters/CI and lower-level coverage. Manual native checks use the existing installed development binary; physical-device Keychain/AsyncStorage, software keyboard, VoiceOver and release acceptance remain separate gates.
+[Phase 07.3A — hybrid/native testing](docs/implementation-plan/phase-07-api-offline.md#phase-07-3a) was deferred by Anthony on October 7. Its checkpoint and [removal assessment](docs/checks/phase-07-3a-browser-testing-assessment.md) remain reference material; it is not a prerequisite for 07.4/07.5. Retain browser journeys/adapters/CI and lower-level coverage. Phase 13 requires a compatible development binary containing Apple/Google Auth, CloudKit, SQLite and document picker before native account/data checks; building it remains separately authorized. Physical-device Keychain/SQLite/AsyncStorage, Files/iCloud Drive, software keyboard, VoiceOver and release acceptance remain separate gates.
 
 ## Workspace
 

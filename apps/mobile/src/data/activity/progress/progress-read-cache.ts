@@ -18,9 +18,11 @@ export function reconcileDayQueries(
         pages: cached.pages.map((page) => ({
           ...page,
           entries: page.entries.map((entry) => {
+            const local = state.localEntries?.[entry.id];
+            if (local) return local;
             const record = state.journal.records[entry.id];
-            // A settled backend-wins conflict can intentionally replace optimistic
-            // text. Copy the repository's result before requesting another read.
+            // Completion cache rows carry no private content. Durable local
+            // writing always takes precedence over a server refresh.
             return record && !record.rejected
               ? { ...entry, reflection: record.attempt.reflection }
               : entry;

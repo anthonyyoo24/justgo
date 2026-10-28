@@ -1,5 +1,9 @@
 module.exports = {
   preset: 'jest-expo',
+  setupFilesAfterEnv: [
+    '<rootDir>/test-support/setup-platform-storage.ts',
+    '<rootDir>/test-support/setup-global-local-journal.ts',
+  ],
   maxWorkers: process.env.CI ? 2 : 1,
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
@@ -10,6 +14,7 @@ module.exports = {
   coverageReporters: ['text-summary', 'json-summary', 'lcov', 'html'],
   testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   moduleNameMapper: {
+    '^@sentry/react-native$': '<rootDir>/test-support/sentry-sdk.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
     // Hoisted Expo Router tests must use this workspace's installed renderer.
     '^@testing-library/react-native$':

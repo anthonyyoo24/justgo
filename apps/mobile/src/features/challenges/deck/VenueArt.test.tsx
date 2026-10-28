@@ -1,13 +1,17 @@
 import { render } from '@testing-library/react-native';
-import { Image } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { colors } from '../../../theme/tokens';
 import { LowerFlourish } from './VenueArt';
 
-it('renders the lower flourish as a scaled SVG stroke instead of a PNG', () => {
-  const screen = render(<LowerFlourish scale={1.2} />);
-  const svg = screen.UNSAFE_getByType(Svg);
-  const strokes = screen.UNSAFE_getAllByType(Path);
+jest.mock('react-native-svg', () =>
+  jest.requireActual('../../../../test-support/svg'),
+);
+
+it('renders the lower flourish as a scaled SVG stroke instead of a PNG', async () => {
+  const screen = await render(<LowerFlourish scale={1.2} />);
+  const svg = screen.getByTestId('challenge-lower-flourish', {
+    includeHiddenElements: true,
+  });
+  const strokes = screen.container.queryAll((node) => node.type === 'Path');
 
   expect(svg.props.viewBox).toBe('0 0 352 108');
   expect(svg.props['aria-hidden']).toBe(true);
@@ -21,5 +25,7 @@ it('renders the lower flourish as a scaled SVG stroke instead of a PNG', () => {
     expect(stroke.props.fill).toBe('none');
     expect(stroke.props.stroke).toBe(colors.ink);
   }
-  expect(screen.UNSAFE_queryAllByType(Image)).toHaveLength(0);
+  expect(
+    screen.container.queryAll((node) => node.type === 'Image'),
+  ).toHaveLength(0);
 });

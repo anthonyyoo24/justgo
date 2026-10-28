@@ -1,8 +1,12 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Animated, Modal, StyleSheet } from 'react-native';
-import { Path } from 'react-native-svg';
+import { Animated, StyleSheet } from 'react-native';
+
 import { colors } from '../../theme/tokens';
 import { ProgressView } from './ProgressView';
+
+jest.mock('react-native-svg', () =>
+  jest.requireActual('../../../test-support/svg'),
+);
 
 jest.mock('expo-router', () => ({ Link: () => null }));
 jest.mock('../../platform/motion/motion', () => ({
@@ -16,7 +20,7 @@ import { month, entry, callbacks } from '../../../test-support/progress/view';
 
 it('opens only active days and shows empty circles for attempts without submitted feedback', async () => {
   const actions = callbacks();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -24,14 +28,14 @@ it('opens only active days and shows empty circles for attempts without submitte
       {...actions}
     />,
   );
-  fireEvent.press(
+  await fireEvent.press(
     screen.getByRole('button', { name: 'Friday, September 18, 2 reps' }),
   );
   expect(actions.onOpenDay).toHaveBeenCalledWith('2026-09-18');
   expect(
     screen.queryByRole('button', { name: /Saturday, September 19/ }),
   ).toBeNull();
-  screen.rerender(
+  await screen.rerender(
     <ProgressView
       month="2026-09"
       data={month}
@@ -54,14 +58,14 @@ it('opens only active days and shows empty circles for attempts without submitte
   ).toHaveLength(2);
   expect(screen.queryByText('Not\nrecorded')).toBeNull();
   expect(screen.queryByText('Saved reflection')).toBeNull();
-  fireEvent.press(
+  await fireEvent.press(
     screen.getAllByRole('button', { name: 'Close day details' })[0]!,
   );
   await waitFor(() => expect(actions.onCloseDay).toHaveBeenCalledTimes(1));
 });
 
-it('shows a full-screen backdrop while only the day sheet slides', () => {
-  const screen = render(
+it('shows a full-screen backdrop while only the day sheet slides', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -70,7 +74,10 @@ it('shows a full-screen backdrop while only the day sheet slides', () => {
     />,
   );
 
-  expect(screen.UNSAFE_getByType(Modal).props.animationType).toBe('none');
+  expect(
+    screen.container.queryAll((node) => node.type === 'Modal')[0]!.props
+      .animationType,
+  ).toBe('none');
   expect(
     screen.getByTestId('day-sheet-backdrop', {
       includeHiddenElements: true,
@@ -90,13 +97,13 @@ it('shows a full-screen backdrop while only the day sheet slides', () => {
 
 it.each(['layout', 'show'])(
   'starts on %s and ignores repeated layout/show events midway through opening',
-  (firstEvent) => {
+  async (firstEvent) => {
     const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
       start: jest.fn(),
       stop: jest.fn(),
     } as unknown as ReturnType<typeof Animated.timing>);
     try {
-      const screen = render(
+      const screen = await render(
         <ProgressView
           month="2026-09"
           data={month}
@@ -106,12 +113,16 @@ it.each(['layout', 'show'])(
       );
       expect(timing).not.toHaveBeenCalled();
 
-      const layout = () =>
-        fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', {
+      const layout = async () =>
+        await fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', {
           nativeEvent: { layout: { x: 0, y: 514, width: 402, height: 360 } },
         });
-      if (firstEvent === 'layout') layout();
-      else fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      if (firstEvent === 'layout') await layout();
+      else
+        await fireEvent(
+          screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+          'show',
+        );
       expect(timing).toHaveBeenCalledTimes(1);
       const offset = timing.mock.calls[0]![0] as Animated.Value;
       let observedOffset = 0;
@@ -119,15 +130,21 @@ it.each(['layout', 'show'])(
         observedOffset = value;
       });
 
-      act(() => offset.setValue(300));
-      layout();
-      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      await act(() => offset.setValue(300));
+      await layout();
+      await fireEvent(
+        screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+        'show',
+      );
       expect(timing).toHaveBeenCalledTimes(1);
       expect(observedOffset).toBe(300);
 
-      act(() => offset.setValue(0));
-      layout();
-      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      await act(() => offset.setValue(0));
+      await layout();
+      await fireEvent(
+        screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+        'show',
+      );
       expect(timing).toHaveBeenCalledTimes(1);
       expect(observedOffset).toBe(0);
       offset.removeListener(listener);
@@ -137,14 +154,14 @@ it.each(['layout', 'show'])(
   },
 );
 
-it('keeps the current slide when day data arrives and a show event arrives during closing', () => {
+it('keeps the current slide when day data arrives and a show event arrives during closing', async () => {
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
   } as unknown as ReturnType<typeof Animated.timing>);
   try {
     const actions = callbacks();
-    const screen = render(
+    const screen = await render(
       <ProgressView
         month="2026-09"
         data={month}
@@ -153,10 +170,13 @@ it('keeps the current slide when day data arrives and a show event arrives durin
         {...actions}
       />,
     );
-    fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+    await fireEvent(
+      screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+      'show',
+    );
     const offset = timing.mock.calls[0]![0] as Animated.Value;
     const reset = jest.spyOn(offset, 'setValue');
-    screen.rerender(
+    await screen.rerender(
       <ProgressView
         month="2026-09"
         data={month}
@@ -171,16 +191,19 @@ it('keeps the current slide when day data arrives and a show event arrives durin
     );
     expect(timing).toHaveBeenCalledTimes(1);
     expect(reset).not.toHaveBeenCalled();
-    fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', {
+    await fireEvent(screen.getByTestId('day-sheet-panel'), 'layout', {
       nativeEvent: { layout: { x: 0, y: 192, width: 402, height: 682 } },
     });
     expect(timing).toHaveBeenCalledTimes(1);
     expect(reset).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByText('×'));
+    await fireEvent.press(screen.getByText('×'));
     expect(timing).toHaveBeenCalledTimes(2);
     expect(timing.mock.calls[1]![1]).toMatchObject({ duration: 220 });
-    fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+    await fireEvent(
+      screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+      'show',
+    );
     expect(timing).toHaveBeenCalledTimes(2);
     expect(reset).not.toHaveBeenCalled();
     reset.mockRestore();
@@ -189,7 +212,7 @@ it('keeps the current slide when day data arrives and a show event arrives durin
   }
 });
 
-it('starts a fresh slide for each active day and when reopening the same day', () => {
+it('starts a fresh slide for each active day and when reopening the same day', async () => {
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
@@ -204,8 +227,10 @@ it('starts a fresh slide for each active day and when reopening the same day', (
         {...actions}
       />
     );
-    const screen = render(view(null));
-    fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+    const screen = await render(view(null));
+    expect(
+      screen.container.queryAll((node) => node.type === 'Modal'),
+    ).toHaveLength(0);
     expect(timing).not.toHaveBeenCalled();
     for (const [index, date] of [
       '2026-09-27',
@@ -213,12 +238,18 @@ it('starts a fresh slide for each active day and when reopening the same day', (
       '2026-09-29',
       '2026-09-27',
     ].entries()) {
-      screen.rerender(view(date));
+      await screen.rerender(view(date));
       expect(timing).toHaveBeenCalledTimes(index);
-      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
-      fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+      await fireEvent(
+        screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+        'show',
+      );
+      await fireEvent(
+        screen.container.queryAll((node) => node.type === 'Modal')[0]!,
+        'show',
+      );
       expect(timing).toHaveBeenCalledTimes(index + 1);
-      screen.rerender(view(null));
+      await screen.rerender(view(null));
     }
     const values = timing.mock.calls.map(([value]) => value);
     expect(new Set(values).size).toBe(4);
@@ -227,8 +258,8 @@ it('starts a fresh slide for each active day and when reopening the same day', (
   }
 });
 
-it('keeps the marker behind the date and resizes it when the heading reflows', () => {
-  const screen = render(
+it('keeps the marker behind the date and resizes it when the heading reflows', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -265,14 +296,16 @@ it('keeps the marker behind the date and resizes it when the heading reflows', (
       includeHiddenElements: true,
     });
 
-  fireEvent(title, 'textLayout', {
+  await fireEvent(title, 'textLayout', {
     nativeEvent: { lines: [{ width: 320 }] },
   });
   expect(underline().props.width).toBeCloseTo(278.4);
-  expect(underline().findByType(Path).props.fill).toBe('#FEC9A2');
+  expect(
+    underline().queryAll((node) => node.type === 'Path')[0]!.props.fill,
+  ).toBe('#FEC9A2');
 
   // A narrower screen or larger system text can cause the date to wrap.
-  fireEvent(title, 'textLayout', {
+  await fireEvent(title, 'textLayout', {
     nativeEvent: { lines: [{ width: 180 }, { width: 240 }] },
   });
   expect(underline().props.width).toBeCloseTo(208.8);
@@ -285,13 +318,13 @@ it('keeps the marker behind the date and resizes it when the heading reflows', (
     StyleSheet.flatten(entryList.props.contentContainerStyle),
   ).toMatchObject({
     paddingRight: 12,
-    paddingBottom: 24,
+    paddingBottom: 0,
   });
 });
 
 it('clears the backdrop immediately when the sheet close button is pressed', async () => {
   const actions = callbacks();
-  const screen = render(
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={month}
@@ -304,11 +337,11 @@ it('clears the backdrop immediately when the sheet close button is pressed', asy
   });
   expect(backdrop).toHaveStyle({ backgroundColor: '#102C49AA' });
 
-  fireEvent.press(screen.getByText('×'));
+  await fireEvent.press(screen.getByText('×'));
   expect(backdrop).toHaveStyle({ backgroundColor: 'transparent' });
   expect(actions.onCloseDay).not.toHaveBeenCalled();
   await waitFor(() => expect(actions.onCloseDay).toHaveBeenCalledTimes(1));
-  screen.rerender(
+  await screen.rerender(
     <ProgressView
       month="2026-09"
       data={month}
@@ -316,7 +349,7 @@ it('clears the backdrop immediately when the sheet close button is pressed', asy
       {...actions}
     />,
   );
-  screen.rerender(
+  await screen.rerender(
     <ProgressView
       month="2026-09"
       data={month}
@@ -329,8 +362,8 @@ it('clears the backdrop immediately when the sheet close button is pressed', asy
   ).toHaveStyle({ backgroundColor: '#102C49AA' });
 });
 
-it('keeps a past active day white while its details sheet is open', () => {
-  const screen = render(
+it('keeps a past active day white while its details sheet is open', async () => {
+  const screen = await render(
     <ProgressView
       month="2026-09"
       data={{
