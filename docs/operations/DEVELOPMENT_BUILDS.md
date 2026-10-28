@@ -16,9 +16,12 @@ new binary; Metro reloads and JavaScript exports do not validate it. See the
 
 For a local rebuild with an existing `apps/mobile/ios/` directory, use the intended
 variant and public build environment to run `npx expo prebuild --platform ios`
-from `apps/mobile`, then rebuild the app. Omit `--clean` to update the generated
-files in place. `expo run:ios` skips prebuild when the native project already
-exists, so rebuilding alone can retain the old generated settings.
+from `apps/mobile`. Next run `pod install` from `apps/mobile/ios` with the same
+environment, then rebuild the app. Run this CocoaPods step even when package
+dependencies are unchanged. Omit `--clean` to update the generated files in place.
+For an existing project, prebuild and `expo run:ios` can both skip CocoaPods
+synchronization when dependencies are unchanged, and `expo run:ios` also skips
+prebuild. The explicit steps ensure the generated settings reach the rebuilt app.
 
 ## App and data boundaries
 
