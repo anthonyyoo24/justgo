@@ -5,10 +5,11 @@
 **Status (October 17, 2026):** Complete. Implementation is merged into `main`,
 and post-merge CI passes. Anthony reported completing the required physical-iPhone
 checks and chose seven-day Supabase Pro backup retention at that checkpoint.
-The October 28 decision replaces the planned Pro upgrade with Phase 15 R2 backups;
-exact backup and ledger retention periods remain open in that phase. The approved follow-ups in
-[Open gates](#open-gates) remain with their later phases. Phase 08A is in
-progress; its [handoff](phase-08a-structure-cleanup.md) owns current status and open gates.
+The approved follow-ups in [Open gates](#open-gates) remain with their later phases.
+Phase 08A is in progress; its [handoff](phase-08a-structure-cleanup.md) owns current status and open gates.
+
+**Later decision (October 28, 2026):** Phase 15 R2 backups replace the planned Pro
+upgrade. Exact backup and ledger retention periods remain open in that phase.
 
 This file replaces the earlier per-change Settings handoff and folds in the
 account-deletion and reflection-keyboard handoffs, under the
