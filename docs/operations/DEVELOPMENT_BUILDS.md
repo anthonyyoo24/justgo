@@ -6,6 +6,20 @@ Xcode 26.6/EAS 25.3.0. Compilation does not consume Expo cloud-build allowance.
 `eas upload` hosts the finished IPA using the separate uploaded-build allowance;
 there is no App Store/TestFlight submission.
 
+Keep the app's source-build setting when generating a native project. The
+generated Podfile properties disable precompiled Expo modules, and the SDK
+template forces that setting off even if the incoming EAS environment enables
+it. React Native core retains its matching prebuilt framework; ExpoModulesJSI
+builds its framework against the current Pods headers. This policy requires a
+new binary; Metro reloads and JavaScript exports do not validate it. See the
+[native linkage policy](../architecture/APP_SHELL.md#app-error-reporting).
+
+For a local rebuild with an existing `apps/mobile/ios/` directory, use the intended
+variant and public build environment to run `npx expo prebuild --platform ios`
+from `apps/mobile`, then rebuild the app. Omit `--clean` to update the generated
+files in place. `expo run:ios` skips prebuild when the native project already
+exists, so rebuilding alone can retain the old generated settings.
+
 ## App and data boundaries
 
 | Setting                    | JustGO Dev                         | TestFlight                     |
