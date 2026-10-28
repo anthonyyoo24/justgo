@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -386,6 +387,53 @@ test('resolved EAS commands preserve explicit mode, native signing and the uncha
       }
     }
   }
+});
+
+test('EAS can resolve the project before preview supplies the diagnostics DSN', () => {
+  const beta = workflow.split(/^ {2}beta:$/m)[1];
+  const bootstrap = beta.split(/^ {4}steps:$/m)[0];
+  const flag = bootstrap.match(
+    /^ {6}EXPO_PUBLIC_SENTRY_ENABLED: '(true|false)'$/m,
+  );
+  assert.ok(flag, 'Use an explicit bootstrap flag before preview is loaded.');
+  const require = createRequire(import.meta.url);
+  const env = { ...process.env };
+  for (const key of Object.keys(env))
+    if (
+      /^(?:EXPO_PUBLIC_|SENTRY_|EAS_BUILD_|JUSTGO_APP_VARIANT$|ICLOUD_CONTAINER_ENVIRONMENT$)/.test(
+        key,
+      )
+    )
+      delete env[key];
+  const result = spawnSync(
+    process.execPath,
+    [require.resolve('expo/bin/cli'), 'config', '--json'],
+    {
+      cwd: fileURLToPath(new URL('../../apps/mobile/', import.meta.url)),
+      env: {
+        ...env,
+        EXPO_NO_DOTENV: '1',
+        IOS_BUNDLE_IDENTIFIER: 'com.anthonyyoo.justgo',
+        EXPO_PUBLIC_SENTRY_ENABLED: flag[1],
+        RELEASE_DIAGNOSTICS: 'true',
+      },
+      encoding: 'utf8',
+      maxBuffer: 4 * 1024 * 1024,
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const config = JSON.parse(result.stdout);
+  assert.equal(
+    config.extra.eas.projectId,
+    '53cf0560-8ab5-446a-9bc6-deb193b337b5',
+  );
+  assert.equal(config.ios.bundleIdentifier, 'com.anthonyyoo.justgo');
+  const privacy = config.plugins.find(
+    (plugin) =>
+      Array.isArray(plugin) &&
+      plugin[0] === './plugins/with-sentry-privacy.cjs',
+  );
+  assert.equal(privacy[1].enabled, false);
 });
 
 test('native compilation uses the standard stable macOS runner and explicit supported tools', () => {
