@@ -4,7 +4,7 @@ The authoritative plan is now in [docs/implementation-plan](implementation-plan/
 
 ## Phase links
 
-Number-only anchors use the current numbering. The old Phase 09 measurement and app-change anchors below retain explicit redirects; see the [October 20 numbering decision](DECISIONS.md#october-20-local-journal-and-manual-backup-phase) for the current phase map. Named measurement anchors retain their analytics redirects.
+Number-only anchors use the current numbering. The old Phase 09 measurement and app-change anchors below retain explicit redirects; see the [October 20 numbering decision](DECISIONS.md#october-20-local-journal-and-manual-backup-phase) and [October 28 renumbering](DECISIONS.md#october-28-phase-renumbering) for the phase map. Named measurement anchors retain their analytics redirects.
 
 <a id="phase-01"></a>
 [phase-01](implementation-plan/phase-01-foundation.md#phase-01)
@@ -54,8 +54,8 @@ Number-only anchors use the current numbering. The old Phase 09 measurement and 
 <a id="phase-07-5"></a>
 [phase-07-5](implementation-plan/phase-07-api-offline.md#phase-07-5)
 
-<a id="phase-16"></a>
-[phase-07a](implementation-plan/phase-16-billing.md#phase-16)
+<a id="phase-07a"></a>
+[phase-07a (now Phase 16)](implementation-plan/phase-16-billing.md#phase-16)
 
 <a id="phase-08"></a>
 [phase-08](implementation-plan/phase-08-settings-privacy.md#phase-08)
@@ -96,17 +96,23 @@ Number-only anchors use the current numbering. The old Phase 09 measurement and 
 <a id="phase-14-measurement"></a>
 [phase-14-measurement (now Phase 17)](implementation-plan/phase-17-analytics.md#phase-17-measurement)
 
-<a id="phase-17"></a>
-[phase-15](implementation-plan/phase-17-analytics.md#phase-17)
+<a id="phase-15"></a>
+[phase-15](implementation-plan/phase-15-cloudflare-api.md#phase-15)
 
-<a id="phase-16-measurement"></a>
-[phase-15-measurement](implementation-plan/phase-17-analytics.md#phase-17-measurement)
+<a id="phase-15-measurement"></a>
+[phase-15-measurement (now Phase 17)](implementation-plan/phase-17-analytics.md#phase-17-measurement)
+
+<a id="phase-16"></a>
+[phase-16](implementation-plan/phase-16-billing.md#phase-16)
+
+<a id="phase-17"></a>
+[phase-17](implementation-plan/phase-17-analytics.md#phase-17)
 
 <a id="phase-18"></a>
-[phase-16](implementation-plan/phase-18-native-timers.md#phase-18)
+[phase-18](implementation-plan/phase-18-native-timers.md#phase-18)
 
 <a id="phase-19"></a>
-[phase-17](implementation-plan/phase-19-optional-stripe.md#phase-19)
+[phase-19](implementation-plan/phase-19-optional-stripe.md#phase-19)
 
 <a id="phase-20"></a>
-[phase-18](implementation-plan/phase-20-future-text-coach.md#phase-20)
+[phase-20](implementation-plan/phase-20-future-text-coach.md#phase-20)

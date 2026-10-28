@@ -50,7 +50,7 @@ This PRD defines behavior and scope. The selected final core-app row in Paper Ve
 | Paper screen                                                        | Adopted requirement                                                                                                  |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | 39O — Centered front card, plus the cream/peach three-card variants | Home challenge stack, six manual venue pills, left/right actions and primary navigation; omit the Levels destination |
-| 20 — Navy timer · Pill action buttons                               | Active Challenge with readable instruction, countdown and Give up / Completed actions; no Settings or bottom tabs    |
+| 19 — Navy timer · Pill action buttons                               | Active Challenge with readable instruction, countdown and Give up / Completed actions; no Settings or bottom tabs    |
 | 40B — A small medal · Larger illustration · That’s a win!           | Separate, brief success celebration and Continue                                                                     |
 | D1 — Mood and reflection · Simplified                               | One relative feeling choice, optional typing, and Save reflection; omit Dictate for this release                     |
 | 2E — Paper corner markers · Blue wave · Centered header             | Deferred reference: illustrated level list and progression; not a first-release screen                               |

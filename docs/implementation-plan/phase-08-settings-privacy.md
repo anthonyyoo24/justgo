@@ -26,7 +26,7 @@ Users control recovery, private data and preferences, with authenticated export 
 - Permanently delete the account in an owner-locked transaction, revoke credentials, retain minimal receipts/tombstones, persist intent and receipt, stop uploads/drain writes and remove only the selected account's storage/Keychain items. Refuse before destructive requests on incapable binaries; retries must not resurrect accounts.
 - Show the post-deletion/access-waiting welcome with new-account/recovery choices and remove deleted-account screens from Back history. This does not reopen deferred onboarding.
 - Explain that deletion does not cancel an Apple subscription and retain immediate deletion plus subscription management. Billing-provider cleanup/management is reaccepted when billing activates.
-- Keep allowlisted diagnostics free of private content/secrets. Record the chosen 7-day Pro backup period and restore checklist; production plan confirmation, hosted rehearsal and scheduling retain their approved later-phase owners.
+- Keep allowlisted diagnostics free of private content/secrets. Preserve the historical seven-day Supabase Pro backup choice and restore checklist. The October 28 decision supersedes that planned upgrade with Phase 15 R2 backups; exact backup/ledger retention remains open. Hosted rehearsal and scheduling retain their approved later-phase owners.
 - Ship bounded invoker-rights retention cleanup for rate buckets older than 30 days and transfers expired more than 24 hours, preserving deletion receipts/tombstones and denying mobile-runtime execution.
 
 <a id="phase-08-pre-merge"></a>
@@ -42,7 +42,7 @@ Users control recovery, private data and preferences, with authenticated export 
 - No Reset progress from the mockup, unconditional vendor forwarding, session replay/autocapture or journal/credential/audio payloads in telemetry.
 - No dependency of paid access or cloud saves on successful analytics delivery; Phase 10 owns the recorded owner decision onboarding acceptance flow.
 - No practice reminders, reminder notification permissions/scheduling or public feature-request board in the first release. Revisit reminders in separately scheduled post-launch work.
-- No analytics activation or new consent implementation; these belong to Phases 10 and 15. No final legal drafting/review/publication or release-disclosure preparation; these belong to Phase 12.
+- No analytics activation or new consent implementation in Phase 08. Phase 17 owns the reviewed analytics permission/collection design, activation and vendor cleanup. Phase 10 owns the ordinary Terms & Privacy entry without legal receipts; any new consent implementation requires separately approved scope. No final legal drafting/review/publication or release-disclosure preparation; these belong to Phase 12.
 
 ## Ready to hand off when
 

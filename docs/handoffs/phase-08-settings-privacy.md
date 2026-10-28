@@ -4,7 +4,9 @@
 
 **Status (October 17, 2026):** Complete. Implementation is merged into `main`,
 and post-merge CI passes. Anthony reported completing the required physical-iPhone
-checks and chose 7-day backup retention. The approved follow-ups in
+checks and chose seven-day Supabase Pro backup retention at that checkpoint.
+The October 28 decision replaces the planned Pro upgrade with Phase 15 R2 backups;
+exact backup and ledger retention periods remain open in that phase. The approved follow-ups in
 [Open gates](#open-gates) remain with their later phases. Phase 08A is in
 progress; its [handoff](phase-08a-structure-cleanup.md) owns current status and open gates.
 
@@ -158,14 +160,14 @@ identity retention function; and the October 16 pre-merge stability fixes.
 
 ## Open gates
 
-| Gate                                                                                              | Owner                         | Phase  | Done when                                                                            |
-| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------ |
-| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 14     | Schedule runs on the hosted database; first run's counts recorded                    |
-| Confirm production R2 backups and ledger copies run (replaces the Pro upgrade, October 28)        | Implementation owner, Anthony | 15, 14 | Dashboard matches FOUNDATION.md before Phase 14 publishes the verified wording       |
-| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                                     |
-| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 14     | Simulator or device check                                                            |
-| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 14     | Paid-launch checkpoint                                                               |
-| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–17  | See [Phase 14](../implementation-plan/phase-14-release.md#phase-14) and Phase 17/07A |
+| Gate                                                                                              | Owner                         | Phase  | Done when                                                                           |
+| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ----------------------------------------------------------------------------------- |
+| Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 14     | Schedule runs on the hosted database; first run's counts recorded                   |
+| Confirm production R2 backups and ledger copies run (replaces the Pro upgrade, October 28)        | Implementation owner, Anthony | 15, 14 | Dashboard matches FOUNDATION.md before Phase 14 publishes the verified wording      |
+| Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                                    |
+| Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 14     | Simulator or device check                                                           |
+| Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 14     | Paid-launch checkpoint                                                              |
+| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–17  | See [Phase 14](../implementation-plan/phase-14-release.md#phase-14) and Phase 17/16 |
 
 ## Final verification
 
