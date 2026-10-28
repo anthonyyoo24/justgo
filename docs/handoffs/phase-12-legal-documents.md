@@ -101,7 +101,7 @@ a specific gap if found. No MMKV migration or additional vault was implemented.
 Saving, synchronization, recovery, export, deletion and access verification remain
 independent of vendor failures. No user journal data or account identifier goes to
 Sentry; ordinary delivery remains off. No PostHog exporter or historical backfill
-exists. The removed legal receipt helper is not an activation policy. Phase 15 must review
+exists. The removed legal receipt helper is not an activation policy. Phase 17 must review
 its actual permission/collection design before any delivery and must not silently
 restore the rejected tracking or gating mechanism. Continue and old receipts are
 not authorization. Independent privacy restrictions remain preserved.
@@ -186,7 +186,7 @@ publication remain open. Review applicable plan/data-processing terms before rea
 use; no paid upgrade is authorized.
 
 The first public App Store release is paid, as Anthony confirmed October 19. Keep
-the free TestFlight beta → 07A billing → Phase 14 paid launch sequence. A portfolio
+the free TestFlight beta → 16 billing → Phase 14 paid launch sequence. A portfolio
 purpose does not create an additional free public release. The October 20 owner
 directions exclude EU App Store countries, the UK, Norway, Iceland and
 Liechtenstein initially, so public EU trader contact
@@ -253,7 +253,7 @@ not close the separate provider/regional/native conditions.
 | Sentry activation                 | Anthony with applicable reviewer / 12; release owner / 14         | Resolve basis/device-access rules, DPA, trial/ingestion retention and identifiable report requests; review updated enabled-reporting policy, then signed crash/payload/cache/symbol/outage acceptance before delivery.                                                               |
 | Content and public hosting        | Anthony / Phase 14 preparation                                    | Owner-deferred until ready for hosting. Preserve text approval, finalize dates/versions, publish to the selected Vercel-generated address and verify anonymous HTTPS/app links. No current upgrade/legal-site deployment authorization.                                              |
 | Actual release disclosures        | Release owner / 14                                                | Verify signed privacy manifests/required-reason APIs, ATT/tracking, native links/accessibility and final App Store entries.                                                                                                                                                          |
-| Paid and future analytics scope   | 07A/14, then 15                                                   | Update notices/offer/providers/labels before paid launch; future analytics requires a separately reviewed permission/collection design, with no history backfill or assumed Continue permission.                                                                                     |
+| Paid and future analytics scope   | 16/14, then 17                                                    | Update notices/offer/providers/labels before paid launch; future analytics requires a separately reviewed permission/collection design, with no history backfill or assumed Continue permission.                                                                                     |
 
 ## Verification
 

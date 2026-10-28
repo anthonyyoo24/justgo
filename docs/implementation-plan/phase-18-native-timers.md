@@ -1,6 +1,6 @@
-<a id="phase-16"></a>
+<a id="phase-18"></a>
 
-# Phase 16 — Lock-screen countdowns
+# Phase 18 — Lock-screen countdowns
 
 **Status:** Not scheduled
 
@@ -10,7 +10,7 @@ The same accepted challenge is visible on supported lock screens without a JavaS
 
 ## Decisions in force
 
-- Dependencies: Phase 14 paid launch; Phase 15 analytics is not a prerequisite.
+- Dependencies: Phase 14 paid launch; Phase 17 analytics is not a prerequisite.
 - Acceptance: PRD AC-06–07, 17 · Tech acceptance 9, 12, 17
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 

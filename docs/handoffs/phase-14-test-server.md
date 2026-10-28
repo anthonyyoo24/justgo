@@ -2,7 +2,7 @@
 
 **Numbering history:** This prerequisite belonged to release Phase 09 before October 14, then Phase 11 after October 14, Phase 14 after the October 17 split, then Phase 13 after the October 18 reorder, and now Phase 14 after the October 20 local-journal insertion. Implementation dates, test evidence, deployment/build identifiers and historical `.local/phase-09/` artifact paths are preserved. Renumbering does not accept the free beta or close any native/release gate.
 
-October 11, 2026. Branch: `codex/phase-08-settings-privacy`. Anthony explicitly approved bringing forward the existing hosted test-server update and approved-account free access so Phase 08 can be tested on his iPhone. This is a narrow Phase 14 prerequisite; Phase 08, the free TestFlight beta and paid launch remain incomplete. Native billing stays on its separate 07A branch. No Git push, PR or merge was performed.
+October 11, 2026. Branch: `codex/phase-08-settings-privacy`. Anthony explicitly approved bringing forward the existing hosted test-server update and approved-account free access so Phase 08 can be tested on his iPhone. This is a narrow Phase 14 prerequisite; Phase 08, the free TestFlight beta and paid launch remain incomplete. Native billing stays on its separate 16 branch. No Git push, PR or merge was performed.
 
 ## Implementation
 
@@ -10,9 +10,9 @@ October 11, 2026. Branch: `codex/phase-08-settings-privacy`. Anthony explicitly 
 
 Current access ends at expiry or revocation. Keep the historical grant and set `revokedAt` to stop current access: uploads with an original start inside the interval remain eligible after reconnecting. Already accepted identical attempts still replay before coverage checks. Recovery/session validation, account ownership, RLS and account deletion checks remain in force. Grant changes require updating the private server environment and redeploying; they require no compatible native rebuild.
 
-The strict access/OpenAPI contract optionally identifies `source: free_beta`. Unapproved/expired test accounts see a free-testing explanation; Settings identifies the test build. Billing responses without this optional field remain valid. Bring these contract changes into 07A before integrating its separate implementation.
+The strict access/OpenAPI contract optionally identifies `source: free_beta`. Unapproved/expired test accounts see a free-testing explanation; Settings identifies the test build. Billing responses without this optional field remain valid. Bring these contract changes into 16 before integrating its separate implementation.
 
-**Original offline limit, superseded October 24:** this prerequisite originally supplied server-side start-time upload eligibility while mobile admission closed after 60 seconds or a failed recheck. The later mobile beta slice retains fresh server-issued free-beta approval until its expiry, including offline restart and safe continuation; see the [current access boundary](../architecture/APP_SHELL.md#access-verification). Physical cold-launch and remaining release acceptance stay open under Phase 14. The owner-waived offline-artwork check is recorded in [DECISIONS.md](../DECISIONS.md#october-24-offline-artwork-check-waived). The separate 07A paid-access rules have not been imported or accepted here.
+**Original offline limit, superseded October 24:** this prerequisite originally supplied server-side start-time upload eligibility while mobile admission closed after 60 seconds or a failed recheck. The later mobile beta slice retains fresh server-issued free-beta approval until its expiry, including offline restart and safe continuation; see the [current access boundary](../architecture/APP_SHELL.md#access-verification). Physical cold-launch and remaining release acceptance stay open under Phase 14. The owner-waived offline-artwork check is recorded in [DECISIONS.md](../DECISIONS.md#october-24-offline-artwork-check-waived). The separate 16 paid-access rules have not been imported or accepted here.
 
 ## Hosted cutover and protection
 

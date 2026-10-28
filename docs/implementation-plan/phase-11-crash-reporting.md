@@ -10,7 +10,7 @@ Production app crashes and unhandled failures become visible through a configure
 
 ## Decisions in force
 
-- Dependencies: 08 and 10; reuse the root ErrorBoundary, diagnostic allowlist and account/privacy boundary wherever the reviewed reporting basis requires it. Deferred Phase 15 product analytics is not a prerequisite.
+- Dependencies: 08 and 10; reuse the root ErrorBoundary, diagnostic allowlist and account/privacy boundary wherever the reviewed reporting basis requires it. Deferred Phase 17 product analytics is not a prerequisite.
 - Preserve the original app-reporting requirement [SEC-1]. Anthony selected Sentry before legal finalization and paid launch. The `anthony-corp` organization has a React Native `justgo-mobile` project in the US region; the SDK and synthetic delivery are implemented, while ordinary real-user delivery stays disabled pending launch gates. Anthony approved minimal essential diagnostics under the Privacy Policy before onboarding acceptance on October 18. The handoff records field/redaction evidence; verify actual plan/retention and matching notices before activation; final legal review remains Phase 12.
 
 ## Implement

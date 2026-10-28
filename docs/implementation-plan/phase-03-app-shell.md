@@ -20,7 +20,7 @@ The app restores the right account and provides consistent navigation and networ
 - Use shared strict runtime contracts and one bounded HTTP retry/renewal policy, account-scoped query keys, cancellation and stale-response protection.
 - Keep product state with its owner: React for local presentation, TanStack Query for independent server reads, and the Phase 07 account-scoped activity store/journal for persisted submissions.
 - Keep onboarding/questionnaires deferred. The Phase 08 post-deletion welcome is recovery/navigation, not onboarding.
-- Enforce server-authorized access with no production fixture bypass; telemetry stays non-exporting until Phase 15.
+- Enforce server-authorized access with no production fixture bypass; telemetry stays non-exporting until Phase 17.
 
 ## Keep out
 

@@ -17,7 +17,7 @@ The October 19 owner decision replaces the earlier receipt system with ordinary 
 
 ## Invariants to preserve
 
-Continue is an account-creation action, not permission for future analytics. Product analytics remains disabled; Phase 15 must review the actual collection/permission design before activation and must not silently restore the rejected tracking or gating system. Independent analytics restrictions never grant permission.
+Continue is an account-creation action, not permission for future analytics. Product analytics remains disabled; Phase 17 must review the actual collection/permission design before activation and must not silently restore the rejected tracking or gating system. Independent analytics restrictions never grant permission.
 
 Account creation remains explicit and idempotent. Preserve recovery, account isolation, synchronization, export/deletion, timeout/duplicate guards and ordinary access verification. Activity PATCH acknowledgements and account-deletion confirmations are unrelated safety records and remain intact.
 

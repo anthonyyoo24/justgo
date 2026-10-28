@@ -1,6 +1,6 @@
-<a id="phase-15"></a>
+<a id="phase-17"></a>
 
-# Phase 15 — Product analytics & PostHog dashboard
+# Phase 17 — Product analytics & PostHog dashboard
 
 **Status:** Deferred until after paid launch; analytics exporter disabled
 
@@ -19,16 +19,16 @@ Explicit PostHog events, subject to a reviewed permission and collection design,
 ## Implement
 
 - Resolve and document a collection/permission design compatible with the owner's removal of legal tracking and version gates before activation. Evaluate first use, existing launch accounts, required privacy choices and withdrawal/objection handling; do not treat ordinary Continue as consent or revive the removed receipt/controller automatically. The retained analytics restriction marker can suppress processing and never proves permission. Keep delivery disabled while this design remains unresolved.
-- Implement the [measurement plan](phase-15-analytics.md#phase-15-measurement) below: its event allowlist with validated property schemas, `start_id` linking, and metric definitions in the event dictionary. Separate UI intent from confirmed domain outcomes. Challenge Start/Give up remain local product actions with no required backend attempt save. Welcome/questionnaire onboarding and extra product features solely for analytics remain outside scope; this plan does not authorize a replacement permission UI or tracking mechanism.
+- Implement the [measurement plan](phase-17-analytics.md#phase-17-measurement) below: its event allowlist with validated property schemas, `start_id` linking, and metric definitions in the event dictionary. Separate UI intent from confirmed domain outcomes. Challenge Start/Give up remain local product actions with no required backend attempt save. Welcome/questionnaire onboarding and extra product features solely for analytics remain outside scope; this plan does not authorize a replacement permission UI or tracking mechanism.
 - Confirm PostHog project/environment separation, pseudonymous account identifiers, region, retention and account-deletion cleanup. The architecture's 90-day event retention is a proposal to approve and configure, not an existing guarantee. Reuse Phase 08 deletion ownership and cleanup behavior for the configured analytics provider.
 - Activate explicit PostHog events only through client/server adapters that enforce the reviewed permission/collection design. Server-confirmed events follow successful transactions and use stable domain-derived IDs; client-only interactions use one reviewed forwarding boundary. Record event occurrence and delivery-receipt timestamps and prevent retry double-counting. These are analytics delivery records, not legal acceptance/view receipts. Delivery is best effort and analytics failures must not fail a saved completion or reflection. Keep provider I/O outside owner transactions.
 - Allow feeling codes and coarse reflection-length categories only within the disclosed, reviewed and lawfully permitted analytics scope. Compute approved categories without exporting the words. Disable autocapture/session replay and exclude journal text, audio, credentials, payment details and contact data from event payloads. Recheck the applicable permission/privacy state and account ownership before delayed delivery. Preserve enforcement of deletion and applicable withdrawal/objection requests through the reviewed privacy-request process; the absence of a Settings toggle does not remove these rights.
-- Route billing measurement through the same reviewed server forwarding rules; do not enable unconditional RevenueCat-to-PostHog forwarding. Phase 07A billing and paid launch precede this phase. Verify any now-active billing integration at analytics activation, without making purchases or paid access depend on analytics.
+- Route billing measurement through the same reviewed server forwarding rules; do not enable unconditional billing-provider-to-PostHog forwarding. Phase 16 billing and paid launch precede this phase. Verify any now-active billing integration at analytics activation, without making purchases or paid access depend on analytics.
 - Create a small product dashboard for the agreed usage, challenge-flow and return-rate questions. Define cohort anchors, eligible observation windows and missing-data handling; describe the actual population covered by the reviewed collection design and eligible events. Collect a baseline before setting targets. Sensitive-metadata comparisons use only the reviewed scope; retrospective feelings and retention correlations do not establish wellbeing improvement or causation.
 - Verify actual client/server forwarding against the newly reviewed design: first use, existing launch accounts, missing or withdrawn required permission, hydration/account changes, stale callbacks, allowed/blocked payloads, duplicate delivery, provider outages and deletion/privacy-request cleanup. Never backfill pre-activation history or forward activity collected before the applicable permission and activation conditions were met. Preserve account isolation, product saves and existing identity/deletion acknowledgements.
 - Reconcile actual collection/provider facts with the data inventory, public notices and release disclosures from Phases 12–14 before activation, under their existing review/publication permissions. Update PRD §8 to match the allowlist at closeout. Diagnostic redaction stays with Phase 08; app crash reporting belongs to Phase 11 and server health monitoring to Phase 14.
 
-<a id="phase-15-measurement"></a>
+<a id="phase-17-measurement"></a>
 
 **Measurement plan**
 
@@ -65,7 +65,7 @@ Every event carries the pseudonymous account identifier, occurrence timestamp, a
 
 - `feeling` uses the existing contract codes (`a_lot_worse` … `a_lot_better`) and is present only when a feeling was chosen.
 - `reflection_length` is a word-count bucket computed on the phone (`1-9`, `10-29`, `30-79`, `80+`) and is present only when text was submitted. The words themselves never enter an event.
-- Billing events remain owned by Phase 07A and the billing bullet above.
+- Billing events remain owned by Phase 16 and the billing bullet above.
 
 **Linking a start to its outcome**
 
@@ -92,7 +92,7 @@ Every event carries the pseudonymous account identifier, occurrence timestamp, a
 - [ ] Explicit event schemas, stable IDs, occurrence/receipt times, deduplication, `start_id` linking and provider-failure isolation have passing evidence; transmitted properties match the allowlist.
 - [ ] The actual permission/collection design is reviewed before activation and does not infer permission from Continue, document views or historical receipts or silently reintroduce the rejected tracking/version gates.
 - [ ] Actual client/server delivery and delayed work enforce the reviewed design, account ownership, deletion and applicable privacy requests; saved/pending activity and product saves survive provider failures.
-- [ ] Provider environments, pseudonymous identifiers, region, retention and deletion cleanup are configured/verified in the inventory and reviewed notices; any active Phase 07A billing integration uses the same reviewed forwarding rules at analytics activation.
+- [ ] Provider environments, pseudonymous identifiers, region, retention and deletion cleanup are configured/verified in the inventory and reviewed notices; any active Phase 16 billing integration uses the same reviewed forwarding rules at analytics activation.
 - [ ] Updated notices/disclosures and any required privacy choices are reviewed before activation for new and existing launch accounts, with no replay of pre-activation history.
 - [ ] ANALYTICS_EVENTS.md defines events and metrics, including sessions, cohort anchors, observation/missing-outcome windows and eligible population; the PostHog dashboard answers the measurement questions and baseline collection is documented before setting targets.
 - [ ] Reports state their actual eligible/best-effort population and do not imply wellbeing improvement or causation from correlations.
@@ -100,4 +100,4 @@ Every event carries the pseudonymous account identifier, occurrence timestamp, a
 
 ## Open gates before analytics activation
 
-- Resolve the actual permission/collection design and verify it, configured providers, cleanup and updated disclosures on the signed post-launch update, including any active billing integration. Phase 15 owns these activation gates; earlier launch evidence and ordinary Continue establish no analytics permission. Keep analytics disabled until these gates pass without silently reviving the removed legal tracking or document-version machinery.
+- Resolve the actual permission/collection design and verify it, configured providers, cleanup and updated disclosures on the signed post-launch update, including any active billing integration. Phase 17 owns these activation gates; earlier launch evidence and ordinary Continue establish no analytics permission. Keep analytics disabled until these gates pass without silently reviving the removed legal tracking or document-version machinery.

@@ -255,10 +255,10 @@ The current mobile guard polls every 30 seconds, accepts verification for at mos
 [APP_SHELL.md](APP_SHELL.md#access-verification) explains its clock alignment and
 separation from earlier-upload eligibility.
 
-RevenueCat purchase/paywall/restore, provider-backed billing records, QStash and
+Superwall purchase/restore, provider-backed billing records, QStash and
 billing schedules are unbuilt. Their technical design lives in
 [native-billing-and-jobs.md](../proposals/native-billing-and-jobs.md), with scope
-owned by [Phase 07A](../implementation-plan/phase-07a-billing.md). The optional
+owned by [Phase 16](../implementation-plan/phase-16-billing.md). The optional
 [Stripe checkout](../proposals/optional-stripe-checkout.md) and future
 [text coach](../proposals/future-text-coach.md) are separate proposals.
 
@@ -276,12 +276,12 @@ telemetry helper has an event-name allowlist, account-reset consent and no expor
 or payload API. [Phase 10](../implementation-plan/phase-10-acceptance.md) owns the
 Terms & Privacy entry links and ordinary Continue, with no legal
 view/acceptance receipts or version-driven navigation.
-[Phase 15](../implementation-plan/phase-15-analytics.md) owns post-paid-launch
+[Phase 17](../implementation-plan/phase-17-analytics.md) owns post-paid-launch
 analytics and the approved event allowlist, and
 [Phase 11](../implementation-plan/phase-11-crash-reporting.md) owns app crash reporting;
 [Phase 12](../implementation-plan/phase-12-legal-documents.md) owns final legal
 notices, document labels and public destinations. Product analytics stays disabled
-through beta and paid launch. Phase 15 must review its actual permission/collection
+through beta and paid launch. Phase 17 must review its actual permission/collection
 design before activation; Continue and historical legal receipts grant no analytics
 permission, and the removed tracking/version gates must not be restored by
 assumption. Historical migration 0017 remains; migration 0018 drops only its legal

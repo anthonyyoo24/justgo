@@ -7,7 +7,7 @@ import {
   requireDataEpoch,
   rejectDeletedCompletion,
 } from '../data-sync/epoch.js';
-// Phase 07A supplies a database-backed projection of verified coverage at startedAt.
+// Phase 16 supplies a database-backed projection of verified coverage at startedAt.
 // Never perform provider network I/O inside this transaction or trust a phone premium flag.
 export type UploadEligibilityReader = (
   tx: Tx,

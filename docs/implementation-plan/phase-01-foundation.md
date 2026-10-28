@@ -22,7 +22,7 @@ A reproducible workspace and a clear list of decisions to settle before each fea
 - Use the selected Paper screens as the visual reference; extract usable illustrations/icons/fonts and record reusable color, type and spacing values. Adapt only the approved scope changes (no Levels navigation or Dictate button; manual venue filters now belong to phase 04); keep the Progress content. Record remaining decisions with their blocking phases.
 - Create `docs/design/DESIGN.md`: a concise design guide identifying the authoritative Paper screens, typography, colors, spacing and shared component styles. Document design decisions and unresolved details.
 - Create `apps/mobile/src/theme/tokens.ts`: Define typed, reusable colors, typography, spacing and corner radii from the approved screens for app components to import. Keep these values authoritative in code; no separate JSON token file is needed initially.
-- Begin the [Apple/RevenueCat setup checklist](../operations/APPLE_SETUP.md#release-setup-sequence) in parallel. Record account access and outstanding verification; do not wait until the app is finished to start enrollment or product setup.
+- Begin the [Apple/Superwall setup checklist](../operations/APPLE_SETUP.md#release-setup-sequence) in parallel. Record account access and outstanding verification; do not wait until the app is finished to start enrollment or product setup.
 
 ## Keep out
 

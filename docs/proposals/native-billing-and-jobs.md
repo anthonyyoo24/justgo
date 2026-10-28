@@ -1,9 +1,14 @@
 # Native billing and managed jobs proposal
 
-**Status:** Not implemented. [Phase 07A](../implementation-plan/phase-07a-billing.md)
+**Status:** Not implemented. [Phase 16](../implementation-plan/phase-16-billing.md)
 owns acceptance and activation. This document preserves the technical design;
 it does not establish purchased access, provider integration or hosted scheduling.
 Revalidate provider SDKs, quotas, prices and policies before implementation.
+
+**Provider change:** The [October 28 decision](../DECISIONS.md#october-28-superwall-replaces-revenuecat-for-phase-16-billing)
+selects Superwall instead of RevenueCat. RevenueCat names below describe the
+original design; apply the same rules through Superwall's compatible subscriber
+endpoint, signed webhooks and Expo SDK, with its pre-activation checks.
 
 The current access boundary is described in [APP_SHELL.md](../architecture/APP_SHELL.md#access-verification).
 Account activity uploads retain their own phone journal and sender; billing jobs
@@ -20,7 +25,7 @@ do not replace them.
 | `idempotency_records` — optional | `user_id`, endpoint, request key, payload digest, stored result                                                                                                                                                                                                        | Add only when existing records cannot identify an action or preserve its required retry result; same key with a different payload is rejected    |
 | `checkout_sessions` — optional   | `id`, `user_id`, provider session ID, approved price, status, expiry                                                                                                                                                                                                   | Bind web checkout to the authenticated app account without asking the browser to log in                                                          |
 
-Safe retries are required; a separate table of request receipts is not. Use the completed-attempt UUID for creation replay and targeted PATCH receipts for explicit reflections; Phase 07A will use provider event IDs for duplicate billing notifications. Reuse backend retry-handling logic across applicable operations. Do not create `idempotency_records` until an operation requires it, and do not record every API request there.
+Safe retries are required; a separate table of request receipts is not. Use the completed-attempt UUID for creation replay and targeted PATCH receipts for explicit reflections; Phase 16 will use provider event IDs for duplicate billing notifications. Reuse backend retry-handling logic across applicable operations. Do not create `idempotency_records` until an operation requires it, and do not record every API request there.
 
 QStash is selected for billing jobs. `billing_events` is the durable billing receipt and handoff record; QStash manages delivery attempts, while PostgreSQL records whether the business update succeeded. A generic `outbox_jobs` table, Redis service, Celery installation, and continuously running worker server are not required. Other features can reuse QStash when they have a concrete deferred-work requirement (see Managed delivery and recovery below).
 
@@ -55,7 +60,7 @@ Set a shared QStash flow-control key for billing work with measured concurrency/
 
 ### Scheduled recovery and reconciliation
 
-Implement both checks in Phase 07A before launch:
+Implement both checks in Phase 16 before launch:
 
 - **Handoff repair:** Initially run a protected Vercel Cron endpoint every five minutes to find due unpublished/uncertain handoffs and confirmed stalled deliveries. Publish a bounded batch of references to QStash. A pending job still within its normal retry schedule is not automatically republished every five minutes; exhausted failures follow the alert-and-replay policy above. Use dispatch claims, next-dispatch timestamps, and a saved scan checkpoint so overlapping or interrupted runs cannot repeatedly flood the queue.
 - **Provider reconciliation:** Enqueue targeted checks for stale, failed, recently purchased, or near-expiry accounts on that recovery cadence, plus a daily rotating scan of known billing accounts with a saved checkpoint. This asks RevenueCat for current state even when a notification never reached us and there is no `billing_events` row to retry. The pre-existing customer mapping makes those accounts discoverable. Track pending verification dispatches on the customer record, coalesce duplicate checks, and advance the freshness timestamp only after a successful verified update. Set batch sizes and the full-scan freshness target against provider quotas and measured account volume; do not fetch every user's status every five minutes.
@@ -68,7 +73,7 @@ Do not treat an unawaited promise, in-memory timer, or post-response callback as
 
 ## Native purchase and restore
 
-This section is the Phase 07A billing design, not implemented paid access. Use `react-native-purchases` and `react-native-purchases-ui` after account bootstrap/recovery, with the hard paywall before the paid app; questionnaire onboarding remains deferred. The current mobile guard still checks `/v1/access` every 30 seconds with a 60-second freshness window and closes on recheck failure; production access returns unavailable until a verified provider reader is connected. Those current rules will be replaced by the nine confirmed [Phase 07A subscription rules](../implementation-plan/phase-07a-billing.md): persisted account status/expiry/check time, event-driven checks after five minutes, valid saved access through network failures, immediate purchase/restore checks, online verification at expiry and owner-checked earlier uploads. Do not interpret Phase 07 local-saving acceptance as completed billing. Restore Purchases, subscription management, privacy/terms, recovery, and data controls remain reachable when unpaid.
+This section is the Phase 16 billing design, not implemented paid access. Use `react-native-purchases` and `react-native-purchases-ui` after account bootstrap/recovery, with the hard paywall before the paid app; questionnaire onboarding remains deferred. The current mobile guard still checks `/v1/access` every 30 seconds with a 60-second freshness window and closes on recheck failure; production access returns unavailable until a verified provider reader is connected. Those current rules will be replaced by the nine confirmed [Phase 16 subscription rules](../implementation-plan/phase-16-billing.md): persisted account status/expiry/check time, event-driven checks after five minutes, valid saved access through network failures, immediate purchase/restore checks, online verification at expiry and owner-checked earlier uploads. Do not interpret Phase 07 local-saving acceptance as completed billing. Restore Purchases, subscription management, privacy/terms, recovery, and data controls remain reachable when unpaid.
 
 After anonymous account bootstrap, configure RevenueCat with the backend-assigned stable customer ID. “No signup” does not mean RevenueCat must generate an unrelated identity on every installation. Both recovered iPhones use the same app account/billing mapping; sessions remain independent.
 

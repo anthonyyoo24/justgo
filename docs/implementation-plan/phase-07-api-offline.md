@@ -10,8 +10,8 @@ Challenge completions and submitted reflections save locally and display immedia
 
 ## Decisions in force
 
-- Dependencies: 06A; complete active 07.1–07.5 in order before 07A. 07.3A is deferred; native/device/release evidence remains open.
-- Acceptance: The confirmed API/persistence requirements below govern this redesign. Billing acceptance is owned by Phase 07A. Align older product/technical acceptance lists after each implementation under the approved documentation sequence.
+- Dependencies: 06A; complete active 07.1–07.5 in order before 16. 07.3A is deferred; native/device/release evidence remains open.
+- Acceptance: The confirmed API/persistence requirements below govern this redesign. Billing acceptance is owned by Phase 16. Align older product/technical acceptance lists after each implementation under the approved documentation sequence.
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 
 ## Implement
@@ -56,9 +56,9 @@ Challenge completions and submitted reflections save locally and display immedia
 
 ## Keep out
 
-- Native purchase/paywall/restore implementation, subscription refresh/expiry policy, provider billing records/webhooks, QStash and scheduled billing recovery. These belong to Phase 07A; recorded subscription decisions remain intact there.
+- Native purchase/paywall/restore implementation, subscription refresh/expiry policy, provider billing records/webhooks, QStash and scheduled billing recovery. These belong to Phase 16; recorded subscription decisions remain intact there.
 - No production premium bypass, Stripe checkout, generic server outbox or continuously running worker for phone uploads. Keep existing authentication/ownership checks and isolated development/test access boundaries.
-- General PostHog activation remains Phase 15. Earlier physical-device/staging gates remain in Phase 14.
+- General PostHog activation remains Phase 17. Earlier physical-device/staging gates remain in Phase 14.
 
 ## Ready to hand off when
 

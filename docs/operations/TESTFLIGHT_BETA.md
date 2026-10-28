@@ -43,8 +43,8 @@ must match that version in the protected `testflight-beta` environment. Reportin
 private `SENTRY_AUTH_TOKEN` there for mandatory source-map/dSYM uploads. On
 October 27, the owner-approved `org:ci` token was created, verified with Sentry
 CLI and stored in that protected environment; the matching published-notice
-variable was also verified. Native symbol-upload/build evidence still requires
-an actual diagnostics build. No upload bypass is permitted.
+variable was also verified. Actual build 5 subsequently passed the native build
+and exact symbol/provider matching described below. No upload bypass is permitted.
 
 Manifest schema 2 records the exact selected profile and diagnostics mode alongside
 the existing source/run/signature and file-hash checks. Submit must match that
@@ -55,8 +55,11 @@ continues to approve builds and uploads separately.
 Upload the reviewed store-signed artifact for internal TestFlight testing before
 performing phone acceptance. Native crash/restart delivery, cache and envelope
 privacy, symbolication, outage behavior and cached-crash attribution remain
-deferred checks before external testing. An internal upload does not mark those
-checks passed or invite external testers.
+unverified checks before external testing. The owner explicitly skipped the
+deliberate native crash test on October 27; preserve that waiver and do not
+reintroduce a crash trigger without new direction. A non-fatal event can inspect
+the shared native filtering/envelope path, but not the skipped fatal cache/restart
+path. An internal upload does not mark these checks passed or invite outsiders.
 
 ## Preflight and release procedure
 
@@ -198,8 +201,13 @@ sheet/editor fixes, and the existing **Owner validation** group's Builds page
 shows **Testing**. The group remains internal with one existing tester and manual
 build distribution. No external groups, new tester invitations or external Beta
 App Review request were created. Anthony deferred physical-phone checks for now;
-this is not passing device acceptance. The separate server-diagnostics change is
-not part of this native build and has not been deployed to the API.
+this does not pass the complete device acceptance matrix. Later diagnostics and
+server deployment evidence is recorded below; build 4's reporting mode is unchanged.
+
+The October 27 diagnostics update is **0.1.0 (5)** from merged [PR #59](https://github.com/anthonyyoo24/justgo/pull/59), source `311f07323fdaacfe868b5a18dce4b2f516923783`, tag `testflight-beta-2026-10-27-2`.
+The [GitHub Mac build](https://github.com/anthonyyoo24/justgo/actions/runs/40587250274) and separate [upload](https://github.com/anthonyyoo24/justgo/actions/runs/40591517008) succeeded. Exact IPA SHA-256 is `96ddd076399fac183b16f704d485437a4e9f720a71f72d61dbc43051eff830fa`; signature/store identity, Production CloudKit, public staging/diagnostics configuration and all 18 unchanged privacy manifests passed inspection. The main native UUID and embedded JavaScript debug ID match Sentry-stored symbols/source maps. Apple processed build `5740ba53-c8fb-406f-be28-fde95af5b6a5`; per-build and global notes are saved, and **Owner validation** shows **Testing**, still internal with one tester and manual distribution. No external review or invitations occurred. The matching [API release](https://github.com/anthonyyoo24/justgo/actions/runs/40585928393) is live and independent public health/protected-route probes passed.
+
+Anthony subsequently reported that the TestFlight app **looks fine**. Record this as owner-reported general phone/UI smoke in the build-5 handoff context, without inferring an enumerated full test matrix. Physical offline/recovery/deletion/account-switch/two-device iCloud/accessibility checks, native crash/cache/final-envelope/symbolication and live deployed API fault-to-Sentry delivery remain open or owner-deferred. This does not close Phase 14 or external readiness.
 
 The local builder fetches signing credentials into a run-owned private temporary
 directory with restrictive permissions. Normal EAS cleanup and an `always()`
@@ -214,8 +222,11 @@ GitHub maintains the underlying machines. Do not add paid/larger runners by defa
 The approved notices are hosted at [Privacy](https://justgo-legal.vercel.app/privacy/)
 and [Terms](https://justgo-legal.vercel.app/terms/), with both URLs set in EAS
 preview. The actual remote-environment preflight passes. App Store Connect's
-Privacy Policy URL is saved; App Privacy disclosures are still uncompleted and
-must match the signed binary before publication. Full native link acceptance is
+Privacy Policy URL is saved. App Privacy now has 13 categories selected and
+11 fully configured in an unpublished draft, verified after reload. Crash Data
+and Other Diagnostic Data remain unfinished; Publish is disabled. The
+[worksheet](../legal/RELEASE_DISCLOSURES.md) records the exact purposes, linkage
+and remaining Sentry uncertainty before publication. Full native link acceptance is
 separate from anonymous browser HTTPS checks.
 The signed GoogleSignIn manifest declares eight data categories and some Analytics
 purposes. Reconcile [Google's disclosure guidance](https://developers.google.com/identity/sign-in/ios/app-privacy)
@@ -290,19 +301,22 @@ the current guest expiry is not an approved date for a future cohort.
   clearance. Preserve the declined-provider-contact direction. Supabase's
   incorporated DPA does not create a generic missing separate-signature task.
   The October 27 [operating decision](../DECISIONS.md#october-27-hosting-backups-and-simulator-test-direction)
-  retains Vercel and Supabase; do not pursue a hosting migration. Supabase Pro is
-  selected for daily backups with seven days of history, but upgrade/spending wait
-  until Anthony is ready for outside testers or App Store release preparation.
-  No purchase or upgrade is authorized now; provider suitability remains open.
+  chose Vercel and Supabase. The October 28 [Cloudflare decision](../DECISIONS.md#october-28-cloudflare-workers-hono-and-r2-backups)
+  supersedes it: Phase 15 moves the API to Cloudflare Workers and adds encrypted R2
+  backups instead of Supabase Pro before outside testers. No purchase or upgrade is
+  authorized now; provider suitability remains open.
 - Verify the configured branded icon and native font/splash behavior on the signed
   build. Root `assets/icon.png` and `assets/splash-icon.png` remain unreferenced Expo
   placeholders.
 - Confirm beta dates/invitees and the remaining [server operating controls](FOUNDATION.md#beta-operating-controls).
   Cleanup and rate limits are deployed, and the readiness monitor is active.
   The October 27 Sentry uptime monitor is active, API/mobile email alert rules are
-  verified and Anthony confirmed the test email. Ordinary API Sentry collection
-  and protected hosted-migration/deploy automation are prepared locally, with
-  publication/deployment and current backup/recovery arrangements still open.
+  verified and Anthony confirmed the test email plus controlled monitor
+  failure/recovery emails. The API reporter and protected code-only release lane
+  are deployed/hosted-verified; actual deployed fault-to-Sentry delivery,
+  migration/deploy acceptance and current backup/recovery arrangements remain
+  open. Exact receipts and current concerns are consolidated in the
+  [release handoff](../handoffs/phase-14-release.md).
   The October 27 owner
   direction defers the automated iOS simulator smoke test; do not implement it
   now or mark it passed. The retained Maestro launch file still targets old

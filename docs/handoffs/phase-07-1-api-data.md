@@ -113,7 +113,7 @@ that content. Product writes serialize through the existing account lock.
 
 Current paid access and earlier-upload eligibility are separate injected readers.
 The upload reader receives the authenticated owner and submitted start instant;
-07A must connect verified historical coverage without provider I/O inside the
+16 must connect verified historical coverage without provider I/O inside the
 transaction. New writes default closed without that provider. Existing accepted
 UUIDs remain replayable. The future-start tolerance is five minutes. Offline
 start dates are a trusted client assertion within verified coverage, not proof

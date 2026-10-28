@@ -210,8 +210,9 @@ Current full recovery, off-Mac storage and independently recoverable deletion/Au
 ledger evidence remain open under the
 [backup restore checklist](FOUNDATION.md#backup-restore-checklist). The historical
 October 21 snapshot predates the current journal/managed-account tables and does
-not establish Auth restoration. Supabase Pro remains selected but its purchase
-and upgrade are deferred; this workflow does not perform either. Those open
+not establish Auth restoration. [Phase 15](../implementation-plan/phase-15-cloudflare-api.md#phase-15)
+replaces the planned Supabase Pro upgrade with encrypted R2 backups and an hourly
+ledger copy; this workflow does not create either. Those open
 backup gates block pending hosted migrations, not code-only deployment when the
 live migration history already matches.
 

@@ -262,7 +262,7 @@ needed or resumes pending authentication, invalidates active account queries
 (including access/visible Progress), and asks
 the legacy challenge controller to refresh canonical challenge state. Leaving
 the foreground hides displayed recovery keys. The 07.2 sender still awaits 07.3
-lifecycle wiring; the existing access freshness/polling policy awaits 07A billing.
+lifecycle wiring; the existing access freshness/polling policy awaits 16 billing.
 
 ## October 5 owner follow-up: separate Access, runtime and developer previews
 
@@ -335,7 +335,7 @@ Verification after the refactor:
 The Foundation deletion and this refactor are local, uncommitted owner-review changes
 on `codex/phase-07.2-local-sync`, after the two earlier local implementation/data-folder
 commits. No push, PR or merge was performed. Native durability/device/staging evidence,
-07.3 integration, 07.4 Progress composition and 07A billing remain open as before.
+07.3 integration, 07.4 Progress composition and 16 billing remain open as before.
 
 ## October 5 owner-requested simulator verification attempt
 
