@@ -41,6 +41,8 @@ test('the installed Expo plugin pipeline generates isolated Dev callbacks and Cl
   const config = JSON.parse(result.stdout);
   assert.equal(config.name, 'JustGO Dev');
   const ios = config._internal.modResults.ios;
+  assert.equal(ios.podfileProperties.EXPO_USE_PRECOMPILED_MODULES, 'false');
+  assert.equal(ios.podfileProperties['ios.useFrameworks'], 'static');
   assert.deepEqual(
     ios.infoPlist.CFBundleURLTypes.flatMap(
       (type) => type.CFBundleURLSchemes,

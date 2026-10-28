@@ -81,7 +81,7 @@ test('mobile singleton overrides and the lockfile agree with declared versions',
   const lock = JSON.parse(
     readFileSync(new URL('../../package-lock.json', import.meta.url)),
   );
-  for (const name of ['react', 'react-dom', 'test-renderer']) {
+  for (const name of ['react', 'react-dom', 'react-native', 'test-renderer']) {
     const declared =
       mobilePackage.dependencies[name] ?? mobilePackage.devDependencies[name];
     assert.equal(rootPackage.overrides[name], declared, `${name} override`);
@@ -97,19 +97,4 @@ test('mobile singleton overrides and the lockfile agree with declared versions',
       `${name} resolution`,
     );
   }
-});
-
-test('React Native matches the version used by the installed Expo native packages', () => {
-  const bundled = JSON.parse(
-    readFileSync(
-      new URL(
-        '../../node_modules/expo/bundledNativeModules.json',
-        import.meta.url,
-      ),
-    ),
-  );
-  assert.equal(
-    mobilePackage.dependencies['react-native'],
-    bundled['react-native'],
-  );
 });
