@@ -238,12 +238,15 @@ or manual span APIs without reviewing that separate header boundary.
 The native crash cache can retain original crash details locally until the next
 launch; outbound reconstruction is separate from that local capture.
 
-Native builds use `expo-build-properties` with `ios.useFrameworks: 'static'`.
-Cocoa 9.29's prebuilt framework and the attachment-aware Swift callback retain
-that linkage requirement. Keep framework modules rather than removing the
-attachment-clearing callback or weakening the privacy options. The signed SDK 58
-development build verifies this configuration compiles;
-physical diagnostics acceptance and activation remain separate gates.
+Native iOS builds use `expo-build-properties` with `ios.useFrameworks: 'static'`
+and `ios.usePrecompiledModules: false`. Expo modules compile against the pinned
+React Native headers; React Native core retains its matching prebuilt framework.
+This avoids linking Expo artifacts compiled against another React Native patch
+while preserving normal online dependency validation. Cocoa 9.29's prebuilt
+framework and the attachment-aware Swift callback retain their static-linkage
+requirement. Keep framework modules and the attachment-clearing privacy callback.
+Earlier signed-build receipts cover their recorded inputs; this source-build
+policy requires a new binary and applicable signed-device/privacy acceptance.
 
 Explicit enabled/DSN/environment settings control JS delivery; native settings are
 baked into the binary and require a rebuild to change. An OTA JS disable does not
