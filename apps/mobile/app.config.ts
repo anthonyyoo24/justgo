@@ -155,9 +155,14 @@ const config: ExpoConfig = {
     [
       'expo-build-properties',
       {
-        // Sentry's prebuilt Cocoa framework and native privacy hook use Swift modules.
-        // Preserve static linkage across the SDK 58 native rebuild.
-        ios: { deploymentTarget: '16.4', useFrameworks: 'static' },
+        // Compile Expo modules against the pinned React Native headers instead of
+        // linking SDK artifacts built with a different React Native patch ABI.
+        // Sentry's reviewed Cocoa framework still requires static Swift modules.
+        ios: {
+          deploymentTarget: '16.4',
+          useFrameworks: 'static',
+          usePrecompiledModules: false,
+        },
       },
     ],
     [
