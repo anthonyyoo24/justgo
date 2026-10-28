@@ -62,6 +62,8 @@ test('only branded allowlisted failures expose codes, independent of error text'
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
 const context = { sha, runId: '123', attempt: '1' };
+const isPromotion = (call) =>
+  call.command === 'promotion' && call.args[0] === 'dpl_candidate';
 const env = {
   GITHUB_ACTIONS: 'true',
   GITHUB_REPOSITORY: target.repository,
@@ -334,8 +336,10 @@ function fixture(t, failure) {
     files: [{ path, sha: createHash('sha1').update(contents).digest('hex') }],
   };
   const calls = [];
+  const waits = [];
   let promoted = false,
-    aliasReads = 0;
+    aliasReads = 0,
+    promotionReads = 0;
   const run = (command, args) => {
     calls.push({ command, args });
     if (command === 'git')
@@ -356,14 +360,22 @@ function fixture(t, failure) {
         });
       if (args[1].includes(target.alias)) {
         aliasReads++;
+        if (promoted) promotionReads++;
         if (promoted && failure === 'promotion-readback')
           throw new Error('PRIVATE_PROVIDER_CREDENTIAL');
         if (promoted && failure === 'promotion-json')
           return 'PRIVATE_PROVIDER_CREDENTIAL';
         if (promoted && failure === 'promotion-metadata')
           return JSON.stringify(metadata('dpl_unconfirmed'));
+        if (promoted && failure === 'promotion-provenance')
+          return JSON.stringify({
+            ...metadata(),
+            meta: { githubCommitSha: previous },
+          });
         return JSON.stringify(
-          promoted
+          promoted &&
+            failure !== 'promotion-never' &&
+            !(failure === 'promotion-delay' && promotionReads <= 2)
             ? metadata()
             : {
                 ...metadata(
@@ -404,12 +416,6 @@ function fixture(t, failure) {
                   }
                 : deploymentReceipt(),
           );
-    if (command === 'vercel' && args[0] === 'promote') {
-      promoted = true;
-      if (failure === 'promotion-timeout')
-        throw new Error('private-provider-error');
-      return '';
-    }
     if (command === 'curl' || args[0] === 'curl') {
       if (command === 'vercel') {
         assert.ok(args.indexOf('--scope') < args.indexOf('--'));
@@ -444,6 +450,23 @@ function fixture(t, failure) {
     manifest,
     path,
     calls,
+    waits,
+    promote: async (id, options) => {
+      calls.push({ command: 'promotion', args: [id] });
+      assert.equal(options.token, env.VERCEL_TOKEN);
+      promoted = true;
+      if (
+        [
+          'promotion-timeout',
+          'promotion-rejected',
+          'promotion-malformed',
+        ].includes(failure)
+      )
+        throw new Error('PRIVATE_PROVIDER_CREDENTIAL');
+    },
+    wait: async (milliseconds) => {
+      waits.push(milliseconds);
+    },
     run,
     env: { ...env, RUNNER_TEMP: root },
     summary: () => {},
@@ -504,8 +527,16 @@ test('release verifies candidate, promotes only exact inspected ID, verifies pub
     ),
   );
   assert.deepEqual(
-    f.calls.filter((c) => c.args[0] === 'promote').map((c) => c.args[1]),
+    f.calls.filter(isPromotion).map((c) => c.args[0]),
     ['dpl_candidate'],
+  );
+  assert.ok(
+    !f.calls.some(
+      (c) =>
+        c.args[0] === 'promote' ||
+        c.args[1]?.startsWith('/teams/') ||
+        c.args[1]?.includes('/promote/'),
+    ),
   );
   assert.equal(f.calls.filter((c) => c.command === 'curl').length, 3);
   assert.ok(
@@ -522,6 +553,31 @@ test('release requires an existing bypass credential before any CLI request, nev
     /STAGING_EXISTING_BYPASS_SECRET_REQUIRED/,
   );
   assert.deepEqual(f.calls, []);
+});
+test('queued promotion waits for exact alias identity without repeating the project-bound POST', async (t) => {
+  const f = fixture(t, 'promotion-delay');
+  const receipt = await stagingApi('deploy', f);
+  assert.equal(receipt.deploymentId, 'dpl_candidate');
+  assert.equal(f.calls.filter(isPromotion).length, 1);
+  assert.deepEqual(f.waits, [2000, 2000]);
+});
+test('lost database lease during promotion polling aborts before another provider read', async (t) => {
+  const f = fixture(t, 'promotion-never');
+  const controller = new AbortController();
+  let callsAtAbort;
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      signal: controller.signal,
+      wait: async () => {
+        callsAtAbort = f.calls.length;
+        controller.abort();
+      },
+    }),
+    /STAGING_PROMOTION_UNCONFIRMED/,
+  );
+  assert.equal(f.calls.length, callsAtAbort);
+  assert.equal(f.calls.filter(isPromotion).length, 1);
 });
 test('project-scoped CLI calls use fresh nonsecret scope config without an owner auth session and clean it on return', async (t) => {
   const f = fixture(t);
@@ -564,6 +620,10 @@ for (const failure of [
   'promotion-readback',
   'promotion-json',
   'promotion-metadata',
+  'promotion-provenance',
+  'promotion-never',
+  'promotion-rejected',
+  'promotion-malformed',
 ])
   test(`release fails closed for ${failure} without automatic rollback or private output`, async (t) => {
     const f = fixture(t, failure);
@@ -573,6 +633,10 @@ for (const failure of [
       'promotion-readback',
       'promotion-json',
       'promotion-metadata',
+      'promotion-provenance',
+      'promotion-never',
+      'promotion-rejected',
+      'promotion-malformed',
     ].includes(failure);
     await assert.rejects(stagingApi('deploy', f), (error) => {
       if (uncertain) {
@@ -591,10 +655,8 @@ for (const failure of [
       assert.ok(!JSON.stringify(error).includes('PRIVATE_PROVIDER_CREDENTIAL'));
       return true;
     });
-    assert.equal(
-      f.calls.filter((c) => c.args[0] === 'promote').length,
-      uncertain ? 1 : 0,
-    );
+    assert.equal(f.calls.filter(isPromotion).length, uncertain ? 1 : 0);
+    if (failure === 'promotion-never') assert.equal(f.waits.length, 29);
     assert.ok(
       !f.calls.some((c) => c.args[0] === 'rollback' || c.args[0] === 'remove'),
     );
@@ -635,7 +697,7 @@ test('failures before promotion preserve their own classification, while a faile
     }),
     (error) => stagingRunnerFailureCode(error) === 'STAGING_BASELINE_CHANGED',
   );
-  assert.ok(!f.calls.some((call) => call.args[0] === 'promote'));
+  assert.ok(!f.calls.some(isPromotion));
   await assert.rejects(
     stagingApi('deploy', {
       ...f,
@@ -646,7 +708,7 @@ test('failures before promotion preserve their own classification, while a faile
     (error) =>
       stagingRunnerFailureCode(error) === 'STAGING_PROMOTION_UNCONFIRMED',
   );
-  assert.equal(f.calls.filter((call) => call.args[0] === 'promote').length, 1);
+  assert.equal(f.calls.filter(isPromotion).length, 1);
 });
 test('lost DB connection during candidate build prevents all later provider operations', async (t) => {
   const f = fixture(t);
@@ -661,7 +723,7 @@ test('lost DB connection during candidate build prevents all later provider oper
     stagingApi('deploy', { ...f, run, signal: controller.signal }),
     /STAGING_DATABASE_LEASE_LOST/,
   );
-  assert.ok(!f.calls.some((c) => c.args[0] === 'promote'));
+  assert.ok(!f.calls.some(isPromotion));
 });
 test('same-session lease verification must succeed immediately before promotion', async (t) => {
   const f = fixture(t);
@@ -676,7 +738,7 @@ test('same-session lease verification must succeed immediately before promotion'
     }),
   );
   assert.equal(checked, true);
-  assert.ok(!f.calls.some((c) => c.args[0] === 'promote'));
+  assert.ok(!f.calls.some(isPromotion));
   assert.ok(
     !readdirSync(f.root).some((p) => p.startsWith('justgo-api-probes-')),
   );

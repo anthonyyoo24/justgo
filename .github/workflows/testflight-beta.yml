@@ -113,7 +113,10 @@ jobs:
       BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION: ${{ vars.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION }}
       IOS_BUNDLE_IDENTIFIER: com.anthonyyoo.justgo
       EXPO_PUBLIC_API_URL: https://justgo-two.vercel.app
-      EXPO_PUBLIC_SENTRY_ENABLED: ${{ inputs.diagnostics && 'true' || 'false' }}
+      # EAS resolves the project before fetching preview variables. Keep this
+      # bootstrap off until env:exec loads the DSN; its inner commands apply
+      # RELEASE_DIAGNOSTICS to preflight, the native build and submission.
+      EXPO_PUBLIC_SENTRY_ENABLED: 'false'
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       FASTLANE_SKIP_UPDATE_CHECK: '1'
     steps:
