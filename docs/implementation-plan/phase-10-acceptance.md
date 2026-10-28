@@ -14,7 +14,7 @@ Welcome opens one Terms & Privacy page with ordinary document links. Continue cr
 - Entry copy is one short phone/cloud saving and no-sale summary. The owner removed the Sentry paragraph, Analytics section and development-release notice. Use the linked Privacy Policy for full processing details; do not borrow incompatible on-device-only or active research-analytics claims from the Paper reference.
 - Welcome Continue only navigates. The Terms page's Continue performs ordinary account creation; recovery of an existing account does not require legal-version checks or create another account.
 - Legal links open the configured document URLs without account API calls or per-account tracking. Public publication remains owner-deferred in Phase 12; clearly labeled local pages support development testing.
-- Analytics and ordinary Sentry delivery remain disabled. Continue is not authorization for future analytics. Phase 15 must revisit its actual permission/collection design before activation and must not silently restore this rejected tracking mechanism.
+- Analytics and ordinary Sentry delivery remain disabled. Continue is not authorization for future analytics. Phase 17 must revisit its actual permission/collection design before activation and must not silently restore this rejected tracking mechanism.
 
 ## Implement
 
@@ -39,4 +39,4 @@ Welcome opens one Terms & Privacy page with ordinary document links. Continue cr
 
 ## Open release gates
 
-Phase 12/14 still own public legal URLs, publication, applicable legal/provider review and signed-device acceptance. Phase 15 owns any newly reviewed analytics permission/collection design; no old receipt or implied Continue is permission to deliver events.
+Phase 12/14 still own public legal URLs, publication, applicable legal/provider review and signed-device acceptance. Phase 17 owns any newly reviewed analytics permission/collection design; no old receipt or implied Continue is permission to deliver events.

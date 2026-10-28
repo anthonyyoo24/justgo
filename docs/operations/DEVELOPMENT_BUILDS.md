@@ -148,10 +148,15 @@ profile separate from the TestFlight profile; freeze credentials during builds.
 
 ## Acceptance still required
 
-[PR #54](https://github.com/anthonyyoo24/justgo/pull/54) publishes the workflow for
-owner review. The first hosted Dev compile/upload awaits that review and separate
-merge approval. Record the actual build/run, inspected digest and installation URL
-after success. Verify side-by-side install, both providers' first/returning
+[PR #54](https://github.com/anthonyyoo24/justgo/pull/54) is merged. The first hosted
+[Dev compile/upload](https://github.com/anthonyyoo24/justgo/actions/runs/40375898057)
+succeeded from `22d583d01713c4f3b948f6c8873723288b13bea5`, tag
+`development-ios-2026-10-26-1`, producing Dev 0.1.0 (1). IPA SHA-256 is
+`9884f136c8acea3cdc7a48d9802f4657936ba457cdba72ba72b531eadfdeb52a`;
+the [installation artifact](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/38339b73-da09-49da-b9e1-149119481fd7)
+is hosted. Native phone acceptance is still pending. This binary predates the
+later build-5 native patches; its receipt does not establish current native
+compatibility after those inputs change. Verify side-by-side install, both providers' first/returning
 sign-in/cancellation, retained TestFlight data, Dev-container iCloud round trip and
 live Metro on the phone. Account configuration, plugin introspection and browser
 previews do not establish native acceptance or close Phase 14 gates.

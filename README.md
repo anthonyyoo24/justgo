@@ -13,7 +13,7 @@ signed native build, CloudKit/device acceptance and coordinated hosted rollout r
 open; existing installed clients/hosted services keep their earlier behavior. See
 [the handoff](docs/handoffs/phase-13-local-journal.md) and
 [setup](docs/operations/ACCOUNT_SYNC_SETUP.md). Phase 14 owns release acceptance;
-07A billing and post-launch analytics retain their gates. Guest Continue creates no
+16 billing and post-launch analytics retain their gates. Guest Continue creates no
 account or legal-view/agreement receipts. Diagnostics and analytics stay disabled.
 `npm ci` builds contracts; rerun `npm run build:contracts` after contract edits.
 
@@ -36,7 +36,7 @@ npm run dev:web
 
 `db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere set `JUSTGO_PG_BIN` to their directory. It creates a dedicated, loopback-only cluster at `.local/postgres` on port **54329** and the `justgo_test` database, generates local role credentials and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Local host authentication is trusted on this disposable cluster; never expose its port or use it for personal data.
 
-The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 07A, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
+The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 16, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
 
 To exercise the implemented challenge/reflection/Progress flow with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Use the guarded journey launcher for synthetic provider sign-in or guest entry; external-provider fixtures never ship in native/production resolution. The presentation-only screen preview still makes no challenge writes. Apply all registered migrations first. See [testing guidance](docs/operations/TESTING.md) for fixtures and the current native/device gates.
 

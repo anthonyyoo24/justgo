@@ -1,6 +1,6 @@
-<a id="phase-17"></a>
+<a id="phase-19"></a>
 
-# Phase 17 — Optional US iOS web checkout
+# Phase 19 — Optional US iOS web checkout
 
 **Status:** Not scheduled
 
@@ -10,14 +10,14 @@ Eligible users can purchase on the web using the same authenticated app identity
 
 ## Decisions in force
 
-- Dependencies: Phase 14 paid launch; Phase 15 analytics is not a prerequisite.
+- Dependencies: Phase 14 paid launch; Phase 17 analytics is not a prerequisite.
 - Acceptance: PRD §4.3, §9 · Tech §8; acceptance 7, 14–17
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 
 ## Implement
 
-- Recheck current Apple/storefront rules, Stripe/RevenueCat integration and checkout data requirements. Approve rollout scope before building; keep native checkout as fallback and a server disable switch.
-- Add server-allowlisted checkout creation bound to the user, verified Stripe subscription webhooks, RevenueCat mapping and app-return entitlement refresh. Support refunds, delayed payment, cancellation, portal routing and duplicate-subscription prevention.
+- Recheck current Apple/storefront rules, Stripe/Superwall integration and checkout data requirements. Approve rollout scope before building; keep native checkout as fallback and a server disable switch.
+- Add server-allowlisted checkout creation bound to the user, verified Stripe subscription webhooks, Superwall mapping and app-return entitlement refresh. Support refunds, delayed payment, cancellation, portal routing and duplicate-subscription prevention.
 - Reuse billing reconciliation and privacy controls. Measure conversion, refunds and net revenue for eligible visitors before expanding.
 
 ## Keep out

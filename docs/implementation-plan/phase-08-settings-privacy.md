@@ -10,7 +10,7 @@ Users control recovery, private data and preferences, with authenticated export 
 
 ## Decisions in force
 
-- Dependencies: 07.5; prepared 07A interfaces may be reused, but external billing activation does not block this phase.
+- Dependencies: 07.5; prepared 16 interfaces may be reused, but external billing activation does not block this phase.
 - Acceptance: PRD AC-15–17 · Tech acceptance 3–4, 8–9, 17
 - Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
 
@@ -59,6 +59,6 @@ Users control recovery, private data and preferences, with authenticated export 
 ## Open gates for Phase 14
 
 - Phase 08A owns the month-boundary Progress journey correction.
-- Phase 15 owns analytics activation and vendor cleanup; Phase 12 owns legal notices and production Pro backup confirmation.
+- Phase 17 owns analytics activation and vendor cleanup; Phase 12 owns legal notices; Phase 15 owns production backups (R2 instead of Supabase Pro since October 28).
 - The October 18 owner-authorized Phase 10 rollout applied hosted migrations through 0017 and updated the current test API. Phase 14 retains retention scheduling, native crash/not-found checks, signed-build capability/accessibility checks and the broader hosted restore/deletion rehearsal.
 - See [open-gate owners](../handoffs/phase-08-settings-privacy.md#open-gates).

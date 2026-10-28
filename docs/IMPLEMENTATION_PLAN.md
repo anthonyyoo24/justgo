@@ -54,8 +54,8 @@ Number-only anchors use the current numbering. The old Phase 09 measurement and 
 <a id="phase-07-5"></a>
 [phase-07-5](implementation-plan/phase-07-api-offline.md#phase-07-5)
 
-<a id="phase-07a"></a>
-[phase-07a](implementation-plan/phase-07a-billing.md#phase-07a)
+<a id="phase-16"></a>
+[phase-07a](implementation-plan/phase-16-billing.md#phase-16)
 
 <a id="phase-08"></a>
 [phase-08](implementation-plan/phase-08-settings-privacy.md#phase-08)
@@ -70,7 +70,7 @@ Number-only anchors use the current numbering. The old Phase 09 measurement and 
 [phase-09](implementation-plan/phase-09-app-continuity.md#phase-09)
 
 <a id="phase-09-measurement"></a>
-[phase-09-measurement (now Phase 15)](implementation-plan/phase-15-analytics.md#phase-15-measurement)
+[phase-09-measurement (now Phase 17)](implementation-plan/phase-17-analytics.md#phase-17-measurement)
 
 <a id="phase-09-app-changes"></a>
 [phase-09-app-changes](implementation-plan/phase-09-app-continuity.md#phase-09-app-changes)
@@ -82,7 +82,7 @@ Number-only anchors use the current numbering. The old Phase 09 measurement and 
 [phase-11](implementation-plan/phase-11-crash-reporting.md#phase-11)
 
 <a id="phase-11-measurement"></a>
-[phase-11-measurement (now Phase 15)](implementation-plan/phase-15-analytics.md#phase-15-measurement)
+[phase-11-measurement (now Phase 17)](implementation-plan/phase-17-analytics.md#phase-17-measurement)
 
 <a id="phase-12"></a>
 [phase-12](implementation-plan/phase-12-legal-documents.md#phase-12)
@@ -94,19 +94,19 @@ Number-only anchors use the current numbering. The old Phase 09 measurement and 
 [phase-14](implementation-plan/phase-14-release.md#phase-14)
 
 <a id="phase-14-measurement"></a>
-[phase-14-measurement (now Phase 15)](implementation-plan/phase-15-analytics.md#phase-15-measurement)
-
-<a id="phase-15"></a>
-[phase-15](implementation-plan/phase-15-analytics.md#phase-15)
-
-<a id="phase-15-measurement"></a>
-[phase-15-measurement](implementation-plan/phase-15-analytics.md#phase-15-measurement)
-
-<a id="phase-16"></a>
-[phase-16](implementation-plan/phase-16-native-timers.md#phase-16)
+[phase-14-measurement (now Phase 17)](implementation-plan/phase-17-analytics.md#phase-17-measurement)
 
 <a id="phase-17"></a>
-[phase-17](implementation-plan/phase-17-optional-stripe.md#phase-17)
+[phase-15](implementation-plan/phase-17-analytics.md#phase-17)
+
+<a id="phase-16-measurement"></a>
+[phase-15-measurement](implementation-plan/phase-17-analytics.md#phase-17-measurement)
 
 <a id="phase-18"></a>
-[phase-18](implementation-plan/phase-18-future-text-coach.md#phase-18)
+[phase-16](implementation-plan/phase-18-native-timers.md#phase-18)
+
+<a id="phase-19"></a>
+[phase-17](implementation-plan/phase-19-optional-stripe.md#phase-19)
+
+<a id="phase-20"></a>
+[phase-18](implementation-plan/phase-20-future-text-coach.md#phase-20)

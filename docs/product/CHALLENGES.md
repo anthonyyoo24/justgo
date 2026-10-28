@@ -84,7 +84,7 @@ inferred from browser or component tests.
 
 ## Access and development testing
 
-Phase 07A owns the approved paid-access policy: lock ordinary paid use at the saved
+Phase 16 owns the approved paid-access policy: lock ordinary paid use at the saved
 verified expiry until an online check succeeds, preserve an earlier valid saved
 window through transient check failures, and accept authenticated uploads of reps
 created under server-verifiable coverage. Saved/pending activity keeps its account

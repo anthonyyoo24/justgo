@@ -294,7 +294,7 @@ later accepted canonical work.
 
 ## Billing handoff and open acceptance
 
-Phase 07A connects the existing authenticated/owner-checked earlier-upload
+Phase 16 connects the existing authenticated/owner-checked earlier-upload
 eligibility seam to server-verified provider coverage. It also owns native
 purchase/restore, persisted access verification, all nine subscription rules,
 provider notifications and scheduled repair. Phase 07.5 adds no production paid

@@ -412,7 +412,7 @@ These are the revised acceptance targets. Checked implementation items establish
 local automated/browser behavior; the single-phone item explicitly records actual
 physical evidence. Other provider/device requirements remain separate. Preserve
 existing beta/subscription access rules, billing identity and the deferred Phase
-07A activation boundary throughout the work.
+17 activation boundary throughout the work.
 
 - [x] Guest saves/relaunches work offline with no journal upload to JustGO; the same entries survive first sign-in, logout/edit/restart and same-account re-login.
 - [x] Existing parked guest data is safely adopted once; interrupted migration, conflicts, repeated import and retries neither lose writing nor duplicate reps.

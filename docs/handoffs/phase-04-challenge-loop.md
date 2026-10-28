@@ -106,12 +106,12 @@ build and acceptance evidence.
 
 ## Open gates
 
-| Gate                                                                       | Owner                                               | Required phase          | Done when                                                                                                                       |
-| -------------------------------------------------------------------------- | --------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Native/physical challenge touch, interruption and accessibility acceptance | Implementation owner and Anthony                    | 14                      | First/repeated gestures, Reduce Motion, VoiceOver, large text and background/lock behavior verified on the beta/release surface |
-| Earlier identity and app-shell device matrix                               | Anthony and implementation owner                    | 14                      | Two-iPhone recovery/reinstall, Keychain account preservation and relevant shell accessibility evidence recorded                 |
-| Coordinated current staging and release acceptance                         | Implementation owner, Anthony authorizes deployment | 14                      | Current API/mobile/schema and preserved history verified under Phase 08/test-server rollout gates                               |
-| Paid-access provider acceptance                                            | Billing implementation owner and Anthony            | 07A, before paid launch | Provider-backed purchase/restore/expiry policy passes the billing and release gates                                             |
+| Gate                                                                       | Owner                                               | Required phase         | Done when                                                                                                                       |
+| -------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Native/physical challenge touch, interruption and accessibility acceptance | Implementation owner and Anthony                    | 14                     | First/repeated gestures, Reduce Motion, VoiceOver, large text and background/lock behavior verified on the beta/release surface |
+| Earlier identity and app-shell device matrix                               | Anthony and implementation owner                    | 14                     | Two-iPhone recovery/reinstall, Keychain account preservation and relevant shell accessibility evidence recorded                 |
+| Coordinated current staging and release acceptance                         | Implementation owner, Anthony authorizes deployment | 14                     | Current API/mobile/schema and preserved history verified under Phase 08/test-server rollout gates                               |
+| Paid-access provider acceptance                                            | Billing implementation owner and Anthony            | 15, before paid launch | Provider-backed purchase/restore/expiry policy passes the billing and release gates                                             |
 
 ## Final verification
 

@@ -161,11 +161,11 @@ identity retention function; and the October 16 pre-merge stability fixes.
 | Gate                                                                                              | Owner                         | Phase  | Done when                                                                            |
 | ------------------------------------------------------------------------------------------------- | ----------------------------- | ------ | ------------------------------------------------------------------------------------ |
 | Retention scheduler: `pg_cron` (recommended) or protected workflow, with migration 0015           | Anthony, deferred             | 14     | Schedule runs on the hosted database; first run's counts recorded                    |
-| Confirm the production project is on Pro (7-day backups recorded)                                 | Anthony reads dashboard       | 12, 14 | Dashboard matches FOUNDATION.md before Phase 14 publishes the verified wording       |
+| Confirm production R2 backups and ledger copies run (replaces the Pro upgrade, October 28)        | Implementation owner, Anthony | 15, 14 | Dashboard matches FOUNDATION.md before Phase 14 publishes the verified wording       |
 | Month-boundary journey dependence (see above)                                                     | Implementation owner          | 08A    | Both cases pass when the browser date is the 1st                                     |
 | Crash and not-found screens on native (first and repeated)                                        | Implementation owner          | 14     | Simulator or device check                                                            |
 | Hosted restore rehearsal of the checklist                                                         | Implementation owner, Anthony | 14     | Paid-launch checkpoint                                                               |
-| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–15  | See [Phase 14](../implementation-plan/phase-14-release.md#phase-14) and Phase 15/07A |
+| VoiceOver, large text, Save to Files, App Store/social destinations, vendor cleanup on activation | As in the plan                | 09–17  | See [Phase 14](../implementation-plan/phase-14-release.md#phase-14) and Phase 17/07A |
 
 ## Final verification
 

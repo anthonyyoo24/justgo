@@ -2,7 +2,7 @@
 
 > Current setup and operations guide, established in Phase 01. See [IDENTITY.md](../architecture/IDENTITY.md) and [ACCOUNT_SYNC_SETUP.md](ACCOUNT_SYNC_SETUP.md) for optional accounts, internal legacy migration and provider/grant prerequisites. [Phase handoffs](../handoffs/README.md) record historical verification and remaining acceptance gates.
 
-Established September 17, 2026. Start with the [README](../../README.md). The Phase 01 preview did not include account/session endpoints or permanent client credential storage; Phase 02 adds those capabilities. Phase 07 now implements challenge/completion/reflection/Progress saving and synchronization; purchases and verified production coverage remain Phase 07A.
+Established September 17, 2026. Start with the [README](../../README.md). The Phase 01 preview did not include account/session endpoints or permanent client credential storage; Phase 02 adds those capabilities. Phase 07 now implements challenge/completion/reflection/Progress saving and synchronization; purchases and verified production coverage remain Phase 16.
 
 Phase 13's revised local candidate adds durable guest collections, optional managed
 Apple/Google accounts, signed-in history/private-journal sync and a separate
@@ -250,26 +250,32 @@ direct replies: random request ID, status, `HTTP_SERVER_ERROR` classification
 and optional validated PostgreSQL SQLSTATE. The new optional Sentry reporter
 reconstructs only those fields with release/environment metadata, bounds delivery
 and backs off on provider failures. It never forwards an exception, request body,
-URL or account context. The local implementation/tests are ready; the existing
-hosted deployment does not yet contain it. Sentry account configuration, DPA and
+URL or account context. The reporter is deployed by successful GitHub run
+`40585928393` from `311f073`; exact-source public readiness/authentication probes
+passed. Sentry account configuration, DPA and
 email test are verified. The owner-approved October 27 Privacy Policy is published
 and anonymous public bytes match the reviewed source; Terms remain unchanged.
 A synthetic report from the local reporter reached Sentry and its status, release
 and redacted IP were verified; this was not a hosted API request. Deployed API
 error delivery remains open.
 
-[Server releases](SERVER_RELEASES.md) documents the prepared manual, owner-approved
+[Server releases](SERVER_RELEASES.md) documents the merged manual, owner-approved
 GitHub lane, reviewed source/CI checks, fixed Vercel target, candidate probes and
 restricted migrator. The protected `justgo-staging` environment and its four
 deployment credentials are configured. The
 project-only Vercel token passed fixed-project REST reads; isolated CLI/team-cache
-bootstrap and candidate probe behavior are verified without an owner login. A
-hosted release run remains unverified. A pending migration requires current recovery evidence; an old dump cannot satisfy that
-gate. Existing TestFlight 0.1.0 (4) still has app reporting disabled.
+bootstrap and candidate probe behavior are verified without an owner login. The
+code-only hosted release succeeded; no migrations were pending or written. The
+pending-migration path remains unverified and requires current recovery evidence;
+an old dump cannot satisfy that gate. TestFlight 0.1.0 (5) enables app reporting
+and has matching uploaded symbols; build 4 remains reporting-off. See the
+[current release handoff](../handoffs/phase-14-release.md) for exact receipts and
+the owner-skipped native crash test.
 
-Before external testers, retain the open real-outage notification rehearsal,
-diagnostics deployment/5xx alert delivery, supported private-journal processing
-and current backup/recovery-copy deletion gates. The October 21 operator snapshot
+Before external testers, retain the open deployed 5xx-to-Sentry delivery,
+native diagnostics, supported private-journal processing and current
+backup/recovery-copy deletion gates. The monitor assertion-failure/recovery email
+rehearsal above passed; it did not take the API down. The October 21 operator snapshot
 predates five current managed-Auth/journal/deletion tables and excludes the
 `auth` schema. Its historical restore proof does not establish restoration of the
 current schema, and earlier cutover dumps are not an unattended backup service.
@@ -277,10 +283,11 @@ There is no current full-restore, off-Mac storage or independently recoverable
 deletion/epoch/Auth-ledger evidence. Storage, retention and recovery still need an
 actual arrangement; local database regression tests do not establish hosted
 disaster recovery. The October 27 [operating decision](../DECISIONS.md#october-27-hosting-backups-and-simulator-test-direction)
-retains Vercel and Supabase, with no hosting migration selected. Supabase Pro is
-the selected managed daily-backup plan with seven days of history; upgrade and
-spending wait until Anthony is ready for outside testers or App Store release
-preparation. This choice does not close the processing/recovery gates. No paid
+chose Vercel and Supabase; the October 28 [Cloudflare decision](../DECISIONS.md#october-28-cloudflare-workers-hono-and-r2-backups)
+supersedes its hosting and backup parts. Phase 15 moves the API to Cloudflare
+Workers and replaces the planned Supabase Pro upgrade with encrypted nightly R2
+backups and an hourly ledger copy; the database stays on Supabase Free until an
+upgrade trigger. This choice does not close the processing/recovery gates. No paid
 upgrade or provider contact is authorized. The later October 27 error-alert and
 release instruction authorizes that implementation separately; it does not close
 the recovery or private-journal processing gates.
@@ -322,7 +329,7 @@ This runbook prepares Phase 14 staging/release integration; Phase 07.5 local imp
 2. Prepare a restorable pre-cutover database backup under the separate operator role, protect its private contents outside repository/log artifacts, and record only counts/comparison outcomes. Rehearse restoration and forward application on disposable data with `npm run test:migrations`; production backup/PITR and a reachable phone staging route are Phase 14 requirements. Never test by resetting shared staging or production.
 3. Stop all old API writers/traffic for the final comparison. Apply the unchanged additive/backfill migrations through 0012 if missing. Compare completed `(owner,id,activity_date)` sets, original starts, Level 1/challenge/venue references, canonical catalog and owner-matched submitted feeling/text/revisions. Preserve recorded historical dates and nullable unknown start zones with their historical display fallback. Do not promote drafts/skips or invent legacy lifecycle timestamps.
 4. With old writers still stopped, apply reviewed registered `0013_attempt_resources_contract.sql` using `npm run db:migrate` and the separate migration environment. It removes obsolete lifecycle, revision, queue/preferences/skips, separate reflections and action receipts; targeted `attempt_patch_receipts` remain. Repeat preservation/schema/ownership checks before opening traffic. Retain inactive historical challenge/placement references.
-5. Deploy matching canonical API/contracts and distribute/reload the matching mobile client together, then run staged recovery/revocation/transfer and completion/reflection/Progress checks. Check old paths return 404 without writes and reject old public fields. Do not grant a production test entitlement or bundle a deployment-protection bypass. Phase 07A must connect real verified access/earlier-upload coverage before paid release.
+5. Deploy matching canonical API/contracts and distribute/reload the matching mobile client together, then run staged recovery/revocation/transfer and completion/reflection/Progress checks. Check old paths return 404 without writes and reject old public fields. Do not grant a production test entitlement or bundle a deployment-protection bypass. Phase 16 must connect real verified access/earlier-upload coverage before paid release.
 6. If comparison or deployment fails, keep traffic closed. Before contraction, leave additive schema in place and repair forward. After contraction, an old API requires removed tables/columns and cannot safely be rolled back alone. Restore the protected pre-cutover snapshot only under the reviewed maintenance plan, coordinate its matching old API/client state, then repair/rehearse forward; account for writes since the snapshot before any restore. Prefer a new reviewed forward-repair migration when preserved data is sound. Never edit already-applied 0000–0012 SQL, reset shared data or delete credential history to retry.
 
 Relaunch hydrates same-account device-persisted submissions and resumes their stable create/PATCH operations. New-device recovery restores uploaded server history, not another phone's only pending copy. Current old-client handling is coordinated release maintenance/update, not an already implemented in-app forced-upgrade system. Record actual deployed versions, backup/restore proof, comparisons and staged/device results in the release handoff before claiming rollout acceptance.

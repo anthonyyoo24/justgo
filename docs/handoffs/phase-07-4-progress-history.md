@@ -862,4 +862,4 @@ from the original `6782894` passes. Earlier native/device gates stay open.
   an open Progress polish finding for owner review / 07.5 acceptance.
 - 07.3A native automation/hosted CI remains deferred. 07.5 owns final obsolete
   schema/routes/fixtures removal, full documentation reconciliation and the
-  integrated CI closeout. Billing remains 07A and staging/release remains 09.
+  integrated CI closeout. Billing remains 16 and staging/release remains 09.

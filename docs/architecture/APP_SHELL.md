@@ -198,7 +198,7 @@ callbacks. An already-admitted challenge and its reflection may finish after
 expiry without pruning the editor or discarding unsaved writing.
 
 This beta boundary is distinct from the planned persisted paid-access rules in
-[Phase 07A](../implementation-plan/phase-07a-billing.md). Activity upload
+[Phase 16](../implementation-plan/phase-16-billing.md). Activity upload
 eligibility checks verified coverage for the original start rather than today's
 paid status, through its separate injected reader. Neither an unavailable provider
 nor a navigation guard grants production paid access.
