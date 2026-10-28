@@ -58,7 +58,7 @@ test('native iCloud regressions run on a bounded macOS producer without npm prer
   assert.match(job, /^ {4}timeout-minutes: 10$/m);
   assert.match(
     job,
-    /uses: actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/,
+    /uses: actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/,
   );
   assert.deepEqual(commands(job), [
     'swift test --package-path apps/mobile/modules/justgo-icloud --scratch-path .local/justgo-icloud-swift --jobs 1',
