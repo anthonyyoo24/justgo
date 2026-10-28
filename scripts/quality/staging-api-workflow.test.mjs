@@ -61,7 +61,7 @@ test('the deployment CLI uses its isolated dependency lock before provider crede
     ),
   );
   assert.equal(tool.private, true);
-  assert.deepEqual(tool.dependencies, { vercel: '64.5.0' });
+  assert.deepEqual(tool.dependencies, { vercel: '64.7.0' });
   assert.equal(lock.packages[''].dependencies.vercel, tool.dependencies.vercel);
   assert.equal(
     lock.packages['node_modules/vercel'].version,

@@ -87,7 +87,7 @@ probes and promotion. Concurrent jobs are also serialized by GitHub.
 
 ## Candidate and promotion safeguards
 
-Node/npm follow the pinned repository setup. Vercel CLI **64.5.0** and its
+Node/npm follow the pinned repository setup. Vercel CLI **64.7.0** and its
 transitive graph are pinned by the separate
 [tool manifest](../../scripts/release/vercel-cli/package.json) and
 [dependency lockfile](../../scripts/release/vercel-cli/package-lock.json).
@@ -157,7 +157,7 @@ deployment. The CLI may print an `Aliased` message for a generated project URL;
 that message does not establish the state of `justgo-two.vercel.app`.
 
 Candidate probes use `vercel curl` with explicit deployment identity and the
-existing bypass secret. Place curl's arguments after `--`. In CLI 64.5.0,
+existing bypass secret. Place curl's arguments after `--`. In CLI 64.7.0,
 `--non-interactive` is forwarded to curl and fails as an unknown curl option, so
 the helper deliberately omits that flag only for this subcommand. It also uses
 the subprocess working directory rather than forwarding `--cwd` to curl.

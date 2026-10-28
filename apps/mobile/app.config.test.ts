@@ -95,7 +95,7 @@ describe('Expo project configuration', () => {
     expect(JSON.stringify(config)).not.toContain('private-build-token');
   });
 
-  it('generates static framework linkage so native Sentry scope callbacks remain visible to Swift', async () => {
+  it('source-builds Expo modules with static framework linkage for native ABI and Sentry callbacks', async () => {
     const { default: config } = require('./app.config');
     const { default: withBuildProperties } = require('expo-build-properties');
     const plugin = config.plugins.find(
@@ -117,6 +117,7 @@ describe('Expo project configuration', () => {
     });
     expect(result.modResults['ios.useFrameworks']).toBe('static');
     expect(result.modResults['ios.deploymentTarget']).toBe('16.4');
+    expect(result.modResults.EXPO_USE_PRECOMPILED_MODULES).toBe('false');
   });
 
   it('requires a confirmed identifier for EAS builds', () => {

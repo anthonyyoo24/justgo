@@ -161,7 +161,7 @@ async function runStagingApi(
   );
   const version = (await vc(['--version'])).trim();
   requireRelease(
-    version === 'Vercel CLI 64.5.0' || version === '64.5.0',
+    version === 'Vercel CLI 64.7.0' || version === '64.7.0',
     'PINNED_VERCEL_REQUIRED',
   );
   const project = await api(`/v9/projects/${target.project}`);
