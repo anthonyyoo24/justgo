@@ -40,6 +40,10 @@ recommendations are checked separately by the pinned Doctor command.
 | Shared contracts                 | Zod 4 request/response schemas, types and OpenAPI 3.1                                         |
 | Automated checks                 | Jest/jest-expo and React Native Testing Library; Vitest; Playwright; Node test runner         |
 
+iOS Expo modules compile from source against the pinned React Native headers.
+The native linkage and compatibility policy is owned by
+[APP_SHELL.md](APP_SHELL.md#app-error-reporting).
+
 The app targets iOS first. Web adapters support previews and browser journeys;
 Android release remains deferred. A successful JavaScript export does not prove
 native module availability, Keychain behavior or device acceptance. Native module

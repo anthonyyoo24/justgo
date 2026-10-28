@@ -107,7 +107,7 @@ function deploymentReceipt() {
     next: ['vercel promote dpl_unreviewed', 'curl https://untrusted.example'],
   };
 }
-test('CLI64.5 JSON receipt requires the exact successful production-ready deployment shape', () => {
+test('CLI64.7 JSON receipt requires the exact successful production-ready deployment shape', () => {
   assert.deepEqual(candidateReceipt(JSON.stringify(deploymentReceipt())), {
     id: 'dpl_candidate',
     url: `https://${metadata().url}`,
@@ -348,7 +348,8 @@ function fixture(t, failure) {
         : args[0] === 'ls-files'
           ? `${path}\0`
           : '';
-    if (command === 'vercel' && args[0] === '--version') return '64.5.0';
+    if (command === 'vercel' && args[0] === '--version')
+      return failure === 'old-cli' ? '64.5.0' : '64.7.0';
     if (command === 'vercel' && args[0] === 'api') {
       if (args[1].startsWith('/v9/projects/'))
         return JSON.stringify({
@@ -473,6 +474,15 @@ function fixture(t, failure) {
     beforePromote: async () => {},
   };
 }
+test('an older CLI is rejected before upload inspection or deployment', async (t) => {
+  const f = fixture(t, 'old-cli');
+  await assert.rejects(stagingApi('deploy', f), /PINNED_VERCEL_REQUIRED/);
+  assert.equal(
+    f.calls.some((call) => call.args[0] === 'deploy'),
+    false,
+  );
+  assert.equal(f.calls.some(isPromotion), false);
+});
 test('actual upload allowlist and hashes exclude secrets, migrations, fixtures and untracked files', (t) => {
   const f = fixture(t);
   assert.match(validateUpload(f.manifest, [f.path], f.root), /^[a-f0-9]{64}$/);
