@@ -39,11 +39,15 @@ below rather than repeating completed setup.
 | Public notices and Apple preparation  | Approved Privacy version `2026-10-27-essential-errors` is published, effective October 27; Terms remains `2026-10-25-beta`, effective October 25. Anonymous public bytes were verified. Apple has the Privacy URL, beta description, review contact and build-5 notes. App Privacy is saved as an unpublished partial draft: 13 categories selected, 11 configured, two diagnostics entries unfinished.                          |
 
 The October 28 dependency follow-up in [PR #58](https://github.com/anthonyyoo24/justgo/pull/58)
-remains blocked: Expo's native-modules metadata recommends React Native 0.88.1,
-while its `versions/latest` metadata recommends 0.88.0. Current online Expo
-validation remains unresolved before publication. The dated October 27 passes
-and build 5 receipts below remain release evidence; they do not validate the new
-candidate or close its native/device acceptance gates.
+uses online-validated React Native 0.88.0 and compiles Expo modules from source
+against its headers, retaining the matching prebuilt React Native core and static
+Sentry linkage. Expo's metadata sources still disagree; the project's native
+configuration resolves compatibility without changing validation or upstream data.
+An unsigned Release Simulator build and entry-screen startup smoke passed for
+this candidate; its isolated API was unavailable, so this is not native cloud or
+provider acceptance. The dated October 27 passes and build 5 receipts below remain
+historical release evidence. They do not validate a new signed binary or close
+its native/device/privacy gates.
 
 ## Current release evidence
 
