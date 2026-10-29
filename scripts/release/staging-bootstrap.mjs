@@ -19,6 +19,7 @@ import {
   validateProbe,
   validateStagingEnvironment,
   validateVersion,
+  validateWorkerSettings,
   versionOrigin,
 } from './staging-api.mjs';
 
@@ -331,13 +332,7 @@ export async function bootstrapStagingWorker({
                   bindings.find((binding) => binding.name === name)?.text,
                 'STAGING_BOOTSTRAP_UNCONFIRMED',
               );
-            const settings = await api('/settings');
-            requireRelease(
-              settings?.observability?.enabled === false &&
-                settings.logpush !== true &&
-                !(settings.tail_consumers?.length > 0),
-              'STAGING_WORKER_CONFIGURATION_MISMATCH',
-            );
+            validateWorkerSettings(await api('/script-settings'));
             return deployed;
           };
           await readback(false);

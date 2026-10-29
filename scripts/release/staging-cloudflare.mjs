@@ -24,6 +24,7 @@ export async function cloudflareRequest(
     /^\/(?:deployments|versions|subdomain|settings)(?:\/[a-f0-9-]{36})?(?:\?bindings_inherit=strict)?$/.test(
       path,
     ) ||
+      (path === '/script-settings' && method === 'GET') ||
       path === '/workers/subdomain' ||
       path === `/hyperdrive/configs/${target.hyperdriveId}` ||
       (create && method === 'PUT'),

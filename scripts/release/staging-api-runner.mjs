@@ -17,6 +17,7 @@ import {
   uploadBindings,
   versionOrigin,
   validateProbe,
+  validateWorkerSettings,
   isVersionId,
   StagingRunnerFailure,
 } from './staging-api.mjs';
@@ -106,13 +107,7 @@ export async function stagingApi(
         (await api('/workers/subdomain')).subdomain === target.subdomain,
         'STAGING_WORKER_CONFIGURATION_MISMATCH',
       );
-      const settings = await api('/settings');
-      requireRelease(
-        settings?.observability?.enabled === false &&
-          settings.logpush !== true &&
-          !(settings.tail_consumers?.length > 0),
-        'STAGING_WORKER_CONFIGURATION_MISMATCH',
-      );
+      validateWorkerSettings(await api('/script-settings'));
       const subdomain = await api('/subdomain');
       requireRelease(
         subdomain?.enabled === true && subdomain.previews_enabled === true,
