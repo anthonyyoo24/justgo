@@ -350,6 +350,14 @@ test('script settings accept omitted, null and explicitly disabled observability
     {
       observability: {
         enabled: false,
+        logs: null,
+        traces: null,
+        issues: null,
+      },
+    },
+    {
+      observability: {
+        enabled: false,
         logs: { enabled: false, invocation_logs: true, persist: true },
         traces: { enabled: false, destinations: [] },
         issues: { enabled: false },
@@ -378,7 +386,6 @@ test('script settings reject malformed responses and every enabled telemetry pat
     ...['logs', 'traces', 'issues'].flatMap((name) =>
       [
         true,
-        null,
         [],
         { enabled: true },
         { enabled: 'false' },

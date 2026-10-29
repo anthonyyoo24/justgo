@@ -148,7 +148,7 @@ export function validateWorkerSettings(settings) {
   );
   for (const name of ['logs', 'traces', 'issues']) {
     const telemetry = observability[name];
-    if (telemetry === undefined) continue;
+    if (telemetry === undefined || telemetry === null) continue;
     requireRelease(
       object(telemetry) &&
         disabled(telemetry.enabled) &&
