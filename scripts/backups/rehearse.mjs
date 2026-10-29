@@ -13,6 +13,7 @@ import { DeleteAccountService } from '../../apps/api/src/identity/delete-account
 import { DeleteDataService } from '../../apps/api/src/data-sync/deletion.ts';
 import { artifactMetadata } from './storage.mjs';
 import { encryptSnapshot } from './snapshot.mjs';
+import { verifyBackupRole } from './backup-role.mjs';
 import { restoreLocal } from './restore-local.mjs';
 import { cleanupRehearsal } from './rehearsal-cleanup.mjs';
 
@@ -64,9 +65,10 @@ export async function rehearse(env = process.env) {
       throw new Error('Backup rehearsal refuses an existing role');
     const password = secret();
     await admin.query(
-      `create role justgo_backup login password '${password}' nosuperuser nocreatedb nocreaterole noinherit noreplication bypassrls`,
+      await readFile(new URL('./backup-role.sql', import.meta.url), 'utf8'),
     );
     ownsRole = true;
+    await admin.query(`alter role justgo_backup password '${password}'`);
     for (const name of [sourceName, targetName]) {
       await admin.query(`create database ${name} template template0`);
       ownedDatabases.push(name);
@@ -96,10 +98,7 @@ export async function rehearse(env = process.env) {
       create schema auth;
       create table auth.users(id uuid primary key);
       create table auth.sessions(id uuid primary key,user_id uuid references auth.users(id) on delete cascade,not_after timestamptz);
-      create table auth.refresh_tokens(id bigint primary key,user_id uuid references auth.users(id) on delete cascade,session_id uuid references auth.sessions(id) on delete cascade,revoked boolean);
-      grant usage on schema justgo,drizzle,auth to justgo_backup;
-      grant select on all tables in schema justgo,drizzle,auth to justgo_backup;
-      grant select on all sequences in schema justgo,drizzle,auth to justgo_backup`);
+      create table auth.refresh_tokens(id bigint primary key,user_id uuid references auth.users(id) on delete cascade,session_id uuid references auth.sessions(id) on delete cascade,revoked boolean)`);
     const runtime = localTestDatabaseUrl(env.DATABASE_URL);
     if (runtime.username !== 'justgo_runtime')
       throw new Error('Restricted runtime role required');
@@ -178,6 +177,42 @@ export async function rehearse(env = process.env) {
     const backup = new Client(backupConnection);
     clients.push(backup);
     await backup.connect();
+    step = 'backup privilege verification';
+    await verifyBackupRole(backup);
+    // Exercise actual catalog ACLs using only this rehearsal's owned database.
+    // Both drift checks must reject before any fixture plaintext is exported.
+    step = 'backup MAINTAIN rejection';
+    try {
+      await source.query(
+        'grant maintain on table justgo.attempts to justgo_backup',
+      );
+      await assert.rejects(verifyBackupRole(backup), {
+        message: 'Backup role privileges are not restricted',
+      });
+    } finally {
+      await source.query(
+        'revoke maintain on table justgo.attempts from justgo_backup',
+      );
+    }
+    await verifyBackupRole(backup);
+    step = 'backup inherited ownership rejection';
+    try {
+      await source.query(
+        "create function justgo.backup_ownership_probe() returns integer language sql security invoker as 'select 1'",
+      );
+      await source.query(
+        'alter function justgo.backup_ownership_probe() owner to pg_read_all_data',
+      );
+      // Ownership includes ALTER/DROP even with SET FALSE. Never invoke the probe.
+      await assert.rejects(verifyBackupRole(backup), {
+        message: 'Backup role privileges are not restricted',
+      });
+    } finally {
+      await source.query(
+        'drop function if exists justgo.backup_ownership_probe()',
+      );
+    }
+    step = 'encrypted snapshot';
     const databasePath = join(directory, 'database.age'),
       ledgerPath = join(directory, 'ledger.age');
     const shared = {

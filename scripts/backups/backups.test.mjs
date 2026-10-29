@@ -23,7 +23,6 @@ import { checkIn } from './monitor.mjs';
 import {
   captureLedger,
   ledgerTables,
-  verifyBackupRole,
   verifyMigrationRegistry,
 } from './snapshot.mjs';
 import { validateRecovery } from './recovery.mjs';
@@ -82,7 +81,7 @@ test('policy requires exact separately approved bytes and compatible ledger/expi
     assert.throws(() => readPolicy(value, digest(value)));
   }
 });
-test('database backup source is fixed, verified TLS, read-only role with no URL override', () => {
+test('database backup source is fixed, verified TLS, dedicated reader with no URL override', () => {
   const value =
     'postgres://justgo_backup:synthetic@db.synthetic.supabase.co:5432/postgres';
   assert.equal(databaseConnection(value, policy).ssl.rejectUnauthorized, true);
@@ -320,11 +319,7 @@ test('ledger covers independent app and Auth state but never reads private writi
   );
   assert.match(statements.join('\n'), /data_epoch,data_deleted_at/);
 });
-test('backup role rejects runtime/owner and migration count is not frozen at historical 19', async () => {
-  await assert.rejects(
-    verifyBackupRole({ query: async () => ({ rows: [{ safe: false }] }) }),
-    /restricted/,
-  );
+test('migration count is not frozen at historical 19', async () => {
   await assert.rejects(
     verifyMigrationRegistry(
       { query: async () => ({ rows: [] }) },
