@@ -5,10 +5,9 @@
 **Local implementation prepared; Phase 15 remains in progress.** Anthony approved
 creation of the empty private R2 bucket and the seven-day Cloudflare setup token;
 both are created and verified. Changes are prepared on local branch
-`codex/phase-15-cloudflare`. Anthony chose to keep the changes local: no push or
-pull request is authorized. No hosted API deployment,
-real-data backup, notice publication, mobile release, Vercel retirement or Git
-publication occurred. Build 5 and its
+`codex/phase-15-cloudflare`. Anthony subsequently authorized pushing this branch and opening a pull request;
+merge and hosted release remain separately gated. No hosted API deployment,
+real-data backup, notice publication, mobile release or Vercel retirement occurred. Build 5 and its
 deployed Vercel API remain the current hosted release. This handoff does not close
 external-beta acceptance or the independent Phase 14 privacy/device gates.
 
