@@ -1,4 +1,5 @@
-import type { FastifyInstance } from 'fastify';
+import type { ApiApp, ApiContext } from '../http/request.js';
+import { parseRequestBody, requestBody } from '../http/request.js';
 import {
   managedSessionRequestSchema,
   managedSessionResponseSchema,
@@ -11,37 +12,45 @@ import { ApiError } from '../http/api-error.js';
 import type { IdentityService } from './service.js';
 import { rateAddress } from './address.js';
 export function managedIdentityRoutes(
-  app: FastifyInstance,
+  app: ApiApp,
   identity: IdentityService,
   onVercel = false,
 ) {
-  app.addHook('onRequest', async (request) =>
-    identity.rateLimit(
-      rateAddress(request.ip, request.headers, onVercel),
+  const general = async (request: ApiContext, next: () => Promise<void>) => {
+    await identity.rateLimit(
+      rateAddress(request.get('clientAddress'), request.req.header(), onVercel),
       'managed-auth',
       120,
-    ),
-  );
-  app.post('/session', async (request) =>
-    managedSessionResponseSchema.parse(
-      await identity.exchangeManaged(
-        bearer(request),
-        parse(managedSessionRequestSchema, request.body),
+    );
+    await next();
+  };
+  app.post('/session', general, parseRequestBody(), async (request) =>
+    request.json(
+      managedSessionResponseSchema.parse(
+        await identity.exchangeManaged(
+          bearer(request),
+          parse(managedSessionRequestSchema, requestBody(request)),
+        ),
       ),
     ),
   );
-  app.get('/session', async (request) => {
+  app.get('/session', general, async (request) => {
     if (!identity.managed) throw new ApiError('UNAVAILABLE', 503);
-    return identity.managed.withSession(bearer(request), async (_tx, session) =>
-      managedSessionResponseSchema.parse(session),
+    return request.json(
+      await identity.managed.withSession(
+        bearer(request),
+        async (_tx, session) => managedSessionResponseSchema.parse(session),
+      ),
     );
   });
-  app.post('/logout', async (request) => {
+  app.post('/logout', general, parseRequestBody(), async (request) => {
     if (!identity.managed) throw new ApiError('UNAVAILABLE', 503);
-    return okSchema.parse(
-      await identity.managed.logout(
-        bearer(request),
-        parse(managedLogoutRequestSchema, request.body).scope,
+    return request.json(
+      okSchema.parse(
+        await identity.managed.logout(
+          bearer(request),
+          parse(managedLogoutRequestSchema, requestBody(request)).scope,
+        ),
       ),
     );
   });

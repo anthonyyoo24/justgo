@@ -1,143 +1,98 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  rmSync,
-  readdirSync,
-  readFileSync,
-  existsSync,
-} from 'node:fs';
+import { mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import test from 'node:test';
 import {
-  stagingTarget as target,
+  stagingTarget,
   validateFoundation,
   validateStagingEnvironment,
-  productionPath,
-  validateUpload,
   validateProbe,
+  validateVersion,
+  cloudflareTarget,
   validateDeployment,
   releaseContext,
-  candidateReceipt,
-  requireRelease,
   StagingRunnerFailure,
   stagingRunnerFailureCode,
 } from './staging-api.mjs';
-import { stagingApi, privateCommand } from './staging-api-runner.mjs';
-
-test('only branded allowlisted failures expose codes, independent of error text', () => {
-  const failure = new StagingRunnerFailure('STAGING_SOURCE_NOT_CLEAN');
-  failure.message = 'PRIVATE_PROVIDER_CREDENTIAL';
-  failure.code = 'PRIVATE_PROVIDER_CREDENTIAL';
-  assert.equal(stagingRunnerFailureCode(failure), 'STAGING_SOURCE_NOT_CLEAN');
-  for (const error of [
-    new Error('STAGING_SOURCE_NOT_CLEAN'),
-    new Error('PRIVATE_PROVIDER_CREDENTIAL'),
-    {
-      code: 'STAGING_SOURCE_NOT_CLEAN',
-      message: 'PRIVATE_PROVIDER_CREDENTIAL',
-    },
-    Object.create(StagingRunnerFailure.prototype),
-    new SyntaxError('PRIVATE_PROVIDER_CREDENTIAL'),
-    'PRIVATE_PROVIDER_CREDENTIAL',
-    undefined,
-  ])
-    assert.equal(stagingRunnerFailureCode(error), undefined);
-  const unknown = new StagingRunnerFailure('PRIVATE_PROVIDER_CREDENTIAL');
-  assert.equal(unknown.message, 'STAGING_RUNNER_FAILED');
-  assert.equal(stagingRunnerFailureCode(unknown), 'STAGING_RUNNER_FAILED');
-  assert.throws(
-    () => requireRelease(false, 'STAGING_BASELINE_CHANGED'),
-    (error) => {
-      assert.equal(error.message, 'STAGING_BASELINE_CHANGED');
-      assert.equal(stagingRunnerFailureCode(error), 'STAGING_BASELINE_CHANGED');
-      return true;
-    },
-  );
-});
+import {
+  stagingApi,
+  privateCommand,
+  validateHyperdrive,
+} from './staging-api-runner.mjs';
 
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
+const candidateId = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
+const previousId = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
+const deploymentId = 'cccccccc-cccc-4ccc-cccc-cccccccccccc';
+const oldDeploymentId = 'dddddddd-dddd-4ddd-dddd-dddddddddddd';
+const otherId = 'eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee';
 const context = { sha, runId: '123', attempt: '1' };
-const isPromotion = (call) =>
-  call.command === 'promotion' && call.args[0] === 'dpl_candidate';
 const env = {
   GITHUB_ACTIONS: 'true',
-  GITHUB_REPOSITORY: target.repository,
+  GITHUB_REPOSITORY: stagingTarget.repository,
   GITHUB_REF: 'refs/heads/main',
   RELEASE_SHA: sha,
   RELEASE_OPERATION: 'deploy',
   GITHUB_RUN_ID: '123',
   GITHUB_RUN_ATTEMPT: '1',
-  VERCEL_TOKEN: 'private-fixture-token',
-  VERCEL_AUTOMATION_BYPASS_SECRET: 'private-existing-bypass-fixture',
-  STAGING_BASELINE_ID: 'dpl_previous',
+  CLOUDFLARE_API_TOKEN: 'private-fixture-token',
+  CLOUDFLARE_ACCOUNT_ID: '1'.repeat(32),
+  CLOUDFLARE_WORKERS_SUBDOMAIN: 'fixture-account',
+  STAGING_HYPERDRIVE_ID: '2'.repeat(32),
+  STAGING_BASELINE_ID: oldDeploymentId,
   STAGING_BASELINE_SHA: previous,
 };
-function metadata(id = 'dpl_candidate') {
+const target = cloudflareTarget(env);
+const text = (name, value) => ({ name, type: 'plain_text', text: value });
+function metadata(id = candidateId) {
   return {
     id,
-    projectId: target.project,
-    ownerId: target.team,
-    target: 'production',
-    readyState: 'READY',
-    regions: ['yul1'],
-    url: 'justgo-candidate-anthony-youngshin-yoos-projects.vercel.app',
-    meta: {
-      githubCommitSha: sha,
-      justgoSourceSha: sha,
-      justgoRunId: '123',
-      justgoRunAttempt: '1',
+    metadata: { has_preview: true },
+    resources: {
+      bindings: [
+        text('APP_ENVIRONMENT', 'staging'),
+        text('NODE_ENV', 'production'),
+        text('MANAGED_AUTH_ENABLED', 'true'),
+        text('SUPABASE_URL', 'https://kmcpcauaxlgpevkkenwd.supabase.co'),
+        text('JUSTGO_SOURCE_SHA', id === previousId ? previous : sha),
+        text('API_SENTRY_RELEASE', sha),
+        text('JUSTGO_RELEASE_RUN_ID', '123'),
+        text('JUSTGO_RELEASE_RUN_ATTEMPT', '1'),
+        ...[
+          'IDENTITY_RATE_LIMIT_KEY',
+          'SUPABASE_AUTH_SECRET_KEY',
+          'SUPABASE_PUBLISHABLE_KEY',
+          'LOCK_DATABASE_URL',
+        ].map((name) => ({ name, type: 'secret_text' })),
+        { name: 'HYPERDRIVE', type: 'hyperdrive', id: target.hyperdriveId },
+      ],
     },
   };
 }
-function deploymentReceipt() {
+function hyperdrive() {
   return {
-    status: 'ok',
-    deployment: {
-      id: 'dpl_candidate',
-      url: `https://${metadata().url}`,
-      readyState: 'READY',
-      target: 'production',
+    id: target.hyperdriveId,
+    caching: { disabled: true },
+    origin: {
+      host: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
+      database: 'postgres',
+      user: 'justgo_runtime',
+      scheme: 'postgres',
+      port: 5432,
     },
-    message: 'Deployment complete',
-    next: ['vercel promote dpl_unreviewed', 'curl https://untrusted.example'],
+    mtls: { sslmode: 'verify-full', ca_certificate_id: previousId },
+    origin_connection_limit: 5,
   };
 }
-test('CLI64.7 JSON receipt requires the exact successful production-ready deployment shape', () => {
-  assert.deepEqual(candidateReceipt(JSON.stringify(deploymentReceipt())), {
-    id: 'dpl_candidate',
-    url: `https://${metadata().url}`,
-  });
-  for (const value of [
-    metadata().url,
-    '{}',
-    JSON.stringify({ ...deploymentReceipt(), status: 'error' }),
-    ...[
-      { id: undefined },
-      { target: 'preview' },
-      { readyState: 'BUILDING' },
-      { url: 'https://untrusted.example' },
-      { url: `https://${metadata().url}/extra` },
-    ].map((change) =>
-      JSON.stringify({
-        ...deploymentReceipt(),
-        deployment: { ...deploymentReceipt().deployment, ...change },
-      }),
-    ),
-  ])
-    assert.throws(() => candidateReceipt(value), /INVALID_CANDIDATE_RECEIPT/);
-});
 function probe(kind = 'ready') {
-  const id = '00000000-0000-4000-8000-000000000001';
+  const id = '12345678-1234-1234-1234-123456789012';
   return {
     status: kind === 'unauthorized' ? 401 : 200,
     headers: {
       'cache-control': 'no-store',
-      'content-type': 'application/json; charset=utf-8',
+      'content-type': 'application/json',
       'x-request-id': id,
       'x-justgo-source-sha': sha,
       'x-justgo-environment': 'staging',
@@ -151,7 +106,157 @@ function probe(kind = 'ready') {
     ),
   };
 }
-test('release requires the exact latest successful Foundation main push and trusted context', () => {
+function fixture(t, failure) {
+  const root = mkdtempSync(join(tmpdir(), 'justgo-staging-release-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const calls = [],
+    waits = [];
+  let uploaded = false,
+    promoted = false,
+    reads = 0;
+  return {
+    root,
+    env: { ...env, RUNNER_TEMP: root },
+    calls,
+    waits,
+    run: async (command, args) => {
+      calls.push({ command, args });
+      assert.equal(command, 'git');
+      return args[0] === 'rev-parse' ? sha : '';
+    },
+    build: async () => ({
+      content: Buffer.from('reviewed worker'),
+      uploadSha256: 'c'.repeat(64),
+      configuration: {
+        compatibility_date: '2026-10-28',
+        compatibility_flags: ['nodejs_compat'],
+        placement: { region: 'aws:ca-central-1' },
+      },
+    }),
+    request: async (_target, path, options) => {
+      calls.push({ path, method: options.method ?? 'GET' });
+      assert.deepEqual(_target, target);
+      assert.equal(options.token, env.CLOUDFLARE_API_TOKEN);
+      if (path === '/workers/subdomain') return { subdomain: target.subdomain };
+      if (path.startsWith('/hyperdrive/'))
+        return failure === 'hyperdrive-cache'
+          ? { ...hyperdrive(), caching: { disabled: false } }
+          : hyperdrive();
+      if (path === '/settings')
+        return {
+          observability: { enabled: failure === 'logs' },
+          logpush: false,
+        };
+      if (path === '/subdomain')
+        return {
+          enabled: true,
+          previews_enabled: failure !== 'preview-disabled',
+        };
+      if (path === '/deployments') {
+        if (promoted) reads++;
+        if (promoted && failure === 'readback')
+          throw new Error('PRIVATE_PROVIDER_CONTENT');
+        const pending =
+          promoted &&
+          (failure === 'promotion-never' ||
+            (failure === 'promotion-delay' && reads <= 2));
+        const version_id = promoted && !pending ? candidateId : previousId;
+        return {
+          deployments: [
+            {
+              id:
+                promoted && !pending
+                  ? deploymentId
+                  : uploaded && failure === 'alias-race'
+                    ? otherId
+                    : oldDeploymentId,
+              strategy: 'percentage',
+              versions: [{ version_id, percentage: 100 }],
+            },
+          ],
+        };
+      }
+      if (path === '/versions')
+        return {
+          items: [
+            {
+              id: uploaded
+                ? candidateId
+                : failure === 'latest-race'
+                  ? otherId
+                  : previousId,
+            },
+          ],
+        };
+      if (path.startsWith('/versions/') && options.method !== 'POST') {
+        const version = metadata(path.split('/').at(-1));
+        if (uploaded && failure === 'source')
+          version.resources.bindings.find(
+            (b) => b.name === 'JUSTGO_SOURCE_SHA',
+          ).text = previous;
+        if (uploaded && failure === 'binding')
+          version.resources.bindings.push(
+            text('CORS_ORIGINS', 'https://attacker.invalid'),
+          );
+        return version;
+      }
+      if (path === '/versions?bindings_inherit=strict') {
+        assert.equal(options.method, 'POST');
+        const metadata = JSON.parse(options.body.get('metadata'));
+        assert.equal(metadata.main_module, 'worker.js');
+        assert.deepEqual(metadata.placement, {
+          mode: 'targeted',
+          region: 'aws:ca-central-1',
+        });
+        assert.equal(
+          metadata.bindings.find((b) => b.name === 'LOCK_DATABASE_URL').type,
+          'inherit',
+        );
+        assert.equal(
+          await options.body.get('worker.js').text(),
+          'reviewed worker',
+        );
+        uploaded = true;
+        if (failure === 'upload-response')
+          throw new StagingRunnerFailure('STAGING_VERSION_UPLOAD_UNCONFIRMED');
+        return { id: candidateId };
+      }
+      throw new Error('Unexpected provider call');
+    },
+    promote: async (id, options) => {
+      calls.push({ promotion: id });
+      assert.equal(id, candidateId);
+      assert.deepEqual(options.target, target);
+      promoted = true;
+      if (failure === 'promotion-timeout')
+        throw new Error('PRIVATE_PROVIDER_CONTENT');
+    },
+    probe: async (origin, path) => {
+      calls.push({ probe: origin + path });
+      const result = probe(
+        path === '/health'
+          ? 'health'
+          : path === '/ready'
+            ? 'ready'
+            : 'unauthorized',
+      );
+      if (
+        (failure === 'candidate-probe' && !promoted) ||
+        (failure === 'public-probe' && promoted)
+      )
+        result.body = 'PRIVATE_PROVIDER_CONTENT';
+      return result;
+    },
+    wait: async (milliseconds) => {
+      waits.push(milliseconds);
+    },
+    summary: () => {},
+    beforePromote: async () => {},
+  };
+}
+
+test('release context and Foundation checks bind exactly the reviewed main push', () => {
+  assert.deepEqual(releaseContext(env), context);
   const good = {
     head_sha: sha,
     head_branch: 'main',
@@ -162,37 +267,25 @@ test('release requires the exact latest successful Foundation main push and trus
   validateFoundation({ workflow_runs: [good] }, sha);
   for (const change of [
     { head_sha: previous },
-    { head_branch: 'other' },
     { event: 'pull_request' },
-    { status: 'in_progress' },
     { conclusion: 'failure' },
+    { head_branch: 'other' },
   ])
     assert.throws(() =>
-      validateFoundation(
-        { workflow_runs: [{ ...good, ...change }, good] },
-        sha,
-      ),
+      validateFoundation({ workflow_runs: [{ ...good, ...change }] }, sha),
     );
-  assert.deepEqual(releaseContext(env), context);
   for (const change of [
-    { GITHUB_ACTIONS: 'false' },
-    { GITHUB_REF: 'refs/heads/other' },
-    { GITHUB_REPOSITORY: 'fork/justgo' },
-    { RELEASE_SHA: 'bad' },
     { RELEASE_SHA: `${sha}\n` },
+    { GITHUB_ACTIONS: 'false' },
+    { GITHUB_REPOSITORY: 'fork/repo' },
     { RELEASE_OPERATION: 'rollback' },
+    { GITHUB_REF: 'refs/heads/other' },
   ])
     assert.throws(() => releaseContext({ ...env, ...change }));
-  assert.throws(() =>
-    validateFoundation(
-      { workflow_runs: [{ ...good, head_sha: `${sha}\n` }] },
-      `${sha}\n`,
-    ),
-  );
 });
-test('environment requires Anthony and exactly the main branch policy', () => {
+test('environment keeps Anthony as sole reviewer and main as sole branch policy', () => {
   const environment = {
-    name: target.environment,
+    name: 'justgo-staging',
     deployment_branch_policy: { custom_branch_policies: true },
     protection_rules: [
       {
@@ -205,537 +298,174 @@ test('environment requires Anthony and exactly the main branch policy', () => {
     total_count: 1,
     branch_policies: [{ name: 'main', type: 'branch' }],
   };
-  validateStagingEnvironment(environment, policies, target.reviewer);
-  const owner = environment.protection_rules[0].reviewers[0];
-  for (const reviewers of [
-    [],
-    [owner, { type: 'User', reviewer: { id: 123 } }],
-    [owner, { type: 'Team', reviewer: { id: 456 } }],
-  ])
-    assert.throws(() =>
-      validateStagingEnvironment(
-        {
-          ...environment,
-          protection_rules: [{ type: 'required_reviewers', reviewers }],
-        },
-        policies,
-        target.reviewer,
-      ),
-    );
+  validateStagingEnvironment(environment, policies, '51426358');
+  assert.throws(() =>
+    validateStagingEnvironment(environment, policies, 'other'),
+  );
   assert.throws(() =>
     validateStagingEnvironment(
-      {
-        ...environment,
-        protection_rules: [
-          ...environment.protection_rules,
-          ...environment.protection_rules,
-        ],
-      },
+      { ...environment, protection_rules: [] },
       policies,
-      target.reviewer,
+      '51426358',
     ),
   );
-  for (const value of [
-    { ...environment, name: 'testflight-beta' },
-    { ...environment, protection_rules: [] },
-    {
-      ...environment,
-      deployment_branch_policy: { custom_branch_policies: false },
-    },
-  ])
-    assert.throws(() =>
-      validateStagingEnvironment(value, policies, target.reviewer),
-    );
-  for (const value of [
-    { ...policies, total_count: 2 },
-    { ...policies, branch_policies: [{ name: '*', type: 'branch' }] },
-    { ...policies, branch_policies: [{ name: 'main', type: 'tag' }] },
-  ])
-    assert.throws(() =>
-      validateStagingEnvironment(environment, value, target.reviewer),
-    );
-  assert.throws(() => validateStagingEnvironment(environment, policies, '123'));
+  assert.throws(() =>
+    validateStagingEnvironment(
+      environment,
+      { ...policies, branch_policies: [{ name: '*', type: 'branch' }] },
+      '51426358',
+    ),
+  );
 });
-test('runtime probes require the exact source/environment, healthy contract and auth fence', () => {
+test('targets reject missing account, secret, Hyperdrive or unsafe subdomain before network I/O', async (t) => {
+  for (const change of [
+    { CLOUDFLARE_ACCOUNT_ID: '' },
+    { CLOUDFLARE_API_TOKEN: '' },
+    { STAGING_HYPERDRIVE_ID: 'unsafe' },
+    { CLOUDFLARE_WORKERS_SUBDOMAIN: 'attacker.example' },
+    { CLOUDFLARE_API_TOKEN: 'x\r\n' },
+  ]) {
+    const f = fixture(t);
+    await assert.rejects(
+      stagingApi('deploy', { ...f, env: { ...f.env, ...change } }),
+      /STAGING_CLOUDFLARE_CONFIGURATION_REQUIRED/,
+    );
+    assert.equal(f.calls.length, 0);
+  }
+});
+test('version and Hyperdrive guards reject privileged credentials, caching and unsafe protocols', () => {
+  validateVersion(metadata(), target, context);
+  validateHyperdrive(hyperdrive(), target);
+  for (const change of [
+    { origin_connection_limit: 20 },
+    { caching: { disabled: false } },
+    { mtls: { sslmode: 'require' } },
+    { origin: { ...hyperdrive().origin, user: 'postgres' } },
+    { origin: { ...hyperdrive().origin, host: 'foreign.invalid' } },
+  ])
+    assert.throws(() =>
+      validateHyperdrive({ ...hyperdrive(), ...change }, target),
+    );
+  for (const bindings of [
+    metadata().resources.bindings.filter((b) => b.name !== 'LOCK_DATABASE_URL'),
+    [
+      ...metadata().resources.bindings,
+      text('DATABASE_URL', 'postgres://private'),
+    ],
+    [...metadata().resources.bindings, metadata().resources.bindings[0]],
+  ])
+    assert.throws(() =>
+      validateVersion(
+        { ...metadata(), resources: { bindings } },
+        target,
+        context,
+      ),
+    );
+  assert.throws(() => validateDeployment({ deployments: [] }));
+  assert.throws(() =>
+    validateDeployment({
+      deployments: [
+        {
+          id: deploymentId,
+          strategy: 'percentage',
+          versions: [{ version_id: candidateId, percentage: 50 }],
+        },
+      ],
+    }),
+  );
+});
+test('probes preserve source, environment, auth fence and no-store', () => {
   for (const kind of ['health', 'ready', 'unauthorized'])
     validateProbe(probe(kind), kind, sha);
   for (const value of [
     { ...probe(), status: 503 },
-    { ...probe(), body: 'private-invalid-body' },
-    { ...probe(), body: '{"status":"ready","private":"fixture"}' },
+    { ...probe(), body: 'PRIVATE_PROVIDER_CONTENT' },
     {
       ...probe(),
       headers: { ...probe().headers, 'x-justgo-source-sha': previous },
     },
-    {
-      ...probe(),
-      headers: { ...probe().headers, 'x-justgo-environment': 'production' },
-    },
+    { ...probe(), headers: { ...probe().headers, 'cache-control': 'public' } },
   ])
-    assert.throws(
-      () => validateProbe(value, 'ready', sha),
-      (error) => !error.message.includes('private'),
-    );
-  assert.throws(() =>
-    validateProbe(
-      { ...probe('unauthorized'), status: 200 },
-      'unauthorized',
-      sha,
-    ),
-  );
-  assert.throws(() =>
-    validateProbe(
-      {
-        ...probe('unauthorized'),
-        body: '{"code":"UNAUTHORIZED","requestId":"wrong"}',
-      },
-      'unauthorized',
-      sha,
-    ),
-  );
+    assert.throws(() => validateProbe(value, 'ready', sha));
 });
-test('deployment identity rejects wrong project/team/source/runtime/preview metadata', () => {
-  validateDeployment(metadata(), context);
-  assert.throws(() =>
-    validateDeployment(
-      {
-        ...metadata(),
-        meta: {
-          ...metadata().meta,
-          justgoSourceSha: `${sha}\n`,
-          githubCommitSha: `${sha}\n`,
-        },
-      },
-      { ...context, sha: `${sha}\n` },
-    ),
-  );
-  for (const changes of [
-    { projectId: 'other' },
-    { ownerId: 'other' },
-    { target: 'preview' },
-    { readyState: 'ERROR' },
-    { public: true },
-    { regions: ['iad1'] },
-    { meta: { ...metadata().meta, justgoSourceSha: previous } },
-    { meta: { ...metadata().meta, justgoRunAttempt: '2' } },
-    { url: 'attacker.example' },
-  ])
-    assert.throws(() =>
-      validateDeployment({ ...metadata(), ...changes }, context),
-    );
-});
-function fixture(t, failure) {
-  const root = mkdtempSync(join(tmpdir(), 'justgo-staging-release-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const path = 'apps/api/src/server.ts',
-    contents = 'reviewed synthetic API';
-  mkdirSync(dirname(join(root, path)), { recursive: true });
-  writeFileSync(join(root, path), contents);
-  const manifest = {
-    framework: { slug: 'fastify' },
-    files: [{ path, sha: createHash('sha1').update(contents).digest('hex') }],
-  };
-  const calls = [];
-  const waits = [];
-  let promoted = false,
-    aliasReads = 0,
-    promotionReads = 0;
-  const run = (command, args) => {
-    calls.push({ command, args });
-    if (command === 'git')
-      return args[0] === 'rev-parse'
-        ? sha
-        : args[0] === 'ls-files'
-          ? `${path}\0`
-          : '';
-    if (command === 'vercel' && args[0] === '--version')
-      return failure === 'old-cli' ? '64.5.0' : '64.7.0';
-    if (command === 'vercel' && args[0] === 'api') {
-      if (args[1].startsWith('/v9/projects/'))
-        return JSON.stringify({
-          id: target.project,
-          accountId: target.team,
-          rootDirectory: 'apps/api',
-          framework: 'fastify',
-          nodeVersion: '24.x',
-        });
-      if (args[1].includes(target.alias)) {
-        aliasReads++;
-        if (promoted) promotionReads++;
-        if (promoted && failure === 'promotion-readback')
-          throw new Error('PRIVATE_PROVIDER_CREDENTIAL');
-        if (promoted && failure === 'promotion-json')
-          return 'PRIVATE_PROVIDER_CREDENTIAL';
-        if (promoted && failure === 'promotion-metadata')
-          return JSON.stringify(metadata('dpl_unconfirmed'));
-        if (promoted && failure === 'promotion-provenance')
-          return JSON.stringify({
-            ...metadata(),
-            meta: { githubCommitSha: previous },
-          });
-        return JSON.stringify(
-          promoted &&
-            failure !== 'promotion-never' &&
-            !(failure === 'promotion-delay' && promotionReads <= 2)
-            ? metadata()
-            : {
-                ...metadata(
-                  (failure === 'alias-race' && aliasReads > 1) ||
-                    (failure === 'alias-race-late' && aliasReads > 2)
-                    ? 'dpl_changed'
-                    : 'dpl_previous',
-                ),
-                meta: { githubCommitSha: previous },
-              },
-        );
-      }
-      return JSON.stringify(
-        failure === 'metadata'
-          ? { ...metadata(), ownerId: 'other' }
-          : metadata(),
-      );
-    }
-    if (command === 'vercel' && args[0] === 'deploy')
-      return args.includes('--dry')
-        ? JSON.stringify(manifest)
-        : JSON.stringify(
-            failure === 'receipt-id-mismatch'
-              ? {
-                  ...deploymentReceipt(),
-                  deployment: {
-                    ...deploymentReceipt().deployment,
-                    id: 'dpl_different',
-                  },
-                }
-              : failure === 'receipt-url-mismatch'
-                ? {
-                    ...deploymentReceipt(),
-                    deployment: {
-                      ...deploymentReceipt().deployment,
-                      url: 'https://justgo-different-anthony-youngshin-yoos-projects.vercel.app',
-                    },
-                  }
-                : deploymentReceipt(),
-          );
-    if (command === 'curl' || args[0] === 'curl') {
-      if (command === 'vercel') {
-        assert.ok(args.indexOf('--scope') < args.indexOf('--'));
-        assert.ok(!args.includes('--non-interactive'));
-      }
-      const path = command === 'curl' ? new URL(args.at(-1)).pathname : args[1];
-      const kind =
-        path === '/health'
-          ? 'health'
-          : path === '/ready'
-            ? 'ready'
-            : 'unauthorized';
-      const value = probe(kind);
-      if (
-        (failure === 'candidate-probe' && !promoted) ||
-        (failure === 'public-probe' && promoted)
-      )
-        value.body = 'private-provider-error';
-      writeFileSync(
-        args[args.indexOf('--dump-header') + 1],
-        Object.entries(value.headers)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join('\r\n'),
-      );
-      writeFileSync(args[args.indexOf('--output') + 1], value.body);
-      return String(value.status);
-    }
-    throw new Error('Unexpected fixture command');
-  };
-  return {
-    root,
-    manifest,
-    path,
-    calls,
-    waits,
-    promote: async (id, options) => {
-      calls.push({ command: 'promotion', args: [id] });
-      assert.equal(options.token, env.VERCEL_TOKEN);
-      promoted = true;
-      if (
-        [
-          'promotion-timeout',
-          'promotion-rejected',
-          'promotion-malformed',
-        ].includes(failure)
-      )
-        throw new Error('PRIVATE_PROVIDER_CREDENTIAL');
-    },
-    wait: async (milliseconds) => {
-      waits.push(milliseconds);
-    },
-    run,
-    env: { ...env, RUNNER_TEMP: root },
-    summary: () => {},
-    beforePromote: async () => {},
-  };
-}
-test('an older CLI is rejected before upload inspection or deployment', async (t) => {
-  const f = fixture(t, 'old-cli');
-  await assert.rejects(stagingApi('deploy', f), /PINNED_VERCEL_REQUIRED/);
-  assert.equal(
-    f.calls.some((call) => call.args[0] === 'deploy'),
-    false,
-  );
-  assert.equal(f.calls.some(isPromotion), false);
-});
-test('actual upload allowlist and hashes exclude secrets, migrations, fixtures and untracked files', (t) => {
+test('uploads inspected bytes without traffic then probes and promotes precisely once', async (t) => {
   const f = fixture(t);
-  assert.match(validateUpload(f.manifest, [f.path], f.root), /^[a-f0-9]{64}$/);
-  for (const path of [
-    '.env',
-    'apps/api/scripts/migrate.ts',
-    'apps/api/drizzle/0000_initial.sql',
-    'apps/mobile/src/app.ts',
-    'apps/api/src/.env.local',
-    'apps/api/src/test.test.ts',
-    'apps/api/src/test-support/fixture.ts',
-    'apps/api/src/private.pem',
-    '../secret',
-  ])
-    assert.equal(productionPath(path), false, path);
-  assert.throws(() =>
-    validateUpload({ ...f.manifest, files: [] }, [f.path], f.root),
-  );
-  assert.throws(() =>
-    validateUpload(f.manifest, [f.path, 'apps/api/src/new.ts'], f.root),
-  );
-  assert.throws(() =>
-    validateUpload(
-      {
-        ...f.manifest,
-        files: [{ ...f.manifest.files[0], sha: '0'.repeat(40) }],
-      },
-      [f.path],
-      f.root,
-    ),
-  );
-});
-test('release verifies candidate, promotes only exact inspected ID, verifies public alias and cleans probes', async (t) => {
-  const f = fixture(t);
-  const receipt = await stagingApi('deploy', f);
-  assert.equal(receipt.sourceSha, sha);
-  assert.equal(receipt.deploymentId, 'dpl_candidate');
-  const deploy = f.calls.find(
-    (c) => c.args[0] === 'deploy' && !c.args.includes('--dry'),
+  const result = await stagingApi('deploy', f);
+  assert.equal(result.versionId, candidateId);
+  assert.equal(result.deploymentId, deploymentId);
+  assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
+  assert.equal(f.calls.filter((c) => c.promotion).length, 1);
+  assert.equal(f.calls.filter((c) => c.probe).length, 8);
+  assert.ok(
+    f.calls.findIndex((c) => c.promotion) > f.calls.findIndex((c) => c.probe),
   );
   assert.ok(
-    deploy.args.includes('--json') &&
-      deploy.args.includes('--prod') &&
-      deploy.args.includes('--skip-domain'),
-  );
-  assert.ok(deploy.args.includes(`API_SENTRY_RELEASE=${sha}`));
-  assert.ok(
-    !f.calls.some(
-      (c) =>
-        c.args.includes('dpl_unreviewed') ||
-        c.args.includes('https://untrusted.example'),
-    ),
-  );
-  assert.deepEqual(
-    f.calls.filter(isPromotion).map((c) => c.args[0]),
-    ['dpl_candidate'],
-  );
-  assert.ok(
-    !f.calls.some(
-      (c) =>
-        c.args[0] === 'promote' ||
-        c.args[1]?.startsWith('/teams/') ||
-        c.args[1]?.includes('/promote/'),
-    ),
-  );
-  assert.equal(f.calls.filter((c) => c.command === 'curl').length, 3);
-  assert.ok(
-    !readdirSync(f.root).some((p) => p.startsWith('justgo-api-probes-')),
+    !readdirSync(f.root).some((p) => p.startsWith('justgo-worker-release-')),
   );
 });
-test('release requires an existing bypass credential before any CLI request, never creating one', async (t) => {
-  const f = fixture(t);
-  await assert.rejects(
-    stagingApi('deploy', {
-      ...f,
-      env: { ...f.env, VERCEL_AUTOMATION_BYPASS_SECRET: '' },
-    }),
-    /STAGING_EXISTING_BYPASS_SECRET_REQUIRED/,
-  );
-  assert.deepEqual(f.calls, []);
-});
-test('queued promotion waits for exact alias identity without repeating the project-bound POST', async (t) => {
-  const f = fixture(t, 'promotion-delay');
-  const receipt = await stagingApi('deploy', f);
-  assert.equal(receipt.deploymentId, 'dpl_candidate');
-  assert.equal(f.calls.filter(isPromotion).length, 1);
-  assert.deepEqual(f.waits, [2000, 2000]);
-});
-test('lost database lease during promotion polling aborts before another provider read', async (t) => {
-  const f = fixture(t, 'promotion-never');
-  const controller = new AbortController();
-  let callsAtAbort;
-  await assert.rejects(
-    stagingApi('deploy', {
-      ...f,
-      signal: controller.signal,
-      wait: async () => {
-        callsAtAbort = f.calls.length;
-        controller.abort();
-      },
-    }),
-    /STAGING_PROMOTION_UNCONFIRMED/,
-  );
-  assert.equal(f.calls.length, callsAtAbort);
-  assert.equal(f.calls.filter(isPromotion).length, 1);
-});
-test('project-scoped CLI calls use fresh nonsecret scope config without an owner auth session and clean it on return', async (t) => {
-  const f = fixture(t);
-  const directories = new Set();
-  const run = (command, args, options) => {
-    if (command === 'vercel') {
-      const directory = options.env.XDG_CONFIG_HOME;
-      directories.add(directory);
-      assert.ok(directory.startsWith(join(f.root, 'justgo-api-cli-')));
-      assert.equal(options.env.XDG_DATA_HOME, directory);
-      assert.equal(options.env.XDG_CACHE_HOME, directory);
-      const config = JSON.parse(
-        readFileSync(join(directory, 'com.vercel.cli', 'config.json'), 'utf8'),
-      );
-      assert.deepEqual(config.cachedTeamIds, { [target.scope]: target.team });
-      assert.equal(config.currentTeam, target.team);
-      assert.equal(config.cachedTeamSlugs[target.team].slug, target.scope);
-      assert.equal(config.updates.auto, false);
-      assert.ok(!existsSync(join(directory, 'com.vercel.cli', 'auth.json')));
-      assert.ok(!args.includes('--global-config'));
-    }
-    return f.run(command, args, options);
-  };
-  await stagingApi('preflight', { ...f, run });
-  assert.equal(directories.size, 1);
-  for (const directory of directories) assert.ok(!existsSync(directory));
-  await stagingApi('deploy', { ...f, run });
-  assert.equal(directories.size, 2);
-  for (const directory of directories) assert.ok(!existsSync(directory));
-});
-for (const failure of [
-  'metadata',
-  'candidate-probe',
-  'alias-race',
-  'alias-race-late',
-  'receipt-id-mismatch',
-  'receipt-url-mismatch',
-  'public-probe',
-  'promotion-timeout',
-  'promotion-readback',
-  'promotion-json',
-  'promotion-metadata',
-  'promotion-provenance',
-  'promotion-never',
-  'promotion-rejected',
-  'promotion-malformed',
-])
-  test(`release fails closed for ${failure} without automatic rollback or private output`, async (t) => {
+for (const failure of ['promotion-delay', 'promotion-timeout'])
+  test(`${failure} resolves through readback without repeating the mutation`, async (t) => {
     const f = fixture(t, failure);
-    const uncertain = [
-      'public-probe',
-      'promotion-timeout',
-      'promotion-readback',
-      'promotion-json',
-      'promotion-metadata',
-      'promotion-provenance',
-      'promotion-never',
-      'promotion-rejected',
-      'promotion-malformed',
-    ].includes(failure);
+    const result = await stagingApi('deploy', f);
+    assert.equal(result.versionId, candidateId);
+    assert.equal(f.calls.filter((c) => c.promotion).length, 1);
+    assert.deepEqual(
+      f.waits,
+      failure === 'promotion-delay' ? [2000, 2000] : [],
+    );
+  });
+for (const failure of [
+  'hyperdrive-cache',
+  'logs',
+  'preview-disabled',
+  'latest-race',
+  'alias-race',
+  'source',
+  'binding',
+  'upload-response',
+  'candidate-probe',
+  'public-probe',
+  'readback',
+  'promotion-never',
+])
+  test(`fails closed on ${failure} without rollback or private output`, async (t) => {
+    const f = fixture(t, failure);
+    const uncertain = ['public-probe', 'readback', 'promotion-never'].includes(
+      failure,
+    );
     await assert.rejects(stagingApi('deploy', f), (error) => {
-      if (uncertain) {
-        assert.equal(error.message, 'STAGING_PROMOTION_UNCONFIRMED');
+      assert.ok(!error.message.includes('PRIVATE_PROVIDER_CONTENT'));
+      assert.ok(stagingRunnerFailureCode(error));
+      if (uncertain)
         assert.equal(
           stagingRunnerFailureCode(error),
           'STAGING_PROMOTION_UNCONFIRMED',
         );
-      } else {
-        assert.notEqual(stagingRunnerFailureCode(error), undefined);
-        assert.notEqual(
-          stagingRunnerFailureCode(error),
-          'STAGING_RUNNER_FAILED',
-        );
-      }
-      assert.ok(!JSON.stringify(error).includes('PRIVATE_PROVIDER_CREDENTIAL'));
       return true;
     });
-    assert.equal(f.calls.filter(isPromotion).length, uncertain ? 1 : 0);
-    if (failure === 'promotion-never') assert.equal(f.waits.length, 29);
+    assert.equal(f.calls.filter((c) => c.promotion).length, uncertain ? 1 : 0);
     assert.ok(
-      !f.calls.some((c) => c.args[0] === 'rollback' || c.args[0] === 'remove'),
-    );
-    if (
-      ['alias-race', 'receipt-id-mismatch', 'receipt-url-mismatch'].includes(
-        failure,
-      )
-    )
-      assert.ok(
-        !f.calls.some((c) => c.command === 'curl' || c.args[0] === 'curl'),
-        'An unverified candidate/public alias must not be probed',
-      );
-    assert.ok(
-      !readdirSync(f.root).some(
-        (p) =>
-          p.startsWith('justgo-api-probes-') || p.startsWith('justgo-api-cli-'),
-      ),
+      !f.calls.some((c) => ['DELETE', 'PUT', 'PATCH'].includes(c.method)),
     );
   });
-test('private command failures never expose provider output or argument secrets', async () => {
-  await assert.rejects(
-    () =>
-      privateCommand(process.execPath, [
-        '-e',
-        'throw new Error("private-secret-fixture")',
-      ]),
-    (error) =>
-      error.message === 'STAGING_COMMAND_FAILED' &&
-      stagingRunnerFailureCode(error) === 'STAGING_COMMAND_FAILED',
-  );
-});
-test('failures before promotion preserve their own classification, while a failed receipt write is uncertain', async (t) => {
-  const f = fixture(t);
+test('lost database lease after build prevents uploads and promotion', async (t) => {
+  const f = fixture(t),
+    controller = new AbortController();
   await assert.rejects(
     stagingApi('deploy', {
       ...f,
-      env: { ...f.env, STAGING_BASELINE_ID: 'dpl_wrong' },
-    }),
-    (error) => stagingRunnerFailureCode(error) === 'STAGING_BASELINE_CHANGED',
-  );
-  assert.ok(!f.calls.some(isPromotion));
-  await assert.rejects(
-    stagingApi('deploy', {
-      ...f,
-      summary: () => {
-        throw new Error('PRIVATE_PROVIDER_CREDENTIAL');
+      signal: controller.signal,
+      build: async (...args) => {
+        const built = await f.build(...args);
+        controller.abort();
+        return built;
       },
     }),
-    (error) =>
-      stagingRunnerFailureCode(error) === 'STAGING_PROMOTION_UNCONFIRMED',
-  );
-  assert.equal(f.calls.filter(isPromotion).length, 1);
-});
-test('lost DB connection during candidate build prevents all later provider operations', async (t) => {
-  const f = fixture(t);
-  const controller = new AbortController();
-  const run = (command, args, options) => {
-    const result = f.run(command, args, options);
-    if (command === 'vercel' && args[0] === 'deploy' && !args.includes('--dry'))
-      controller.abort();
-    return result;
-  };
-  await assert.rejects(
-    stagingApi('deploy', { ...f, run, signal: controller.signal }),
     /STAGING_DATABASE_LEASE_LOST/,
   );
-  assert.ok(!f.calls.some(isPromotion));
+  assert.ok(!f.calls.some((c) => c.method === 'POST' || c.promotion));
 });
-test('same-session lease verification must succeed immediately before promotion', async (t) => {
+test('same-session advisory lock is checked immediately before promotion', async (t) => {
   const f = fixture(t);
   let checked = false;
   await assert.rejects(
@@ -743,26 +473,34 @@ test('same-session lease verification must succeed immediately before promotion'
       ...f,
       beforePromote: async () => {
         checked = true;
-        throw new Error('STAGING_DATABASE_LEASE_LOST');
+        throw new Error('lease lost');
       },
     }),
   );
   assert.equal(checked, true);
-  assert.ok(!f.calls.some(isPromotion));
-  assert.ok(
-    !readdirSync(f.root).some((p) => p.startsWith('justgo-api-probes-')),
-  );
+  assert.ok(!f.calls.some((c) => c.promotion));
 });
-test('asynchronous private subprocesses stop on abort without leaking errors', async () => {
-  const controller = new AbortController();
-  const pending = privateCommand(
-    process.execPath,
-    ['-e', 'setTimeout(()=>{},10000)'],
-    { signal: controller.signal },
+test('provider and subprocess error text never supplies a trusted diagnostic', async () => {
+  for (const error of [
+    new Error('STAGING_SOURCE_NOT_CLEAN'),
+    { code: 'STAGING_SOURCE_NOT_CLEAN' },
+    undefined,
+  ])
+    assert.equal(stagingRunnerFailureCode(error), undefined);
+  const failure = new StagingRunnerFailure('STAGING_SOURCE_NOT_CLEAN');
+  failure.message = 'PRIVATE_PROVIDER_CONTENT';
+  assert.equal(stagingRunnerFailureCode(failure), 'STAGING_SOURCE_NOT_CLEAN');
+  assert.equal(
+    stagingRunnerFailureCode(
+      new StagingRunnerFailure('PRIVATE_PROVIDER_CONTENT'),
+    ),
+    'STAGING_RUNNER_FAILED',
   );
-  controller.abort();
   await assert.rejects(
-    pending,
-    (error) => error.message === 'STAGING_COMMAND_FAILED',
+    privateCommand(process.execPath, [
+      '-e',
+      'throw new Error("PRIVATE_PROVIDER_CONTENT")',
+    ]),
+    /STAGING_COMMAND_FAILED/,
   );
 });

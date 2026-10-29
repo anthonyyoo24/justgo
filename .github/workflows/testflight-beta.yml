@@ -100,7 +100,7 @@ jobs:
     timeout-minutes: 120
     environment:
       name: testflight-beta
-      url: https://justgo-two.vercel.app
+      url: https://justgo-api-staging.anthonyyoo24.workers.dev
     env:
       RELEASE_TAG: ${{ inputs.tag }}
       RELEASE_OPERATION: ${{ inputs.operation }}
@@ -112,7 +112,7 @@ jobs:
       # An empty value keeps the optional diagnostics route blocked.
       BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION: ${{ vars.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION }}
       IOS_BUNDLE_IDENTIFIER: com.anthonyyoo.justgo
-      EXPO_PUBLIC_API_URL: https://justgo-two.vercel.app
+      EXPO_PUBLIC_API_URL: https://justgo-api-staging.anthonyyoo24.workers.dev
       # EAS resolves the project before fetching preview variables. Keep this
       # bootstrap off until env:exec loads the DSN; its inner commands apply
       # RELEASE_DIAGNOSTICS to preflight, the native build and submission.
@@ -164,7 +164,7 @@ jobs:
           }
           NODE
           fi
-          eas env:exec preview "EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=$RELEASE_DIAGNOSTICS RELEASE_DIAGNOSTICS=$RELEASE_DIAGNOSTICS RELEASE_OPERATION=$RELEASE_OPERATION npm --prefix ../.. run release:beta:check" --non-interactive
+          eas env:exec preview "EXPO_PUBLIC_API_URL=https://justgo-api-staging.anthonyyoo24.workers.dev EXPO_PUBLIC_SENTRY_ENABLED=$RELEASE_DIAGNOSTICS RELEASE_DIAGNOSTICS=$RELEASE_DIAGNOSTICS RELEASE_OPERATION=$RELEASE_OPERATION npm --prefix ../.. run release:beta:check" --non-interactive
       - name: Check native build tools
         if: inputs.operation == 'build'
         shell: bash
@@ -194,7 +194,7 @@ jobs:
         run: |
           umask 077
           mkdir -p "$TMPDIR" "$RUNNER_TEMP/justgo-beta-artifact"
-          eas env:exec preview "EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=$RELEASE_DIAGNOSTICS eas build --platform ios --profile $BETA_BUILD_PROFILE --local --freeze-credentials --non-interactive --output \"\$RUNNER_TEMP/justgo-beta-artifact/JustGO.ipa\"" --non-interactive
+          eas env:exec preview "EXPO_PUBLIC_API_URL=https://justgo-api-staging.anthonyyoo24.workers.dev EXPO_PUBLIC_SENTRY_ENABLED=$RELEASE_DIAGNOSTICS eas build --platform ios --profile $BETA_BUILD_PROFILE --local --freeze-credentials --non-interactive --output \"\$RUNNER_TEMP/justgo-beta-artifact/JustGO.ipa\"" --non-interactive
       - name: Inspect signed beta and record provenance
         if: inputs.operation == 'build'
         shell: bash
@@ -258,7 +258,7 @@ jobs:
         # verified artifact provenance owns diagnostics mode. Native phone
         # acceptance follows internal upload, before external testing.
         run: |
-          eas env:exec preview "EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app EXPO_PUBLIC_SENTRY_ENABLED=$RELEASE_DIAGNOSTICS eas submit --platform ios --profile beta --path \"\$RUNNER_TEMP/justgo-beta-download/JustGO.ipa\" --non-interactive --wait --no-auto-testflight-setup" --non-interactive
+          eas env:exec preview "EXPO_PUBLIC_API_URL=https://justgo-api-staging.anthonyyoo24.workers.dev EXPO_PUBLIC_SENTRY_ENABLED=$RELEASE_DIAGNOSTICS eas submit --platform ios --profile beta --path \"\$RUNNER_TEMP/justgo-beta-download/JustGO.ipa\" --non-interactive --wait --no-auto-testflight-setup" --non-interactive
       - name: Remove temporary build and signing files
         if: always()
         shell: bash

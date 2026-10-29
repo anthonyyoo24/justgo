@@ -90,8 +90,9 @@ payloads into this handoff.
 The [October 28 Cloudflare decision](../DECISIONS.md#october-28-cloudflare-workers-hono-and-r2-backups)
 supersedes the October 27 Vercel/Supabase Pro selections. The separate
 [crash/contact direction](../DECISIONS.md#october-27-deliberate-crash-test-and-provider-contact-direction)
-and existing device/simulator deferrals remain in force. Phase 15 is planned, not
-implemented; choosing the replacement does not close the current operating gates.
+and existing device/simulator deferrals remain in force. Phase 15 has a
+[local implementation candidate](phase-15-cloudflare-api.md); its hosted cutover
+and acceptance remain open. The candidate does not close current operating gates.
 
 ## Current concerns and roadblocks
 

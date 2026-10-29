@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
@@ -30,7 +31,6 @@ const identity = new IdentityService(database.db, {
   rateKey: `beta-test-${randomUUID()}`,
 });
 const users: string[] = [];
-const apps: ReturnType<typeof buildApp>[] = [];
 async function account() {
   const input = {
     deviceId: randomUUID(),
@@ -53,7 +53,6 @@ function app(
     checkDatabase: async () => {},
     ...createBetaAccess(grants, now, accessWindow),
   });
-  apps.push(result);
   return result;
 }
 const request = (
@@ -62,7 +61,7 @@ const request = (
   url: string,
   payload?: object,
 ) =>
-  api.inject({
+  apiRequest(api, {
     url,
     headers: { authorization: `Bearer ${token}` },
     method: payload ? 'POST' : 'GET',
@@ -71,7 +70,6 @@ const request = (
 const iso = (time: number) => new Date(time).toISOString();
 afterAll(async () => {
   try {
-    for (const api of apps) await api.close();
     for (const id of users) {
       for (const table of [
         'attempt_patch_receipts',
@@ -94,7 +92,7 @@ describe('real authenticated free test access', () => {
       startsAt: iso(Date.now() - 60_000),
       expiresAt: iso(Date.now() + 3_600_000),
     });
-    expect((await api.inject('/v1/access')).statusCode).toBe(401);
+    expect((await apiRequest(api, '/v1/access')).statusCode).toBe(401);
     expect(
       (await request(api, a.sessionToken, '/v1/access')).json(),
     ).toMatchObject({ status: 'verified', source: 'free_beta' });
@@ -112,7 +110,7 @@ describe('real authenticated free test access', () => {
         })
       ).statusCode,
     ).toBe(201);
-    const removed = await api.inject({
+    const removed = await apiRequest(api, {
       method: 'DELETE',
       url: '/v1/account',
       headers: { authorization: `Bearer ${a.sessionToken}` },
@@ -267,7 +265,7 @@ describe('real authenticated free test access', () => {
         expiresAt: iso(Date.now() + 3_600_000),
       },
     ]);
-    expect((await api.inject('/v1/access')).statusCode).toBe(401);
+    expect((await apiRequest(api, '/v1/access')).statusCode).toBe(401);
     expect(
       (await request(api, a.sessionToken, '/v1/access')).json(),
     ).toMatchObject({ status: 'verified', source: 'free_beta' });
@@ -384,7 +382,6 @@ describe('real authenticated free test access', () => {
       logger: false,
       checkDatabase: async () => {},
     });
-    apps.push(production);
     expect(
       (await request(production, a.sessionToken, '/v1/access')).json().status,
     ).toBe('unavailable');

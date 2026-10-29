@@ -18,3 +18,9 @@ Each fact has one owner: phase files specify work, decisions record why, archite
 explains the current system, and handoffs record outcomes and gates. Repository and
 directory AGENTS.md files own reusable coding/verification rules. Consult the
 applicable owner rather than copying competing specifications.
+
+[Cloudflare cutover](operations/CLOUDFLARE_CUTOVER.md) owns Phase 15 account,
+measurement, mobile/notice and retirement acceptance;
+[encrypted backups](operations/CLOUDFLARE_BACKUPS.md) owns R2 copy and isolated
+restore operations. Local results and unverified gates are in the
+[Phase 15 handoff](handoffs/phase-15-cloudflare-api.md).

@@ -1,10 +1,13 @@
 import { Writable } from 'node:stream';
-import pino from 'pino';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type {
+  DiagnosticRequest,
+  DiagnosticResponse,
+} from '../../src/http/diagnostics.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   captureServerErrorSqlState,
   loggerOptions,
+  createLogger,
   logServerErrorResponse,
   reportServerErrorResponse,
   sqlState,
@@ -54,7 +57,7 @@ describe('safe PostgreSQL diagnostics', () => {
         next();
       },
     });
-    const logger = pino(loggerOptions(), stream);
+    const logger = createLogger({ ...loggerOptions(), stream });
     logger.error(
       {
         err: Object.assign(new Error('private query'), {
@@ -86,8 +89,8 @@ describe('server reporter seam', () => {
       log: { error },
       body: { reflection: 'private' },
       headers: { authorization: 'private' },
-    } as unknown as FastifyRequest;
-    const reply = { statusCode: 503 } as FastifyReply;
+    } as unknown as DiagnosticRequest;
+    const reply = { statusCode: 503 } as DiagnosticResponse;
     captureServerErrorSqlState(
       request,
       new Error('private', { cause: { code: '08006', query: 'private' } }),
@@ -128,10 +131,10 @@ describe('server reporter seam', () => {
       ['a8bcb93b-c662-4119-80ac-3fc9775d5082', 200],
       ['a8bcb93b-c662-4119-80ac-3fc9775d5082', 499],
     ] as const) {
-      const request = { id } as FastifyRequest;
+      const request = { id } as DiagnosticRequest;
       await reportServerErrorResponse(
         request,
-        { statusCode } as FastifyReply,
+        { statusCode } as DiagnosticResponse,
         reporter,
       );
     }

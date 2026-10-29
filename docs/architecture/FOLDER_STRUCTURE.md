@@ -185,3 +185,8 @@ owners retain their distinct destructive operations and consequences. Runtime
 handover composes identity stages with activity repository fences, while
 `data/cloud/icloud-handover.ts` owns resumable private-copy transfer. These groups
 keep presentation, identity decisions and external data work separate.
+
+API `src/http/` owns Hono request/security/error and Node lifecycle adapters.
+`src/worker.ts` and `src/db/worker-database.ts` own the Worker invocation and
+Hyperdrive/direct-transaction boundary. `scripts/backups/` owns encrypted recovery
+copy, policy, storage, reconciliation and rehearsal tooling with adjacent tests.

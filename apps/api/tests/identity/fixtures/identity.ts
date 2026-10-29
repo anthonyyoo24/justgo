@@ -1,3 +1,4 @@
+import { apiRequest } from '../../request.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, expect } from 'vitest';
@@ -70,7 +71,7 @@ const post = (
   token?: string,
   ip = nextAddress(),
 ) =>
-  app.inject({
+  apiRequest(app, {
     method: 'POST',
     url: `/v1${path}`,
     payload: payload as object,
@@ -83,7 +84,7 @@ const remove = (
   payload?: object,
   ip = nextAddress(),
 ) =>
-  app.inject({
+  apiRequest(app, {
     method: 'DELETE',
     url: `/v1${path}`,
     remoteAddress: ip,
@@ -108,7 +109,6 @@ afterAll(async () => {
     }
     // Rate keys contain only a test-specific HMAC namespace; don't truncate shared tables.
   } finally {
-    await app.close();
     await Promise.all([db.pool.end(), admin.end()]);
   }
 });

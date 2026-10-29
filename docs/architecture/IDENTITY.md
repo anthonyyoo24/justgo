@@ -1,7 +1,7 @@
 # Identity, optional accounts and recovery
 
 Phase 13 adds local guest collections and optional Apple/Google accounts through
-Supabase Auth. Fastify remains the trusted boundary for JustGO data; mobile does
+Supabase Auth. The API remains the trusted boundary for JustGO data; mobile does
 not access private PostgreSQL tables directly. The authorized staging rollout
 applied migrations 0019–0023 and configured native Apple/Google Auth. Current setup
 and remaining signed-device acceptance are recorded in

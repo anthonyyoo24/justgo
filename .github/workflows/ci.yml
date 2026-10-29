@@ -98,7 +98,7 @@ jobs:
       - name: Install PostgreSQL 17 snapshot tools
         run: |
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -y postgresql-client-17
+          sudo apt-get install -y postgresql-client-17 age
           /usr/lib/postgresql/17/bin/pg_dump --version
       - uses: ./.github/actions/setup-database
       - run: npm run db:migrate
@@ -106,6 +106,10 @@ jobs:
       - name: Collect API database coverage
         id: api-database-coverage
         run: node scripts/quality/api-coverage.mjs database
+      - name: Verify Workers runtime against isolated PostgreSQL
+        run: npm run test:workers
+      - name: Rehearse encrypted recovery without resurrecting deleted data
+        run: npm run test:backup:recovery
       - name: Upload API database coverage
         if: always() && (steps.api-database-coverage.outcome == 'success' || steps.api-database-coverage.outcome == 'failure')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 import { identityErrorSchema } from '@justgo/contracts';
@@ -62,30 +63,27 @@ describe('versioned API request errors', () => {
     'rejects $name before domain I/O with its safe typed status',
     async ({ contentType, payload, status, code }) => {
       const { app, transaction } = setup();
-      try {
-        const response = await app.inject({
-          method: 'POST',
-          url: '/v1/attempts',
-          headers: {
-            authorization,
-            'content-type': contentType,
-            'x-request-id': privateValue,
-          },
-          payload,
-        });
-        expect(response.statusCode).toBe(status);
-        expect(identityErrorSchema.parse(response.json())).toEqual({
-          code,
-          requestId: response.headers['x-request-id'],
-        });
-        expect(response.headers['x-request-id']).toMatch(/^[a-f0-9-]{36}$/);
-        expect(response.headers['cache-control']).toBe('no-store');
-        expect(response.headers['retry-after']).toBeUndefined();
-        expect(response.body).not.toContain(privateValue);
-        expect(transaction).not.toHaveBeenCalled();
-      } finally {
-        await app.close();
-      }
+
+      const response = await apiRequest(app, {
+        method: 'POST',
+        url: '/v1/attempts',
+        headers: {
+          authorization,
+          'content-type': contentType,
+          'x-request-id': privateValue,
+        },
+        payload,
+      });
+      expect(response.statusCode).toBe(status);
+      expect(identityErrorSchema.parse(response.json())).toEqual({
+        code,
+        requestId: response.headers['x-request-id'],
+      });
+      expect(response.headers['x-request-id']).toMatch(/^[a-f0-9-]{36}$/);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['retry-after']).toBeUndefined();
+      expect(response.body).not.toContain(privateValue);
+      expect(transaction).not.toHaveBeenCalled();
     },
   );
 
@@ -93,40 +91,34 @@ describe('versioned API request errors', () => {
     'retires private writes before parsing or database work (%s)',
     async (contentType) => {
       const { app, transaction } = setup();
-      try {
-        const response = await app.inject({
-          method: 'PATCH',
-          url: '/v1/attempts/not-an-id',
-          headers: { 'content-type': contentType },
-          payload: '{' + privateValue.repeat(4000),
-        });
-        expect(response.statusCode).toBe(410);
-        expect(response.json().code).toBe('PRIVATE_JOURNAL_LOCAL');
-        expect(response.body).not.toContain(privateValue);
-        expect(transaction).not.toHaveBeenCalled();
-      } finally {
-        await app.close();
-      }
+
+      const response = await apiRequest(app, {
+        method: 'PATCH',
+        url: '/v1/attempts/not-an-id',
+        headers: { 'content-type': contentType },
+        payload: '{' + privateValue.repeat(4000),
+      });
+      expect(response.statusCode).toBe(410);
+      expect(response.json().code).toBe('PRIVATE_JOURNAL_LOCAL');
+      expect(response.body).not.toContain(privateValue);
+      expect(transaction).not.toHaveBeenCalled();
     },
   );
 
   it('rejects a missing bearer before domain I/O', async () => {
     const { app, transaction } = setup();
-    try {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/v1/attempts',
-        payload: completion,
-      });
-      expect(response.statusCode).toBe(401);
-      expect(identityErrorSchema.parse(response.json())).toEqual({
-        code: 'UNAUTHORIZED',
-        requestId: response.headers['x-request-id'],
-      });
-      expect(transaction).not.toHaveBeenCalled();
-    } finally {
-      await app.close();
-    }
+
+    const response = await apiRequest(app, {
+      method: 'POST',
+      url: '/v1/attempts',
+      payload: completion,
+    });
+    expect(response.statusCode).toBe(401);
+    expect(identityErrorSchema.parse(response.json())).toEqual({
+      code: 'UNAUTHORIZED',
+      requestId: response.headers['x-request-id'],
+    });
+    expect(transaction).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -196,25 +188,22 @@ describe('versioned API request errors', () => {
   ])('preserves $name responses', async ({ error, status, code }) => {
     const { app, transaction } = setup();
     transaction.mockRejectedValue(error);
-    try {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/v1/attempts',
-        headers: { authorization },
-        payload: completion,
-      });
-      expect(response.statusCode).toBe(status);
-      expect(identityErrorSchema.parse(response.json())).toEqual({
-        code,
-        requestId: response.headers['x-request-id'],
-      });
-      expect(response.headers['retry-after']).toBe(
-        status === 429 ? '17' : undefined,
-      );
-      expect(response.body).not.toContain(privateValue);
-      expect(transaction).toHaveBeenCalledTimes(1);
-    } finally {
-      await app.close();
-    }
+
+    const response = await apiRequest(app, {
+      method: 'POST',
+      url: '/v1/attempts',
+      headers: { authorization },
+      payload: completion,
+    });
+    expect(response.statusCode).toBe(status);
+    expect(identityErrorSchema.parse(response.json())).toEqual({
+      code,
+      requestId: response.headers['x-request-id'],
+    });
+    expect(response.headers['retry-after']).toBe(
+      status === 429 ? '17' : undefined,
+    );
+    expect(response.body).not.toContain(privateValue);
+    expect(transaction).toHaveBeenCalledTimes(1);
   });
 });

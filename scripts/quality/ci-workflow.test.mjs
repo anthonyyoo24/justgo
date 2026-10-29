@@ -20,6 +20,27 @@ const producers = [
   'native-icloud',
 ];
 
+test('database CI runs real Worker and encrypted recovery boundaries after shared prerequisites', () => {
+  const job = jobs.database;
+  assert.match(job, /postgresql-client-17 age/);
+  const runs = commands(job);
+  for (const command of [
+    'npm run test:workers',
+    'npm run test:backup:recovery',
+  ]) {
+    assert.ok(runs.includes(command));
+    assert.ok(runs.indexOf('npm run db:migrate') < runs.indexOf(command));
+    assert.ok(
+      runs.indexOf('node scripts/quality/api-coverage.mjs database') <
+        runs.indexOf(command),
+    );
+  }
+  assert.match(
+    rootPackage.scripts['test:backup:recovery'],
+    /scripts\/backups\/rehearse\.mjs/,
+  );
+});
+
 test('pushes run only for main, PRs cancel older revisions, and main results stay independent', () => {
   assert.match(triggers, /^ {2}push:\n {4}branches: \[main\]$/m);
   assert.match(triggers, /^ {2}pull_request:$/m);

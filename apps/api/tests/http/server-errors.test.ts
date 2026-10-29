@@ -1,3 +1,7 @@
+import { Hono } from 'hono';
+import type { StatusCode, ContentfulStatusCode } from 'hono/utils/http-status';
+import type { ApiEnvironment } from '../../src/http/request.js';
+import { apiRequest } from '../request.js';
 import { Writable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/build-app.js';
@@ -49,11 +53,9 @@ function expectServerError(
   expect(failures).toHaveLength(1);
   const failure = failures[0];
   if (!failure) throw new Error('Expected one server-error event');
-  const { level, time, pid, hostname, ...fields } = failure;
+  const { level, time, ...fields } = failure;
   expect(level).toBe(50);
   expect(time).toEqual(expect.any(Number));
-  expect(pid).toEqual(expect.any(Number));
-  expect(hostname).toEqual(expect.any(String));
   expect(fields).toEqual({
     reqId: requestId,
     statusCode,
@@ -78,10 +80,14 @@ describe('sanitized server response diagnostics', () => {
       const reporter = vi.fn<ServerErrorReporter>().mockResolvedValue();
       const { app, records, output } = setup(undefined, 'info', reporter);
       // Nested routes inherit the app-wide response boundary too.
-      app.register(async (scope) => {
-        scope.post(path, async (_request, reply) => {
+      const scope = new Hono<ApiEnvironment>();
+      {
+        scope.post(path, (context) => {
           if (kind === 'direct')
-            return reply.code(status).send({ detail: privateValue });
+            return context.json(
+              { detail: privateValue },
+              status as ContentfulStatusCode,
+            );
           if (kind === 'typed') throw new ApiError('UNAVAILABLE', 503);
           throw new Error(privateValue, {
             cause: {
@@ -91,47 +97,45 @@ describe('sanitized server response diagnostics', () => {
             },
           });
         });
-      });
-      try {
-        const response = await app.inject({
-          method: 'POST',
-          url: `${path.replace(':ownerId', privateValue)}?token=${privateValue}`,
-          headers: {
-            authorization: `Bearer ${privateValue}`,
-            cookie: privateValue,
-            'x-request-id': privateValue,
-          },
-          payload: { reflection: privateValue, userId: privateValue },
-        });
-        expect(response.statusCode).toBe(status);
-        expectServerError(
-          records(),
-          status,
-          response.headers['x-request-id'],
-          kind === 'database' ? '08006' : undefined,
-        );
-        expect(output()).not.toContain(privateValue);
-        expect(reporter).toHaveBeenCalledExactlyOnceWith({
-          statusCode: status,
-          requestId: response.headers['x-request-id'],
-          ...(kind === 'database' ? { sqlState: '08006' } : {}),
-        });
-        expect(JSON.stringify(reporter.mock.calls)).not.toContain(privateValue);
-        if (kind !== 'direct')
-          expect(response.json()).toEqual(
-            path.startsWith('/v1/')
-              ? {
-                  code: 'UNAVAILABLE',
-                  requestId: response.headers['x-request-id'],
-                }
-              : {
-                  error: 'Internal server error',
-                  requestId: response.headers['x-request-id'],
-                },
-          );
-      } finally {
-        await app.close();
       }
+      app.route('/', scope);
+
+      const response = await apiRequest(app, {
+        method: 'POST',
+        url: `${path.replace(':ownerId', privateValue)}?token=${privateValue}`,
+        headers: {
+          authorization: `Bearer ${privateValue}`,
+          cookie: privateValue,
+          'x-request-id': privateValue,
+        },
+        payload: { reflection: privateValue, userId: privateValue },
+      });
+      expect(response.statusCode).toBe(status);
+      expectServerError(
+        records(),
+        status,
+        response.headers['x-request-id'],
+        kind === 'database' ? '08006' : undefined,
+      );
+      expect(output()).not.toContain(privateValue);
+      expect(reporter).toHaveBeenCalledExactlyOnceWith({
+        statusCode: status,
+        requestId: response.headers['x-request-id'],
+        ...(kind === 'database' ? { sqlState: '08006' } : {}),
+      });
+      expect(JSON.stringify(reporter.mock.calls)).not.toContain(privateValue);
+      if (kind !== 'direct')
+        expect(response.json()).toEqual(
+          path.startsWith('/v1/')
+            ? {
+                code: 'UNAVAILABLE',
+                requestId: response.headers['x-request-id'],
+              }
+            : {
+                error: 'Internal server error',
+                requestId: response.headers['x-request-id'],
+              },
+        );
     },
   );
 
@@ -145,21 +149,21 @@ describe('sanitized server response diagnostics', () => {
     const databaseRelease = new Promise<void>((resolve) => {
       releaseDatabase = resolve;
     });
-    app.addHook('onSend', async (request, _reply, payload) => {
-      if (request.routeOptions.url === '/v1/database') {
+    app.use('/v1/database', async (_context, next) => {
+      await next();
+      {
         markDatabaseWaiting();
         await databaseRelease;
       }
-      return payload;
     });
     app.get('/v1/database', async () => {
       throw new Error(privateValue, { cause: { code: '08006' } });
     });
-    app.get('/v1/direct', async (_request, reply) => reply.code(502).send());
-    const pendingDatabase = app.inject('/v1/database');
+    app.get('/v1/direct', (context) => context.body(null, 502));
+    const pendingDatabase = apiRequest(app, '/v1/database');
     try {
       await databaseWaiting;
-      const direct = await app.inject('/v1/direct');
+      const direct = await apiRequest(app, '/v1/direct');
       expectServerError(records(), 502, direct.headers['x-request-id']);
       releaseDatabase();
       const database = await pendingDatabase;
@@ -176,7 +180,6 @@ describe('sanitized server response diagnostics', () => {
     } finally {
       releaseDatabase();
       await pendingDatabase;
-      await app.close();
     }
   });
 
@@ -190,31 +193,32 @@ describe('sanitized server response diagnostics', () => {
       'info',
       reporter,
     );
-    try {
-      expect((await app.inject('/ready')).json()).toEqual({ status: 'ready' });
-      expect(records().filter((record) => Number(record.level) >= 40)).toEqual(
-        [],
-      );
-      available = false;
-      const unavailable = await app.inject({
-        url: `/ready?token=${privateValue}`,
-        headers: { 'x-request-id': privateValue },
-      });
-      expect(unavailable.statusCode).toBe(503);
-      expect(unavailable.json()).toEqual({ status: 'unavailable' });
-      expect(unavailable.headers['cache-control']).toBe('no-store');
-      expectServerError(records(), 503, unavailable.headers['x-request-id']);
-      expect(reporter).toHaveBeenCalledExactlyOnceWith({
-        statusCode: 503,
-        requestId: unavailable.headers['x-request-id'],
-      });
-      available = true;
-      expect((await app.inject('/ready')).json()).toEqual({ status: 'ready' });
-      expectServerError(records(), 503, unavailable.headers['x-request-id']);
-      expect(output()).not.toContain(privateValue);
-    } finally {
-      await app.close();
-    }
+
+    expect((await apiRequest(app, '/ready')).json()).toEqual({
+      status: 'ready',
+    });
+    expect(records().filter((record) => Number(record.level) >= 40)).toEqual(
+      [],
+    );
+    available = false;
+    const unavailable = await apiRequest(app, {
+      url: `/ready?token=${privateValue}`,
+      headers: { 'x-request-id': privateValue },
+    });
+    expect(unavailable.statusCode).toBe(503);
+    expect(unavailable.json()).toEqual({ status: 'unavailable' });
+    expect(unavailable.headers['cache-control']).toBe('no-store');
+    expectServerError(records(), 503, unavailable.headers['x-request-id']);
+    expect(reporter).toHaveBeenCalledExactlyOnceWith({
+      statusCode: 503,
+      requestId: unavailable.headers['x-request-id'],
+    });
+    available = true;
+    expect((await apiRequest(app, '/ready')).json()).toEqual({
+      status: 'ready',
+    });
+    expectServerError(records(), 503, unavailable.headers['x-request-id']);
+    expect(output()).not.toContain(privateValue);
   });
 
   it.each([200, 204, 400, 401, 404, 409, 429, 499])(
@@ -222,16 +226,13 @@ describe('sanitized server response diagnostics', () => {
     async (status) => {
       const reporter = vi.fn<ServerErrorReporter>().mockResolvedValue();
       const { app, records } = setup(undefined, 'error', reporter);
-      app.get('/response', async (_request, reply) =>
-        reply.code(status).send(),
+      app.get('/response', (context) =>
+        context.body(null, status as StatusCode),
       );
-      try {
-        expect((await app.inject('/response')).statusCode).toBe(status);
-        expect(records()).toEqual([]);
-        expect(reporter).not.toHaveBeenCalled();
-      } finally {
-        await app.close();
-      }
+
+      expect((await apiRequest(app, '/response')).statusCode).toBe(status);
+      expect(records()).toEqual([]);
+      expect(reporter).not.toHaveBeenCalled();
     },
   );
 });

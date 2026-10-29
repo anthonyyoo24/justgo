@@ -13,7 +13,7 @@ provider, private live-session helper and server-only deletion prerequisites.
 
 ## Workspaces and runtimes
 
-The npm workspace contains the Expo application in `apps/mobile`, the Fastify API
+The npm workspace contains the Expo application in `apps/mobile`, the Hono API
 in `apps/api`, and public Zod contracts in `packages/contracts`. Node 24 and npm 11
 are pinned through the root manifest, `.nvmrc` and lockfile. Use the lockfile and
 workspace manifests for exact package versions; Expo's online compatibility
@@ -35,7 +35,7 @@ recommendations are checked separately by the pinned Doctor command.
 | Optional personal cloud copy     | Local Swift Expo module using Apple's private CloudKit database                               |
 | Haptics                          | Pulsar 1.7, gated behind the iPhone TurboModule and saved installation preference             |
 | Complete data download/import    | fflate ZIP, Expo FileSystem/native sharing, DocumentPicker import, browser Blob/file adapters |
-| API                              | Fastify 5, Node.js, TypeScript, Helmet, CORS and redacted Pino diagnostics                    |
+| API                              | Hono 4, Workers / Node adapters, TypeScript and structured allowlisted diagnostics            |
 | Database                         | PostgreSQL, Drizzle ORM and `pg`                                                              |
 | Shared contracts                 | Zod 4 request/response schemas, types and OpenAPI 3.1                                         |
 | Automated checks                 | Jest/jest-expo and React Native Testing Library; Vitest; Playwright; Node test runner         |
@@ -52,15 +52,20 @@ only to JavaScript/assets compatible with the installed runtime.
 
 ## API hosting and database access
 
-The API has a standalone server entrypoint and a Vercel Functions adapter. Durable
-state stays in PostgreSQL; function instances cannot own persistent queues or
-recurring application work. Hosting configuration, environment setup and rollout
-procedures live in [FOUNDATION.md](../operations/FOUNDATION.md).
+The local API has Node (`src/server.ts`) and Workers (`src/worker.ts`) entrypoints
+sharing Hono runtime composition. The deployed Vercel service and installed build 5
+remain unchanged until the separately approved Phase 15 cutover. Durable state
+stays in PostgreSQL. [Server releases](../operations/SERVER_RELEASES.md) and the
+[cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) own hosted configuration.
 
 Supabase hosts PostgreSQL and supplies optional Apple/Google Auth. Mobile uses
-the Auth SDK for provider sessions and calls Fastify for application data; it
-never accesses private database tables directly. Serverless connections use a small reused
-`pg` pool and the configured transaction-pooler connection. Migrations use the
+the Auth SDK for provider sessions and calls the Hono API for application data; it
+never accesses private database tables directly. Node uses a small reused `pg` pool. Workers create and close a one-connection
+pool within each request; Hyperdrive owns upstream pooling with query caching
+disabled. Advisory-lock identity transactions use the same restricted role over
+a separate direct verified-TLS connection because Hyperdrive does not support
+advisory locks. Both connections are probed by readiness. Hosted pooling,
+statement-timeout and connection-budget acceptance remain open. Migrations use the
 separate migrator connection and role. Keep account context transaction-local;
 never retain a transaction across provider calls. Live Auth session checks use a
 postgres-owned private boolean helper; the restricted runtime role receives only
@@ -193,7 +198,7 @@ OpenAPI aligned in the same change.
 The API applies a default 32 KiB body bound and a dedicated 4 MiB sync-batch bound,
 with ten-second request/connection timeouts,
 server-generated request IDs, no-store responses, explicit CORS origins/methods
-and Helmet headers. Versioned failures use a safe typed envelope with a request
+and equivalent security headers. Versioned failures use a safe typed envelope with a request
 ID. Malformed, oversized and unsupported-media requests retain client-error
 statuses; transient service failures become unavailable responses. Secret-bearing
 URLs, request/response bodies and private reflections are excluded from logs.

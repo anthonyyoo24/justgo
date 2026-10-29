@@ -12,7 +12,7 @@ PATCH and key/code account UI remain retired in managed mode.
 
 ## Compatible version set
 
-Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package-lock.json` fixes resolved versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node/Vercel; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
+Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package-lock.json` fixes resolved versions. Use root `npm ci`, not separate workspace installs. Its prepare step builds the contracts package to JavaScript for Node; Metro uses its React Native source export. Re-run `npm run build:contracts` after editing contracts during API development.
 
 | Component                        | Pinned version / constraint                                                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -28,7 +28,7 @@ Direct dependencies use exact pins or Expo SDK-compatible patch ranges; `package
 | Connectivity / saving feedback   | NetInfo 12.0.1 / Sonner Native 0.27.0 / Sonner 2.0.8 web adapter                                                     |
 | React Native Web                 | 0.21.4; development/browser verification only                                                                        |
 | iOS                              | 16.4 minimum, Hermes; original iPhone 17 / iOS 26.4 smoke, retained Phase 07 QA device on iOS 26.5                   |
-| Fastify / Drizzle / pg           | 5.12.7 / 0.45.2 (kit 0.31.10) / 8.23.0                                                                               |
+| Hono / Drizzle / pg              | 4.13.14 / 0.45.4 (kit 0.31.11) / 8.23.1                                                                              |
 | PostgreSQL                       | 17 locally and in CI; Supabase staging 17.6                                                                          |
 | Tests                            | Vitest / coverage-v8 5.0.5; Jest 30.5.2, jest-expo 58.0.12, React Native Testing Library 14.1.0, test-renderer 1.3.0 |
 
@@ -94,7 +94,7 @@ Staging: dedicated **JustGo**, project ref `kmcpcauaxlgpevkkenwd`, Canada Centra
 1. As an administrator, review and apply `apps/api/scripts/provision.sql` once. It creates `justgo_migrator` and `justgo_runtime`, private `justgo` and `drizzle` schemas, permissions and connection/time limits. Set random independent login passwords through a secure administrative channel. Do not put passwords in migrations.
 2. Set the migration connection to direct PostgreSQL or the **session** pooler on 5432, using the migration role. Staging uses `aws-0-ca-central-1.pooler.supabase.com`, username `justgo_migrator.<project-ref>`. Supply the project's trusted CA and keep certificate/hostname verification enabled.
 3. Review generated SQL and journal together. `npm run db:generate -w @justgo/api -- --name feature_name` generates later domain changes; custom migrations use Drizzle Kit's `--custom` option. `npm run db:migrate` verifies the effective migration role before applying the journal to schema `drizzle`.
-4. Runtime uses the **transaction** pooler on 6543, username `justgo_runtime.<project-ref>`, with the separate password. Never use an administrator/migration database role for application queries. Managed Auth's isolated server-only admin SDK holds a deletion-capable secret, separate from the restricted database connection. Mobile calls Supabase Auth for provider sessions and Fastify for application data; it never connects directly to private PostgreSQL tables.
+4. The existing Vercel runtime uses the **transaction** pooler on 6543, username `justgo_runtime.<project-ref>`, with the separate password. The Cloudflare candidate uses Hyperdrive plus direct TLS for advisory-lock transactions, as described in [server releases](SERVER_RELEASES.md). Never use an administrator/migration database role for application queries. Managed Auth's isolated server-only admin SDK holds a deletion-capable secret, separate from the restricted database connection. Mobile calls Supabase Auth for provider sessions and the API for application data; it never connects directly to private PostgreSQL tables.
 
 Managed mode additionally needs the versioned postgres-operator private
 session-check helper in [account setup](ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
@@ -121,11 +121,29 @@ Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 5
 
 ## Backup restore checklist
 
-Use this for any restore of a hosted database from a Supabase backup or point-in-time recovery. A restore must never bring back a deleted journal or allow a revoked credential ([October 16 decision](../DECISIONS.md#october-16-codebase-assessment-follow-up)). **Seven accessible daily backups on Pro** remains Anthony's selected target, not the current Free project's configuration or an expiry guarantee for every provider recovery copy ([Supabase backups](https://supabase.com/docs/guides/platform/backups)). Free has no included automatic daily backups, but [paused-project recovery](https://supabase.com/docs/guides/platform/free-project-pausing) can retain a recoverable copy for up to a year. Verify the selected plan, actual recovery-copy deletion/expiry and any operator exports before publishing retention claims. The [legal review](../legal/LEGAL_REVIEW.md#specific-deletion-and-publication-preparation) records the separate consumer-health deletion requirement. The synthetic stale-snapshot/deletion/isolated-restore rehearsal remains a Phase 14 gate; no customer-data restore is authorized here.
+Use this for a restore from an encrypted R2 recovery copy or a provider backup.
+The October 28 decision selects nightly application/Auth dumps and hourly ledger
+copies in R2 while retaining Supabase Free. Pro is no longer the selected backup
+prerequisite. [Cloudflare backups](CLOUDFLARE_BACKUPS.md) owns tooling, proposed
+retention/key policy and the guarded local restore. Its approval register and
+actual hosted restore/copy-expiry evidence remain open; synthetic regression
+success does not establish operational recovery.
+
+Never restore deleted journals or revoked access. An hourly ledger can be missing
+later deletions. Recovery requires a current writer-fenced ledger covering app and
+Auth mutations; if that record cannot be established, keep writers closed. R2
+locks/lifecycle and Supabase provider copies have separate deletion obligations.
+Total source loss after the last ledger copy can leave recovery closed
+indefinitely; the proposed four-hour recovery target does not cover this gap.
+Accepting that availability limit or adding independently durable deletion records
+requires an explicit policy/scope decision. Neither permits resurrecting deleted
+data. The backup guide also retains the seven-day upload-token renewal requirement;
+scheduled jobs are not proof of unattended renewal or independent offline key
+custody. A protected local key and synthetic round trip do not establish either.
 
 Before restoring:
 
-1. Stop API writes and note the backup's timestamp. Writes other accounts made after that timestamp are not recovered by this checklist.
+1. Fence all API, maintenance and Auth/provider mutations and keep that fence throughout recovery. Note the backup's timestamp; ordinary writes made after it may be lost. Verify the ciphertext receipts and approved source identity before using the owner-held recovery key. Supabase shared session-pooler receipts include `<sourceProjectRef>@<sourceHost>/<sourceDatabase>`; retain the project reference when matching the ledger and recovery evidence. Direct receipts retain `<sourceHost>/<sourceDatabase>`.
 2. With the migration role, save the deletions made since the backup to restricted operator storage, never the repository, logs or tickets: every `justgo.users` row with `deleted_at` set (`id`, `created_at`, `deleted_at`, `deletion_session_digest`) and every `justgo.recovery_credentials` row with `revoked_at` set (`id`, `user_id`, `digest`, `kind`, `revoked_at`). Taking all of them, not only those after the timestamp, is simplest and safe.
    For the managed candidate, also retain all owners' current `data_epoch` /
    `data_deleted_at`, `deleted_completion_ids`, immutable `managed_auth_accounts`
@@ -133,11 +151,19 @@ Before restoring:
    includes Delete all my data events on active accounts, not only deleted users.
    Preserve mapping/receipt consistency and provider subject tombstones; an older
    app-data snapshot must never undo a later Auth/profile or activity deletion.
-   If the current ledger cannot be recovered after a disaster, do not reopen an older snapshot that may lack later deletions/revocations. This checklist does not itself establish an independently recoverable ledger; Phase 14 must evidence that recovery arrangement.
+   If the current ledger cannot be recovered after a disaster, do not reopen an older snapshot that may lack later deletions/revocations. The Phase 15 backup guide records the remaining independent-ledger recovery gate; scheduled copies alone do not close it.
 
 Restore and reapply:
 
 3. Restore into an isolated environment (a new project or branch), never over the live database, with no API pointed at it.
+   Prepare the actual managed Auth roles, extensions, grants and provider
+   configuration without discarding ACLs. R2 dumps exclude `justgo_auth_private`:
+   after restoring the managed schema, reapply the reviewed
+   [`session-check-v1.sql`](../../apps/api/scripts/managed-auth/session-check-v1.sql)
+   as the isolated target's `postgres` operator. Verify the private live-session
+   helper's ownership and restricted runtime usage/execute ACL, keep its schema
+   outside the Data API's exposed schemas, and preserve the ban on direct runtime
+   reads of `auth.sessions` before managed readiness/provider checks.
 4. Apply the current registered forward migrations to the isolated database before reconciliation. In one reviewed migration-role transaction, apply the saved deletions again, exactly as `apps/api/src/identity/delete-account.ts` does. For each deleted account, delete its attempt patch receipts, attempts, transfers, sessions and devices, clear `analytics_restricted_at`, and set `deleted_at` and `deletion_session_digest` from the saved row; insert the user row if the account is newer than the backup. Then make every saved credential revoked: insert missing rows and set `revoked_at` on restored rows that are still active.
    Include journal versions and managed app-session revocation. Reapply active
    accounts' deletion epochs monotonically and their deleted-ID tombstones, remove
@@ -160,17 +186,15 @@ Before reopening the app:
 
 ## API deployment and diagnostics
 
-Entrypoint: `apps/api/src/server.ts`, importing Fastify directly for Vercel detection. `build-app.ts` contains the injected/testable app factory. Vercel project **justgo** has root `apps/api`, Fastify preset, Node 24.x, Montréal (`yul1`) function region, and install command `cd ../.. && npm ci`. Deploy from the repository root so the workspace lockfile and contracts are included:
-
-```sh
-npx vercel@latest link --project justgo --scope anthony-youngshin-yoos-projects
-npx vercel@latest deploy --dry --json
-npx vercel@latest deploy --target=preview --regions yul1 --yes --scope anthony-youngshin-yoos-projects
-```
-
-Phase 01 verified staging deployment (historical; see the latest handoff for the current preview): `https://justgo-303esikf7-anthony-youngshin-yoos-projects.vercel.app`. Both health/readiness returned healthy JSON using authenticated `vercel curl`.
-
-Set runtime variables in the **preview** environment before deployment. Use Secret storage for `DATABASE_URL`; do not pass its value as a command-line argument. An explicit preview target avoids Vercel treating a project's first deployment as production. The app has no release production deployment yet. Preserve Vercel deployment protection; use authenticated CLI requests for protected verification. A phone needs an owner-approved reachable staging route before it can call a protected preview.
+Local entrypoints are `apps/api/src/server.ts` for Node and `apps/api/src/worker.ts`
+for Workers. Both use the injected Hono app and runtime composition. The current
+deployed Vercel service is still the historical build-5 staging API; no Cloudflare
+rollout is implied by local source changes. Its config/credentials are retained
+until approved retirement, and new releases use the protected Workers candidate
+lane in [SERVER_RELEASES.md](SERVER_RELEASES.md). The
+[cutover guide](CLOUDFLARE_CUTOVER.md) owns account approval, placement/CPU/latency,
+mobile URLs, monitor switch and old-build retirement. Do not redeploy the old
+Fastify preset with the new Hono source.
 
 | Route         | Contract                                                      | Failure                                              |
 | ------------- | ------------------------------------------------------------- | ---------------------------------------------------- |
@@ -180,7 +204,7 @@ Set runtime variables in the **preview** environment before deployment. Use Secr
 Responses use `no-store`, security headers and server-generated request IDs. The Phase 01 connection probe validated both endpoints with an 8-second deadline. The current identity UI uses the authenticated API and its 10-second request deadline; see [IDENTITY.md](../architecture/IDENTITY.md). Readiness never returns credentials, SQL, database host or role details. Logging uses allowlisted request/response/error fields; URLs, headers, bodies and raw error messages are omitted. Identity and private reflection records now exist; diagnostics must exclude both secrets and journal contents.
 
 The current entry flow uses ordinary Terms/Privacy links and Continue without
-legal-view/agreement receipts. Sentry remains configured but delivery disabled;
+legal-view/agreement receipts. Build 5 and its deployed API have approved essential-error delivery;
 product analytics remains disabled. Signed-in journal text now reaches the
 dedicated API journal resource. The authorized staging rollout is configured for
 owner testing; public distribution still requires reopened provider, retention and

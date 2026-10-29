@@ -92,3 +92,13 @@ and the root Privacy page; Terms were unchanged. The publication also confirmed 
 project's model-training sharing is disabled. EAS preview public legal URLs and
 App Store Connect's Privacy Policy URL use the published destinations. Actual
 signed-iPhone opening/accessibility remains Phase 14 acceptance.
+
+## Cloudflare candidate
+
+`wrangler.json` prepares an assets-only Worker with the same stable document
+paths. Its build runs `cloudflare.mjs`, which requires the existing publication
+approval/date metadata plus an explicit `deployment-host: cloudflare` marker.
+The current approved Vercel notice does not satisfy that additional gate.
+Review [the exact candidate wording](../../docs/legal/CLOUDFLARE_NOTICE_REVIEW.md)
+and [cutover procedure](../../docs/operations/CLOUDFLARE_CUTOVER.md) first.
+No deployment, DNS switch or old-site removal has occurred.

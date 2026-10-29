@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/build-app.js';
 
@@ -24,7 +25,7 @@ describe('API response reporting boundary', () => {
       throw new Error('private content', { cause: { code: '08006' } });
     });
     let completed = false;
-    const pending = app.inject('/v1/private-error').then((response) => {
+    const pending = apiRequest(app, '/v1/private-error').then((response) => {
       completed = true;
       return response;
     });
@@ -46,7 +47,6 @@ describe('API response reporting boundary', () => {
     } finally {
       finish();
       await pending;
-      await app.close();
     }
   });
 
@@ -59,19 +59,14 @@ describe('API response reporting boundary', () => {
       logger: false,
       reportServerError: reporter,
     });
-    app.get('/failure', async (_request, reply) =>
-      reply.code(502).send({ error: 'failed' }),
-    );
-    try {
-      expect((await app.inject('/health')).statusCode).toBe(200);
-      expect((await app.inject('/missing')).statusCode).toBe(404);
-      expect(reporter).not.toHaveBeenCalled();
-      const response = await app.inject('/failure');
-      expect(response.statusCode).toBe(502);
-      expect(response.json()).toEqual({ error: 'failed' });
-      expect(reporter).toHaveBeenCalledOnce();
-    } finally {
-      await app.close();
-    }
+    app.get('/failure', (context) => context.json({ error: 'failed' }, 502));
+
+    expect((await apiRequest(app, '/health')).statusCode).toBe(200);
+    expect((await apiRequest(app, '/missing')).statusCode).toBe(404);
+    expect(reporter).not.toHaveBeenCalled();
+    const response = await apiRequest(app, '/failure');
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toEqual({ error: 'failed' });
+    expect(reporter).toHaveBeenCalledOnce();
   });
 });

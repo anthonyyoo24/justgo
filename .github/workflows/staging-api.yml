@@ -8,10 +8,10 @@ on:
         required: true
         type: string
       operation:
-        description: Code-only deploy, or explicitly reviewed migrations followed by deploy
+        description: First Worker bootstrap, code-only deploy, or reviewed migrations and deploy
         required: true
         type: choice
-        options: [deploy, migrate-deploy]
+        options: [deploy, migrate-deploy, bootstrap]
       migration_plan_sha256:
         description: Exact reviewed pending-plan digest (migrate-deploy only)
         required: false
@@ -50,7 +50,7 @@ jobs:
           release_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
           git merge-base --is-ancestor "$release_sha" refs/remotes/origin/main
           case "$RELEASE_OPERATION" in
-            deploy) [[ -z "$MIGRATION_PLAN_SHA256" ]] || exit 1 ;;
+            deploy|bootstrap) [[ -z "$MIGRATION_PLAN_SHA256" ]] || exit 1 ;;
             migrate-deploy) [[ "$MIGRATION_PLAN_SHA256" =~ ^[a-f0-9]{64}$ ]] || exit 1 ;;
             *) exit 1 ;;
           esac
@@ -78,7 +78,7 @@ jobs:
     timeout-minutes: 30
     environment:
       name: justgo-staging
-      url: https://justgo-two.vercel.app
+      url: ${{ vars.STAGING_WORKER_ORIGIN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -93,27 +93,41 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/environments/justgo-staging/deployment-branch-policies" > "$RUNNER_TEMP/staging-branches.json"
           node scripts/release/staging-api.mjs environment "$RUNNER_TEMP/staging-environment.json" "$RUNNER_TEMP/staging-branches.json"
       - uses: ./.github/actions/setup-node
-      - name: Install lockfile-pinned Vercel CLI
-        run: |
-          npm ci --prefix scripts/release/vercel-cli
-          printf '%s\n' "$GITHUB_WORKSPACE/scripts/release/vercel-cli/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Guard database history and release exact staging candidate
+        if: inputs.operation != 'bootstrap'
         env:
           RELEASE_SHA: ${{ needs.validate.outputs.sha }}
           RELEASE_OPERATION: ${{ inputs.operation }}
           MIGRATION_PLAN_SHA256: ${{ inputs.migration_plan_sha256 }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-          VERCEL_ORG_ID: team_fAS7k1lpUEvk1jtNAz0SJhnq
-          VERCEL_PROJECT_ID: prj_j3ubtzyuYsCbpuGjKNmm5dLB8YZB
-          VERCEL_TELEMETRY_DISABLED: '1'
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}
+          STAGING_HYPERDRIVE_ID: ${{ vars.STAGING_HYPERDRIVE_ID }}
+          WRANGLER_SEND_METRICS: 'false'
           MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
           DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
           STAGING_RECOVERY_ATTESTATION: ${{ secrets.STAGING_RECOVERY_ATTESTATION }}
         run: |
           umask 077
           node --import tsx apps/api/scripts/staging-release.ts
+      - name: Bootstrap the first reviewed staging Worker
+        if: inputs.operation == 'bootstrap'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+          RELEASE_OPERATION: bootstrap
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}
+          STAGING_HYPERDRIVE_ID: ${{ vars.STAGING_HYPERDRIVE_ID }}
+          STAGING_BOOTSTRAP_BINDINGS: ${{ secrets.STAGING_BOOTSTRAP_BINDINGS }}
+          WRANGLER_SEND_METRICS: 'false'
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+        run: |
+          umask 077
+          node --import tsx scripts/release/staging-bootstrap.mjs
       - name: Remove private release files
         if: always()
         shell: bash
-        run: rm -rf .vercel "$RUNNER_TEMP"/justgo-api-probes-* "$RUNNER_TEMP"/justgo-api-cli-*
+        run: rm -rf "$RUNNER_TEMP"/justgo-worker-release-* "$RUNNER_TEMP"/justgo-worker-bootstrap-*

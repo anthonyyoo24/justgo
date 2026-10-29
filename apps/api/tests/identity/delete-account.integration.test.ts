@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Writable } from 'node:stream';
 import { afterAll, describe, expect, it, vi } from 'vitest';
@@ -51,7 +52,7 @@ function remove(
   token?: string,
   payload: object = { confirmation: 'delete-account' },
 ) {
-  return app.inject({
+  return apiRequest(app, {
     method: 'DELETE',
     url: '/v1/account',
     payload,
@@ -84,7 +85,7 @@ afterAll(async () => {
       await admin.query(`delete from justgo.${table} where user_id=$1`, [id]);
     await admin.query('delete from justgo.users where id=$1', [id]);
   }
-  await app.close();
+
   await Promise.all([database.pool.end(), admin.end()]);
 });
 describe('permanent owner-only deletion on the restricted database role', () => {
@@ -354,7 +355,7 @@ describe('deletion diagnostics', () => {
       },
     });
     const send = (token: string, payload: object) =>
-      logged.inject({
+      apiRequest(logged, {
         method: 'DELETE',
         url: '/v1/account',
         payload,
@@ -392,7 +393,6 @@ describe('deletion diagnostics', () => {
     });
     expect(retried.json()).toEqual(deleted.json());
     const receipt = accountDeletionResponseSchema.parse(deleted.json());
-    await logged.close();
 
     const records = output
       .trim()

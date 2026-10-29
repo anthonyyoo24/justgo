@@ -2,7 +2,9 @@
 
 # Phase 15 — Cloudflare API hosting & R2 backups
 
-**Status:** Planned; not started. Required before outside testers store real journals.
+**Status:** In progress; local candidate prepared. Hosted/privacy/device acceptance
+remains open before outside testers store real journals. See the
+[implementation handoff](../handoffs/phase-15-cloudflare-api.md).
 
 ## Outcome
 
@@ -90,6 +92,9 @@ Phase 14 paid checkpoint.
 - Connect `pg` and Drizzle through Hyperdrive to the existing Supabase database.
   Check connection limits, transactions, advisory locks and statement timeouts
   under Hyperdrive. Fix any query that relied on a long-lived Node pool.
+- Preserve advisory-lock identity transactions on a separate direct restricted-role
+  TLS connection: current Hyperdrive documentation lists advisory locks as unsupported.
+  Verify both connections at readiness; keep every such transaction on one connection.
 - Place the Worker near Canada Central (Smart Placement or a placement hint) and
   measure p50/p95 latency and CPU per route against the current Vercel API.
 - Store secrets with `wrangler secret`. Keep staging and production as separate
@@ -157,14 +162,14 @@ R2 backups continue after an upgrade.
 ## Ready to hand off when
 
 - [ ] Anthony has confirmed that Cloudflare's DPA covers this account and recorded its version.
-- [ ] The full suite, `test:coverage`, `test:db`, contract tests and the Workers smoke test pass on the Hono API.
+- [x] The full suite, coverage floors, database/migration checks, contract tests and the Workers smoke test pass locally on the Hono API. The handoff records constituent execution without repeating overlapping wrappers; hosted CI remains open.
 - [ ] The staging Worker served a reviewed release through the approval-gated lane, and its uptime monitor is green.
 - [ ] Measured latency and CPU are recorded, and the Workers plan choice is approved.
 - [ ] A nightly backup and an hourly ledger copy have run on schedule, and the local restore rehearsal kept deleted accounts deleted.
 - [ ] A physical iPhone running a TestFlight build against the Workers API passed the Phase 14 smoke journeys.
 - [ ] Updated notices are approved and published, and the Vercel API is retired or its retirement date is recorded.
 - [ ] Every item in the remaining-decision register has a recorded result or explicit owner/phase disposition; separate Phase 14 gates remain visible and no unverified check is reported as passed.
-- [ ] The handoff records the changes, problems, verification and remaining gates; the handoff index links it.
+- [x] The handoff records the changes, problems, verification and remaining gates; the handoff index links it.
 
 ## Open gates for Phase 14
 

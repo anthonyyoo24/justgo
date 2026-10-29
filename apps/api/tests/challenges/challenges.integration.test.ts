@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
@@ -54,7 +55,7 @@ async function account() {
   return { ...input, userId: result.userId };
 }
 const request = (token: string, path: string, body?: object) =>
-  app.inject({
+  apiRequest(app, {
     method: body ? 'POST' : 'GET',
     url: `/v1/challenges${path}`,
     headers: { authorization: `Bearer ${token}` },
@@ -71,7 +72,7 @@ afterAll(async () => {
       await admin.query(`delete from justgo.${table} where user_id=$1`, [id]);
     await admin.query('delete from justgo.users where id=$1', [id]);
   }
-  await app.close();
+
   await Promise.all([db.pool.end(), admin.end()]);
 });
 describe('canonical catalog and final route cutover', () => {
@@ -120,7 +121,7 @@ describe('canonical catalog and final route cutover', () => {
       ['GET', '/v1/progress?month=2026-10&timeZone=UTC'],
       ['GET', '/v1/progress/days/2026-10-01'],
     ] as const) {
-      const result = await app.inject({
+      const result = await apiRequest(app, {
         method,
         url,
         headers: { authorization: `Bearer ${a.sessionToken}` },
