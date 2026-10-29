@@ -1,5 +1,6 @@
+import type { ApiApp } from '../http/request.js';
+import { requestQuery } from '../http/request.js';
 import { parse } from '../http/parse.js';
-import type { FastifyInstance } from 'fastify';
 import {
   progressSummaryQuerySchema,
   progressSummarySchema,
@@ -8,28 +9,25 @@ import {
 } from '@justgo/contracts';
 import { bearer } from '../http/bearer.js';
 import type { ProgressResources } from './service.js';
-
-/**
- * Register independent summary and calendar reads with validated query inputs.
- * Day-history paging belongs to the attempt routes, not a combined Progress read.
- */
-export function progressRoutes(
-  app: FastifyInstance,
-  resources: ProgressResources,
-) {
-  app.get('/summary', async (req) =>
-    progressSummarySchema.parse(
-      await resources.summary(
-        bearer(req),
-        parse(progressSummaryQuerySchema, req.query).timeZone,
+/** Independent summary and calendar reads; day paging belongs to attempts. */
+export function progressRoutes(app: ApiApp, resources: ProgressResources) {
+  app.get('/summary', async (context) =>
+    context.json(
+      progressSummarySchema.parse(
+        await resources.summary(
+          bearer(context),
+          parse(progressSummaryQuerySchema, requestQuery(context)).timeZone,
+        ),
       ),
     ),
   );
-  app.get('/calendar', async (req) =>
-    progressCalendarSchema.parse(
-      await resources.calendar(
-        bearer(req),
-        parse(progressCalendarQuerySchema, req.query).month,
+  app.get('/calendar', async (context) =>
+    context.json(
+      progressCalendarSchema.parse(
+        await resources.calendar(
+          bearer(context),
+          parse(progressCalendarQuerySchema, requestQuery(context)).month,
+        ),
       ),
     ),
   );

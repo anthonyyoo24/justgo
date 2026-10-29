@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import {
   db,
   admin,
@@ -56,7 +57,7 @@ it('creates, recovers and renews through the discriminated session resource with
   expect(
     (await post('/sessions', { kind: 'bootstrap', ...input })).json(),
   ).toEqual(original);
-  const current = await app.inject({
+  const current = await apiRequest(app, {
     url: '/v1/sessions/current',
     headers: { authorization: `Bearer ${input.sessionToken}` },
   });
@@ -89,7 +90,7 @@ it('creates, recovers and renews through the discriminated session resource with
   );
   expect(
     (
-      await app.inject({
+      await apiRequest(app, {
         url: '/v1/sessions/current',
         headers: { authorization: `Bearer ${recovery.sessionToken}` },
       })
@@ -101,7 +102,7 @@ it('lets the receiver cancel before approval without changing its current accoun
   const current = await account(),
     t = await start();
   const cancel = () =>
-    app.inject({
+    apiRequest(app, {
       method: 'DELETE',
       url: `/v1/transfers/${t.input.id}`,
       payload: t.input,
@@ -151,7 +152,7 @@ it('requires the complete exact receiver proposal and validates the resource id'
       }),
     ).rejects.toMatchObject({ code: 'CREDENTIAL_REJECTED' });
   }
-  const invalid = await app.inject({
+  const invalid = await apiRequest(app, {
     method: 'DELETE',
     url: `/v1/transfers/${randomUUID()}`,
     payload: t.input,
@@ -160,7 +161,7 @@ it('requires the complete exact receiver proposal and validates the resource id'
   expect(invalid.statusCode).toBe(400);
   expect(
     (
-      await app.inject({
+      await apiRequest(app, {
         method: 'DELETE',
         url: `/v1/transfers/${t.input.id}`,
         payload: { code: t.input.code },
@@ -250,7 +251,7 @@ it('rejects changed-input reuse, forged ownership fields, weak tokens and invali
       })
     ).statusCode,
   ).toBe(400);
-  expect((await app.inject('/v1/sessions/current')).statusCode).toBe(401);
+  expect((await apiRequest(app, '/v1/sessions/current')).statusCode).toBe(401);
   expect(
     bootstrapSchema.safeParse({ ...a.input, sessionToken: 'x'.repeat(64) })
       .success,

@@ -5,6 +5,7 @@ export class StagingRunnerFailure extends Error {
 export function stagingRunnerFailureCode(error: unknown): string | undefined;
 export type StagingReceipt = {
   sourceSha: string;
+  versionId: string;
   deploymentId: string;
   previousDeploymentId: string;
   uploadSha256: string;

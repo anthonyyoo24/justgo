@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import {
   admin,
   service,
@@ -392,7 +393,7 @@ it('shares the sensitive budget with transfer cancellation and leaves blocked tr
     ip,
   );
   expect(inspection.statusCode).toBe(429);
-  const session = await app.inject({
+  const session = await apiRequest(app, {
     url: '/v1/sessions/current',
     remoteAddress: ip,
     headers: { authorization: `Bearer ${owner.input.sessionToken}` },

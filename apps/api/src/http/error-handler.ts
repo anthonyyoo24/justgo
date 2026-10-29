@@ -1,9 +1,10 @@
-import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import type { ApiContext } from './request.js';
 import type { IdentityErrorCode } from '@justgo/contracts';
 import { ApiError } from './api-error.js';
 import { captureServerErrorSqlState, sqlState } from './diagnostics.js';
 
-/** Typed codes for request errors Fastify raises before route code runs. */
+/** Typed codes for request errors the HTTP reader raises before route code runs. */
 const requestErrorCodes: Partial<Record<number, IdentityErrorCode>> = {
   400: 'INVALID_REQUEST',
   413: 'REQUEST_TOO_LARGE',
@@ -28,45 +29,51 @@ function versionedFailure(error: {
 }
 
 export function errorHandler(
-  error: FastifyError,
-  request: FastifyRequest,
-  reply: FastifyReply,
+  error: Error & { statusCode?: number },
+  context: ApiContext,
 ) {
-  if (request.url.startsWith('/v1/')) {
+  const request = context.get('diagnostic');
+  if (context.req.path.startsWith('/v1/')) {
     if (error instanceof ApiError) {
       if (
         error.code === 'RATE_LIMITED' &&
         error.retryAfterSeconds !== undefined
       )
-        reply.header('retry-after', error.retryAfterSeconds);
-      void reply.code(error.status).send(error.response(request.id));
-      return;
+        context.header('retry-after', String(error.retryAfterSeconds));
+      return context.json(
+        error.response(request.id),
+        error.status as ContentfulStatusCode,
+      );
     }
     const { status, code } = versionedFailure(error);
-    // The response hook owns 5xx reporting, including failures sent without a throw.
     if (status < 500) request.log.error({ err: error }, 'API operation failed');
     else captureServerErrorSqlState(request, error);
-    void reply.code(status).send({ code, requestId: request.id });
-    return;
+    return context.json(
+      { code, requestId: request.id },
+      status as ContentfulStatusCode,
+    );
   }
-  const statusCode =
+  const status =
     error.statusCode && error.statusCode >= 400 && error.statusCode < 500
       ? error.statusCode
       : 500;
-  if (statusCode < 500) request.log.error({ err: error }, 'Request failed');
+  if (status < 500) request.log.error({ err: error }, 'Request failed');
   else captureServerErrorSqlState(request, error);
-  void reply.code(statusCode).send({
-    error: statusCode < 500 ? 'Invalid request' : 'Internal server error',
-    requestId: request.id,
-  });
+  return context.json(
+    {
+      error: status < 500 ? 'Invalid request' : 'Internal server error',
+      requestId: request.id,
+    },
+    status as ContentfulStatusCode,
+  );
 }
 
-export function notFoundHandler(request: FastifyRequest, reply: FastifyReply) {
-  return reply
-    .code(404)
-    .send(
-      request.url.startsWith('/v1/')
-        ? { code: 'NOT_FOUND', requestId: request.id }
-        : { error: 'Not found', requestId: request.id },
-    );
+export function notFoundHandler(context: ApiContext) {
+  const requestId = context.get('diagnostic').id;
+  return context.json(
+    context.req.path.startsWith('/v1/')
+      ? { code: 'NOT_FOUND', requestId }
+      : { error: 'Not found', requestId },
+    404,
+  );
 }

@@ -1,0 +1,60 @@
+name: Encrypted database recovery copies
+
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: 'Approved encrypted recovery copy'
+        type: choice
+        options: [database, ledger]
+        required: true
+  schedule:
+    - cron: '43 4 * * *'
+    - cron: '23 * * * *'
+
+permissions: {}
+
+concurrency:
+  group: database-recovery-copies
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    # Repository opt-in is set only after account, policy, keys and alerts approval.
+    # Protected environment holds separate backup-only secrets, never API secrets.
+    if: github.repository == 'anthonyyoo24/justgo' && github.ref == 'refs/heads/main' && vars.JUSTGO_BACKUPS_ENABLED == 'approved'
+    environment: database-backups
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      JUSTGO_BACKUPS_ENABLED: ${{ vars.JUSTGO_BACKUPS_ENABLED }}
+      BACKUP_KIND: ${{ github.event_name == 'schedule' && (github.event.schedule == '43 4 * * *' && 'database' || 'ledger') || inputs.kind }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - name: Install recovery tools
+        run: |
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install --yes age postgresql-client-17
+          age --version
+          /usr/lib/postgresql/17/bin/pg_dump --version
+      - name: Encrypt and verify recovery copy
+        env:
+          JUSTGO_PG_BIN: /usr/lib/postgresql/17/bin
+          BACKUP_POLICY_JSON: ${{ vars.BACKUP_POLICY_JSON }}
+          BACKUP_POLICY_SHA256: ${{ vars.BACKUP_POLICY_SHA256 }}
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_DATABASE_CA_CERT: ${{ secrets.BACKUP_DATABASE_CA_CERT }}
+          R2_UPLOAD_ACCESS_KEY_ID: ${{ secrets.R2_UPLOAD_ACCESS_KEY_ID }}
+          R2_UPLOAD_SECRET_ACCESS_KEY: ${{ secrets.R2_UPLOAD_SECRET_ACCESS_KEY }}
+          R2_UPLOAD_SESSION_TOKEN: ${{ secrets.R2_UPLOAD_SESSION_TOKEN }}
+          R2_INSPECT_TOKEN: ${{ secrets.R2_INSPECT_TOKEN }}
+          BACKUP_SENTRY_DSN: ${{ secrets.BACKUP_SENTRY_DSN }}
+        run: node scripts/backups/run.mjs
+      # No artifact upload: plaintext, ciphertext, keys and credentials never enter
+      # GitHub's artifact store. The runner always removes its temporary ciphertext.

@@ -1,4 +1,9 @@
-import type { FastifyInstance } from 'fastify';
+import type { ApiApp } from '../http/request.js';
+import {
+  parseRequestBody,
+  requestBody,
+  requestQuery,
+} from '../http/request.js';
 import {
   completionRestoreRequestSchema,
   completionRestoreResponseSchema,
@@ -16,48 +21,55 @@ import { parse } from '../http/parse.js';
 import { CompletionRestoreService } from './completions.js';
 import { JournalSyncService } from './journal.js';
 import { DeleteDataService } from './deletion.js';
-export function dataSyncRoutes(
-  app: FastifyInstance,
-  identity: IdentityService,
-) {
+export function dataSyncRoutes(app: ApiApp, identity: IdentityService) {
   const completions = new CompletionRestoreService(identity),
     journal = new JournalSyncService(identity),
     deletion = new DeleteDataService(identity);
   // 50 records with 10,000-character historical instructions are bounded separately from ordinary API bodies.
-  const batchOptions = { bodyLimit: 4 * 1024 * 1024 };
-  app.post('/completion-restores', batchOptions, async (request) =>
-    completionRestoreResponseSchema.parse(
-      await completions.restore(
-        bearer(request),
-        parse(completionRestoreRequestSchema, request.body),
+  const batchBody = parseRequestBody(4 * 1024 * 1024);
+  app.post('/completion-restores', batchBody, async (request) =>
+    request.json(
+      completionRestoreResponseSchema.parse(
+        await completions.restore(
+          bearer(request),
+          parse(completionRestoreRequestSchema, requestBody(request)),
+        ),
       ),
     ),
   );
   app.get('/completion-restores', async (request) => {
-    const query = parse(syncPageQuerySchema, request.query);
-    return completionRestorePageSchema.parse(
-      await completions.page(bearer(request), query.cursor, query.limit),
+    const query = parse(syncPageQuerySchema, requestQuery(request));
+    return request.json(
+      completionRestorePageSchema.parse(
+        await completions.page(bearer(request), query.cursor, query.limit),
+      ),
     );
   });
-  app.post('/journal-sync', batchOptions, async (request) =>
-    journalSyncResponseSchema.parse(
-      await journal.save(
-        bearer(request),
-        parse(journalSyncRequestSchema, request.body),
+  app.post('/journal-sync', batchBody, async (request) =>
+    request.json(
+      journalSyncResponseSchema.parse(
+        await journal.save(
+          bearer(request),
+          parse(journalSyncRequestSchema, requestBody(request)),
+        ),
       ),
     ),
   );
   app.get('/journal-sync', async (request) => {
-    const query = parse(syncPageQuerySchema, request.query);
-    return journalSyncPageSchema.parse(
-      await journal.page(bearer(request), query.cursor, query.limit),
+    const query = parse(syncPageQuerySchema, requestQuery(request));
+    return request.json(
+      journalSyncPageSchema.parse(
+        await journal.page(bearer(request), query.cursor, query.limit),
+      ),
     );
   });
-  app.delete('/data', async (request) =>
-    dataDeletionResponseSchema.parse(
-      await deletion.delete(
-        bearer(request),
-        parse(dataDeletionRequestSchema, request.body).expectedEpoch,
+  app.delete('/data', parseRequestBody(), async (request) =>
+    request.json(
+      dataDeletionResponseSchema.parse(
+        await deletion.delete(
+          bearer(request),
+          parse(dataDeletionRequestSchema, requestBody(request)).expectedEpoch,
+        ),
       ),
     ),
   );

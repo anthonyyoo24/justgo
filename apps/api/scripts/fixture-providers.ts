@@ -1,7 +1,9 @@
 // Imported only by the guarded disposable loopback server, never by src/server.
 import { randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type { FastifyInstance } from 'fastify';
+import type { ApiApp } from '../src/http/request.js';
+import { parseRequestBody, requestBody } from '../src/http/request.js';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type {
   ManagedAuthVerifier,
   VerifiedManagedIdentity,
@@ -153,24 +155,28 @@ export class FixtureProviders {
   };
 }
 export function fixtureProviderRoutes(
-  app: FastifyInstance,
+  app: ApiApp,
   providers: FixtureProviders,
 ) {
-  app.setErrorHandler((error, request, reply) => {
+  app.onError((error, context) => {
+    const requestId = context.get('diagnostic').id;
     if (error instanceof ApiError)
-      return reply.code(error.status).send(error.response(request.id));
-    return reply
-      .code(400)
-      .send({ code: 'INVALID_REQUEST', requestId: request.id });
+      return context.json(
+        error.response(requestId),
+        error.status as ContentfulStatusCode,
+      );
+    return context.json({ code: 'INVALID_REQUEST', requestId }, 400);
   });
-  app.post('/provider-sessions', async (request) =>
-    providers.create(request.body),
+  app.post('/provider-sessions', parseRequestBody(), (context) =>
+    context.json(providers.create(requestBody(context))),
   );
-  app.post('/provider-links', async (request) => providers.link(request.body));
-  app.post('/provider-unlinks', async (request) =>
-    providers.unlink(request.body),
+  app.post('/provider-links', parseRequestBody(), (context) =>
+    context.json(providers.link(requestBody(context))),
   );
-  app.post('/provider-sign-outs', async (request) =>
-    providers.signOut(request.body),
+  app.post('/provider-unlinks', parseRequestBody(), (context) =>
+    context.json(providers.unlink(requestBody(context))),
+  );
+  app.post('/provider-sign-outs', parseRequestBody(), (context) =>
+    context.json(providers.signOut(requestBody(context))),
   );
 }

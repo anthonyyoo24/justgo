@@ -146,7 +146,7 @@ requires `JUSTGO_TEST_ADMIN_DATABASE_URL` for a `postgres` connection to loopbac
 jobs supply it; existing local `.env` files need that test-only value added.
 The test refuses occupied Auth/helper schemas, executes the actual operator SQL
 inside a rollback-only fixture transaction and never targets hosted Auth. Never
-deploy this test operator URL on Vercel or mobile. Individual workspace coverage scripts generate
+deploy this test operator URL on Workers, Vercel or mobile. Individual workspace coverage scripts generate
 reports; the root command applies the combined gate. Reports are ignored generated
 output under `coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
 Jest uses Istanbul; Vitest's V8 provider is pinned with its Vitest version.
@@ -343,6 +343,29 @@ only masked UI failure screenshots are permitted. Reports must include a nonempt
 `index.html`; CI uploads report/attachments and treats missing required output as
 failure. The repository bundle is rebuilt with pinned esbuild; an ignored prior
 artifact is never a prerequisite.
+
+## Workers runtime and encrypted recovery
+
+`npm run test:workers` starts the actual pinned Wrangler/workerd entrypoint against
+only loopback `justgo_test`, checks readiness and authenticated database read/write,
+idempotent completion replay and the safe error envelope, then cleans its known
+owner and owned process. It rejects occupied ports; `JUSTGO_WORKERS_TEST_PORT`
+may select another unprivileged loopback port. Configuration/ciphertext/log output
+must not disclose credentials. This is local runtime evidence, not hosted
+Hyperdrive, CPU, DPA or account acceptance.
+
+`npm run test:backup:recovery` uses PostgreSQL 17 and `age` (1.3.2 locally) to
+create isolated `justgo_restore_<id>` databases, encrypt a stale snapshot and
+newer ledger, restore/reconcile, and check revoked/deleted credential rejection.
+It removes test keys, ciphertext, temporary roles and databases. It requires the
+existing loopback test-only admin URL and refuses hosted targets. Synthetic Auth
+fixtures do not prove a real Supabase Auth dump's roles/extensions/ACLs restore.
+See [Cloudflare backups](CLOUDFLARE_BACKUPS.md) for operational limitations.
+
+Both commands run sequentially after API database coverage in the existing CI
+database job, reusing its PostgreSQL service; `age` joins its PG17 tool setup.
+Pure backup/release/configuration regressions are part of `test:architecture`.
+No new native, simulator or mobile UI gate is introduced by this API port.
 
 ## Production exported-web smoke
 

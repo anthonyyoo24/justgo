@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { service, app, account } from './fixtures/identity.js';
 
 import { expect, it } from 'vitest';
@@ -5,10 +6,10 @@ import { expect, it } from 'vitest';
 import { buildApp } from '../../src/build-app.js';
 
 it('requires a real active session and fails closed without billing', async () => {
-  const missing = await app.inject({ url: '/v1/access' });
+  const missing = await apiRequest(app, { url: '/v1/access' });
   expect(missing.statusCode).toBe(401);
   const owner = await account();
-  const response = await app.inject({
+  const response = await apiRequest(app, {
     url: '/v1/access',
     headers: { authorization: `Bearer ${owner.input.sessionToken}` },
   });
@@ -16,7 +17,7 @@ it('requires a real active session and fails closed without billing', async () =
   expect(response.json()).toMatchObject({ status: 'unavailable' });
   expect(response.headers['cache-control']).toBe('no-store');
   await service.revokeDevice(owner.input.sessionToken, owner.input.deviceId);
-  const revoked = await app.inject({
+  const revoked = await apiRequest(app, {
     url: '/v1/access',
     headers: { authorization: `Bearer ${owner.input.sessionToken}` },
   });
@@ -44,19 +45,16 @@ it('executes the entitlement reader inside the verified owner transaction and is
         : { status: 'unpaid', checkedAt: new Date().toISOString() };
     },
   });
-  try {
-    for (const [owner, status] of [
-      [a, 'verified'],
-      [b, 'unpaid'],
-    ] as const) {
-      const response = await isolated.inject({
-        url: '/v1/access',
-        headers: { authorization: `Bearer ${owner.input.sessionToken}` },
-      });
-      expect(response.json().status).toBe(status);
-    }
-  } finally {
-    await isolated.close();
+
+  for (const [owner, status] of [
+    [a, 'verified'],
+    [b, 'unpaid'],
+  ] as const) {
+    const response = await apiRequest(isolated, {
+      url: '/v1/access',
+      headers: { authorization: `Bearer ${owner.input.sessionToken}` },
+    });
+    expect(response.json().status).toBe(status);
   }
 });
 
@@ -72,13 +70,10 @@ it('rejects stale paid access and does not accept request premium flags as autho
       expiresAt: new Date(Date.now() - 1).toISOString(),
     }),
   });
-  try {
-    const result = await isolated.inject({
-      url: '/v1/access?premium=true',
-      headers: { authorization: `Bearer ${owner.input.sessionToken}` },
-    });
-    expect(result.json().status).toBe('unpaid');
-  } finally {
-    await isolated.close();
-  }
+
+  const result = await apiRequest(isolated, {
+    url: '/v1/access?premium=true',
+    headers: { authorization: `Bearer ${owner.input.sessionToken}` },
+  });
+  expect(result.json().status).toBe('unpaid');
 });

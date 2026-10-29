@@ -225,6 +225,59 @@ export async function withStagingRelease<T>(
   },
   deploy: () => Promise<T>,
 ): Promise<T> {
+  return withStagingDatabaseLease(
+    client,
+    options.expectedDatabase,
+    async () => {
+      const previousApiSha =
+        typeof options.previousApiSha === 'function'
+          ? await options.previousApiSha()
+          : options.previousApiSha;
+      const entries = migrationEntries(options.config);
+      const plan = migrationPlan(
+        entries,
+        await appliedHistory(client, options.config),
+        options.sourceSha,
+        previousApiSha,
+      );
+      options.onPlan?.(plan);
+      if (plan.pending.length) {
+        ensure(
+          options.operation === 'migrate-deploy' &&
+            options.planDigest === plan.digest,
+          'reviewed_pending_migration_plan_required',
+        );
+        requireRecoveryAttestation(
+          options.attestation,
+          plan,
+          options.sourceSha,
+          previousApiSha,
+          options.now,
+        );
+        await applyMigrations(client, options.config);
+        ensure(
+          pendingMigrations(
+            entries,
+            await appliedHistory(client, options.config),
+          ).length === 0,
+          'migration_checkpoint_unconfirmed',
+        );
+      } else
+        ensure(
+          options.operation === 'deploy' && !options.planDigest,
+          'code_only_deploy_required',
+        );
+      return deploy();
+    },
+  );
+}
+
+/** Shared by the first Worker upload and ordinary releases; never a new session. */
+export async function withStagingDatabaseLease<T>(
+  client: Connection,
+  expectedDatabase: string,
+  deploy: () => Promise<T>,
+): Promise<T> {
   const lock = await client.query<{ locked: boolean }>(
     'select pg_try_advisory_lock($1,$2) as locked',
     [...releaseLock],
@@ -239,48 +292,30 @@ export async function withStagingRelease<T>(
       from pg_roles where rolname=current_user`);
     ensure(
       role.rows[0]?.role_ok === true &&
-        role.rows[0].database === options.expectedDatabase,
+        role.rows[0].database === expectedDatabase,
       'restricted_migrator_required',
     );
-    const previousApiSha =
-      typeof options.previousApiSha === 'function'
-        ? await options.previousApiSha()
-        : options.previousApiSha;
-    const entries = migrationEntries(options.config);
-    const plan = migrationPlan(
-      entries,
-      await appliedHistory(client, options.config),
-      options.sourceSha,
-      previousApiSha,
-    );
-    options.onPlan?.(plan);
-    if (plan.pending.length) {
-      ensure(
-        options.operation === 'migrate-deploy' &&
-          options.planDigest === plan.digest,
-        'reviewed_pending_migration_plan_required',
-      );
-      requireRecoveryAttestation(
-        options.attestation,
-        plan,
-        options.sourceSha,
-        previousApiSha,
-        options.now,
-      );
-      await applyMigrations(client, options.config);
-      ensure(
-        pendingMigrations(entries, await appliedHistory(client, options.config))
-          .length === 0,
-        'migration_checkpoint_unconfirmed',
-      );
-    } else
-      ensure(
-        options.operation === 'deploy' && !options.planDigest,
-        'code_only_deploy_required',
-      );
     // Keep this same locked session alive through candidate build, probes and promotion.
     return await deploy();
   } finally {
     await client.query('select pg_advisory_unlock($1,$2)', [...releaseLock]);
   }
+}
+
+/** Bootstrap has no previous Worker and cannot apply migrations or invent its SHA. */
+export async function withStagingBootstrap<T>(
+  client: Connection,
+  config: MigrationConfig,
+  upload: () => Promise<T>,
+): Promise<T> {
+  return withStagingDatabaseLease(client, 'postgres', async () => {
+    ensure(
+      pendingMigrations(
+        migrationEntries(config),
+        await appliedHistory(client, config),
+      ).length === 0,
+      'bootstrap_requires_current_migrations',
+    );
+    return upload();
+  });
 }

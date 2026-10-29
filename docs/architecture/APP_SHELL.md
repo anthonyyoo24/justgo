@@ -547,3 +547,12 @@ full selected size; headings/actions cap at 2×. Enlarged headers gain a full-wi
 title line, unavailable statuses move below labels, and native inputs retain
 platform scaling. Browser/tests and simulator checks do not establish physical
 VoiceOver, software-keyboard or device behavior; track those gates in handoffs.
+
+## Phase 15 server cutover boundary
+
+The Hono/Workers candidate preserves the mobile contracts and account/network
+origin fences. No API or legal URL changes are applied to installed builds by
+this local port. A separately approved build must use the real Worker and legal
+origins after [cutover acceptance](../operations/CLOUDFLARE_CUTOVER.md); a redirect
+through Vercel is not proof that private request payloads stopped reaching it.
+Existing device/privacy deferrals remain with Phase 14.

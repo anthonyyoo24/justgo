@@ -1,10 +1,10 @@
-import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { secretSchema } from '@justgo/contracts';
+import type { ApiContext } from './request.js';
 import { ApiError } from './api-error.js';
 
-export function bearer(request: FastifyRequest) {
-  const value = request.headers.authorization;
+export function bearer(context: ApiContext) {
+  const value = context.req.header('authorization');
   const parsed = z
     .union([
       secretSchema,

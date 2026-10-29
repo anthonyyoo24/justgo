@@ -6,17 +6,25 @@ This guide owns the prepared build/upload procedure. The
 [legal review](../legal/LEGAL_REVIEW.md) owns publication/provider conditions.
 Preparation does not establish signed-build acceptance or authorize distribution.
 
-## Existing target
+## Target and cutover status
 
 App Store Connect app `6821022390` (SKU `justgo-ios`) is named **JustGo: Ditch
 Dating Apps**. Preserve bundle `com.anthonyyoo.justgo`, Apple team `NPDYTJS425` and
 Expo project `@anthonyyoos-team/justgo` (`53cf0560-8ab5-446a-9bc6-deb193b337b5`).
 The installed app and Expo project retain the JustGO name/identity.
 
-`build.beta` is a store-signed release build using EAS **preview** variables and
-the existing application-staging API `https://justgo-two.vercel.app`. Store signing
-does not select the paid production API. Preview reuses the verified public
-Auth/Google/CloudKit settings, with ordinary Sentry delivery disabled. Never put
+`build.beta` is a store-signed release build using EAS **preview** variables.
+Its Phase 15 candidate, the beta preflight and all TestFlight workflow commands
+now select `https://justgo-api-staging.anthonyyoo24.workers.dev`. This target uses
+the verified Cloudflare account subdomain; no Worker or Hyperdrive deployment
+has been accepted yet. Installed build 5 still uses
+`https://justgo-two.vercel.app`. The separate Dev profile and its installed
+build also retain their existing Vercel target pending a coordinated migration
+or retirement disposition.
+
+Store signing does not select the paid production API. Preview reuses the
+verified public Auth/Google/CloudKit settings, with ordinary Sentry delivery
+disabled unless the diagnostics profile is selected. Never put
 private server credentials in that environment or an `EXPO_PUBLIC_` variable.
 EAS is pinned to `25.3.0`; remote versions and beta/production build increments
 prevent repeated store build numbers. Paid production setup remains separate.
@@ -33,13 +41,18 @@ profile requires a new signed build and does not change that installed binary.
 Product analytics, replay, tracing, profiling and attachments remain disabled.
 
 The manual workflow's `diagnostics` input defaults to `false`. Select `true` for
-both the build run and its later submit run to use this optional path. Preflight
+both the Phase 15 build run and its later submit run to retain installed build 5's
+approved essential-error reporting. Selecting the default off path would change
+that behavior and needs its own disposition. Preflight
 requires the reviewed mobile US project DSN, staging diagnostic environment and
 the approved essential-errors Privacy Policy source. Anthony approved that policy
 and publication on October 27, 2026: version `2026-10-27-essential-errors`, effective
 October 27. Anonymous HTTPS reads on October 27 matched the approved generated
-Privacy bytes; Terms was unchanged. `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`
-must match that version in the protected `testflight-beta` environment. Reporting-enabled builds also require
+Privacy bytes; Terms was unchanged. Those are historical build-5 receipts. The
+Cloudflare candidate requires the newly approved transition notice described
+below. `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` in the protected
+`testflight-beta` environment must match that notice's actual published version.
+Reporting-enabled builds also require
 private `SENTRY_AUTH_TOKEN` there for mandatory source-map/dSYM uploads. On
 October 27, the owner-approved `org:ci` token was created, verified with Sentry
 CLI and stored in that protected environment; the matching published-notice
@@ -63,16 +76,34 @@ path. An internal upload does not mark these checks passed or invite outsiders.
 
 ## Preflight and release procedure
 
-From `apps/mobile`, check the resolved remote public settings:
+Before building the Phase 15 candidate:
+
+- Verify the actual staging Worker through its protected release lane and
+  preserve its source identity and authenticated-data checks.
+- Approve and publish the complete [transition notice](../legal/CLOUDFLARE_NOTICE_REVIEW.md)
+  naming Cloudflare and Vercel while old builds still use Vercel. Its backup
+  statements must match activated and verified recovery services. The new
+  Privacy source needs approved publication/date metadata and
+  `<!-- deployment-host: cloudflare -->`; the existing Vercel notice does not
+  authorize this build.
+- Set EAS preview `EXPO_PUBLIC_PRIVACY_POLICY_URL` and `EXPO_PUBLIC_TERMS_URL`
+  to the actual verified Cloudflare legal addresses, and update the protected
+  `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` to the exact published Privacy
+  version. Verify anonymous HTTPS content before treating these settings as
+  publication evidence.
+
+From `apps/mobile`, check the resolved remote public settings for the
+reporting-enabled candidate:
 
 ```sh
-npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'npm --prefix ../.. run release:beta:check' --non-interactive
+EXPO_PUBLIC_SENTRY_ENABLED=false npm exec --yes --package=eas-cli@25.3.0 -- eas env:exec preview 'RELEASE_DIAGNOSTICS=true EXPO_PUBLIC_SENTRY_ENABLED=true npm --prefix ../.. run release:beta:check' --non-interactive
 ```
 
 The check verifies the explicit store profile, known staging API/Auth project,
 provider/CloudKit inputs, the selected diagnostics mode, no fixture markers and public
-HTTPS notice destinations. It reuses the site's production parser: pending dates
-or unapproved text stop the process. It prints names, never credential values.
+HTTPS notice destinations. It reuses the site's production parser and Cloudflare
+approval guard: pending dates, unapproved text or a missing host approval stop
+the process. It prints names, never credential values.
 `RELEASE_OPERATION=submit` additionally checks the App Store ID/team. A pass does
 not prove hosted notices, provider suitability, native behavior or release approval.
 
@@ -221,8 +252,10 @@ GitHub maintains the underlying machines. Do not add paid/larger runners by defa
 
 The approved notices are hosted at [Privacy](https://justgo-legal.vercel.app/privacy/)
 and [Terms](https://justgo-legal.vercel.app/terms/), with both URLs set in EAS
-preview. The actual remote-environment preflight passes. App Store Connect's
-Privacy Policy URL is saved. App Privacy now has 13 categories selected and
+preview for build 5. That release's remote-environment preflight passed; it does
+not validate the Phase 15 candidate's new origins or notice. App Store Connect's
+Privacy Policy URL is saved and needs updating to the verified Cloudflare
+destination during cutover. App Privacy has 13 categories selected and
 11 fully configured in an unpublished draft, verified after reload. Crash Data
 and Other Diagnostic Data remain unfinished; Publish is disabled. The
 [worksheet](../legal/RELEASE_DISCLOSURES.md) records the exact purposes, linkage

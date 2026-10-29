@@ -83,7 +83,7 @@ A native smoke flow lives in `apps/mobile/e2e/launch.yaml`. With Maestro install
 ## Workspace
 
 - `apps/mobile`: Expo Router, typed design tokens, native Keychain storage, shared network/query handling, local challenge/reflection/Progress UI, account journal/sender and guarded recovery/access composition.
-- `apps/api`: Fastify, Drizzle, `pg`, reviewed SQL and operational endpoints.
+- `apps/api`: Hono with Node/Workers adapters, Drizzle, `pg`, reviewed SQL and operational endpoints.
 - `packages/contracts`: public Zod response schemas shared by mobile and API.
 - `docs`: product scope, implementation plan, extracted design references and durable phase handoffs.
 

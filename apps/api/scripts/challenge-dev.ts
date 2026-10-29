@@ -1,4 +1,7 @@
 // Deliberately separate from the deployable server. Disposable loopback-only fixtures.
+import { Hono } from 'hono';
+import type { ApiEnvironment } from '../src/http/request.js';
+import { listen } from '../src/http/node-server.js';
 import { createHmac, randomUUID } from 'node:crypto';
 import { installFixtureShutdown } from './fixture-shutdown.js';
 import { localTestDatabaseUrl } from './local-test-database.js';
@@ -63,17 +66,22 @@ const app = buildApp({
     expiresAt: new Date(Date.now() + 3600000).toISOString(),
   }),
 });
-app.register(async (scope) => fixtureProviderRoutes(scope, providers), {
-  prefix: '/__fixtures',
+const fixtureRouter = new Hono<ApiEnvironment>();
+fixtureProviderRoutes(fixtureRouter, providers);
+app.route('/__fixtures', fixtureRouter);
+app.get('/__fixtures/accounts', (context) =>
+  context.json({
+    userIds: [...allocatedAccounts],
+    rateBucketKeys,
+  }),
+);
+let server: Awaited<ReturnType<typeof listen>> | undefined;
+const shutdown = installFixtureShutdown(async () => {
+  await server?.close();
+  await database.pool.end();
 });
-app.get('/__fixtures/accounts', async () => ({
-  userIds: [...allocatedAccounts],
-  rateBucketKeys,
-}));
-app.addHook('onClose', () => database.pool.end());
-const shutdown = installFixtureShutdown(() => app.close());
 try {
-  await app.listen({
+  server = await listen(app, {
     host: '127.0.0.1',
     port: Number(new URL(journeyApiUrl).port),
   });

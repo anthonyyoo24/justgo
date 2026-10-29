@@ -45,7 +45,7 @@
       "autoIncrement": true,
       "env": {
         "IOS_BUNDLE_IDENTIFIER": "com.anthonyyoo.justgo",
-        "EXPO_PUBLIC_API_URL": "https://justgo-two.vercel.app",
+        "EXPO_PUBLIC_API_URL": "https://justgo-api-staging.anthonyyoo24.workers.dev",
         "EXPO_PUBLIC_SENTRY_ENABLED": "false",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "staging",
         "ICLOUD_CONTAINER_ENVIRONMENT": "Production",

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { betaDiagnosticsMode, checkBetaRelease } from './check-beta.mjs';
+import {
+  betaApiOrigin,
+  betaDiagnosticsMode,
+  checkBetaRelease,
+} from './check-beta.mjs';
 
 const eas = JSON.parse(
   readFileSync(new URL('../../apps/mobile/eas.json', import.meta.url)),
@@ -15,7 +19,8 @@ const document = `<!-- legal-version: synthetic-beta -->
 Disposable release configuration test.
 <!-- public:end -->`;
 const documents = {
-  'PRIVACY_POLICY_DRAFT.md': document,
+  'PRIVACY_POLICY_DRAFT.md':
+    document + '\n<!-- deployment-host: cloudflare -->\n',
   'TERMS_DRAFT.md': document,
 };
 function candidate() {
@@ -42,7 +47,9 @@ function candidate() {
 function diagnosticsCandidate() {
   const value = candidate();
   value.diagnostics = true;
-  value.documents['PRIVACY_POLICY_DRAFT.md'] = document.replace(
+  value.documents['PRIVACY_POLICY_DRAFT.md'] = value.documents[
+    'PRIVACY_POLICY_DRAFT.md'
+  ].replace(
     '<!-- public:start -->',
     '<!-- diagnostics-scope: essential-errors-only -->\n<!-- public:start -->',
   );
@@ -177,19 +184,27 @@ test('diagnostics cannot bypass the original profile or inherited capability gua
   }
 });
 
-test('the approved diagnostics notice still requires matching publication attestation', () => {
+test('an approved notice needs Cloudflare hosting approval and matching diagnostics publication attestation', () => {
   const value = diagnosticsCandidate();
   value.documents['PRIVACY_POLICY_DRAFT.md'] = readFileSync(
     new URL('../../docs/legal/PRIVACY_POLICY_DRAFT.md', import.meta.url),
     'utf8',
-  );
-  for (const version of [undefined, '', '2026-10-25-beta']) {
+  ).replace(/^<!-- deployment-host: cloudflare -->\r?\n?/gm, '');
+  for (const version of [undefined, '', 'mismatched-synthetic-notice']) {
     value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = version;
     assert.ok(checkBetaRelease(value).length);
   }
   // Synthetic attestation only; this unit test performs no publication or activation.
-  value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION =
-    '2026-10-27-essential-errors';
+  value.environment.BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION = value.documents[
+    'PRIVACY_POLICY_DRAFT.md'
+  ].match(/^<!-- legal-version: (.+) -->$/m)[1];
+  assert.ok(
+    checkBetaRelease(value).some((error) =>
+      error.includes('Cloudflare hosting approval'),
+    ),
+  );
+  value.documents['PRIVACY_POLICY_DRAFT.md'] +=
+    '\n<!-- deployment-host: cloudflare -->\n';
   assert.deepEqual(checkBetaRelease(value), []);
 });
 
@@ -460,7 +475,8 @@ test('rejects different API/Auth owners and preserves native account capabilitie
   for (const [area, name, setting] of [
     ['profile', 'IOS_BUNDLE_IDENTIFIER', 'another.app'],
     ['profile', 'EXPO_PUBLIC_API_URL', 'https://another-api.vercel.app'],
-    ['profile', 'EXPO_PUBLIC_API_URL', 'https://justgo-two.vercel.app/other'],
+    ['profile', 'EXPO_PUBLIC_API_URL', 'https://justgo-two.vercel.app'],
+    ['profile', 'EXPO_PUBLIC_API_URL', `${betaApiOrigin}/other`],
     ['environment', 'EXPO_PUBLIC_SUPABASE_URL', 'https://another.supabase.co'],
     ['environment', 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID', 'unconfigured'],
     ['environment', 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', 'unconfigured'],
@@ -506,8 +522,8 @@ test('rejects missing, local, credential-bearing and draft legal destinations', 
     'https://notices.vercel.app/privacy/?token=private',
     'https://notices.vercel.app/privacy/#fragment',
     'https://notices.vercel.app/terms/',
-    'https://justgo-two.vercel.app/legal/privacy',
-    'https://justgo-two.vercel.app/privacy/',
+    `${betaApiOrigin}/legal/privacy`,
+    `${betaApiOrigin}/privacy/`,
     'invalid',
   ]) {
     const value = candidate();

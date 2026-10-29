@@ -125,3 +125,18 @@ approved target into a current guarantee. See [Supabase backup documentation](ht
 ## App Store disclosure preparation
 
 Optional managed accounts and renewed private cloud journal processing require a fresh label/provider review. Earlier completion-only exclusions do not apply to signed-in feelings/text or enabled CloudKit copies. Supabase Auth adds provider identifiers, possible email/profile data and session processing; actual enabled SDKs and signed behavior determine the final answers. The [release worksheet](RELEASE_DISCLOSURES.md) records the unpublished Apple draft: 13 categories selected, 11 configured and two diagnostic entries unfinished. Approved public notices and Sentry DPA acceptance are separately verified; this inventory does not establish journal-provider clearance, fixed backup expiry, final native privacy acceptance or a paid-production setting.
+
+## Phase 15 provider change candidate
+
+Local Hono/Workers and encrypted R2 recovery tooling is implemented; the deployed
+Vercel API and published October 27 Privacy Policy remain unchanged. Cloudflare
+would process ordinary API/legal connection metadata and signed-in journal
+requests; R2 would store encrypted app/Auth snapshots and deletion/revocation
+records. Encryption does not remove those copies from the inventory or prove
+Not Linked. No new product analytics or mobile data collection is added.
+
+The [exact notice candidate](CLOUDFLARE_NOTICE_REVIEW.md) and
+[backup policy](../operations/CLOUDFLARE_BACKUPS.md) require approval and actual
+account/configuration/expiry evidence before publication. Supabase consent and
+copy retention, Sentry diagnostic disclosure and device acceptance remain open
+Phase 14 responsibilities. No Apple answers or public notices were changed.

@@ -10,24 +10,12 @@ import { progressRoutes } from './progress/routes.js';
 import { ExportService } from './account-export/service.js';
 import { accountExportRoutes } from './account-export/routes.js';
 import { developmentLegalDraftRoutes } from './http/legal-drafts.js';
-import { randomUUID } from 'node:crypto';
-import Fastify, { type FastifyServerOptions } from 'fastify';
-import cors from '@fastify/cors';
-import helmet from '@fastify/helmet';
-import {
-  healthResponseSchema,
-  readinessResponseSchema,
-} from '@justgo/contracts';
-import {
-  loggerOptions,
-  logServerErrorResponse,
-  reportServerErrorResponse,
-} from './http/diagnostics.js';
-import type { ServerErrorReporter } from './http/server-error-reporter.js';
+import { Hono } from 'hono';
+import type { ApiEnvironment, ApiApp } from './http/request.js';
+import { createHttpApp, type HttpOptions } from './http/app.js';
 import type { IdentityService } from './identity/service.js';
 import { identityRoutes } from './identity/routes.js';
 import { accessRoutes } from './access/routes.js';
-import { errorHandler, notFoundHandler } from './http/error-handler.js';
 import {
   openApiDocument,
   managedOpenApiDocument,
@@ -36,7 +24,12 @@ import { AccessService, type EntitlementReader } from './access/service.js';
 import { GuestService, type GuestAccessReader } from './access/guest.js';
 import { managedIdentityRoutes } from './identity/managed-routes.js';
 import { dataSyncRoutes } from './data-sync/routes.js';
-import { catalogSchema, accessResponseSchema } from '@justgo/contracts';
+import {
+  catalogSchema,
+  accessResponseSchema,
+  healthResponseSchema,
+  readinessResponseSchema,
+} from '@justgo/contracts';
 
 /**
  * Compose the HTTP app with injected database, identity and access boundaries.
@@ -44,15 +37,8 @@ import { catalogSchema, accessResponseSchema } from '@justgo/contracts';
  * missing access/coverage providers remain unavailable rather than granting access.
  */
 export function buildApp(
-  options: {
+  options: HttpOptions & {
     checkDatabase: () => Promise<void>;
-    origins?: string[];
-    logger?: FastifyServerOptions['logger'];
-    reportServerError?: ServerErrorReporter;
-    releaseIdentity?: {
-      sourceSha: string;
-      environment: 'staging' | 'production';
-    };
     identity?: IdentityService;
     onVercel?: boolean;
     entitlementReader?: EntitlementReader;
@@ -61,77 +47,41 @@ export function buildApp(
     guestAccessReader?: GuestAccessReader;
     legacyIdentityEnabled?: boolean;
   },
-  createServer: typeof Fastify = Fastify,
 ) {
-  const releaseIdentity = options.releaseIdentity;
-  if (
-    releaseIdentity &&
-    (releaseIdentity.sourceSha.length !== 40 ||
-      !/^[a-f0-9]{40}$/.test(releaseIdentity.sourceSha) ||
-      !['staging', 'production'].includes(releaseIdentity.environment))
-  )
-    throw new Error('Invalid API release identity');
-  const app = createServer({
-    logger: options.logger ?? loggerOptions(),
-    genReqId: () => randomUUID(),
-    requestIdHeader: false,
-    bodyLimit: 32 * 1024,
-    requestTimeout: 10000,
-    connectionTimeout: 10000,
-  });
-  app.register(helmet);
-  app.register(cors, {
-    origin: options.origins ?? [],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    exposedHeaders: ['retry-after'],
-    credentials: false,
-  });
-  app.addHook('onRequest', async (request, reply) => {
-    reply.header('x-request-id', request.id);
-    reply.header('cache-control', 'no-store');
-    if (
-      releaseIdentity &&
-      request.method === 'GET' &&
-      ['/health', '/ready'].includes(request.routeOptions.url ?? '')
-    ) {
-      reply.header('x-justgo-source-sha', releaseIdentity.sourceSha);
-      reply.header('x-justgo-environment', releaseIdentity.environment);
-    }
-  });
-  if (options.reportServerError)
-    app.addHook('onSend', async (request, reply, payload) => {
-      await reportServerErrorResponse(
-        request,
-        reply,
-        options.reportServerError,
-      );
-      return payload;
-    });
-  app.addHook('onResponse', logServerErrorResponse);
-  app.get('/health', async () =>
-    healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
+  const app = createHttpApp(options);
+  function mount(prefix: string, register: (router: ApiApp) => void) {
+    const router = new Hono<ApiEnvironment>();
+    register(router);
+    app.route(prefix, router);
+    // Fastify's prefixed '/' resources accept both forms; other paths stay strict.
+    for (const route of router.routes)
+      if (route.path === '/') app.on(route.method, `${prefix}/`, route.handler);
+  }
+  app.get('/health', (context) =>
+    context.json(
+      healthResponseSchema.parse({ status: 'ok', service: 'justgo-api' }),
+    ),
   );
-  app.get('/openapi.json', async () =>
-    options.legacyIdentityEnabled === false
-      ? managedOpenApiDocument
-      : openApiDocument,
+  app.get('/openapi.json', (context) =>
+    context.json(
+      options.legacyIdentityEnabled === false
+        ? managedOpenApiDocument
+        : openApiDocument,
+    ),
   );
-  if (options.identity) {
-    const guest = new GuestService(options.identity, options.guestAccessReader);
-    app.get('/v1/guest/access', async () =>
-      accessResponseSchema.parse(await guest.access()),
+  const identity = options.identity;
+  if (identity) {
+    const guest = new GuestService(identity, options.guestAccessReader);
+    app.get('/v1/guest/access', async (context) =>
+      context.json(accessResponseSchema.parse(await guest.access())),
     );
-    app.get('/v1/guest/challenges', async () =>
-      catalogSchema.parse(await guest.catalog()),
+    app.get('/v1/guest/challenges', async (context) =>
+      context.json(catalogSchema.parse(await guest.catalog())),
     );
-    app.register(
-      async (scope) =>
-        managedIdentityRoutes(scope, options.identity!, options.onVercel),
-      { prefix: '/v1/auth' },
+    mount('/v1/auth', (scope) =>
+      managedIdentityRoutes(scope, identity, options.onVercel),
     );
-    app.register(async (scope) => dataSyncRoutes(scope, options.identity!), {
-      prefix: '/v1',
-    });
+    mount('/v1', (scope) => dataSyncRoutes(scope, identity));
   }
   if (
     options.developmentLegalDrafts &&
@@ -139,77 +89,56 @@ export function buildApp(
     !process.env.VERCEL
   )
     developmentLegalDraftRoutes(app);
-  app.register(
-    async (scope) =>
-      accessRoutes(
-        scope,
-        options.identity
-          ? new AccessService(options.identity, options.entitlementReader)
-          : undefined,
-      ),
-    { prefix: '/v1' },
+  mount('/v1', (scope) =>
+    accessRoutes(
+      scope,
+      identity
+        ? new AccessService(identity, options.entitlementReader)
+        : undefined,
+    ),
   );
-  if (options.identity)
-    app.register(
-      async (scope) =>
-        accountExportRoutes(scope, new ExportService(options.identity!)),
-      { prefix: '/v1/account' },
+  if (identity) {
+    mount('/v1/account', (scope) =>
+      accountExportRoutes(scope, new ExportService(identity)),
     );
-  if (options.identity)
-    app.register(
-      async (scope) =>
-        challengeRoutes(
-          scope,
-          new ChallengeService(options.identity!, options.entitlementReader),
-        ),
-      { prefix: '/v1/challenges' },
+    mount('/v1/challenges', (scope) =>
+      challengeRoutes(
+        scope,
+        new ChallengeService(identity, options.entitlementReader),
+      ),
     );
-  if (options.identity)
-    app.register(
-      async (scope) =>
-        progressRoutes(
-          scope,
-          new ProgressResources(options.identity!, options.entitlementReader),
-        ),
-      { prefix: '/v1/progress' },
+    mount('/v1/progress', (scope) =>
+      progressRoutes(
+        scope,
+        new ProgressResources(identity, options.entitlementReader),
+      ),
     );
-  if (options.identity)
-    app.register(
-      async (scope) =>
-        identityRoutes(
-          scope,
-          options.identity!,
-          options.onVercel,
-          options.legacyIdentityEnabled,
-        ),
-      {
-        prefix: '/v1',
-      },
+    mount('/v1', (scope) =>
+      identityRoutes(
+        scope,
+        identity,
+        options.onVercel,
+        options.legacyIdentityEnabled,
+      ),
     );
-  if (options.identity)
-    app.register(
-      async (scope) =>
-        attemptRoutes(
-          scope,
-          new AttemptService(
-            options.identity!,
-            options.uploadEligibilityReader,
-          ),
-          new ProgressResources(options.identity!, options.entitlementReader),
-        ),
-      { prefix: '/v1/attempts' },
+    mount('/v1/attempts', (scope) =>
+      attemptRoutes(
+        scope,
+        new AttemptService(identity, options.uploadEligibilityReader),
+        new ProgressResources(identity, options.entitlementReader),
+      ),
     );
-  app.get('/ready', async (_request, reply) => {
+  }
+  app.get('/ready', async (context) => {
     try {
       await options.checkDatabase();
-      return readinessResponseSchema.parse({ status: 'ready' });
+      return context.json(readinessResponseSchema.parse({ status: 'ready' }));
     } catch {
-      return reply
-        .code(503)
-        .send(readinessResponseSchema.parse({ status: 'unavailable' }));
+      return context.json(
+        readinessResponseSchema.parse({ status: 'unavailable' }),
+        503,
+      );
     }
   });
-  app.setErrorHandler(errorHandler);
-  app.setNotFoundHandler(notFoundHandler);
   return app;
 }

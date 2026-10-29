@@ -938,3 +938,32 @@ force when they were written. The billing checkpoint branch
 `codex/phase-07a-native-billing` and its `phase-07a-billing.md` handoff keep their
 names until that work is reworked. Renumbering changes no scope, acceptance gate
 or authorization.
+
+## October 28 Phase 15 runtime and recovery implementation
+
+The Hono port preserves the existing schema, contracts and domain services.
+Workers use request-owned pg connections through cache-disabled Hyperdrive.
+Cloudflare lists advisory locks as unsupported, so the complete identity
+transactions that need them use a separate direct restricted-role TLS connection,
+with both connections checked by readiness. Hosted pooling/statement-timeout
+acceptance remains required. This engineering adaptation changes no identity
+policy or database schema.
+
+The first Worker uses a distinct `bootstrap` operation in the same protected
+GitHub release workflow. It requires reviewed main source, successful exact main
+CI, current migrations and the same database lease; ordinary releases still
+require an existing verified Worker baseline. Initial runtime bindings are a
+temporary protected secret, not code or build input. A transition Privacy notice
+must name both Cloudflare and Vercel while supported older builds retain Vercel
+addresses; the beta candidate is pinned to the verified account's Workers origin.
+These engineering choices do not approve publication, private processing or
+retirement of existing builds.
+
+R2 hourly copies do not close the post-copy deletion gap. The local restore tool
+requires source-bound, writer-fenced current-ledger evidence and never reopens
+an API. Total-source-loss recovery without that evidence remains blocked; a
+zero-resurrection and high-availability guarantee has not been established.
+Retention, offline key/token custody and the proposed reauthentication-on-restore
+tradeoff remain unapproved policies in the
+[backup guide](operations/CLOUDFLARE_BACKUPS.md). Hosted account/setup, notices,
+cutover and Git permissions remain separate from local implementation.

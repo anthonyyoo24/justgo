@@ -1,20 +1,21 @@
 import { request as httpsRequest } from 'node:https';
 import {
-  stagingTarget as target,
+  isVersionId,
   requireRelease,
   StagingRunnerFailure,
 } from './staging-api.mjs';
 
-/** Send one promotion POST. Alias readback, rather than its body, proves completion. */
+/** Send one promotion POST. Deployment readback, rather than its body, proves completion. */
 export async function promoteStagingCandidate(
   deploymentId,
-  { token, signal, request = httpsRequest, timeoutMs = 20_000 } = {},
+  { target, token, signal, request = httpsRequest, timeoutMs = 20_000 } = {},
 ) {
   const failure = () =>
     new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED');
   requireRelease(
-    typeof deploymentId === 'string' &&
-      /^dpl_[A-Za-z0-9]+$/.test(deploymentId) &&
+    isVersionId(deploymentId) &&
+      /^[a-f0-9]{32}$/.test(target?.accountId ?? '') &&
+      target?.worker === 'justgo-api-staging' &&
       !/[\r\n]/.test(deploymentId) &&
       typeof token === 'string' &&
       token.length > 0 &&
@@ -26,8 +27,12 @@ export async function promoteStagingCandidate(
     'STAGING_PROMOTION_UNCONFIRMED',
   );
   const url = new URL(
-    `https://api.vercel.com/v10/projects/${target.project}/promote/${deploymentId}?teamId=${target.team}`,
+    `https://api.cloudflare.com/client/v4/accounts/${target.accountId}/workers/scripts/${target.worker}/deployments`,
   );
+  const body = JSON.stringify({
+    strategy: 'percentage',
+    versions: [{ version_id: deploymentId, percentage: 100 }],
+  });
   let outgoing;
   let timer;
   try {
@@ -36,7 +41,11 @@ export async function promoteStagingCandidate(
         url,
         {
           method: 'POST',
-          headers: { authorization: `Bearer ${token}`, 'content-length': '0' },
+          headers: {
+            authorization: `Bearer ${token}`,
+            'content-type': 'application/json',
+            'content-length': String(Buffer.byteLength(body)),
+          },
           agent: false,
           rejectUnauthorized: true,
           signal,
@@ -44,11 +53,11 @@ export async function promoteStagingCandidate(
         (response) => {
           response.on('error', () => reject(failure()));
           response.on('aborted', () => reject(failure()));
-          // The documented success response may have no body. Discard all
-          // provider content without buffering, logging, redirecting or retrying.
+          // Readback owns completion evidence. Discard all provider content
+          // without buffering, logging, redirecting or retrying.
           const status = response.statusCode;
           response.on('end', () => {
-            if (response.complete && (status === 201 || status === 202))
+            if (response.complete && (status === 200 || status === 201))
               resolve();
             else reject(failure());
           });
@@ -66,7 +75,7 @@ export async function promoteStagingCandidate(
         reject(error);
         outgoing.destroy(error);
       }, timeoutMs);
-      outgoing.end();
+      outgoing.end(body);
     });
   } catch {
     throw failure();

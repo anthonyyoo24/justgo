@@ -1,4 +1,7 @@
-import Fastify from 'fastify';
+import { apiRequest } from '../request.js';
+import { Hono } from 'hono';
+import type { ApiEnvironment } from '../../src/http/request.js';
+import { buildApp } from '../../src/build-app.js';
 import { describe, it, expect } from 'vitest';
 import {
   FixtureProviders,
@@ -122,58 +125,63 @@ describe('guarded provider-session fixture boundary', () => {
     ).toThrow('UNAUTHORIZED');
   });
   it('returns only safe typed failures from disposable HTTP routes', async () => {
-    const app = Fastify({ logger: false });
-    await app.register(
-      async (scope) => fixtureProviderRoutes(scope, new FixtureProviders()),
-      { prefix: '/__fixtures' },
-    );
-    try {
-      const invalid = await app.inject({
-        method: 'POST',
-        url: '/__fixtures/provider-sessions',
-        payload: {
-          provider: 'apple',
-          subjectHandle: 'untrusted-private-value',
-        },
-      });
-      expect(invalid.statusCode).toBe(400);
-      expect(invalid.body).not.toContain('untrusted-private-value');
-      const response = await app.inject({
-        method: 'POST',
-        url: '/__fixtures/provider-sessions',
-        payload: { provider: 'apple' },
-      });
-      expect(response.statusCode).toBe(200);
-      const accessToken = response.json().session.accessToken;
-      const last = await app.inject({
-        method: 'POST',
-        url: '/__fixtures/provider-unlinks',
-        payload: { accessToken, provider: 'apple' },
-      });
-      expect(last.statusCode).toBe(409);
-      await app.inject({
-        method: 'POST',
-        url: '/__fixtures/provider-links',
-        payload: { accessToken, provider: 'google' },
-      });
-      const unlinked = await app.inject({
-        method: 'POST',
-        url: '/__fixtures/provider-unlinks',
-        payload: { accessToken, provider: 'apple' },
-      });
-      expect(unlinked.statusCode).toBe(200);
-      expect(unlinked.json().session.linkedProviders).toEqual(['google']);
-      expect(
-        (
-          await app.inject({
-            method: 'POST',
-            url: '/__fixtures/provider-sign-outs',
-            payload: { accessToken: response.json().session.accessToken },
-          })
-        ).json(),
-      ).toEqual({ ok: true });
-    } finally {
-      await app.close();
-    }
+    const app = buildApp({ logger: false, checkDatabase: async () => {} });
+    const router = new Hono<ApiEnvironment>();
+    fixtureProviderRoutes(router, new FixtureProviders());
+    app.route('/__fixtures', router);
+
+    const invalid = await apiRequest(app, {
+      method: 'POST',
+      url: '/__fixtures/provider-sessions',
+      payload: {
+        provider: 'apple',
+        subjectHandle: 'untrusted-private-value',
+      },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.body).not.toContain('untrusted-private-value');
+    const response = await apiRequest(app, {
+      method: 'POST',
+      url: '/__fixtures/provider-sessions',
+      payload: { provider: 'apple' },
+    });
+    expect(response.statusCode).toBe(200);
+    const accessToken =
+      response.json<ReturnType<FixtureProviders['create']>>().session
+        .accessToken;
+    const last = await apiRequest(app, {
+      method: 'POST',
+      url: '/__fixtures/provider-unlinks',
+      payload: { accessToken, provider: 'apple' },
+    });
+    expect(last.statusCode).toBe(409);
+    await apiRequest(app, {
+      method: 'POST',
+      url: '/__fixtures/provider-links',
+      payload: { accessToken, provider: 'google' },
+    });
+    const unlinked = await apiRequest(app, {
+      method: 'POST',
+      url: '/__fixtures/provider-unlinks',
+      payload: { accessToken, provider: 'apple' },
+    });
+    expect(unlinked.statusCode).toBe(200);
+    expect(
+      unlinked.json<ReturnType<FixtureProviders['create']>>().session
+        .linkedProviders,
+    ).toEqual(['google']);
+    expect(
+      (
+        await apiRequest(app, {
+          method: 'POST',
+          url: '/__fixtures/provider-sign-outs',
+          payload: {
+            accessToken:
+              response.json<ReturnType<FixtureProviders['create']>>().session
+                .accessToken,
+          },
+        })
+      ).json(),
+    ).toEqual({ ok: true });
   });
 });

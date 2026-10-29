@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import {
   admin,
   rateKey,
@@ -45,7 +46,7 @@ it('rejects malformed or mixed session proofs and all retired identity action ro
   ]) {
     expect(
       (
-        await app.inject({
+        await apiRequest(app, {
           method: 'POST',
           url: `/v1/identity/${path}`,
           payload: request(),
@@ -54,7 +55,9 @@ it('rejects malformed or mixed session proofs and all retired identity action ro
     ).toBe(404);
   }
   for (const path of ['me', 'devices', 'credentials']) {
-    expect((await app.inject(`/v1/identity/${path}`)).statusCode).toBe(404);
+    expect((await apiRequest(app, `/v1/identity/${path}`)).statusCode).toBe(
+      404,
+    );
   }
 });
 
@@ -83,7 +86,7 @@ it('creates and replays ordinary accounts without legal receipts and exposes no 
   expect(rejected.statusCode).toBe(400);
   expect(rejected.json().code).toBe('INVALID_REQUEST');
   for (const method of ['GET', 'PUT'] as const) {
-    const response = await app.inject({
+    const response = await apiRequest(app, {
       method,
       url: '/v1/account/acceptance',
       headers: { authorization: `Bearer ${input.sessionToken}` },
@@ -98,7 +101,7 @@ it('rate limits full receiver cancellation proofs before mutating the transfer',
   const t = await start(),
     ip = `receiver-${randomUUID()}`;
   const cancel = (payload: TransferStart) =>
-    app.inject({
+    apiRequest(app, {
       method: 'DELETE',
       url: `/v1/transfers/${t.input.id}`,
       payload,
@@ -142,7 +145,7 @@ it('atomically rate limits across instances and does not trust spoofed forwardin
   retryAfterSeconds(
     results.find((r) => r.statusCode === 429)!.headers['retry-after'],
   );
-  const again = await app.inject({
+  const again = await apiRequest(app, {
     method: 'POST',
     url: '/v1/sessions',
     remoteAddress: ip,
@@ -199,11 +202,11 @@ it('supports browser CORS and returns no-store responses without returning beare
   const input = request();
   const result = await post('/sessions', { kind: 'bootstrap', ...input });
   expect(result.statusCode).toBe(200);
-  users.add(result.json().userId);
+  users.add(result.json<{ userId: string }>().userId);
   expect(result.headers['cache-control']).toBe('no-store');
   expect(result.body).not.toContain(input.credential);
   expect(result.body).not.toContain(input.sessionToken);
-  const preflight = await app.inject({
+  const preflight = await apiRequest(app, {
     method: 'OPTIONS',
     url: '/v1/sessions',
     headers: {

@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
@@ -43,7 +44,7 @@ async function account() {
   return { ...input, userId: info.userId };
 }
 const request = (token?: string, suffix = '') =>
-  app.inject({
+  apiRequest(app, {
     method: 'GET',
     url: '/v1/account/export' + suffix,
     headers: token ? { authorization: `Bearer ${token}` } : {},
@@ -70,7 +71,7 @@ afterAll(async () => {
       await admin.query(`delete from justgo.${table} where user_id=$1`, [id]);
     await admin.query('delete from justgo.users where id=$1', [id]);
   }
-  await app.close();
+
   await Promise.all([database.pool.end(), admin.end()]);
 });
 
@@ -127,7 +128,7 @@ describe('authenticated data export on the real restricted database role', () =>
     const a = await account();
     await history(a.userId, 1);
     for (const token of [undefined, a.sessionToken]) {
-      const response = await app.inject({
+      const response = await apiRequest(app, {
         method: 'GET',
         url: '/v1/journal/legacy',
         headers: token ? { authorization: `Bearer ${token}` } : {},

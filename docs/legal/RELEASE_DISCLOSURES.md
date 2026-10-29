@@ -62,3 +62,18 @@ No GPS, IDFA advertising, contacts, camera, microphone or health-framework acces
 - Separate Sentry, billing and Phase 17 analytics activation reviews remain open. Document viewing/Continue is not analytics permission or a restored legal-version gate.
 
 Sources: [Apple privacy labels](https://developer.apple.com/app-store/app-privacy-details/), [privacy guidelines](https://developer.apple.com/app-store/review/guidelines/#privacy), [age rating](https://developer.apple.com/help/app-store-connect/manage-app-information/set-an-app-age-rating/), [EU trader information](https://developer.apple.com/help/app-store-connect/manage-compliance-information/manage-european-union-digital-services-act-trader-requirements/), [license setup](https://developer.apple.com/help/app-store-connect/manage-app-information/provide-a-custom-license-agreement/).
+
+## Phase 15 provider change candidate
+
+Local Hono/Workers and encrypted R2 recovery tooling is implemented; the deployed
+Vercel API and published October 27 Privacy Policy remain unchanged. Cloudflare
+would process ordinary API/legal connection metadata and signed-in journal
+requests; R2 would store encrypted app/Auth snapshots and deletion/revocation
+records. Encryption does not remove those copies from the inventory or prove
+Not Linked. No new product analytics or mobile data collection is added.
+
+The [exact notice candidate](CLOUDFLARE_NOTICE_REVIEW.md) and
+[backup policy](../operations/CLOUDFLARE_BACKUPS.md) require approval and actual
+account/configuration/expiry evidence before publication. Supabase consent and
+copy retention, Sentry diagnostic disclosure and device acceptance remain open
+Phase 14 responsibilities. No Apple answers or public notices were changed.

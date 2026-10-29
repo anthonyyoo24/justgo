@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "audit:api": "node scripts/quality/audit-api-dependencies.mjs",
     "test": "npm run test:architecture && npm run test --workspaces",
-    "test:architecture": "node --test scripts/quality/*.test.mjs scripts/journeys/*.test.mjs scripts/release/*.test.mjs scripts/development/*.test.mjs sites/legal/*.test.mjs",
+    "test:architecture": "node --test scripts/quality/*.test.mjs scripts/journeys/*.test.mjs scripts/release/*.test.mjs scripts/backups/*.test.mjs scripts/development/*.test.mjs sites/legal/*.test.mjs",
     "release:beta:check": "node scripts/release/check-beta.mjs",
     "test:db": "npm run test:db -w @justgo/api",
     "db:migrate": "npm run db:migrate -w @justgo/api",
@@ -38,13 +38,16 @@
     "typecheck:journey": "tsc --project e2e/tsconfig.json --noEmit",
     "test:journey": "node --env-file-if-exists=apps/api/.env scripts/journeys/run-journey.mjs",
     "test:migrations": "npm run test:migrations -w @justgo/api",
-    "test:exported-web": "playwright test --config e2e/exported-web.config.ts"
+    "test:exported-web": "playwright test --config e2e/exported-web.config.ts",
+    "test:workers": "npm run test:workers -w @justgo/api",
+    "test:backup:recovery": "node --env-file-if-exists=apps/api/.env --import tsx scripts/backups/rehearse.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.1",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "5.0.5",
+    "aws4fetch": "1.0.20",
     "esbuild": "0.28.2",
     "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",

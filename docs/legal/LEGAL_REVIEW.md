@@ -211,11 +211,11 @@ termination window or whole-project deletion as the journal-row deadline.
 
 ### Hosting recommendation without provider contact
 
-**October 27 local implementation direction (superseded):** retain Vercel for the API and Supabase for managed Auth/private PostgreSQL, subject to fresh eligible-plan/processor and sensitive-content review. The October 28 decision selects Cloudflare Workers and Hono for the API in Phase 15; that migration is not implemented. Normal signed-in journal synchronization still carries feelings/text through the current Vercel/Supabase services. Strict completion contracts still exclude journal fields, but a separate authorized journal endpoint is content-bearing; the earlier completion-only reduction cannot clear the full system. Private access and log scrubbing do not eliminate provider processing.
+**October 27 local implementation direction (superseded):** retain Vercel for the API and Supabase for managed Auth/private PostgreSQL, subject to fresh eligible-plan/processor and sensitive-content review. The October 28 decision selects Cloudflare Workers and Hono for the API in Phase 15; its local implementation is prepared but no hosted migration has occurred. Normal signed-in journal synchronization still carries feelings/text through the current Vercel/Supabase services. Strict completion contracts still exclude journal fields, but a separate authorized journal endpoint is content-bearing; the earlier completion-only reduction cannot clear the full system. Private access and log scrubbing do not eliminate provider processing.
 
 The October 27 source/account review does not clear external private-journal use: Hobby processor coverage is not established and DPA Schedule 1 §6.1 restricts sensitive Customer Data. No published free-beta exception was found; treating an intended paid product's free beta as non-commercial would be an unsupported inference. Buying Pro alone is not proof of a sensitive-data exception; a published [HIPAA arrangement](https://vercel.com/kb/guide/hipaa-compliance-guide-vercel) or [BAA](https://vercel.com/legal/baa) is not a blanket consumer-journal permission. Supabase's incorporated DPA likewise does not establish that the actual notices, choices, Auth/profile retention and copy deletion have been satisfied. Private CloudKit introduces a separate Apple role/configuration review.
 
-No provider was contacted or configured by this local implementation. Before real-user rollout, the release owner must verify the selected Phase 15 Cloudflare arrangement for **normal** account journal traffic, including actual account/DPA coverage and cutover. The earlier alternative of Supabase Edge Functions ([routing](https://supabase.com/docs/guides/functions/routing), [database connections](https://supabase.com/docs/guides/functions/connect-to-postgres) and [handler authentication](https://supabase.com/docs/guides/functions/auth)) is superseded by that choice. Selection does not establish a completed migration or automatic DPA clearance. The runtime port must preserve private-schema ownership, transaction locks, managed JWT verification, deletion ledgers, request bounds, safe logs and origin/path fences, with independent local and staging evidence. No port, deployment, purchase or provider contact is authorized by this record.
+No provider was contacted or configured by this local implementation. Before real-user rollout, the release owner must verify the selected Phase 15 Cloudflare arrangement for **normal** account journal traffic, including actual account/DPA coverage and cutover. The earlier alternative of Supabase Edge Functions ([routing](https://supabase.com/docs/guides/functions/routing), [database connections](https://supabase.com/docs/guides/functions/connect-to-postgres) and [handler authentication](https://supabase.com/docs/guides/functions/auth)) is superseded by that choice. Selection does not establish a completed migration or automatic DPA clearance. The runtime port must preserve private-schema ownership, transaction locks, managed JWT verification, deletion ledgers, request bounds, safe logs and origin/path fences, with independent local and staging evidence. This record does not authorize deployment, purchase or provider contact. The subsequent Phase 15 implementation request authorizes the local port.
 
 ### Specific deletion and publication preparation
 
@@ -421,3 +421,27 @@ and later material updates:
 6. Before paid launch, 16/14 reconcile activated Apple/Superwall/billing delivery, offer, cancellation/deletion explanation and changed data. Before Phase 17 analytics, revisit providers, payloads, rights and the actual permission/collection design without backfilling pre-activation history. Continue or a historical receipt grants no future analytics permission; do not silently restore the rejected tracking mechanism.
 
 The owner separately authorized the public document hosting described above. This record grants no Git publication, private-journal provider activation, plan upgrade, agreement acceptance, billing activation, native signing/upload or App Store submission. The earlier [Phase 12 handoff](../handoffs/phase-12-legal-documents.md) is historical; the reopened [Phase 13 handoff](../handoffs/phase-13-local-journal.md) owns current implementation evidence and remaining gates.
+
+## Phase 15 local preparation and approval boundary
+
+The Hono API, Workers release lane, encrypted R2 copy/restore tools and static
+legal Worker configuration are local candidates. The
+[notice review](CLOUDFLARE_NOTICE_REVIEW.md) contains exact proposed provider,
+retention and cross-border wording. The approved public Privacy source stays
+unchanged. Cloudflare's public DPA v6.4 is a source for review, not evidence that
+the actual customer/account is covered. After Anthony signed in himself,
+authenticated inspection confirmed his account, Workers Free and existing R2
+activation. Anthony subsequently approved creation of the empty private
+`justgo-staging-backups` bucket. It is created; no private-data connection or
+backup upload occurred. The agent accepted no agreement. The [Self-Serve Agreement](https://www.cloudflare.com/terms/)
+§6.1 incorporates the DPA for its stated personal-data scope; DPA v6.4's own
+applicability and Annex 1 address processor services and customer-controlled
+special-category content. This supports review, not an assertion that the actual
+legal customer, Canadian processing scope or private-journal gates are settled.
+
+The recovery rehearsal uses synthetic app/Auth data and proves application
+reconciliation, not the actual Supabase Auth schema restore or independence of
+post-hourly deletions after total source loss. Until the current ledger is
+established the restored service must remain closed. See
+[cutover acceptance](../operations/CLOUDFLARE_CUTOVER.md) and the
+[backup guide](../operations/CLOUDFLARE_BACKUPS.md).

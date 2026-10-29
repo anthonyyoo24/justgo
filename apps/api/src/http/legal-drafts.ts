@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { ApiApp } from './request.js';
 
 const notice =
   '<p><strong>Development draft — not final release documents.</strong> These pages are for local document testing. Phase 12 owns legal review, effective dates and public publication. They do not publish the legal website or enable diagnostics. JustGO does not record document views or legal agreement.</p>';
@@ -21,13 +21,11 @@ const drafts = {
   },
 };
 
-export function developmentLegalDraftRoutes(app: FastifyInstance) {
+export function developmentLegalDraftRoutes(app: ApiApp) {
   for (const [path, document] of Object.entries(drafts))
-    app.get(`/legal/${path}`, async (_request, reply) =>
-      reply
-        .type('text/html; charset=utf-8')
-        .send(
-          `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${document.title} — Development draft</title></head><body><main><h1>${document.title}</h1>${notice}${document.body}</main></body></html>`,
-        ),
+    app.get(`/legal/${path}`, (context) =>
+      context.html(
+        `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${document.title} — Development draft</title></head><body><main><h1>${document.title}</h1>${notice}${document.body}</main></body></html>`,
+      ),
     );
 }

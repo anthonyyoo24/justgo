@@ -14,20 +14,20 @@
     "auth:cleanup": "tsx --env-file-if-exists=.env scripts/retry-managed-auth-deletions.ts",
     "dev:challenges": "tsx --env-file-if-exists=.env scripts/challenge-dev.ts",
     "test:coverage": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run --coverage",
-    "test:migrations": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/db/migrations.integration.test.ts --fileParallelism=false"
+    "test:migrations": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/db/migrations.integration.test.ts --fileParallelism=false",
+    "test:workers": "tsx --env-file-if-exists=.env scripts/workers-smoke.ts"
   },
   "dependencies": {
-    "@fastify/cors": "11.3.1",
-    "@fastify/helmet": "13.2.0",
+    "@hono/node-server": "2.1.5",
     "@justgo/contracts": "0.1.0",
     "@supabase/supabase-js": "2.118.0",
     "drizzle-orm": "0.45.4",
-    "fastify": "5.12.7",
-    "pg": "8.23.1",
-    "pino": "10.4.0"
+    "hono": "4.13.14",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@types/pg": "8.23.1",
-    "drizzle-kit": "0.31.11"
+    "drizzle-kit": "0.31.11",
+    "wrangler": "4.155.0"
   }
 }

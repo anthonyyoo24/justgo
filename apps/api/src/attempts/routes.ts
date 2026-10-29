@@ -1,5 +1,10 @@
+import type { ApiApp } from '../http/request.js';
+import {
+  parseRequestBody,
+  requestBody,
+  requestQuery,
+} from '../http/request.js';
 import { parse } from '../http/parse.js';
-import type { FastifyInstance } from 'fastify';
 import {
   createAttemptSchema,
   completionAttemptResultSchema,
@@ -10,31 +15,32 @@ import { bearer } from '../http/bearer.js';
 import type { AttemptService } from './service.js';
 import type { ProgressResources } from '../progress/service.js';
 import { rejectPrivateJournalWrite } from './patch.js';
-
 export function attemptRoutes(
-  app: FastifyInstance,
+  app: ApiApp,
   service: AttemptService,
   progress: ProgressResources,
 ) {
-  app.post('/', async (req, reply) => {
+  app.post('/', parseRequestBody(), async (context) => {
     const result = await service.create(
-      bearer(req),
-      parse(createAttemptSchema, req.body),
+      bearer(context),
+      parse(createAttemptSchema, requestBody(context)),
     );
-    return reply
-      .code(result.created ? 201 : 200)
-      .send(completionAttemptResultSchema.parse({ attempt: result.attempt }));
+    return context.json(
+      completionAttemptResultSchema.parse({ attempt: result.attempt }),
+      result.created ? 201 : 200,
+    );
   });
-  // Reject before Fastify reads/parses a legacy private request body.
-  app.patch(
-    '/:id',
-    { onRequest: rejectPrivateJournalWrite },
-    rejectPrivateJournalWrite,
-  );
-  app.get('/', async (req) => {
-    const { date, limit, cursor } = parse(progressDayQuerySchema, req.query);
-    return completionProgressDayResponseSchema.parse(
-      await progress.day(bearer(req), date, limit, cursor),
+  // Reject before reading or parsing a legacy private request body.
+  app.patch('/:id', rejectPrivateJournalWrite);
+  app.get('/', async (context) => {
+    const { date, limit, cursor } = parse(
+      progressDayQuerySchema,
+      requestQuery(context),
+    );
+    return context.json(
+      completionProgressDayResponseSchema.parse(
+        await progress.day(bearer(context), date, limit, cursor),
+      ),
     );
   });
 }

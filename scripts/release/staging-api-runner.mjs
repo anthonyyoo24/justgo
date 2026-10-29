@@ -1,26 +1,23 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import {
-  readFileSync,
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  rmSync,
-  appendFileSync,
-} from 'node:fs';
+import { mkdtempSync, rmSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as pause } from 'node:timers/promises';
 import { promoteStagingCandidate } from './staging-promotion.mjs';
+import { buildStagingWorker } from './staging-worker-build.mjs';
+import { cloudflareRequest, workerProbe } from './staging-cloudflare.mjs';
 import {
-  stagingTarget as target,
   releaseContext,
   requireRelease,
+  cloudflareTarget,
   validateDeployment,
+  validateVersion,
+  validateBindingPreservation,
+  uploadBindings,
+  versionOrigin,
   validateProbe,
-  validateUpload,
-  candidateReceipt,
-  isSourceSha,
+  isVersionId,
   StagingRunnerFailure,
 } from './staging-api.mjs';
 export {
@@ -28,7 +25,6 @@ export {
   stagingRunnerFailureCode,
 } from './staging-api.mjs';
 
-// All child output stays private: provider failures can contain credentials/content.
 const executeFile = promisify(execFile);
 export async function privateCommand(command, args, options = {}) {
   try {
@@ -43,57 +39,23 @@ export async function privateCommand(command, args, options = {}) {
     throw new StagingRunnerFailure('STAGING_COMMAND_FAILED');
   }
 }
-export async function stagingApi(operation, options = {}) {
-  const phase = { promotionAttempted: false };
-  const env = options.env ?? process.env;
-  const context = releaseContext(env);
-  requireRelease(Boolean(env.VERCEL_TOKEN), 'STAGING_VERCEL_TOKEN_REQUIRED');
+export function validateHyperdrive(value, target) {
   requireRelease(
-    Boolean(env.VERCEL_AUTOMATION_BYPASS_SECRET),
-    'STAGING_EXISTING_BYPASS_SECRET_REQUIRED',
+    value?.id === target.hyperdriveId &&
+      value.caching?.disabled === true &&
+      value.origin?.host === 'db.kmcpcauaxlgpevkkenwd.supabase.co' &&
+      value.origin?.database === 'postgres' &&
+      value.origin?.user === 'justgo_runtime' &&
+      value.origin?.port === 5432 &&
+      ['postgres', 'postgresql'].includes(value.origin?.scheme) &&
+      value.mtls?.sslmode === 'verify-full' &&
+      typeof value.mtls.ca_certificate_id === 'string' &&
+      value.mtls.ca_certificate_id.length > 0 &&
+      value.origin_connection_limit === 5,
+    'STAGING_HYPERDRIVE_CONFIGURATION_MISMATCH',
   );
-  // Project-only tokens cannot read /user. Seed only the known nonsecret scope
-  // mapping so the pinned CLI does not try that unrelated identity lookup.
-  const directory = mkdtempSync(join(env.RUNNER_TEMP, 'justgo-api-cli-'));
-  try {
-    try {
-      const config = join(directory, 'com.vercel.cli');
-      mkdirSync(config, { mode: 0o700 });
-      writeFileSync(
-        join(config, 'config.json'),
-        JSON.stringify({
-          currentTeam: target.team,
-          cachedTeamIds: { [target.scope]: target.team },
-          cachedTeamSlugs: {
-            [target.team]: { slug: target.scope, savedAt: Date.now() },
-          },
-          updates: { auto: false },
-        }),
-        { mode: 0o600, flag: 'wx' },
-      );
-      return await runStagingApi(operation, {
-        ...options,
-        context,
-        phase,
-        env: {
-          ...env,
-          XDG_CONFIG_HOME: directory,
-          XDG_DATA_HOME: directory,
-          XDG_CACHE_HOME: directory,
-        },
-      });
-    } finally {
-      rmSync(directory, { recursive: true, force: true });
-    }
-  } catch (error) {
-    // Once the provider has been asked to promote, even a timeout/readback or
-    // cleanup failure requires inspecting remote state before another attempt.
-    if (phase.promotionAttempted)
-      throw new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED');
-    throw error;
-  }
 }
-async function runStagingApi(
+export async function stagingApi(
   operation,
   {
     env = process.env,
@@ -101,215 +63,205 @@ async function runStagingApi(
     root = process.cwd(),
     signal,
     beforePromote,
-    context,
-    phase,
     wait = pause,
     promote = promoteStagingCandidate,
+    request = cloudflareRequest,
+    probe = workerProbe,
+    build = buildStagingWorker,
     summary = (text) => {
       if (env.GITHUB_STEP_SUMMARY)
         appendFileSync(env.GITHUB_STEP_SUMMARY, text);
     },
   } = {},
 ) {
-  const vc = (args) => {
+  let promotionAttempted = false;
+  let directory;
+  const context = releaseContext(env);
+  const target = cloudflareTarget(env);
+  const alive = () =>
     requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
-    const split = args.indexOf('--');
-    // curl forwards unrecognized CLI flags to curl, including --non-interactive.
-    const flags = [
-      '--scope',
-      target.scope,
-      ...(args[0] === 'curl' ? [] : ['--non-interactive']),
-    ];
-    return run(
-      'vercel',
-      split < 0
-        ? [...args, ...flags]
-        : [...args.slice(0, split), ...flags, ...args.slice(split)],
-      { cwd: root, env, signal },
-    );
+  const api = async (path, options = {}) => {
+    alive();
+    return request(target, path, {
+      token: env.CLOUDFLARE_API_TOKEN,
+      signal,
+      ...options,
+    });
   };
-  const api = async (path) =>
-    JSON.parse(
-      await vc([
-        'api',
-        `${path}${path.includes('?') ? '&' : '?'}teamId=${target.team}`,
-        '--method',
-        'GET',
-      ]),
-    );
-  const deployment = (id) => api(`/v13/deployments/${id}`);
-  const baseline = validateDeployment(await deployment(target.alias));
-  const previousSha =
-    baseline.meta?.justgoSourceSha ?? baseline.meta?.githubCommitSha;
-  requireRelease(isSourceSha(previousSha), 'STAGING_BASELINE_SOURCE_REQUIRED');
-  requireRelease(
-    (await run('git', ['rev-parse', 'HEAD'], { cwd: root, signal })).trim() ===
-      context.sha &&
-      !(
-        await run('git', ['status', '--porcelain'], { cwd: root, signal })
-      ).trim(),
-    'STAGING_SOURCE_NOT_CLEAN',
-  );
-  if (operation === 'preflight')
-    return { deploymentId: baseline.id, sourceSha: previousSha };
-  requireRelease(
-    operation === 'deploy' &&
-      typeof beforePromote === 'function' &&
-      env.STAGING_BASELINE_ID === baseline.id &&
-      env.STAGING_BASELINE_SHA === previousSha,
-    'STAGING_BASELINE_CHANGED',
-  );
-  const version = (await vc(['--version'])).trim();
-  requireRelease(
-    version === 'Vercel CLI 64.7.0' || version === '64.7.0',
-    'PINNED_VERCEL_REQUIRED',
-  );
-  const project = await api(`/v9/projects/${target.project}`);
-  requireRelease(
-    project.id === target.project &&
-      project.accountId === target.team &&
-      project.rootDirectory === 'apps/api' &&
-      project.framework === 'fastify' &&
-      project.nodeVersion === '24.x' &&
-      !project.link,
-    'STAGING_PROJECT_CONFIGURATION_MISMATCH',
-  );
-  const manifest = JSON.parse(
-    await vc(['deploy', '--dry', '--json', '--project', target.project]),
-  );
-  const tracked = (await run('git', ['ls-files', '-z'], { cwd: root, signal }))
-    .split('\0')
-    .filter(Boolean);
-  const uploadSha256 = validateUpload(manifest, tracked, root);
-  // Production-built candidate preserves the tested artifact when promoted.
-  const output = (
-    await vc([
-      'deploy',
-      '--json',
-      '--prod',
-      '--skip-domain',
-      '--yes',
-      '--project',
-      target.project,
-      '--regions',
-      'yul1',
-      '--env',
-      'APP_ENVIRONMENT=staging',
-      '--env',
-      `JUSTGO_SOURCE_SHA=${context.sha}`,
-      '--env',
-      `API_SENTRY_RELEASE=${context.sha}`,
-      '--meta',
-      `githubCommitSha=${context.sha}`,
-      '--meta',
-      `justgoSourceSha=${context.sha}`,
-      '--meta',
-      `justgoRunId=${context.runId}`,
-      '--meta',
-      `justgoRunAttempt=${context.attempt}`,
-    ])
-  ).trim();
-  const deploymentReceipt = candidateReceipt(output);
-  const candidate = validateDeployment(
-    await deployment(deploymentReceipt.id),
-    context,
-  );
-  requireRelease(
-    candidate.id === deploymentReceipt.id &&
-      `https://${candidate.url}` === deploymentReceipt.url,
-    'CANDIDATE_RECEIPT_PROVENANCE_MISMATCH',
-  );
-  // --skip-domain must preserve the public target before any candidate probes.
-  requireRelease(
-    validateDeployment(await deployment(target.alias)).id === baseline.id,
-    'STAGING_ALIAS_CHANGED_DURING_CANDIDATE_BUILD',
-  );
-  const temporary = mkdtempSync(join(env.RUNNER_TEMP, 'justgo-api-probes-'));
-  const probe = async (path, kind, publicOrigin = false) => {
-    requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
-    const headersPath = join(temporary, 'headers'),
-      bodyPath = join(temporary, 'body');
-    const args = [
-      '--silent',
-      '--show-error',
-      '--max-time',
-      '20',
-      '--dump-header',
-      headersPath,
-      '--output',
-      bodyPath,
-      '--write-out',
-      '%{http_code}',
-    ];
-    const status = Number(
-      publicOrigin
-        ? await run('curl', [...args, `https://${target.alias}${path}`], {
-            env,
-            signal,
-          })
-        : await vc(['curl', path, '--deployment', candidate.id, '--', ...args]),
-    );
-    const headers = {};
-    for (const line of readFileSync(headersPath, 'utf8').split(/\r?\n/)) {
-      if (/^HTTP\//.test(line)) {
-        for (const key of Object.keys(headers)) delete headers[key];
-      }
-      const index = line.indexOf(':');
-      if (index > 0)
-        headers[line.slice(0, index).toLowerCase()] = line
-          .slice(index + 1)
-          .trim();
-    }
-    validateProbe(
-      { status, headers, body: readFileSync(bodyPath, 'utf8') },
-      kind,
-      context.sha,
+  const current = async () => validateDeployment(await api('/deployments'));
+  const latestIs = async (id) => {
+    const versions = await api('/versions');
+    requireRelease(
+      versions?.items?.[0]?.id === id,
+      'STAGING_LATEST_VERSION_CHANGED',
     );
   };
   try {
-    await probe('/health', 'health');
-    await probe('/ready', 'ready');
-    await probe('/v1/journal-sync?limit=1', 'unauthorized');
-    await probe('/v1/completion-restores?limit=1', 'unauthorized');
-    requireRelease(
-      validateDeployment(await deployment(target.alias)).id === baseline.id,
-      'STAGING_ALIAS_CHANGED_BEFORE_PROMOTION',
-    );
-    await beforePromote();
-    requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
-    phase.promotionAttempted = true;
-    // The CLI's API client retries mutations internally. Use the single-request
-    // transport; the existing alias checks still own completion evidence.
-    await promote(candidate.id, { token: env.VERCEL_TOKEN, signal });
-    for (let attempt = 0; attempt < 30; attempt++) {
-      const current = validateDeployment(await deployment(target.alias));
-      if (current.id === candidate.id) {
-        validateDeployment(current, context);
-        break;
-      }
-      requireRelease(
-        current.id === baseline.id && attempt < 29,
-        'STAGING_PROMOTION_UNCONFIRMED',
+    try {
+      validateHyperdrive(
+        await api(`/hyperdrive/configs/${target.hyperdriveId}`),
+        target,
       );
-      await wait(2000, undefined, { signal });
+      requireRelease(
+        (await api('/workers/subdomain')).subdomain === target.subdomain,
+        'STAGING_WORKER_CONFIGURATION_MISMATCH',
+      );
+      const settings = await api('/settings');
+      requireRelease(
+        settings?.observability?.enabled === false &&
+          settings.logpush !== true &&
+          !(settings.tail_consumers?.length > 0),
+        'STAGING_WORKER_CONFIGURATION_MISMATCH',
+      );
+      const subdomain = await api('/subdomain');
+      requireRelease(
+        subdomain?.enabled === true && subdomain.previews_enabled === true,
+        'STAGING_WORKER_CONFIGURATION_MISMATCH',
+      );
+      const baseline = await current();
+      const previous = validateVersion(
+        await api(`/versions/${baseline.versionId}`),
+        target,
+      );
+      await latestIs(previous.id);
+      requireRelease(
+        (
+          await run('git', ['rev-parse', 'HEAD'], { cwd: root, signal })
+        ).trim() === context.sha &&
+          !(
+            await run('git', ['status', '--porcelain'], { cwd: root, signal })
+          ).trim(),
+        'STAGING_SOURCE_NOT_CLEAN',
+      );
+      if (operation === 'preflight')
+        return { deploymentId: baseline.id, sourceSha: previous.sourceSha };
+      requireRelease(
+        operation === 'deploy' &&
+          typeof beforePromote === 'function' &&
+          env.STAGING_BASELINE_ID === baseline.id &&
+          env.STAGING_BASELINE_SHA === previous.sourceSha,
+        'STAGING_BASELINE_CHANGED',
+      );
+      directory = mkdtempSync(join(env.RUNNER_TEMP, 'justgo-worker-release-'));
+      const bundle = await build({
+        root,
+        directory,
+        target,
+        context,
+        env,
+        signal,
+        run,
+      });
+      alive();
+      requireRelease(
+        (await current()).id === baseline.id,
+        'STAGING_ALIAS_CHANGED_DURING_CANDIDATE_BUILD',
+      );
+      await latestIs(previous.id);
+      const configuration = bundle.configuration;
+      const metadata = {
+        main_module: 'worker.js',
+        bindings: uploadBindings(previous, context),
+        compatibility_date: configuration.compatibility_date,
+        compatibility_flags: configuration.compatibility_flags,
+        placement: { mode: 'targeted', region: configuration.placement.region },
+        annotations: {
+          'workers/tag': context.sha,
+          'workers/message': `JustGO ${context.sha} GitHub ${context.runId}/${context.attempt}`,
+        },
+      };
+      const form = new FormData();
+      form.set('metadata', JSON.stringify(metadata));
+      form.set(
+        'worker.js',
+        new Blob([bundle.content], { type: 'application/javascript+module' }),
+        'worker.js',
+      );
+      const uploaded = await api('/versions?bindings_inherit=strict', {
+        method: 'POST',
+        body: form,
+      });
+      requireRelease(isVersionId(uploaded?.id), 'INVALID_CANDIDATE_RECEIPT');
+      const candidate = validateVersion(
+        await api(`/versions/${uploaded.id}`),
+        target,
+        context,
+      );
+      requireRelease(
+        candidate.id === uploaded.id,
+        'CANDIDATE_RECEIPT_PROVENANCE_MISMATCH',
+      );
+      validateBindingPreservation(previous, candidate);
+      await latestIs(candidate.id);
+      requireRelease(
+        (await current()).id === baseline.id,
+        'STAGING_ALIAS_CHANGED_DURING_CANDIDATE_BUILD',
+      );
+      const check = async (origin, path, kind) => {
+        alive();
+        validateProbe(await probe(origin, path, { signal }), kind, context.sha);
+      };
+      const checkEndpoints = async (origin) => {
+        await check(origin, '/health', 'health');
+        await check(origin, '/ready', 'ready');
+        await check(origin, '/v1/journal-sync?limit=1', 'unauthorized');
+        await check(origin, '/v1/completion-restores?limit=1', 'unauthorized');
+      };
+      await checkEndpoints(versionOrigin(candidate.id, target));
+      requireRelease(
+        (await current()).id === baseline.id,
+        'STAGING_ALIAS_CHANGED_BEFORE_PROMOTION',
+      );
+      await latestIs(candidate.id);
+      validateHyperdrive(
+        await api(`/hyperdrive/configs/${target.hyperdriveId}`),
+        target,
+      );
+      await beforePromote();
+      alive();
+      promotionAttempted = true;
+      // One mutation only. A lost response is resolved exclusively by readback.
+      try {
+        await promote(candidate.id, {
+          target,
+          token: env.CLOUDFLARE_API_TOKEN,
+          signal,
+        });
+      } catch {
+        alive();
+      }
+      let deployed;
+      for (let attempt = 0; attempt < 30; attempt++) {
+        deployed = await current();
+        if (deployed.versionId === candidate.id) break;
+        requireRelease(
+          deployed.id === baseline.id && attempt < 29,
+          'STAGING_PROMOTION_UNCONFIRMED',
+        );
+        await wait(2000, undefined, { signal });
+      }
+      validateVersion(await api(`/versions/${candidate.id}`), target, context);
+      await checkEndpoints(target.origin);
+      const receipt = {
+        sourceSha: context.sha,
+        deploymentId: deployed.id,
+        versionId: candidate.id,
+        previousDeploymentId: baseline.id,
+        uploadSha256: bundle.uploadSha256,
+        runId: context.runId,
+        runAttempt: context.attempt,
+      };
+      summary(
+        `Staging Worker verified: \`${context.sha}\` → version \`${candidate.id}\`, deployment \`${deployed.id}\`. Previous deployment: \`${baseline.id}\`. No automatic rollback is performed.\n`,
+      );
+      return receipt;
+    } finally {
+      if (directory) rmSync(directory, { recursive: true, force: true });
     }
-    await probe('/health', 'health', true);
-    await probe('/ready', 'ready', true);
-    await probe('/v1/journal-sync?limit=1', 'unauthorized', true);
-    const receipt = {
-      sourceSha: context.sha,
-      deploymentId: candidate.id,
-      previousDeploymentId: baseline.id,
-      uploadSha256,
-      runId: context.runId,
-      runAttempt: context.attempt,
-    };
-    summary(
-      `Staging API verified: \`${context.sha}\` → \`${candidate.id}\`. Previous deployment: \`${baseline.id}\`. No automatic rollback is performed.\n`,
-    );
-    return receipt;
-  } finally {
-    rmSync(temporary, { recursive: true, force: true });
+  } catch (error) {
+    if (promotionAttempted)
+      throw new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED');
+    throw error;
   }
 }
 if (
@@ -320,7 +272,7 @@ if (
     console.info(JSON.stringify(await stagingApi(process.argv[2])));
   } catch {
     console.error(
-      'Staging API release failed; inspect deployment state before retrying. No automatic rollback was performed.',
+      'Staging Worker release failed; inspect versions and deployment before retrying. No automatic rollback was performed.',
     );
     process.exitCode = 1;
   }

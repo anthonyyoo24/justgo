@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { Pool } from 'pg';
@@ -90,7 +91,7 @@ const request = (
   method: 'GET' | 'POST' | 'PATCH' = 'GET',
   payload?: object,
 ) =>
-  app.inject({
+  apiRequest(app, {
     method,
     url: path,
     headers: { authorization: `Bearer ${token}` },
@@ -155,7 +156,6 @@ afterAll(async () => {
       await admin.query('delete from justgo.users where id=$1', [owner]);
     }
   } finally {
-    await app.close();
     await Promise.all([db.pool.end(), admin.end()]);
   }
 });
@@ -347,20 +347,17 @@ describe('completed attempt resources', () => {
       logger: false,
       checkDatabase: async () => {},
     });
-    try {
-      expect(
-        (
-          await closed.inject({
-            method: 'POST',
-            url: '/v1/attempts',
-            headers: { authorization: `Bearer ${a.sessionToken}` },
-            payload: { ...body, id: randomUUID() },
-          })
-        ).statusCode,
-      ).toBe(503);
-    } finally {
-      await closed.close();
-    }
+
+    expect(
+      (
+        await apiRequest(closed, {
+          method: 'POST',
+          url: '/v1/attempts',
+          headers: { authorization: `Bearer ${a.sessionToken}` },
+          payload: { ...body, id: randomUUID() },
+        })
+      ).statusCode,
+    ).toBe(503);
   });
   it('rejects forged fields, invalid placement/zone/UUID and implausibly future starts without inserts', async () => {
     const a = await account(),
@@ -480,7 +477,9 @@ describe('retired journal writes and completion history', () => {
       { reflection_text: 'Retained legacy note', reflection_revision: 1 },
     ]);
     const day = await request(a.sessionToken, '/v1/attempts?date=2026-09-18');
-    expect(day.json().entries[0]).not.toHaveProperty('reflection');
+    expect(
+      day.json<CompletionProgressDayResponse>().entries[0],
+    ).not.toHaveProperty('reflection');
     expect(day.body).not.toContain('Retained legacy note');
     const replay = await request(
       a.sessionToken,

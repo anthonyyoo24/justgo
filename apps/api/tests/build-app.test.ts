@@ -1,9 +1,9 @@
+import { apiRequest } from './request.js';
 import { Writable } from 'node:stream';
-import pino from 'pino';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/build-app.js';
 import { readConfig } from '../src/config.js';
-import { loggerOptions } from '../src/http/diagnostics.js';
+import { createLogger, loggerOptions } from '../src/http/diagnostics.js';
 import { poolOptions } from '../src/db/client.js';
 
 describe('health and readiness', () => {
@@ -14,19 +14,16 @@ describe('health and readiness', () => {
         throw new Error('postgresql://secret@host/private-reflection');
       },
     });
-    try {
-      expect((await app.inject('/health')).json()).toEqual({
-        status: 'ok',
-        service: 'justgo-api',
-      });
-      const readiness = await app.inject('/ready');
-      expect(readiness.statusCode).toBe(503);
-      expect(readiness.json()).toEqual({ status: 'unavailable' });
-      expect(readiness.headers['cache-control']).toBe('no-store');
-      expect(readiness.body).not.toContain('secret');
-    } finally {
-      await app.close();
-    }
+
+    expect((await apiRequest(app, '/health')).json()).toEqual({
+      status: 'ok',
+      service: 'justgo-api',
+    });
+    const readiness = await apiRequest(app, '/ready');
+    expect(readiness.statusCode).toBe(503);
+    expect(readiness.json()).toEqual({ status: 'unavailable' });
+    expect(readiness.headers['cache-control']).toBe('no-store');
+    expect(readiness.body).not.toContain('secret');
   });
   it('reports database readiness, generates its own request ID and restricts browser origins', async () => {
     const app = buildApp({
@@ -34,33 +31,32 @@ describe('health and readiness', () => {
       origins: ['http://localhost:8081'],
       checkDatabase: async () => {},
     });
-    try {
-      const response = await app.inject({
-        url: '/ready',
-        headers: {
-          'x-request-id': 'attacker-controlled',
-          origin: 'https://unknown.example',
-        },
-      });
-      expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({ status: 'ready' });
-      expect(response.headers['x-request-id']).not.toBe('attacker-controlled');
-      expect(response.headers['access-control-allow-origin']).toBeUndefined();
-      const allowed = await app.inject({
-        url: '/health',
-        headers: { origin: 'http://localhost:8081' },
-      });
-      expect(allowed.headers['access-control-allow-origin']).toBe(
-        'http://localhost:8081',
-      );
-      const missing = await app.inject('/secret-path?token=secret');
-      expect(missing.statusCode).toBe(404);
-      expect(missing.body).not.toContain('secret');
-      // Fixture cleanup provenance is never exposed by the deployable app.
-      expect((await app.inject('/__fixtures/accounts')).statusCode).toBe(404);
-    } finally {
-      await app.close();
-    }
+
+    const response = await apiRequest(app, {
+      url: '/ready',
+      headers: {
+        'x-request-id': 'attacker-controlled',
+        origin: 'https://unknown.example',
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'ready' });
+    expect(response.headers['x-request-id']).not.toBe('attacker-controlled');
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+    const allowed = await apiRequest(app, {
+      url: '/health',
+      headers: { origin: 'http://localhost:8081' },
+    });
+    expect(allowed.headers['access-control-allow-origin']).toBe(
+      'http://localhost:8081',
+    );
+    const missing = await apiRequest(app, '/secret-path?token=secret');
+    expect(missing.statusCode).toBe(404);
+    expect(missing.body).not.toContain('secret');
+    // Fixture cleanup provenance is never exposed by the deployable app.
+    expect((await apiRequest(app, '/__fixtures/accounts')).statusCode).toBe(
+      404,
+    );
   });
   it.each(['PUT', 'PATCH', 'DELETE'])(
     'allows %s preflight from the configured app origin only',
@@ -70,30 +66,27 @@ describe('health and readiness', () => {
         origins: ['http://localhost:8081'],
         checkDatabase: async () => {},
       });
-      try {
-        const preflight = (origin: string) =>
-          app.inject({
-            method: 'OPTIONS',
-            url: '/v1/devices/00000000-0000-4000-8000-000000000000',
-            headers: {
-              origin,
-              'access-control-request-method': method,
-              'access-control-request-headers': 'authorization,content-type',
-            },
-          });
-        const allowed = await preflight('http://localhost:8081');
-        expect(allowed.statusCode).toBe(204);
-        expect(allowed.headers['access-control-allow-origin']).toBe(
-          'http://localhost:8081',
-        );
-        expect(allowed.headers['access-control-allow-methods']).toBe(
-          'GET, POST, PUT, PATCH, DELETE',
-        );
-        const denied = await preflight('https://unknown.example');
-        expect(denied.headers['access-control-allow-origin']).toBeUndefined();
-      } finally {
-        await app.close();
-      }
+
+      const preflight = (origin: string) =>
+        apiRequest(app, {
+          method: 'OPTIONS',
+          url: '/v1/devices/00000000-0000-4000-8000-000000000000',
+          headers: {
+            origin,
+            'access-control-request-method': method,
+            'access-control-request-headers': 'authorization,content-type',
+          },
+        });
+      const allowed = await preflight('http://localhost:8081');
+      expect(allowed.statusCode).toBe(204);
+      expect(allowed.headers['access-control-allow-origin']).toBe(
+        'http://localhost:8081',
+      );
+      expect(allowed.headers['access-control-allow-methods']).toBe(
+        'GET, POST, PUT, PATCH, DELETE',
+      );
+      const denied = await preflight('https://unknown.example');
+      expect(denied.headers['access-control-allow-origin']).toBeUndefined();
     },
   );
 });
@@ -145,7 +138,7 @@ describe('safe operational configuration', () => {
         next();
       },
     });
-    const logger = pino(loggerOptions(), stream);
+    const logger = createLogger({ ...loggerOptions(), stream });
     logger.error(
       {
         req: {

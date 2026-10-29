@@ -1,5 +1,6 @@
 import { rootCertificates } from 'node:tls';
 import { EventEmitter } from 'node:events';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Client } from 'pg';
 import {
@@ -12,6 +13,9 @@ import {
   type MigrationEntry,
   watchReleaseConnection,
   assertReleaseLease,
+  migrationEntries,
+  withStagingBootstrap,
+  withStagingRelease,
 } from '../../scripts/staging-release-guard.js';
 
 const sha = 'a'.repeat(40),
@@ -159,5 +163,97 @@ describe('staging migration target and recovery fences', () => {
           now,
         ),
       ).toThrow();
+  });
+});
+
+describe('shared release lease and first Worker migration guard', () => {
+  const config = {
+    migrationsFolder: fileURLToPath(new URL('../../drizzle', import.meta.url)),
+    migrationsSchema: 'drizzle',
+  };
+  function fixture(failure?: string) {
+    const calls: string[] = [];
+    const history = migrationEntries(config).map((entry) => ({
+      created_at: entry.when,
+      hash: entry.hash,
+    }));
+    const client = {
+      query: async (query: string) => {
+        calls.push(query);
+        if (query.includes('pg_try_advisory_lock'))
+          return { rows: [{ locked: failure !== 'busy' }] };
+        if (query.includes('from pg_roles'))
+          return {
+            rows: [
+              {
+                role_ok: failure !== 'role',
+                database: failure === 'database' ? 'other' : 'postgres',
+              },
+            ],
+          };
+        if (query.startsWith('select hash'))
+          return {
+            rows:
+              failure === 'pending'
+                ? history.slice(0, -1)
+                : failure === 'history'
+                  ? [{ ...history[0], hash: '0'.repeat(64) }]
+                  : history,
+          };
+        return { rows: [] };
+      },
+    } as unknown as Client;
+    return { client, calls };
+  }
+  it('uses the same restricted-role session and exact current history before the first upload', async () => {
+    const f = fixture();
+    expect(
+      await withStagingBootstrap(f.client, config, async () => {
+        expect(f.calls[0]).toContain('pg_try_advisory_lock');
+        expect(f.calls[1]).toContain('from pg_roles');
+        expect(f.calls[2]).toContain('select hash');
+        expect(
+          f.calls.some((query) => query.includes('pg_advisory_unlock')),
+        ).toBe(false);
+        return 'uploaded';
+      }),
+    ).toBe('uploaded');
+    expect(f.calls.at(-1)).toContain('pg_advisory_unlock');
+  });
+  for (const failure of ['busy', 'role', 'database', 'pending', 'history'])
+    it(`refuses ${failure} before first upload and releases an acquired lock`, async () => {
+      const f = fixture(failure);
+      let uploads = 0;
+      await expect(
+        withStagingBootstrap(f.client, config, async () => {
+          uploads++;
+        }),
+      ).rejects.toThrow('Staging release guard failed');
+      expect(uploads).toBe(0);
+      expect(
+        f.calls.some((query) => query.includes('pg_advisory_unlock')),
+      ).toBe(failure !== 'busy');
+      expect(
+        f.calls.some((query) => /^(?:begin|insert|alter|create)/i.test(query)),
+      ).toBe(false);
+    });
+  it('releases the lock after failed work and preserves ordinary code-only release behavior', async () => {
+    const f = fixture();
+    await expect(
+      withStagingRelease(
+        f.client,
+        {
+          config,
+          operation: 'deploy',
+          sourceSha: sha,
+          previousApiSha: previous,
+          expectedDatabase: 'postgres',
+        },
+        async () => {
+          throw new Error('upload failed');
+        },
+      ),
+    ).rejects.toThrow('upload failed');
+    expect(f.calls.at(-1)).toContain('pg_advisory_unlock');
   });
 });

@@ -1,3 +1,4 @@
+import { apiRequest } from '../request.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
@@ -5,6 +6,7 @@ import {
   type AccessResponse,
   type CompletionProgressDayResponse,
   type ProgressSummary,
+  type ProgressCalendar,
 } from '@justgo/contracts';
 import { createDatabase, poolOptions } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
@@ -59,7 +61,7 @@ async function account() {
   return { ...input, userId: result.userId };
 }
 const request = (token: string, path: string) =>
-  app.inject({
+  apiRequest(app, {
     method: 'GET',
     url: path,
     headers: { authorization: `Bearer ${token}` },
@@ -100,7 +102,7 @@ afterAll(async () => {
       await admin.query(`delete from justgo.${table} where user_id=$1`, [id]);
     await admin.query('delete from justgo.users where id=$1', [id]);
   }
-  await app.close();
+
   await Promise.all([db.pool.end(), admin.end()]);
 });
 
@@ -134,7 +136,7 @@ describe('owner-scoped Progress history', () => {
     );
     const calendar = (
       await request(a.sessionToken, `/v1/progress/calendar?month=${month}`)
-    ).json();
+    ).json<ProgressCalendar>();
     expect(calendar.monthlyReps).toBe(inMonth.length);
     expect(calendar.activeDays).toBe(new Set(inMonth).size);
     expect(
