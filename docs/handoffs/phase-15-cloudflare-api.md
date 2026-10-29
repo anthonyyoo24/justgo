@@ -5,7 +5,8 @@
 **Local implementation prepared; Phase 15 remains in progress.** Anthony approved
 creation of the empty private R2 bucket and the seven-day Cloudflare setup token;
 both are created and verified. Changes are prepared on local branch
-`codex/phase-15-cloudflare`. No hosted API deployment,
+`codex/phase-15-cloudflare`. Anthony chose to keep the changes local: no push or
+pull request is authorized. No hosted API deployment,
 real-data backup, notice publication, mobile release, Vercel retirement or Git
 publication occurred. Build 5 and its
 deployed Vercel API remain the current hosted release. This handoff does not close
@@ -143,6 +144,12 @@ Workers Scripts Write and Hyperdrive Write, saved only in an ignored mode-0600
 local file. API verification confirmed it active, expiring November 4 at 23:59:59
 America/Toronto (`2026-11-05T04:59:59Z`), and confirmed the account still has no
 Workers or Hyperdrive configurations. No upgrade or backup was created.
+Anthony subsequently approved adding Account: SSL and Certificates Write to the
+same token with its November 4 expiry unchanged. The public Supabase Root 2021 CA
+was uploaded as `justgo-supabase-root-2021` (certificate ID
+`ecffd548-d776-4ea0-8a97-ef4610289ed6`). Provider readback confirmed the CA metadata
+and exact certificate fingerprint. This prepares verified database TLS; it does
+not create a Hyperdrive connection or deploy the Worker.
 Retention/lock configuration and real-data copying remain unapproved.
 Account access is verified; it does not establish the legal customer or resolve
 the recorded DPA/private-processing approval.
@@ -151,8 +158,10 @@ An `age` identity was prepared locally with restrictive permissions and a
 synthetic encrypt/decrypt roundtrip passed. It is not yet an independent offline
 primary/recovery copy. Existing runtime/migrator session-pooler credentials were
 read-only checked as their restricted roles. Vercel exports protected settings as
-`[SENSITIVE]`; initial Auth/rate-key/beta configuration must come from approved
-credential sources, never those placeholders. No existing credentials were rotated.
+`[SENSITIVE]`; the existing Auth secret was retrieved from the signed-in Supabase
+dashboard and saved in a protected ignored file. The current identity rate key
+and beta grants/window remain unresolved; never substitute export placeholders.
+No existing credentials were rotated.
 
 | Item                       | Prepared result / remaining gate                                                                                                                                                                                                                                                                    | Owner                                                                                                                 |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
