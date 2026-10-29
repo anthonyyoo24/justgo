@@ -50,12 +50,21 @@ export function createWorker(
           reporters.set(bindings, reporter);
         }
         database = dependencies.createDatabase(request, settings);
+        const invocationPool = database.pool;
         const app = dependencies.buildApp(settings.config, database, {
           clientAddress: (context) => workerClientAddress(context.req.raw),
           reportServerError: reporter,
           checkAdditionalDatabase: async () => {
             const direct = createDatabase(settings.lockConfig);
             try {
+              for (const pool of [invocationPool, direct.pool]) {
+                const result = await pool.query<{ database_ok: boolean }>(
+                  'select current_database()::text = $1::text as database_ok',
+                  [settings.databaseName],
+                );
+                if (result.rows[0]?.database_ok !== true)
+                  throw new Error('Database readiness check failed');
+              }
               await checkDatabase(direct.pool);
               if (settings.config.MANAGED_AUTH_ENABLED)
                 await checkManagedAuthDatabase(direct.pool);
