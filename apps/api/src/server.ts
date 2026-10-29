@@ -10,12 +10,17 @@ const database = config.DATABASE_URL ? createDatabase(config) : undefined;
 const app = buildRuntimeApp(config, database, {
   onVercel: process.env.VERCEL === '1',
 });
-let server: Awaited<ReturnType<typeof listen>> | undefined;
+// Shutdown must also own a listener that is still binding when a signal arrives.
+const listening = listen(app, { port: config.PORT, host: '0.0.0.0' });
 let shutdown: Promise<void> | undefined;
 const close = () =>
   (shutdown ??= (async () => {
-    await server?.close();
-    await database?.pool.end();
+    try {
+      const server = await listening.catch(() => undefined);
+      await server?.close();
+    } finally {
+      await database?.pool.end();
+    }
   })());
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
@@ -25,10 +30,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   });
 }
 // The retained Vercel adapter captures listen while the candidate awaits cutover.
-void listen(app, { port: config.PORT, host: '0.0.0.0' })
-  .then((value) => {
-    server = value;
-  })
+void listening
   .catch(async () => {
     createLogger(loggerOptions(config.LOG_LEVEL)).error(
       {},
@@ -36,4 +38,8 @@ void listen(app, { port: config.PORT, host: '0.0.0.0' })
     );
     process.exitCode = 1;
     await close();
+  })
+  .catch(() => {
+    // A cleanup failure after startup failed is handled without exposing its data.
+    process.exitCode = 1;
   });

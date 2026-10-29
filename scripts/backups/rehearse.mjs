@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -14,6 +14,7 @@ import { DeleteDataService } from '../../apps/api/src/data-sync/deletion.ts';
 import { artifactMetadata } from './storage.mjs';
 import { encryptSnapshot } from './snapshot.mjs';
 import { restoreLocal } from './restore-local.mjs';
+import { cleanupRehearsal } from './rehearsal-cleanup.mjs';
 
 const migrations = new URL('../../apps/api/drizzle/', import.meta.url).pathname;
 const secret = () => randomBytes(32).toString('hex');
@@ -32,14 +33,13 @@ export async function rehearse(env = process.env) {
   const suffix = randomBytes(6).toString('hex');
   const sourceName = `justgo_restore_${suffix}`;
   const targetName = `justgo_restore_${randomBytes(6).toString('hex')}`;
-  const directory = await mkdtemp(join(tmpdir(), 'justgo-recovery-rehearsal-'));
-  const admin = new Client({ connectionString: adminUrl.href, ssl: false });
   const clients = [],
     pools = [],
     ownedDatabases = [];
+  let admin, failure;
   let ownsRole = false;
   let step = 'connect';
-  const pgBin = env.JUSTGO_PG_BIN || '/opt/homebrew/opt/postgresql@17/bin';
+  const pgBin = env.JUSTGO_PG_BIN || '';
   const ageBin = env.AGE_BIN || 'age';
   const sourceConfig = {
     host: adminUrl.hostname,
@@ -49,7 +49,9 @@ export async function rehearse(env = process.env) {
     database: sourceName,
     ssl: false,
   };
+  const directory = await mkdtemp(join(tmpdir(), 'justgo-recovery-rehearsal-'));
   try {
+    admin = new Client({ connectionString: adminUrl.href, ssl: false });
     await admin.connect();
     step = 'isolated setup';
     if (
@@ -320,25 +322,23 @@ export async function rehearse(env = process.env) {
     await target.query('begin');
     await reconcileLedger(target, JSON.parse(decrypted.stdout));
     await target.query('commit');
-    console.log(
-      'Encrypted local app/Auth restore, deletion replay, epoch fencing, revoked proofs and idempotency passed. Synthetic Auth tables are not hosted provider acceptance.',
-    );
   } catch {
-    throw new Error(`Recovery rehearsal failed during ${step}`);
+    failure = new Error(`Recovery rehearsal failed during ${step}`);
   } finally {
-    await Promise.allSettled(pools.map((pool) => pool.end()));
-    await Promise.allSettled(clients.map((client) => client.end()));
-    for (const name of ownedDatabases.reverse())
-      await admin.query(`drop database ${name} with(force)`);
-    if (ownsRole) await admin.query('drop role justgo_backup');
-    await admin.end();
-    await rm(directory, { recursive: true, force: true });
+    await cleanupRehearsal(
+      { pools, clients, ownedDatabases, ownsRole, admin, directory },
+      failure,
+    );
   }
+  console.log(
+    'Encrypted local app/Auth restore, deletion replay, epoch fencing, revoked proofs and idempotency passed. Synthetic Auth tables are not hosted provider acceptance.',
+  );
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
   rehearse().catch((error) => {
     console.error(
-      error.message.startsWith('Recovery rehearsal failed during ')
+      error.message.startsWith('Recovery rehearsal failed during ') ||
+        error.message === 'Recovery rehearsal cleanup incomplete'
         ? error.message
         : 'Recovery rehearsal setup failed',
     );
