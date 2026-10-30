@@ -12,12 +12,12 @@ export type WorkerBindings = Record<string, unknown> & {
 const wrappedHyperdriveHost = /^[a-f0-9]{32}\.workers\.alt$/;
 
 /**
- * Bound one invocation's pool without overriding Hyperdrive's transport.
+ * Validate the transport once for both pool setup and origin-identity handling.
  * Only workerd's local or exact wrapped proxy URLs may carry sslmode=disable;
  * other connection options and fragments are rejected. This checks proxy shape,
  * while release readback verifies origin TLS and readiness checks database identity.
  */
-export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
+function readHyperdriveTransport(connectionString: string) {
   const url = new URL(connectionString);
   const parameters = [...url.searchParams.entries()];
   // workerd supplies this parameter for its virtual, platform-owned transport.
@@ -41,6 +41,12 @@ export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
     url.hash
   )
     throw new Error('Invalid Hyperdrive binding');
+  return { url, virtualTransport };
+}
+
+/** Bound one invocation's pool without overriding Hyperdrive's transport. */
+export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
+  readHyperdriveTransport(connectionString);
   return {
     connectionString,
     max: 1,
@@ -55,7 +61,7 @@ export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
 /**
  * Resolve ordinary and advisory-lock connections without opening either pool.
  * Hosted lock connections must use the restricted role and configured Supabase
- * project. Wrapped proxy credentials are opaque, so the returned databaseName
+ * project. Virtual proxy credentials are opaque, so the returned databaseName
  * must be checked through both live connections rather than inferred from them.
  * Invalid bindings, release identity or hosted Auth configuration throw here.
  */
@@ -63,7 +69,8 @@ export function readWorkerConfig(bindings: WorkerBindings) {
   const connectionString = bindings.HYPERDRIVE?.connectionString;
   if (!connectionString || !bindings.LOCK_DATABASE_URL)
     throw new Error('Worker database bindings are required');
-  hyperdrivePoolOptions(connectionString);
+  const { url: bindingUrl, virtualTransport } =
+    readHyperdriveTransport(connectionString);
   const environment: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(bindings))
     if (typeof value === 'string') environment[key] = value;
@@ -80,13 +87,12 @@ export function readWorkerConfig(bindings: WorkerBindings) {
     DATABASE_POOL_MAX: '1',
   });
   const lockUrl = new URL(bindings.LOCK_DATABASE_URL);
-  const bindingUrl = new URL(connectionString);
   if (lockUrl.username !== 'justgo_runtime' || lockUrl.search || lockUrl.hash)
     throw new Error(
       'Worker lock connection requires the restricted runtime role',
     );
   if (
-    !wrappedHyperdriveHost.test(bindingUrl.hostname) &&
+    !virtualTransport &&
     (bindingUrl.username !== lockUrl.username ||
       bindingUrl.pathname !== lockUrl.pathname)
   )
@@ -120,7 +126,7 @@ export function readWorkerConfig(bindings: WorkerBindings) {
         'Worker direct connection must match its Supabase project',
       );
   }
-  // Wrapped Hyperdrive credentials/database are opaque proxy placeholders, not
+  // Virtual Hyperdrive credentials/database are opaque proxy placeholders, not
   // origin identity. Release readback verifies the origin; readiness verifies
   // the real database name and restricted role through both connections.
   return {
