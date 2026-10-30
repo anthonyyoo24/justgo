@@ -39,9 +39,13 @@ capacity. User ownership and revocation reads must never rely on cached results.
 
 Hyperdrive does not support advisory locks. Ordinary requests use its pooled
 origin connection; whole transactions for Auth exchange and the retained legacy
-identity paths use the separate restricted-role `LOCK_DATABASE_URL`. The Worker
-checks matching database/role and the expected Supabase host. `/ready` verifies
-runtime-role and schema capabilities through both connections. The release
+identity paths use the separate restricted-role `LOCK_DATABASE_URL`. Validated
+virtual Hyperdrive URLs may contain opaque proxy usernames and database names,
+including on `*.hyperdrive.local`; those placeholders are not origin identity.
+The direct URL supplies the expected database, restricted role and Supabase host.
+`/ready` verifies the real database name, runtime role and schema capabilities
+through both connections. Nonvirtual URLs still require matching literal identity.
+The release
 advisory lock always stays on the direct session-pooler migrator connection.
 See [Hyperdrive's supported features](https://developers.cloudflare.com/hyperdrive/reference/supported-databases-and-features/).
 
@@ -132,9 +136,11 @@ uploads, require operator inspection and an approved disposition. The runner
 never deletes them or promotes them to make this check pass.
 
 The optional `abandoned_version_id` input recognizes only the inspected failed
-October 30 upload `2d6ea61b-2714-4cd9-9437-2a73f9476dd6`. It requires the exact
-recorded account, baseline deployment/version/source, abandoned source/run,
-two-version order and preserved bindings, both at preflight and before upload.
+October 30 upload `c0fefad7-9a31-4db7-976a-bfc8fbb0366b`. It requires the exact
+recorded account, baseline deployment/version/source, both abandoned uploads'
+source/run/annotations and preserved bindings. The version order must be this
+upload, known predecessor `2d6ea61b-2714-4cd9-9437-2a73f9476dd6`, then the recorded
+deployed baseline, both at preflight and before upload.
 It does not accept another abandoned version or change the default guard. After
 one replacement upload, ordinary candidate/probe/promotion checks apply again;
 another failed candidate requires fresh inspection and review.

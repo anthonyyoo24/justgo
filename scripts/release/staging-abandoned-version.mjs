@@ -12,10 +12,16 @@ const incident = Object.freeze({
   deploymentId: 'caaa7a54-d4a3-4eec-bdc2-9d5f927142e5',
   baselineId: 'd15d9fbd-1d99-4106-abc4-43b907ba7a2c',
   baselineSha: '7d8a5624bf7224bc243a342dab22a9d0b82f7f04',
-  abandonedId: '2d6ea61b-2714-4cd9-9437-2a73f9476dd6',
-  sha: '8b1e7d5838fa0d3d8d828aedbf15a3ecfbc85ba4',
-  runId: '41075504576',
+  abandonedId: 'c0fefad7-9a31-4db7-976a-bfc8fbb0366b',
+  sha: '39f11c3b6475e4f9666ebf8b2698daf05740920d',
+  runId: '41095205288',
   attempt: '1',
+  predecessor: Object.freeze({
+    abandonedId: '2d6ea61b-2714-4cd9-9437-2a73f9476dd6',
+    sha: '8b1e7d5838fa0d3d8d828aedbf15a3ecfbc85ba4',
+    runId: '41075504576',
+    attempt: '1',
+  }),
 });
 const rejected = 'STAGING_ABANDONED_VERSION_REJECTED';
 
@@ -34,7 +40,7 @@ export function abandonedVersionRequested(env, target) {
 }
 
 /**
- * Re-read the exact unpromoted upload and sole deployed baseline for this incident.
+ * Re-read both exact unpromoted uploads and the sole deployed baseline for this incident.
  * Called at preflight and immediately before replacement upload, never after it.
  * Any new version/deployment, missing provenance or binding drift fails closed.
  */
@@ -65,19 +71,22 @@ export async function verifyAbandonedVersion({
   const versions = await api('/versions');
   requireRelease(
     Array.isArray(versions?.items) &&
-      versions.items.length === 2 &&
+      versions.items.length === 3 &&
       versions.items[0]?.id === incident.abandonedId &&
-      versions.items[1]?.id === incident.baselineId,
+      versions.items[1]?.id === incident.predecessor.abandonedId &&
+      versions.items[2]?.id === incident.baselineId,
     rejected,
   );
-  const value = await api(`/versions/${incident.abandonedId}`);
-  const abandoned = validateVersion(value, target, incident);
-  requireRelease(
-    abandoned.id === incident.abandonedId &&
-      value.annotations?.['workers/tag'] === incident.sha &&
-      value.annotations?.['workers/message'] ===
-        `JustGO ${incident.sha} GitHub ${incident.runId}/${incident.attempt}`,
-    rejected,
-  );
-  validateBindingPreservation(previous, abandoned);
+  for (const expected of [incident, incident.predecessor]) {
+    const value = await api(`/versions/${expected.abandonedId}`);
+    const abandoned = validateVersion(value, target, expected);
+    requireRelease(
+      abandoned.id === expected.abandonedId &&
+        value.annotations?.['workers/tag'] === expected.sha &&
+        value.annotations?.['workers/message'] ===
+          `JustGO ${expected.sha} GitHub ${expected.runId}/${expected.attempt}`,
+      rejected,
+    );
+    validateBindingPreservation(previous, abandoned);
+  }
 }
