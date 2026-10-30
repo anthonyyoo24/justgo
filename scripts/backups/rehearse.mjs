@@ -16,6 +16,7 @@ import { encryptSnapshot } from './snapshot.mjs';
 import { verifyBackupRole } from './backup-role.mjs';
 import { restoreLocal } from './restore-local.mjs';
 import { cleanupRehearsal } from './rehearsal-cleanup.mjs';
+import { readPolicy } from './configuration.mjs';
 
 const migrations = new URL('../../apps/api/drizzle/', import.meta.url).pathname;
 const secret = () => randomBytes(32).toString('hex');
@@ -212,6 +213,73 @@ export async function rehearse(env = process.env) {
         'drop function if exists justgo.backup_ownership_probe()',
       );
     }
+    step = 'backup cron history policy verification';
+    // This is a synthetic policy and fixture, never a hosted connection. It
+    // exercises the same approved source scope and policy flow as the real job.
+    const policyRaw = JSON.stringify({
+      version: 1,
+      approvalReference: 'synthetic-cron-history-delete-rehearsal',
+      accountId: 'a'.repeat(32),
+      bucket: 'justgo-test',
+      environment: 'staging',
+      jurisdiction: 'default',
+      backupDays: 7,
+      ledgerDays: 7,
+      lockDays: 7,
+      ageRecipient: recipient,
+      sourceHost: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
+      sourceDatabase: 'postgres',
+      sourceProjectRef: 'kmcpcauaxlgpevkkenwd',
+      allowCronJobRunDetailsDelete: true,
+    });
+    const backupPolicy = readPolicy(
+      policyRaw,
+      createHash('sha256').update(policyRaw).digest('hex'),
+    );
+    // Removing the provider grant later must not break an opted-in backup.
+    await verifyBackupRole(backup, backupPolicy);
+    await source.query(`create schema cron;
+      create table cron.job_run_details(id bigint primary key);
+      create table cron.other_job_run_details(id bigint primary key);
+      grant delete on table cron.job_run_details to public`);
+    await assert.rejects(verifyBackupRole(backup), {
+      message: 'Backup role privileges are not restricted',
+    });
+    await verifyBackupRole(backup, backupPolicy);
+    for (const privilege of [
+      'INSERT',
+      'UPDATE',
+      'TRUNCATE',
+      'REFERENCES',
+      'TRIGGER',
+      'MAINTAIN',
+    ]) {
+      try {
+        await source.query(
+          `grant ${privilege} on table cron.job_run_details to justgo_backup`,
+        );
+        await assert.rejects(verifyBackupRole(backup, backupPolicy), {
+          message: 'Backup role privileges are not restricted',
+        });
+      } finally {
+        await source.query(
+          `revoke ${privilege} on table cron.job_run_details from justgo_backup`,
+        );
+      }
+    }
+    try {
+      await source.query(
+        'grant delete on table cron.other_job_run_details to justgo_backup',
+      );
+      await assert.rejects(verifyBackupRole(backup, backupPolicy), {
+        message: 'Backup role privileges are not restricted',
+      });
+    } finally {
+      await source.query(
+        'revoke delete on table cron.other_job_run_details from justgo_backup',
+      );
+    }
+    await verifyBackupRole(backup, backupPolicy);
     step = 'encrypted snapshot';
     const databasePath = join(directory, 'database.age'),
       ledgerPath = join(directory, 'ledger.age');
@@ -224,6 +292,7 @@ export async function rehearse(env = process.env) {
       ageBin,
       sourceSha: 'a'.repeat(40),
       source: 'synthetic.local/justgo_test',
+      policy: backupPolicy,
     };
     const databaseMetadata = await encryptSnapshot({
       ...shared,

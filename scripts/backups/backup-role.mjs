@@ -1,8 +1,11 @@
+import { cronJobRunDetailsDeleteAllowed } from './configuration.mjs';
+
 // Metadata only. Never invoke a function to test whether it can mutate data.
 // PUBLIC invoker/built-in routines (for example lo_create) are residual powers;
 // neither these checks nor default_transaction_read_only imply hard isolation.
 // PostgreSQL's PUBLIC UPDATE on pg_settings is another interface to session SET.
-// Only that UPDATE is exempt; other catalog/application writes remain forbidden.
+// Only that UPDATE is unconditionally exempt. The approved staging policy may
+// also accept DELETE on the exact cron history relation; no other write is waived.
 // pg_shdepend omits dependencies on pinned predefined roles. Inspect PG17 owner
 // columns too; selecting only owner OIDs avoids subscription/mapping credentials.
 export const backupRoleQuery = `select
@@ -50,6 +53,8 @@ export const backupRoleQuery = `select
   exists(select 1 from pg_class c where case when c.relkind in ('r','p','v','m','f')
     then has_table_privilege(r.oid,c.oid,case when c.oid='pg_catalog.pg_settings'::regclass
       then 'INSERT,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'
+      when $1::boolean and c.oid=to_regclass('cron.job_run_details')
+      then 'INSERT,UPDATE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'
       else 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN' end) else false end) as table_writes,
   exists(select 1 from pg_class c where case when c.relkind in ('r','p','v','m','f')
     then has_any_column_privilege(r.oid,c.oid,case when c.oid='pg_catalog.pg_settings'::regclass
@@ -92,8 +97,10 @@ const forbidden = [
 ];
 
 /** Accept only the approved reader; missing or ambiguous metadata fails closed. */
-export async function verifyBackupRole(client) {
-  const { rows } = (await client.query(backupRoleQuery)) ?? {};
+export async function verifyBackupRole(client, policy) {
+  const allowCronDelete = cronJobRunDetailsDeleteAllowed(policy);
+  const { rows } =
+    (await client.query(backupRoleQuery, [allowCronDelete])) ?? {};
   const role = rows?.[0];
   const membership = role?.memberships?.[0];
   if (

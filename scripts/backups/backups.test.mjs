@@ -11,6 +11,7 @@ import {
   databaseSource,
   endpointFor,
   prefixFor,
+  cronJobRunDetailsDeleteAllowed,
 } from './configuration.mjs';
 import {
   assertRetention,
@@ -79,6 +80,55 @@ test('policy requires exact separately approved bytes and compatible ledger/expi
   ]) {
     const value = JSON.stringify({ ...policy, ...change });
     assert.throws(() => readPolicy(value, digest(value)));
+  }
+});
+test('cron history DELETE requires explicit approved bytes for the current staging source', () => {
+  const approved = {
+    ...policy,
+    sourceHost: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
+    sourceProjectRef: 'kmcpcauaxlgpevkkenwd',
+    allowCronJobRunDetailsDelete: true,
+  };
+  const raw = JSON.stringify(approved);
+  assert.equal(
+    cronJobRunDetailsDeleteAllowed(readPolicy(raw, digest(raw))),
+    true,
+  );
+  const pooler = JSON.stringify({
+    ...approved,
+    sourceHost: 'aws-0-ca-central-1.pooler.supabase.com',
+  });
+  assert.equal(
+    cronJobRunDetailsDeleteAllowed(readPolicy(pooler, digest(pooler))),
+    true,
+  );
+  assert.throws(
+    () => readPolicy(raw, digest(JSON.stringify(policy))),
+    /not approved/,
+  );
+  assert.equal(cronJobRunDetailsDeleteAllowed(undefined), false);
+  assert.equal(cronJobRunDetailsDeleteAllowed(policy), false);
+  assert.equal(
+    cronJobRunDetailsDeleteAllowed({
+      ...policy,
+      environment: 'production',
+      allowCronJobRunDetailsDelete: false,
+    }),
+    false,
+  );
+  for (const change of [
+    { environment: 'production' },
+    { sourceDatabase: 'other' },
+    { sourceProjectRef: undefined },
+    {
+      sourceProjectRef: 'a'.repeat(20),
+      sourceHost: `db.${'a'.repeat(20)}.supabase.co`,
+    },
+    { sourceHost: 'db.foreign.supabase.co' },
+    { allowCronJobRunDetailsDelete: 'true' },
+  ]) {
+    const candidate = JSON.stringify({ ...approved, ...change });
+    assert.throws(() => readPolicy(candidate, digest(candidate)));
   }
 });
 test('database backup source is fixed, verified TLS, dedicated reader with no URL override', () => {
@@ -269,7 +319,7 @@ test('monitor emits fixed classification only and observes delivery failure', as
   const dsn = `https://${'b'.repeat(32)}@o123.ingest.us.sentry.io/456`;
   const id = await checkIn(
     dsn,
-    'justgo-staging-ledger',
+    'justgo-staging-backup-health',
     'in_progress',
     undefined,
     async (url, init) => {
@@ -287,13 +337,18 @@ test('monitor emits fixed classification only and observes delivery failure', as
   await assert.rejects(
     checkIn(
       dsn,
-      'justgo-staging-ledger',
+      'justgo-staging-backup-health',
       'ok',
       id,
       async () => new Response('', { status: 503 }),
     ),
     /delivery/,
   );
+  for (const oldSlug of ['justgo-staging-ledger', 'justgo-staging-database'])
+    await assert.rejects(
+      checkIn(dsn, oldSlug, 'ok', id, async () => assert.fail('no request')),
+      /configuration/,
+    );
 });
 test('ledger covers independent app and Auth state but never reads private writing', async () => {
   const statements = [];
@@ -428,6 +483,28 @@ test('scheduled copies remain opt-in, protected, pinned, sequential and publish 
     /upload-artifact@|AGE_SECRET|OFFLINE_KEY|R2_PARENT/,
   );
   assert.match(workflow, /checkout@[a-f0-9]{40}/);
+  assert.match(workflow, /github.ref == 'refs\/heads\/main'/);
+  assert.match(workflow, /actions: read/);
+  assert.match(workflow, /BACKUP_ACTIONS_TOKEN: \$\{\{ github.token \}\}/);
+  assert.doesNotMatch(
+    workflow,
+    /actions: write|secrets\.(?:GH|GITHUB|BACKUP_ACTIONS)_TOKEN/,
+  );
+  const expression = workflow.match(/^run-name: \$\{\{ (.+) \}\}$/m)?.[1];
+  assert.ok(expression);
+  // The expression is repository source, not provider input. Exercise the exact
+  // title selection used to distinguish successful database and ledger runs.
+  const title = new Function('github', 'inputs', `return (${expression});`);
+  for (const [event, schedule, kind, expected] of [
+    ['schedule', '43 4 * * *', undefined, 'database'],
+    ['schedule', '23 * * * *', undefined, 'ledger'],
+    ['workflow_dispatch', undefined, 'database', 'database'],
+    ['workflow_dispatch', undefined, 'ledger', 'ledger'],
+  ])
+    assert.equal(
+      title({ event_name: event, event: { schedule } }, { kind }),
+      `Encrypted ${expected} recovery copy`,
+    );
 });
 
 test('offline credential minting signs only upload/readback with bounded expiry', async () => {

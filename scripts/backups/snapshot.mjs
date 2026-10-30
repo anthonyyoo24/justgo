@@ -99,6 +99,7 @@ export async function encryptSnapshot({
   ageBin = 'age',
   sourceSha,
   source,
+  policy,
 }) {
   await client.query('begin isolation level repeatable read read only');
   let dump, age;
@@ -110,7 +111,7 @@ export async function encryptSnapshot({
     return promise;
   };
   try {
-    await verifyBackupRole(client);
+    await verifyBackupRole(client, policy);
     const migrationDigest = await verifyMigrationRegistry(
       client,
       migrationsDirectory,

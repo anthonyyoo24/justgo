@@ -28,6 +28,7 @@ export const policySchema = z
     sourceHost: z.string().regex(/^[a-z0-9.-]+$/),
     sourceDatabase: z.string().regex(/^[a-z0-9_]+$/),
     sourceProjectRef: z.string().regex(projectReference).optional(),
+    allowCronJobRunDetailsDelete: z.boolean().optional(),
   })
   .refine(
     (p) =>
@@ -38,7 +39,23 @@ export const policySchema = z
   .refine(
     validSourceProject,
     'Supabase session-pooler sources require an approved project reference',
+  )
+  .refine(
+    (p) =>
+      p.allowCronJobRunDetailsDelete !== true ||
+      (p.environment === 'staging' &&
+        p.sourceProjectRef === 'kmcpcauaxlgpevkkenwd' &&
+        p.sourceDatabase === 'postgres'),
+    'Cron history DELETE exception is limited to the approved staging source',
   );
+
+/** Only a complete source-bound policy can opt into the accepted beta residual. */
+export function cronJobRunDetailsDeleteAllowed(policy) {
+  return (
+    policy !== undefined &&
+    policySchema.parse(policy).allowCronJobRunDetailsDelete === true
+  );
+}
 
 export function readPolicy(raw, approvedDigest) {
   if (

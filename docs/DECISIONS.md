@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 28, 2026. The [October 28 Cloudflare decision](#october-28-cloudflare-workers-hono-and-r2-backups) adds Phase 15 to move the API to Cloudflare Workers and Hono, with R2 backups instead of Supabase Pro. The [October 28 renumbering](#october-28-phase-renumbering) makes billing Phase 16 and shifts later phases; dated entries keep their original numbers. The [October 28 billing-provider decision](#october-28-superwall-replaces-revenuecat-for-phase-16-billing) replaces RevenueCat with Superwall for Phase 16. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 29, 2026. The [October 29 small-beta recovery decision](#october-29-small-beta-recovery-limit) records the accepted beta recovery limit and required reassessment. The [October 28 Cloudflare decision](#october-28-cloudflare-workers-hono-and-r2-backups) adds Phase 15 to move the API to Cloudflare Workers and Hono, with R2 backups instead of Supabase Pro. The [October 28 renumbering](#october-28-phase-renumbering) makes billing Phase 16 and shifts later phases; dated entries keep their original numbers. The [October 28 billing-provider decision](#october-28-superwall-replaces-revenuecat-for-phase-16-billing) replaces RevenueCat with Superwall for Phase 16. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                       | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------ | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -967,3 +967,92 @@ Retention, offline key/token custody and the proposed reauthentication-on-restor
 tradeoff remain unapproved policies in the
 [backup guide](operations/CLOUDFLARE_BACKUPS.md). Hosted account/setup, notices,
 cutover and Git permissions remain separate from local implementation.
+
+## October 29 small-beta recovery limit
+
+Anthony accepts the current recovery limit for the small beta: if the source
+database is lost and deletions or revocations after the latest ledger copy cannot
+be established, keep the old restored account/data state closed rather than
+resurrect deleted data or revoked access. Old cloud data may remain unrecoverable;
+this does not require the service to stay closed forever. A clean restart with
+newly authenticated accounts and new writing remains possible in principle, but
+needs a separately reviewed procedure. Automatic recovery from old phones is
+unsupported; their retained copies do not establish the lost deletion history.
+
+Independent per-deletion/revocation recording is the long-term direction and is
+explicitly deferred for this beta, not implemented or proved by hourly copies.
+Anthony and the implementation/release owner must reassess it **before paid
+launch or expansion beyond the small beta, whichever comes first**. Future design
+must cover app, maintenance and Auth/admin paths. Anthony accepts conservative
+replay of a durably saved deletion intent even when the original database operation
+appeared to fail; that is a future-design policy choice, not authorization to
+change the current implementation or treat incomplete records as sufficient.
+
+This decision settles only the beta ledger-gap disposition. Backup retention,
+ordinary-write recovery point, recovery-time target and reauthentication-on-restore
+remain separate proposals; hosted restore/copy/monitor evidence and independent
+privacy/device gates are unchanged. No source reset, deployment or recovery action
+is authorized by this decision.
+
+## October 29 dedicated backup reader
+
+Anthony approved a dedicated backup account using Supabase's supported
+`BYPASSRLS` plus `pg_read_all_data` pattern. The account can read all project
+tables, views and sequences, including Auth and database security catalogs;
+limiting the export to `justgo`, `auth` and `drizzle` limits the job, not the
+credential's authority. Metadata confirmed access to role password verifiers;
+no verifier values or private application rows were retrieved during setup.
+
+The contract is one inherited `pg_read_all_data` membership with SET
+and ADMIN disabled, bounded connections/timeouts and no additional membership,
+ownership, schema/database creation or exposed noncatalog SECURITY DEFINER
+execution. Data-table mutations remain rejected except for the narrow staging
+exception below. Read-only defaults are an accident safeguard; standard PUBLIC
+session-setting and built-in function capabilities still exist.
+
+Hosted verification found PUBLIC `DELETE` on `cron.job_run_details`; the reader
+was set to `NOLOGIN` when the default guard rejected it. The table belongs to
+`supabase_admin`, and a rollback-only probe confirmed that the available
+`postgres` operator cannot revoke that owner's PUBLIC grant. No global PUBLIC ACL
+change was made.
+
+Anthony now accepts this extra scheduler-history DELETE capability for the small
+beta and requests backup activation. The reviewed opt-in plan is
+`allowCronJobRunDetailsDelete: true` in the exact approved backup-policy bytes and
+digest, restricted to `staging`, project `kmcpcauaxlgpevkkenwd`, database `postgres`
+and its matching accepted direct/session-pooler source. Absence or `false` keeps
+the default rejection. Only DELETE on exactly `cron.job_run_details` is excepted;
+other relation/column mutations, ownership, memberships and privileged functions
+remain rejected. This is an accepted capability, not a request to delete history.
+The reader has been re-enabled with LOGIN. Actual verified-TLS metadata checks
+passed the opted-in guard and required-schema access probes using `LIMIT 0`;
+no private rows were fetched. Scheduled backup activation and actual hosted
+dump/restore evidence remain pending.
+
+The authorized Supabase support request asking the provider to remove PUBLIC
+DELETE was submitted. The support page confirmed "Support request sent" and a
+ticket logged for JustGo; no ticket ID was displayed. Optional support diagnostic
+access remained off. The provider response/removal is an open follow-up alongside
+backups, not an activation prerequisite. Remove the exception once provider removal
+is verified. This reader decision does not approve the other proposed retention,
+alert-delivery or custody policies, or establish actual hosted Auth restore evidence.
+
+## October 29 single backup health monitor
+
+The implementation owner selected one free Sentry Cron monitor,
+`justgo-staging-backup-health`, scheduled hourly at minute 23 UTC with a 20-minute
+check-in margin and 20-minute maximum runtime. Account inspection showed three days
+left on the trial and one Cron on the following Developer plan; the design does
+not depend on trial-only extra monitors or a paid-plan change.
+
+A successful hourly health check requires both the encrypted ledger upload and
+trusted GitHub main-branch evidence that the actual database-copy job and copy step
+succeeded for the required nightly slot. The database slot is 04:43 UTC with a
+40-minute deadline, inclusive at 05:23. A missing database copy is normally caught
+when that 05:23 ledger run completes, plus runtime/platform/notification delays;
+this is not an alert-delivery SLA. A missing ledger run is detected by the Cron's
+own missed-check-in logic. The workflow needs read-only `GITHUB_TOKEN` access to
+Actions, and initial verification runs the database copy before the ledger copy.
+Hosted check-ins, failure/missed-run notification delivery and scheduled copies
+still require evidence. Retention, renewal and independent key custody proposals
+are unchanged.

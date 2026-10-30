@@ -2,28 +2,37 @@
 
 Phase 15 supplies local backup, upload, ledger and restore tooling. Anthony approved
 creation of the empty private `justgo-staging-backups` bucket; its creation and
-disabled public access are verified. Hosted backups, role grants, retention/lock
-configuration, policy approval and monitor activation have **not** occurred.
+disabled public access are verified. The dedicated reader is now LOGIN-enabled
+under Anthony's accepted narrow staging exception. Actual verified-TLS metadata
+and required-schema `LIMIT 0` access probes passed without fetching private rows.
+The main-only `database-backups` GitHub environment holds `BACKUP_DATABASE_URL`,
+`BACKUP_DATABASE_CA_CERT`, the approved `R2_INSPECT_TOKEN` and the three derived
+`R2_UPLOAD_*` secrets; workflow opt-in remains unset. A disposable encrypted R2
+canary passed PUT/HEAD, denied GET/list/out-of-prefix PUT/DELETE, and was retrieved
+and decrypted with the owner's requested Documents key file before cleanup.
+Hosted copies, retention/lock
+configuration, the remaining policy approvals and monitor delivery verification remain open.
 The [Phase 15 plan](../implementation-plan/phase-15-cloudflare-api.md) owns these
 approvals; the [Phase 14 handoff](../handoffs/phase-14-release.md) preserves the
 independent privacy and device gates. This guide does not authorize those actions.
 A local `age` identity has been prepared in ignored `.local/phase15-cloudflare/`
 storage with mode `0600`, and a synthetic encryption/decryption round trip passed.
-This is preparation only: independent offline primary/recovery custody, authorized
-retrieval and decryption of an actual hosted recovery copy remain unverified.
+The requested standalone Documents key file also has mode `0600`. This is
+preparation only: independent offline primary/recovery custody and retrieval and
+decryption of an actual hosted database recovery copy remain unverified.
 
 ## Implemented boundary
 
 `scripts/backups/run.mjs` runs one `database` or `ledger` copy. The protected
-`database-backups` GitHub environment holds dedicated credentials and approved
-policy bytes. The workflow refuses to run until the repository variable
+`database-backups` GitHub environment supplies dedicated credentials and must
+contain the exact approved policy bytes. The workflow refuses to run until the repository variable
 `JUSTGO_BACKUPS_ENABLED` is `approved`; merging its YAML does not enable copying.
 It runs on main only, serializes jobs and never uploads GitHub artifacts. Nightly
 copies are scheduled at **04:43 UTC**; ledger copies at **23 minutes past each
 hour**. These are fixed UTC schedules, independent of daylight saving time.
 
 The runner verifies the approved policy digest, exact database host/name, TLS CA,
-read-only backup role and complete registered migration hashes. It opens a
+approved backup-role permissions and complete registered migration hashes. It opens a
 read-only repeatable-read transaction. A nightly `pg_dump` uses that exported
 snapshot and includes `justgo`, `auth` and the `drizzle` migration journal. Its
 custom-format output goes directly through `age`; only ciphertext is written to
@@ -61,21 +70,25 @@ it is deliberately not accepted by this runner. The parent credential must remai
 outside CI. Bucket administration and lifecycle changes require a separate owner
 credential; the uploader must not be able to edit locks or public access.
 
-## Decisions prepared for Anthony
+## Recovery decision and remaining proposals
 
-The following values are proposals, not approvals or published retention promises:
+The small-beta ledger-gap disposition below is approved by the
+[October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit).
+The separately accepted reader exception and activation request are described
+under protected-environment setup. The other values in this table remain proposals,
+not approvals or published retention promises:
 
-| Decision                      | Proposed policy                                                                                                | Tradeoff / acceptance still required                                                                                                                                                                                                                                              |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backup and ledger retention   | Seven days for each, in a private dedicated R2 bucket                                                          | Retain the ledger at least as long as any snapshot it must reconcile. Confirm deletion duties and public wording before copying real data.                                                                                                                                        |
-| Lock duration and expiry      | Seven-day prefix locks; lifecycle expiry at day seven                                                          | Locks protect retained ciphertext from overwrite/delete by the uploader. R2 lifecycle removal is asynchronous, typically within 24 hours of expiry, and is not a strict maximum. Verify actual deletion behavior and wording before acceptance.                                   |
-| Ordinary-write recovery point | Up to 24 hours of new activity since the nightly snapshot may be lost                                          | Hourly identity ledgers do not back up new journals. Anthony must accept the data-loss tradeoff.                                                                                                                                                                                  |
-| Recovery time                 | Candidate operator target of four hours                                                                        | Not measured for the actual hosted Auth schema or a provider incident; the synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                       |
-| Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance and Auth/provider mutations                           | An hourly copy alone can miss later deletions. When the source is lost and those later changes cannot independently be established, **keep recovered writers closed**. An independently recoverable gap-free deletion mechanism is still an open acceptance item.                 |
-| Restored sessions             | Invalidate every restored legacy/app/Auth session and Auth refresh token; cancel pending transfers             | Users must authenticate again. Retain recovery digests and their revocations; do not recreate deleted owners or use an old transfer to recover access. This is an explicit recovery-policy approval.                                                                              |
-| Key custody                   | Owner-held offline `age` identity, protected primary and recovery copies, separately controlled restore access | Anthony chooses the storage locations and authorized people. Loss of every key copy makes the backups unusable. Actual retrieval/decryption must be demonstrated without disclosing the key.                                                                                      |
-| Upload-token renewal          | Maximum seven-day derived credential; Anthony or a named operator renews by day five                           | Parent key remains offline. The runner rejects tokens with less than 20 minutes remaining, and failed/missed jobs alert through the configured monitor. Day-five renewal is a required operator responsibility; no external reminder or automatic issuer is created by this code. |
-| Alert ownership               | Owner email for separate database and ledger Sentry Cron monitors                                              | Propose a 20-minute schedule grace and 20-minute maximum runtime. Confirm delivery, missed-run behavior, post-trial availability and any cost before relying on them.                                                                                                             |
+| Decision                      | Proposed policy                                                                                                                                         | Tradeoff / acceptance still required                                                                                                                                                                                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backup and ledger retention   | Seven days for each, in a private dedicated R2 bucket                                                                                                   | Retain the ledger at least as long as any snapshot it must reconcile. Confirm deletion duties and public wording before copying real data.                                                                                                                                        |
+| Lock duration and expiry      | Seven-day prefix locks; lifecycle expiry at day seven                                                                                                   | Locks protect retained ciphertext from overwrite/delete by the uploader. R2 lifecycle removal is asynchronous, typically within 24 hours of expiry, and is not a strict maximum. Verify actual deletion behavior and wording before acceptance.                                   |
+| Ordinary-write recovery point | Up to 24 hours of new activity since the nightly snapshot may be lost                                                                                   | Hourly identity ledgers do not back up new journals. Anthony must accept the data-loss tradeoff.                                                                                                                                                                                  |
+| Recovery time                 | Candidate operator target of four hours                                                                                                                 | Not measured for the actual hosted Auth schema or a provider incident; the synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                       |
+| Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance and Auth/provider mutations; accepted beta fallback keeps unverified old restored state closed | Independent deletion/revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. Clean restart needs a separate procedure; automatic old-phone recovery is unsupported.                                            |
+| Restored sessions             | Invalidate every restored legacy/app/Auth session and Auth refresh token; cancel pending transfers                                                      | Users must authenticate again. Retain recovery digests and their revocations; do not recreate deleted owners or use an old transfer to recover access. Requires separate recovery-policy approval.                                                                                |
+| Key custody                   | Owner-held offline `age` identity, protected primary and recovery copies, separately controlled restore access                                          | Anthony chooses the storage locations and authorized people. Loss of every key copy makes the backups unusable. Actual retrieval/decryption must be demonstrated without disclosing the key.                                                                                      |
+| Upload-token renewal          | Maximum seven-day derived credential; Anthony or a named operator renews by day five                                                                    | Parent key remains offline. The runner rejects tokens with less than 20 minutes remaining, and failed/missed jobs alert through the configured monitor. Day-five renewal is a required operator responsibility; no external reminder or automatic issuer is created by this code. |
+| Alert ownership               | Owner email for one hourly `justgo-staging-backup-health` Sentry Cron monitor                                                                           | The engineering design uses one free Cron with 20-minute grace/runtime settings and checks both backup kinds. Owner notification delivery and failure/missed-run evidence remain unverified.                                                                                      |
 
 The seven-day upload-token lifetime is the local minting policy, not an established
 Cloudflare maximum. Scheduled copying is unattended only while its credentials
@@ -84,15 +97,25 @@ access to the parent signing secret; a longer lifetime would also change the
 proposed policy. Neither change is implemented or approved. Keep the parent secret
 outside CI and assign a real renewal operator before activation.
 
-The ledger gap is an availability limit, not permission to restore deleted data.
-If the source is lost after the last hourly copy, later deletions or revocations
-may be unknowable and recovery must remain closed indefinitely. The candidate
-four-hour recovery target cannot cover that case. A faster schedule or an outbox
-stored only in the lost database cannot close the gap. Operational acceptance
-needs either an explicitly accepted inability to reopen in that case, or an
-approved scope change for independently durable deletion/revocation records before
-those changes are acknowledged, covering app, maintenance and Auth/provider paths.
-The latter requires new implementation and evidence; hourly copies do not supply it.
+Anthony accepts the ledger gap as a recovery limit for the small beta. If the
+source is lost after the last hourly copy and later deletions or revocations
+cannot be established, the old restored account/data state stays closed and may
+remain unrecoverable. The candidate four-hour recovery target cannot cover that
+case. This does not mean the service can never reopen: a clean restart with newly
+authenticated accounts and new writing is possible in principle, subject to a
+separately reviewed procedure. Automatic recovery from old phones is unsupported.
+Reusing old identities without their deletion generations/tombstones can upload
+obsolete copies; existing account-owned imports also require the original owner.
+
+Independently durable per-deletion/revocation recording remains the long-term
+direction, explicitly deferred for this beta. Anthony and the implementation/release
+owner must reassess it before paid launch or expansion beyond the small beta,
+whichever comes first. A faster schedule or an outbox stored only in the lost
+database cannot close the gap. The future design must cover app, maintenance and
+Auth/admin paths. Anthony accepts conservative replay of a durably saved deletion
+intent after an apparent database failure. That design still needs implementation
+and evidence; this decision does not change the current restore checks or approve
+retention, ordinary-write recovery loss, recovery time or reauthentication policy.
 
 [R2 bucket locks](https://developers.cloudflare.com/r2/buckets/bucket-locks/) prevent
 premature deletion and overwrite, but an administrator can change the rules.
@@ -104,24 +127,61 @@ exceeds the approved wording.
 
 ## Preparing the protected environment
 
-Do not populate hosted secrets or enable the workflow before the Phase 15 account,
+Do not enable the workflow before the Phase 15 account,
 DPA, payment-method, retention, key and recovery decisions are approved. Configure
 one actual source environment per protected backup lane; production must receive
 its own credentials, approved policy and lane when it is introduced.
 
-1. Review `scripts/backups/backup-role.sql` with the actual Supabase role owner.
-   The candidate `justgo_backup` role has `SELECT` only on application/Auth/journal
-   tables and sequences, no role memberships and read-only transactions by default.
-   `BYPASSRLS` is necessary to read every FORCE-RLS row without granting write
-   authority. Hosted ability to create/grant this role and read managed Auth is
-   unverified. Never substitute the runtime, migrator, `postgres` or Auth admin
-   credential in the scheduled runner. Re-review explicit read grants after
-   future migrations; the runner fails on missing tables or access.
+1. Use the reviewed reader follow-up on `codex/phase-15-backup-role`, including
+   the narrow staging opt-in below; main's older schema-grant candidate is superseded.
+   Anthony approved Supabase's supported `BYPASSRLS` + `pg_read_all_data` pattern.
+   It reads all project tables/views/sequences, including Auth and security
+   catalogs, although the job exports only three schemas. Require exactly that
+   inherited membership with SET/ADMIN disabled, the bounded role defaults and
+   no extra memberships, ownership or schema/database CREATE. Reject data
+   mutations apart from the explicitly accepted staging exception below.
+   The verifier also checks inherited ownership of the pinned reader role and
+   rejects exposed noncatalog SECURITY DEFINER routines. Standard PUBLIC
+   `pg_settings` UPDATE changes session settings and has its own narrow exception.
+   Read-only defaults and these guards do not make the credential absolutely
+   read-only. See [Supabase's supported pattern and residual powers](https://supabase.com/kb/troubleshooting/pg_dump-fails-with-query-would-be-affected-by-row-level-security-policy).
+
+   The default guard rejected PUBLIC `DELETE` on `cron.job_run_details`, and the
+   reader was disabled. Anthony now accepts that exact scheduler-history DELETE
+   capability for the small beta and requests backup activation. The opt-in
+   is the optional policy field `allowCronJobRunDetailsDelete: true`; absence or
+   `false` keeps rejection. It is restricted to `environment: "staging"`,
+   `sourceProjectRef: "kmcpcauaxlgpevkkenwd"`, `sourceDatabase: "postgres"` and the
+   matching accepted direct/session-pooler source. The exact approved policy
+   bytes/digest bind the exception, and the role-verification boundary must receive
+   and revalidate that policy. Only DELETE on exactly `cron.job_run_details` is
+   excepted. Other mutating privileges on that table, relation/column mutations elsewhere,
+   ownership, memberships and privileged functions remain rejected. The exception
+   does not grant app/Auth deletion or authorize deleting scheduler history.
+
+   A rollback-only `postgres` probe could not revoke the `supabase_admin` owner's
+   grant; existing ACLs are unchanged. The sole scheduled job runs as `postgres`,
+   which has its own DELETE grant. The authorized Supabase support request to
+   remove PUBLIC DELETE was submitted: the page confirmed sending and a ticket
+   logged for JustGo, but displayed no ticket ID. Optional diagnostic access was
+   off. The provider response/removal remains pending.
+   This follow-up runs alongside backups and does not block activation. Remove
+   the exception after the provider's removal is verified. The reader is now
+   LOGIN-enabled, and actual TLS metadata/required-schema `LIMIT 0` probes passed
+   the opted-in guard without fetching private rows. This acceptance does not
+   approve the other retention, alert-delivery or custody proposals.
+
 2. Choose and configure the actual bucket/location/access/lock/lifecycle settings
    using a separate privileged owner credential. The read-only `R2_INSPECT_TOKEN`
    needs access to bucket lock/lifecycle and managed/custom-domain settings, scoped
    to the approved account. Verify the uploader cannot change those settings or
    delete retained objects with disposable encrypted canaries.
+   Current readback shows no bucket-lock rules and only the default incomplete
+   multipart-upload abort lifecycle rule; public domains remain disabled. No
+   object-expiry or retention-lock acceptance is established. Anthony approved
+   the inspector's account-wide R2 read/list authority, including other buckets.
+   That Admin Read Only key is active, expires `2026-11-05T23:06:08Z`, and is stored
+   as `R2_INSPECT_TOKEN` in the protected environment.
 3. Save exact approved JSON in `BACKUP_POLICY_JSON` and its SHA-256 in
    `BACKUP_POLICY_SHA256`. Policy fields are `version: 1`, `approvalReference`,
    `accountId`, `bucket`, `environment` (`staging` or `production`), `jurisdiction`
@@ -132,20 +192,22 @@ its own credentials, approved policy and lane when it is introduced.
    its host must be exactly `db.<sourceProjectRef>.supabase.co`; existing direct
    policies without this field remain supported. The recipient is public; never
    put the `AGE-SECRET-KEY-...` identity here. A matching digest is a technical
-   check, not evidence that Anthony approved a policy.
+   check, not evidence that Anthony approved a policy. The optional
+   `allowCronJobRunDetailsDelete` field follows the exact staging restriction in
+   step 1; do not carry it into a production policy.
 4. Configure `BACKUP_DATABASE_URL` with the exact approved host/database and port
    5432, without query/fragment options. Direct connections use `justgo_backup`;
    recognized Supabase shared session-pooler hosts
    (`aws-<number>-<region>.pooler.supabase.com`) require the exact login
    `justgo_backup.<sourceProjectRef>`. The connected database role must still be
-   `justgo_backup` and pass the independent read-only privilege checks. Provide
+   `justgo_backup` and pass the independent privilege checks. Provide
    the actual server CA as `BACKUP_DATABASE_CA_CERT`. Transaction pooler port
    6543 is refused; exported snapshots and dump coordination require direct or
    compatible session connections. Use the actual account's verified endpoint,
    not a guessed regional hostname. Supabase documents shared session pooling as
    an [IPv4 connection option](https://supabase.com/docs/guides/database/connecting-to-postgres).
-   This routing support does not establish hosted role grants or managed Auth
-   read access; both still require actual acceptance evidence.
+   Current hosted metadata and required-schema access probes passed; they do not
+   establish a successful full managed Auth dump or restore.
 5. Prepare derived upload credentials offline with
    `node scripts/backups/mint-upload-credentials.mjs`. It needs the approved policy
    variables, `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`, explicit
@@ -155,16 +217,46 @@ its own credentials, approved policy and lane when it is introduced.
    securely remove the temporary operator file. Rotate before day five and test
    the actual permitted/denied actions. No parent key or offline encryption identity
    belongs in GitHub, source, chat or logs.
-6. Independently create and verify two Sentry Cron monitors, named
-   `justgo-<environment>-database` and `justgo-<environment>-ledger`, with the exact
-   schedules above, owner email and approved grace/runtime thresholds. Configure
-   `BACKUP_SENTRY_DSN`. The runner sends bounded fixed-shape `in_progress`, `ok`
-   and `error` check-ins; it never sends exceptions, SQL, subjects or database URLs.
-   Preconfigured external monitors detect jobs which never start, including
-   checkout/install failures or scheduler delay. The code does not create monitors
-   or prove email delivery.
-7. After separate activation approval, set `JUSTGO_BACKUPS_ENABLED=approved`.
-   Run each kind deliberately and inspect the approved source SHA, verified R2
+   The bucket-scoped Object Read & Write parent key is active and expires
+   `2026-11-05T23:03:57Z`. It remains local, outside CI. The derived upload JWT
+   expires `2026-11-05T22:03:56Z`; its three values are stored in the protected
+   environment. Actual encrypted-canary checks passed permitted PUT/HEAD and
+   denied GET/list/out-of-prefix PUT/DELETE; the canary was cleaned up. These
+   permission checks do not establish retention-lock behavior. This setup does
+   not establish independent offline custody or an
+   approved renewal operator policy.
+6. Create and verify one Sentry Cron monitor, `justgo-staging-backup-health`, with
+   schedule `23 * * * *` in UTC, check-in margin 20 minutes, maximum runtime
+   20 minutes and the intended owner notification route. Configure
+   `BACKUP_SENTRY_DSN`. Account inspection showed three trial days remaining,
+   followed by Developer with one Cron; no paid change is selected. The
+   [single-monitor decision](../DECISIONS.md#october-29-single-backup-health-monitor)
+   replaces the earlier two-monitor setup.
+   The monitor is created in `justgo-api`, assigned to Anthony, and the matching
+   `BACKUP_SENTRY_DSN` is stored in the protected environment. It is waiting for
+   its first check-in; owner email delivery and failure/missed-run drills remain
+   unverified. The existing `JustGO API errors and recovery (email)` alert covers
+   all issues in this project and notifies Anthony on new/resolved/regressed
+   issues; a duplicate alert was not created. An unused initial setup draft with
+   slug `new-monitor` is disabled.
+
+   Pass `GITHUB_TOKEN` with workflow permission `actions: read`. The ledger health
+   check must verify trusted main-branch workflow evidence that both the actual
+   database-copy job and its copy step succeeded for the required nightly slot;
+   a green workflow with that work skipped is insufficient. It reports `ok` only
+   after the ledger upload and this database-freshness check succeed. The nightly
+   slot is 04:43 UTC, with a 40-minute deadline inclusive at 05:23. A missing
+   database copy is normally caught at completion of the 05:23 ledger run, plus
+   runtime/platform/notification delay; this is not an SLA. Missing ledger jobs,
+   including failures before check-in, are detected by the Cron's missed-run
+   behavior. Check-ins use fixed-shape `in_progress`, `ok` and `error`, with no
+   exception text, SQL, subjects or database URLs. Verify hosted check-ins and
+   actual notification delivery; configuration alone does not prove either.
+
+7. Anthony has requested activation; once the remaining policy/configuration
+   requirements are satisfied, set `JUSTGO_BACKUPS_ENABLED=approved`.
+   Run a manual database copy first, then a manual ledger copy so the combined
+   health check has database success evidence. Inspect the approved source SHA, verified R2
    object, denied overwrite/delete, retention state, check-ins and received email.
    Then observe both scheduled copies and a missed-run/failure drill. No hosted
    scheduled pass is currently recorded.
@@ -256,9 +348,10 @@ node --env-file-if-exists=apps/api/.env --import tsx scripts/backups/rehearse.mj
 ```
 
 It validates the loopback `justgo_test` administrator/runtime credentials before
-creating two run-owned disposable databases and a temporary read-only backup role.
+creating two run-owned disposable databases and a temporary backup reader.
 It refuses an existing `justgo_backup` role. It applies the current migration
-registry, seeds synthetic app/Auth state, takes a real encrypted `pg_dump`, makes
+registry, seeds synthetic app/Auth state, verifies rejection of an extra MAINTAIN
+grant and inherited ownership, takes a real encrypted `pg_dump`, makes
 later account/data deletions and revocations, captures the encrypted ledger and
 restores into the second database. Actual `IdentityService` calls reject old
 recovery/session proofs; SQL assertions check missing private history/Auth
@@ -270,5 +363,7 @@ actual local encryption/decryption/dump/restore and application deletion behavio
 The small synthetic Auth tables do **not** establish recovery of the real hosted
 Auth schema, session-provider behavior, role/extension dependencies, key retrieval
 by the owner, R2 permissions/expiry, scheduled availability or an operational RTO.
-Those gates remain open. Hourly ledgers also leave the explicitly documented
-post-copy gap; no successful local test closes that recovery-design requirement.
+Those gates remain open. Hourly ledgers also leave the post-copy gap, now accepted
+as a small-beta recovery limit with independent recording explicitly deferred.
+Local tests do not replace reassessment before paid launch or beta expansion,
+or establish the deferred design.

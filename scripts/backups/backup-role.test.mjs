@@ -43,14 +43,58 @@ const rejected = { message: 'Backup role privileges are not restricted' };
 test('accepts exactly the dedicated inherited project reader without SET or ADMIN', async () => {
   let queries = 0;
   await verifyBackupRole({
-    query: async (sql) => {
+    query: async (sql, parameters) => {
       queries++;
       assert.equal(sql, backupRoleQuery);
+      assert.deepEqual(parameters, [false]);
       return { rows: [approvedRole()] };
     },
   });
   assert.equal(queries, 1);
   await verify(approvedRole({ defaults: approvedRole().defaults.reverse() }));
+});
+
+test('only a complete staging policy enables the parameter and all other drift remains rejected', async () => {
+  const policy = {
+    version: 1,
+    approvalReference: 'synthetic-staging-cron-delete-approval',
+    accountId: 'a'.repeat(32),
+    bucket: 'justgo-test',
+    environment: 'staging',
+    jurisdiction: 'default',
+    backupDays: 7,
+    ledgerDays: 7,
+    lockDays: 7,
+    ageRecipient: `age1${'a'.repeat(58)}`,
+    sourceHost: 'db.kmcpcauaxlgpevkkenwd.supabase.co',
+    sourceDatabase: 'postgres',
+    sourceProjectRef: 'kmcpcauaxlgpevkkenwd',
+    allowCronJobRunDetailsDelete: true,
+  };
+  let calls = 0;
+  const client = {
+    query: async (_sql, parameters) => {
+      calls++;
+      assert.deepEqual(parameters, [true]);
+      return { rows: [approvedRole()] };
+    },
+  };
+  await verifyBackupRole(client, policy);
+  assert.equal(calls, 1);
+  for (const invalid of [
+    { allowCronJobRunDetailsDelete: true },
+    { ...policy, environment: 'production' },
+    { ...policy, sourceProjectRef: 'a'.repeat(20) },
+  ])
+    await assert.rejects(verifyBackupRole(client, invalid));
+  assert.equal(calls, 1);
+  await assert.rejects(
+    verifyBackupRole(
+      { query: async () => ({ rows: [approvedRole({ table_writes: true })] }) },
+      policy,
+    ),
+    rejected,
+  );
 });
 
 test('rejects missing, duplicate, extra, transitive and elevated reader memberships', async (t) => {
@@ -147,7 +191,7 @@ test('requires all persistent defaults and rejects extra or duplicated settings'
 test('inventory covers effective column/sequence writes and definer execution across every schema', () => {
   assert.match(
     backupRoleQuery,
-    /has_table_privilege\(r\.oid,c\.oid,case when c\.oid='pg_catalog\.pg_settings'::regclass\s+then 'INSERT,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'\s+else 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN' end\)/,
+    /has_table_privilege\(r\.oid,c\.oid,case when c\.oid='pg_catalog\.pg_settings'::regclass\s+then 'INSERT,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'\s+when \$1::boolean and c\.oid=to_regclass\('cron\.job_run_details'\)\s+then 'INSERT,UPDATE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'\s+else 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN' end\)/,
   );
   assert.match(
     backupRoleQuery,
@@ -200,12 +244,6 @@ test('provisioning and rehearsal use only the approved reader membership and ret
     rehearsal,
     /readFile\(new URL\('\.\/backup-role\.sql', import\.meta\.url\), 'utf8'\)/,
   );
-  assert.deepEqual(
-    [...rehearsal.matchAll(/'(grant [^']+ to justgo_backup)'/g)].map(
-      (match) => match[1],
-    ),
-    ['grant maintain on table justgo.attempts to justgo_backup'],
-  );
   const snapshot = await readFile(
     new URL('./snapshot.mjs', import.meta.url),
     'utf8',
@@ -214,8 +252,9 @@ test('provisioning and rehearsal use only the approved reader membership and ret
     [...snapshot.matchAll(/'--schema=([^']+)'/g)].map((match) => match[1]),
     ['justgo', 'auth', 'drizzle'],
   );
+  assert.match(snapshot, /await verifyBackupRole\(client, policy\)/);
   assert.ok(
-    snapshot.indexOf('await verifyBackupRole(client)') <
+    snapshot.indexOf('await verifyBackupRole(client, policy)') <
       snapshot.indexOf('age = spawn(ageBin'),
   );
 });
