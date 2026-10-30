@@ -25,6 +25,7 @@ const failureCodes = new Set([
   'INVALID_STAGING_PROBE_HEADERS',
   'STAGING_AUTH_FENCE_FAILED',
   'STAGING_RUNTIME_IDENTITY_MISMATCH',
+  'STAGING_HEALTH_FAILED',
   'STAGING_READINESS_FAILED',
   'INVALID_STAGING_GUARD_ARGUMENTS',
   'STAGING_COMMAND_FAILED',
@@ -32,6 +33,7 @@ const failureCodes = new Set([
   'STAGING_PROVIDER_REQUEST_FAILED',
   'STAGING_VERSION_UPLOAD_UNCONFIRMED',
   'STAGING_LATEST_VERSION_CHANGED',
+  'STAGING_ABANDONED_VERSION_REJECTED',
   'STAGING_BINDINGS_MISMATCH',
   'STAGING_WORKER_CONFIGURATION_MISMATCH',
   'STAGING_WORKER_NOT_BOOTSTRAPPED',
@@ -366,6 +368,10 @@ export function validateBindingPreservation(baseline, candidate) {
   );
 }
 export function validateProbe({ status, headers, body }, kind, sha) {
+  requireRelease(
+    Number.isInteger(status) && status >= 100 && status <= 599,
+    'INVALID_STAGING_PROBE',
+  );
   let value;
   try {
     value = JSON.parse(body);
@@ -388,9 +394,13 @@ export function validateProbe({ status, headers, body }, kind, sha) {
     );
     return;
   }
+  const endpointFailure =
+    kind === 'health' ? 'STAGING_HEALTH_FAILED' : 'STAGING_READINESS_FAILED';
+  // Startup failures may omit release headers. A failed endpoint is not proof
+  // of identity drift; compare identity only after it reports HTTP success.
+  requireRelease(status === 200, endpointFailure);
   requireRelease(
-    status === 200 &&
-      headers['x-justgo-source-sha'] === sha &&
+    headers['x-justgo-source-sha'] === sha &&
       headers['x-justgo-environment'] === 'staging',
     'STAGING_RUNTIME_IDENTITY_MISMATCH',
   );
@@ -402,7 +412,7 @@ export function validateProbe({ status, headers, body }, kind, sha) {
       : kind === 'ready' &&
           value.status === 'ready' &&
           Object.keys(value).length === 1,
-    'STAGING_READINESS_FAILED',
+    endpointFailure,
   );
 }
 if (

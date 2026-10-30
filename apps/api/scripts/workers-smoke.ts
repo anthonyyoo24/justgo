@@ -101,7 +101,7 @@ async function run() {
       file,
       JSON.stringify({
         name: 'justgo-local-smoke',
-        main: resolve(root, 'apps/api/src/worker.ts'),
+        main: resolve(root, 'apps/api/scripts/workers-smoke-entry.ts'),
         compatibility_date: '2026-10-28',
         compatibility_flags: ['nodejs_compat'],
         observability: { enabled: false },
@@ -174,6 +174,11 @@ async function run() {
         throw new Error('Worker runtime exited before startup');
       try {
         const response = await request('/health');
+        const startup = response.headers.get('x-justgo-startup-stage');
+        if (startup) {
+          stage = `startup ${startup}`;
+          break;
+        }
         if (response.status === 200) {
           ready = true;
           break;
@@ -184,6 +189,46 @@ async function run() {
       await delay(100);
     }
     assert.ok(ready, 'Worker startup');
+    for (const mode of ['managed', 'managed-wrapped']) {
+      stage = `${mode} startup with Sentry and beta configuration`;
+      const response = await request('/health', {
+        headers: { 'x-justgo-smoke-mode': mode },
+      });
+      const failure = response.headers.get('x-justgo-startup-stage');
+      if (failure) stage = `${mode} startup ${failure}`;
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), {
+        status: 'ok',
+        service: 'justgo-api',
+      });
+      assert.equal(response.headers.get('x-justgo-source-sha'), 'b'.repeat(40));
+      assert.equal(response.headers.get('x-justgo-environment'), 'staging');
+      assert.equal(response.headers.get('x-justgo-startup-stage'), null);
+      assert.equal(response.headers.get('x-justgo-smoke-outbound'), '0');
+    }
+    stage = 'invalid startup redaction';
+    for (const path of ['/health', '/ready']) {
+      const response = await request(path, {
+        headers: { 'x-justgo-smoke-mode': 'invalid' },
+      });
+      assert.equal(response.status, path === '/health' ? 500 : 503);
+      assert.equal(response.headers.get('x-justgo-source-sha'), null);
+      assert.equal(response.headers.get('x-justgo-environment'), null);
+      assert.equal(
+        response.headers.get('x-justgo-startup-stage'),
+        'configuration',
+      );
+      assert.deepEqual(
+        await response.json(),
+        path === '/health'
+          ? {
+              error: 'Internal server error',
+              requestId: response.headers.get('x-request-id'),
+            }
+          : { status: 'unavailable' },
+      );
+      assert.equal(response.headers.get('x-justgo-smoke-outbound'), '0');
+    }
     stage = 'database readiness';
     assert.equal((await request('/ready')).status, 200);
     const headers = {
@@ -240,7 +285,7 @@ async function run() {
     );
     assert.equal(stored.rowCount, 1);
     console.info(
-      'Workers smoke passed: workerd startup, readiness, authenticated read/write, idempotency and error envelope. Hosted Hyperdrive/CPU acceptance remains separate.',
+      'Workers smoke passed: managed Auth/Sentry/beta composition, wrapped transport health, startup redaction, readiness, authenticated read/write, idempotency and error envelope. Hosted Hyperdrive/CPU acceptance remains separate.',
     );
   } catch {
     throw new Error(`Workers smoke failed during ${stage}`);

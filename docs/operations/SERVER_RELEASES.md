@@ -131,6 +131,14 @@ candidate is built. Unexpected or abandoned versions, including secret-only
 uploads, require operator inspection and an approved disposition. The runner
 never deletes them or promotes them to make this check pass.
 
+The optional `abandoned_version_id` input recognizes only the inspected failed
+October 30 upload `2d6ea61b-2714-4cd9-9437-2a73f9476dd6`. It requires the exact
+recorded account, baseline deployment/version/source, abandoned source/run,
+two-version order and preserved bindings, both at preflight and before upload.
+It does not accept another abandoned version or change the default guard. After
+one replacement upload, ordinary candidate/probe/promotion checks apply again;
+another failed candidate requires fresh inspection and review.
+
 Automatic invocation logs, Logpush and tail consumers must be disabled on this
 Worker. The version lane reads these non-versioned settings rather than silently
 changing them; the app's reconstructed safe diagnostics remain the reporting
@@ -257,6 +265,14 @@ trusted code. Before promotion, candidate/probe failures leave serving traffic
 unchanged, but inspect actual deployment state before retrying. A failed version
 upload has an uncertain object-creation outcome and may leave an undeployed
 version; do not automatically upload again or delete it.
+
+Worker startup fallbacks retain their redacted bodies and omit release identity.
+The optional `x-justgo-startup-stage` header contains only a fixed code location:
+`configuration`, `reporter`, `database` or `composition`. It contains no exception
+or binding data, and is absent after app startup, including ordinary readiness
+failures. Release probes distinguish failed health/readiness from a successful
+response with the wrong source identity. These diagnostics identify a boundary;
+they do not establish the underlying cause or authorize promotion.
 
 After promotion is attempted, failed readback, public probes, receipt writing or
 cleanup reports `STAGING_PROMOTION_UNCONFIRMED`. Inspect deployment/version IDs,

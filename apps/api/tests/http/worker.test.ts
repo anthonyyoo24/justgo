@@ -3,6 +3,7 @@ import { buildApp } from '../../src/build-app.js';
 import { buildRuntimeApp } from '../../src/runtime-app.js';
 import { createWorker, workerClientAddress } from '../../src/worker.js';
 import * as databaseClient from '../../src/db/client.js';
+import * as errorReporters from '../../src/http/server-error-reporter.js';
 import {
   readWorkerConfig,
   type createWorkerDatabase,
@@ -123,6 +124,7 @@ describe('Worker invocation lifecycle', () => {
       hostedBindings.JUSTGO_SOURCE_SHA,
     );
     expect(response.headers.get('x-justgo-environment')).toBe('staging');
+    expect(response.headers.get('x-justgo-startup-stage')).toBeNull();
     expect(query).not.toHaveBeenCalled();
     expect(direct).not.toHaveBeenCalled();
     await Promise.all(pending);
@@ -178,6 +180,7 @@ describe('Worker invocation lifecycle', () => {
         },
       );
       expect(response.status).toBe(status);
+      expect(response.headers.get('x-justgo-startup-stage')).toBeNull();
       expect(await response.json()).toEqual({
         status: status === 200 ? 'ready' : 'unavailable',
       });
@@ -201,6 +204,56 @@ describe('Worker invocation lifecycle', () => {
       await Promise.all(pending);
       expect(end).toHaveBeenCalledOnce();
       expect(directEnd).toHaveBeenCalledOnce();
+    },
+  );
+  it.each(['configuration', 'reporter', 'database'] as const)(
+    'reports only the fixed %s startup stage with the redacted health failure',
+    async (stage) => {
+      const output = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const createDatabase = vi.fn(() => {
+        throw new Error('private database URL');
+      });
+      const compose = vi.fn(buildRuntimeApp);
+      if (stage === 'reporter')
+        vi.spyOn(
+          errorReporters,
+          'createServerErrorReporter',
+        ).mockImplementation(() => {
+          throw new Error('private Sentry secret');
+        });
+      const worker = createWorker({
+        readConfiguration: readWorkerConfig,
+        createDatabase,
+        buildApp: compose,
+      });
+      const pending = vi.fn();
+      const response = await worker.fetch(
+        new Request('https://api.invalid/health', {
+          headers: { 'x-justgo-startup-stage': 'caller-controlled-secret' },
+        }),
+        stage === 'configuration'
+          ? { ...bindings, JUSTGO_SOURCE_SHA: 'private invalid source' }
+          : bindings,
+        { waitUntil: pending },
+      );
+      expect(response.status).toBe(500);
+      expect(response.headers.get('x-justgo-startup-stage')).toBe(stage);
+      expect(response.headers.get('x-justgo-source-sha')).toBeNull();
+      expect(response.headers.get('x-justgo-environment')).toBeNull();
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(response.headers.get('content-type')).toMatch(
+        /^application\/json/,
+      );
+      expect(await response.json()).toEqual({
+        error: 'Internal server error',
+        requestId: response.headers.get('x-request-id'),
+      });
+      expect(createDatabase).toHaveBeenCalledTimes(
+        stage === 'database' ? 1 : 0,
+      );
+      expect(compose).not.toHaveBeenCalled();
+      expect(pending).not.toHaveBeenCalled();
+      expect(JSON.stringify(output.mock.calls)).not.toMatch(/private|secret/);
     },
   );
   it('hides startup failures and closes allocated pools on composition failure', async () => {
@@ -236,6 +289,11 @@ describe('Worker invocation lifecycle', () => {
       });
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+      expect(response.headers.get('x-justgo-startup-stage')).toBe(
+        'composition',
+      );
+      expect(response.headers.get('x-justgo-source-sha')).toBeNull();
+      expect(response.headers.get('x-justgo-environment')).toBeNull();
       await Promise.all(pending);
       expect(end).toHaveBeenCalledOnce();
       expect(JSON.stringify(output.mock.calls)).not.toMatch(/private|secret/);
@@ -253,10 +311,51 @@ describe('Worker invocation lifecycle', () => {
         { waitUntil: pending },
       );
       expect(response.status).toBe(503);
+      expect(response.headers.get('x-justgo-startup-stage')).toBe(
+        'configuration',
+      );
       expect(await response.json()).toEqual({ status: 'unavailable' });
       expect(pending).not.toHaveBeenCalled();
     } finally {
       output.mockRestore();
     }
+  });
+  it('does not misclassify a rejected app fetch as a startup failure', async () => {
+    const output = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const end = vi.fn(async () => {});
+    const database = { pool: { end }, db: {} } as unknown as ReturnType<
+      typeof createWorkerDatabase
+    >;
+    const app = buildApp({ checkDatabase: async () => {}, logger: false });
+    vi.spyOn(app, 'fetch').mockRejectedValue(
+      new Error('private request secret'),
+    );
+    const worker = createWorker({
+      readConfiguration: readWorkerConfig,
+      createDatabase: () => database,
+      buildApp: () => app,
+    });
+    const pending: Promise<unknown>[] = [];
+    const response = await worker.fetch(
+      new Request('https://api.invalid/health'),
+      bindings,
+      {
+        waitUntil: (work) => {
+          pending.push(work);
+        },
+      },
+    );
+    expect(response.status).toBe(500);
+    expect(response.headers.get('x-justgo-startup-stage')).toBeNull();
+    expect(response.headers.get('x-justgo-source-sha')).toBeNull();
+    expect(response.headers.get('x-justgo-environment')).toBeNull();
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.json()).toEqual({
+      error: 'Internal server error',
+      requestId: response.headers.get('x-request-id'),
+    });
+    await Promise.all(pending);
+    expect(end).toHaveBeenCalledOnce();
+    expect(JSON.stringify(output.mock.calls)).not.toMatch(/private|secret/);
   });
 });

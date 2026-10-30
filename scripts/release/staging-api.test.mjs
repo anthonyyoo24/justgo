@@ -21,6 +21,7 @@ import {
   privateCommand,
   validateHyperdrive,
 } from './staging-api-runner.mjs';
+import { abandonedVersionRequested } from './staging-abandoned-version.mjs';
 
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
@@ -30,6 +31,16 @@ const deploymentId = 'cccccccc-cccc-4ccc-cccc-cccccccccccc';
 const oldDeploymentId = 'dddddddd-dddd-4ddd-dddd-dddddddddddd';
 const otherId = 'eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee';
 const context = { sha, runId: '123', attempt: '1' };
+const incident = {
+  accountId: '52662d8ba7ae983237860a1719c66a1e',
+  abandonedId: '2d6ea61b-2714-4cd9-9437-2a73f9476dd6',
+  baselineId: 'd15d9fbd-1d99-4106-abc4-43b907ba7a2c',
+  deploymentId: 'caaa7a54-d4a3-4eec-bdc2-9d5f927142e5',
+  baselineSha: '7d8a5624bf7224bc243a342dab22a9d0b82f7f04',
+  sha: '8b1e7d5838fa0d3d8d828aedbf15a3ecfbc85ba4',
+  runId: '41075504576',
+  attempt: '1',
+};
 const env = {
   GITHUB_ACTIONS: 'true',
   GITHUB_REPOSITORY: stagingTarget.repository,
@@ -72,6 +83,25 @@ function metadata(id = candidateId) {
     },
   };
 }
+/** Model the recorded incident's public provenance while retaining fixture secrets. */
+function incidentMetadata(id) {
+  const value = metadata(id);
+  const source =
+    id === incident.baselineId ? incident.baselineSha : incident.sha;
+  const texts = {
+    JUSTGO_SOURCE_SHA: source,
+    API_SENTRY_RELEASE: source,
+    JUSTGO_RELEASE_RUN_ID: incident.runId,
+    JUSTGO_RELEASE_RUN_ATTEMPT: incident.attempt,
+  };
+  for (const binding of value.resources.bindings)
+    if (Object.hasOwn(texts, binding.name)) binding.text = texts[binding.name];
+  value.annotations = {
+    'workers/tag': source,
+    'workers/message': `JustGO ${source} GitHub ${incident.runId}/${incident.attempt}`,
+  };
+  return value;
+}
 function hyperdrive() {
   return {
     id: target.hyperdriveId,
@@ -112,17 +142,34 @@ function probe(kind = 'ready') {
  * failure selects a configuration fault, race or uncertain response; calls/waits
  * retain ordering evidence, and t.after removes only this fixture's temporary root.
  */
-function fixture(t, failure) {
+function fixture(t, failure, continuation = false) {
   const root = mkdtempSync(join(tmpdir(), 'justgo-staging-release-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const calls = [],
     waits = [];
+  const fixtureEnv = {
+    ...env,
+    RUNNER_TEMP: root,
+    ...(continuation
+      ? {
+          CLOUDFLARE_ACCOUNT_ID: incident.accountId,
+          STAGING_ABANDONED_VERSION_ID: incident.abandonedId,
+          STAGING_BASELINE_ID: incident.deploymentId,
+          STAGING_BASELINE_SHA: incident.baselineSha,
+        }
+      : {}),
+  };
+  const fixtureTarget = cloudflareTarget(fixtureEnv);
+  const baselineId = continuation ? incident.baselineId : previousId;
+  const baselineDeploymentId = continuation
+    ? incident.deploymentId
+    : oldDeploymentId;
   let uploaded = false,
     promoted = false,
     reads = 0;
   return {
     root,
-    env: { ...env, RUNNER_TEMP: root },
+    env: fixtureEnv,
     calls,
     waits,
     run: async (command, args) => {
@@ -141,7 +188,7 @@ function fixture(t, failure) {
     }),
     request: async (_target, path, options) => {
       calls.push({ path, method: options.method ?? 'GET' });
-      assert.deepEqual(_target, target);
+      assert.deepEqual(_target, fixtureTarget);
       assert.equal(options.token, env.CLOUDFLARE_API_TOKEN);
       if (path === '/workers/subdomain') return { subdomain: target.subdomain };
       if (path.startsWith('/hyperdrive/'))
@@ -173,7 +220,7 @@ function fixture(t, failure) {
           promoted &&
           (failure === 'promotion-never' ||
             (failure === 'promotion-delay' && reads <= 2));
-        const version_id = promoted && !pending ? candidateId : previousId;
+        const version_id = promoted && !pending ? candidateId : baselineId;
         return {
           deployments: [
             {
@@ -182,7 +229,7 @@ function fixture(t, failure) {
                   ? deploymentId
                   : uploaded && failure === 'alias-race'
                     ? otherId
-                    : oldDeploymentId,
+                    : baselineDeploymentId,
               strategy: 'percentage',
               versions: [{ version_id, percentage: 100 }],
             },
@@ -191,18 +238,25 @@ function fixture(t, failure) {
       }
       if (path === '/versions')
         return {
-          items: [
-            {
-              id: uploaded
-                ? candidateId
-                : failure === 'latest-race'
-                  ? otherId
-                  : previousId,
-            },
-          ],
+          items:
+            continuation && !uploaded
+              ? [{ id: incident.abandonedId }, { id: incident.baselineId }]
+              : [
+                  {
+                    id: uploaded
+                      ? candidateId
+                      : failure === 'latest-race'
+                        ? otherId
+                        : baselineId,
+                  },
+                ],
         };
       if (path.startsWith('/versions/') && options.method !== 'POST') {
-        const version = metadata(path.split('/').at(-1));
+        const id = path.split('/').at(-1);
+        const version =
+          continuation && id !== candidateId
+            ? incidentMetadata(id)
+            : metadata(id);
         if (uploaded && failure === 'source')
           version.resources.bindings.find(
             (b) => b.name === 'JUSTGO_SOURCE_SHA',
@@ -239,7 +293,7 @@ function fixture(t, failure) {
     promote: async (id, options) => {
       calls.push({ promotion: id });
       assert.equal(id, candidateId);
-      assert.deepEqual(options.target, target);
+      assert.deepEqual(options.target, fixtureTarget);
       promoted = true;
       if (failure === 'promotion-timeout')
         throw new Error('PRIVATE_PROVIDER_CONTENT');
@@ -468,6 +522,111 @@ test('probes preserve source, environment, auth fence and no-store', () => {
   ])
     assert.throws(() => validateProbe(value, 'ready', sha));
 });
+test('health startup failure is not misclassified as release identity drift', () => {
+  const value = probe('health');
+  value.status = 500;
+  delete value.headers['x-justgo-source-sha'];
+  delete value.headers['x-justgo-environment'];
+  value.body = JSON.stringify({
+    error: 'Internal server error',
+    requestId: value.headers['x-request-id'],
+  });
+  assert.throws(
+    () => validateProbe(value, 'health', sha),
+    (error) => {
+      assert.equal(stagingRunnerFailureCode(error), 'STAGING_HEALTH_FAILED');
+      assert.equal(error.message, 'STAGING_HEALTH_FAILED');
+      return true;
+    },
+  );
+});
+test('readiness failure keeps its diagnostic with or without release headers', () => {
+  for (const hasIdentity of [true, false]) {
+    const value = probe('ready');
+    value.status = 503;
+    value.body = JSON.stringify({ status: 'unavailable' });
+    if (!hasIdentity) {
+      delete value.headers['x-justgo-source-sha'];
+      delete value.headers['x-justgo-environment'];
+    }
+    assert.throws(
+      () => validateProbe(value, 'ready', sha),
+      (error) => {
+        assert.equal(
+          stagingRunnerFailureCode(error),
+          'STAGING_READINESS_FAILED',
+        );
+        assert.equal(error.message, 'STAGING_READINESS_FAILED');
+        return true;
+      },
+    );
+  }
+});
+test('HTTP success still requires exact source and staging environment', () => {
+  for (const kind of ['health', 'ready'])
+    for (const headers of [
+      { 'x-justgo-source-sha': previous },
+      { 'x-justgo-environment': 'production' },
+      { 'x-justgo-source-sha': undefined },
+      { 'x-justgo-environment': undefined },
+    ]) {
+      const value = probe(kind);
+      value.headers = { ...value.headers, ...headers };
+      assert.throws(
+        () => validateProbe(value, kind, sha),
+        (error) => {
+          assert.equal(
+            stagingRunnerFailureCode(error),
+            'STAGING_RUNTIME_IDENTITY_MISMATCH',
+          );
+          return true;
+        },
+      );
+    }
+});
+test('malformed HTTP statuses fail with a closed probe diagnostic', () => {
+  for (const kind of ['health', 'ready', 'unauthorized'])
+    for (const status of [
+      undefined,
+      null,
+      '200',
+      'PRIVATE_PROVIDER_CONTENT',
+      NaN,
+      Infinity,
+      200.5,
+      99,
+      600,
+    ])
+      assert.throws(
+        () => validateProbe({ ...probe(kind), status }, kind, sha),
+        (error) => {
+          assert.equal(
+            stagingRunnerFailureCode(error),
+            'INVALID_STAGING_PROBE',
+          );
+          assert.equal(error.message, 'INVALID_STAGING_PROBE');
+          return true;
+        },
+      );
+});
+test('invalid successful endpoint bodies retain health or readiness diagnostics', () => {
+  for (const [kind, expected] of [
+    ['health', 'STAGING_HEALTH_FAILED'],
+    ['ready', 'STAGING_READINESS_FAILED'],
+  ])
+    assert.throws(
+      () =>
+        validateProbe(
+          { ...probe(kind), body: JSON.stringify({ status: 'unavailable' }) },
+          kind,
+          sha,
+        ),
+      (error) => {
+        assert.equal(stagingRunnerFailureCode(error), expected);
+        return true;
+      },
+    );
+});
 test('uploads inspected bytes without traffic then probes and promotes precisely once', async (t) => {
   const f = fixture(t);
   const result = await stagingApi('deploy', f);
@@ -484,6 +643,251 @@ test('uploads inspected bytes without traffic then probes and promotes precisely
   assert.ok(
     !readdirSync(f.root).some((p) => p.startsWith('justgo-worker-release-')),
   );
+});
+test('abandoned continuation requires an exact code-only, account-bound opt-in', async (t) => {
+  const f = fixture(t, undefined, true);
+  const incidentTarget = cloudflareTarget(f.env);
+  for (const value of [undefined, ''])
+    assert.equal(
+      abandonedVersionRequested(
+        { ...f.env, STAGING_ABANDONED_VERSION_ID: value },
+        incidentTarget,
+      ),
+      false,
+    );
+  for (const change of [
+    { STAGING_ABANDONED_VERSION_ID: otherId },
+    { STAGING_ABANDONED_VERSION_ID: `${incident.abandonedId}\n` },
+    { STAGING_ABANDONED_VERSION_ID: null },
+    { RELEASE_OPERATION: 'migrate-deploy' },
+    { RELEASE_OPERATION: 'bootstrap' },
+    { CLOUDFLARE_ACCOUNT_ID: '1'.repeat(32) },
+  ]) {
+    await assert.rejects(
+      stagingApi('preflight', { ...f, env: { ...f.env, ...change } }),
+      /STAGING_ABANDONED_VERSION_REJECTED|INVALID_STAGING_RELEASE_CONTEXT/,
+    );
+    assert.equal(f.calls.length, 0);
+  }
+  assert.throws(
+    () =>
+      abandonedVersionRequested(f.env, {
+        ...incidentTarget,
+        worker: 'other-worker',
+      }),
+    /STAGING_ABANDONED_VERSION_REJECTED/,
+  );
+});
+test('the default guard still rejects the recorded abandoned latest version', async (t) => {
+  const f = fixture(t, undefined, true);
+  delete f.env.STAGING_ABANDONED_VERSION_ID;
+  await assert.rejects(
+    stagingApi('preflight', f),
+    /STAGING_LATEST_VERSION_CHANGED/,
+  );
+  assert.ok(!f.calls.some((c) => c.method === 'POST' || c.promotion));
+});
+test('exact incident preflight and replacement recheck provenance before upload', async (t) => {
+  const f = fixture(t, undefined, true);
+  assert.deepEqual(await stagingApi('preflight', f), {
+    deploymentId: incident.deploymentId,
+    sourceSha: incident.baselineSha,
+  });
+  assert.ok(!f.calls.some((c) => c.method === 'POST' || c.promotion));
+  f.calls.length = 0;
+  const result = await stagingApi('deploy', f);
+  assert.equal(result.versionId, candidateId);
+  const abandonedReads = f.calls.flatMap((c, index) =>
+    c.path === `/versions/${incident.abandonedId}` ? [index] : [],
+  );
+  const upload = f.calls.findIndex((c) => c.method === 'POST');
+  assert.equal(abandonedReads.length, 2);
+  assert.ok(abandonedReads.every((index) => index < upload));
+  assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
+  assert.equal(f.calls.filter((c) => c.promotion).length, 1);
+  assert.equal(f.calls.filter((c) => c.probe).length, 8);
+});
+const incidentDrifts = [
+  [
+    'missing version list',
+    '/versions',
+    (v) => {
+      delete v.items;
+    },
+  ],
+  ['reordered versions', '/versions', (v) => v.items.reverse()],
+  ['newer version', '/versions', (v) => v.items.unshift({ id: otherId })],
+  ['missing baseline version', '/versions', (v) => v.items.pop()],
+  [
+    'different abandoned version',
+    '/versions',
+    (v) => {
+      v.items[0].id = otherId;
+    },
+  ],
+  [
+    'different baseline version',
+    '/versions',
+    (v) => {
+      v.items[1].id = otherId;
+    },
+  ],
+  [
+    'extra deployment history',
+    '/deployments',
+    (v) => v.deployments.push(structuredClone(v.deployments[0])),
+  ],
+  [
+    'changed deployment ID',
+    '/deployments',
+    (v) => {
+      v.deployments[0].id = otherId;
+    },
+  ],
+  [
+    'abandoned version deployed',
+    '/deployments',
+    (v) => {
+      v.deployments[0].versions[0].version_id = incident.abandonedId;
+    },
+  ],
+  [
+    'split traffic',
+    '/deployments',
+    (v) => {
+      v.deployments[0].versions[0].percentage = 50;
+    },
+  ],
+  [
+    'baseline source drift',
+    `/versions/${incident.baselineId}`,
+    (v) => {
+      v.resources.bindings.find((b) => b.name === 'JUSTGO_SOURCE_SHA').text =
+        previous;
+    },
+  ],
+  [
+    'abandoned ID drift',
+    `/versions/${incident.abandonedId}`,
+    (v) => {
+      v.id = otherId;
+    },
+  ],
+  [
+    'preview disabled',
+    `/versions/${incident.abandonedId}`,
+    (v) => {
+      v.metadata.has_preview = false;
+    },
+  ],
+  [
+    'missing annotations',
+    `/versions/${incident.abandonedId}`,
+    (v) => {
+      delete v.annotations;
+    },
+  ],
+  ...['workers/tag', 'workers/message'].map((name) => [
+    `${name} drift`,
+    `/versions/${incident.abandonedId}`,
+    (v) => {
+      v.annotations[name] += '-changed';
+    },
+  ]),
+  ...[
+    'JUSTGO_SOURCE_SHA',
+    'API_SENTRY_RELEASE',
+    'JUSTGO_RELEASE_RUN_ID',
+    'JUSTGO_RELEASE_RUN_ATTEMPT',
+  ].map((name) => [
+    `${name} drift`,
+    `/versions/${incident.abandonedId}`,
+    (v) => {
+      v.resources.bindings.find((b) => b.name === name).text = previous;
+    },
+  ]),
+  [
+    'stable binding drift',
+    `/versions/${incident.abandonedId}`,
+    (v) => {
+      v.resources.bindings.push(
+        text('CORS_ORIGINS', 'https://attacker.invalid'),
+      );
+    },
+  ],
+];
+for (const [name, path, mutate] of incidentDrifts)
+  test(`abandoned continuation rejects ${name} without upload or promotion`, async (t) => {
+    const f = fixture(t, undefined, true);
+    await assert.rejects(
+      stagingApi('deploy', {
+        ...f,
+        request: async (target, requested, options) => {
+          const value = await f.request(target, requested, options);
+          if (requested === path) mutate(value);
+          return value;
+        },
+      }),
+      (error) => Boolean(stagingRunnerFailureCode(error)),
+    );
+    assert.ok(!f.calls.some((c) => c.method === 'POST' || c.promotion));
+  });
+for (const name of [
+  'newer version',
+  'extra deployment history',
+  'workers/message drift',
+  'stable binding drift',
+])
+  test(`abandoned continuation catches ${name} appearing during build`, async (t) => {
+    const f = fixture(t, undefined, true);
+    const [, path, mutate] = incidentDrifts.find(([label]) => label === name);
+    let built = false;
+    await assert.rejects(
+      stagingApi('deploy', {
+        ...f,
+        build: async (...args) => {
+          const bundle = await f.build(...args);
+          built = true;
+          return bundle;
+        },
+        request: async (target, requested, options) => {
+          const value = await f.request(target, requested, options);
+          if (built && requested === path) mutate(value);
+          return value;
+        },
+      }),
+      (error) => Boolean(stagingRunnerFailureCode(error)),
+    );
+    assert.equal(built, true);
+    assert.ok(!f.calls.some((c) => c.method === 'POST' || c.promotion));
+  });
+test('a replacement with failing previews stays unpromoted and cannot reuse this incident', async (t) => {
+  const f = fixture(t, 'candidate-probe', true);
+  await assert.rejects(stagingApi('deploy', f), /INVALID_STAGING_PROBE/);
+  assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
+  assert.ok(!f.calls.some((c) => c.promotion));
+  await assert.rejects(
+    stagingApi('preflight', f),
+    /STAGING_ABANDONED_VERSION_REJECTED/,
+  );
+  assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
+});
+test('replacement upload returns to the ordinary latest-version guard', async (t) => {
+  const f = fixture(t, undefined, true);
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      request: async (target, path, options) => {
+        const value = await f.request(target, path, options);
+        if (path === '/versions' && f.calls.some((c) => c.method === 'POST'))
+          value.items[0].id = incident.abandonedId;
+        return value;
+      },
+    }),
+    /STAGING_LATEST_VERSION_CHANGED/,
+  );
+  assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
+  assert.ok(!f.calls.some((c) => c.promotion));
 });
 for (const failure of ['promotion-delay', 'promotion-timeout'])
   test(`${failure} resolves through readback without repeating the mutation`, async (t) => {
