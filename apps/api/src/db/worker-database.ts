@@ -11,7 +11,12 @@ export type WorkerBindings = Record<string, unknown> & {
 
 const wrappedHyperdriveHost = /^[a-f0-9]{32}\.workers\.alt$/;
 
-/** The binding owns the transport to Hyperdrive; origin TLS is verified at release. */
+/**
+ * Bound one invocation's pool without overriding Hyperdrive's transport.
+ * Only workerd's local or exact wrapped proxy URLs may carry sslmode=disable;
+ * other connection options and fragments are rejected. This checks proxy shape,
+ * while release readback verifies origin TLS and readiness checks database identity.
+ */
 export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
   const url = new URL(connectionString);
   const parameters = [...url.searchParams.entries()];
@@ -47,6 +52,13 @@ export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
   };
 }
 
+/**
+ * Resolve ordinary and advisory-lock connections without opening either pool.
+ * Hosted lock connections must use the restricted role and configured Supabase
+ * project. Wrapped proxy credentials are opaque, so the returned databaseName
+ * must be checked through both live connections rather than inferred from them.
+ * Invalid bindings, release identity or hosted Auth configuration throw here.
+ */
 export function readWorkerConfig(bindings: WorkerBindings) {
   const connectionString = bindings.HYPERDRIVE?.connectionString;
   if (!connectionString || !bindings.LOCK_DATABASE_URL)

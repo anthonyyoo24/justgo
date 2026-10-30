@@ -47,6 +47,11 @@ const env = {
 };
 const target = cloudflareTarget(env);
 const context = { sha, runId: '123', attempt: '1' };
+/**
+ * Model first-upload state and inject one guard failure with recorded call order.
+ * /settings proves absence before upload; /script-settings supplies telemetry
+ * afterward. All external I/O is fake, and t.after removes the owned temporary root.
+ */
 function fixture(t, failure) {
   const root = mkdtempSync(join(tmpdir(), 'justgo-bootstrap-test-'));
   t.after(() => rmSync(root, { force: true, recursive: true }));

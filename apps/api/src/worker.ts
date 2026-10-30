@@ -24,6 +24,11 @@ export function workerClientAddress(request: Request) {
   return isIP(address) ? address : 'unknown';
 }
 
+/**
+ * Compose the Worker with injectable configuration, database and app adapters.
+ * Only each binding's bounded error-reporting budget survives across requests;
+ * database pools and account work belong to the invocation that creates them.
+ */
 export function createWorker(
   dependencies = {
     readConfiguration: readWorkerConfig,
@@ -35,6 +40,11 @@ export function createWorker(
   // in-flight promises escape the invocation that owns them.
   const reporters = new WeakMap<WorkerBindings, ServerErrorReporter>();
   return {
+    /**
+     * Serve one request with redacted startup failures and invocation-owned I/O.
+     * Register pool shutdown with waitUntil even when app composition fails;
+     * readiness additionally validates the direct advisory-lock connection.
+     */
     async fetch(
       request: Request,
       bindings: WorkerBindings,
@@ -54,6 +64,11 @@ export function createWorker(
         const app = dependencies.buildApp(settings.config, database, {
           clientAddress: (context) => workerClientAddress(context.req.raw),
           reportServerError: reporter,
+          /**
+           * Require both transports to reach the expected database, then check
+           * the direct role/Auth boundary. Always close this extra readiness pool,
+           * including when either identity query fails or returns no proof.
+           */
           checkAdditionalDatabase: async () => {
             const direct = createDatabase(settings.lockConfig);
             try {

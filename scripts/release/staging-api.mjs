@@ -124,7 +124,12 @@ export function validateStagingEnvironment(environment, policies, reviewerId) {
   );
 }
 
-/** Script-level settings are independent of versions and must not collect telemetry. */
+/**
+ * Validate authoritative /script-settings rather than version metadata.
+ * Omitted/null observability, nested telemetry and tail consumers are disabled
+ * provider defaults; explicit settings must remain disabled with no destinations.
+ * Malformed responses or enabled collectors throw a safe configuration code.
+ */
 export function validateWorkerSettings(settings) {
   const object = (value) =>
     value !== null && typeof value === 'object' && !Array.isArray(value);

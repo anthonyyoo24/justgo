@@ -144,7 +144,12 @@ export async function withBootstrapDatabase({ env, bindings }, upload) {
   }
 }
 
-/** First upload only. Existing/uncertain Workers are never overwritten or repaired. */
+/**
+ * Create only an absent Worker under the verified source, CI and database lease.
+ * Send one initial upload, then reconcile version/binding provenance, authoritative
+ * script settings and public probes before returning a receipt. Any failure after
+ * upload is uncertain: existing Workers are never overwritten, retried or repaired.
+ */
 export async function bootstrapStagingWorker({
   env = process.env,
   root = process.cwd(),
@@ -311,6 +316,11 @@ export async function bootstrapStagingWorker({
                 )
               : rawId;
           requireRelease(isVersionId(id), 'STAGING_BOOTSTRAP_UNCONFIRMED');
+          /**
+           * Reconcile the upload's version UUID with the live deployment, latest
+           * version, preserved bindings and script-level telemetry. Once routes
+           * exist, preview also requires preview availability and exact run identity.
+           */
           const readback = async (preview) => {
             const deployed = validateDeployment(await api('/deployments'));
             requireRelease(

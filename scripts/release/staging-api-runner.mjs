@@ -56,6 +56,12 @@ export function validateHyperdrive(value, target) {
     'STAGING_HYPERDRIVE_CONFIGURATION_MISMATCH',
   );
 }
+/**
+ * Preflight a clean source/live baseline, or upload, probe and promote its successor.
+ * Deploy requires the captured baseline and a final beforePromote lease/guard check.
+ * Promotion is attempted once; uncertain results require readback, never an automatic
+ * retry or rollback. Return verified provenance and remove temporary bundle files.
+ */
 export async function stagingApi(
   operation,
   {

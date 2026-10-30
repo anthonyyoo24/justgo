@@ -1,6 +1,11 @@
 import { requireRelease, StagingRunnerFailure } from './staging-api.mjs';
 
-/** No retries or redirects. Provider text never enters diagnostics. */
+/**
+ * Send one allowlisted provider request, bounded to 20 seconds and 1 MiB.
+ * Script settings are read-only; only the /settings absence probe may translate
+ * the provider's exact missing-Worker response to null. No retries or redirects;
+ * failures expose a safe code rather than provider text or credentials.
+ */
 export async function cloudflareRequest(
   target,
   path,

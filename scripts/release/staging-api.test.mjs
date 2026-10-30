@@ -107,6 +107,11 @@ function probe(kind = 'ready') {
     ),
   };
 }
+/**
+ * Model upload, promotion and eventual readback without provider or database I/O.
+ * failure selects a configuration fault, race or uncertain response; calls/waits
+ * retain ordering evidence, and t.after removes only this fixture's temporary root.
+ */
 function fixture(t, failure) {
   const root = mkdtempSync(join(tmpdir(), 'justgo-staging-release-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
