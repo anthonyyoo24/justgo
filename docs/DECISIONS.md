@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 29, 2026. The [October 29 small-beta recovery decision](#october-29-small-beta-recovery-limit) records the accepted beta recovery limit and required reassessment. The [October 28 Cloudflare decision](#october-28-cloudflare-workers-hono-and-r2-backups) adds Phase 15 to move the API to Cloudflare Workers and Hono, with R2 backups instead of Supabase Pro. The [October 28 renumbering](#october-28-phase-renumbering) makes billing Phase 16 and shifts later phases; dated entries keep their original numbers. The [October 28 billing-provider decision](#october-28-superwall-replaces-revenuecat-for-phase-16-billing) replaces RevenueCat with Superwall for Phase 16. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 30, 2026. The [October 30 staging-retention decision](#october-30-seven-day-staging-backup-retention) records approved seven-day protection and expiry with verified lock enforcement; actual expiry remains unobserved. The [October 29 small-beta recovery decision](#october-29-small-beta-recovery-limit) records the accepted beta recovery limit and required reassessment. The [October 28 Cloudflare decision](#october-28-cloudflare-workers-hono-and-r2-backups) adds Phase 15 to move the API to Cloudflare Workers and Hono, with R2 backups instead of Supabase Pro. The [October 28 renumbering](#october-28-phase-renumbering) makes billing Phase 16 and shifts later phases; dated entries keep their original numbers. The [October 28 billing-provider decision](#october-28-superwall-replaces-revenuecat-for-phase-16-billing) replaces RevenueCat with Superwall for Phase 16. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                       | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------ | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1056,3 +1056,26 @@ Actions, and initial verification runs the database copy before the ledger copy.
 Hosted check-ins, failure/missed-run notification delivery and scheduled copies
 still require evidence. Retention, renewal and independent key custody proposals
 are unchanged.
+
+## October 30 seven-day staging backup retention
+
+Anthony approved seven-day retention, seven-day protection and automatic expiry
+for both `staging/database/` and `staging/ledger/` in `justgo-staging-backups`,
+including saving both expiry rules at action time. API readback verified enabled
+Age locks and Age object-expiry rules of 604800 seconds for each prefix. The
+default incomplete-multipart abort rule is preserved and public domains remain
+disabled. This supersedes the earlier proposed retention/lock status for staging.
+
+Actual enforcement passed with two encrypted dummy canaries containing no user
+data: parent-credential overwrite and DELETE both returned HTTP 409
+`ObjectLockedByBucketPolicy`. HEAD reported `x-amz-expiration` of
+`2026-11-06T13:22:01Z` for the database canary and `2026-11-06T13:22:37Z` for the
+ledger canary. Both remain under lock until expiry. Actual asynchronous deletion
+has not yet been observed; seven-day expiry is not an exact deletion-time promise.
+
+The approved policy and SHA-256 are saved as `BACKUP_POLICY_JSON` and
+`BACKUP_POLICY_SHA256` in the protected `database-backups` environment.
+Protected-environment readback matched the exact policy bytes and digest.
+`JUSTGO_BACKUPS_ENABLED` remains unset. This decision and evidence do not close
+Git publication/merge permissions, privacy/DPA, actual app/Auth restore, alert
+delivery, independent off-Mac key custody or credential-renewal gates.

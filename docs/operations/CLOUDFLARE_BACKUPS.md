@@ -7,11 +7,15 @@ under Anthony's accepted narrow staging exception. Actual verified-TLS metadata
 and required-schema `LIMIT 0` access probes passed without fetching private rows.
 The main-only `database-backups` GitHub environment holds `BACKUP_DATABASE_URL`,
 `BACKUP_DATABASE_CA_CERT`, the approved `R2_INSPECT_TOKEN` and the three derived
-`R2_UPLOAD_*` secrets; workflow opt-in remains unset. A disposable encrypted R2
+`R2_UPLOAD_*` secrets, plus approved `BACKUP_POLICY_JSON` and
+`BACKUP_POLICY_SHA256`; workflow opt-in remains unset. A disposable encrypted R2
 canary passed PUT/HEAD, denied GET/list/out-of-prefix PUT/DELETE, and was retrieved
 and decrypted with the owner's requested Documents key file before cleanup.
-Hosted copies, retention/lock
-configuration, the remaining policy approvals and monitor delivery verification remain open.
+Seven-day protection and automatic expiry are approved and configured for both
+staging prefixes, with API readback and actual lock enforcement verified. The two
+new encrypted lock-test canaries contain no user data and remain until expiry;
+actual asynchronous deletion has not yet been observed. Hosted database/ledger
+copies, the remaining policy approvals and monitor delivery verification remain open.
 The [Phase 15 plan](../implementation-plan/phase-15-cloudflare-api.md) owns these
 approvals; the [Phase 14 handoff](../handoffs/phase-14-release.md) preserves the
 independent privacy and device gates. This guide does not authorize those actions.
@@ -74,14 +78,16 @@ credential; the uploader must not be able to edit locks or public access.
 
 The small-beta ledger-gap disposition below is approved by the
 [October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit).
+The [October 30 decision](../DECISIONS.md#october-30-seven-day-staging-backup-retention)
+approves seven-day staging retention, protection and automatic expiry.
 The separately accepted reader exception and activation request are described
-under protected-environment setup. The other values in this table remain proposals,
+under protected-environment setup. The remaining proposed values in this table are
 not approvals or published retention promises:
 
-| Decision                      | Proposed policy                                                                                                                                         | Tradeoff / acceptance still required                                                                                                                                                                                                                                              |
+| Decision                      | Policy / proposal                                                                                                                                       | Evidence / acceptance still required                                                                                                                                                                                                                                              |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backup and ledger retention   | Seven days for each, in a private dedicated R2 bucket                                                                                                   | Retain the ledger at least as long as any snapshot it must reconcile. Confirm deletion duties and public wording before copying real data.                                                                                                                                        |
-| Lock duration and expiry      | Seven-day prefix locks; lifecycle expiry at day seven                                                                                                   | Locks protect retained ciphertext from overwrite/delete by the uploader. R2 lifecycle removal is asynchronous, typically within 24 hours of expiry, and is not a strict maximum. Verify actual deletion behavior and wording before acceptance.                                   |
+| Backup and ledger retention   | Approved October 30: seven days for each staging prefix in the private dedicated R2 bucket                                                              | API readback confirms both expiry rules. Actual asynchronous deletion and public retention wording remain separate evidence/approval items.                                                                                                                                       |
+| Lock duration and expiry      | Approved October 30: seven-day prefix locks and lifecycle expiry at day seven                                                                           | API readback and parent-credential overwrite/DELETE rejection passed for both prefixes. R2 removal is asynchronous, typically within 24 hours of expiry, and is not a strict maximum; actual expiry has not yet been observed.                                                    |
 | Ordinary-write recovery point | Up to 24 hours of new activity since the nightly snapshot may be lost                                                                                   | Hourly identity ledgers do not back up new journals. Anthony must accept the data-loss tradeoff.                                                                                                                                                                                  |
 | Recovery time                 | Candidate operator target of four hours                                                                                                                 | Not measured for the actual hosted Auth schema or a provider incident; the synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                       |
 | Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance and Auth/provider mutations; accepted beta fallback keeps unverified old restored state closed | Independent deletion/revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. Clean restart needs a separate procedure; automatic old-phone recovery is unsupported.                                            |
@@ -115,7 +121,8 @@ database cannot close the gap. The future design must cover app, maintenance and
 Auth/admin paths. Anthony accepts conservative replay of a durably saved deletion
 intent after an apparent database failure. That design still needs implementation
 and evidence; this decision does not change the current restore checks or approve
-retention, ordinary-write recovery loss, recovery time or reauthentication policy.
+ordinary-write recovery loss, recovery time or reauthentication policy. Staging
+retention is governed by the separate October 30 decision.
 
 [R2 bucket locks](https://developers.cloudflare.com/r2/buckets/bucket-locks/) prevent
 premature deletion and overwrite, but an administrator can change the rules.
@@ -169,21 +176,31 @@ its own credentials, approved policy and lane when it is introduced.
    the exception after the provider's removal is verified. The reader is now
    LOGIN-enabled, and actual TLS metadata/required-schema `LIMIT 0` probes passed
    the opted-in guard without fetching private rows. This acceptance does not
-   approve the other retention, alert-delivery or custody proposals.
+   approve the remaining alert-delivery or custody proposals.
 
 2. Choose and configure the actual bucket/location/access/lock/lifecycle settings
    using a separate privileged owner credential. The read-only `R2_INSPECT_TOKEN`
    needs access to bucket lock/lifecycle and managed/custom-domain settings, scoped
    to the approved account. Verify the uploader cannot change those settings or
    delete retained objects with disposable encrypted canaries.
-   Current readback shows no bucket-lock rules and only the default incomplete
-   multipart-upload abort lifecycle rule; public domains remain disabled. No
-   object-expiry or retention-lock acceptance is established. Anthony approved
+   October 30 readback verified enabled Age lock rules with
+   `condition.maxAgeSeconds: 604800` and enabled object-expiry rules with
+   `deleteObjectsTransition.condition.maxAge: 604800` for exactly
+   `staging/database/` and `staging/ledger/`. The default incomplete-multipart abort
+   lifecycle rule is preserved; public domains remain disabled. Actual encrypted
+   dummy canaries on both prefixes rejected parent-credential overwrite and DELETE
+   with HTTP 409 `ObjectLockedByBucketPolicy`. HEAD reported expiry at
+   `2026-11-06T13:22:01Z` for the database canary and `2026-11-06T13:22:37Z` for the
+   ledger canary. They contain no user data and remain under lock until expiry;
+   actual asynchronous deletion is still unobserved. Anthony approved
    the inspector's account-wide R2 read/list authority, including other buckets.
    That Admin Read Only key is active, expires `2026-11-05T23:06:08Z`, and is stored
    as `R2_INSPECT_TOKEN` in the protected environment.
 3. Save exact approved JSON in `BACKUP_POLICY_JSON` and its SHA-256 in
-   `BACKUP_POLICY_SHA256`. Policy fields are `version: 1`, `approvalReference`,
+   `BACKUP_POLICY_SHA256`. Both are now stored in the protected environment with
+   `backupDays: 7`, `ledgerDays: 7` and `lockDays: 7`; readback matched the exact
+   bytes and digest, and workflow opt-in remains unset.
+   Policy fields are `version: 1`, `approvalReference`,
    `accountId`, `bucket`, `environment` (`staging` or `production`), `jurisdiction`
    (`default`, `eu`, `us` or `fedramp`), `backupDays`, `ledgerDays`, `lockDays`,
    `ageRecipient`, `sourceHost` and `sourceDatabase`. Supabase shared session-pooler
@@ -362,7 +379,7 @@ This rehearsal passed locally with PostgreSQL 17 and `age` 1.3.2. It establishes
 actual local encryption/decryption/dump/restore and application deletion behavior.
 The small synthetic Auth tables do **not** establish recovery of the real hosted
 Auth schema, session-provider behavior, role/extension dependencies, key retrieval
-by the owner, R2 permissions/expiry, scheduled availability or an operational RTO.
+from independent offline custody, actual R2 expiry, scheduled availability or an operational RTO.
 Those gates remain open. Hourly ledgers also leave the post-copy gap, now accepted
 as a small-beta recovery limit with independent recording explicitly deferred.
 Local tests do not replace reassessment before paid launch or beta expansion,
