@@ -19,6 +19,7 @@ import {
   validateProbe,
   validateStagingEnvironment,
   validateVersion,
+  validateWorkerSettings,
   versionOrigin,
 } from './staging-api.mjs';
 
@@ -143,7 +144,12 @@ export async function withBootstrapDatabase({ env, bindings }, upload) {
   }
 }
 
-/** First upload only. Existing/uncertain Workers are never overwritten or repaired. */
+/**
+ * Create only an absent Worker under the verified source, CI and database lease.
+ * Send one initial upload, then reconcile version/binding provenance, authoritative
+ * script settings and public probes before returning a receipt. Any failure after
+ * upload is uncertain: existing Workers are never overwritten, retried or repaired.
+ */
 export async function bootstrapStagingWorker({
   env = process.env,
   root = process.cwd(),
@@ -310,6 +316,11 @@ export async function bootstrapStagingWorker({
                 )
               : rawId;
           requireRelease(isVersionId(id), 'STAGING_BOOTSTRAP_UNCONFIRMED');
+          /**
+           * Reconcile the upload's version UUID with the live deployment, latest
+           * version, preserved bindings and script-level telemetry. Once routes
+           * exist, preview also requires preview availability and exact run identity.
+           */
           const readback = async (preview) => {
             const deployed = validateDeployment(await api('/deployments'));
             requireRelease(
@@ -331,13 +342,7 @@ export async function bootstrapStagingWorker({
                   bindings.find((binding) => binding.name === name)?.text,
                 'STAGING_BOOTSTRAP_UNCONFIRMED',
               );
-            const settings = await api('/settings');
-            requireRelease(
-              settings?.observability?.enabled === false &&
-                settings.logpush !== true &&
-                !(settings.tail_consumers?.length > 0),
-              'STAGING_WORKER_CONFIGURATION_MISMATCH',
-            );
+            validateWorkerSettings(await api('/script-settings'));
             return deployed;
           };
           await readback(false);

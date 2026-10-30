@@ -32,6 +32,47 @@ test('provider transport scopes the URL, keeps credentials in memory, and disabl
   assert.equal(calls[0].options.redirect, 'error');
   assert.equal(calls[0].options.headers.authorization, `Bearer ${token}`);
 });
+test('script-level diagnostics use the exact read-only endpoint without a subdomain API-date header', async () => {
+  const settings = { observability: null, logpush: false, tail_consumers: [] };
+  let calls = 0;
+  const fetch = async (url, options) => {
+    calls++;
+    assert.equal(
+      url,
+      `https://api.cloudflare.com/client/v4/accounts/${target.accountId}/workers/scripts/justgo-api-staging/script-settings`,
+    );
+    assert.equal(options.method, 'GET');
+    assert.equal(
+      options.headers['Cloudflare-Workers-Script-Api-Date'],
+      undefined,
+    );
+    return Response.json({ success: true, result: settings });
+  };
+  assert.deepEqual(
+    await cloudflareRequest(target, '/script-settings', { token, fetch }),
+    settings,
+  );
+  for (const options of [
+    { method: 'POST' },
+    { method: 'PATCH' },
+    { method: 'DELETE' },
+    { allowMissing: true },
+  ])
+    await assert.rejects(
+      cloudflareRequest(target, '/script-settings', {
+        token,
+        fetch,
+        ...options,
+      }),
+      safe,
+    );
+  for (const path of ['/script-settings/extra', '/script-settings?unsafe=true'])
+    await assert.rejects(
+      cloudflareRequest(target, path, { token, fetch }),
+      safe,
+    );
+  assert.equal(calls, 1);
+});
 for (const failure of ['transport', 'status', 'json', 'oversize', 'envelope'])
   test(`provider ${failure} failure is bounded, redacted and never retried`, async () => {
     let calls = 0;

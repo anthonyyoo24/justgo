@@ -9,20 +9,35 @@ export type WorkerBindings = Record<string, unknown> & {
   LOCK_DATABASE_URL?: string | undefined;
 };
 
-/** The binding owns the transport to Hyperdrive; origin TLS is verified at release. */
+const wrappedHyperdriveHost = /^[a-f0-9]{32}\.workers\.alt$/;
+
+/**
+ * Bound one invocation's pool without overriding Hyperdrive's transport.
+ * Only workerd's local or exact wrapped proxy URLs may carry sslmode=disable;
+ * other connection options and fragments are rejected. This checks proxy shape,
+ * while release readback verifies origin TLS and readiness checks database identity.
+ */
 export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
   const url = new URL(connectionString);
   const parameters = [...url.searchParams.entries()];
   // workerd supplies this parameter for its virtual, platform-owned transport.
   // It is not permission to disable TLS on an arbitrary origin connection.
+  const wrappedTransport =
+    wrappedHyperdriveHost.test(url.hostname) &&
+    url.protocol === 'postgresql:' &&
+    url.port === '5432' &&
+    url.username !== '' &&
+    url.password !== '' &&
+    /^\/[^/]+$/.test(url.pathname);
   const virtualTransport =
-    url.hostname.endsWith('.hyperdrive.local') &&
+    (url.hostname.endsWith('.hyperdrive.local') || wrappedTransport) &&
     parameters.length === 1 &&
     parameters[0]?.[0] === 'sslmode' &&
     parameters[0]?.[1] === 'disable';
   if (
     !['postgres:', 'postgresql:'].includes(url.protocol) ||
-    (url.search && !virtualTransport) ||
+    ((url.search || wrappedHyperdriveHost.test(url.hostname)) &&
+      !virtualTransport) ||
     url.hash
   )
     throw new Error('Invalid Hyperdrive binding');
@@ -37,6 +52,13 @@ export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
   };
 }
 
+/**
+ * Resolve ordinary and advisory-lock connections without opening either pool.
+ * Hosted lock connections must use the restricted role and configured Supabase
+ * project. Wrapped proxy credentials are opaque, so the returned databaseName
+ * must be checked through both live connections rather than inferred from them.
+ * Invalid bindings, release identity or hosted Auth configuration throw here.
+ */
 export function readWorkerConfig(bindings: WorkerBindings) {
   const connectionString = bindings.HYPERDRIVE?.connectionString;
   if (!connectionString || !bindings.LOCK_DATABASE_URL)
@@ -64,8 +86,9 @@ export function readWorkerConfig(bindings: WorkerBindings) {
       'Worker lock connection requires the restricted runtime role',
     );
   if (
-    bindingUrl.username !== lockUrl.username ||
-    bindingUrl.pathname !== lockUrl.pathname
+    !wrappedHyperdriveHost.test(bindingUrl.hostname) &&
+    (bindingUrl.username !== lockUrl.username ||
+      bindingUrl.pathname !== lockUrl.pathname)
   )
     throw new Error(
       'Worker database connections must identify the same role and database',
@@ -97,7 +120,15 @@ export function readWorkerConfig(bindings: WorkerBindings) {
         'Worker direct connection must match its Supabase project',
       );
   }
-  return { config, lockConfig, connectionString };
+  // Wrapped Hyperdrive credentials/database are opaque proxy placeholders, not
+  // origin identity. Release readback verifies the origin; readiness verifies
+  // the real database name and restricted role through both connections.
+  return {
+    config,
+    lockConfig,
+    connectionString,
+    databaseName: decodeURIComponent(lockUrl.pathname.slice(1)),
+  };
 }
 
 /** Keep whole advisory-lock transactions on one direct connection, never split them. */

@@ -47,6 +47,11 @@ const env = {
 };
 const target = cloudflareTarget(env);
 const context = { sha, runId: '123', attempt: '1' };
+/**
+ * Model first-upload state and inject one guard failure with recorded call order.
+ * /settings proves absence before upload; /script-settings supplies telemetry
+ * afterward. All external I/O is fake, and t.after removes the owned temporary root.
+ */
 function fixture(t, failure) {
   const root = mkdtempSync(join(tmpdir(), 'justgo-bootstrap-test-'));
   t.after(() => rmSync(root, { force: true, recursive: true }));
@@ -146,19 +151,27 @@ function fixture(t, failure) {
       calls.push({ path, method: options.method ?? 'GET' });
       assert.deepEqual(_target, target);
       if (path === '/settings') {
-        if (!uploaded) {
-          assert.equal(options.allowMissing, true);
-          if (failure === 'unknown-absence') throw new Error(privateValue);
-          return failure === 'existing' ||
-            (failure === 'existing-race' && built)
-            ? {}
-            : null;
-        }
+        assert.equal(uploaded, false);
+        assert.equal(options.allowMissing, true);
+        if (failure === 'unknown-absence') throw new Error(privateValue);
+        return failure === 'existing' || (failure === 'existing-race' && built)
+          ? {}
+          : null;
+      }
+      if (path === '/script-settings') {
+        assert.equal(uploaded, true);
+        assert.equal(options.allowMissing, undefined);
+        if (failure === 'malformed-settings') return [];
         return {
-          observability: { enabled: failure === 'logs' },
+          observability:
+            failure === 'logs'
+              ? { enabled: true }
+              : failure === 'nested-logs'
+                ? { enabled: false, logs: { enabled: true } }
+                : null,
           logpush: false,
           tail_consumers:
-            failure === 'tails' ? [{ service: 'unexpected' }] : [],
+            failure === 'tails' ? [{ service: 'unexpected' }] : null,
         };
       }
       if (path.startsWith('/hyperdrive/'))
@@ -291,6 +304,7 @@ for (const setup of [undefined, 'routes-exist'])
       setup ? 0 : 1,
     );
     assert.equal(f.calls.filter((call) => call.probe).length, 8);
+    assert.ok(f.calls.some((call) => call.path === '/script-settings'));
     assert.ok(!JSON.stringify(receipt).includes(privateValue));
     assert.deepEqual(readdirSync(f.root), []);
     const upload = f.calls.findIndex((call) => call.method === 'PUT');
@@ -335,6 +349,8 @@ for (const failure of [
   'bindings',
   'provenance',
   'logs',
+  'nested-logs',
+  'malformed-settings',
   'tails',
   'route-lost',
   'route-readback',

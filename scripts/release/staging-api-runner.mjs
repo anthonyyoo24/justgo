@@ -17,6 +17,7 @@ import {
   uploadBindings,
   versionOrigin,
   validateProbe,
+  validateWorkerSettings,
   isVersionId,
   StagingRunnerFailure,
 } from './staging-api.mjs';
@@ -55,6 +56,12 @@ export function validateHyperdrive(value, target) {
     'STAGING_HYPERDRIVE_CONFIGURATION_MISMATCH',
   );
 }
+/**
+ * Preflight a clean source/live baseline, or upload, probe and promote its successor.
+ * Deploy requires the captured baseline and a final beforePromote lease/guard check.
+ * Promotion is attempted once; uncertain results require readback, never an automatic
+ * retry or rollback. Return verified provenance and remove temporary bundle files.
+ */
 export async function stagingApi(
   operation,
   {
@@ -106,13 +113,7 @@ export async function stagingApi(
         (await api('/workers/subdomain')).subdomain === target.subdomain,
         'STAGING_WORKER_CONFIGURATION_MISMATCH',
       );
-      const settings = await api('/settings');
-      requireRelease(
-        settings?.observability?.enabled === false &&
-          settings.logpush !== true &&
-          !(settings.tail_consumers?.length > 0),
-        'STAGING_WORKER_CONFIGURATION_MISMATCH',
-      );
+      validateWorkerSettings(await api('/script-settings'));
       const subdomain = await api('/subdomain');
       requireRelease(
         subdomain?.enabled === true && subdomain.previews_enabled === true,

@@ -8,6 +8,7 @@ import {
   validateFoundation,
   validateStagingEnvironment,
   validateProbe,
+  validateWorkerSettings,
   validateVersion,
   cloudflareTarget,
   validateDeployment,
@@ -106,6 +107,11 @@ function probe(kind = 'ready') {
     ),
   };
 }
+/**
+ * Model upload, promotion and eventual readback without provider or database I/O.
+ * failure selects a configuration fault, race or uncertain response; calls/waits
+ * retain ordering evidence, and t.after removes only this fixture's temporary root.
+ */
 function fixture(t, failure) {
   const root = mkdtempSync(join(tmpdir(), 'justgo-staging-release-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -142,10 +148,17 @@ function fixture(t, failure) {
         return failure === 'hyperdrive-cache'
           ? { ...hyperdrive(), caching: { disabled: false } }
           : hyperdrive();
-      if (path === '/settings')
+      if (path === '/script-settings')
         return {
-          observability: { enabled: failure === 'logs' },
+          ...(failure === 'logs'
+            ? { observability: { enabled: true } }
+            : failure === 'nested-logs'
+              ? { observability: { enabled: false, logs: { enabled: true } } }
+              : {}),
           logpush: false,
+          ...(failure === 'malformed-settings'
+            ? { tail_consumers: { length: 0 } }
+            : {}),
         };
       if (path === '/subdomain')
         return {
@@ -333,6 +346,73 @@ test('targets reject missing account, secret, Hyperdrive or unsafe subdomain bef
     assert.equal(f.calls.length, 0);
   }
 });
+test('script settings accept omitted, null and explicitly disabled observability', () => {
+  for (const settings of [
+    { logpush: false, tail_consumers: [] },
+    { observability: null, logpush: false, tail_consumers: [] },
+    { observability: null, logpush: false, tail_consumers: null },
+    { observability: { enabled: false } },
+    {
+      observability: {
+        enabled: false,
+        logs: null,
+        traces: null,
+        issues: null,
+      },
+    },
+    {
+      observability: {
+        enabled: false,
+        logs: { enabled: false, invocation_logs: true, persist: true },
+        traces: { enabled: false, destinations: [] },
+        issues: { enabled: false },
+      },
+    },
+  ])
+    validateWorkerSettings(settings);
+});
+test('script settings reject malformed responses and every enabled telemetry path', () => {
+  for (const settings of [
+    undefined,
+    null,
+    false,
+    [],
+    'PRIVATE_PROVIDER_CONTENT',
+    { logpush: true },
+    { logpush: 'false' },
+    { tail_consumers: [{ service: 'unapproved' }] },
+    { tail_consumers: { length: 0 } },
+    { tail_consumers: '' },
+    { observability: false },
+    { observability: [] },
+    { observability: {} },
+    { observability: { enabled: true } },
+    { observability: { enabled: 'false' } },
+    ...['logs', 'traces', 'issues'].flatMap((name) =>
+      [
+        true,
+        [],
+        { enabled: true },
+        { enabled: 'false' },
+        { enabled: false, destinations: ['unapproved'] },
+        { enabled: false, destinations: { length: 0 } },
+      ].map((telemetry) => ({
+        observability: { enabled: false, [name]: telemetry },
+      })),
+    ),
+  ])
+    assert.throws(
+      () => validateWorkerSettings(settings),
+      (error) => {
+        assert.equal(
+          stagingRunnerFailureCode(error),
+          'STAGING_WORKER_CONFIGURATION_MISMATCH',
+        );
+        assert.ok(!error.message.includes('PRIVATE_PROVIDER_CONTENT'));
+        return true;
+      },
+    );
+});
 test('version and Hyperdrive guards reject privileged credentials, caching and unsafe protocols', () => {
   validateVersion(metadata(), target, context);
   validateHyperdrive(hyperdrive(), target);
@@ -396,6 +476,8 @@ test('uploads inspected bytes without traffic then probes and promotes precisely
   assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
   assert.equal(f.calls.filter((c) => c.promotion).length, 1);
   assert.equal(f.calls.filter((c) => c.probe).length, 8);
+  assert.ok(f.calls.some((c) => c.path === '/script-settings'));
+  assert.ok(!f.calls.some((c) => c.path === '/settings'));
   assert.ok(
     f.calls.findIndex((c) => c.promotion) > f.calls.findIndex((c) => c.probe),
   );
@@ -417,6 +499,8 @@ for (const failure of ['promotion-delay', 'promotion-timeout'])
 for (const failure of [
   'hyperdrive-cache',
   'logs',
+  'nested-logs',
+  'malformed-settings',
   'preview-disabled',
   'latest-race',
   'alias-race',

@@ -123,6 +123,46 @@ export function validateStagingEnvironment(environment, policies, reviewerId) {
     'STAGING_OWNER_MAIN_PROTECTION_REQUIRED',
   );
 }
+
+/**
+ * Validate authoritative /script-settings rather than version metadata.
+ * Omitted/null observability, nested telemetry and tail consumers are disabled
+ * provider defaults; explicit settings must remain disabled with no destinations.
+ * Malformed responses or enabled collectors throw a safe configuration code.
+ */
+export function validateWorkerSettings(settings) {
+  const object = (value) =>
+    value !== null && typeof value === 'object' && !Array.isArray(value);
+  const disabled = (value) => value === undefined || value === false;
+  const empty = (value) =>
+    value === undefined || (Array.isArray(value) && value.length === 0);
+  requireRelease(
+    object(settings) &&
+      disabled(settings.logpush) &&
+      // The script-settings API returns null when no tail consumers exist.
+      (settings.tail_consumers === null || empty(settings.tail_consumers)),
+    'STAGING_WORKER_CONFIGURATION_MISMATCH',
+  );
+  const observability = settings.observability;
+  // Cloudflare returns null/omits disabled observability. Pinned Wrangler 4.155.0
+  // normalizeObservability uses the same disabled default for remote settings.
+  if (observability === undefined || observability === null) return;
+  requireRelease(
+    object(observability) && observability.enabled === false,
+    'STAGING_WORKER_CONFIGURATION_MISMATCH',
+  );
+  for (const name of ['logs', 'traces', 'issues']) {
+    const telemetry = observability[name];
+    if (telemetry === undefined || telemetry === null) continue;
+    requireRelease(
+      object(telemetry) &&
+        disabled(telemetry.enabled) &&
+        empty(telemetry.destinations),
+      'STAGING_WORKER_CONFIGURATION_MISMATCH',
+    );
+  }
+}
+
 export function productionPath(path) {
   if (
     typeof path !== 'string' ||
