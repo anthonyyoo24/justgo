@@ -17,6 +17,7 @@ import {
 } from './db/client.js';
 
 type Execution = { waitUntil: (work: Promise<unknown>) => void };
+type StartupStage = 'configuration' | 'reporter' | 'database' | 'composition';
 
 /** The edge overwrites this header. Forwarded/X-Forwarded-For never authorizes a bucket. */
 export function workerClientAddress(request: Request) {
@@ -52,15 +53,19 @@ export function createWorker(
     ): Promise<Response> {
       let database: ReturnType<typeof createWorkerDatabase> | undefined;
       let reporter: ServerErrorReporter | undefined;
+      let startupStage: StartupStage | undefined = 'configuration';
       try {
         const settings = dependencies.readConfiguration(bindings);
+        startupStage = 'reporter';
         reporter = reporters.get(bindings);
         if (!reporter) {
           reporter = createServerErrorReporter(settings.config.API_SENTRY);
           reporters.set(bindings, reporter);
         }
+        startupStage = 'database';
         database = dependencies.createDatabase(request, settings);
         const invocationPool = database.pool;
+        startupStage = 'composition';
         const app = dependencies.buildApp(settings.config, database, {
           clientAddress: (context) => workerClientAddress(context.req.raw),
           reportServerError: reporter,
@@ -88,6 +93,7 @@ export function createWorker(
             }
           },
         });
+        startupStage = undefined;
         return await app.fetch(request);
       } catch {
         // Configuration/adapter startup errors receive the same safe HTTP
@@ -96,6 +102,10 @@ export function createWorker(
           reporter ? { reportServerError: reporter } : {},
         );
         failed.all('*', (context) => {
+          // Fixed code locations only; never derive diagnostics from an exception
+          // or binding. A request failure after startup has no startup-stage claim.
+          if (startupStage)
+            context.header('x-justgo-startup-stage', startupStage);
           if (context.req.path === '/ready')
             return context.json({ status: 'unavailable' }, 503);
           return context.json(
