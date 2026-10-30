@@ -61,6 +61,11 @@ const job = {
   ],
 };
 
+/**
+ * Serve synthetic workflow/run/job metadata while asserting the fixed read-only
+ * GitHub request contract. Overrides and pages exercise stale, malformed and bounded
+ * pagination cases without using a real Actions token or contacting GitHub.
+ */
 function transport({
   workflowValue = workflow,
   runs = [run],

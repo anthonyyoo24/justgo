@@ -19,6 +19,17 @@ import { encryptSnapshot } from './snapshot.mjs';
 import { checkIn } from './monitor.mjs';
 import { verifyRecentDatabaseCopy } from './workflow-health.mjs';
 
+/**
+ * Create and verify one encrypted database or ledger copy under the approved
+ * source/retention policy. Only ledger runs drive the shared health monitor;
+ * they report success after both their upload and recent database-copy evidence.
+ * Source connections and temporary ciphertext/CA files are cleaned up after
+ * success or failure of this operation.
+ *
+ * @param env Protected job configuration, including the explicit activation gate.
+ * @param operations Injectable external I/O used to test ordering and failures.
+ * @returns The verified upload receipt; operational failures omit private details.
+ */
 export async function runBackup(env = process.env, operations = {}) {
   const io = {
     createClient: (connection) => new Client(connection),

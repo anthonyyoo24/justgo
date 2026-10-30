@@ -223,8 +223,13 @@ its own credentials, approved policy and lane when it is introduced.
    compatible session connections. Use the actual account's verified endpoint,
    not a guessed regional hostname. Supabase documents shared session pooling as
    an [IPv4 connection option](https://supabase.com/docs/guides/database/connecting-to-postgres).
-   Current hosted metadata and required-schema access probes passed; they do not
-   establish a successful full managed Auth dump or restore.
+   A read-only full hosted `justgo`/`auth`/`drizzle` archive was encrypted directly
+   through `age` and restored into an isolated local PostgreSQL 17 database with
+   ACLs preserved. The private session helper was reapplied and its ownership and
+   runtime-only access verified. The disposable database, created roles and
+   encrypted test archive were removed. This proves archive compatibility, not
+   writer-fenced reconciliation, provider session recovery or permission to reopen
+   restored accounts. Those recovery gates remain open.
 5. Prepare derived upload credentials offline with
    `node scripts/backups/mint-upload-credentials.mjs`. It needs the approved policy
    variables, `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`, explicit

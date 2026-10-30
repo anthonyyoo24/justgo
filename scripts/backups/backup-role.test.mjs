@@ -3,6 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { backupRoleQuery, verifyBackupRole } from './backup-role.mjs';
 
+/**
+ * Build valid catalog metadata with targeted overrides for privilege-drift cases.
+ * This isolates verifier decisions; the local rehearsal separately exercises SQL ACLs.
+ */
 function approvedRole(overrides = {}) {
   return {
     role: 'justgo_backup',

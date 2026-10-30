@@ -8,7 +8,14 @@ const copyStepName = 'Encrypt and verify recovery copy';
 const failure = 'Recent successful database backup could not be verified';
 const githubTimestamp = z.iso.datetime({ offset: true });
 
-/** 04:43 UTC plus 20 minutes scheduling allowance and 20 minutes runtime. */
+/**
+ * Return the earliest daily database slot that can satisfy this health check.
+ * Yesterday's 04:43 UTC slot remains eligible during the 40-minute grace period;
+ * at exactly 05:23 UTC, today's slot becomes mandatory, including across UTC dates.
+ *
+ * @param {number} now Current Unix time in milliseconds.
+ * @returns {number} Required 04:43 UTC slot as Unix milliseconds.
+ */
 export function requiredDatabaseSlot(now) {
   if (!Number.isFinite(now)) throw new Error(failure);
   const slot = new Date(now);
@@ -17,11 +24,19 @@ export function requiredDatabaseSlot(now) {
   return slot.getTime();
 }
 
+/** Reject non-ISO API timestamps with NaN so freshness comparisons fail closed. */
 function timestamp(value) {
   return githubTimestamp.safeParse(value).success ? Date.parse(value) : NaN;
 }
+/** Reject coerced, fractional or unsafe GitHub IDs, attempts and step numbers. */
 const positiveInteger = (value) => Number.isSafeInteger(value) && value > 0;
 
+/**
+ * Accept only a completed, successful database-copy run from this repository's
+ * main workflow, with an allowed trigger and timestamps inside the required window.
+ * Repository, workflow and title checks prevent a fork or ledger run from serving
+ * as database-copy evidence; job/step execution is checked separately.
+ */
 function trustedRun(run, workflowId, since, now) {
   const created = timestamp(run?.created_at);
   const started = timestamp(run?.run_started_at);
@@ -50,6 +65,11 @@ function trustedRun(run, workflowId, since, now) {
   );
 }
 
+/**
+ * Validate the jobs response fetched for the selected run attempt. Require one
+ * successful backup job and one successful copy step, with matching run/SHA and
+ * ordered timestamps, so a skipped opt-in job cannot satisfy database health.
+ */
 function copiedDatabase(payload, run, now) {
   if (
     payload?.total_count !== 1 ||
@@ -86,7 +106,16 @@ function copiedDatabase(payload, run, now) {
   );
 }
 
-/** Read workflow/job metadata only; never logs, artifacts or API bodies in errors. */
+/**
+ * Verify that the hourly ledger heartbeat has recent database-copy evidence.
+ * Read only fixed GitHub workflow/run/job metadata with the ephemeral Actions token;
+ * bound pagination to 300 runs and reject unavailable, malformed or stale evidence.
+ * Logs, artifacts and response bodies never become diagnostics.
+ *
+ * @param env Identity of the main-branch job and its read-only Actions token.
+ * @param options Injectable clock and HTTP transport for freshness/failure tests.
+ * @returns Resolves only after a trusted run and its actual copy step are verified.
+ */
 export async function verifyRecentDatabaseCopy(
   env,
   { now = Date.now(), send = fetch } = {},

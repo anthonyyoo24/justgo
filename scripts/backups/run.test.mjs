@@ -37,6 +37,11 @@ const failure = {
   message: 'Encrypted backup failed; inspect protected operator configuration',
 };
 
+/**
+ * Replace provider/database I/O with recorded steps and an optional injected failure.
+ * Capture check-ins, safe reports and the real temporary-directory path so tests can
+ * assert health ordering, error redaction and cleanup without network or database use.
+ */
 function fixture(kind, failAt) {
   const calls = [];
   const checkIns = [];

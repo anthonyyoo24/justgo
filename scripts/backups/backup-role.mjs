@@ -96,7 +96,17 @@ const forbidden = [
   'definer_execution',
 ];
 
-/** Accept only the approved reader; missing or ambiguous metadata fails closed. */
+/**
+ * Verify the connected/session role, exact inherited reader membership, limits,
+ * ownership and effective privilege metadata before exporting a snapshot.
+ * The optional full policy may waive only the approved staging cron-history DELETE;
+ * missing/ambiguous metadata and all other privilege drift fail closed.
+ * Accepted PUBLIC/session capabilities still prevent an absolute read-only claim.
+ *
+ * @param client Connected PostgreSQL client for the dedicated backup account.
+ * @param policy Complete source-bound policy, or undefined to keep DELETE forbidden.
+ * @returns Resolves only when every required role and session check passes.
+ */
 export async function verifyBackupRole(client, policy) {
   const allowCronDelete = cronJobRunDetailsDeleteAllowed(policy);
   const { rows } =

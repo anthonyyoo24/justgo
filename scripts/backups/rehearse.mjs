@@ -27,7 +27,15 @@ const proposal = () => ({
   sessionToken: secret(),
 });
 
-/** Real pg_dump -> age -> pg_restore and deletion replay, only synthetic owned DBs. */
+/**
+ * Exercise encrypted backup, privilege-drift rejection and deletion replay using
+ * synthetic records in two run-owned databases on the guarded loopback fixture.
+ * Refuses an existing backup role and cleans up only resources this run created.
+ * The minimal Auth fixture does not establish hosted Supabase restore compatibility.
+ *
+ * @param env Local administrator/runtime URLs and PostgreSQL/age tool locations.
+ * @returns Resolves after the restore assertions and owned-resource cleanup pass.
+ */
 export async function rehearse(env = process.env) {
   const adminUrl = localTestDatabaseUrl(env.JUSTGO_TEST_ADMIN_DATABASE_URL);
   if (adminUrl.username !== 'postgres' || env.DATABASE_SSL !== 'disable')

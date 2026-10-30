@@ -135,7 +135,7 @@ Deferred beta recovery work:
 
 - [ ] Implementation owner follows the submitted Supabase request to remove PUBLIC
       DELETE on `cron.job_run_details`. Once the provider's removal is verified,
-      remove the staging policy opt-in and narrow code exception through review.
+      remove both the staging policy opt-in and the code exception through review.
       This follow-up runs alongside backups and does not delay activation.
 - [ ] Anthony and the implementation/release owner must reassess independent
       per-deletion/revocation recording before paid launch or expansion beyond the

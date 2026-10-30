@@ -49,7 +49,12 @@ export const policySchema = z
     'Cron history DELETE exception is limited to the approved staging source',
   );
 
-/** Only a complete source-bound policy can opt into the accepted beta residual. */
+/**
+ * Decide whether the accepted beta cron-history DELETE residual is enabled.
+ * Revalidate the complete source-bound policy so a bare flag, production source or
+ * different project cannot activate the exception. An absent policy keeps it off;
+ * a supplied invalid policy throws instead of silently changing privilege checks.
+ */
 export function cronJobRunDetailsDeleteAllowed(policy) {
   return (
     policy !== undefined &&
