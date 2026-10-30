@@ -1,4 +1,5 @@
 name: Encrypted database recovery copies
+run-name: ${{ (github.event_name == 'schedule' && github.event.schedule == '43 4 * * *' || github.event_name == 'workflow_dispatch' && inputs.kind == 'database') && 'Encrypted database recovery copy' || 'Encrypted ledger recovery copy' }}
 
 on:
   workflow_dispatch:
@@ -28,6 +29,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      actions: read
     env:
       JUSTGO_BACKUPS_ENABLED: ${{ vars.JUSTGO_BACKUPS_ENABLED }}
       BACKUP_KIND: ${{ github.event_name == 'schedule' && (github.event.schedule == '43 4 * * *' && 'database' || 'ledger') || inputs.kind }}
@@ -55,6 +57,7 @@ jobs:
           R2_UPLOAD_SESSION_TOKEN: ${{ secrets.R2_UPLOAD_SESSION_TOKEN }}
           R2_INSPECT_TOKEN: ${{ secrets.R2_INSPECT_TOKEN }}
           BACKUP_SENTRY_DSN: ${{ secrets.BACKUP_SENTRY_DSN }}
+          BACKUP_ACTIONS_TOKEN: ${{ github.token }}
         run: node scripts/backups/run.mjs
       # No artifact upload: plaintext, ciphertext, keys and credentials never enter
       # GitHub's artifact store. The runner always removes its temporary ciphertext.

@@ -6,6 +6,9 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { join } from 'node:path';
 import { pgEnvironment } from './configuration.mjs';
+import { verifyBackupRole } from './backup-role.mjs';
+
+export { verifyBackupRole } from './backup-role.mjs';
 
 // Complete identity states preserve missing-session/cancelled-transfer evidence too.
 // No attempt, private journal version or reflection content belongs in the ledger.
@@ -24,18 +27,6 @@ export const ledgerTables = Object.freeze({
   managed_auth_deletions: 'user_id,auth_user_id,requested_at,completed_at',
   deleted_completion_ids: 'user_id,attempt_id',
 });
-export async function verifyBackupRole(client) {
-  const { rows } = await client.query(`select
-    current_user='justgo_backup' and not rolsuper and not rolcreatedb and not rolcreaterole and not rolreplication and rolbypassrls
-    and not exists(select 1 from pg_auth_members where member=(select oid from pg_roles where rolname=current_user))
-    and not exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where n.nspname not like 'pg_%' and n.nspname<>'information_schema' and c.relkind in ('r','p','v','m','f')
-      and has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'))
-    and not exists(select 1 from pg_namespace where nspname in ('justgo','auth','drizzle','public') and has_schema_privilege(current_user,oid,'CREATE'))
-    as safe from pg_roles where rolname=current_user`);
-  if (rows.length !== 1 || rows[0].safe !== true)
-    throw new Error('Backup role privileges are not restricted');
-}
 export async function verifyMigrationRegistry(client, directory) {
   const registry = JSON.parse(
     await readFile(join(directory, 'meta/_journal.json'), 'utf8'),
@@ -108,6 +99,7 @@ export async function encryptSnapshot({
   ageBin = 'age',
   sourceSha,
   source,
+  policy,
 }) {
   await client.query('begin isolation level repeatable read read only');
   let dump, age;
@@ -119,7 +111,7 @@ export async function encryptSnapshot({
     return promise;
   };
   try {
-    await verifyBackupRole(client);
+    await verifyBackupRole(client, policy);
     const migrationDigest = await verifyMigrationRegistry(
       client,
       migrationsDirectory,

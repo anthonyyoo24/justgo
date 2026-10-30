@@ -17,7 +17,7 @@ export async function checkIn(
     !/^\/\d+$/.test(url.pathname) ||
     url.search ||
     url.hash ||
-    !/^justgo-(staging|production)-(database|ledger)$/.test(slug) ||
+    !/^justgo-(staging|production)-backup-health$/.test(slug) ||
     !['in_progress', 'ok', 'error'].includes(status)
   )
     throw new Error('Invalid backup monitor configuration');
