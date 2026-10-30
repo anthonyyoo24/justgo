@@ -16,6 +16,10 @@ on:
         description: Exact reviewed pending-plan digest (migrate-deploy only)
         required: false
         type: string
+      abandoned_version_id:
+        description: One-time code-only continuation of failed version 2d6ea61b-2714-4cd9-9437-2a73f9476dd6
+        required: false
+        type: string
 permissions:
   contents: read
   actions: read
@@ -42,6 +46,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_OPERATION: ${{ inputs.operation }}
           MIGRATION_PLAN_SHA256: ${{ inputs.migration_plan_sha256 }}
+          STAGING_ABANDONED_VERSION_ID: ${{ inputs.abandoned_version_id }}
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]
@@ -54,8 +59,11 @@ jobs:
             migrate-deploy) [[ "$MIGRATION_PLAN_SHA256" =~ ^[a-f0-9]{64}$ ]] || exit 1 ;;
             *) exit 1 ;;
           esac
+          if [[ -n "$STAGING_ABANDONED_VERSION_ID" ]]; then
+            [[ "$RELEASE_OPERATION" == deploy && "$STAGING_ABANDONED_VERSION_ID" == 2d6ea61b-2714-4cd9-9437-2a73f9476dd6 ]] || exit 1
+          fi
           printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
-          printf 'Staging candidate: `%s`\nOperation: `%s`\n' "$release_sha" "$RELEASE_OPERATION" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Staging candidate: %s\nOperation: %s\n' "$release_sha" "$RELEASE_OPERATION" >> "$GITHUB_STEP_SUMMARY"
       - name: Require exact successful Foundation main push
         env:
           GH_TOKEN: ${{ github.token }}
@@ -99,6 +107,7 @@ jobs:
           RELEASE_SHA: ${{ needs.validate.outputs.sha }}
           RELEASE_OPERATION: ${{ inputs.operation }}
           MIGRATION_PLAN_SHA256: ${{ inputs.migration_plan_sha256 }}
+          STAGING_ABANDONED_VERSION_ID: ${{ inputs.abandoned_version_id }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}

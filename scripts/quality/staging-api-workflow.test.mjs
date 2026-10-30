@@ -103,7 +103,7 @@ test('actual tag shell rejects missing/unreviewed refs and shell syntax without 
     .split('\n')
     .map((line) => line.slice(10))
     .join('\n');
-  const run = (tag, operation = 'deploy', digest = '') =>
+  const run = (tag, operation = 'deploy', digest = '', abandoned = '') =>
     spawnSync('bash', ['-c', source], {
       cwd: root,
       encoding: 'utf8',
@@ -112,6 +112,7 @@ test('actual tag shell rejects missing/unreviewed refs and shell syntax without 
         RELEASE_TAG: tag,
         RELEASE_OPERATION: operation,
         MIGRATION_PLAN_SHA256: digest,
+        STAGING_ABANDONED_VERSION_ID: abandoned,
         GITHUB_OUTPUT: join(root, 'output'),
         GITHUB_STEP_SUMMARY: join(root, 'summary'),
       },
@@ -128,6 +129,15 @@ test('actual tag shell rejects missing/unreviewed refs and shell syntax without 
   assert.notEqual(run('reviewed', 'migrate-deploy', 'invalid').status, 0);
   assert.notEqual(run('reviewed', 'deploy', 'a'.repeat(64)).status, 0);
   assert.notEqual(run('reviewed', 'bootstrap', 'a'.repeat(64)).status, 0);
+  const abandoned = '2d6ea61b-2714-4cd9-9437-2a73f9476dd6';
+  assert.equal(run('reviewed', 'deploy', '', abandoned).status, 0);
+  assert.notEqual(run('reviewed', 'deploy', '', 'arbitrary-version').status, 0);
+  assert.notEqual(run('reviewed', 'deploy', '', `${abandoned}\n`).status, 0);
+  assert.notEqual(run('reviewed', 'bootstrap', '', abandoned).status, 0);
+  assert.notEqual(
+    run('reviewed', 'migrate-deploy', 'a'.repeat(64), abandoned).status,
+    0,
+  );
 });
 
 test('bootstrap uses the same protected main workflow with isolated secrets and no fabricated local run context', () => {
@@ -140,6 +150,11 @@ test('bootstrap uses the same protected main workflow with isolated secrets and 
     .split('      - name: Bootstrap the first reviewed staging Worker')[1]
     .split('      - name:')[0];
   assert.match(ordinary, /if: inputs\.operation != 'bootstrap'/);
+  assert.match(
+    ordinary,
+    /STAGING_ABANDONED_VERSION_ID: \$\{\{ inputs\.abandoned_version_id \}\}/,
+  );
+  assert.doesNotMatch(bootstrap, /STAGING_ABANDONED_VERSION_ID/);
   assert.doesNotMatch(ordinary, /STAGING_BOOTSTRAP_BINDINGS/);
   assert.match(bootstrap, /if: inputs\.operation == 'bootstrap'/);
   assert.match(bootstrap, /GH_TOKEN: \$\{\{ github\.token \}\}/);

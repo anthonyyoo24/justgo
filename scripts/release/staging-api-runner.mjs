@@ -8,6 +8,10 @@ import { promoteStagingCandidate } from './staging-promotion.mjs';
 import { buildStagingWorker } from './staging-worker-build.mjs';
 import { cloudflareRequest, workerProbe } from './staging-cloudflare.mjs';
 import {
+  abandonedVersionRequested,
+  verifyAbandonedVersion,
+} from './staging-abandoned-version.mjs';
+import {
   releaseContext,
   requireRelease,
   cloudflareTarget,
@@ -85,6 +89,7 @@ export async function stagingApi(
   let directory;
   const context = releaseContext(env);
   const target = cloudflareTarget(env);
+  const continuingIncident = abandonedVersionRequested(env, target);
   const alive = () =>
     requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
   const api = async (path, options = {}) => {
@@ -124,7 +129,11 @@ export async function stagingApi(
         await api(`/versions/${baseline.versionId}`),
         target,
       );
-      await latestIs(previous.id);
+      const verifyInitialVersions = () =>
+        continuingIncident
+          ? verifyAbandonedVersion({ api, target, baseline, previous })
+          : latestIs(previous.id);
+      await verifyInitialVersions();
       requireRelease(
         (
           await run('git', ['rev-parse', 'HEAD'], { cwd: root, signal })
@@ -158,7 +167,7 @@ export async function stagingApi(
         (await current()).id === baseline.id,
         'STAGING_ALIAS_CHANGED_DURING_CANDIDATE_BUILD',
       );
-      await latestIs(previous.id);
+      await verifyInitialVersions();
       const configuration = bundle.configuration;
       const metadata = {
         main_module: 'worker.js',
