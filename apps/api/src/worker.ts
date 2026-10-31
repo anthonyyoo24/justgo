@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { TrieRouter } from 'hono/router/trie-router';
 import { buildRuntimeApp } from './runtime-app.js';
 import { createHttpApp } from './http/app.js';
 import {
@@ -64,6 +65,9 @@ export function createWorker(
         const invocationPool = database.pool;
         startupStage = 'composition';
         const app = dependencies.buildApp(settings.config, database, {
+          // Each invocation matches once; avoid compiling every route into a
+          // new RegExp matcher, without retaining handlers or account state.
+          router: new TrieRouter(),
           clientAddress: (context) => workerClientAddress(context.req.raw),
           reportServerError: reporter,
           /**
@@ -98,9 +102,10 @@ export function createWorker(
       } catch {
         // Configuration/adapter startup errors receive the same safe HTTP
         // boundary. No raw error, binding, URL or credential is serialized.
-        const failed = createHttpApp(
-          reporter ? { reportServerError: reporter } : {},
-        );
+        const failed = createHttpApp({
+          router: new TrieRouter(),
+          ...(reporter ? { reportServerError: reporter } : {}),
+        });
         failed.all('*', (context) => {
           // Fixed code locations only; never derive diagnostics from an exception
           // or binding. A request failure after startup has no startup-stage claim.

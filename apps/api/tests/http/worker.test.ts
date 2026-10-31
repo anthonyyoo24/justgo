@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { TrieRouter } from 'hono/router/trie-router';
 import { buildApp } from '../../src/build-app.js';
 import { buildRuntimeApp } from '../../src/runtime-app.js';
 import { createWorker, workerClientAddress } from '../../src/worker.js';
@@ -56,14 +57,32 @@ describe('Worker invocation lifecycle', () => {
         workerClientAddress(new Request('https://api.invalid', { headers })),
       ).toBe('unknown');
   });
-  it('opens per-request pools and settles cleanup even when sending an error', async () => {
-    const end = vi.fn(async () => {});
-    const database = { pool: { end }, db: {} } as unknown as ReturnType<
-      typeof createWorkerDatabase
-    >;
-    const createDatabase = vi.fn(() => database);
-    const appFactory = vi.fn<typeof buildRuntimeApp>(() =>
-      buildApp({ checkDatabase: async () => {}, logger: false }),
+  it('owns routers, handler closures and pools per invocation and settles error cleanup', async () => {
+    const ends: ReturnType<typeof vi.fn<() => Promise<void>>>[] = [];
+    const databases: ReturnType<typeof createWorkerDatabase>[] = [];
+    const createDatabase = vi.fn(() => {
+      const end = vi.fn(async () => {});
+      const database = { pool: { end }, db: {} } as unknown as ReturnType<
+        typeof createWorkerDatabase
+      >;
+      ends.push(end);
+      databases.push(database);
+      return database;
+    });
+    const appFactory = vi.fn<typeof buildRuntimeApp>(
+      (_config, database, runtime) => {
+        if (!database || !runtime?.router)
+          throw new Error('Missing invocation adapters');
+        const app = buildApp({
+          checkDatabase: async () => {},
+          logger: false,
+          router: runtime.router,
+        });
+        app.get('/invocation', (context) =>
+          context.json({ invocation: databases.indexOf(database) }),
+        );
+        return app;
+      },
     );
     const worker = createWorker({
       readConfiguration: readWorkerConfig,
@@ -77,7 +96,7 @@ describe('Worker invocation lifecycle', () => {
       },
     };
     const responses = await Promise.all(
-      ['/health', '/missing'].map((path) =>
+      ['/invocation', '/invocation', '/missing'].map((path) =>
         worker.fetch(
           new Request('https://api.invalid' + path),
           bindings,
@@ -85,13 +104,32 @@ describe('Worker invocation lifecycle', () => {
         ),
       ),
     );
-    expect(responses.map((response) => response.status)).toEqual([200, 404]);
-    expect(createDatabase).toHaveBeenCalledTimes(2);
+    expect(responses.map((response) => response.status)).toEqual([
+      200, 200, 404,
+    ]);
+    expect(await responses[0]!.json()).toEqual({ invocation: 0 });
+    expect(await responses[1]!.json()).toEqual({ invocation: 1 });
+    expect(createDatabase).toHaveBeenCalledTimes(3);
+    expect(appFactory.mock.calls[0]?.[2]?.router).toBeInstanceOf(TrieRouter);
+    expect(appFactory.mock.calls[0]?.[2]?.router).not.toBe(
+      appFactory.mock.calls[1]?.[2]?.router,
+    );
     expect(appFactory.mock.calls[0]?.[2]?.reportServerError).toBe(
       appFactory.mock.calls[1]?.[2]?.reportServerError,
     );
     await Promise.all(pending);
-    expect(end).toHaveBeenCalledTimes(2);
+    for (const end of ends) expect(end).toHaveBeenCalledOnce();
+  });
+  it('retains the default long-lived runtime router when no invocation router is supplied', async () => {
+    const app = buildRuntimeApp(
+      readWorkerConfig({ ...bindings, LOG_LEVEL: 'silent' }).config,
+      undefined,
+    );
+    expect(app.router.name).toBe('SmartRouter');
+    expect(
+      (await app.fetch(new Request('https://api.invalid/health'))).status,
+    ).toBe(200);
+    expect(app.router.name).toBe('SmartRouter + RegExpRouter');
   });
   it('serves health with release identity from a production managed-Auth wrapped binding without querying databases', async () => {
     const query = vi.fn();
