@@ -34,6 +34,7 @@ describe('public staging release failure diagnostics', () => {
       code: 'PRIVATE_PROVIDER_CREDENTIAL',
     },
     { message: 'STAGING_BASELINE_CHANGED', code: 'STAGING_BASELINE_CHANGED' },
+    { promotionPhase: 'public-probes', causeCode: 'STAGING_HEALTH_FAILED' },
     Object.create(StagingRunnerFailure.prototype) as unknown,
     undefined,
     null,
@@ -41,6 +42,47 @@ describe('public staging release failure diagnostics', () => {
     expect(JSON.stringify(stagingReleaseDiagnostic(error))).toBe(
       '{"event":"staging_release_failed"}',
     );
+  });
+
+  it('logs only trusted promotion phase and inner code despite mutable public fields', () => {
+    const cause = Object.assign(
+      new StagingRunnerFailure('STAGING_READINESS_FAILED'),
+      {
+        message: 'PRIVATE_PROVIDER_CREDENTIAL',
+      },
+    );
+    const error = Object.assign(
+      new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED', {
+        phase: 'public-probes',
+        cause,
+      }),
+      {
+        promotionPhase: 'PRIVATE_PROVIDER_CREDENTIAL',
+        causeCode: 'PRIVATE_PROVIDER_CREDENTIAL',
+        message: 'PRIVATE_PROVIDER_CREDENTIAL',
+      },
+    );
+    expect(stagingReleaseDiagnostic(error)).toEqual({
+      event: 'staging_release_failed',
+      code: 'STAGING_PROMOTION_UNCONFIRMED',
+      promotionPhase: 'public-probes',
+      causeCode: 'STAGING_READINESS_FAILED',
+    });
+  });
+
+  it('preserves phase without exposing unbranded provider error properties', () => {
+    const error = new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED', {
+      phase: 'deployment-readback',
+      cause: {
+        code: 'STAGING_PROVIDER_REQUEST_FAILED',
+        message: 'PRIVATE_PROVIDER_CREDENTIAL',
+      },
+    });
+    expect(stagingReleaseDiagnostic(error)).toEqual({
+      event: 'staging_release_failed',
+      code: 'STAGING_PROMOTION_UNCONFIRMED',
+      promotionPhase: 'deployment-readback',
+    });
   });
 
   it('keeps the existing database reason and validated SQLSTATE without query or credential details', () => {
