@@ -15,7 +15,8 @@
     "dev:challenges": "tsx --env-file-if-exists=.env scripts/challenge-dev.ts",
     "test:coverage": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run --coverage",
     "test:migrations": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/db/migrations.integration.test.ts --fileParallelism=false",
-    "test:workers": "tsx --env-file-if-exists=.env scripts/workers-smoke.ts"
+    "test:workers": "tsx --env-file-if-exists=.env scripts/workers-smoke.ts --smoke",
+    "profile:workers": "tsx --env-file-if-exists=.env scripts/workers-smoke.ts --profile"
   },
   "dependencies": {
     "@hono/node-server": "2.1.5",

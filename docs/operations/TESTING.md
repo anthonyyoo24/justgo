@@ -354,6 +354,17 @@ may select another unprivileged loopback port. Configuration/ciphertext/log outp
 must not disclose credentials. This is local runtime evidence, not hosted
 Hyperdrive, CPU, DPA or account acceptance.
 
+`npm run profile:workers` explicitly selects a separate profiling run: 200
+synthetic managed `/health` requests, with a loopback-only inspector on port 9230
+and one fixed 30-second deadline covering discovery, requests and profiler stop.
+`JUSTGO_WORKERS_INSPECTOR_PORT` selects another unprivileged port, distinct from
+`JUSTGO_WORKERS_TEST_PORT`. Profiles are mode-0600 files under ignored
+`.local/workers/profiles/`. This command skips the functional smoke and says so
+in its completion output; run `npm run test:workers` separately for that evidence.
+The former `JUSTGO_WORKERS_CPU_PROFILE` environment flag no longer selects a
+mode, so a leftover value cannot silently bypass the smoke. Local profiles identify
+hotspots; they do not establish hosted CPU savings or Free-plan acceptance.
+
 `npm run test:backup:recovery` uses PostgreSQL 17 and `age` (1.3.2 locally) to
 create isolated `justgo_restore_<id>` databases, encrypt a stale snapshot and
 newer ledger, restore/reconcile, and check revoked/deleted credential rejection.

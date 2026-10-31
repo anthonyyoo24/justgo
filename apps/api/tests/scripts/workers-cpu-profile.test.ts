@@ -271,6 +271,41 @@ describe('owned local Worker CPU capture', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('leaves capture margin for a twenty-second workload under the default deadline', async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    const result = captureWorkerCpuProfile(
+      origin,
+      async () => new Promise<void>((resolve) => setTimeout(resolve, 20000)),
+      f,
+    ).then(
+      (value) => ({ ok: true, value }),
+      () => ({ ok: false }),
+    );
+    await vi.advanceTimersByTimeAsync(20000);
+    expect(await result).toEqual({ ok: true, value: profile });
+    expect(f.socket.commands.at(-1)).toBe('Profiler.stop');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('still bounds the entire capture at thirty seconds by default', async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    const workload = vi.fn(async () => new Promise<void>(() => {}));
+    const result = captureWorkerCpuProfile(origin, workload, f).then(
+      () => 'unexpected-success',
+      () => 'bounded-failure',
+    );
+    await vi.advanceTimersByTimeAsync(29999);
+    expect(workload).toHaveBeenCalledOnce();
+    expect(f.socket.close).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await result).toBe('bounded-failure');
+    expect(f.socket.close).toHaveBeenCalledOnce();
+    expect(f.socket.listenerCount).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('stops sampling and closes after a private workload error', async () => {
     const f = fixture();
     await expect(

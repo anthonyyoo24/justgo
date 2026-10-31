@@ -116,7 +116,7 @@ export async function captureWorkerCpuProfile(
 ) {
   const controller = new AbortController();
   const signal = controller.signal;
-  const timeoutMs = io.timeoutMs ?? 15000;
+  const timeoutMs = io.timeoutMs ?? 30000;
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30000)
     throw failed();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

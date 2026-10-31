@@ -1,7 +1,7 @@
 import { isIP } from 'node:net';
-import { TrieRouter } from 'hono/router/trie-router';
 import { buildRuntimeApp } from './runtime-app.js';
 import { createHttpApp } from './http/app.js';
+import { WorkerRouter } from './http/worker-router.js';
 import {
   createServerErrorReporter,
   type ServerErrorReporter,
@@ -67,7 +67,7 @@ export function createWorker(
         const app = dependencies.buildApp(settings.config, database, {
           // Each invocation matches once; avoid compiling every route into a
           // new RegExp matcher, without retaining handlers or account state.
-          router: new TrieRouter(),
+          router: new WorkerRouter(),
           clientAddress: (context) => workerClientAddress(context.req.raw),
           reportServerError: reporter,
           /**
@@ -103,7 +103,7 @@ export function createWorker(
         // Configuration/adapter startup errors receive the same safe HTTP
         // boundary. No raw error, binding, URL or credential is serialized.
         const failed = createHttpApp({
-          router: new TrieRouter(),
+          router: new WorkerRouter(),
           ...(reporter ? { reportServerError: reporter } : {}),
         });
         failed.all('*', (context) => {

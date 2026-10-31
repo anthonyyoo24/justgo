@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TrieRouter } from 'hono/router/trie-router';
+import { Hono } from 'hono';
+import { WorkerRouter } from '../../src/http/worker-router.js';
 import { buildApp } from '../../src/build-app.js';
 import { buildRuntimeApp } from '../../src/runtime-app.js';
 import { createWorker, workerClientAddress } from '../../src/worker.js';
@@ -110,7 +111,7 @@ describe('Worker invocation lifecycle', () => {
     expect(await responses[0]!.json()).toEqual({ invocation: 0 });
     expect(await responses[1]!.json()).toEqual({ invocation: 1 });
     expect(createDatabase).toHaveBeenCalledTimes(3);
-    expect(appFactory.mock.calls[0]?.[2]?.router).toBeInstanceOf(TrieRouter);
+    expect(appFactory.mock.calls[0]?.[2]?.router).toBeInstanceOf(WorkerRouter);
     expect(appFactory.mock.calls[0]?.[2]?.router).not.toBe(
       appFactory.mock.calls[1]?.[2]?.router,
     );
@@ -125,11 +126,16 @@ describe('Worker invocation lifecycle', () => {
       readWorkerConfig({ ...bindings, LOG_LEVEL: 'silent' }).config,
       undefined,
     );
-    expect(app.router.name).toBe('SmartRouter');
-    expect(
-      (await app.fetch(new Request('https://api.invalid/health'))).status,
-    ).toBe(200);
-    expect(app.router.name).toBe('SmartRouter + RegExpRouter');
+    const router = app.router;
+    expect(router.constructor).toBe(new Hono().router.constructor);
+    const first = await app.fetch(new Request('https://api.invalid/health'));
+    expect(first.status).toBe(200);
+    const selectedMatch = router.match;
+    const second = await app.fetch(new Request('https://api.invalid/health'));
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual(await first.json());
+    expect(app.router).toBe(router);
+    expect(router.match).toBe(selectedMatch);
   });
   it('serves health with release identity from a production managed-Auth wrapped binding without querying databases', async () => {
     const query = vi.fn();

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID, createHmac } from 'node:crypto';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
-import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Pool } from 'pg';
@@ -10,6 +9,10 @@ import { localTestDatabaseUrl } from './local-test-database.js';
 import { createDatabase, poolOptions } from '../src/db/client.js';
 import { readConfig } from '../src/config.js';
 import { IdentityService } from '../src/identity/service.js';
+import {
+  assertWorkerPortAvailable,
+  workerSmokeOptions,
+} from './workers-smoke-preflight.js';
 import {
   captureWorkerCpuProfile,
   workerCpuProfileFailureStage,
@@ -29,6 +32,10 @@ function smokeFailure(stage: string, error: unknown) {
 
 /** Actual workerd -> pg -> isolated Postgres smoke, without remote bindings. */
 async function run() {
+  const { profiling, port, inspectorPort } = workerSmokeOptions(
+    process.argv.slice(2),
+    process.env,
+  );
   const runtimeUrl = localTestDatabaseUrl(process.env.DATABASE_URL);
   const migrationUrl = localTestDatabaseUrl(process.env.MIGRATION_DATABASE_URL);
   if (
@@ -40,44 +47,9 @@ async function run() {
       'Workers smoke requires isolated runtime/migrator roles with local SSL disabled',
     );
   runtimeUrl.hostname = '127.0.0.1';
-  const profileMode = process.env.JUSTGO_WORKERS_CPU_PROFILE ?? 'false';
-  if (!['true', 'false'].includes(profileMode))
-    throw new Error('Invalid Worker CPU profiling mode');
-  const profiling = profileMode === 'true';
-  const port = Number(process.env.JUSTGO_WORKERS_TEST_PORT ?? '8791');
-  if (!Number.isInteger(port) || port < 1024 || port > 65535)
-    throw new Error('Invalid Worker smoke port');
-  const probe = createServer();
-  await new Promise<void>((resolveProbe, reject) => {
-    probe.once('error', () =>
-      reject(new Error('Worker smoke port is occupied')),
-    );
-    probe.listen(port, '127.0.0.1', () =>
-      probe.close((error) => (error ? reject(error) : resolveProbe())),
-    );
-  });
-  const inspectorPort = profiling
-    ? Number(process.env.JUSTGO_WORKERS_INSPECTOR_PORT ?? '9230')
-    : 0;
+  await assertWorkerPortAvailable(port, 'Worker smoke');
   if (profiling) {
-    if (
-      !Number.isInteger(inspectorPort) ||
-      inspectorPort < 1024 ||
-      inspectorPort > 65535 ||
-      inspectorPort === port
-    )
-      throw new Error('Invalid Worker CPU inspector port');
-    const inspectorProbe = createServer();
-    await new Promise<void>((resolveProbe, reject) => {
-      inspectorProbe.once('error', () =>
-        reject(new Error('Worker CPU inspector port is occupied')),
-      );
-      inspectorProbe.listen(inspectorPort, '127.0.0.1', () =>
-        inspectorProbe.close((error) =>
-          error ? reject(error) : resolveProbe(),
-        ),
-      );
-    });
+    await assertWorkerPortAvailable(inspectorPort, 'Worker CPU inspector');
   }
   const root = resolve(import.meta.dirname, '../../..');
   await mkdir(resolve(root, '.local/workers'), {
@@ -267,7 +239,9 @@ async function run() {
         mode: 0o600,
         flag: 'wx',
       });
-      console.info(`Local workerd CPU profile saved: ${output}`);
+      console.info(
+        `Local workerd CPU profile saved: ${output}. Functional smoke was not run; use npm run test:workers.`,
+      );
       return;
     }
     for (const mode of ['managed', 'managed-wrapped', 'managed-virtual']) {
