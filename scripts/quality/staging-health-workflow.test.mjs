@@ -24,7 +24,7 @@ const script = match[1]
   .map((line) => line.slice(10))
   .join('\n');
 
-test('the manual diagnostic uses only public readiness while Sentry owns recurring checks', () => {
+test('the manual diagnostic uses Cloudflare public readiness while Sentry owns recurring checks', () => {
   assert.match(workflow, /^ {2}workflow_dispatch:$/m);
   assert.doesNotMatch(workflow, /^ {2}(?:schedule|push|pull_request):/m);
   assert.match(workflow, /^permissions: \{\}$/m);
@@ -48,7 +48,7 @@ test('the manual diagnostic uses only public readiness while Sentry owns recurri
   );
   assert.deepEqual(
     [...script.matchAll(/https:\/\/[^'\s]+/g)].map((value) => value[0]),
-    ['https://justgo-two.vercel.app/ready'],
+    ['https://justgo-api-staging.anthonyyoo24.workers.dev/ready'],
   );
   assert.doesNotMatch(
     workflow,

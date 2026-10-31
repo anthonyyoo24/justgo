@@ -34,7 +34,7 @@ jobs:
           response="$(mktemp "$RUNNER_TEMP/justgo-readiness.XXXXXX")"
           trap 'rm -f "$response"' EXIT
           curl --fail --silent --show-error --max-time 15 --retry 2 --retry-delay 2 \
-            --output "$response" 'https://justgo-two.vercel.app/ready'
+            --output "$response" 'https://justgo-api-staging.anthonyyoo24.workers.dev/ready'
           READINESS_RESPONSE="$response" node --input-type=module <<'NODE'
           import { readFile } from 'node:fs/promises';
           try {
