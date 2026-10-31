@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createWorkerDatabase,
   hyperdrivePoolOptions,
   needsDirectTransaction,
   readWorkerConfig,
@@ -233,10 +234,7 @@ describe('Worker database boundary', () => {
   });
   it('uses direct transactions only for the complete lock-requiring HTTP operations', () => {
     for (const [method, path] of [
-      ['POST', '/v1/auth/session'],
-      ['POST', '/v1/%61uth/session'],
       ['POST', '/v1/%73essions'],
-      ['POST', '/v1/auth/session/'],
       ['POST', '/v1/sessions'],
       ['POST', '/v1/transfers'],
       ['DELETE', '/v1/transfers/record'],
@@ -247,6 +245,9 @@ describe('Worker database boundary', () => {
         ),
       ).toBe(true);
     for (const [method, path] of [
+      ['POST', '/v1/auth/session'],
+      ['POST', '/v1/%61uth/session'],
+      ['POST', '/v1/auth/session/'],
       ['GET', '/v1/auth/session'],
       ['POST', '/v1/attempts'],
       ['DELETE', '/v1/account'],
@@ -259,5 +260,32 @@ describe('Worker database boundary', () => {
           new Request('https://api.invalid' + path, { method }),
         ),
       ).toBe(false);
+  });
+  it.each(['/v1/auth/session', '/v1/sessions', '/v1/%73essions'])(
+    'keeps managed exchange and retained recovery on the Hyperdrive transport (%s)',
+    async (path) => {
+      const database = createWorkerDatabase(
+        new Request('https://api.invalid' + path, { method: 'POST' }),
+        readWorkerConfig(hostedBindings),
+      );
+      try {
+        expect(database.pool.options.connectionString).toBe(wrapped);
+        expect(database.pool.options.ssl).toBeUndefined();
+      } finally {
+        await database.pool.end();
+      }
+    },
+  );
+  it('retains the direct connection for the loopback legacy fixture', async () => {
+    const database = createWorkerDatabase(
+      new Request('https://api.invalid/v1/sessions', { method: 'POST' }),
+      readWorkerConfig(bindings),
+    );
+    try {
+      expect(database.pool.options.connectionString).toBe(local);
+      expect(database.pool.options.ssl).toBe(false);
+    } finally {
+      await database.pool.end();
+    }
   });
 });

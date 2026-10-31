@@ -79,6 +79,12 @@ JWT claims, editable metadata and email matching never establish ownership by
 themselves. `managed_auth_accounts` maps that verified subject to a canonical
 JustGO owner. Client requests cannot select that owner.
 
+Concurrent first sign-ins compete on that mapping's unique Auth-subject key.
+A losing transaction rolls back its candidate owner before one fresh attempt;
+it never leaves an unlinked owner behind. Existing owner row locks serialize
+session creation, revocation and deletion. Retrying still verifies the provider
+and live session and rejects a deleted canonical owner.
+
 JWT signature/expiry alone is insufficient for logout or deletion enforcement.
 Every owner operation also checks the matching live `auth.sessions` row,
 `not_after`, the registered JustGO app session, local revocation and the canonical
@@ -226,10 +232,15 @@ API mode remains available until coordinated rollout; these are internal
 compatibility paths, not current account UI options.
 
 Linking proves both an active provider session and the existing legacy session.
-It serializes the Auth subject, preserves the canonical owner and atomically
-revokes that owner's old sessions/credentials/transfers. A lost response may
+The unique Auth-subject mapping and owner locks preserve the canonical owner and atomically
+revoke that owner's old sessions/credentials/transfers. A lost response may
 confirm the same already-linked owner with its frozen old proof; a revoked proof
-cannot create a fresh mapping. The phone commits its linked-owner marker with
+cannot create a fresh mapping. If concurrent linking revokes a legacy proof after
+an exchange read an absent mapping, one retry is allowed only after a fresh
+verified-subject lookup proves its mapping now exists. The retry still validates
+the exact legacy proof against that mapped owner. Existing-proof recovery creates
+no missing credential and uses the owner lock plus a credential re-read, without
+an advisory lock. The phone commits its linked-owner marker with
 the exchange result before removing the frozen proof, so later provider sign-in
 does not try to reuse revoked legacy credentials.
 

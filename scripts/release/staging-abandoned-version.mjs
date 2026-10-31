@@ -12,11 +12,17 @@ const incident = Object.freeze({
   deploymentId: 'caaa7a54-d4a3-4eec-bdc2-9d5f927142e5',
   baselineId: 'd15d9fbd-1d99-4106-abc4-43b907ba7a2c',
   baselineSha: '7d8a5624bf7224bc243a342dab22a9d0b82f7f04',
-  abandonedId: 'c0fefad7-9a31-4db7-976a-bfc8fbb0366b',
-  sha: '39f11c3b6475e4f9666ebf8b2698daf05740920d',
-  runId: '41095205288',
+  abandonedId: 'c5af7c5b-d045-470b-b91e-d6cfbe7accf5',
+  sha: '742f3e03ceb823c93e8ddfa9d6e131dfcfc83987',
+  runId: '41159286606',
   attempt: '1',
   predecessor: Object.freeze({
+    abandonedId: 'c0fefad7-9a31-4db7-976a-bfc8fbb0366b',
+    sha: '39f11c3b6475e4f9666ebf8b2698daf05740920d',
+    runId: '41095205288',
+    attempt: '1',
+  }),
+  earlierPredecessor: Object.freeze({
     abandonedId: '2d6ea61b-2714-4cd9-9437-2a73f9476dd6',
     sha: '8b1e7d5838fa0d3d8d828aedbf15a3ecfbc85ba4',
     runId: '41075504576',
@@ -40,7 +46,7 @@ export function abandonedVersionRequested(env, target) {
 }
 
 /**
- * Re-read both exact unpromoted uploads and the sole deployed baseline for this incident.
+ * Re-read all three exact unpromoted uploads and the sole deployed baseline.
  * Called at preflight and immediately before replacement upload, never after it.
  * Any new version/deployment, missing provenance or binding drift fails closed.
  */
@@ -71,13 +77,18 @@ export async function verifyAbandonedVersion({
   const versions = await api('/versions');
   requireRelease(
     Array.isArray(versions?.items) &&
-      versions.items.length === 3 &&
+      versions.items.length === 4 &&
       versions.items[0]?.id === incident.abandonedId &&
       versions.items[1]?.id === incident.predecessor.abandonedId &&
-      versions.items[2]?.id === incident.baselineId,
+      versions.items[2]?.id === incident.earlierPredecessor.abandonedId &&
+      versions.items[3]?.id === incident.baselineId,
     rejected,
   );
-  for (const expected of [incident, incident.predecessor]) {
+  for (const expected of [
+    incident,
+    incident.predecessor,
+    incident.earlierPredecessor,
+  ]) {
     const value = await api(`/versions/${expected.abandonedId}`);
     const abandoned = validateVersion(value, target, expected);
     requireRelease(

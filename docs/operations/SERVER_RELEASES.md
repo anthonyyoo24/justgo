@@ -2,9 +2,9 @@
 
 The manual [Staging API release workflow](../../.github/workflows/staging-api.yml)
 now prepares Cloudflare Worker versions and deploys the exact version after its
-probes pass. The implementation and local checks are available; the account and
-local setup credential are verified, but **Hyperdrive, the initial Worker and an
-actual hosted release remain pending**.
+probes pass. The staging Worker and Hyperdrive are provisioned, but a healthy
+promoted release remains unverified. The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md)
+owns current candidate, approval and hosted-acceptance evidence.
 The delivered Vercel API remains the serving target recorded in the
 [Phase 14 handoff](../handoffs/phase-14-release.md#current-release-evidence) until
 an approved cutover. Local implementation does not authorize account creation,
@@ -34,19 +34,23 @@ credentials and its own approved release procedure.
 Hyperdrive configuration readback must show caching disabled, certificate and
 hostname verification (`verify-full` with a CA), and an origin connection limit
 of five. That is a **soft** origin limit, not a proof of total database connection
-use. Include the separate direct API and release connections when measuring
+use. Include the separate direct release connections when measuring
 capacity. User ownership and revocation reads must never rely on cached results.
 
-Hyperdrive does not support advisory locks. Ordinary requests use its pooled
-origin connection; whole transactions for Auth exchange and the retained legacy
-identity paths use the separate restricted-role `LOCK_DATABASE_URL`. Validated
-virtual Hyperdrive URLs may contain opaque proxy usernames and database names,
-including on `*.hyperdrive.local`; those placeholders are not origin identity.
-The direct URL supplies the expected database, restricted role and Supabase host.
-`/ready` verifies the real database name, runtime role and schema capabilities
-through both connections. Nonvirtual URLs still require matching literal identity.
-The release
-advisory lock always stays on the direct session-pooler migrator connection.
+Hyperdrive does not support advisory locks. Hosted managed requests, including
+Auth exchange and retained existing-proof recovery, use Hyperdrive transactions
+with canonical-owner row locks and live-session rechecks. A unique Auth-subject
+mapping resolves concurrent first exchanges through one bounded transaction
+retry; revoked legacy proofs can confirm only an already-mapped owner. The
+direct legacy transport remains only for isolated loopback tests. A Worker does
+not establish custom-CA trust merely by receiving `DATABASE_CA_CERT`; Hyperdrive
+owns the verified origin connection. Workers' [native TLS options](https://github.com/cloudflare/workerd/blob/main/src/workerd/api/sockets.h)
+do not expose a custom CA trust store. Validated virtual Hyperdrive URLs may
+contain opaque proxy usernames and database names, including on
+`*.hyperdrive.local`; those placeholders are not origin identity. `/ready`
+verifies the real database name, runtime role and schema capabilities through
+Hyperdrive. Nonvirtual URLs still require matching literal identity. The release
+advisory lock stays on the separate direct session-pooler migrator connection.
 See [Hyperdrive's supported features](https://developers.cloudflare.com/hyperdrive/reference/supported-databases-and-features/).
 
 ## Credentials and approval protection
@@ -136,11 +140,16 @@ uploads, require operator inspection and an approved disposition. The runner
 never deletes them or promotes them to make this check pass.
 
 The optional `abandoned_version_id` input recognizes only the inspected failed
-October 30 upload `c0fefad7-9a31-4db7-976a-bfc8fbb0366b`. It requires the exact
-recorded account, baseline deployment/version/source, both abandoned uploads'
-source/run/annotations and preserved bindings. The version order must be this
-upload, known predecessor `2d6ea61b-2714-4cd9-9437-2a73f9476dd6`, then the recorded
-deployed baseline, both at preflight and before upload.
+October 30 upload `c5af7c5b-d045-470b-b91e-d6cfbe7accf5`, source
+`742f3e03ceb823c93e8ddfa9d6e131dfcfc83987`, run `41159286606`, attempt `1`.
+Its candidate health passed, readiness returned 503, and it was not promoted.
+It requires the exact recorded account, baseline deployment/version/source, all
+three abandoned uploads' source/run/annotations and preserved bindings. The
+version order must be that upload, `c0fefad7-9a31-4db7-976a-bfc8fbb0366b`,
+`2d6ea61b-2714-4cd9-9437-2a73f9476dd6`, then baseline
+`d15d9fbd-1d99-4106-abc4-43b907ba7a2c`, both at preflight and before upload.
+The sole deployed baseline remains `caaa7a54-d4a3-4eec-bdc2-9d5f927142e5`,
+source `7d8a5624bf7224bc243a342dab22a9d0b82f7f04`.
 It does not accept another abandoned version or change the default guard. After
 one replacement upload, ordinary candidate/probe/promotion checks apply again;
 another failed candidate requires fresh inspection and review.

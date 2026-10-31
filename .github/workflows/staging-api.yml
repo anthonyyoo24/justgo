@@ -17,7 +17,7 @@ on:
         required: false
         type: string
       abandoned_version_id:
-        description: One-time code-only continuation of failed version c0fefad7-9a31-4db7-976a-bfc8fbb0366b
+        description: One-time code-only continuation of failed version c5af7c5b-d045-470b-b91e-d6cfbe7accf5
         required: false
         type: string
 permissions:
@@ -60,7 +60,7 @@ jobs:
             *) exit 1 ;;
           esac
           if [[ -n "$STAGING_ABANDONED_VERSION_ID" ]]; then
-            [[ "$RELEASE_OPERATION" == deploy && "$STAGING_ABANDONED_VERSION_ID" == c0fefad7-9a31-4db7-976a-bfc8fbb0366b ]] || exit 1
+            [[ "$RELEASE_OPERATION" == deploy && "$STAGING_ABANDONED_VERSION_ID" == c5af7c5b-d045-470b-b91e-d6cfbe7accf5 ]] || exit 1
           fi
           printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
           printf 'Staging candidate: %s\nOperation: %s\n' "$release_sha" "$RELEASE_OPERATION" >> "$GITHUB_STEP_SUMMARY"
