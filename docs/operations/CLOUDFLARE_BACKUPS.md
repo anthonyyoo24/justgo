@@ -13,17 +13,22 @@ canary passed PUT/HEAD, denied GET/list/out-of-prefix PUT/DELETE, and was retrie
 and decrypted with the owner's requested Documents key file before cleanup.
 Seven-day protection and automatic expiry are approved and configured for both
 staging prefixes, with API readback and actual lock enforcement verified. The two
-new encrypted lock-test canaries contain no user data and remain until expiry;
-actual asynchronous deletion has not yet been observed. Hosted database/ledger
+October 30 encrypted lock-test canaries contain no user data and remain until
+expiry. The replacement uploader also passed October 31 synthetic-only permission
+checks; its two additional canaries become eligible for expiry November 7. Actual
+asynchronous deletion has not yet been observed. Hosted database/ledger
 copies, the remaining policy approvals and monitor delivery verification remain open.
 The [Phase 15 plan](../implementation-plan/phase-15-cloudflare-api.md) owns these
 approvals; the [Phase 14 handoff](../handoffs/phase-14-release.md) preserves the
 independent privacy and device gates. This guide does not authorize those actions.
 A local `age` identity has been prepared in ignored `.local/phase15-cloudflare/`
 storage with mode `0600`, and a synthetic encryption/decryption round trip passed.
-The requested standalone Documents key file also has mode `0600`. This is
-preparation only: independent offline primary/recovery custody and retrieval and
-decryption of an actual hosted database recovery copy remain unverified.
+The requested standalone Documents key file also has mode `0600`. Anthony confirmed
+a key copy on an encrypted USB drive; the copy was not mounted or tested. Under
+the [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover),
+the protected Mac copies remain locally outside CI, without a USB-retrieval
+prerequisite. Decryption of an actual hosted database recovery copy and complete
+operational recovery remain unverified.
 
 ## Implemented boundary
 
@@ -80,33 +85,39 @@ The small-beta ledger-gap disposition below is approved by the
 [October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit).
 The [October 30 decision](../DECISIONS.md#october-30-seven-day-staging-backup-retention)
 approves seven-day staging retention, protection and automatic expiry.
+The [October 31 decision](../DECISIONS.md#october-31-recovery-targets) approves
+up to 24 hours of ordinary-write loss and a four-hour operator recovery target,
+subject to safe recovery; sign-in again after restoration was approved October 30.
 The separately accepted reader exception and activation request are described
-under protected-environment setup. The remaining proposed values in this table are
-not approvals or published retention promises:
+under protected-environment setup. Approved objectives still require operational
+evidence; remaining proposals below are not approvals or published promises:
 
-| Decision                      | Policy / proposal                                                                                                                                       | Evidence / acceptance still required                                                                                                                                                                                                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backup and ledger retention   | Approved October 30: seven days for each staging prefix in the private dedicated R2 bucket                                                              | API readback confirms both expiry rules. Actual asynchronous deletion and public retention wording remain separate evidence/approval items.                                                                                                                                       |
-| Lock duration and expiry      | Approved October 30: seven-day prefix locks and lifecycle expiry at day seven                                                                           | API readback and parent-credential overwrite/DELETE rejection passed for both prefixes. R2 removal is asynchronous, typically within 24 hours of expiry, and is not a strict maximum; actual expiry has not yet been observed.                                                    |
-| Ordinary-write recovery point | Up to 24 hours of new activity since the nightly snapshot may be lost                                                                                   | Hourly identity ledgers do not back up new journals. Anthony must accept the data-loss tradeoff.                                                                                                                                                                                  |
-| Recovery time                 | Candidate operator target of four hours                                                                                                                 | Not measured for the actual hosted Auth schema or a provider incident; the synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                       |
-| Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance and Auth/provider mutations; accepted beta fallback keeps unverified old restored state closed | Independent deletion/revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. Clean restart needs a separate procedure; automatic old-phone recovery is unsupported.                                            |
-| Restored sessions             | Invalidate every restored legacy/app/Auth session and Auth refresh token; cancel pending transfers                                                      | Users must authenticate again. Retain recovery digests and their revocations; do not recreate deleted owners or use an old transfer to recover access. Requires separate recovery-policy approval.                                                                                |
-| Key custody                   | Owner-held offline `age` identity, protected primary and recovery copies, separately controlled restore access                                          | Anthony chooses the storage locations and authorized people. Loss of every key copy makes the backups unusable. Actual retrieval/decryption must be demonstrated without disclosing the key.                                                                                      |
-| Upload-token renewal          | Maximum seven-day derived credential; Anthony or a named operator renews by day five                                                                    | Parent key remains offline. The runner rejects tokens with less than 20 minutes remaining, and failed/missed jobs alert through the configured monitor. Day-five renewal is a required operator responsibility; no external reminder or automatic issuer is created by this code. |
-| Alert ownership               | Owner email for one hourly `justgo-staging-backup-health` Sentry Cron monitor                                                                           | The engineering design uses one free Cron with 20-minute grace/runtime settings and checks both backup kinds. Owner notification delivery and failure/missed-run evidence remain unverified.                                                                                      |
+| Decision                      | Policy / proposal                                                                                                                                       | Evidence / acceptance still required                                                                                                                                                                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backup and ledger retention   | Approved October 30: seven days for each staging prefix in the private dedicated R2 bucket                                                              | API readback confirms both expiry rules. Retention wording is approved; actual asynchronous deletion, operational evidence, effective date, matching version and publication authorization remain pending.                                                                                   |
+| Lock duration and expiry      | Approved October 30: seven-day prefix locks and lifecycle expiry at day seven                                                                           | API readback and parent-credential overwrite/DELETE rejection passed for both prefixes. R2 removal is asynchronous, typically within 24 hours of expiry, and is not a strict maximum; actual expiry has not yet been observed.                                                               |
+| Ordinary-write recovery point | Approved October 31: up to 24 hours of new activity since the nightly snapshot may be lost                                                              | Hourly identity ledgers do not back up new journals. Actual scheduled copies and failed/missed-copy alerts remain unverified; approval does not establish achieved recovery evidence.                                                                                                        |
+| Recovery time                 | Approved October 31: operator target of four hours when safe recovery is possible                                                                       | Not measured for the actual hosted Auth schema or a provider incident; the synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                                  |
+| Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance and Auth/provider mutations; accepted beta fallback keeps unverified old restored state closed | Independent deletion/revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. Clean restart needs a separate procedure; automatic old-phone recovery is unsupported.                                                       |
+| Restored sessions             | Invalidate every restored legacy/app/Auth session and Auth refresh token; cancel pending transfers                                                      | Reauthentication approved October 30 with the complete Privacy wording. Retain recovery digests and their revocations; do not recreate deleted owners or use an old transfer to recover access. Actual app/Auth recovery still requires evidence.                                            |
+| Key custody                   | Owner-held `age` identity in protected Mac copies locally outside CI, with separately controlled restore access                                         | Anthony accepts the protected Mac copies; USB retrieval is not a prerequisite. The owner-confirmed USB copy was not tested. Loss of every copy makes backups unusable; actual hosted recovery-copy decryption remains unverified.                                                            |
+| Upload-token renewal          | Maximum seven-day derived credential; Anthony owns manual renewal by day five                                                                           | Parent key remains locally outside CI. The runner rejects tokens with less than 20 minutes remaining, and failed/missed jobs alert through the configured monitor. Day-five renewal is a required operator responsibility; no external reminder or automatic issuer is created by this code. |
+| Alert ownership               | Owner email for one hourly `justgo-staging-backup-health` Sentry Cron monitor                                                                           | The engineering design uses one free Cron with 20-minute grace/runtime settings and checks both backup kinds. Owner notification delivery and failure/missed-run evidence remain unverified.                                                                                                 |
 
 The seven-day upload-token lifetime is the local minting policy, not an established
 Cloudflare maximum. Scheduled copying is unattended only while its credentials
 remain valid. Fully unattended renewal would need an approved online issuer with
 access to the parent signing secret; a longer lifetime would also change the
-proposed policy. Neither change is implemented or approved. Keep the parent secret
-outside CI and assign a real renewal operator before activation.
+proposed policy. Neither change is implemented or approved. Anthony owns manual
+renewal; keep the parent secret outside CI. The optional
+[Phase 21 issuer](../implementation-plan/phase-21-backup-credential-issuer.md)
+is deferred until accepted payments, analytics and actual App Store publication;
+it does not gate Phase 15 or the first launch.
 
 Anthony accepts the ledger gap as a recovery limit for the small beta. If the
 source is lost after the last hourly copy and later deletions or revocations
 cannot be established, the old restored account/data state stays closed and may
-remain unrecoverable. The candidate four-hour recovery target cannot cover that
+remain unrecoverable. The approved four-hour recovery target cannot cover that
 case. This does not mean the service can never reopen: a clean restart with newly
 authenticated accounts and new writing is possible in principle, subject to a
 separately reviewed procedure. Automatic recovery from old phones is unsupported.
@@ -120,9 +131,9 @@ whichever comes first. A faster schedule or an outbox stored only in the lost
 database cannot close the gap. The future design must cover app, maintenance and
 Auth/admin paths. Anthony accepts conservative replay of a durably saved deletion
 intent after an apparent database failure. That design still needs implementation
-and evidence; this decision does not change the current restore checks or approve
-ordinary-write recovery loss, recovery time or reauthentication policy. Staging
-retention is governed by the separate October 30 decision.
+and evidence; this decision does not change the current restore checks. Recovery
+objectives and reauthentication are governed by the separate October 31 decision;
+staging retention is governed by the October 30 decision.
 
 [R2 bucket locks](https://developers.cloudflare.com/r2/buckets/bucket-locks/) prevent
 premature deletion and overwrite, but an administrator can change the rules.
@@ -139,8 +150,9 @@ DPA, payment-method, retention, key and recovery decisions are approved. Configu
 one actual source environment per protected backup lane; production must receive
 its own credentials, approved policy and lane when it is introduced.
 
-1. Use the reviewed reader follow-up on `codex/phase-15-backup-role`, including
-   the narrow staging opt-in below; main's older schema-grant candidate is superseded.
+1. Use the reviewed backup-reader implementation merged into `main`, including
+   the narrow staging opt-in below. The earlier schema-grant-only candidate is
+   superseded.
    Anthony approved Supabase's supported `BYPASSRLS` + `pg_read_all_data` pattern.
    It reads all project tables/views/sequences, including Auth and security
    catalogs, although the job exports only three schemas. Require exactly that
@@ -176,7 +188,7 @@ its own credentials, approved policy and lane when it is introduced.
    the exception after the provider's removal is verified. The reader is now
    LOGIN-enabled, and actual TLS metadata/required-schema `LIMIT 0` probes passed
    the opted-in guard without fetching private rows. This acceptance does not
-   approve the remaining alert-delivery or custody proposals.
+   establish the remaining alert-delivery or operational recovery evidence.
 
 2. Choose and configure the actual bucket/location/access/lock/lifecycle settings
    using a separate privileged owner credential. The read-only `R2_INSPECT_TOKEN`
@@ -230,23 +242,36 @@ its own credentials, approved policy and lane when it is introduced.
    encrypted test archive were removed. This proves archive compatibility, not
    writer-fenced reconciliation, provider session recovery or permission to reopen
    restored accounts. Those recovery gates remain open.
-5. Prepare derived upload credentials offline with
+5. Prepare derived upload credentials locally outside CI with
    `node scripts/backups/mint-upload-credentials.mjs`. It needs the approved policy
    variables, `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`, explicit
    `R2_UPLOAD_TTL_SECONDS` (1–168 hours) and `R2_CREDENTIAL_OUTPUT_FILE`. It refuses
    CI and creates a new mode-0600 file instead of printing credentials. Transfer
    only its three `R2_UPLOAD_*` values into the protected environment secrets;
    securely remove the temporary operator file. Rotate before day five and test
-   the actual permitted/denied actions. No parent key or offline encryption identity
+   the actual permitted/denied actions. No parent key or private encryption identity
    belongs in GitHub, source, chat or logs.
-   The bucket-scoped Object Read & Write parent key is active and expires
-   `2026-11-05T23:03:57Z`. It remains local, outside CI. The derived upload JWT
-   expires `2026-11-05T22:03:56Z`; its three values are stored in the protected
-   environment. Actual encrypted-canary checks passed permitted PUT/HEAD and
-   denied GET/list/out-of-prefix PUT/DELETE; the canary was cleaned up. These
-   permission checks do not establish retention-lock behavior. This setup does
-   not establish independent offline custody or an
-   approved renewal operator policy.
+   On October 31, an agent tool-output mistake exposed the original parent API
+   token. Anthony approved replacing and revoking it. The old parent is revoked
+   and its derived uploader now returns HEAD 401. The replacement,
+   `justgo-staging-backup-parent-rotation-2026-10-31`, keeps the same bucket-only
+   Object Read & Write parent scope and remains local outside CI. It expires
+   `2026-11-05T17:00:00Z`. Its derived uploader permits only PutObject/HeadObject
+   on the two approved staging prefixes, expires `2026-11-05T15:59:59Z`, and
+   stops passing the runner's 20-minute minimum at `2026-11-05T15:39:59Z`.
+   The protected `R2_UPLOAD_*` secrets hold the replacement uploader. The
+   unchanged inspector expires `2026-11-05T23:06:08Z`; the recovery key was not
+   read or exposed and is unchanged. Scope verification passed using synthetic
+   encrypted canaries only;
+   the [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#approval-and-acceptance-register)
+   owns the final rotation/scope receipts. Its two replacement canaries become
+   eligible for expiry November 7; asynchronous deletion remains unobserved.
+   These checks do not establish operational database/ledger copies. Schedules
+   remain off; actual hosted recovery-copy decryption, complete writer-fenced
+   hosted recovery, alert delivery and contractual coverage remain open. Anthony
+   owns manual renewal. Parent revocation invalidates its derived uploader;
+   renewing the uploader alone is insufficient when its parent expires. Renew
+   the inspector before its expiry to observe the November 6 retention canaries.
 6. Create and verify one Sentry Cron monitor, `justgo-staging-backup-health`, with
    schedule `23 * * * *` in UTC, check-in margin 20 minutes, maximum runtime
    20 minutes and the intended owner notification route. Configure
@@ -383,8 +408,8 @@ temporary key and ciphertext without touching ordinary test database rows.
 This rehearsal passed locally with PostgreSQL 17 and `age` 1.3.2. It establishes
 actual local encryption/decryption/dump/restore and application deletion behavior.
 The small synthetic Auth tables do **not** establish recovery of the real hosted
-Auth schema, session-provider behavior, role/extension dependencies, key retrieval
-from independent offline custody, actual R2 expiry, scheduled availability or an operational RTO.
+Auth schema, session-provider behavior, role/extension dependencies, actual hosted
+recovery-copy decryption, R2 expiry, scheduled availability or an operational RTO.
 Those gates remain open. Hourly ledgers also leave the post-copy gap, now accepted
 as a small-beta recovery limit with independent recording explicitly deferred.
 Local tests do not replace reassessment before paid launch or beta expansion,

@@ -1,13 +1,22 @@
 # Staging API and database releases
 
 The manual [Staging API release workflow](../../.github/workflows/staging-api.yml)
-now prepares Cloudflare Worker versions and deploys the exact version after its
-probes pass. The staging Worker and Hyperdrive are provisioned, but a healthy
-promoted release remains unverified. The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md)
-owns current candidate, approval and hosted-acceptance evidence.
-The delivered Vercel API remains the serving target recorded in the
-[Phase 14 handoff](../handoffs/phase-14-release.md#current-release-evidence) until
-an approved cutover. Local implementation does not authorize account creation,
+prepares Cloudflare Worker versions and deploys the exact version after its probes
+pass. PRs 70 and 71 are merged as `e551604` and
+`0753986bc9ebcfd654e901a1ef25b7fb64c5ff92`; the latter passed all seven main CI
+checks in run `41229431683`. Approved tag `staging-cloudflare-2026-10-31-2`
+is published (annotated tag object `bd094882986c3040541e6665232714274b900c55`).
+Release `41230382940`, attempt `1`, succeeded. Stable provider readbacks before
+and after public probes verified deployment `3bf9db92-3e16-4616-8dd7-fac6a5707579`
+serving version `e9356054-82bc-4fcb-a700-80240f989a01` at 100%, exact source/run
+bindings, health/readiness 200 and unauthenticated private guards 401. Latest equals
+serving; ordinary release guards apply. This does not establish real managed-account,
+performance, alert-delivery or native acceptance.
+
+The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md) owns the current evidence.
+Existing owner-only builds still target the Vercel API/legal addresses until
+the approved full cutover replaces or retires them; see the
+[Phase 14 handoff](../handoffs/phase-14-release.md#current-release-evidence). Local implementation does not authorize account creation,
 spending, deployment, migrations, DNS changes, native releases or Vercel retirement.
 
 ## Fixed target
@@ -27,7 +36,8 @@ spending, deployment, migrations, DNS changes, native releases or Vercel retirem
 
 The Worker runs with `APP_ENVIRONMENT=staging`, managed Auth enabled and the
 reviewed staging grants. Its placement target is `aws:ca-central-1`; actual
-placement, CPU and latency still require hosted measurements. The release lane
+placement and full managed-workload CPU/latency remain unmeasured. Public route
+timings and active-version CPU chart readbacks are recorded in the handoff. The release lane
 cannot select production or an arbitrary Worker name. Production needs separate
 credentials and its own approved release procedure.
 
@@ -64,6 +74,13 @@ Store these secrets only in the protected `justgo-staging` GitHub environment:
 | `DATABASE_CA_CERT`             | Trusted PEM CA for that migration connection; verification remains enabled                                                            |
 | `STAGING_RECOVERY_ATTESTATION` | Reviewed current recovery evidence, required only for pending migrations                                                              |
 | `STAGING_BOOTSTRAP_BINDINGS`   | Initial runtime secrets and optional variables as JSON; available only to the first-deployment step, removed after verified bootstrap |
+
+After verified active deployment readback on October 31,
+`STAGING_BOOTSTRAP_BINDINGS` was removed from the protected GitHub environment;
+a fresh secret-name list confirmed its absence. A nonempty mode-0600 ignored
+local recovery copy remains, without reading/logging values or changing Worker
+bindings. The bootstrap workflow remains documented for clean first provisioning;
+it must not be repeated against the existing Worker.
 
 Protected variables are `CLOUDFLARE_ACCOUNT_ID`,
 `CLOUDFLARE_WORKERS_SUBDOMAIN`, `STAGING_HYPERDRIVE_ID`, and
@@ -139,31 +156,58 @@ candidate is built. Unexpected or abandoned versions, including secret-only
 uploads, require operator inspection and an approved disposition. The runner
 never deletes them or promotes them to make this check pass.
 
-The optional `abandoned_version_id` input recognizes only the inspected failed
+The optional `abandoned_version_id` input was used for the inspected failed
 October 30 upload `c5af7c5b-d045-470b-b91e-d6cfbe7accf5`, source
 `742f3e03ceb823c93e8ddfa9d6e131dfcfc83987`, run `41159286606`, attempt `1`.
 Its candidate health passed, readiness returned 503, and it was not promoted.
-It requires the exact recorded account, baseline deployment/version/source, all
-three abandoned uploads' source/run/annotations and preserved bindings. The
-version order must be that upload, `c0fefad7-9a31-4db7-976a-bfc8fbb0366b`,
+That continuation required the exact recorded account, baseline deployment/
+version/source, all three abandoned uploads' source/run/annotations and preserved
+bindings. The required version order was that upload, `c0fefad7-9a31-4db7-976a-bfc8fbb0366b`,
 `2d6ea61b-2714-4cd9-9437-2a73f9476dd6`, then baseline
 `d15d9fbd-1d99-4106-abc4-43b907ba7a2c`, both at preflight and before upload.
-The sole deployed baseline remains `caaa7a54-d4a3-4eec-bdc2-9d5f927142e5`,
+The then-deployed baseline was `caaa7a54-d4a3-4eec-bdc2-9d5f927142e5`,
 source `7d8a5624bf7224bc243a342dab22a9d0b82f7f04`.
 It does not accept another abandoned version or change the default guard. After
 one replacement upload, ordinary candidate/probe/promotion checks apply again;
-another failed candidate requires fresh inspection and review.
+another failed candidate requires fresh inspection and review. That incident
+continuation was consumed when latest and serving both became `830444c8…` from
+`08aa805`. The current release above also has latest equal to serving. Do not
+reuse the old four-version opt-in; ordinary release guards apply.
 
 Automatic invocation logs, Logpush and tail consumers must be disabled on this
-Worker. The version lane reads these non-versioned settings rather than silently
-changing them; the app's reconstructed safe diagnostics remain the reporting
+Worker. The version lane reads `/script-settings` for these non-versioned
+settings rather than silently changing them. Cloudflare can represent disabled
+observability and absent tail consumers as null; malformed settings or enabled
+telemetry still stop the lane. `/settings` is used only for the bootstrap
+absence check. The app's reconstructed safe diagnostics remain the reporting
 boundary. Version URLs are public and use the same database resources as the
 version, so their auth and no-store checks are required before deployment.
+
+Hosted Hyperdrive bindings use opaque proxy credentials/database names and a
+platform-owned 32-hex `*.workers.alt:5432` transport with sole query parameter
+`sslmode=disable`; local Miniflare uses `*.hyperdrive.local`. This parameter does
+not disable verified TLS on the actual Hyperdrive database origin.
+Provider readback validates the real origin role/project/database, and managed
+readiness checks that active connection's real role/database. The direct URL is
+retained as a strictly validated origin reference, not an active managed Worker
+socket. A local smoke cannot
+alone establish hosted binding compatibility. If initial upload succeeded before
+a later check failed, inspect the existing version/deployment and use an ordinary
+release for reviewed fixes; never rerun bootstrap or delete/recreate the Worker.
 
 Keep the existing Vercel API/legal addresses, deployment configuration and
 credentials until the approved old-build retirement plan is executed. A redirect
 or two working APIs does not prove that private request bodies stopped reaching
-Vercel. Point the Sentry readiness monitor at the accepted Worker origin and ship
+Vercel. Sentry readiness monitor `10773615` now targets Cloudflare `/ready` and
+normal checks pass. GitHub notification delivery is verified; Sentry Cron
+failure/missed-backup delivery remains open. The
+[phase handoff](../handoffs/phase-15-cloudflare-api.md#current-status) records final
+evidence. Complete all required approvals and legal-artifact preflight before
+the prepared coordinated Vercel retirement, Cloudflare publication/verification
+and ASC/EAS URL update. Anthony accepts the brief legal-URL gap under the
+[October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover);
+no legacy redirect remains and the final Cloudflare-only notice follows the end
+of Vercel's roles. Ship
 an approved TestFlight build only as part of the separately authorized cutover.
 Keep Phase 14's privacy and physical-device acceptance gates open.
 
@@ -274,6 +318,16 @@ code-only release when live migration history already matches.
 
 ## Failures and uncertain outcomes
 
+Earlier release `41215593308` for source `08aa805`, tagged
+`staging-cloudflare-2026-10-31`, failed with
+`STAGING_PROMOTION_UNCONFIRMED` after promotion was attempted. Subsequent stable
+read-only proof verified deployment `388bd042-ae25-4fc6-95dc-6c32f62461a0`, serving
+version `830444c8-6e59-42c6-bfa9-97bfae1c6309` at 100%, exact source/run bindings,
+health/readiness 200 and unauthenticated private guards 401. That run remains failed;
+its exact inner cause is not established. No retry, rollback or second promotion
+was performed for that incident. The later successful release above is a separate
+ordinary release.
+
 Failures preserve the database guard's existing reason and validated SQLSTATE,
 plus a code only for branded runner failures. Provider text cannot supply a
 trusted code. Before promotion, candidate/probe failures leave serving traffic
@@ -302,6 +356,9 @@ forward; never automatically downgrade schema, restore a snapshot, delete a
 candidate or roll back traffic across a schema change. Preserve accepted writes
 and current deletion/revocation state in any separately approved repair.
 
-Hosted uptime/email delivery, latency/CPU, plan choice, DPA/privacy suitability,
+Public uptime, bounded route timings and active-version CPU readbacks are recorded
+in the handoff. Anthony chose to retain Workers Free after reviewing Paid pricing;
+the measured public-check CPU exceeds its budget and suitability remains open.
+Sentry failure/missed-backup delivery, full-workload latency/CPU, DPA/privacy suitability,
 old-build traffic retirement and device acceptance remain separate Phase 15/14
 gates. Local release tests do not close them.

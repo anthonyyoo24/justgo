@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated October 30, 2026. The [October 30 staging-retention decision](#october-30-seven-day-staging-backup-retention) records approved seven-day protection and expiry with verified lock enforcement; actual expiry remains unobserved. The [October 29 small-beta recovery decision](#october-29-small-beta-recovery-limit) records the accepted beta recovery limit and required reassessment. The [October 28 Cloudflare decision](#october-28-cloudflare-workers-hono-and-r2-backups) adds Phase 15 to move the API to Cloudflare Workers and Hono, with R2 backups instead of Supabase Pro. The [October 28 renumbering](#october-28-phase-renumbering) makes billing Phase 16 and shifts later phases; dated entries keep their original numbers. The [October 28 billing-provider decision](#october-28-superwall-replaces-revenuecat-for-phase-16-billing) replaces RevenueCat with Superwall for Phase 16. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated October 31, 2026. The [October 31 recovery-target decision](#october-31-recovery-targets) records accepted ordinary-write loss and recovery-time objectives while preserving the fail-closed beta limit. The [October 30 staging-retention decision](#october-30-seven-day-staging-backup-retention) records approved seven-day protection and expiry with verified lock enforcement; actual expiry remains unobserved. The [October 29 small-beta recovery decision](#october-29-small-beta-recovery-limit) records the accepted beta recovery limit and required reassessment. The [October 28 Cloudflare decision](#october-28-cloudflare-workers-hono-and-r2-backups) adds Phase 15 to move the API to Cloudflare Workers and Hono, with R2 backups instead of Supabase Pro. The [October 28 renumbering](#october-28-phase-renumbering) makes billing Phase 16 and shifts later phases; dated entries keep their original numbers. The [October 28 billing-provider decision](#october-28-superwall-replaces-revenuecat-for-phase-16-billing) replaces RevenueCat with Superwall for Phase 16. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                       | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------ | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -988,11 +988,11 @@ replay of a durably saved deletion intent even when the original database operat
 appeared to fail; that is a future-design policy choice, not authorization to
 change the current implementation or treat incomplete records as sufficient.
 
-This decision settles only the beta ledger-gap disposition. Backup retention,
-ordinary-write recovery point, recovery-time target and reauthentication-on-restore
-remain separate proposals; hosted restore/copy/monitor evidence and independent
-privacy/device gates are unchanged. No source reset, deployment or recovery action
-is authorized by this decision.
+This decision settles only the beta ledger-gap disposition. Later approvals govern
+[staging retention](#october-30-seven-day-staging-backup-retention) and
+[recovery targets and reauthentication](#october-31-recovery-targets); hosted
+restore/copy/monitor evidence and independent privacy/device gates are unchanged.
+No source reset, deployment or recovery action is authorized by this decision.
 
 ## October 29 dedicated backup reader
 
@@ -1079,3 +1079,94 @@ Protected-environment readback matched the exact policy bytes and digest.
 `JUSTGO_BACKUPS_ENABLED` remains unset. This decision and evidence do not close
 Git publication/merge permissions, privacy/DPA, actual app/Auth restore, alert
 delivery, independent off-Mac key custody or credential-renewal gates.
+
+## October 30 owner-only full Cloudflare cutover
+
+Anthony confirmed that JustGO has no actual app users and selected a complete
+Cloudflare switch, with no external-user compatibility or transition period.
+The next Privacy candidate names Cloudflare only for API/legal hosting and R2
+recovery storage. This supersedes the October 28 transition-notice/legacy-address
+choice for this cutover; historical provider and release evidence remains intact.
+
+Existing owner-only TestFlight and Dev binaries contain the old Vercel addresses.
+Replace or retire those builds, end Vercel API and legal hosting/addresses, and
+verify that private traffic has stopped before publishing the Cloudflare-only
+notice. There is no retained legal redirect role. Old owner-only builds will stop
+working against a retired origin and need the replacement build. Preserve
+Supabase accounts and journal data; absence of external users does not authorize
+a database reset or loss of owner device-local writing. The earlier conditional
+rollout/retirement authorization and healthy-runtime, backup, notice and
+account/privacy gates remain. Replacement phone acceptance is still required
+before external distribution; this decision changes legacy-support timing, not
+acceptance evidence. It does not approve a new Git merge, tag or the final
+complete notice.
+
+## October 31 recovery targets
+
+Anthony approved accepting loss of up to 24 hours of ordinary new activity since
+the nightly snapshot and an operator recovery-time target of four hours. These
+are accepted recovery objectives, not measured operational results or a published
+availability promise. Hourly identity ledgers do not back up new journal writing;
+actual scheduled copies, alert delivery and complete app/Auth recovery still need
+verification before relying on the objectives.
+
+The four-hour target applies only when safe recovery is possible. It does not
+override the [small-beta recovery limit](#october-29-small-beta-recovery-limit):
+if current deletion/revocation history cannot be established, the old restored
+state stays closed and may remain unrecoverable. A clean restart requires its
+separately reviewed procedure; automatic old-phone recovery remains unsupported.
+
+Signing in again after a service restore was already approved with the complete
+Privacy wording on October 30. Preserve restored-session invalidation and all
+existing proof, deletion and owner-isolation checks. Key custody, renewal,
+hosted recovery evidence and independent privacy/device gates remain open; this
+policy decision does not itself activate schedules or change recovery safeguards.
+
+## October 31 optional automatic backup credential issuer
+
+Anthony requested an optional later phase for automatic short-lived backup
+credential issuance, after accepted Phase 16 payments, accepted Phase 17 analytics
+and an actually published Phase 14 App Store release. [Phase 21](implementation-plan/phase-21-backup-credential-issuer.md#phase-21)
+is the next unused number. Phases 18–20 are not prerequisites; this work does not
+gate Phase 15, beta testing or the first App Store launch. TestFlight, submission
+and App Review approval alone do not establish the required store publication.
+
+This approves planning, not implementation or activation. Anthony remains the
+manual-renewal owner under the current day-five procedure. The R2 parent signing
+credential stays locally outside CI under the
+[current custody policy](#october-31-local-recovery-key-custody-and-coordinated-cutover).
+Moving it into a future online issuer requires a concrete
+custody/authority/rotation design and separate activation approval. The `age`
+private decryption identity remains owner-held on the Mac outside CI and the
+issuer; automating upload credentials never requires it.
+Preserve existing scope, lifetime, retention, alert and recovery safeguards and
+document any human parent/other-credential renewal that automation cannot remove.
+
+## October 31 local recovery-key custody and coordinated cutover
+
+Anthony selected owner-held, protected local Mac storage outside CI for the `age`
+private decryption identity. This supersedes the earlier offline/independent
+off-Mac custody prerequisite; USB/off-Mac retrieval and verification are not
+prerequisites. Actual decryption, writer-fenced ledger reconciliation and complete
+app/Auth recovery evidence remain required. This custody choice does not establish
+recovery readiness. The R2 parent signing
+credential stays locally outside CI. A future online issuer still requires its
+separate custody, authority, rotation and activation approval. Existing key copies
+are unchanged by this decision.
+
+Anthony accepts a brief interruption to the public Privacy/Terms URLs, including
+the current App Store Connect Privacy link, during a prepared, coordinated future
+cutover. Complete the legal package, effective-date/version and publication
+approvals, replacement-build preparation and publication preflight before ending
+Vercel hosting. In the approved cutover window, retire the owner-only old builds
+and Vercel API/legal roles, verify private-traffic cutoff, then immediately publish
+and verify the Cloudflare-only Privacy/Terms pages and update App Store Connect
+and EAS URLs. The final notice still follows the end of both Vercel roles; no
+legacy redirects or external-user transition period are retained.
+
+This records custody and cutover policy only; this documentation update does not
+authorize or perform provider changes, notice publication or key-copy operations.
+Existing recovery, healthy-runtime, privacy/DPA and device gates and specific Git
+permissions remain. The complete Privacy wording approved October 30 is preserved;
+effective date, matching version and publication authorization remain pending.
+Anthony's restriction against Cloudflare correspondence is unchanged.

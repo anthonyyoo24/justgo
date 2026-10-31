@@ -22,18 +22,25 @@ This folder owns sequencing, approved scope and acceptance requirements. Results
 | [12 — Legal documents & release disclosures](phase-12-legal-documents.md)      | Reviewed public notices and acceptance copy match the launch build, with product analytics disabled.            | 08–11                                       | Local preparation handed off; publication deferred     |
 | [13 — Local data, optional accounts and cloud sync](phase-13-local-journal.md) | One continuous journal, optional Apple/Google accounts, cloud sync and concise Account/Data controls.           | 07–12                                       | Revision implemented locally; external gates open      |
 | [14 — Release validation & launch](phase-14-release.md)                        | A free beta validates the core product, then the complete paid product is ready for store submission.           | 08–13 for beta; accepted 16 for paid launch | Beta access implemented locally; acceptance open       |
-| [15 — Cloudflare API hosting & R2 backups](phase-15-cloudflare-api.md)         | The API runs on Cloudflare Workers with Hono, and encrypted R2 backups replace the Supabase Pro upgrade.        | 14 internal beta; before 14 external beta   | Local candidate prepared; hosted acceptance open       |
+| [15 — Cloudflare API hosting & R2 backups](phase-15-cloudflare-api.md)         | The API runs on Cloudflare Workers with Hono, and encrypted R2 backups replace the Supabase Pro upgrade.        | 14 internal beta; before 14 external beta   | Implementation merged; hosted rollout in progress      |
 | [16 — Native subscriptions & reliable billing](phase-16-billing.md)            | Verified purchases unlock promptly, and later subscription changes recover reliably.                            | 07.5; activate after free beta              | Local work in progress; activation deferred            |
 | [17 — Product analytics & PostHog dashboard](phase-17-analytics.md)            | Separately reviewed analytics and reports answer challenge-flow and return-rate questions after paid launch.    | 09, 10, 12–13; 14 paid launch               | Deferred until after paid launch; exporter disabled    |
 | [18 — Lock-screen countdowns](phase-18-native-timers.md)                       | The same accepted challenge is visible on supported lock screens without a JavaScript background timer.         | 14 paid launch                              | Not scheduled                                          |
 | [19 — Optional US iOS web checkout](phase-19-optional-stripe.md)               | Eligible users can purchase on the web using the same authenticated app identity.                               | 14 paid launch                              | Not scheduled                                          |
 | [20 — Future AI text coach](phase-20-future-text-coach.md)                     | A separately approved text coach uses bounded, permitted context in the existing backend.                       | 14 paid launch                              | Not scheduled                                          |
+| [21 — Backup credential issuer](phase-21-backup-credential-issuer.md)          | Backup jobs receive automatically issued, short-lived R2 upload credentials.                                    | Accepted 16, 17; 14 App Store published     | Optional; not scheduled                                |
 
 ## Release order
 
 01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 08 → 08A → 09 → 10 → 11 crash reporting → 12 legal preparation → 13 optional accounts/cloud sync → 14 internal beta → 15 Cloudflare API and R2 backups → 14 external free beta → 16 billing activation/acceptance → 14 paid launch → 17 analytics.
 
 Phase 15 must close before outside testers store real journals; see the [October 28 Cloudflare decision](../DECISIONS.md#october-28-cloudflare-workers-hono-and-r2-backups). Prepared billing code can be reviewed independently while activation waits. Legal review can run alongside crash-reporting implementation, but final notices and acceptance copy must describe the verified build with product analytics disabled. Phase 17 analytics is deferred until after paid launch; it must review notices, its permission/collection design and signed-build delivery before activation. Phases 19–20 are separately scheduled after paid launch, do not depend on analytics and do not block the first submission. See the [October 20 local-journal sequencing decision](../DECISIONS.md#october-20-local-journal-and-manual-backup-phase).
+
+[Optional Phase 21](phase-21-backup-credential-issuer.md#phase-21) may be scheduled
+only after accepted Phase 16 billing, accepted Phase 17 analytics and actual
+Phase 14 App Store publication. It does not require Phases 18–20 and does not
+block Phase 15, beta testing or the first store release. Anthony retains manual
+backup-credential renewal until an approved replacement is operating.
 
 ## How to use the plan
 
