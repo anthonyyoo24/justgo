@@ -28,6 +28,7 @@ import {
 export {
   StagingRunnerFailure,
   stagingRunnerFailureCode,
+  stagingRunnerPromotionDiagnostic,
 } from './staging-api.mjs';
 
 const executeFile = promisify(execFile);
@@ -86,6 +87,7 @@ export async function stagingApi(
   } = {},
 ) {
   let promotionAttempted = false;
+  let promotionPhase;
   let directory;
   const context = releaseContext(env);
   const target = cloudflareTarget(env);
@@ -230,6 +232,7 @@ export async function stagingApi(
       await beforePromote();
       alive();
       promotionAttempted = true;
+      promotionPhase = 'promotion-request';
       // One mutation only. A lost response is resolved exclusively by readback.
       try {
         await promote(candidate.id, {
@@ -241,6 +244,7 @@ export async function stagingApi(
         alive();
       }
       let deployed;
+      promotionPhase = 'deployment-readback';
       for (let attempt = 0; attempt < 30; attempt++) {
         deployed = await current();
         if (deployed.versionId === candidate.id) break;
@@ -250,7 +254,9 @@ export async function stagingApi(
         );
         await wait(2000, undefined, { signal });
       }
+      promotionPhase = 'candidate-provenance';
       validateVersion(await api(`/versions/${candidate.id}`), target, context);
+      promotionPhase = 'public-probes';
       await checkEndpoints(target.origin);
       const receipt = {
         sourceSha: context.sha,
@@ -270,7 +276,10 @@ export async function stagingApi(
     }
   } catch (error) {
     if (promotionAttempted)
-      throw new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED');
+      throw new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED', {
+        phase: promotionPhase,
+        cause: error,
+      });
     throw error;
   }
 }

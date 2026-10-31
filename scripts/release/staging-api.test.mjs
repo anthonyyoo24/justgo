@@ -15,6 +15,7 @@ import {
   releaseContext,
   StagingRunnerFailure,
   stagingRunnerFailureCode,
+  stagingRunnerPromotionDiagnostic,
 } from './staging-api.mjs';
 import {
   stagingApi,
@@ -1013,11 +1014,23 @@ for (const failure of [
     await assert.rejects(stagingApi('deploy', f), (error) => {
       assert.ok(!error.message.includes('PRIVATE_PROVIDER_CONTENT'));
       assert.ok(stagingRunnerFailureCode(error));
-      if (uncertain)
+      if (uncertain) {
         assert.equal(
           stagingRunnerFailureCode(error),
           'STAGING_PROMOTION_UNCONFIRMED',
         );
+        assert.deepEqual(stagingRunnerPromotionDiagnostic(error), {
+          promotionPhase:
+            failure === 'public-probe'
+              ? 'public-probes'
+              : 'deployment-readback',
+          ...(failure === 'public-probe'
+            ? { causeCode: 'INVALID_STAGING_PROBE' }
+            : failure === 'promotion-never'
+              ? { causeCode: 'STAGING_PROMOTION_UNCONFIRMED' }
+              : {}),
+        });
+      } else assert.equal(stagingRunnerPromotionDiagnostic(error), undefined);
       return true;
     });
     assert.equal(f.calls.filter((c) => c.promotion).length, uncertain ? 1 : 0);
@@ -1025,6 +1038,64 @@ for (const failure of [
       !f.calls.some((c) => ['DELETE', 'PUT', 'PATCH'].includes(c.method)),
     );
   });
+test('post-promotion provenance failure retains its safe classification', async (t) => {
+  const f = fixture(t);
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      request: async (target, path, options) => {
+        const value = await f.request(target, path, options);
+        if (
+          path === `/versions/${candidateId}` &&
+          f.calls.some((call) => call.promotion)
+        )
+          value.resources.bindings.find(
+            (binding) => binding.name === 'JUSTGO_SOURCE_SHA',
+          ).text = previous;
+        return value;
+      },
+    }),
+    (error) => {
+      assert.equal(
+        stagingRunnerFailureCode(error),
+        'STAGING_PROMOTION_UNCONFIRMED',
+      );
+      assert.deepEqual(stagingRunnerPromotionDiagnostic(error), {
+        promotionPhase: 'candidate-provenance',
+        causeCode: 'STAGING_DEPLOYMENT_PROVENANCE_MISMATCH',
+      });
+      return true;
+    },
+  );
+  assert.equal(f.calls.filter((call) => call.promotion).length, 1);
+});
+test('lease loss during the single promotion request retains its phase', async (t) => {
+  const f = fixture(t),
+    controller = new AbortController();
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      signal: controller.signal,
+      promote: async (...args) => {
+        await f.promote(...args);
+        controller.abort();
+        throw new Error('PRIVATE_PROVIDER_CONTENT');
+      },
+    }),
+    (error) => {
+      assert.equal(
+        stagingRunnerFailureCode(error),
+        'STAGING_PROMOTION_UNCONFIRMED',
+      );
+      assert.deepEqual(stagingRunnerPromotionDiagnostic(error), {
+        promotionPhase: 'promotion-request',
+        causeCode: 'STAGING_DATABASE_LEASE_LOST',
+      });
+      return true;
+    },
+  );
+  assert.equal(f.calls.filter((call) => call.promotion).length, 1);
+});
 test('lost database lease after build prevents uploads and promotion', async (t) => {
   const f = fixture(t),
     controller = new AbortController();
@@ -1061,9 +1132,12 @@ test('provider and subprocess error text never supplies a trusted diagnostic', a
   for (const error of [
     new Error('STAGING_SOURCE_NOT_CLEAN'),
     { code: 'STAGING_SOURCE_NOT_CLEAN' },
+    { promotionPhase: 'public-probes', causeCode: 'STAGING_HEALTH_FAILED' },
     undefined,
-  ])
+  ]) {
     assert.equal(stagingRunnerFailureCode(error), undefined);
+    assert.equal(stagingRunnerPromotionDiagnostic(error), undefined);
+  }
   const failure = new StagingRunnerFailure('STAGING_SOURCE_NOT_CLEAN');
   failure.message = 'PRIVATE_PROVIDER_CONTENT';
   assert.equal(stagingRunnerFailureCode(failure), 'STAGING_SOURCE_NOT_CLEAN');
@@ -1079,5 +1153,40 @@ test('provider and subprocess error text never supplies a trusted diagnostic', a
       'throw new Error("PRIVATE_PROVIDER_CONTENT")',
     ]),
     /STAGING_COMMAND_FAILED/,
+  );
+});
+test('promotion diagnostics reject unsafe phases and unbranded causes', () => {
+  assert.equal(
+    stagingRunnerPromotionDiagnostic(
+      new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED', {
+        phase: 'PRIVATE_PROVIDER_CONTENT',
+        cause: new StagingRunnerFailure('STAGING_HEALTH_FAILED'),
+      }),
+    ),
+    undefined,
+  );
+  const error = new StagingRunnerFailure('STAGING_PROMOTION_UNCONFIRMED', {
+    phase: 'public-probes',
+    cause: {
+      code: 'STAGING_HEALTH_FAILED',
+      message: 'PRIVATE_PROVIDER_CONTENT',
+    },
+  });
+  assert.deepEqual(stagingRunnerPromotionDiagnostic(error), {
+    promotionPhase: 'public-probes',
+  });
+  stagingRunnerPromotionDiagnostic(error).promotionPhase =
+    'PRIVATE_PROVIDER_CONTENT';
+  assert.deepEqual(stagingRunnerPromotionDiagnostic(error), {
+    promotionPhase: 'public-probes',
+  });
+  assert.equal(
+    stagingRunnerPromotionDiagnostic(
+      new StagingRunnerFailure('STAGING_COMMAND_FAILED', {
+        phase: 'public-probes',
+        cause: error,
+      }),
+    ),
+    undefined,
   );
 });

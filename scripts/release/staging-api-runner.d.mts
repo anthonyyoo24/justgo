@@ -1,8 +1,19 @@
 export type StagingBaseline = { deploymentId: string; sourceSha: string };
+export type StagingPromotionPhase =
+  | 'promotion-request'
+  | 'deployment-readback'
+  | 'candidate-provenance'
+  | 'public-probes';
 export class StagingRunnerFailure extends Error {
-  constructor(code: string);
+  constructor(
+    code: string,
+    promotion?: { phase: StagingPromotionPhase; cause?: unknown },
+  );
 }
 export function stagingRunnerFailureCode(error: unknown): string | undefined;
+export function stagingRunnerPromotionDiagnostic(
+  error: unknown,
+): { promotionPhase: StagingPromotionPhase; causeCode?: string } | undefined;
 export type StagingReceipt = {
   sourceSha: string;
   versionId: string;

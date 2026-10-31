@@ -53,18 +53,42 @@ const failureCodes = new Set([
   'STAGING_BOOTSTRAP_BINDINGS_REQUIRED',
 ]);
 const trustedFailures = new WeakMap();
+const promotionPhases = new Set([
+  'promotion-request',
+  'deployment-readback',
+  'candidate-provenance',
+  'public-probes',
+]);
 
 /** A closed diagnostic vocabulary, independent of any provider error text. */
 export class StagingRunnerFailure extends Error {
-  constructor(code) {
+  constructor(code, promotion) {
     const safeCode = failureCodes.has(code) ? code : 'STAGING_RUNNER_FAILED';
     super(safeCode);
-    trustedFailures.set(this, safeCode);
+    const phase = promotion?.phase;
+    const causeCode = stagingRunnerFailureCode(promotion?.cause);
+    trustedFailures.set(this, {
+      code: safeCode,
+      ...(safeCode === 'STAGING_PROMOTION_UNCONFIRMED' &&
+      promotionPhases.has(phase)
+        ? { promotionPhase: phase, ...(causeCode ? { causeCode } : {}) }
+        : {}),
+    });
   }
 }
 
 export function stagingRunnerFailureCode(error) {
-  return trustedFailures.get(error);
+  return trustedFailures.get(error)?.code;
+}
+
+/** Return only closed promotion context, never mutable provider/error fields. */
+export function stagingRunnerPromotionDiagnostic(error) {
+  const failure = trustedFailures.get(error);
+  if (!failure?.promotionPhase) return undefined;
+  return {
+    promotionPhase: failure.promotionPhase,
+    ...(failure.causeCode ? { causeCode: failure.causeCode } : {}),
+  };
 }
 
 export function requireRelease(condition, code) {
