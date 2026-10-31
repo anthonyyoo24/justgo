@@ -91,18 +91,13 @@ chose to keep Workers Free; no paid subscription was purchased. Bounded,
 network-free Node measurements show small configuration/composition costs, but
 do not attribute hosted workerd CPU. A guarded local workerd profile identified
 per-invocation matcher construction. [PR 72](https://github.com/anthonyyoo24/justgo/pull/72)
-is published at `a060ff5` on `codex/phase-15-worker-cpu-profile`. Its WorkerRouter
+introduces a WorkerRouter that
 wraps a fresh TrieRouter per invocation, preserving each handler registration once,
 Node's default routing and invocation-owned database/service isolation. The local
 profiler has a separate explicit command and bounded 30-second capture. Matching captures
 remove the targeted matcher hotspot but do not establish hosted CPU savings.
-The candidate has passing publication checks and actual local Workers smoke.
-Anthony approved publishing the reviewed follow-up fixes. All seven checks in
-[CI 41251415529](https://github.com/anthonyyoo24/justgo/actions/runs/41251415529)
-passed for that exact code head. The CodeRabbit check was green, but its comment
-states that automatic review was skipped; it is not completed review evidence.
-Merge, release-tag publication and hosted measurement remain open. Avoid speculative shared-app, pool or
-account-state caching.
+Merge, release-tag publication and hosted measurement remain open. Avoid
+speculative shared-app, pool or account-state caching.
 
 Hosted verification with synthetic content is already authorized and is distinct
 from the contractual gate for actual private journals. It requires a disposable
@@ -396,9 +391,9 @@ acceptance action was displayed. That recorded representation does not independe
 resolve the SSA §6.1/PIPEDA scope question. Anthony declined Cloudflare email correspondence.
 
 An `age` identity was prepared locally with restrictive permissions and a
-synthetic encrypt/decrypt roundtrip passed. At Anthony's request, its complete
-secret line was also saved in `~/Documents/JustGO Recovery Key.txt`, mode 0600,
-and checked against the source without printing it. Anthony subsequently confirmed
+synthetic encrypt/decrypt roundtrip passed. At Anthony's request, a copy was also
+saved in a protected local file, mode 0600, and checked against the source without
+printing it. Anthony subsequently confirmed
 a copy on an encrypted USB. That copy was not mounted or tested. Anthony chose
 to retain the protected Mac copies locally outside CI, without a USB-retrieval
 prerequisite, under the
@@ -458,7 +453,7 @@ The inspector is unchanged, expires `2026-11-05T23:06:08Z` and remains in the
 protected environment. Anthony explicitly approved its account-wide R2 read/list
 authority, including other buckets. Historical encrypted-canary checks passed
 PUT/HEAD and denied GET/list/out-of-prefix PUT/DELETE; owner retrieval and
-decryption with the requested Documents key file passed, and the canary was
+decryption with the protected local key file passed, and the canary was
 cleaned up. That proves the inspected scope and local key usability, not actual
 R2 database recovery-copy decryption or complete operational recovery.
 

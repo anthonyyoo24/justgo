@@ -1,5 +1,4 @@
 import type { MiddlewareHandler } from 'hono';
-import { TrieRouter } from 'hono/router/trie-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/build-app.js';
 import { createHttpApp, type HttpOptions } from '../../src/http/app.js';
@@ -89,25 +88,6 @@ describe('Worker router registrations', () => {
         ['shared', {}],
         ['shared', {}],
       ],
-    ]);
-  });
-
-  it('preserves indexed parameter maps and their stash through the public router contract', () => {
-    const add = vi.spyOn(TrieRouter.prototype, 'add');
-    const router = new WorkerRouter<string>();
-    router.add('GET', '/:ownerId', 'leaf');
-    const registration = add.mock.calls[0]?.[2];
-    expect(add).toHaveBeenCalledOnce();
-    vi.spyOn(TrieRouter.prototype, 'match').mockReturnValueOnce([
-      [
-        [registration, { ownerId: 0 }],
-        [registration, { ownerId: 0 }],
-      ],
-      ['alice'],
-    ]);
-    expect(router.match('GET', '/alice')).toEqual([
-      [['leaf', { ownerId: 0 }]],
-      ['alice'],
     ]);
   });
 

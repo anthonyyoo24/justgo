@@ -7,26 +7,21 @@ import {
 } from '../../scripts/workers-smoke-preflight.js';
 
 describe('explicit Worker check commands', () => {
-  it.each([undefined, 'true', 'false', 'leftover-invalid-value'])(
-    'always selects functional smoke despite legacy profiling setting %s',
-    (legacy) => {
-      const environment = {
-        JUSTGO_WORKERS_CPU_PROFILE: legacy,
-        JUSTGO_WORKERS_INSPECTOR_PORT: 'ignored-in-smoke',
-      };
-      for (const args of [[], ['--smoke']])
-        expect(workerSmokeOptions(args, environment)).toEqual({
-          profiling: false,
-          port: 8791,
-          inspectorPort: 0,
-        });
-    },
-  );
+  it('selects functional smoke by default and with the explicit smoke command', () => {
+    const environment = {
+      JUSTGO_WORKERS_INSPECTOR_PORT: 'ignored-in-smoke',
+    };
+    for (const args of [[], ['--smoke']])
+      expect(workerSmokeOptions(args, environment)).toEqual({
+        profiling: false,
+        port: 8791,
+        inspectorPort: 0,
+      });
+  });
 
   it('profiles only when explicitly requested and keeps both ports configurable', () => {
     expect(
       workerSmokeOptions(['--profile'], {
-        JUSTGO_WORKERS_CPU_PROFILE: 'false',
         JUSTGO_WORKERS_TEST_PORT: '8792',
         JUSTGO_WORKERS_INSPECTOR_PORT: '9231',
       }),

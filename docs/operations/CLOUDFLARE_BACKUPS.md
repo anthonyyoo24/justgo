@@ -10,7 +10,7 @@ The main-only `database-backups` GitHub environment holds `BACKUP_DATABASE_URL`,
 `R2_UPLOAD_*` secrets, plus approved `BACKUP_POLICY_JSON` and
 `BACKUP_POLICY_SHA256`; workflow opt-in remains unset. A disposable encrypted R2
 canary passed PUT/HEAD, denied GET/list/out-of-prefix PUT/DELETE, and was retrieved
-and decrypted with the owner's requested Documents key file before cleanup.
+and decrypted with the owner's protected local key file before cleanup.
 Seven-day protection and automatic expiry are approved and configured for both
 staging prefixes, with API readback and actual lock enforcement verified. The two
 October 30 encrypted lock-test canaries contain no user data and remain until
@@ -21,9 +21,9 @@ copies, the remaining policy approvals and monitor delivery verification remain 
 The [Phase 15 plan](../implementation-plan/phase-15-cloudflare-api.md) owns these
 approvals; the [Phase 14 handoff](../handoffs/phase-14-release.md) preserves the
 independent privacy and device gates. This guide does not authorize those actions.
-A local `age` identity has been prepared in ignored `.local/phase15-cloudflare/`
-storage with mode `0600`, and a synthetic encryption/decryption round trip passed.
-The requested standalone Documents key file also has mode `0600`. Anthony confirmed
+A local `age` identity has been prepared in protected local storage with mode
+`0600`, and a synthetic encryption/decryption round trip passed.
+The owner's standalone protected local key file also has mode `0600`. Anthony confirmed
 a key copy on an encrypted USB drive; the copy was not mounted or tested. Under
 the [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover),
 the protected Mac copies remain locally outside CI, without a USB-retrieval

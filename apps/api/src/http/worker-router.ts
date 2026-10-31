@@ -1,9 +1,9 @@
-import type { Result, Router } from 'hono/router';
+import type { Params, Result, Router } from 'hono/router';
 import { TrieRouter } from 'hono/router/trie-router';
 
 type Registration<T> = { handler: T };
 
-function uniqueMatches<T, Params>(matches: [Registration<T>, Params][]) {
+function uniqueMatches<T>(matches: [Registration<T>, Params][]) {
   const seen = new Set<Registration<T>>();
   const unique: [T, Params][] = [];
   for (const [registration, params] of matches) {
@@ -28,9 +28,11 @@ export class WorkerRouter<T> implements Router<T> {
   match(method: string, path: string): Result<T> {
     // Hono 4.13.14 can return one wildcard registration through both its exact
     // and pattern branches when the requested segment is literally '*'.
-    const result = this.trie.match(method, path);
-    return result.length === 2
-      ? [uniqueMatches(result[0]), result[1]]
-      : [uniqueMatches(result[0])];
+    // The pinned TrieRouter returns direct parameter maps, although its public
+    // declaration shares the broader result union with other Hono routers.
+    const result = this.trie.match(method, path) as [
+      [Registration<T>, Params][],
+    ];
+    return [uniqueMatches(result[0])];
   }
 }

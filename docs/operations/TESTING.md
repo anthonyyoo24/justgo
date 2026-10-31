@@ -361,9 +361,8 @@ and one fixed 30-second deadline covering discovery, requests and profiler stop.
 `JUSTGO_WORKERS_TEST_PORT`. Profiles are mode-0600 files under ignored
 `.local/workers/profiles/`. This command skips the functional smoke and says so
 in its completion output; run `npm run test:workers` separately for that evidence.
-The former `JUSTGO_WORKERS_CPU_PROFILE` environment flag no longer selects a
-mode, so a leftover value cannot silently bypass the smoke. Local profiles identify
-hotspots; they do not establish hosted CPU savings or Free-plan acceptance.
+Local profiles identify hotspots; they do not establish hosted CPU savings or
+Free-plan acceptance.
 
 `npm run test:backup:recovery` uses PostgreSQL 17 and `age` (1.3.2 locally) to
 create isolated `justgo_restore_<id>` databases, encrypt a stale snapshot and
