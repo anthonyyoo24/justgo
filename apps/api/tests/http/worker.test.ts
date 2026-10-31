@@ -137,7 +137,7 @@ describe('Worker invocation lifecycle', () => {
     ['missing Hyperdrive result', null, true, 503],
     ['missing direct result', true, null, 503],
   ] as const)(
-    'keeps readiness closed unless both database names match: %s',
+    'checks both loopback database names for the legacy fixture: %s',
     async (_description, mainMatches, directMatches, status) => {
       const mainQuery = vi.fn(async () => ({
         rows: mainMatches === null ? [] : [{ database_ok: mainMatches }],
@@ -172,7 +172,7 @@ describe('Worker invocation lifecycle', () => {
       const pending: Promise<unknown>[] = [];
       const response = await worker.fetch(
         new Request('https://api.invalid/ready'),
-        hostedBindings,
+        bindings,
         {
           waitUntil: (work) => {
             pending.push(work);
@@ -186,24 +186,71 @@ describe('Worker invocation lifecycle', () => {
       });
       const expectedQuery = [
         'select current_database()::text = $1::text as database_ok',
-        ['postgres'],
+        ['justgo_test'],
       ];
       expect(mainQuery).toHaveBeenCalledExactlyOnceWith(...expectedQuery);
       if (mainMatches)
         expect(directQuery).toHaveBeenCalledExactlyOnceWith(...expectedQuery);
       else expect(directQuery).not.toHaveBeenCalled();
       expect(checkRole).toHaveBeenNthCalledWith(1, database.pool);
-      expect(checkManagedAuth).toHaveBeenNthCalledWith(1, database.pool);
+      expect(checkManagedAuth).not.toHaveBeenCalled();
       if (status === 200) {
         expect(checkRole).toHaveBeenNthCalledWith(2, directDatabase.pool);
-        expect(checkManagedAuth).toHaveBeenNthCalledWith(
-          2,
-          directDatabase.pool,
-        );
       }
       await Promise.all(pending);
       expect(end).toHaveBeenCalledOnce();
       expect(directEnd).toHaveBeenCalledOnce();
+    },
+  );
+  it.each([
+    ['ready', true, 200],
+    ['wrong database', false, 503],
+    ['missing database proof', null, 503],
+    ['runtime grants', true, 503],
+    ['managed Auth capability', true, 503],
+  ] as const)(
+    'validates managed readiness through Hyperdrive without a direct TLS socket: %s',
+    async (failure, matches, status) => {
+      const query = vi.fn(async () => ({
+        rows: matches === null ? [] : [{ database_ok: matches }],
+      }));
+      const end = vi.fn(async () => {});
+      const database = {
+        pool: { query, end },
+        db: {},
+      } as unknown as ReturnType<typeof createWorkerDatabase>;
+      const direct = vi.spyOn(databaseClient, 'createDatabase');
+      const role = vi.spyOn(databaseClient, 'checkDatabase');
+      const managed = vi.spyOn(databaseClient, 'checkManagedAuthDatabase');
+      role.mockImplementation(async () => {
+        if (failure === 'runtime grants')
+          throw new Error('private role details');
+      });
+      managed.mockImplementation(async () => {
+        if (failure === 'managed Auth capability')
+          throw new Error('private Auth details');
+      });
+      const worker = createWorker({
+        readConfiguration: readWorkerConfig,
+        createDatabase: () => database,
+        buildApp: buildRuntimeApp,
+      });
+      const pending: Promise<unknown>[] = [];
+      const response = await worker.fetch(
+        new Request('https://api.invalid/ready'),
+        hostedBindings,
+        { waitUntil: (work) => pending.push(work) },
+      );
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({
+        status: status === 200 ? 'ready' : 'unavailable',
+      });
+      expect(role).toHaveBeenCalledWith(database.pool);
+      if (failure !== 'runtime grants')
+        expect(managed).toHaveBeenCalledWith(database.pool);
+      expect(direct).not.toHaveBeenCalled();
+      await Promise.all(pending);
+      expect(end).toHaveBeenCalledOnce();
     },
   );
   it.each(['configuration', 'reporter', 'database'] as const)(

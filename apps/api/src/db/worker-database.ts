@@ -59,10 +59,10 @@ export function hyperdrivePoolOptions(connectionString: string): PoolConfig {
 }
 
 /**
- * Resolve ordinary and advisory-lock connections without opening either pool.
- * Hosted lock connections must use the restricted role and configured Supabase
+ * Validate the Hyperdrive transport and origin reference without opening a pool.
+ * The reference must use the restricted role and configured Supabase
  * project. Virtual proxy credentials are opaque, so the returned databaseName
- * must be checked through both live connections rather than inferred from them.
+ * must be checked through the active connection rather than inferred from them.
  * Invalid bindings, release identity or hosted Auth configuration throw here.
  */
 export function readWorkerConfig(bindings: WorkerBindings) {
@@ -128,7 +128,7 @@ export function readWorkerConfig(bindings: WorkerBindings) {
   }
   // Virtual Hyperdrive credentials/database are opaque proxy placeholders, not
   // origin identity. Release readback verifies the origin; readiness verifies
-  // the real database name and restricted role through both connections.
+  // the real database name and restricted role through the active connection.
   return {
     config,
     lockConfig,
@@ -137,12 +137,12 @@ export function readWorkerConfig(bindings: WorkerBindings) {
   };
 }
 
-/** Keep whole advisory-lock transactions on one direct connection, never split them. */
+/** Keep loopback legacy advisory-lock transactions on one direct connection. */
 export function needsDirectTransaction(request: Request): boolean {
   const path = getPath(request).replace(/\/$/, '');
   return (
     (request.method === 'POST' &&
-      ['/v1/auth/session', '/v1/sessions', '/v1/transfers'].includes(path)) ||
+      ['/v1/sessions', '/v1/transfers'].includes(path)) ||
     (request.method === 'DELETE' && /^\/v1\/transfers\/[^/]+$/.test(path))
   );
 }
@@ -151,7 +151,13 @@ export function createWorkerDatabase(
   request: Request,
   settings: { connectionString: string; lockConfig: Config },
 ) {
-  if (needsDirectTransaction(request))
+  // Managed exchange and retained existing-proof recovery use supported
+  // transactions/owner locks through Hyperdrive. Workers' direct TLS sockets
+  // cannot use the Supabase private CA; legacy direct paths are loopback-only.
+  if (
+    !settings.lockConfig.MANAGED_AUTH_ENABLED &&
+    needsDirectTransaction(request)
+  )
     return createDatabase(settings.lockConfig);
   // Workers sockets cannot be reused by a later request. Hyperdrive owns the
   // upstream pool; this one-connection pg pool lives only for this invocation.

@@ -10,11 +10,7 @@ import {
   readWorkerConfig,
   type WorkerBindings,
 } from './db/worker-database.js';
-import {
-  checkDatabase,
-  checkManagedAuthDatabase,
-  createDatabase,
-} from './db/client.js';
+import { checkDatabase, createDatabase } from './db/client.js';
 
 type Execution = { waitUntil: (work: Promise<unknown>) => void };
 type StartupStage = 'configuration' | 'reporter' | 'database' | 'composition';
@@ -44,7 +40,8 @@ export function createWorker(
     /**
      * Serve one request with redacted startup failures and invocation-owned I/O.
      * Register pool shutdown with waitUntil even when app composition fails;
-     * readiness additionally validates the direct advisory-lock connection.
+     * managed readiness uses Hyperdrive's verified origin connection. Only
+     * loopback legacy smoke additionally validates its direct connection.
      */
     async fetch(
       request: Request,
@@ -70,14 +67,19 @@ export function createWorker(
           clientAddress: (context) => workerClientAddress(context.req.raw),
           reportServerError: reporter,
           /**
-           * Require both transports to reach the expected database, then check
-           * the direct role/Auth boundary. Always close this extra readiness pool,
-           * including when either identity query fails or returns no proof.
+           * Require the active transport to reach the expected database. Managed
+           * requests use Hyperdrive, whose origin verifies the Supabase CA.
+           * The loopback-only legacy fixture retains its direct lock connection.
            */
           checkAdditionalDatabase: async () => {
-            const direct = createDatabase(settings.lockConfig);
+            const direct = settings.config.MANAGED_AUTH_ENABLED
+              ? undefined
+              : createDatabase(settings.lockConfig);
             try {
-              for (const pool of [invocationPool, direct.pool]) {
+              const pools = direct
+                ? [invocationPool, direct.pool]
+                : [invocationPool];
+              for (const pool of pools) {
                 const result = await pool.query<{ database_ok: boolean }>(
                   'select current_database()::text = $1::text as database_ok',
                   [settings.databaseName],
@@ -85,11 +87,9 @@ export function createWorker(
                 if (result.rows[0]?.database_ok !== true)
                   throw new Error('Database readiness check failed');
               }
-              await checkDatabase(direct.pool);
-              if (settings.config.MANAGED_AUTH_ENABLED)
-                await checkManagedAuthDatabase(direct.pool);
+              if (direct) await checkDatabase(direct.pool);
             } finally {
-              await direct.pool.end();
+              if (direct) await direct.pool.end();
             }
           },
         });

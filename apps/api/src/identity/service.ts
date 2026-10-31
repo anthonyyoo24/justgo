@@ -314,10 +314,13 @@ export class IdentityService {
   async bootstrap(input: BootstrapSessionRequest, create = true) {
     return this.db.transaction(async (tx) => {
       const hash = digest(input.credential);
-      // Serialize missing-row creation; unique digest remains the final invariant.
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${hash},0))`,
-      );
+      // Existing-proof recovery never creates a missing credential. Its owner
+      // lock and credential re-read below protect revocation without requiring
+      // an advisory lock on the managed rollout's Hyperdrive connection.
+      if (create)
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtextextended(${hash},0))`,
+        );
       await context(tx, 'app.credential_digest', hash);
       let credential = await one<CredentialRow>(
         tx,

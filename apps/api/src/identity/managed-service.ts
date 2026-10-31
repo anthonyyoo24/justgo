@@ -30,6 +30,9 @@ const liveSession: ManagedLiveSessionReader = async (tx, identity) =>
     )
   ).rows[0]?.live === true;
 
+/** Roll back a losing candidate owner before reading the committed mapping. */
+class MappingCreatedConcurrently extends Error {}
+
 export class ManagedIdentityService {
   constructor(
     private readonly db: NodePgDatabase,
@@ -55,68 +58,102 @@ export class ManagedIdentityService {
     if (!row || row.deleted_at) throw new ApiError('CREDENTIAL_REJECTED');
     return row;
   }
+  private async mapping(tx: Tx, authUserId: string) {
+    return (
+      await tx.execute<{ user_id: string }>(
+        sql`select user_id from justgo.managed_auth_accounts where auth_user_id=${authUserId}`,
+      )
+    ).rows[0];
+  }
+  private async hasMapping(token: string) {
+    const identity = await this.verified(token);
+    return this.db.transaction(async (tx) => {
+      await this.prepare(tx, identity);
+      return (await this.mapping(tx, identity.authUserId)) !== undefined;
+    });
+  }
   async exchange(
     token: string,
     input: ManagedSessionRequest,
   ): Promise<ManagedSessionResponse> {
-    const identity = await this.verified(token);
-    return this.db.transaction(async (tx) => {
-      await this.prepare(tx, identity);
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${identity.authUserId},2))`,
-      );
-      const mapping = (
-        await tx.execute<{ user_id: string }>(
-          sql`select user_id from justgo.managed_auth_accounts where auth_user_id=${identity.authUserId}`,
-        )
-      ).rows[0];
-      const legacyOwner = input.legacySessionToken
-        ? await this.legacy(tx, input.legacySessionToken, mapping?.user_id)
-        : undefined;
-      if (mapping && legacyOwner && mapping.user_id !== legacyOwner)
-        throw new ApiError('CONFLICT', 409);
-      const userId = mapping?.user_id ?? legacyOwner ?? this.allocateUserId();
-      await context(tx, 'app.user_id', userId);
-      if (!mapping) {
-        if (!legacyOwner)
-          await tx.execute(sql`insert into justgo.users(id) values(${userId})`);
-        await this.lockOwner(tx, userId);
-        await tx.execute(
-          sql`insert into justgo.managed_auth_accounts(auth_user_id,user_id) values(${identity.authUserId},${userId})`,
-        );
-        if (legacyOwner) {
-          await tx.execute(
-            sql`update justgo.device_sessions set revoked_at=coalesce(revoked_at,now()) where user_id=${userId}`,
+    let missingMapping = false;
+    const exchange = async (): Promise<ManagedSessionResponse> => {
+      const identity = await this.verified(token);
+      return this.db.transaction(async (tx) => {
+        await this.prepare(tx, identity);
+        const mapping = await this.mapping(tx, identity.authUserId);
+        missingMapping = !mapping;
+        const legacyOwner = input.legacySessionToken
+          ? await this.legacy(tx, input.legacySessionToken, mapping?.user_id)
+          : undefined;
+        if (mapping && legacyOwner && mapping.user_id !== legacyOwner)
+          throw new ApiError('CONFLICT', 409);
+        const userId = mapping?.user_id ?? legacyOwner ?? this.allocateUserId();
+        await context(tx, 'app.user_id', userId);
+        if (!mapping) {
+          if (!legacyOwner)
+            await tx.execute(
+              sql`insert into justgo.users(id) values(${userId})`,
+            );
+          await this.lockOwner(tx, userId);
+          const inserted = await tx.execute<{ user_id: string }>(
+            sql`insert into justgo.managed_auth_accounts(auth_user_id,user_id) values(${identity.authUserId},${userId}) on conflict(auth_user_id) do nothing returning user_id`,
           );
-          await tx.execute(
-            sql`update justgo.recovery_credentials set revoked_at=coalesce(revoked_at,now()) where user_id=${userId}`,
-          );
-          await tx.execute(
-            sql`update justgo.device_transfers set cancelled_at=coalesce(cancelled_at,now()) where user_id=${userId}`,
-          );
+          if (!inserted.rows.length) throw new MappingCreatedConcurrently();
+          if (legacyOwner) {
+            await tx.execute(
+              sql`update justgo.device_sessions set revoked_at=coalesce(revoked_at,now()) where user_id=${userId}`,
+            );
+            await tx.execute(
+              sql`update justgo.recovery_credentials set revoked_at=coalesce(revoked_at,now()) where user_id=${userId}`,
+            );
+            await tx.execute(
+              sql`update justgo.device_transfers set cancelled_at=coalesce(cancelled_at,now()) where user_id=${userId}`,
+            );
+          }
         }
-      }
-      const owner = await this.lockOwner(tx, userId);
-      if (!(await this.live(tx, identity)))
-        throw new ApiError('SESSION_REVOKED');
-      const previous = (
-        await tx.execute<{ device_id: string; revoked_at: Date | null }>(
-          sql`select device_id,revoked_at from justgo.managed_auth_sessions where id=${identity.sessionId}`,
-        )
-      ).rows[0];
-      if (previous?.revoked_at) throw new ApiError('SESSION_REVOKED');
-      if (previous && previous.device_id !== input.deviceId)
-        throw new ApiError('CONFLICT', 409);
-      await tx.execute(
-        sql`insert into justgo.managed_auth_sessions(id,auth_user_id,user_id,device_id,expires_at) values(${identity.sessionId},${identity.authUserId},${userId},${input.deviceId},${identity.expiresAt}::timestamptz) on conflict(id) do update set expires_at=excluded.expires_at`,
-      );
-      return {
-        ...identity,
-        userId,
-        deviceId: input.deviceId,
-        dataEpoch: owner.data_epoch,
-      };
-    });
+        const owner = await this.lockOwner(tx, userId);
+        if (!(await this.live(tx, identity)))
+          throw new ApiError('SESSION_REVOKED');
+        const previous = (
+          await tx.execute<{ device_id: string; revoked_at: Date | null }>(
+            sql`select device_id,revoked_at from justgo.managed_auth_sessions where id=${identity.sessionId}`,
+          )
+        ).rows[0];
+        if (previous?.revoked_at) throw new ApiError('SESSION_REVOKED');
+        if (previous && previous.device_id !== input.deviceId)
+          throw new ApiError('CONFLICT', 409);
+        await tx.execute(
+          sql`insert into justgo.managed_auth_sessions(id,auth_user_id,user_id,device_id,expires_at) values(${identity.sessionId},${identity.authUserId},${userId},${input.deviceId},${identity.expiresAt}::timestamptz) on conflict(id) do update set expires_at=excluded.expires_at`,
+        );
+        return {
+          ...identity,
+          userId,
+          deviceId: input.deviceId,
+          dataEpoch: owner.data_epoch,
+        };
+      });
+    };
+    try {
+      return await exchange();
+    } catch (error) {
+      // Only first-mapping contention can retry. The failed transaction has
+      // rolled back its candidate owner and any legacy revocations. An existing
+      // owner's row lock still serializes sessions, deletion and revocation.
+      const legacyMappingAppeared =
+        missingMapping &&
+        !!input.legacySessionToken &&
+        error instanceof ApiError &&
+        error.code === 'SESSION_REVOKED' &&
+        (await this.hasMapping(token));
+      if (
+        !(error instanceof MappingCreatedConcurrently) &&
+        !legacyMappingAppeared
+      )
+        throw error;
+      // One retry runs every normal proof/live-session/deleted-owner check again.
+      return exchange();
+    }
   }
   async withSession<T>(
     token: string,
@@ -125,11 +162,7 @@ export class ManagedIdentityService {
     const identity = await this.verified(token);
     return this.db.transaction(async (tx) => {
       await this.prepare(tx, identity);
-      const mapping = (
-        await tx.execute<{ user_id: string }>(
-          sql`select user_id from justgo.managed_auth_accounts where auth_user_id=${identity.authUserId}`,
-        )
-      ).rows[0];
+      const mapping = await this.mapping(tx, identity.authUserId);
       if (!mapping) throw new ApiError('UNAUTHORIZED');
       const owner = await this.lockOwner(tx, mapping.user_id);
       const session = (
