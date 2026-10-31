@@ -1038,6 +1038,36 @@ for (const failure of [
       !f.calls.some((c) => ['DELETE', 'PUT', 'PATCH'].includes(c.method)),
     );
   });
+test('summary failure after successful public probes does not blame those probes', async (t) => {
+  const f = fixture(t);
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      summary: () => {
+        throw new Error('PRIVATE_PROVIDER_CONTENT');
+      },
+    }),
+    (error) => {
+      assert.equal(
+        stagingRunnerFailureCode(error),
+        'STAGING_PROMOTION_UNCONFIRMED',
+      );
+      assert.equal(stagingRunnerPromotionDiagnostic(error), undefined);
+      assert.equal(error.message, 'STAGING_PROMOTION_UNCONFIRMED');
+      return true;
+    },
+  );
+  assert.equal(
+    f.calls.filter((call) => call.probe?.startsWith(`${target.origin}/`))
+      .length,
+    4,
+  );
+  assert.equal(f.calls.filter((call) => call.promotion).length, 1);
+  assert.ok(
+    !f.calls.some((call) => ['DELETE', 'PUT', 'PATCH'].includes(call.method)),
+  );
+  assert.deepEqual(readdirSync(f.root), []);
+});
 test('post-promotion provenance failure retains its safe classification', async (t) => {
   const f = fixture(t);
   await assert.rejects(

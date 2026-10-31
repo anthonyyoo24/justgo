@@ -258,6 +258,8 @@ export async function stagingApi(
       validateVersion(await api(`/versions/${candidate.id}`), target, context);
       promotionPhase = 'public-probes';
       await checkEndpoints(target.origin);
+      // Final summary/cleanup errors must not retain a completed probe phase.
+      promotionPhase = undefined;
       const receipt = {
         sourceSha: context.sha,
         deploymentId: deployed.id,
