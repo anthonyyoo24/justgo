@@ -11,9 +11,21 @@ import { createDatabase, poolOptions } from '../src/db/client.js';
 import { readConfig } from '../src/config.js';
 import { IdentityService } from '../src/identity/service.js';
 import {
+  captureWorkerCpuProfile,
+  workerCpuProfileFailureStage,
+} from './workers-cpu-profile.js';
+import {
   catalogSchema,
   completionAttemptResultSchema,
 } from '@justgo/contracts';
+
+/** Discard runtime/assertion details; only script-owned stages may leave this boundary. */
+function smokeFailure(stage: string, error: unknown) {
+  const profileStage = workerCpuProfileFailureStage(error);
+  return new Error(
+    `Workers smoke failed during ${stage}${profileStage ? ` (${profileStage})` : ''}`,
+  );
+}
 
 /** Actual workerd -> pg -> isolated Postgres smoke, without remote bindings. */
 async function run() {
@@ -28,6 +40,10 @@ async function run() {
       'Workers smoke requires isolated runtime/migrator roles with local SSL disabled',
     );
   runtimeUrl.hostname = '127.0.0.1';
+  const profileMode = process.env.JUSTGO_WORKERS_CPU_PROFILE ?? 'false';
+  if (!['true', 'false'].includes(profileMode))
+    throw new Error('Invalid Worker CPU profiling mode');
+  const profiling = profileMode === 'true';
   const port = Number(process.env.JUSTGO_WORKERS_TEST_PORT ?? '8791');
   if (!Number.isInteger(port) || port < 1024 || port > 65535)
     throw new Error('Invalid Worker smoke port');
@@ -40,6 +56,29 @@ async function run() {
       probe.close((error) => (error ? reject(error) : resolveProbe())),
     );
   });
+  const inspectorPort = profiling
+    ? Number(process.env.JUSTGO_WORKERS_INSPECTOR_PORT ?? '9230')
+    : 0;
+  if (profiling) {
+    if (
+      !Number.isInteger(inspectorPort) ||
+      inspectorPort < 1024 ||
+      inspectorPort > 65535 ||
+      inspectorPort === port
+    )
+      throw new Error('Invalid Worker CPU inspector port');
+    const inspectorProbe = createServer();
+    await new Promise<void>((resolveProbe, reject) => {
+      inspectorProbe.once('error', () =>
+        reject(new Error('Worker CPU inspector port is occupied')),
+      );
+      inspectorProbe.listen(inspectorPort, '127.0.0.1', () =>
+        inspectorProbe.close((error) =>
+          error ? reject(error) : resolveProbe(),
+        ),
+      );
+    });
+  }
   const root = resolve(import.meta.dirname, '../../..');
   await mkdir(resolve(root, '.local/workers'), {
     recursive: true,
@@ -130,7 +169,8 @@ async function run() {
         '--port',
         String(port),
         '--inspector-port',
-        '0',
+        String(inspectorPort),
+        ...(profiling ? ['--inspector-ip', '127.0.0.1'] : []),
         '--log-level',
         'none',
         '--show-interactive-dev-session',
@@ -158,7 +198,9 @@ async function run() {
       const response = await fetch(origin + path, {
         ...init,
         redirect: 'error',
-        signal: AbortSignal.timeout(12000),
+        signal: init?.signal
+          ? AbortSignal.any([init.signal, AbortSignal.timeout(12000)])
+          : AbortSignal.timeout(12000),
       });
       assert.equal(response.headers.get('cache-control'), 'no-store');
       assert.match(
@@ -189,6 +231,45 @@ async function run() {
       await delay(100);
     }
     assert.ok(ready, 'Worker startup');
+    if (profiling) {
+      stage = 'local CPU profiling';
+      const profile = await captureWorkerCpuProfile(
+        `http://127.0.0.1:${inspectorPort}`,
+        async (signal) => {
+          for (let index = 0; index < 200; index++) {
+            signal.throwIfAborted();
+            const response = await request('/health', {
+              headers: { 'x-justgo-smoke-mode': 'managed-wrapped' },
+              signal,
+            });
+            assert.equal(response.status, 200);
+            assert.deepEqual(await response.json(), {
+              status: 'ok',
+              service: 'justgo-api',
+            });
+            assert.equal(
+              response.headers.get('x-justgo-source-sha'),
+              'b'.repeat(40),
+            );
+            assert.equal(
+              response.headers.get('x-justgo-environment'),
+              'staging',
+            );
+            assert.equal(response.headers.get('x-justgo-startup-stage'), null);
+            assert.equal(response.headers.get('x-justgo-smoke-outbound'), '0');
+          }
+        },
+      );
+      const profiles = resolve(root, '.local/workers/profiles');
+      await mkdir(profiles, { recursive: true, mode: 0o700 });
+      const output = resolve(profiles, `health-${randomUUID()}.cpuprofile`);
+      await writeFile(output, JSON.stringify(profile), {
+        mode: 0o600,
+        flag: 'wx',
+      });
+      console.info(`Local workerd CPU profile saved: ${output}`);
+      return;
+    }
     for (const mode of ['managed', 'managed-wrapped', 'managed-virtual']) {
       stage = `${mode} startup with Sentry and beta configuration`;
       const response = await request('/health', {
@@ -287,8 +368,8 @@ async function run() {
     console.info(
       'Workers smoke passed: managed Auth/Sentry/beta composition, wrapped and opaque virtual transport health, startup redaction, readiness, authenticated read/write, idempotency and error envelope. Hosted Hyperdrive/CPU acceptance remains separate.',
     );
-  } catch {
-    throw new Error(`Workers smoke failed during ${stage}`);
+  } catch (error) {
+    throw smokeFailure(stage, error);
   } finally {
     if (child && child.exitCode === null) {
       child.kill('SIGTERM');
