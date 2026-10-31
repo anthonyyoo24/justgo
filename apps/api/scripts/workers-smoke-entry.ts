@@ -20,7 +20,10 @@ export default {
     )
       throw new Error('Worker smoke entrypoint requires the loopback fixture');
     const mode = request.headers.get('x-justgo-smoke-mode');
-    const managed = mode === 'managed' || mode === 'managed-wrapped';
+    const managed =
+      mode === 'managed' ||
+      mode === 'managed-wrapped' ||
+      mode === 'managed-virtual';
     const now = Date.now();
     const fixture = managed
       ? {
@@ -38,10 +41,10 @@ export default {
             startsAt: new Date(now - 60000).toISOString(),
             expiresAt: new Date(now + 3600000).toISOString(),
           }),
-          ...(mode === 'managed-wrapped'
+          ...(mode === 'managed-wrapped' || mode === 'managed-virtual'
             ? {
                 HYPERDRIVE: {
-                  connectionString: `postgresql://${'b'.repeat(32)}:${'c'.repeat(32)}@${'d'.repeat(32)}.workers.alt:5432/${'e'.repeat(32)}?sslmode=disable`,
+                  connectionString: `postgresql://${'b'.repeat(32)}:${'c'.repeat(32)}@${mode === 'managed-wrapped' ? `${'d'.repeat(32)}.workers.alt` : 'fixture.hyperdrive.local'}:5432/${'e'.repeat(32)}?sslmode=disable`,
                 },
               }
             : {}),

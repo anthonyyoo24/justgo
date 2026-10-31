@@ -189,7 +189,7 @@ async function run() {
       await delay(100);
     }
     assert.ok(ready, 'Worker startup');
-    for (const mode of ['managed', 'managed-wrapped']) {
+    for (const mode of ['managed', 'managed-wrapped', 'managed-virtual']) {
       stage = `${mode} startup with Sentry and beta configuration`;
       const response = await request('/health', {
         headers: { 'x-justgo-smoke-mode': mode },
@@ -285,7 +285,7 @@ async function run() {
     );
     assert.equal(stored.rowCount, 1);
     console.info(
-      'Workers smoke passed: managed Auth/Sentry/beta composition, wrapped transport health, startup redaction, readiness, authenticated read/write, idempotency and error envelope. Hosted Hyperdrive/CPU acceptance remains separate.',
+      'Workers smoke passed: managed Auth/Sentry/beta composition, wrapped and opaque virtual transport health, startup redaction, readiness, authenticated read/write, idempotency and error envelope. Hosted Hyperdrive/CPU acceptance remains separate.',
     );
   } catch {
     throw new Error(`Workers smoke failed during ${stage}`);

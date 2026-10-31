@@ -17,6 +17,10 @@ const bindings = {
   IDENTITY_RATE_LIMIT_KEY: 'synthetic-test-only-key-with-32-characters',
 };
 const wrapped = `postgresql://${'b'.repeat(32)}:${'c'.repeat(32)}@${'d'.repeat(32)}.workers.alt:5432/${'e'.repeat(32)}?sslmode=disable`;
+const virtual = wrapped.replace(
+  `${'d'.repeat(32)}.workers.alt`,
+  'fixture.hyperdrive.local',
+);
 const hostedBindings = {
   ...bindings,
   HYPERDRIVE: { connectionString: wrapped },
@@ -92,6 +96,51 @@ describe('Worker database boundary', () => {
     );
     expect(settings.databaseName).toBe('postgres');
   });
+  it('accepts observed opaque virtual credentials and derives origin identity from the direct connection', () => {
+    const settings = readWorkerConfig({
+      ...hostedBindings,
+      HYPERDRIVE: { connectionString: virtual },
+    });
+    expect(settings.connectionString).toBe(virtual);
+    expect(settings.config.DATABASE_URL).toBe(virtual);
+    expect(settings.lockConfig.DATABASE_URL).toBe(
+      hostedBindings.LOCK_DATABASE_URL,
+    );
+    expect(settings.databaseName).toBe('postgres');
+    expect(new URL(virtual).username).not.toBe('justgo_runtime');
+    expect(new URL(virtual).pathname).not.toBe('/postgres');
+  });
+  it('rejects malformed virtual options before allowing opaque origin identity', () => {
+    for (const connectionString of [
+      virtual.replace('sslmode=disable', 'sslmode=require'),
+      virtual + '&sslmode=disable',
+      virtual + '&host=attacker.invalid',
+      virtual + '#ignored',
+      virtual.replace(
+        '.hyperdrive.local',
+        '.hyperdrive.local.attacker.invalid',
+      ),
+      virtual.replace('postgresql:', 'https:'),
+    ])
+      expect(() =>
+        readWorkerConfig({
+          ...hostedBindings,
+          HYPERDRIVE: { connectionString },
+        }),
+      ).toThrow('Invalid Hyperdrive binding');
+    for (const connectionString of [
+      virtual.replace('?sslmode=disable', ''),
+      virtual
+        .replace('fixture.hyperdrive.local', 'remote.invalid')
+        .replace('?sslmode=disable', ''),
+    ])
+      expect(() =>
+        readWorkerConfig({
+          ...hostedBindings,
+          HYPERDRIVE: { connectionString },
+        }),
+      ).toThrow('same role and database');
+  });
   it('rejects malformed wrapped transports and connection option overrides', () => {
     for (const invalid of [
       wrapped.replace('postgresql:', 'postgres:'),
@@ -114,47 +163,57 @@ describe('Worker database boundary', () => {
         'Invalid Hyperdrive binding',
       );
   });
-  it('preserves hosted direct role, database, project, TLS and managed Auth requirements', () => {
-    for (const override of [
-      {
-        LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL.replace(
-          'justgo_runtime',
-          'postgres',
-        ),
-      },
-      {
-        LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL.replace(
-          '/postgres',
-          '/other',
-        ),
-      },
-      {
-        LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL.replace(
-          'db.fixture.supabase.co',
-          'db.foreign.supabase.co',
-        ),
-      },
-      {
-        LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL.replace(
-          ':5432/',
-          ':6543/',
-        ),
-      },
-      { LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL + '?host=other' },
-      { DATABASE_SSL: 'disable' },
-      { MANAGED_AUTH_ENABLED: 'false' },
-    ])
-      expect(() =>
-        readWorkerConfig({ ...hostedBindings, ...override }),
-      ).toThrow();
-    for (const connectionString of [
-      local.replace('justgo_runtime', 'postgres'),
-      local.replace('justgo_test', 'other'),
-    ])
-      expect(() =>
-        readWorkerConfig({ ...bindings, HYPERDRIVE: { connectionString } }),
-      ).toThrow('same role and database');
-  });
+  it.each([
+    ['wrapped', wrapped],
+    ['virtual', virtual],
+  ])(
+    'preserves hosted direct role, database, project, TLS and managed Auth requirements for %s transport',
+    (_name, connectionString) => {
+      for (const override of [
+        {
+          LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL.replace(
+            'justgo_runtime',
+            'postgres',
+          ),
+        },
+        {
+          LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL.replace(
+            '/postgres',
+            '/other',
+          ),
+        },
+        {
+          LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL.replace(
+            'db.fixture.supabase.co',
+            'db.foreign.supabase.co',
+          ),
+        },
+        {
+          LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL.replace(
+            ':5432/',
+            ':6543/',
+          ),
+        },
+        { LOCK_DATABASE_URL: hostedBindings.LOCK_DATABASE_URL + '?host=other' },
+        { DATABASE_SSL: 'disable' },
+        { MANAGED_AUTH_ENABLED: 'false' },
+      ])
+        expect(() =>
+          readWorkerConfig({
+            ...hostedBindings,
+            HYPERDRIVE: { connectionString },
+            ...override,
+          }),
+        ).toThrow();
+      for (const connectionString of [
+        local.replace('justgo_runtime', 'postgres'),
+        local.replace('justgo_test', 'other'),
+      ])
+        expect(() =>
+          readWorkerConfig({ ...bindings, HYPERDRIVE: { connectionString } }),
+        ).toThrow('same role and database');
+    },
+  );
   it('rejects incomplete bindings, privileged direct credentials and hosted legacy auth', () => {
     for (const override of [
       { HYPERDRIVE: undefined },

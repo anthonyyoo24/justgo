@@ -33,13 +33,19 @@ const otherId = 'eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee';
 const context = { sha, runId: '123', attempt: '1' };
 const incident = {
   accountId: '52662d8ba7ae983237860a1719c66a1e',
-  abandonedId: '2d6ea61b-2714-4cd9-9437-2a73f9476dd6',
+  abandonedId: 'c0fefad7-9a31-4db7-976a-bfc8fbb0366b',
   baselineId: 'd15d9fbd-1d99-4106-abc4-43b907ba7a2c',
   deploymentId: 'caaa7a54-d4a3-4eec-bdc2-9d5f927142e5',
   baselineSha: '7d8a5624bf7224bc243a342dab22a9d0b82f7f04',
-  sha: '8b1e7d5838fa0d3d8d828aedbf15a3ecfbc85ba4',
-  runId: '41075504576',
+  sha: '39f11c3b6475e4f9666ebf8b2698daf05740920d',
+  runId: '41095205288',
   attempt: '1',
+  predecessor: {
+    abandonedId: '2d6ea61b-2714-4cd9-9437-2a73f9476dd6',
+    sha: '8b1e7d5838fa0d3d8d828aedbf15a3ecfbc85ba4',
+    runId: '41075504576',
+    attempt: '1',
+  },
 };
 const env = {
   GITHUB_ACTIONS: 'true',
@@ -86,19 +92,21 @@ function metadata(id = candidateId) {
 /** Model the recorded incident's public provenance while retaining fixture secrets. */
 function incidentMetadata(id) {
   const value = metadata(id);
+  const provenance =
+    id === incident.predecessor.abandonedId ? incident.predecessor : incident;
   const source =
-    id === incident.baselineId ? incident.baselineSha : incident.sha;
+    id === incident.baselineId ? incident.baselineSha : provenance.sha;
   const texts = {
     JUSTGO_SOURCE_SHA: source,
     API_SENTRY_RELEASE: source,
-    JUSTGO_RELEASE_RUN_ID: incident.runId,
-    JUSTGO_RELEASE_RUN_ATTEMPT: incident.attempt,
+    JUSTGO_RELEASE_RUN_ID: provenance.runId,
+    JUSTGO_RELEASE_RUN_ATTEMPT: provenance.attempt,
   };
   for (const binding of value.resources.bindings)
     if (Object.hasOwn(texts, binding.name)) binding.text = texts[binding.name];
   value.annotations = {
     'workers/tag': source,
-    'workers/message': `JustGO ${source} GitHub ${incident.runId}/${incident.attempt}`,
+    'workers/message': `JustGO ${source} GitHub ${provenance.runId}/${provenance.attempt}`,
   };
   return value;
 }
@@ -240,7 +248,11 @@ function fixture(t, failure, continuation = false) {
         return {
           items:
             continuation && !uploaded
-              ? [{ id: incident.abandonedId }, { id: incident.baselineId }]
+              ? [
+                  { id: incident.abandonedId },
+                  { id: incident.predecessor.abandonedId },
+                  { id: incident.baselineId },
+                ]
               : [
                   {
                     id: uploaded
@@ -657,6 +669,7 @@ test('abandoned continuation requires an exact code-only, account-bound opt-in',
     );
   for (const change of [
     { STAGING_ABANDONED_VERSION_ID: otherId },
+    { STAGING_ABANDONED_VERSION_ID: incident.predecessor.abandonedId },
     { STAGING_ABANDONED_VERSION_ID: `${incident.abandonedId}\n` },
     { STAGING_ABANDONED_VERSION_ID: null },
     { RELEASE_OPERATION: 'migrate-deploy' },
@@ -697,12 +710,14 @@ test('exact incident preflight and replacement recheck provenance before upload'
   f.calls.length = 0;
   const result = await stagingApi('deploy', f);
   assert.equal(result.versionId, candidateId);
-  const abandonedReads = f.calls.flatMap((c, index) =>
-    c.path === `/versions/${incident.abandonedId}` ? [index] : [],
-  );
   const upload = f.calls.findIndex((c) => c.method === 'POST');
-  assert.equal(abandonedReads.length, 2);
-  assert.ok(abandonedReads.every((index) => index < upload));
+  for (const id of [incident.abandonedId, incident.predecessor.abandonedId]) {
+    const abandonedReads = f.calls.flatMap((c, index) =>
+      c.path === `/versions/${id}` ? [index] : [],
+    );
+    assert.equal(abandonedReads.length, 2);
+    assert.ok(abandonedReads.every((index) => index < upload));
+  }
   assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
   assert.equal(f.calls.filter((c) => c.promotion).length, 1);
   assert.equal(f.calls.filter((c) => c.probe).length, 8);
@@ -718,6 +733,14 @@ const incidentDrifts = [
   ['reordered versions', '/versions', (v) => v.items.reverse()],
   ['newer version', '/versions', (v) => v.items.unshift({ id: otherId })],
   ['missing baseline version', '/versions', (v) => v.items.pop()],
+  ['missing predecessor version', '/versions', (v) => v.items.splice(1, 1)],
+  [
+    'swapped abandoned versions',
+    '/versions',
+    (v) => {
+      [v.items[0], v.items[1]] = [v.items[1], v.items[0]];
+    },
+  ],
   [
     'different abandoned version',
     '/versions',
@@ -726,10 +749,25 @@ const incidentDrifts = [
     },
   ],
   [
-    'different baseline version',
+    'different predecessor version',
     '/versions',
     (v) => {
       v.items[1].id = otherId;
+    },
+  ],
+  [
+    'different baseline version',
+    '/versions',
+    (v) => {
+      v.items[2].id = otherId;
+    },
+  ],
+  [
+    'predecessor version deployed',
+    '/deployments',
+    (v) => {
+      v.deployments[0].versions[0].version_id =
+        incident.predecessor.abandonedId;
     },
   ],
   [
@@ -816,6 +854,16 @@ const incidentDrifts = [
     },
   ],
 ];
+// The known predecessor must satisfy the same complete provenance/binding checks.
+incidentDrifts.push(
+  ...incidentDrifts
+    .filter(([, path]) => path === `/versions/${incident.abandonedId}`)
+    .map(([name, , mutate]) => [
+      `predecessor ${name}`,
+      `/versions/${incident.predecessor.abandonedId}`,
+      mutate,
+    ]),
+);
 for (const [name, path, mutate] of incidentDrifts)
   test(`abandoned continuation rejects ${name} without upload or promotion`, async (t) => {
     const f = fixture(t, undefined, true);
@@ -837,6 +885,8 @@ for (const name of [
   'extra deployment history',
   'workers/message drift',
   'stable binding drift',
+  'predecessor workers/message drift',
+  'predecessor stable binding drift',
 ])
   test(`abandoned continuation catches ${name} appearing during build`, async (t) => {
     const f = fixture(t, undefined, true);

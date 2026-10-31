@@ -129,8 +129,13 @@ test('actual tag shell rejects missing/unreviewed refs and shell syntax without 
   assert.notEqual(run('reviewed', 'migrate-deploy', 'invalid').status, 0);
   assert.notEqual(run('reviewed', 'deploy', 'a'.repeat(64)).status, 0);
   assert.notEqual(run('reviewed', 'bootstrap', 'a'.repeat(64)).status, 0);
-  const abandoned = '2d6ea61b-2714-4cd9-9437-2a73f9476dd6';
+  const abandoned = 'c0fefad7-9a31-4db7-976a-bfc8fbb0366b';
   assert.equal(run('reviewed', 'deploy', '', abandoned).status, 0);
+  assert.notEqual(
+    run('reviewed', 'deploy', '', '2d6ea61b-2714-4cd9-9437-2a73f9476dd6')
+      .status,
+    0,
+  );
   assert.notEqual(run('reviewed', 'deploy', '', 'arbitrary-version').status, 0);
   assert.notEqual(run('reviewed', 'deploy', '', `${abandoned}\n`).status, 0);
   assert.notEqual(run('reviewed', 'bootstrap', '', abandoned).status, 0);
