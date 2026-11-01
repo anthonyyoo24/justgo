@@ -4,7 +4,7 @@ Anthony approved the complete simplified public Privacy wording and remaining
 recovery wording on October 30, 2026 (America/Toronto), including signing in again
 after a restore. This Phase 15 cutover candidate is not published, does not change
 the approved October 27 Privacy Policy, and has no effective date yet. Apply it
-only after the remaining account, services, retention and cutover evidence is
+only after the remaining services, retention and cutover evidence is
 verified and its date/version and publication are approved. Terms need no
 hosting-related change. A complete Cloudflare-only Privacy candidate, unchanged
 Terms copy, rendered review and conditional publication/EAS inputs are prepared in ignored
@@ -12,7 +12,9 @@ Terms copy, rendered review and conditional publication/EAS inputs are prepared 
 `2026-10-30-cloudflare` now has `owner-approved` wording status, with a pending
 date and no Cloudflare deployment approval marker; publication remains blocked.
 The version is date-dependent: approve the actual publication date and matching
-version before publication rather than backdating it.
+version before publication rather than backdating it. Anthony accepted the
+current-account/DPA/private-journal assessment on November 1; that disposition
+does not establish the remaining operating or publication facts.
 
 Keep connection-product names, copy schedules and restore steps in the
 [cutover guide](../operations/CLOUDFLARE_CUTOVER.md) and
@@ -86,7 +88,7 @@ Existing owner-only binaries retain their embedded old addresses. Replace or
 retire them; a source/configuration edit cannot change an installed binary.
 There is no external cohort requiring a grace period. The full cutover ends
 both Vercel API processing and legal-page hosting, with no legacy redirect role.
-Complete all required operational/account approvals, the final publication
+Complete all remaining operational approvals, the final publication
 date/version and authorization, and legal-artifact preflight before retirement.
 In the prepared coordinated cutover, retire old builds and Vercel API/legal
 roles, immediately publish and verify the Cloudflare-only notice and unchanged
@@ -107,35 +109,62 @@ Cloudflare network/security use and retention before publishing Apple answers.
 The two unfinished Sentry diagnostic categories, Supabase consent/provider-copy
 questions and native evidence remain Phase 14 work.
 
-## Approval evidence required
+## Accepted account and service assessment
 
-- The [Self-Serve Subscription Agreement](https://www.cloudflare.com/terms/)
-  §6.1 expressly incorporates the DPA for its EU/UK and CCPA personal-data
-  categories. The [DPA v6.4](https://www.cloudflare.com/cloudflare-customer-dpa/),
-  effective April 3, 2026, defines applicable data-protection laws broadly in
-  §1.1(c), and §9.1 gives its processing terms precedence over conflicting main
-  terms. Their interaction for Canadian/PIPEDA data remains a scope question;
-  do not describe the DPA as conclusively limited to EU/UK/California data.
-- Account evidence reviewed October 30, 2026: the signed-in account's
+Anthony accepted proceeding on this reviewed assessment on November 1, 2026
+(America/Toronto), including the residual contractual interpretation. The
+[decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
+settles this account/DPA/sensitive-content gate for the current consumer service;
+it does not establish worldwide compliance or close the operating, publication
+or independent Phase 14 gates.
+
+- Personal customer Youngshin Yoo is confirmed. The
+  [Self-Serve Subscription Agreement](https://www.cloudflare.com/terms/)
+  preamble permits a personal counterparty. Its §6.1 supplies an express
+  conditional incorporation trigger for EU/UK and CCPA data, without saying
+  that these are the only covered jurisdictions. Account evidence reviewed
+  October 30, 2026: the signed-in account's
   **Manage account → Configurations → Preferences → Data processing addendum**
   section states that the DPA is incorporated into the Self-Serve Subscription
-  Agreement. Its Review link points to the current DPA above. No separate
+  Agreement. Its Review link points to DPA v6.4. No separate
   acceptance control or outstanding DPA action was displayed. The readback is
   retained in ignored `.local/phase15-cloudflare/rollout/notice-review/cloudflare-dpa-account-evidence.json`.
-  This records Cloudflare's account-context incorporation notice, not a separate
-  signature or acceptance receipt. Do not assign Anthony a nonexistent
-  dashboard acceptance step.
-- Cloudflare's [Singapore PDPA FAQ](https://www.cloudflare.com/trust-hub/singapore-pdpa/)
-  also describes DPA incorporation for all customers. These statements support
-  broad coverage; separate written confirmation of PIPEDA applicability to this
-  account is not recorded. Resolve and document the contractual scope before
-  hosted private-journal processing through Workers, Hyperdrive or R2; the
-  account notice does not by itself mark the earlier coverage gate passed.
-- Anthony requested further work on this account item October 30. His earlier
-  instruction not to contact Cloudflare remains in force; he explicitly declined
-  sending Cloudflare emails. A private clarification is retained unsent in the local
-  review package. No agreement was accepted, support request submitted or
-  approved launch region changed.
+  This is an incorporation notice, not a separate signature. Cloudflare's
+  [Singapore PDPA FAQ](https://www.cloudflare.com/trust-hub/singapore-pdpa/)
+  also describes incorporation for all customers; no additional dashboard
+  acceptance step is shown.
+- The [DPA v6.4](https://www.cloudflare.com/cloudflare-customer-dpa/), effective
+  April 3, 2026, has broad applicability and law/data/service definitions in its
+  opening terms and §§1.1(c), (l), (o). Section 9.1 gives its processing terms
+  priority over conflicting main terms. Together with actual incorporation,
+  these support the accepted Canadian/PIPEDA reading. Precedence alone would
+  not establish incorporation. Annex 1 contemplates sensitive content and
+  safeguards; it is not permission to disregard service-use restrictions.
+- The [Developer Platform terms](https://www.cloudflare.com/service-specific-terms-developer-platform/)
+  cover Workers, Hyperdrive and R2. Section 8(c)'s sensitive-disclosure wording
+  is read with Cloudflare's current [abuse approach](https://www.cloudflare.com/trust-hub/abuse-approach/),
+  which places that wording within harmful, illegal or rights-violating content.
+  The accepted assessment supports lawful, authorized private journal sync and
+  encrypted recovery storage; it finds no blanket prohibition on that flow.
+  This is an interpretation, not an express private-journal safe harbor.
+- No non-commercial-only or ordinary consumer-journal enterprise requirement was
+  found in the applicable Free/service terms. SSA §2.2.1(i)'s HIPAA-PHI restriction
+  is distinct; Cloudflare's [US privacy FAQ](https://www.cloudflare.com/trust-hub/us-privacy-compliance/)
+  limits BAAs to enterprise customers. [HHS guidance](https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/cell-phone-hipaa/index.html)
+  distinguishes independent personal-use apps from covered-entity/business-associate
+  services. The present consumer app is assessed on that basis, not as a regulated
+  healthcare service. PlanetScale's separate sensitive-data restriction does not
+  apply to the external Supabase database merely because Hyperdrive connects it.
+
+There is no separate provider confirmation of Canadian applicability, negotiated
+exception or new agreement. Anthony accepts the residual interpretation; external
+counsel or Cloudflare correspondence is not an added prerequisite. The no-contact
+instruction remains in force. Reassess if terms or the actual service materially
+change. Workers Free remains selected; this assessment makes no purchase or
+technical-capacity claim.
+
+## Remaining publication evidence
+
 - Verify region/access configuration and the remaining operational recovery
   requirements in the backup guide.
   Seven-day staging retention/locks/expiry and the small-beta fail-closed limit

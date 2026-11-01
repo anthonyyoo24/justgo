@@ -1,6 +1,6 @@
 # Encrypted Cloudflare recovery copies
 
-Phase 15 supplies local backup, upload, ledger and restore tooling. Anthony approved
+Phase 15 supplies merged backup, upload, ledger and restore tooling. Anthony approved
 creation of the empty private `justgo-staging-backups` bucket; its creation and
 disabled public access are verified. The dedicated reader is now LOGIN-enabled
 under Anthony's accepted narrow staging exception. Actual verified-TLS metadata
@@ -16,8 +16,15 @@ staging prefixes, with API readback and actual lock enforcement verified. The tw
 October 30 encrypted lock-test canaries contain no user data and remain until
 expiry. The replacement uploader also passed October 31 synthetic-only permission
 checks; its two additional canaries become eligible for expiry November 7. Actual
-asynchronous deletion has not yet been observed. Hosted database/ledger
-copies, the remaining policy approvals and monitor delivery verification remain open.
+asynchronous deletion has not yet been observed. The first supervised manual
+encrypted database and ledger copies succeeded through the checked exporters and
+R2 uploader. The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status)
+owns their source/object receipts. They used no private decryption identity,
+established no writer fence and sent no Sentry Cron check-ins. Schedules remain
+off; scheduled-copy, complete recovery and monitor delivery evidence remain open.
+The [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
+accepts the current-account/DPA/private-consumer-journal assessment with its residual
+interpretation. It adds no provider-confirmation or external-counsel prerequisite.
 The [Phase 15 plan](../implementation-plan/phase-15-cloudflare-api.md) owns these
 approvals; the [Phase 14 handoff](../handoffs/phase-14-release.md) preserves the
 independent privacy and device gates. This guide does not authorize those actions.
@@ -27,8 +34,7 @@ The owner's standalone protected local key file also has mode `0600`. Anthony co
 a key copy on an encrypted USB drive; the copy was not mounted or tested. Under
 the [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover),
 the protected Mac copies remain locally outside CI, without a USB-retrieval
-prerequisite. Decryption of an actual hosted database recovery copy and complete
-operational recovery remain unverified.
+prerequisite. Owner-authorized authenticated decryption of both initial R2-downloaded copies passed November 1 with plaintext discarded; complete operational recovery remains unverified. The handoff owns that receipt.
 
 ## Implemented boundary
 
@@ -103,7 +109,7 @@ evidence; remaining proposals below are not approvals or published promises:
 | Recovery time                 | Approved October 31: operator target of four hours when safe recovery is possible                                                                       | Not measured for the actual hosted Auth schema or a provider incident; the synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                                  |
 | Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance and Auth/provider mutations; accepted beta fallback keeps unverified old restored state closed | Independent deletion/revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. Clean restart needs a separate procedure; automatic old-phone recovery is unsupported.                                                       |
 | Restored sessions             | Invalidate every restored legacy/app/Auth session and Auth refresh token; cancel pending transfers                                                      | Reauthentication approved October 30 with the complete Privacy wording. Retain recovery digests and their revocations; do not recreate deleted owners or use an old transfer to recover access. Actual app/Auth recovery still requires evidence.                                            |
-| Key custody                   | Approved October 31: owner-held `age` identity in protected Mac copies locally outside CI                                                               | USB retrieval is not a prerequisite. The owner-confirmed USB copy was not tested. Loss of every copy makes backups unusable; actual hosted recovery-copy decryption and complete app/Auth recovery remain unverified.                                                                        |
+| Key custody                   | Approved October 31: owner-held `age` identity in protected Mac copies locally outside CI                                                               | USB retrieval is not a prerequisite. The owner-confirmed USB copy was not tested. Loss of every copy makes backups unusable; actual hosted-copy decryption passed November 1; complete app/Auth recovery remains unverified.                                                                 |
 | Upload-token renewal          | Maximum seven-day derived credential; Anthony owns manual renewal by day five                                                                           | Parent key remains locally outside CI. The runner rejects tokens with less than 20 minutes remaining, and failed/missed jobs alert through the configured monitor. Day-five renewal is a required operator responsibility; no external reminder or automatic issuer is created by this code. |
 | Alert ownership               | Owner email for one hourly `justgo-staging-backup-health` Sentry Cron monitor                                                                           | The engineering design uses one free Cron with 20-minute grace/runtime settings and checks both backup kinds. Owner notification delivery and failure/missed-run evidence remain unverified.                                                                                                 |
 
@@ -148,8 +154,10 @@ exceeds the approved wording.
 
 ## Preparing the protected environment
 
-Do not enable the workflow before the Phase 15 account,
-DPA, payment-method, retention, key and recovery decisions are approved. Configure
+The November 1 decision settles the current staging Cloudflare account/DPA
+assessment; existing staging setup, retention, key-custody and recovery-target
+decisions retain their approvals. Complete the remaining operational acceptance
+and protected configuration before enabling schedules. Configure
 one actual source environment per protected backup lane; production must receive
 its own credentials, approved policy and lane when it is introduced.
 
@@ -269,9 +277,10 @@ its own credentials, approved policy and lane when it is introduced.
    the [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#approval-and-acceptance-register)
    owns the final rotation/scope receipts. Its two replacement canaries become
    eligible for expiry November 7; asynchronous deletion remains unobserved.
-   These checks do not establish operational database/ledger copies. Schedules
-   remain off; actual hosted recovery-copy decryption, complete writer-fenced
-   hosted recovery, alert delivery and contractual coverage remain open. Anthony
+   These synthetic scope checks do not establish operational database/ledger
+   copies; the handoff separately records the first supervised manual copies. Schedules
+   remain off; actual hosted-copy decryption passed November 1, while complete writer-fenced hosted recovery and alert delivery remain open. The November 1 accepted
+   provider assessment settles the earlier contractual-coverage gate. Anthony
    owns manual renewal. Parent revocation invalidates its derived uploader;
    renewing the uploader alone is insufficient when its parent expires. Renew
    the inspector before its expiry to observe the November 6 retention canaries.
@@ -303,9 +312,11 @@ its own credentials, approved policy and lane when it is introduced.
    exception text, SQL, subjects or database URLs. Verify hosted check-ins and
    actual notification delivery; configuration alone does not prove either.
 
-7. Anthony has requested activation; once the remaining policy/configuration
+7. Anthony has requested activation; once the remaining operational/configuration
    requirements are satisfied, set `JUSTGO_BACKUPS_ENABLED=approved`.
-   Run a manual database copy first, then a manual ledger copy so the combined
+   The supervised local database/ledger copies are initial upload evidence,
+   not trusted GitHub main-workflow database-freshness evidence or Cron health.
+   Run the protected workflow's manual database copy first, then its ledger copy so the combined
    health check has database success evidence. Inspect the approved source SHA, verified R2
    object, denied overwrite/delete, retention state, check-ins and received email.
    Then observe both scheduled copies and a missed-run/failure drill. No hosted
