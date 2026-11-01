@@ -124,9 +124,11 @@ recovery from old phones is unsupported.
    steps and ASC/EAS URL updates using the complete rendered package in ignored
    `.local/phase15-cloudflare/rollout/notice-review/`.
    Prepare the replacement-build path before entering the retirement window:
-   review the exact candidate and its main-CI/tag requirements, validate the
-   `beta-diagnostics` profile and resolved public inputs for the Cloudflare
-   destinations and existing app identity, and verify approved Expo/Apple access,
+   review the exact candidate and its main-CI/tag requirements, and validate the
+   `beta-diagnostics` profile and actual resolved API/app-identity inputs.
+   Separately prepare and review the candidate Cloudflare Privacy/Terms URLs
+   with the legal package; live EAS legal variables remain unchanged until the
+   URLs are verified after publication in step 3. Verify approved Expo/Apple access,
    frozen managed signing and pinned toolchain readiness. Prepare the protected
    workflow's exact build/submit inputs and artifact-provenance checks. Record
    evidence for these publication-independent checks; do not retire Vercel while
@@ -138,7 +140,7 @@ recovery from old phones is unsupported.
    owner device-local writing before build removal; no accounts or journals may
    be deleted merely because there are no external users. Keep Vercel serving
    until these prerequisites are ready.
-2. In the prepared coordinated cutover, stop and retire/replace the old
+2. In the prepared coordinated cutover, stop and retire the old
    owner-only builds, end Vercel API and legal hosting/addresses, and verify that
    no app payloads reach Vercel. An installed binary retains its embedded URLs;
    running two APIs, responding with errors or redirecting requests does not

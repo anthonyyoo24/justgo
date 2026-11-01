@@ -165,8 +165,10 @@ It does not accept another abandoned version or change the default guard. After
 one replacement upload, ordinary candidate/probe/promotion checks apply again;
 another failed candidate requires fresh inspection and review. That incident
 continuation was consumed when latest and serving both became `830444c8…` from
-`08aa805`. The current release above also has latest equal to serving. Do not
-reuse the old four-version opt-in; ordinary release guards apply.
+`08aa805`. Consult the
+[handoff](../handoffs/phase-15-cloudflare-api.md#current-status) for current release
+evidence and freshly verify the serving/latest baseline before an ordinary
+release. Do not reuse the old four-version opt-in.
 
 Automatic invocation logs, Logpush and tail consumers must be disabled on this
 Worker. The version lane reads `/script-settings` for these non-versioned
@@ -319,8 +321,9 @@ read-only proof verified deployment `388bd042-ae25-4fc6-95dc-6c32f62461a0`, serv
 version `830444c8-6e59-42c6-bfa9-97bfae1c6309` at 100%, exact source/run bindings,
 health/readiness 200 and unauthenticated private guards 401. That run remains failed;
 its exact inner cause is not established. No retry, rollback or second promotion
-was performed for that incident. The later successful release above is a separate
-ordinary release.
+was performed for that incident. The
+[handoff](../handoffs/phase-15-cloudflare-api.md#current-status) records subsequent
+ordinary releases separately from this historical incident.
 
 Failures preserve the database guard's existing reason and validated SQLSTATE,
 plus a code only for branded runner failures. Provider text cannot supply a

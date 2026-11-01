@@ -159,12 +159,18 @@ Deferred beta recovery work:
   [October 30 owner-only cutover decision](../DECISIONS.md#october-30-owner-only-full-cloudflare-cutover)
   selects no external-user grace period or retained legacy redirects.
 - Accept the healthy Worker and recovery operation. Prepare the replacement
-  TestFlight build with only verified Cloudflare API and legal URLs, complete the
-  legal package and date/version/publication approvals, and pass publication
-  preflight before ending Vercel hosting. In the coordinated cutover, replace/retire
-  owner-only TestFlight and Dev builds, end Vercel API/legal hosting and verify
+  TestFlight build path: verify actual resolved API/app-identity inputs and review
+  candidate Cloudflare legal URLs under the
+  [cutover procedure](../operations/CLOUDFLARE_CUTOVER.md#mobile-notices-and-old-build-retirement).
+  Complete the legal package and date/version/publication approvals, and pass
+  legal-artifact publication preflight before ending Vercel hosting. In the
+  coordinated cutover, retire owner-only TestFlight and Dev builds,
+  end Vercel API/legal hosting and verify
   private-traffic cutoff, then immediately publish/verify Cloudflare legal pages
-  and update App Store Connect/EAS URLs. Anthony accepts the brief legal-URL gap
+  and update App Store Connect/EAS URLs. Only after verified publication, pass the
+  full diagnostics beta preflight and build/upload the replacement using the
+  accepted Cloudflare API and verified legal URLs. Anthony accepts the brief
+  legal-URL gap
   under the [October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover).
   An old binary is not updated by changing configuration. Preserve Supabase
   accounts and journal data. Remove Vercel credentials and configuration at retirement.
