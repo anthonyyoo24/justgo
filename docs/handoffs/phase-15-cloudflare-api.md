@@ -2,10 +2,12 @@
 
 ## Current status
 
-**Phase 15 remains in progress. Reviewed source `0753986` is active on staging,
-with confirmed CPU-limit failures. Successful public probes do not establish
-stability. Real account, complete recovery, Free-plan performance and native
-acceptance remain open; reviewed routing fix `d66c42d` is not yet deployed.**
+**Phase 15 remains in progress. Reviewed routing fix `d66c42d` is active on
+staging at 100%, verified by stable provider readback and eight strict probes.
+Its release workflow remains failed after an immediate public identity mismatch;
+manual verification does not change that conclusion. Public samples pass, but
+real-account, complete recovery, Free-plan performance and native acceptance
+remain open. The approved Dev build is waiting for its protected signing review.**
 PRs 63–72 are merged. PR 70 merged as `e551604`; PR 71, reviewed head `d0e605e`,
 merged as `0753986bc9ebcfd654e901a1ef25b7fb64c5ff92`. Both PR heads passed all
 seven CI checks and CodeRabbit reported no actionable issues. Combined main
@@ -15,13 +17,13 @@ passed all seven checks.
 Anthony approved publishing tag `staging-cloudflare-2026-10-31-2`: annotated
 object `bd094882986c3040541e6665232714274b900c55` peels to `0753986`.
 Approved code-only [release 41230382940](https://github.com/anthonyyoo24/justgo/actions/runs/41230382940)
-succeeded. Version `e9356054-82bc-4fcb-a700-80240f989a01` is active at 100% in
+succeeded. Version `e9356054-82bc-4fcb-a700-80240f989a01` was active at 100% in
 deployment `3bf9db92-3e16-4616-8dd7-fac6a5707579`, with exact source/run bindings
 `0753986` and `41230382940/1`. Provider deployment readback was stable before and
 after the public measurement; health/readiness were 200 and both unauthenticated
 private-route probes were 401. The release and measurement receipts are ignored
 `.local/phase15-cloudflare/rollout/iphone-readiness/release-0753986.json` and
-`public-latency-0753986.json`. Latest equals serving; ordinary release guards apply.
+`public-latency-0753986.json`. The November 1 release below supersedes this baseline.
 
 The previous `08aa805` release 41215593308 reported
 `STAGING_PROMOTION_UNCONFIRMED`, but stable readback verified its version
@@ -54,7 +56,7 @@ TestFlight has not been replaced. Its precompile notice guard still rejects the
 tracked October 27 Vercel notice; the approved Cloudflare candidate has a pending
 effective date and describes backups that are not operating yet. Do not bypass
 that guard or assume an update isolates existing phone/account data. The hosted
-Mac build/upload lane is prepared; no new build was dispatched.
+Mac build/upload lane is prepared; the separate early Dev run below is dispatched.
 
 Sentry uptime monitor `10773615` checks Cloudflare `/ready`; normal responses
 pass with existing timing, assertions, sampling disabled and alert routing.
@@ -84,8 +86,8 @@ unmeasured. Earlier Cloudflare/Vercel baseline values remain in ignored
 `iphone-readiness/public-latency.json`; different collection times do not establish
 an optimization benefit.
 
-The refreshed active-version 30-minute CPU chart displays p50 19.23 ms, p90
-28.03 ms, p99 30.13 ms and p999 32.02 ms for the new version. These dashboard
+The October 31 active-version CPU chart for `0753986` displayed p50 19.23 ms, p90
+28.03 ms, p99 30.13 ms and p999 32.02 ms. These dashboard
 aggregates include public checks and are not full-workload request quantiles.
 They do not establish suitability for the Free plan's 10 ms budget. Anthony
 chose to keep Workers Free; no paid subscription was purchased. Bounded,
@@ -97,8 +99,58 @@ wraps a fresh TrieRouter per invocation, preserving each handler registration on
 Node's default routing and invocation-owned database/service isolation. The local
 profiler has a separate explicit command and bounded 30-second capture. Matching captures
 remove the targeted matcher hotspot but do not establish hosted CPU savings.
-PR 72 merged as `d66c42d3daa2cc990f347fbf674b661845f1c603`; exact main-push [Foundation CI 41339394813](https://github.com/anthonyyoo24/justgo/actions/runs/41339394813) passed all seven jobs. Anthony specifically approved tag publication, code-only staging dispatch and a subsequent compatible Dev compile/upload after verified deployment. Annotated tag `staging-cloudflare-2026-11-01` is published: object `8fc4395b798c7c8bcefbdc0f3ab5ba293b4f606d` peels to reviewed `d66c42d`. [Staging release 41346805790](https://github.com/anthonyyoo24/justgo/actions/runs/41346805790) passed tag/source/Foundation/protection validation and is waiting for the required `justgo-staging` GitHub owner review; no provider release step has run. The existing `0753986` deployment remains active. The subsequent `development-ios.yml` dispatch is authorized but waits for verified API deployment/readback. No phase-branch push or new PR was performed. Fresh November 1 readback verified the unchanged `0753986` serving/latest baseline, eight public/version probes, release-token validity, sole-owner/main-only protection and existing Hyperdrive/telemetry settings. Source is unchanged; local documentation edits are excluded from that release candidate. The preparation receipt is ignored `.local/phase15-cloudflare/rollout/staging-2026-11-01/preflight.json`. Subsequent combined preflights failed probe validation; the retained latest failure returned HTTP 503 for the public unauthenticated journal-sync probe. A separate eight-probe pass and ten focused unauthorized reads passed afterward; these do not erase the intermittent failure or establish its cause. Safe diagnostics are `staging-2026-11-01/preflight-latest-failure.json`, `focused-probe-readback.json` and `intermittent-route-readback.json`. A subsequent authenticated dashboard readback for the active deployment displayed 38 Exceeded CPU Time Limits outcomes in its last-30-minute window, with zero Exceeded Memory, Internal, Load Shed or Uncaught Exception outcomes. This confirms CPU-limit failures on the deployed version, but is not an invocation-specific link to every retained HTTP 503. A fresh closed diagnostic captured a non-JSON `/health` 503 with a validated YYZ CF-Ray and no typed application/startup envelope or numeric error header. Safe receipts are `staging-2026-11-01/worker-errors-active-30m.json` and `closed-error-diagnostics.json`; the screenshot remains ignored. Recheck stability and CPU after deploying the reviewed fix; its hosted savings remain unmeasured. Tag publication and workflow dispatch are complete; protected GitHub review, actual deployment/readback and hosted measurement remain open. The ignored release receipt is `staging-2026-11-01/release-dispatch.json`. Avoid
+PR 72 merged as `d66c42d3daa2cc990f347fbf674b661845f1c603`; exact main-push
+[Foundation CI 41339394813](https://github.com/anthonyyoo24/justgo/actions/runs/41339394813)
+passed all seven jobs. Anthony approved tag publication, code-only staging
+release and a subsequent compatible Dev compile/upload after verified deployment.
+Annotated tag `staging-cloudflare-2026-11-01` is published: object
+`8fc4395b798c7c8bcefbdc0f3ab5ba293b4f606d` peels to reviewed `d66c42d`.
+After Anthony's protected review, [release 41346805790](https://github.com/anthonyyoo24/justgo/actions/runs/41346805790)
+verified the unchanged migration history and promoted, then failed with
+`STAGING_PROMOTION_UNCONFIRMED`, phase `public-probes`, cause
+`STAGING_RUNTIME_IDENTITY_MISMATCH`. Its observed source header was not retained;
+propagation is plausible but is not an established cause. No promotion retry or
+rollback occurred. Fresh GET-only readback at 20:46:49 UTC verified deployment
+`36658e31-0290-4c3a-be70-f1afcd019245`, version
+`8f662241-5200-451b-b5bb-f24cefa1fd7b`, exact `d66c42d` and run `41346805790/1`
+bindings, 100% serving/latest identity stable across all eight public/immutable
+health, readiness and unauthorized probes, plus unchanged Hyperdrive/telemetry
+settings. The workflow remains failed; the actual deployment is verified.
+The receipt is ignored `staging-2026-11-01/deployment-readback-d66c42d.json`.
+No phase-branch push or new PR was performed.
+
+Before that deployment, fresh probes caught intermittent non-JSON 503s on
+`0753986`, and its active-version dashboard recorded 38 CPU-limit failures in
+30 minutes with zero memory, internal, load-shed or uncaught-exception outcomes.
+This confirms CPU failures on that old version without tying each retained 503
+to an individual invocation. Safe diagnostics remain ignored under
+`staging-2026-11-01/`, including `worker-errors-active-30m.json` and
+`closed-error-diagnostics.json`.
+
+Post-deployment sampling on November 1 verified stable provider identity and all
+108 public requests returning 200, plus both strict private-route 401 guards.
+Toronto/YYZ, two warmups and 25 sequential samples per route gave p50/p95 ms:
+health 56.79/82.58, readiness 188.50/231.70, guest access 44.31/72.95 and guest
+challenges 182.14/206.34. The new active version's dashboard displayed CPU
+p50/p90/p99/p999 13.13/17.38/17.96/17.96 ms and zero CPU-limit or other listed
+errors. This is a young deployment with delayed aggregate data, not a complete
+30-minute serving window or isolated per-route CPU measurement. Real-account,
+cold-start, placement and Workers Free acceptance remain open. Collection times
+and workload differ from the old baseline; do not claim causal CPU/latency
+savings. Receipts are ignored `staging-2026-11-01/public-latency-d66c42d.json` and
+`worker-metrics-d66c42d.json`. No paid plan or provider setting changed. Avoid
 speculative shared-app, pool or account-state caching.
+
+Local commit `257faf3` adds a post-promotion convergence helper preserving strict probe validation and
+single upload/promotion behavior. Only a completely valid captured previous
+source permits a two-second wait and another full four-probe round, within one
+30-second total request/wait budget. Success needs a complete candidate round;
+unknown versions, malformed responses, authentication/endpoint/network failures
+and lease loss remain closed failures. Immutable candidate probes remain strict.
+This prevention follows documented propagation behavior without claiming it
+reconstructs release #9. It remains on the phase branch for the consolidated PR;
+reviewed main and the deployed Worker do not contain it yet. See
+[server releases](../operations/SERVER_RELEASES.md#candidate-and-promotion-safeguards).
 
 Hosted verification with synthetic content is already authorized. Anthony accepted the existing-account/DPA/current private-journal assessment and its residual interpretation on November 1; see the [decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption). That disposition does not establish managed-account or operating acceptance. It requires a disposable
 genuine Apple/Google identity with a live provider session and run-owned cleanup.
@@ -142,15 +194,19 @@ ad hoc signing set with a certificate/profile expiring October 11, 2027. Secret
 values, certificate/profile payloads and device identifiers were not retrieved;
 Apple-side revocation and the intended phone's current inclusion still require
 the frozen-signing runner checks. Current phase-branch native inputs match
-reviewed main `d66c42d`, so the same proposed reviewed-main tag can support the
+reviewed main `d66c42d`, so the same reviewed-main tag can support the
 API release and subsequent `development-ios.yml` build/upload without a new
-source PR. Build number 1 is still the latest recorded Dev build; no new build
-ran. The safe proposal is ignored `staging-2026-11-01/development-build-preflight.json`.
+source PR. After actual API deployment verification, the approved
+[JustGO Dev run 41348697942](https://github.com/anthonyyoo24/justgo/actions/runs/41348697942)
+was dispatched from the same reviewed-main tag. Validation passed; compilation
+and upload wait for Anthony's protected `testflight-beta` signing review. That
+shared environment name does not make this a TestFlight submission. No new
+artifact or phone compatibility is claimed. The earlier safe preparation is
+ignored `staging-2026-11-01/development-build-preflight.json`.
 Anthony needs help preparing the disposable provider login; use a distinct
 secondary Google identity on the phone and verify test-user eligibility before
 hosted account/deletion checks. Delete only the disposable JustGO account, not
-the Google identity. No Metro,
-new native build or phone test ran. This earlier developer check does not
+the Google identity. No Metro or phone test ran; the native build is pending. This earlier developer check does not
 replace final TestFlight/cutover acceptance.
 
 The current source metadata check covers 45 app/Auth/migration tables. The named
@@ -270,8 +326,15 @@ or dependency version was changed to resolve that local environment mismatch.
 A fresh actual Wrangler dry-run and input inspection passed for the reviewed
 `d66c42d` API source after that reinstall. The phase branch's additional native
 build inputs remain identical to reviewed main. These local results and the
-exact-main hosted CI support preparation; they do not establish a new deployment,
-compatible installed phone app or complete operational recovery. Fresh Doctor 20/20 validation passed immediately before the authorized tag push. The staging job remains behind its existing GitHub review; those local checks do not authorize bypassing it.
+exact-main hosted CI supported the release preparation. Fresh Doctor 20/20
+validation passed immediately before the authorized tag push. Actual deployment
+readback, the failed workflow conclusion and post-release measurements are
+recorded above; no compatible installed phone app or complete recovery is claimed.
+The local convergence follow-up passed 151 focused release tests, API typecheck,
+formatting and repository lint (zero errors, 167 existing warnings). Independent
+static review found no actionable issues. These narrow tooling checks do not
+reopen phase closeout or establish hosted execution of the unpublished helper.
+Changed release/docs directory file lists were reviewed; no moves were needed.
 
 Phase implementation evidence was collected October 28, 2026. Focused HTTP,
 release and backup regressions preceded the consolidated checks. Heavy checks
@@ -524,11 +587,11 @@ Hosted notification delivery and scheduled backup evidence remain open.
 | Item                       | Prepared result / remaining gate                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Owner                                                                                                                                                                |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Cloudflare account and DPA | Personal customer Youngshin Yoo and signed-in incorporation notice recorded. Anthony accepted the reviewed DPA v6.4 Canadian-data/current private-journal assessment and residual interpretation on November 1. The [notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md#accepted-account-and-service-assessment) owns the reasoning and limits. No separate provider confirmation, new agreement or contact is claimed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Settled on reviewed facts; reassess material changes and preserve no-contact instruction.                                                                            |
-| Services, costs and budget | Workers Free remains current. Bounded public latency and active-version CPU chart readbacks are recorded above; managed workload, placement, connections and R2 costs remain unmeasured. New-version public-check CPU chart displays p50 19.23 ms and p99 30.13 ms, above the Free budget; actual workerd attribution remains open. Anthony declined the Paid upgrade and chose to keep Workers Free; checkout was exited with no terms accepted or purchase. Resolve Free-plan performance suitability before claiming workload acceptance.                                                                                                                                                                                                                                                                                                                                                     | Implementation owner measures; Anthony approves setup/spending and alert ownership.                                                                                  |
-| Retention and deletion     | Seven-day staging retention/protection/expiry approved October 30; API readback and actual parent overwrite/DELETE lock rejection passed for both prefixes. Approved policy bytes/digest are stored; workflow opt-in and operational R2 database/ledger copies remain pending. Encrypted canaries remain for November 6 retention and November 7 rotation expiry; actual asynchronous deletion is unobserved. Supabase support response/removal remains a nonblocking follow-up.                                                                                                                                                                                                                                                                                                                                                                                                                 | Implementation owner observes expiry, verifies activation/restore and owns support follow-up; Anthony/privacy owner owns separate publication date/version approval. |
+| Services, costs and budget | Workers Free remains current. Bounded public latency and active-version CPU chart readbacks are recorded above; managed workload, placement, connections and R2 costs remain unmeasured. The new `d66c42d` public-check CPU chart displays p50 13.13 ms and p99 17.96 ms; the young deployment shows zero listed errors, but managed workload and sustained Free-plan suitability remain open. Anthony declined the Paid upgrade and chose to keep Workers Free; checkout was exited with no terms accepted or purchase. Resolve Free-plan performance suitability before claiming workload acceptance.                                                                                                                                                                                                                                                                                          | Implementation owner measures; Anthony approves setup/spending and alert ownership.                                                                                  |
+| Retention and deletion     | Seven-day staging retention/protection/expiry approved October 30; API readback and actual parent overwrite/DELETE lock rejection passed for both prefixes. Approved policy bytes/digest are stored. Initial real R2 database/ledger copies, independent retrieval and protected decryption passed November 1; scheduled workflow opt-in and operational recovery remain pending. Encrypted canaries remain for November 6 retention and November 7 rotation expiry; actual asynchronous deletion is unobserved. Supabase support response/removal remains a nonblocking follow-up.                                                                                                                                                                                                                                                                                                              | Implementation owner observes expiry, verifies activation/restore and owns support follow-up; Anthony/privacy owner owns separate publication date/version approval. |
 | Recovery guarantees        | Small-beta fail-closed limit approved October 29; unverified old restored state stays closed. Independent deletion/revocation recording is explicitly deferred. The October 31 recovery-target decision approves up to 24 hours of ordinary-write loss and a four-hour operator recovery target when safe recovery is possible; sign-in again after a restore was approved October 30. Actual hosted archive compatibility passed locally; initial R2 upload/retrieval/decryption now pass. Writer-fenced ledger reconciliation and complete operational app/Auth recovery remain unverified.                                                                                                                                                                                                                                                                                                    | Anthony and implementation/release owner reassess before paid launch or beta expansion, whichever comes first; release owner proves current app/Auth recovery.       |
 | Keys and restore access    | Anthony chose protected Mac key copies locally outside CI, without a USB-retrieval prerequisite, and owns manual renewal by day five. The owner-confirmed USB copy was not tested. Actual hosted-copy decryption passed November 1; complete recovery remains open. Automatic issuance is deferred to optional Phase 21. October 31 owner-approved rotation revoked the exposed original backup parent and invalidated its derived uploader (HEAD 401); replacement HEAD passed 200 and protected uploader secrets were updated. The replacement derived credential expires November 5 at 15:59:59 UTC and the runner stops accepting it at 15:39:59 UTC; parent expires at 17:00:00 UTC, unchanged inspector at 23:06:08 UTC. Renewing only the derived credential is insufficient, and inspector renewal is needed to observe the November 6 retention-canary expiry. Parent stays outside CI. | Anthony retains local custody and owns manual renewal; actual hosted-copy decryption passed and the implementation owner verifies complete operational recovery.     |
-| Release/bootstrap          | Owner-approved tag `staging-cloudflare-2026-10-31-2` publishes merged `0753986` after seven passing main CI checks. Code-only release 41230382940 succeeded; stable readback verified deployment `3bf9db92…` serving version `e9356054…` at 100% with exact source/run, health/readiness 200 and private guards 401. Latest equals serving; ordinary release guards apply and the old incident opt-in remains consumed. Hosted account/performance acceptance remains open. The protected bootstrap JSON secret was removed after verified active readback; its protected local recovery copy remains. Setup/release credentials expire November 4–5 Toronto time.                                                                                                                                                                                                                               | Implementation owner preserves the verified active deployment and completes remaining acceptance; future ordinary release guards apply.                              |
+| Release/bootstrap          | Approved tag `staging-cloudflare-2026-11-01` publishes reviewed `d66c42d` after seven passing main CI jobs. Release 41346805790 failed after promotion on public identity verification; stable GET-only readback verified deployment `36658e31…`, version `8f662241…`, exact source/run bindings and all eight public/immutable probes. Do not retry the mutation or call the workflow successful. Approved Dev run 41348697942 waits for protected signing review. Hosted account, sustained performance and phone acceptance remain open. Bootstrap secret remains removed; the local protected recovery copy remains. Release token expires November 6 at 04:59:59 UTC.                                                                                                                                                                                                                       | Implementation owner preserves actual deployment/readback evidence and completes acceptance; Anthony supplies the retained signing review and phone checkpoint.      |
 | Old builds and Vercel      | Anthony confirmed no actual app users and selected full Cloudflare cutover with no external-user grace period or retained legal redirects. Complete all required approvals and legal-artifact preflight before the coordinated cutover; retire owner-only TestFlight/Dev binaries, end Vercel API/legal hosting, verify private-traffic cutoff, immediately publish/verify Cloudflare legal pages, then update ASC/EAS URLs. Build/upload the replacement only after verified publication. Anthony accepts the brief legal-URL gap. App Store Connect readback confirms builds 3–5 in the one-tester Owner validation internal group, Manual for Xcode Builds, and no external groups. EAS preview legal URLs and ASC Privacy URL still point to Vercel. Existing conditional retirement approval remains; no builds/hosting are retired.                                                        | Implementation owner executes the cutover and preserves data; Anthony supplies required phone acceptance and specific Git permissions.                               |
 | Notices/disclosures        | Complete simplified public Privacy wording, including sign-in again after restoration, approved October 30. The local candidate records wording approval; effective date, matching final version and publication remain pending. Account assessment is accepted; scheduled backup and complete recovery evidence remain open. Complete final date/version approval, publication authorization and artifact preflight before retirement, then publish immediately after old API/legal roles and owner-only builds are retired. Current public source and Apple answers remain unchanged.                                                                                                                                                                                                                                                                                                          | Anthony approves date/version and publication; implementation owner verifies the cutover facts and accepted recovery behavior.                                       |
 | Phase 14 carry-forward     | Supabase sensitive-data/consent/provider-copy review, Sentry/Apple diagnostic entries/post-trial scope, physical-device/recovery/accessibility dispositions and external cohort/dates remain open. Deliberate crash skipped, simulator CI deferred, Vercel contact declined.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Existing Phase 14 owners; no gate is closed by this port.                                                                                                            |
