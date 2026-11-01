@@ -45,16 +45,21 @@ export function createManagedAuthVerifier(
       response = await request(new URL('/auth/v1/user', origin), {
         headers: { apikey: publishableKey, authorization: `Bearer ${token}` },
         signal: AbortSignal.timeout(5000),
-        redirect: 'error',
+        // Workers rejects redirect: error before sending. Manual keeps the
+        // bearer at this exact Auth endpoint; redirects fail closed below.
+        redirect: 'manual',
       });
     } catch {
       throw new ApiError('UNAVAILABLE', 503);
     }
-    if (!response.ok)
+    if (!response.ok) {
+      const unavailable = response.status < 400 || response.status >= 500;
+      await response.body?.cancel().catch(() => {});
       throw new ApiError(
-        response.status >= 500 ? 'UNAVAILABLE' : 'UNAUTHORIZED',
-        response.status >= 500 ? 503 : 401,
+        unavailable ? 'UNAVAILABLE' : 'UNAUTHORIZED',
+        unavailable ? 503 : 401,
       );
+    }
     try {
       const user = authUserSchema.parse(await response.json());
       const claims = claimsSchema.parse(

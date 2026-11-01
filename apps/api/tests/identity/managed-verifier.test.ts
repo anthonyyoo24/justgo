@@ -37,7 +37,7 @@ describe('Supabase bearer verification', () => {
         new URL(`${origin}/auth/v1/user`),
         expect.objectContaining({
           headers: { apikey: 'public-key', authorization: `Bearer ${token()}` },
-          redirect: 'error',
+          redirect: 'manual',
         }),
       );
     },
@@ -110,4 +110,28 @@ describe('Supabase bearer verification', () => {
       createManagedAuthVerifier('http://example.supabase.co', 'public-key'),
     ).toThrow('Invalid Supabase Auth URL');
   });
+
+  it.each([301, 302, 303, 307, 308])(
+    'rejects Auth redirect %s without following it or using its body',
+    async (status) => {
+      const response = new Response('private redirect response', {
+        status,
+        headers: { location: 'https://untrusted.invalid/auth' },
+      });
+      const read = vi.spyOn(response, 'json');
+      const cancel = vi.spyOn(response.body!, 'cancel');
+      const request = vi.fn<typeof fetch>().mockResolvedValue(response);
+      await expect(
+        createManagedAuthVerifier(origin, 'public-key', request)(token()),
+      ).rejects.toMatchObject({
+        code: 'UNAVAILABLE',
+        status: 503,
+        message: 'UNAVAILABLE',
+      });
+      expect(request).toHaveBeenCalledOnce();
+      expect(request.mock.calls[0]![1]?.redirect).toBe('manual');
+      expect(read).not.toHaveBeenCalled();
+      expect(cancel).toHaveBeenCalledOnce();
+    },
+  );
 });

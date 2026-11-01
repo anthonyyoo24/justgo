@@ -54,7 +54,7 @@ describe('minimal API error delivery', () => {
       headers: { 'Content-Type': 'application/x-sentry-envelope' },
       credentials: 'omit',
       referrerPolicy: 'no-referrer',
-      redirect: 'error',
+      redirect: 'manual',
       body: expect.any(String),
       signal: expect.any(AbortSignal),
     });
@@ -161,13 +161,17 @@ describe('minimal API error delivery', () => {
     expect(send).toHaveBeenCalledTimes(21);
   });
 
-  it.each([301, 400, 401, 403, 429, 500, 503])(
+  it.each([301, 302, 303, 307, 308, 400, 401, 403, 429, 500, 503])(
     'backs off for failed status %s without retries',
     async (status) => {
       let time = 1_800_000_000_000;
-      const send = vi
-        .fn<typeof fetch>()
-        .mockImplementation(async () => new Response(null, { status }));
+      const send = vi.fn<typeof fetch>().mockImplementation(
+        async () =>
+          new Response(null, {
+            status,
+            headers: { location: 'https://untrusted.invalid/collect' },
+          }),
+      );
       const reporter = createServerErrorReporter(config, {
         send,
         now: () => time,
@@ -176,6 +180,7 @@ describe('minimal API error delivery', () => {
       time += 59_999;
       await reporter(diagnostic);
       expect(send).toHaveBeenCalledOnce();
+      expect(send.mock.calls[0]![1]?.redirect).toBe('manual');
       time++;
       await reporter(diagnostic);
       expect(send).toHaveBeenCalledTimes(2);

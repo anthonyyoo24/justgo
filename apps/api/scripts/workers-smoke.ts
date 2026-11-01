@@ -262,6 +262,16 @@ async function run() {
       assert.equal(response.headers.get('x-justgo-startup-stage'), null);
       assert.equal(response.headers.get('x-justgo-smoke-outbound'), '0');
     }
+    stage = 'managed verification and error delivery request compatibility';
+    const outbound = await request('/health', {
+      headers: { 'x-justgo-smoke-mode': 'outbound' },
+    });
+    assert.equal(outbound.status, 200);
+    assert.equal(
+      outbound.headers.get('x-justgo-smoke-outbound-adapters'),
+      'passed',
+    );
+    assert.equal(outbound.headers.get('x-justgo-smoke-outbound'), '0');
     stage = 'invalid startup redaction';
     for (const path of ['/health', '/ready']) {
       const response = await request(path, {
@@ -341,7 +351,7 @@ async function run() {
     );
     assert.equal(stored.rowCount, 1);
     console.info(
-      'Workers smoke passed: managed Auth/Sentry/beta composition, wrapped and opaque virtual transport health, startup redaction, readiness, authenticated read/write, idempotency and error envelope. Hosted Hyperdrive/CPU acceptance remains separate.',
+      'Workers smoke passed: managed Auth/Sentry/beta composition, native outbound Request compatibility and redirect rejection, wrapped and opaque virtual transport health, startup redaction, readiness, authenticated read/write, idempotency and error envelope. Hosted Hyperdrive/CPU acceptance remains separate.',
     );
   } catch (error) {
     throw smokeFailure(stage, error);

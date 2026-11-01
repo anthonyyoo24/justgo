@@ -349,7 +349,11 @@ artifact is never a prerequisite.
 `npm run test:workers` starts the actual pinned Wrangler/workerd entrypoint against
 only loopback `justgo_test`, checks readiness and authenticated database read/write,
 idempotent completion replay and the safe error envelope, then cleans its known
-owner and owned process. It rejects occupied ports; `JUSTGO_WORKERS_TEST_PORT`
+owner and owned process. In-memory Auth-verifier and error-reporter transports
+construct native workerd `Request` objects, covering request-option compatibility,
+successful verification/delivery and redirect rejection without outbound HTTP.
+These synthetic proofs never leave the fenced local smoke. It rejects occupied
+ports; `JUSTGO_WORKERS_TEST_PORT`
 may select another unprivileged loopback port. Configuration/ciphertext/log output
 must not disclose credentials. This is local runtime evidence, not hosted
 Hyperdrive, CPU, DPA or account acceptance.
