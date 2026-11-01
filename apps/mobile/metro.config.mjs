@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { validateLocalMetroEnvironment } from '../../scripts/development/configuration.mjs';
 import {
   journeyEnvironment,
   journeyApiUrl,
@@ -12,6 +13,29 @@ const config = getSentryExpoConfig(configRoot, {
   enableSourceContextInDevelopment: false,
   injectReleaseForWeb: false,
 });
+
+// Expo's development virtual module merges saved dotenv files even when CLI
+// loading is disabled. Local Dev must use the launcher's validated public values.
+if (process.env.JUSTGO_LOCAL_DEVELOPMENT === '1') {
+  validateLocalMetroEnvironment(process.env);
+  const normalResolve = config.resolver.resolveRequest;
+  config.resolver.resolveRequest = (context, moduleName, platform) => {
+    if (
+      (platform === 'ios' || platform === 'web') &&
+      moduleName === 'expo/virtual/env'
+    )
+      return {
+        type: 'sourceFile',
+        filePath: path.join(
+          configRoot,
+          'src/platform/environment/development-environment.ts',
+        ),
+      };
+    return normalResolve
+      ? normalResolve(context, moduleName, platform)
+      : context.resolveRequest(context, moduleName, platform);
+  };
+}
 
 // Fault injection belongs to the isolated journey build, never app source or a
 // production bundle. Validate its database/environment before enabling it.

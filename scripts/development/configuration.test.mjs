@@ -10,24 +10,9 @@ import {
   releaseGoogleIosClientId,
   developmentApiOrigins,
   developmentLaunchOptions,
+  validateLocalMetroEnvironment,
 } from './configuration.mjs';
-
-export function publicEnvironment() {
-  return {
-    IOS_BUNDLE_IDENTIFIER: 'com.anthonyyoo.justgo.dev',
-    EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER: 'iCloud.com.anthonyyoo.justgo.dev',
-    ICLOUD_CONTAINER_ENVIRONMENT: 'Production',
-    EXPO_PUBLIC_API_URL: 'https://justgo-two.vercel.app',
-    EXPO_PUBLIC_SUPABASE_URL: 'https://kmcpcauaxlgpevkkenwd.supabase.co',
-    EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic',
-    EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: '123-dev.apps.googleusercontent.com',
-    EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME: 'com.googleusercontent.apps.123-dev',
-    EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: '123-web.apps.googleusercontent.com',
-    EXPO_PUBLIC_SENTRY_ENABLED: 'false',
-    EXPO_PUBLIC_PRIVACY_POLICY_URL: 'https://justgo-legal.vercel.app/privacy/',
-    EXPO_PUBLIC_TERMS_URL: 'https://justgo-legal.vercel.app/terms/',
-  };
-}
+import { publicEnvironment } from './test-environment.mjs';
 
 test('launch configuration pins the separate device variant and prevents Expo dotenv overrides', async () => {
   const environment = await developmentEnvironment(publicEnvironment());
@@ -54,6 +39,38 @@ test('Cloudflare selection is explicit and consumed before forwarding Expo flags
     ['--scheme', 'justgo'],
   ])
     assert.throws(() => developmentLaunchOptions(args));
+});
+
+test('Metro override requires local Dev and validates the entire public pairing', async () => {
+  const development = {
+    ...(await developmentEnvironment(publicEnvironment())),
+    JUSTGO_LOCAL_DEVELOPMENT: '1',
+    NODE_ENV: 'development',
+  };
+  for (const EXPO_PUBLIC_API_URL of Object.values(developmentApiOrigins)) {
+    const environment = { ...development, EXPO_PUBLIC_API_URL };
+    assert.equal(validateLocalMetroEnvironment(environment), environment);
+  }
+  for (const patch of [
+    { JUSTGO_LOCAL_DEVELOPMENT: undefined },
+    { NODE_ENV: 'production' },
+    { NODE_ENV: undefined },
+    { JUSTGO_APP_VARIANT: 'release' },
+    { EXPO_NO_DOTENV: undefined },
+    { CI: 'true' },
+    { GITHUB_ACTIONS: 'true' },
+    { VERCEL: '1' },
+    { EAS_BUILD: 'true' },
+    { EAS_BUILD_PROFILE: 'beta' },
+    { EXPO_PUBLIC_API_URL: 'https://other.invalid' },
+    { EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: releaseGoogleIosClientId },
+    { IOS_BUNDLE_IDENTIFIER: 'com.anthonyyoo.justgo' },
+    { EXPO_PUBLIC_SENTRY_ENABLED: 'true' },
+    { JUSTGO_JOURNEY_FIXTURES: '1' },
+  ])
+    assert.throws(() =>
+      validateLocalMetroEnvironment({ ...development, ...patch }),
+    );
 });
 
 test('local Cloudflare testing overrides only the API after all saved inputs pass', async (t) => {

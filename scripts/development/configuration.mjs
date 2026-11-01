@@ -165,6 +165,31 @@ export async function localDevelopmentEnvironment(
   );
 }
 
+/** Only the local Dev launcher may replace Expo's development dotenv module. */
+export function validateLocalMetroEnvironment(environment) {
+  if (
+    environment.JUSTGO_LOCAL_DEVELOPMENT !== '1' ||
+    environment.NODE_ENV !== 'development' ||
+    environment.JUSTGO_APP_VARIANT !== 'development' ||
+    environment.EXPO_NO_DOTENV !== '1' ||
+    environment.CI ||
+    environment.GITHUB_ACTIONS ||
+    environment.VERCEL ||
+    environment.EAS_BUILD === 'true' ||
+    (environment.EAS_BUILD_PROFILE &&
+      environment.EAS_BUILD_PROFILE !== 'development')
+  )
+    throw new Error(
+      'The public environment adapter requires local JustGO Dev.',
+    );
+  return validateDevelopmentEnvironment(environment, {
+    apiTarget:
+      environment.EXPO_PUBLIC_API_URL === developmentApiOrigins.cloudflare
+        ? 'cloudflare'
+        : 'vercel',
+  });
+}
+
 if (
   process.argv[1] &&
   pathToFileURL(process.argv[1]).href === import.meta.url

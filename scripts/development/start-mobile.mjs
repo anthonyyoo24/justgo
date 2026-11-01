@@ -40,6 +40,7 @@ try {
       cwd: mobileRoot,
       env: {
         ...environment,
+        JUSTGO_LOCAL_DEVELOPMENT: '1',
         NODE_OPTIONS:
           `${environment.NODE_OPTIONS ?? ''} --dns-result-order=ipv4first`.trim(),
       },
