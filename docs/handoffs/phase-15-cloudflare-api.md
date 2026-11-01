@@ -2,9 +2,10 @@
 
 ## Current status
 
-**Phase 15 remains in progress. Reviewed source `0753986` is active on staging;
-public health/readiness and private-route authentication guards pass. Real account,
-backup/recovery, Free-plan performance and native acceptance remain open.**
+**Phase 15 remains in progress. Reviewed source `0753986` is active on staging,
+with confirmed CPU-limit failures. Successful public probes do not establish
+stability. Real account, complete recovery, Free-plan performance and native
+acceptance remain open; reviewed routing fix `d66c42d` is not yet deployed.**
 PRs 63–72 are merged. PR 70 merged as `e551604`; PR 71, reviewed head `d0e605e`,
 merged as `0753986bc9ebcfd654e901a1ef25b7fb64c5ff92`. Both PR heads passed all
 seven CI checks and CodeRabbit reported no actionable issues. Combined main
@@ -96,7 +97,7 @@ wraps a fresh TrieRouter per invocation, preserving each handler registration on
 Node's default routing and invocation-owned database/service isolation. The local
 profiler has a separate explicit command and bounded 30-second capture. Matching captures
 remove the targeted matcher hotspot but do not establish hosted CPU savings.
-PR 72 merged as `d66c42d3daa2cc990f347fbf674b661845f1c603`; exact main-push [Foundation CI 41339394813](https://github.com/anthonyyoo24/justgo/actions/runs/41339394813) passed all seven jobs. Proposed tag `staging-cloudflare-2026-11-01` targets that reviewed commit; it is not created or approved. Fresh November 1 readback verified the unchanged `0753986` serving/latest baseline, eight public/version probes, release-token validity, sole-owner/main-only protection and existing Hyperdrive/telemetry settings. Source is unchanged; local documentation edits are excluded from that release candidate. The preparation receipt is ignored `.local/phase15-cloudflare/rollout/staging-2026-11-01/preflight.json`. Subsequent combined preflights failed probe validation; the retained latest failure returned HTTP 503 for the public unauthenticated journal-sync probe. A separate eight-probe pass and ten focused unauthorized reads passed afterward; these do not erase the intermittent failure or establish its cause. Safe diagnostics are `staging-2026-11-01/preflight-latest-failure.json`, `focused-probe-readback.json` and `intermittent-route-readback.json`. Recheck stability after the reviewed fix; CPU attribution is unconfirmed. Tag publication, protected release approval and hosted measurement remain open. Avoid
+PR 72 merged as `d66c42d3daa2cc990f347fbf674b661845f1c603`; exact main-push [Foundation CI 41339394813](https://github.com/anthonyyoo24/justgo/actions/runs/41339394813) passed all seven jobs. Proposed tag `staging-cloudflare-2026-11-01` targets that reviewed commit; it is not created or approved. Fresh November 1 readback verified the unchanged `0753986` serving/latest baseline, eight public/version probes, release-token validity, sole-owner/main-only protection and existing Hyperdrive/telemetry settings. Source is unchanged; local documentation edits are excluded from that release candidate. The preparation receipt is ignored `.local/phase15-cloudflare/rollout/staging-2026-11-01/preflight.json`. Subsequent combined preflights failed probe validation; the retained latest failure returned HTTP 503 for the public unauthenticated journal-sync probe. A separate eight-probe pass and ten focused unauthorized reads passed afterward; these do not erase the intermittent failure or establish its cause. Safe diagnostics are `staging-2026-11-01/preflight-latest-failure.json`, `focused-probe-readback.json` and `intermittent-route-readback.json`. A subsequent authenticated dashboard readback for the active deployment displayed 38 Exceeded CPU Time Limits outcomes in its last-30-minute window, with zero Exceeded Memory, Internal, Load Shed or Uncaught Exception outcomes. This confirms CPU-limit failures on the deployed version, but is not an invocation-specific link to every retained HTTP 503. A fresh closed diagnostic captured a non-JSON `/health` 503 with a validated YYZ CF-Ray and no typed application/startup envelope or numeric error header. Safe receipts are `staging-2026-11-01/worker-errors-active-30m.json` and `closed-error-diagnostics.json`; the screenshot remains ignored. Recheck stability and CPU after deploying the reviewed fix; its hosted savings remain unmeasured. Tag publication, protected release approval and hosted measurement remain open. Avoid
 speculative shared-app, pool or account-state caching.
 
 Hosted verification with synthetic content is already authorized. Anthony accepted the existing-account/DPA/current private-journal assessment and its residual interpretation on November 1; see the [decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption). That disposition does not establish managed-account or operating acceptance. It requires a disposable
@@ -134,7 +135,21 @@ staging Worker API after validating the existing Dev environment/profile,
 preserving app/provider identity, current legal URLs, fixture rejection and
 dotenv isolation. The default Dev path and release/build profiles are unchanged.
 A compatible Dev binary and a genuine disposable provider session remain required;
-the recorded October 26 Dev binary predates current native inputs. No Metro,
+the recorded October 26 Dev binary predates current native inputs. Fresh read-only
+preparation verified pinned EAS 25.3.0 authentication, the remote development
+configuration guard, sole-owner/main-only protected environments and one active
+ad hoc signing set with a certificate/profile expiring October 11, 2027. Secret
+values, certificate/profile payloads and device identifiers were not retrieved;
+Apple-side revocation and the intended phone's current inclusion still require
+the frozen-signing runner checks. Current phase-branch native inputs match
+reviewed main `d66c42d`, so the same proposed reviewed-main tag can support the
+API release and subsequent `development-ios.yml` build/upload without a new
+source PR. Build number 1 is still the latest recorded Dev build; no new build
+ran. The safe proposal is ignored `staging-2026-11-01/development-build-preflight.json`.
+Anthony needs help preparing the disposable provider login; use a distinct
+secondary Google identity on the phone and verify test-user eligibility before
+hosted account/deletion checks. Delete only the disposable JustGO account, not
+the Google identity. No Metro,
 new native build or phone test ran. This earlier developer check does not
 replace final TestFlight/cutover acceptance.
 
@@ -247,6 +262,17 @@ after an apparent database failure for that future design; no implementation or
 current restore check changes with this decision.
 
 ## Verification
+
+The latest local pre-publication `npm run check` passed after reinstalling the
+committed lockfile with `npm ci`. The initial run correctly stopped because six
+installed Expo/native packages lagged the unchanged manifest/lockfile; no source
+or dependency version was changed to resolve that local environment mismatch.
+A fresh actual Wrangler dry-run and input inspection passed for the reviewed
+`d66c42d` API source after that reinstall. The phase branch's additional native
+build inputs remain identical to reviewed main. These local results and the
+exact-main hosted CI support preparation; they do not establish a new deployment,
+compatible installed phone app or complete operational recovery. Fresh Doctor
+validation still belongs immediately before an authorized tag push.
 
 Phase implementation evidence was collected October 28, 2026. Focused HTTP,
 release and backup regressions preceded the consolidated checks. Heavy checks
