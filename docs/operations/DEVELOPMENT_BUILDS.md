@@ -206,9 +206,14 @@ match its source/run manifest. Its [installation page](https://expo.dev/accounts
 shows Succeeded and the phone QR. This supersedes the October 26 build-1 artifact
 for current testing; no older build or TestFlight installation was retired.
 
-Physical phone acceptance remains pending. Verify side-by-side installation,
-live Metro, initial guest navigation, both providers' first/returning sign-in
-and cancellation, retained TestFlight data and Dev-container iCloud round trip.
+Anthony reports scanning both install/connect QR codes and the app appearing
+to work on his iPhone, confirms both app variants remain present, and confirms
+signed-out/guest mode. He also confirmed that a synthetic “Phone test” reflection
+remains in Progress after fully closing and reopening Dev. These are owner-reported
+launch and guest-persistence results; the installed build number was not
+independently read from the device. Detailed physical phone acceptance remains
+open: both providers' first/returning sign-in and cancellation, retained
+TestFlight data and Dev-container iCloud round trip.
 Use a disposable provider account for synchronization/deletion checks. Local
 bundle inspection, account configuration and browser previews do not establish
 native acceptance or close Phase 14 gates.
