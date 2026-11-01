@@ -1,5 +1,27 @@
 import { createServer } from 'node:net';
 
+type PreflightMessage =
+  | 'Invalid Worker check mode'
+  | 'Invalid Worker smoke port'
+  | 'Invalid Worker CPU inspector port'
+  | 'Worker smoke port is occupied'
+  | 'Worker CPU inspector port is occupied';
+
+const preflightMessages = new WeakMap<object, PreflightMessage>();
+
+function preflightFailure(message: PreflightMessage) {
+  const error = new Error(message);
+  preflightMessages.set(error, message);
+  return error;
+}
+
+/** Only fixed preflight messages created here may reach operator diagnostics. */
+export function workerSmokePreflightMessage(error: unknown) {
+  return typeof error === 'object' && error !== null
+    ? preflightMessages.get(error)
+    : undefined;
+}
+
 /** Only an explicit command-line mode may replace the functional smoke with profiling. */
 export function workerSmokeOptions(
   args: readonly string[],
@@ -7,11 +29,11 @@ export function workerSmokeOptions(
 ) {
   const mode = args[0] ?? '--smoke';
   if (args.length > 1 || !['--smoke', '--profile'].includes(mode))
-    throw new Error('Invalid Worker check mode');
+    throw preflightFailure('Invalid Worker check mode');
   const profiling = mode === '--profile';
   const port = Number(environment.JUSTGO_WORKERS_TEST_PORT ?? '8791');
   if (!Number.isInteger(port) || port < 1024 || port > 65535)
-    throw new Error('Invalid Worker smoke port');
+    throw preflightFailure('Invalid Worker smoke port');
   const inspectorPort = profiling
     ? Number(environment.JUSTGO_WORKERS_INSPECTOR_PORT ?? '9230')
     : 0;
@@ -22,7 +44,7 @@ export function workerSmokeOptions(
       inspectorPort > 65535 ||
       inspectorPort === port)
   )
-    throw new Error('Invalid Worker CPU inspector port');
+    throw preflightFailure('Invalid Worker CPU inspector port');
   return { profiling, port, inspectorPort };
 }
 
@@ -33,7 +55,15 @@ export async function assertWorkerPortAvailable(
 ) {
   const probe = createServer();
   await new Promise<void>((resolve, reject) => {
-    probe.once('error', () => reject(new Error(`${label} port is occupied`)));
+    probe.once('error', () =>
+      reject(
+        preflightFailure(
+          label === 'Worker CPU inspector'
+            ? 'Worker CPU inspector port is occupied'
+            : 'Worker smoke port is occupied',
+        ),
+      ),
+    );
     probe.listen(port, '127.0.0.1', () =>
       probe.close((error) => (error ? reject(error) : resolve())),
     );

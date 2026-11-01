@@ -20,8 +20,9 @@ export class WorkerRouter<T> implements Router<T> {
   private readonly trie = new TrieRouter<Registration<T>>();
 
   add(method: string, path: string, handler: T) {
-    // A handler can be intentionally registered twice; identity belongs to the
-    // registration rather than its function or payload.
+    // Preserve distinct registrations of the same generic payload. Hono already
+    // supplies fresh handler/route tuples; plain or reused payloads need this
+    // separate registration identity.
     this.trie.add(method, path, { handler });
   }
 

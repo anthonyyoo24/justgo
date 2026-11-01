@@ -12,6 +12,7 @@ import { IdentityService } from '../src/identity/service.js';
 import {
   assertWorkerPortAvailable,
   workerSmokeOptions,
+  workerSmokePreflightMessage,
 } from './workers-smoke-preflight.js';
 import {
   captureWorkerCpuProfile,
@@ -384,10 +385,11 @@ async function run() {
 
 run().catch((error) => {
   console.error(
-    error instanceof Error &&
+    workerSmokePreflightMessage(error) ??
+      (error instanceof Error &&
       error.message.startsWith('Workers smoke failed during ')
-      ? error.message
-      : 'Workers smoke failed preflight or cleanup; no raw runtime output retained.',
+        ? error.message
+        : 'Workers smoke failed preflight or cleanup; no raw runtime output retained.'),
   );
   process.exitCode = 1;
 });

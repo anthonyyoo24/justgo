@@ -1,11 +1,11 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { TrieRouter } from 'hono/router/trie-router';
 import { describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/build-app.js';
+import { WorkerRouter } from '../../src/http/worker-router.js';
 import { IdentityService } from '../../src/identity/service.js';
 import { apiRequest } from '../request.js';
 
-describe.each(['default', 'invocation-owned trie'] as const)(
+describe.each(['default', 'worker'] as const)(
   'HTTP router compatibility (%s)',
   (router) => {
     function setup(onVercel = false) {
@@ -18,9 +18,7 @@ describe.each(['default', 'invocation-owned trie'] as const)(
         checkDatabase: async () => {},
         identity,
         onVercel,
-        ...(router === 'invocation-owned trie'
-          ? { router: new TrieRouter() }
-          : {}),
+        ...(router === 'worker' ? { router: new WorkerRouter() } : {}),
       });
       return { app, rate, identity };
     }
