@@ -2,8 +2,8 @@
 
 # Phase 15 — Cloudflare API hosting & R2 backups
 
-**Status:** In progress; local candidate prepared. Hosted/privacy/device acceptance
-remains open before outside testers store real journals. See the
+**Status:** Implementation merged; hosted rollout in progress. Hosted/privacy/device
+acceptance remains open before outside testers store real journals. See the
 [implementation handoff](../handoffs/phase-15-cloudflare-api.md).
 
 ## Outcome
@@ -45,16 +45,16 @@ separate Git/release permissions. The implementation owner handles routine
 engineering choices; bring Anthony concrete policy/cost/legal tradeoffs and
 restricted actions, rather than asking for approval at every implementation step.
 
-| Item                                         | What remains to be resolved                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Owner / completion point                                                                                                                                                                            |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cloudflare account and DPA                   | Verify the actual customer/account and applicability of the reviewed DPA v6.4 to Workers, Hyperdrive and R2. Prepare any binding acceptance for Anthony; the public agreement alone is not account evidence.                                                                                                                                                                                                                                                                    | Implementation/privacy owner investigates; Anthony handles required acceptance before hosted private-data processing.                                                                               |
-| Account setup, costs and operating budget    | Obtain the applicable account/R2 payment-method approval. Measure CPU, requests, Hyperdrive and storage/operation use against current included allowances; present any required Workers Paid or other paid-service choice with its actual cost. Set budget/usage-alert ownership. Free is the starting choice, not a guarantee of zero future charges. Supabase Pro is reconsidered only at the recorded triggers below.                                                        | Implementation owner prepares measurements; Anthony approves setup/spending before enabling the dependent service or paid plan.                                                                     |
-| Backup retention and deletion                | The [October 30 decision](../DECISIONS.md#october-30-seven-day-staging-backup-retention) approves seven-day retention, protection and automatic expiry for both staging prefixes. API readback and parent-credential overwrite/DELETE rejection passed. Approved policy bytes/digest are stored, but workflow opt-in remains unset. Actual asynchronous expiry and public wording remain open.                                                                                  | Implementation owner verifies actual expiry and backup operation; Anthony/privacy owner owns separate notice publication approval.                                                                  |
-| Backup reader authority                      | The [October 29 decision](../DECISIONS.md#october-29-dedicated-backup-reader) accepts supported project-wide read access and the staging-only DELETE exception for exactly `cron.job_run_details`. The reader is LOGIN-enabled and hosted metadata/access probes passed. Supabase has received the removal request; its response and removing the exception after verified grant removal remain open alongside backups.                                                         | Implementation owner verifies source publication before activation and owns the provider follow-up; the support response is not an activation prerequisite.                                         |
-| Recovery goals and complete deletion records | The [October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit) accepts keeping unverified old restored state closed for the small beta; independent per-deletion/revocation recording is explicitly deferred. A clean restart needs a separate procedure; automatic old-phone recovery is unsupported. Ordinary-write loss, recovery time, hosted alert delivery and failure/missed-run verification, and actual app/Auth recovery evidence remain unresolved. | Anthony and implementation/release owner reassess the deferred design before paid launch or expansion beyond the small beta, whichever comes first; release owner proves current app/Auth recovery. |
-| Encryption-key custody and restore access    | `age` and an offline owner-held private key are selected. Decide its protected offline location/recovery copy, who can perform a restore and what happens if the key is lost. Prove retrieval/decryption without putting the private key, credentials or private data in source/CI/chat artifacts.                                                                                                                                                                              | Anthony owns the key/access policy; implementation/release owner verifies the procedure before relying on backups.                                                                                  |
-| Old-build and Vercel retirement              | Select the compatible-client update/retirement window and legacy API/legal-address treatment. Prove that private journal traffic stops reaching Vercel before declaring its sensitive-data blocker resolved; overlap or a redirect is not that proof. Prepare the matching TestFlight/device check, preserve the existing device deferrals until actually resolved, and obtain the separate cutover/build/upload/retirement approvals.                                          | Implementation/release owner prepares the concrete plan; Anthony approves restricted actions and the retirement disposition before external journal testing.                                        |
-| Changed notices and disclosure evidence      | Prepare exact Cloudflare/R2, retention and cross-border-processing wording plus the App Privacy assessment for the changed services. Obtain approval before publishing changes. Keep unchanged Supabase consent/provider and Sentry native-linkage questions assigned to Phase 14 rather than declaring them cleared by this migration.                                                                                                                                         | Implementation/privacy owner prepares; Anthony reviews changed notices/publication before outside testing.                                                                                          |
+| Item                                         | What remains to be resolved                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Owner / completion point                                                                                                                                                                            |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cloudflare account and DPA                   | Verify the actual customer/account and applicability of the reviewed DPA v6.4 to Workers, Hyperdrive and R2. Prepare any binding acceptance for Anthony; the public agreement alone is not account evidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Implementation/privacy owner investigates; Anthony handles required acceptance before hosted private-data processing.                                                                               |
+| Account setup, costs and operating budget    | Obtain the applicable account/R2 payment-method approval. Measure CPU, requests, Hyperdrive and storage/operation use against current included allowances; present any required Workers Paid or other paid-service choice with its actual cost. Set budget/usage-alert ownership. Free is the starting choice, not a guarantee of zero future charges. Supabase Pro is reconsidered only at the recorded triggers below.                                                                                                                                                                                                                                                        | Implementation owner prepares measurements; Anthony approves setup/spending before enabling the dependent service or paid plan.                                                                     |
+| Backup retention and deletion                | The [October 30 decision](../DECISIONS.md#october-30-seven-day-staging-backup-retention) approves seven-day retention, protection and automatic expiry for both staging prefixes. API readback and parent-credential overwrite/DELETE rejection passed. Approved policy bytes/digest are stored, but workflow opt-in remains unset. Complete public Privacy wording is approved; actual asynchronous expiry, operational evidence, effective date, matching version and publication authorization remain open.                                                                                                                                                                  | Implementation owner verifies actual expiry and backup operation; Anthony/privacy owner owns separate notice publication approval.                                                                  |
+| Backup reader authority                      | The [October 29 decision](../DECISIONS.md#october-29-dedicated-backup-reader) accepts supported project-wide read access and the staging-only DELETE exception for exactly `cron.job_run_details`. The reader is LOGIN-enabled and hosted metadata/access probes passed. Supabase has received the removal request; its response and removing the exception after verified grant removal remain open alongside backups.                                                                                                                                                                                                                                                         | Implementation owner verifies source publication before activation and owns the provider follow-up; the support response is not an activation prerequisite.                                         |
+| Recovery goals and complete deletion records | The [October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit) accepts keeping unverified old restored state closed for the small beta; independent per-deletion/revocation recording is explicitly deferred. A clean restart needs a separate procedure; automatic old-phone recovery is unsupported. The [October 31 recovery-target decision](../DECISIONS.md#october-31-recovery-targets) accepts up to 24 hours of ordinary-write loss and a four-hour operator recovery target when safe recovery is possible. Actual scheduled copies, hosted alert delivery and failure/missed-run verification, and complete app/Auth recovery evidence remain open.  | Anthony and implementation/release owner reassess the deferred design before paid launch or expansion beyond the small beta, whichever comes first; release owner proves current app/Auth recovery. |
+| Encryption-key custody and restore access    | The [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover) selects an owner-held `age` private key in protected local Mac storage outside CI. USB/off-Mac retrieval and verification are not prerequisites. Verify operational decryption and complete recovery without putting the private key, credentials or private data in source/CI/chat artifacts.                                                                                                                                                                                                                                                                 | Anthony owns the key/access policy; implementation/release owner verifies actual recovery before relying on backups.                                                                                |
+| Old-build and Vercel retirement              | Full cutover selected October 30: no actual app users/external cohort, so no compatibility grace period or retained legal redirects. The [October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover) accepts a brief legal-URL interruption in a prepared, coordinated cutover. Complete approvals, artifacts and publication preflight first; retire owner-only builds and end Vercel API/legal roles, verify private-traffic cutoff, then immediately publish/verify Cloudflare legal pages and update Apple/EAS URLs. Build/upload the replacement only after verified publication. Preserve account/journal data and device gates. | Implementation/release owner executes the concrete cutover under existing approvals; Anthony supplies required phone acceptance and specific Git permissions.                                       |
+| Changed notices and disclosure evidence      | Complete Cloudflare/R2, retention and cross-border Privacy wording was approved October 30. Effective date, matching version, publication authorization and the App Privacy assessment remain open. Keep unchanged Supabase consent/provider and Sentry native-linkage questions assigned to Phase 14 rather than declaring them cleared by this migration.                                                                                                                                                                                                                                                                                                                     | Implementation/privacy owner prepares remaining disclosure/publication evidence; Anthony approves date/version and publication before outside testing.                                              |
 
 Carry the unresolved Phase 14 decisions forward through the
 [release handoff](../handoffs/phase-14-release.md#decisions-still-required-and-next-sequence):
@@ -91,11 +91,13 @@ Phase 14 paid checkpoint.
 **Workers runtime and database**
 
 - Connect `pg` and Drizzle through Hyperdrive to the existing Supabase database.
-  Check connection limits, transactions, advisory locks and statement timeouts
+  Check connection limits, supported transactions, owner locks and statement timeouts
   under Hyperdrive. Fix any query that relied on a long-lived Node pool.
-- Preserve advisory-lock identity transactions on a separate direct restricted-role
-  TLS connection: current Hyperdrive documentation lists advisory locks as unsupported.
-  Verify both connections at readiness; keep every such transaction on one connection.
+- Keep hosted managed requests and retained existing-proof recovery on Hyperdrive
+  using supported transactions, unique mapping and owner locks. Managed readiness
+  verifies the active connection's actual role, database, schema and helper. Keep
+  legacy direct advisory-lock transactions confined to loopback fixtures and each
+  transaction on one connection; the release lease retains its separate direct connection.
 - Place the Worker near Canada Central (Smart Placement or a placement hint) and
   measure p50/p95 latency and CPU per route against the current Vercel API.
 - Store secrets with `wrangler secret`. Keep staging and production as separate
@@ -117,7 +119,8 @@ Phase 14 paid checkpoint.
 
 - Nightly GitHub Actions job: `pg_dump` the `justgo` and Supabase `auth` schemas
   with the least-privileged role that can read them, encrypt with `age` to a public key whose private
-  key Anthony holds offline, and upload to an R2 bucket with an object lock.
+  key Anthony holds in protected local Mac storage outside CI, and upload to an R2
+  bucket with an object lock.
   The upload token can write but not delete. Expire backups with a lifecycle rule
   whose period matches the approved retention policy and reviewed public wording.
   Staging now has approved seven-day protection and expiry on both backup prefixes;
@@ -130,6 +133,11 @@ Phase 14 paid checkpoint.
   deleted accounts stay deleted and their old credentials are rejected.
 - Update `SERVER_RELEASES.md` and the restore checklist so R2 backups and the ledger
   supply the recovery attestation.
+
+Automatic credential issuance is [optional Phase 21](phase-21-backup-credential-issuer.md#phase-21),
+after accepted billing, analytics and actual App Store publication; it is not a
+Phase 15 or first-launch gate. Anthony owns manual renewal until that separately
+approved replacement is active; the owner-held Mac key and local parent stay outside CI.
 
 Deferred beta recovery work:
 
@@ -147,16 +155,30 @@ Deferred beta recovery work:
 
 **Cutover**
 
-- Move the static legal site (`sites/legal`) to Cloudflare. Builds already in
-  testers' hands keep the old Vercel API and legal addresses, so keep those
-  addresses serving or redirecting until every such build is retired.
-- Run the Vercel and Workers APIs side by side on the same database. Ship a
-  TestFlight build pointing at the Workers API, then retire the Vercel API
-  after Anthony approves. Remove Vercel credentials and the `vercel.json`
-  configuration at the end.
-- Update the Privacy Policy, data inventory, legal review and App Privacy answers:
-  Cloudflare replaces Vercel as host and stores encrypted backups, and requests may
-  be processed outside Canada. Publish only after Anthony approves the wording.
+- Move the static legal site (`sites/legal`) and API fully to Cloudflare. The
+  [October 30 owner-only cutover decision](../DECISIONS.md#october-30-owner-only-full-cloudflare-cutover)
+  selects no external-user grace period or retained legacy redirects.
+- Accept the healthy Worker and recovery operation. Prepare the replacement
+  TestFlight build path: verify actual resolved API/app-identity inputs and review
+  candidate Cloudflare legal URLs under the
+  [cutover procedure](../operations/CLOUDFLARE_CUTOVER.md#mobile-notices-and-old-build-retirement).
+  Complete the legal package and date/version/publication approvals, and pass
+  legal-artifact publication preflight before ending Vercel hosting. In the
+  coordinated cutover, retire owner-only TestFlight and Dev builds,
+  end Vercel API/legal hosting and verify
+  private-traffic cutoff, then immediately publish/verify Cloudflare legal pages
+  and update App Store Connect/EAS URLs. Only after verified publication, pass the
+  full diagnostics beta preflight and build/upload the replacement using the
+  accepted Cloudflare API and verified legal URLs. Anthony accepts the brief
+  legal-URL gap
+  under the [October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover).
+  An old binary is not updated by changing configuration. Preserve Supabase
+  accounts and journal data. Remove Vercel credentials and configuration at retirement.
+- Update the Privacy Policy, data inventory, legal review and App Privacy answers
+  for the completed Cloudflare/R2 setup and processing outside Canada. The next
+  public notice contains no Vercel transition wording. Complete Privacy wording is
+  approved; publish only with approved date/version and publication authorization
+  after both former hosting roles have ended.
 - Update `TECH_STACK.md`, `APP_SHELL.md` and the operations guides once the cutover
   lands.
 
@@ -179,12 +201,12 @@ R2 backups continue after an upgrade.
 ## Ready to hand off when
 
 - [ ] Anthony has confirmed that Cloudflare's DPA covers this account and recorded its version.
-- [x] The full suite, coverage floors, database/migration checks, contract tests and the Workers smoke test pass locally on the Hono API. The handoff records constituent execution without repeating overlapping wrappers; hosted CI remains open.
-- [ ] The staging Worker served a reviewed release through the approval-gated lane, and its uptime monitor is green.
+- [x] The full suite, coverage floors, database/migration checks, contract tests and Workers smoke pass locally on the Hono API. Exact merged-main CI passed; the handoff records the evidence without repeating overlapping wrappers.
+- [x] The staging Worker served reviewed source through the approval-gated lane, and normal uptime-monitor checks pass. Managed-account, performance, backup and device acceptance remain separate open gates.
 - [ ] Measured latency and CPU are recorded, and the Workers plan choice is approved.
 - [ ] A nightly backup and an hourly ledger copy have run on schedule, and the local restore rehearsal kept deleted accounts deleted.
 - [ ] A physical iPhone running a TestFlight build against the Workers API passed the Phase 14 smoke journeys.
-- [ ] Updated notices are approved and published, and the Vercel API is retired or its retirement date is recorded.
+- [ ] Updated notices are approved and published after Vercel API/legal hosting and owner-only old-build use are retired; no transition period or legacy redirects remain.
 - [ ] Every item in the remaining-decision register has a recorded result or explicit owner/phase disposition; separate Phase 14 gates remain visible and no unverified check is reported as passed.
 - [x] The handoff records the changes, problems, verification and remaining gates; the handoff index links it.
 

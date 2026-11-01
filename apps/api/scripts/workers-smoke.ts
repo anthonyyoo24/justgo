@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID, createHmac } from 'node:crypto';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
-import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Pool } from 'pg';
@@ -11,12 +10,33 @@ import { createDatabase, poolOptions } from '../src/db/client.js';
 import { readConfig } from '../src/config.js';
 import { IdentityService } from '../src/identity/service.js';
 import {
+  assertWorkerPortAvailable,
+  workerSmokeOptions,
+  workerSmokePreflightMessage,
+} from './workers-smoke-preflight.js';
+import {
+  captureWorkerCpuProfile,
+  workerCpuProfileFailureStage,
+} from './workers-cpu-profile.js';
+import {
   catalogSchema,
   completionAttemptResultSchema,
 } from '@justgo/contracts';
 
+/** Discard runtime/assertion details; only script-owned stages may leave this boundary. */
+function smokeFailure(stage: string, error: unknown) {
+  const profileStage = workerCpuProfileFailureStage(error);
+  return new Error(
+    `Workers smoke failed during ${stage}${profileStage ? ` (${profileStage})` : ''}`,
+  );
+}
+
 /** Actual workerd -> pg -> isolated Postgres smoke, without remote bindings. */
 async function run() {
+  const { profiling, port, inspectorPort } = workerSmokeOptions(
+    process.argv.slice(2),
+    process.env,
+  );
   const runtimeUrl = localTestDatabaseUrl(process.env.DATABASE_URL);
   const migrationUrl = localTestDatabaseUrl(process.env.MIGRATION_DATABASE_URL);
   if (
@@ -28,18 +48,10 @@ async function run() {
       'Workers smoke requires isolated runtime/migrator roles with local SSL disabled',
     );
   runtimeUrl.hostname = '127.0.0.1';
-  const port = Number(process.env.JUSTGO_WORKERS_TEST_PORT ?? '8791');
-  if (!Number.isInteger(port) || port < 1024 || port > 65535)
-    throw new Error('Invalid Worker smoke port');
-  const probe = createServer();
-  await new Promise<void>((resolveProbe, reject) => {
-    probe.once('error', () =>
-      reject(new Error('Worker smoke port is occupied')),
-    );
-    probe.listen(port, '127.0.0.1', () =>
-      probe.close((error) => (error ? reject(error) : resolveProbe())),
-    );
-  });
+  await assertWorkerPortAvailable(port, 'Worker smoke');
+  if (profiling) {
+    await assertWorkerPortAvailable(inspectorPort, 'Worker CPU inspector');
+  }
   const root = resolve(import.meta.dirname, '../../..');
   await mkdir(resolve(root, '.local/workers'), {
     recursive: true,
@@ -130,7 +142,8 @@ async function run() {
         '--port',
         String(port),
         '--inspector-port',
-        '0',
+        String(inspectorPort),
+        ...(profiling ? ['--inspector-ip', '127.0.0.1'] : []),
         '--log-level',
         'none',
         '--show-interactive-dev-session',
@@ -158,7 +171,9 @@ async function run() {
       const response = await fetch(origin + path, {
         ...init,
         redirect: 'error',
-        signal: AbortSignal.timeout(12000),
+        signal: init?.signal
+          ? AbortSignal.any([init.signal, AbortSignal.timeout(12000)])
+          : AbortSignal.timeout(12000),
       });
       assert.equal(response.headers.get('cache-control'), 'no-store');
       assert.match(
@@ -189,6 +204,47 @@ async function run() {
       await delay(100);
     }
     assert.ok(ready, 'Worker startup');
+    if (profiling) {
+      stage = 'local CPU profiling';
+      const profile = await captureWorkerCpuProfile(
+        `http://127.0.0.1:${inspectorPort}`,
+        async (signal) => {
+          for (let index = 0; index < 200; index++) {
+            signal.throwIfAborted();
+            const response = await request('/health', {
+              headers: { 'x-justgo-smoke-mode': 'managed-wrapped' },
+              signal,
+            });
+            assert.equal(response.status, 200);
+            assert.deepEqual(await response.json(), {
+              status: 'ok',
+              service: 'justgo-api',
+            });
+            assert.equal(
+              response.headers.get('x-justgo-source-sha'),
+              'b'.repeat(40),
+            );
+            assert.equal(
+              response.headers.get('x-justgo-environment'),
+              'staging',
+            );
+            assert.equal(response.headers.get('x-justgo-startup-stage'), null);
+            assert.equal(response.headers.get('x-justgo-smoke-outbound'), '0');
+          }
+        },
+      );
+      const profiles = resolve(root, '.local/workers/profiles');
+      await mkdir(profiles, { recursive: true, mode: 0o700 });
+      const output = resolve(profiles, `health-${randomUUID()}.cpuprofile`);
+      await writeFile(output, JSON.stringify(profile), {
+        mode: 0o600,
+        flag: 'wx',
+      });
+      console.info(
+        `Local workerd CPU profile saved: ${output}. Functional smoke was not run; use npm run test:workers.`,
+      );
+      return;
+    }
     for (const mode of ['managed', 'managed-wrapped', 'managed-virtual']) {
       stage = `${mode} startup with Sentry and beta configuration`;
       const response = await request('/health', {
@@ -287,8 +343,8 @@ async function run() {
     console.info(
       'Workers smoke passed: managed Auth/Sentry/beta composition, wrapped and opaque virtual transport health, startup redaction, readiness, authenticated read/write, idempotency and error envelope. Hosted Hyperdrive/CPU acceptance remains separate.',
     );
-  } catch {
-    throw new Error(`Workers smoke failed during ${stage}`);
+  } catch (error) {
+    throw smokeFailure(stage, error);
   } finally {
     if (child && child.exitCode === null) {
       child.kill('SIGTERM');
@@ -329,10 +385,11 @@ async function run() {
 
 run().catch((error) => {
   console.error(
-    error instanceof Error &&
+    workerSmokePreflightMessage(error) ??
+      (error instanceof Error &&
       error.message.startsWith('Workers smoke failed during ')
-      ? error.message
-      : 'Workers smoke failed preflight or cleanup; no raw runtime output retained.',
+        ? error.message
+        : 'Workers smoke failed preflight or cleanup; no raw runtime output retained.'),
   );
   process.exitCode = 1;
 });

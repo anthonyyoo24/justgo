@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { secureHeaders } from 'hono/secure-headers';
-import type { ApiEnvironment, ApiContext } from './request.js';
+import type { ApiApp, ApiEnvironment, ApiContext } from './request.js';
 import {
   createLogger,
   loggerOptions,
@@ -13,6 +13,7 @@ import type { ServerErrorReporter } from './server-error-reporter.js';
 import { errorHandler, notFoundHandler } from './error-handler.js';
 import { requestFailure } from './request.js';
 export type HttpOptions = {
+  router?: ApiApp['router'];
   logger?: LoggerOptions | false;
   origins?: string[];
   reportServerError?: ServerErrorReporter;
@@ -32,7 +33,9 @@ export function createHttpApp(options: HttpOptions = {}) {
       !['staging', 'production'].includes(releaseIdentity.environment))
   )
     throw new Error('Invalid API release identity');
-  const app = new Hono<ApiEnvironment>();
+  const app = new Hono<ApiEnvironment>(
+    options.router ? { router: options.router } : {},
+  );
   app.use('*', async (context, next) => {
     await next();
     if (context.res.headers.get('content-type') === 'application/json')

@@ -16,8 +16,10 @@ The installed app and Expo project retain the JustGO name/identity.
 `build.beta` is a store-signed release build using EAS **preview** variables.
 Its Phase 15 candidate, the beta preflight and all TestFlight workflow commands
 now select `https://justgo-api-staging.anthonyyoo24.workers.dev`. This target uses
-the verified Cloudflare account subdomain; no Worker or Hyperdrive deployment
-has been accepted yet. Installed build 5 still uses
+the verified Cloudflare account subdomain. The active reviewed Worker now passes
+public health/readiness and unauthenticated private guards; managed-account and
+native acceptance remain open in the [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md).
+Installed build 5 still uses
 `https://justgo-two.vercel.app`. The separate Dev profile and its installed
 build also retain their existing Vercel target pending a coordinated migration
 or retirement disposition.
@@ -49,7 +51,7 @@ the approved essential-errors Privacy Policy source. Anthony approved that polic
 and publication on October 27, 2026: version `2026-10-27-essential-errors`, effective
 October 27. Anonymous HTTPS reads on October 27 matched the approved generated
 Privacy bytes; Terms was unchanged. Those are historical build-5 receipts. The
-Cloudflare candidate requires the newly approved transition notice described
+Cloudflare candidate requires the approved full-cutover notice described
 below. `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION` in the protected
 `testflight-beta` environment must match that notice's actual published version.
 Reporting-enabled builds also require
@@ -80,10 +82,16 @@ Before building the Phase 15 candidate:
 
 - Verify the actual staging Worker through its protected release lane and
   preserve its source identity and authenticated-data checks.
-- Approve and publish the complete [transition notice](../legal/CLOUDFLARE_NOTICE_REVIEW.md)
-  naming Cloudflare and Vercel while old builds still use Vercel. Its backup
-  statements must match activated and verified recovery services. The new
-  Privacy source needs approved publication/date metadata and
+- Publish the complete approved [full-cutover notice](../legal/CLOUDFLARE_NOTICE_REVIEW.md)
+  under the [cutover procedure](CLOUDFLARE_CUTOVER.md): complete every required
+  approval and legal-artifact preflight before retiring owner-only old builds
+  and Vercel API/legal roles, then immediately publish/verify Cloudflare legal
+  pages and update ASC/EAS URLs. Anthony accepts the brief legal-URL gap under the
+  [October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover).
+  No external-user transition period or legacy redirect is selected; the final
+  Cloudflare-only notice follows the end of Vercel's roles. Its backup statements
+  must match activated and verified recovery services. The new Privacy source
+  needs approved publication/date metadata and
   `<!-- deployment-host: cloudflare -->`; the existing Vercel notice does not
   authorize this build.
 - Set EAS preview `EXPO_PUBLIC_PRIVACY_POLICY_URL` and `EXPO_PUBLIC_TERMS_URL`

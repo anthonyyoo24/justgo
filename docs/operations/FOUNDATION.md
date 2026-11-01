@@ -124,22 +124,30 @@ Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 5
 Use this for a restore from an encrypted R2 recovery copy or a provider backup.
 The October 28 decision selects nightly application/Auth dumps and hourly ledger
 copies in R2 while retaining Supabase Free. Pro is no longer the selected backup
-prerequisite. [Cloudflare backups](CLOUDFLARE_BACKUPS.md) owns tooling, proposed
-retention/key policy and the guarded local restore. Its approval register and
-actual hosted restore/copy-expiry evidence remain open; synthetic regression
-success does not establish operational recovery.
+prerequisite. [Cloudflare backups](CLOUDFLARE_BACKUPS.md) owns tooling, recorded
+retention/key decisions and the guarded local restore. Actual hosted restore and
+copy-expiry evidence remain open; synthetic regression success does not establish
+operational recovery.
 
 Never restore deleted journals or revoked access. An hourly ledger can be missing
 later deletions. Recovery requires a current writer-fenced ledger covering app and
 Auth mutations; if that record cannot be established, keep writers closed. R2
 locks/lifecycle and Supabase provider copies have separate deletion obligations.
 Total source loss after the last ledger copy can leave recovery closed
-indefinitely; the proposed four-hour recovery target does not cover this gap.
-Accepting that availability limit or adding independently durable deletion records
-requires an explicit policy/scope decision. Neither permits resurrecting deleted
-data. The backup guide also retains the seven-day upload-token renewal requirement;
-scheduled jobs are not proof of unattended renewal or independent offline key
-custody. A protected local key and synthetic round trip do not establish either.
+indefinitely. The [October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit)
+accepts this limit for the small beta; reassess independent per-deletion/revocation
+recording before paid launch or beta expansion, whichever comes first.
+The [October 31 recovery targets](../DECISIONS.md#october-31-recovery-targets)
+accept up to 24 hours of ordinary-write loss and a four-hour operator recovery
+target when safe recovery is possible. That target does not cover the ledger gap
+or permit resurrecting deleted data.
+
+The [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover)
+accepts protected local Mac key custody outside CI without an off-Mac retrieval
+prerequisite. The backup guide retains the seven-day upload-token renewal
+requirement; scheduled jobs are not proof of unattended renewal or actual
+recovery-copy decryption. A protected local key and synthetic round trip do not
+establish actual hosted recovery-copy decryption or complete app/Auth recovery.
 
 Before restoring:
 
@@ -151,7 +159,10 @@ Before restoring:
    includes Delete all my data events on active accounts, not only deleted users.
    Preserve mapping/receipt consistency and provider subject tombstones; an older
    app-data snapshot must never undo a later Auth/profile or activity deletion.
-   If the current ledger cannot be recovered after a disaster, do not reopen an older snapshot that may lack later deletions/revocations. The Phase 15 backup guide records the remaining independent-ledger recovery gate; scheduled copies alone do not close it.
+   If the current ledger cannot be recovered after a disaster, do not reopen an
+   older snapshot that may lack later deletions/revocations. The Phase 15 backup
+   guide records this accepted beta limit and the future independent-record
+   follow-up; scheduled copies alone do not establish a current ledger.
 
 Restore and reapply:
 

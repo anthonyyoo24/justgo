@@ -40,6 +40,7 @@
     "test:migrations": "npm run test:migrations -w @justgo/api",
     "test:exported-web": "playwright test --config e2e/exported-web.config.ts",
     "test:workers": "npm run test:workers -w @justgo/api",
+    "profile:workers": "npm run profile:workers -w @justgo/api",
     "test:backup:recovery": "node --env-file-if-exists=apps/api/.env --import tsx scripts/backups/rehearse.mjs"
   },
   "devDependencies": {
