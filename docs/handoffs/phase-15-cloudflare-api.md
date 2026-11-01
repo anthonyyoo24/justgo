@@ -7,7 +7,8 @@ staging at 100%, verified by stable provider readback and eight strict probes.
 Its release workflow remains failed after an immediate public identity mismatch;
 manual verification does not change that conclusion. Public samples pass, but
 real-account, complete recovery, Free-plan performance and native acceptance
-remain open. The approved Dev build is waiting for its protected signing review.**
+remain open. JustGO Dev build 2 compiled, passed signing/artifact checks and
+uploaded successfully; physical installation and the owner phone check are next.**
 PRs 63–72 are merged. PR 70 merged as `e551604`; PR 71, reviewed head `d0e605e`,
 merged as `0753986bc9ebcfd654e901a1ef25b7fb64c5ff92`. Both PR heads passed all
 seven CI checks and CodeRabbit reported no actionable issues. Combined main
@@ -186,28 +187,49 @@ for an earlier owner-only synthetic phone check. It selects only the exact
 staging Worker API after validating the existing Dev environment/profile,
 preserving app/provider identity, current legal URLs, fixture rejection and
 dotenv isolation. The default Dev path and release/build profiles are unchanged.
-A compatible Dev binary and a genuine disposable provider session remain required;
-the recorded October 26 Dev binary predates current native inputs. Fresh read-only
-preparation verified pinned EAS 25.3.0 authentication, the remote development
-configuration guard, sole-owner/main-only protected environments and one active
-ad hoc signing set with a certificate/profile expiring October 11, 2027. Secret
-values, certificate/profile payloads and device identifiers were not retrieved;
-Apple-side revocation and the intended phone's current inclusion still require
-the frozen-signing runner checks. Current phase-branch native inputs match
-reviewed main `d66c42d`, so the same reviewed-main tag can support the
-API release and subsequent `development-ios.yml` build/upload without a new
-source PR. After actual API deployment verification, the approved
+A compatible Dev binary is now built and its artifact verified. The initial
+screen/navigation phone check can use guest mode; a genuine disposable provider
+session remains required for managed synchronization/deletion acceptance. An
+existing secondary Google identity is sufficient; no new email is required for
+the initial guest check. Verify Google test-user eligibility before managed
+checks and delete only the disposable JustGO account, not its Google identity.
+
+After verified API deployment and Anthony's protected signing review,
 [JustGO Dev run 41348697942](https://github.com/anthonyyoo24/justgo/actions/runs/41348697942)
-was dispatched from the same reviewed-main tag. Validation passed; compilation
-and upload wait for Anthony's protected `testflight-beta` signing review. That
-shared environment name does not make this a TestFlight submission. No new
-artifact or phone compatibility is claimed. The earlier safe preparation is
-ignored `staging-2026-11-01/development-build-preflight.json`.
-Anthony needs help preparing the disposable provider login; use a distinct
-secondary Google identity on the phone and verify test-user eligibility before
-hosted account/deletion checks. Delete only the disposable JustGO account, not
-the Google identity. No Metro or phone test ran; the native build is pending. This earlier developer check does not
-replace final TestFlight/cutover acceptance.
+succeeded from reviewed `d66c42d` and tag `staging-cloudflare-2026-11-01`, producing
+Dev 0.1.0 (2) in the existing Expo project. Frozen compilation, signed identity/
+profile/native capability inspection, exact upload, public artifact retention
+and temporary signing cleanup all passed. Downloaded archive SHA-256 and the
+31,074,881-byte IPA SHA-256 matched GitHub metadata and the source/run manifest;
+IPA hash is `704051dcd4c1db7adcbd3ceba7fd9d4d7711cc06fbbdc578728bcb0d375b1043`.
+The [installation page](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/c1f43ed8-066a-413e-b196-647588a1296f)
+shows Succeeded and its install QR. GitHub artifact `13101530786` expires November
+8 at 21:13:59 UTC. The manifest reports one provisioned device without exposing
+its ID. This is Dev internal distribution, with no TestFlight/App Store
+submission, signing upgrade or plan purchase. Physical installation still proves
+whether the intended phone accepts the artifact. Safe receipts are ignored
+`staging-2026-11-01/development-run-result.json`, `dev-manifest.json`,
+`dev-install.json` and `development-artifact-verified.json`.
+
+Fresh local served-code inspection found Expo 58's development virtual module
+merging saved Vercel and original Google-client inputs despite the correct
+launcher/HMR values and `EXPO_NO_DOTENV=1`. Local commit `978c41a` adds a guarded
+Dev-only public adapter for the complete API/provider/diagnostic/notice pairing.
+Marked production, CI, EAS-build, Vercel and fixture contexts are rejected;
+normal release and isolated journey resolution stay unchanged. The native binary
+inputs are unchanged; Dev deliberately loads current local phase-branch JS.
+After restarting the owned Metro with `--clear`, the fresh complete iOS bundle
+verified all four API/identity/provider/diagnostic consumers depend on the adapter,
+all selected public values match and no dotenv or Vercel API modules remain.
+The owned server is available on LAN port 8081; no phone execution is claimed.
+The ignored receipt is `staging-2026-11-01/metro-readiness.json`. Local simctl is
+unavailable, and the installed Router emits an export-fallback warning while
+bundling succeeds. A limited in-app browser Settings walkthrough passed;
+local browser API access is excluded by existing hosted CORS and LAN HTTP also
+lacks secure-origin WebCrypto. These browser limits do not establish native
+failure or acceptance; no provider policy was changed. Temporary preview tabs
+were closed. This earlier Dev checkpoint does not replace final TestFlight/
+cutover, real managed-account or independent Phase 14 acceptance.
 
 The current source metadata check covers 45 app/Auth/migration tables. The named
 `postgres` role lacks the required SHARE-lock privilege on `auth.schema_migrations`;
@@ -331,8 +353,13 @@ validation passed immediately before the authorized tag push. Actual deployment
 readback, the failed workflow conclusion and post-release measurements are
 recorded above; no compatible installed phone app or complete recovery is claimed.
 The local convergence follow-up passed 151 focused release tests, API typecheck,
-formatting and repository lint (zero errors, 167 existing warnings). Independent
-static review found no actionable issues. These narrow tooling checks do not
+formatting and repository lint (zero errors, 167 existing warnings). The subsequent
+Dev virtual-environment fix passed 16 launcher/Metro/journey regressions, 48
+mobile adapter/runtime/Auth tests, mobile source/test typechecks and the same
+lint result. The adapter suite passed again after correcting its test-environment
+type. Fresh cleared served-iOS code inspection and limited browser evidence are
+recorded above. Independent static review found no actionable issues in either
+follow-up. These narrow tooling checks do not
 reopen phase closeout or establish hosted execution of the unpublished helper.
 Changed release/docs directory file lists were reviewed; no moves were needed.
 
@@ -591,7 +618,7 @@ Hosted notification delivery and scheduled backup evidence remain open.
 | Retention and deletion     | Seven-day staging retention/protection/expiry approved October 30; API readback and actual parent overwrite/DELETE lock rejection passed for both prefixes. Approved policy bytes/digest are stored. Initial real R2 database/ledger copies, independent retrieval and protected decryption passed November 1; scheduled workflow opt-in and operational recovery remain pending. Encrypted canaries remain for November 6 retention and November 7 rotation expiry; actual asynchronous deletion is unobserved. Supabase support response/removal remains a nonblocking follow-up.                                                                                                                                                                                                                                                                                                              | Implementation owner observes expiry, verifies activation/restore and owns support follow-up; Anthony/privacy owner owns separate publication date/version approval. |
 | Recovery guarantees        | Small-beta fail-closed limit approved October 29; unverified old restored state stays closed. Independent deletion/revocation recording is explicitly deferred. The October 31 recovery-target decision approves up to 24 hours of ordinary-write loss and a four-hour operator recovery target when safe recovery is possible; sign-in again after a restore was approved October 30. Actual hosted archive compatibility passed locally; initial R2 upload/retrieval/decryption now pass. Writer-fenced ledger reconciliation and complete operational app/Auth recovery remain unverified.                                                                                                                                                                                                                                                                                                    | Anthony and implementation/release owner reassess before paid launch or beta expansion, whichever comes first; release owner proves current app/Auth recovery.       |
 | Keys and restore access    | Anthony chose protected Mac key copies locally outside CI, without a USB-retrieval prerequisite, and owns manual renewal by day five. The owner-confirmed USB copy was not tested. Actual hosted-copy decryption passed November 1; complete recovery remains open. Automatic issuance is deferred to optional Phase 21. October 31 owner-approved rotation revoked the exposed original backup parent and invalidated its derived uploader (HEAD 401); replacement HEAD passed 200 and protected uploader secrets were updated. The replacement derived credential expires November 5 at 15:59:59 UTC and the runner stops accepting it at 15:39:59 UTC; parent expires at 17:00:00 UTC, unchanged inspector at 23:06:08 UTC. Renewing only the derived credential is insufficient, and inspector renewal is needed to observe the November 6 retention-canary expiry. Parent stays outside CI. | Anthony retains local custody and owns manual renewal; actual hosted-copy decryption passed and the implementation owner verifies complete operational recovery.     |
-| Release/bootstrap          | Approved tag `staging-cloudflare-2026-11-01` publishes reviewed `d66c42d` after seven passing main CI jobs. Release 41346805790 failed after promotion on public identity verification; stable GET-only readback verified deployment `36658e31…`, version `8f662241…`, exact source/run bindings and all eight public/immutable probes. Do not retry the mutation or call the workflow successful. Approved Dev run 41348697942 waits for protected signing review. Hosted account, sustained performance and phone acceptance remain open. Bootstrap secret remains removed; the local protected recovery copy remains. Release token expires November 6 at 04:59:59 UTC.                                                                                                                                                                                                                       | Implementation owner preserves actual deployment/readback evidence and completes acceptance; Anthony supplies the retained signing review and phone checkpoint.      |
+| Release/bootstrap          | Approved tag `staging-cloudflare-2026-11-01` publishes reviewed `d66c42d` after seven passing main CI jobs. Release 41346805790 failed after promotion on public identity verification; stable GET-only readback verified deployment `36658e31…`, version `8f662241…`, exact source/run bindings and all eight public/immutable probes. Do not retry the mutation or call the workflow successful. Approved Dev run 41348697942 succeeded with signed artifact inspection, exact upload and cleanup; build 2 and its installation page are verified. Physical installation and the guest phone checkpoint are pending. Hosted account, sustained performance and phone acceptance remain open. Bootstrap secret remains removed; the local protected recovery copy remains. Release token expires November 6 at 04:59:59 UTC.                                                                    | Implementation owner preserves actual deployment/readback evidence and completes acceptance; Anthony supplies the retained signing review and phone checkpoint.      |
 | Old builds and Vercel      | Anthony confirmed no actual app users and selected full Cloudflare cutover with no external-user grace period or retained legal redirects. Complete all required approvals and legal-artifact preflight before the coordinated cutover; retire owner-only TestFlight/Dev binaries, end Vercel API/legal hosting, verify private-traffic cutoff, immediately publish/verify Cloudflare legal pages, then update ASC/EAS URLs. Build/upload the replacement only after verified publication. Anthony accepts the brief legal-URL gap. App Store Connect readback confirms builds 3–5 in the one-tester Owner validation internal group, Manual for Xcode Builds, and no external groups. EAS preview legal URLs and ASC Privacy URL still point to Vercel. Existing conditional retirement approval remains; no builds/hosting are retired.                                                        | Implementation owner executes the cutover and preserves data; Anthony supplies required phone acceptance and specific Git permissions.                               |
 | Notices/disclosures        | Complete simplified public Privacy wording, including sign-in again after restoration, approved October 30. The local candidate records wording approval; effective date, matching final version and publication remain pending. Account assessment is accepted; scheduled backup and complete recovery evidence remain open. Complete final date/version approval, publication authorization and artifact preflight before retirement, then publish immediately after old API/legal roles and owner-only builds are retired. Current public source and Apple answers remain unchanged.                                                                                                                                                                                                                                                                                                          | Anthony approves date/version and publication; implementation owner verifies the cutover facts and accepted recovery behavior.                                       |
 | Phase 14 carry-forward     | Supabase sensitive-data/consent/provider-copy review, Sentry/Apple diagnostic entries/post-trial scope, physical-device/recovery/accessibility dispositions and external cohort/dates remain open. Deliberate crash skipped, simulator CI deferred, Vercel contact declined.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Existing Phase 14 owners; no gate is closed by this port.                                                                                                            |
