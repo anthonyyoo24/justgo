@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { createServer, type AddressInfo } from 'node:net';
+import { createServer, Server, type AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   assertWorkerPortAvailable,
   workerSmokeOptions,
@@ -112,6 +112,29 @@ describe('explicit Worker check commands', () => {
 });
 
 describe('Worker loopback port preflight', () => {
+  it.each(['EPERM', 'EACCES'])(
+    'keeps %s listen failures unbranded for generic diagnostics',
+    async (code) => {
+      const failure = Object.assign(new Error('PRIVATE_LISTEN_ERROR'), {
+        code,
+      });
+      const listen = vi
+        .spyOn(Server.prototype, 'listen')
+        .mockImplementationOnce(function (this: Server) {
+          this.emit('error', failure);
+          return this;
+        });
+      try {
+        await expect(
+          assertWorkerPortAvailable(8791, 'Worker CPU inspector'),
+        ).rejects.toBe(failure);
+        expect(workerSmokePreflightMessage(failure)).toBeUndefined();
+      } finally {
+        listen.mockRestore();
+      }
+    },
+  );
+
   it.each(['Worker smoke', 'Worker CPU inspector'] as const)(
     'rejects an occupied %s port and releases its own successful probe',
     async (label) => {
@@ -142,6 +165,8 @@ describe('Worker loopback port preflight', () => {
   );
 });
 
+const childTimeoutMs = 10_000;
+
 function runSmoke(
   args: string[],
   environment: Record<string, string | undefined> = {},
@@ -157,7 +182,7 @@ function runSmoke(
     {
       cwd: fileURLToPath(new URL('../../', import.meta.url)),
       encoding: 'utf8',
-      timeout: 10000,
+      timeout: childTimeoutMs,
       // The CLI stops before database/runtime setup; never load saved settings.
       env: {
         PATH: process.env.PATH,
@@ -186,7 +211,9 @@ function expectPreflightOutput(
   expect(result.stderr).not.toContain('PRIVATE_PREFLIGHT_INPUT');
 }
 
-describe('actual Worker smoke preflight diagnostics', () => {
+// Include listener setup/cleanup beyond the child-process deadline.
+const cliTestOptions = { timeout: childTimeoutMs + 5000 };
+describe('actual Worker smoke preflight diagnostics', cliTestOptions, () => {
   it('redacts unbranded preflight failures', () => {
     expectPreflightOutput(
       runSmoke(['--smoke'], { DATABASE_URL: 'PRIVATE_PREFLIGHT_INPUT' }),
@@ -207,7 +234,9 @@ describe('actual Worker smoke preflight diagnostics', () => {
     },
     {
       args: ['--profile'],
-      environment: { JUSTGO_WORKERS_INSPECTOR_PORT: 'PRIVATE_PREFLIGHT_INPUT' },
+      environment: {
+        JUSTGO_WORKERS_INSPECTOR_PORT: 'PRIVATE_PREFLIGHT_INPUT',
+      },
       message: 'Invalid Worker CPU inspector port',
     },
   ])(

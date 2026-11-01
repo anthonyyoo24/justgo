@@ -48,20 +48,22 @@ export function workerSmokeOptions(
   return { profiling, port, inspectorPort };
 }
 
-/** Refuse an occupied loopback port without adopting another process's listener. */
+/** Refuse unavailable loopback ports without adopting another process's listener. */
 export async function assertWorkerPortAvailable(
   port: number,
   label: 'Worker smoke' | 'Worker CPU inspector',
 ) {
   const probe = createServer();
   await new Promise<void>((resolve, reject) => {
-    probe.once('error', () =>
+    probe.once('error', (error: NodeJS.ErrnoException) =>
       reject(
-        preflightFailure(
-          label === 'Worker CPU inspector'
-            ? 'Worker CPU inspector port is occupied'
-            : 'Worker smoke port is occupied',
-        ),
+        error.code === 'EADDRINUSE'
+          ? preflightFailure(
+              label === 'Worker CPU inspector'
+                ? 'Worker CPU inspector port is occupied'
+                : 'Worker smoke port is occupied',
+            )
+          : error,
       ),
     );
     probe.listen(port, '127.0.0.1', () =>
