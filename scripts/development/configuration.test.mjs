@@ -8,6 +8,8 @@ import {
   validateDevelopmentEnvironment,
   localDevelopmentEnvironment,
   releaseGoogleIosClientId,
+  developmentApiOrigins,
+  developmentLaunchOptions,
 } from './configuration.mjs';
 
 export function publicEnvironment() {
@@ -35,6 +37,69 @@ test('launch configuration pins the separate device variant and prevents Expo do
     environment.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     publicEnvironment().EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
   );
+});
+
+test('Cloudflare selection is explicit and consumed before forwarding Expo flags', () => {
+  assert.deepEqual(developmentLaunchOptions(['--clear', '--web']), {
+    apiTarget: 'vercel',
+    expoArgs: ['--clear', '--web'],
+  });
+  assert.deepEqual(developmentLaunchOptions(['--cloudflare', '--clear']), {
+    apiTarget: 'cloudflare',
+    expoArgs: ['--clear'],
+  });
+  for (const args of [
+    ['--api-url=https://other.invalid'],
+    ['--cloudflare', '--port', '9090'],
+    ['--scheme', 'justgo'],
+  ])
+    assert.throws(() => developmentLaunchOptions(args));
+});
+
+test('local Cloudflare testing overrides only the API after all saved inputs pass', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'justgo-cloudflare-dev-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, '.env.development.local');
+  const save = (environment) =>
+    writeFile(
+      path,
+      Object.entries(environment)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\n'),
+    );
+  await save(publicEnvironment());
+  const standard = await localDevelopmentEnvironment({}, path);
+  const cloudflare = await localDevelopmentEnvironment({}, path, {
+    apiTarget: 'cloudflare',
+  });
+  assert.equal(standard.EXPO_PUBLIC_API_URL, developmentApiOrigins.vercel);
+  assert.deepEqual(cloudflare, {
+    ...standard,
+    EXPO_PUBLIC_API_URL: developmentApiOrigins.cloudflare,
+  });
+  assert.throws(() => validateDevelopmentEnvironment(cloudflare));
+  assert.throws(() =>
+    validateDevelopmentEnvironment(standard, { apiTarget: 'cloudflare' }),
+  );
+  assert.throws(() =>
+    validateDevelopmentEnvironment(standard, { apiTarget: 'other' }),
+  );
+  await assert.rejects(
+    localDevelopmentEnvironment({}, path, { apiTarget: 'other' }),
+  );
+
+  for (const patch of [
+    { EXPO_PUBLIC_API_URL: 'https://other.invalid' },
+    { EXPO_PUBLIC_API_URL: developmentApiOrigins.cloudflare },
+    { IOS_BUNDLE_IDENTIFIER: 'com.anthonyyoo.justgo' },
+    { EXPO_PUBLIC_SENTRY_ENABLED: 'true' },
+    { JUSTGO_JOURNEY_FIXTURES: 'true' },
+  ]) {
+    await save({ ...publicEnvironment(), ...patch });
+    await assert.rejects(
+      localDevelopmentEnvironment({}, path, { apiTarget: 'cloudflare' }),
+    );
+  }
 });
 
 test('profile overrides cannot substitute another API or release identity after environment validation', async () => {

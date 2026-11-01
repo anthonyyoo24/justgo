@@ -2,18 +2,22 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import {
   developmentIdentity,
+  developmentLaunchOptions,
   localDevelopmentEnvironment,
   mobileRoot,
 } from './configuration.mjs';
 
 try {
-  const args = process.argv.slice(2);
-  if (args.some((arg) => !['--clear', '--web'].includes(arg))) {
-    throw new Error(
-      'JustGO Dev supports --clear and --web; its app scheme and LAN port are fixed.',
-    );
-  }
-  const environment = await localDevelopmentEnvironment();
+  const { apiTarget, expoArgs } = developmentLaunchOptions(
+    process.argv.slice(2),
+  );
+  const environment = await localDevelopmentEnvironment(
+    process.env,
+    undefined,
+    {
+      apiTarget,
+    },
+  );
   const require = createRequire(
     new URL('../../apps/mobile/package.json', import.meta.url),
   );
@@ -30,7 +34,7 @@ try {
       '8081',
       '--max-workers',
       '1',
-      ...args,
+      ...expoArgs,
     ],
     {
       cwd: mobileRoot,

@@ -129,6 +129,27 @@ From the repository root:
 npm run dev:mobile -- --clear
 ```
 
+For an owner-only synthetic test of the Cloudflare staging API, select it
+explicitly:
+
+```sh
+npm run dev:mobile -- --cloudflare --clear
+```
+
+The option is consumed by the launcher before Expo starts. It validates the
+saved development environment and pinned native profile first, then changes
+only `EXPO_PUBLIC_API_URL` to
+`https://justgo-api-staging.anthonyyoo24.workers.dev`. The default command retains
+its existing Vercel API target. Identity, Auth/provider pairing, Sentry-off mode,
+current legal URLs and fixture rejection remain enforced; remote EAS settings
+and release profiles are not changed. Arbitrary API origins are not accepted.
+Use a genuinely disposable Apple/Google identity and synthetic writing because
+Dev shares the staging database. This early test can precede final TestFlight
+and legal/Vercel retirement; it does not publish the pending Cloudflare notice
+or close final native/cutover acceptance. Verify a compatible Dev binary before
+loading current source: the recorded October 26 build predates the current
+native patches/source-build policy and is not accepted as compatible.
+
 The launcher reads only ignored `.env.development.local`, validates the Dev
 identity/provider pairing and sets `EXPO_NO_DOTENV=1`. It never falls back to
 release `.env.local`. Metro uses one worker, LAN port 8081 and explicit scheme
