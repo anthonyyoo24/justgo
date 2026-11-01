@@ -2,18 +2,12 @@
 
 The manual [Staging API release workflow](../../.github/workflows/staging-api.yml)
 prepares Cloudflare Worker versions and deploys the exact version after its probes
-pass. PRs 70 and 71 are merged as `e551604` and
-`0753986bc9ebcfd654e901a1ef25b7fb64c5ff92`; the latter passed all seven main CI
-checks in run `41229431683`. Approved tag `staging-cloudflare-2026-10-31-2`
-is published (annotated tag object `bd094882986c3040541e6665232714274b900c55`).
-Release `41230382940`, attempt `1`, succeeded. Stable provider readbacks before
-and after public probes verified deployment `3bf9db92-3e16-4616-8dd7-fac6a5707579`
-serving version `e9356054-82bc-4fcb-a700-80240f989a01` at 100%, exact source/run
-bindings, health/readiness 200 and unauthenticated private guards 401. Latest equals
-serving; ordinary release guards apply. This does not establish real managed-account,
-performance, alert-delivery or native acceptance.
+pass. Reconfirm the serving/latest baseline before applying the ordinary release
+guards. Release probes do not establish real managed-account, performance,
+alert-delivery or native acceptance.
 
-The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md) owns the current evidence.
+The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status) owns
+current source, tag, CI, run, deployment/version, probe and approval evidence.
 Existing owner-only builds still target the Vercel API/legal addresses until
 the approved full cutover replaces or retires them; see the
 [Phase 14 handoff](../handoffs/phase-14-release.md#current-release-evidence). Local implementation does not authorize account creation,

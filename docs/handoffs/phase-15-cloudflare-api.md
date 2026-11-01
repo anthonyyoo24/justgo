@@ -96,7 +96,7 @@ wraps a fresh TrieRouter per invocation, preserving each handler registration on
 Node's default routing and invocation-owned database/service isolation. The local
 profiler has a separate explicit command and bounded 30-second capture. Matching captures
 remove the targeted matcher hotspot but do not establish hosted CPU savings.
-Merge, release-tag publication and hosted measurement remain open. Avoid
+Release-tag publication and hosted measurement remain open. Avoid
 speculative shared-app, pool or account-state caching.
 
 Hosted verification with synthetic content is already authorized and is distinct

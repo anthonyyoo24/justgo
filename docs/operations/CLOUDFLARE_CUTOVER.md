@@ -1,15 +1,10 @@
 # Cloudflare cutover and acceptance
 
-The staging Worker and Hyperdrive exist. PRs 70 and 71 are merged as `e551604`
-and `0753986bc9ebcfd654e901a1ef25b7fb64c5ff92`. Main CI `41229431683` passed all
-seven checks; approved tag `staging-cloudflare-2026-10-31-2` is published.
-Release `41230382940`, attempt `1`, succeeded. Stable provider readbacks before
-and after public probes verified deployment `3bf9db92-3e16-4616-8dd7-fac6a5707579`
-serving version `e9356054-82bc-4fcb-a700-80240f989a01` at 100%, exact source/run
-bindings, health/readiness 200 and unauthenticated private-route guards 401.
-Latest equals serving, so ordinary release guards apply; do not reuse the
-consumed four-version incident opt-in. The earlier promotion-unconfirmed run
-remains a separate failed historical run; see
+The staging Worker and Hyperdrive exist. The
+[Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status)
+owns current release source, tag, CI, run, deployment/version and probe evidence.
+Reconfirm the serving/latest baseline before an ordinary release; do not reuse
+the consumed four-version incident opt-in. For uncertain outcomes, follow
 [server releases](SERVER_RELEASES.md#failures-and-uncertain-outcomes).
 
 Real Apple/Google sign-in, account synchronization/deletion, full-workload
@@ -28,8 +23,7 @@ credential renewal. Backups and the proposed notice are not activated/published.
 No Cloudflare email correspondence was sent. The
 [October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover)
 also accepts the brief legal-URL gap in the prepared coordinated cutover below.
-The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md)
-owns current release and approval evidence; [server releases](SERVER_RELEASES.md)
+The handoff also owns current approval evidence; [server releases](SERVER_RELEASES.md)
 owns the guarded lane.
 
 ## Account and service preparation
@@ -68,14 +62,13 @@ owns the guarded lane.
    candidate and promote one exact version. Do not repeat bootstrap or point
    clients at an ad hoc development upload.
 
-The verified active staging origin is
+The fixed staging origin is
 `https://justgo-api-staging.anthonyyoo24.workers.dev`, based on the verified
 account subdomain and fixed staging Worker name. Beta configuration selects that
-exact origin. Provider readback verifies routes/previews, disabled telemetry/
-caching, origin TLS and the five-connection limit. Public health/readiness and
-unauthenticated private-route guards passed for exact source `0753986`; real
-managed-account and performance acceptance remain open. Consult the handoff for
-current credential status and expiry before use.
+exact origin. Require provider readback of routes/previews, disabled telemetry/
+caching, origin TLS and the five-connection limit, plus public health/readiness
+and unauthenticated private-route probes. Consult the handoff for actual release
+acceptance and current credential status/expiry before use.
 
 ## Hosted measurements and recovery acceptance
 
@@ -129,7 +122,18 @@ recovery from old phones is unsupported.
    wording, including retention, is already approved; its operational claims
    still require verified copies. Prepare the publication commands, verification
    steps and ASC/EAS URL updates using the complete rendered package in ignored
-   `.local/phase15-cloudflare/rollout/notice-review/`. Inventory the owner-only
+   `.local/phase15-cloudflare/rollout/notice-review/`.
+   Prepare the replacement-build path before entering the retirement window:
+   review the exact candidate and its main-CI/tag requirements, validate the
+   `beta-diagnostics` profile and resolved public inputs for the Cloudflare
+   destinations and existing app identity, and verify approved Expo/Apple access,
+   frozen managed signing and pinned toolchain readiness. Prepare the protected
+   workflow's exact build/submit inputs and artifact-provenance checks. Record
+   evidence for these publication-independent checks; do not retire Vercel while
+   preparation is incomplete. Final diagnostics preflight and the signed build
+   still wait for actual notice publication in steps 3–4: never set a publication
+   attestation early or disable diagnostics to bypass that gate.
+   Inventory the owner-only
    TestFlight and Dev builds and their embedded API/legal addresses. Preserve
    owner device-local writing before build removal; no accounts or journals may
    be deleted merely because there are no external users. Keep Vercel serving
@@ -150,8 +154,12 @@ recovery from old phones is unsupported.
    plus the protected `BETA_DIAGNOSTICS_PUBLISHED_NOTICE_VERSION`,
    to the actual verified Cloudflare destinations/version. Preserve approved
    source metadata, the Cloudflare host marker and fixture-origin safeguards.
-4. Build/upload the already conditionally authorized replacement TestFlight
-   artifact pointing only to the accepted Cloudflare API and legal URLs. Internal
+4. After step 3, pass the complete diagnostics
+   [beta preflight](TESTFLIGHT_BETA.md#preflight-and-release-procedure) using the
+   actual published notice version, then build/upload the already conditionally
+   authorized replacement TestFlight artifact pointing only to the accepted
+   Cloudflare API and legal URLs. Pre-retirement preparation is not a completed
+   signed build or phone acceptance. Internal
    upload precedes phone acceptance. Verify iPhone smoke, account continuity,
    offline journal, managed sync/deletion and legal links; preserve independent
    Phase 14 device deferrals until evidenced or expressly disposed of. Use
