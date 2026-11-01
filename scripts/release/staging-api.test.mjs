@@ -669,6 +669,78 @@ test('uploads inspected bytes without traffic then probes and promotes precisely
     !readdirSync(f.root).some((p) => p.startsWith('justgo-worker-release-')),
   );
 });
+test('public propagation repeats only read probes before one complete candidate round', async (t) => {
+  const f = fixture(t);
+  let publicProbes = 0;
+  const result = await stagingApi('deploy', {
+    ...f,
+    probe: async (origin, path, options) => {
+      const value = await f.probe(origin, path, options);
+      if (origin === target.origin && ++publicProbes === 1)
+        value.headers['x-justgo-source-sha'] = previous;
+      return value;
+    },
+  });
+  assert.equal(result.versionId, candidateId);
+  assert.equal(publicProbes, 8);
+  assert.equal(f.calls.filter((call) => call.probe).length, 12);
+  assert.deepEqual(f.waits, [2000]);
+  assert.equal(f.calls.filter((call) => call.method === 'POST').length, 1);
+  assert.equal(f.calls.filter((call) => call.promotion).length, 1);
+  assert.ok(
+    !f.calls.some((call) => ['DELETE', 'PUT', 'PATCH'].includes(call.method)),
+  );
+  assert.deepEqual(readdirSync(f.root), []);
+});
+test('immutable candidate probes still reject the captured previous source without promotion', async (t) => {
+  const f = fixture(t);
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      probe: async (...args) => {
+        const value = await f.probe(...args);
+        value.headers['x-justgo-source-sha'] = previous;
+        return value;
+      },
+    }),
+    (error) =>
+      stagingRunnerFailureCode(error) === 'STAGING_RUNTIME_IDENTITY_MISMATCH',
+  );
+  assert.deepEqual(f.waits, []);
+  assert.equal(f.calls.filter((call) => call.method === 'POST').length, 1);
+  assert.ok(!f.calls.some((call) => call.promotion));
+  assert.deepEqual(readdirSync(f.root), []);
+});
+test('lease loss during public probes retains the phase and never repeats promotion', async (t) => {
+  const f = fixture(t),
+    controller = new AbortController();
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      signal: controller.signal,
+      probe: async (origin, path, options) => {
+        const value = await f.probe(origin, path, options);
+        if (origin === target.origin) controller.abort();
+        return value;
+      },
+    }),
+    (error) => {
+      assert.equal(
+        stagingRunnerFailureCode(error),
+        'STAGING_PROMOTION_UNCONFIRMED',
+      );
+      assert.deepEqual(stagingRunnerPromotionDiagnostic(error), {
+        promotionPhase: 'public-probes',
+        causeCode: 'STAGING_DATABASE_LEASE_LOST',
+      });
+      return true;
+    },
+  );
+  assert.deepEqual(f.waits, []);
+  assert.equal(f.calls.filter((call) => call.method === 'POST').length, 1);
+  assert.equal(f.calls.filter((call) => call.promotion).length, 1);
+  assert.deepEqual(readdirSync(f.root), []);
+});
 test('abandoned continuation requires an exact code-only, account-bound opt-in', async (t) => {
   const f = fixture(t, undefined, true);
   const incidentTarget = cloudflareTarget(f.env);

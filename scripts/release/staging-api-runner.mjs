@@ -7,6 +7,7 @@ import { setTimeout as pause } from 'node:timers/promises';
 import { promoteStagingCandidate } from './staging-promotion.mjs';
 import { buildStagingWorker } from './staging-worker-build.mjs';
 import { cloudflareRequest, workerProbe } from './staging-cloudflare.mjs';
+import { verifyPublicStagingProbes } from './staging-public-probes.mjs';
 import {
   abandonedVersionRequested,
   verifyAbandonedVersion,
@@ -257,7 +258,14 @@ export async function stagingApi(
       promotionPhase = 'candidate-provenance';
       validateVersion(await api(`/versions/${candidate.id}`), target, context);
       promotionPhase = 'public-probes';
-      await checkEndpoints(target.origin);
+      await verifyPublicStagingProbes({
+        origin: target.origin,
+        candidateSha: context.sha,
+        previousSha: previous.sourceSha,
+        signal,
+        probe,
+        wait,
+      });
       // Final summary/cleanup errors must not retain a completed probe phase.
       promotionPhase = undefined;
       const receipt = {

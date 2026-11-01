@@ -271,7 +271,16 @@ still leads to readback, not a second mutation. At most 30 deployment reads, two
 seconds apart, must resolve to the exact candidate. Only the unchanged baseline
 is accepted while waiting; any other version fails closed. The candidate's
 source/run bindings and public health/readiness/auth probes then establish the
-result. Temporary build files are removed on success and failure.
+result. Public verification has one 30-second total budget, including requests
+and waits. A complete, strictly valid response from the captured previous source
+may remain visible during [deployment propagation](https://developers.cloudflare.com/workers/versions-and-deployments/version-overrides/).
+Only that known previous source permits a two-second wait and another full
+four-probe round. Success requires candidate health/readiness and both valid 401
+guards in the same final round. Unknown/missing source, wrong environment,
+invalid contracts/headers, endpoint/authentication failures and network failures
+stop immediately. Lease loss aborts probes and waits. Immutable candidate probes
+remain strict; the convergence check never uploads or promotes again. Temporary
+build files are removed on success and failure.
 
 ## Pending migrations and recovery evidence
 
