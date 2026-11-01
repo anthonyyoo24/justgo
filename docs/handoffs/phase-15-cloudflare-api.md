@@ -261,12 +261,6 @@ rerunning those suites through overlapping root wrappers.
   legal Worker's Privacy/Terms layout and links; an unknown route returned 404.
   This checks hosting behavior using existing notice content, not publication
   or approval of the proposed notice.
-- Subsequent setup fixes passed focused checks: 65 bootstrap/provider/release
-  tooling tests, 12 API release-guard tests, 14 diagnostic tests, 14 backup tests
-  and 33 beta/workflow tests. The changed beta test fixture was then checked
-  separately. API typecheck, scoped lint/format and workflow syntax passed.
-  These checks cover the new bootstrap, pooler identity and beta-target changes;
-  unchanged application suites were not repeated.
 - At that closeout, hosted CI, actual Hyperdrive/CPU, scheduled R2 copies/expiry, real hosted
   Auth restore and signed-device checks remain unverified. The root `check` and
   `test:db` wrappers were not repeated: the constituent static/Doctor and
@@ -284,28 +278,12 @@ Rollout follow-up evidence:
   and no tails as null values; the original strict settings check rejected this.
   A guarded continuation enabled routes without another upload. Both public and
   immutable origins still failed startup; no mobile traffic was moved.
-- Local fixes use authoritative script settings and narrowly accept the pinned
-  hosted binding format. Focused release/provider tests, 18 Worker configuration/
-  lifecycle tests, API typecheck and scoped lint/format passed. Independent review
-  found no actionable issue. Actual workerd read/write/readiness/idempotency smoke
-  passed with owned fixtures cleaned up. The full `check` passed: Doctor 20/20,
-  480 tooling, 332 API, 1,752 mobile and 35 contract tests; lint retained 167
-  existing warnings and no errors. Full coverage passed with 430 API tests
-  (including database/migration checks), 1,752 mobile and 35 contract tests;
-  all aggregate and critical floors passed. The owned local database was stopped.
-  PR 63 also corrects documented null nested telemetry values. Runtime head `ae883ea`'s
-  [Foundation run 40955791067](https://github.com/anthonyyoo24/justgo/actions/runs/40955791067)
-  passed all seven jobs; CodeRabbit completed and its actionable finding is
-  addressed. These fixes were subsequently merged in PR 63; the replacement
-  hosted candidate still failed startup and was not promoted.
-- The current PR 63/64 review follow-ups add function contracts without changing
-  parsed runtime ASTs. PR 63's exact-head CI
-  [41071501181](https://github.com/anthonyyoo24/justgo/actions/runs/41071501181)
-  passed. PR 64's [41071747764](https://github.com/anthonyyoo24/justgo/actions/runs/41071747764)
-  passed all seven jobs, including final coverage aggregation.
-  CodeRabbit reports 100% docstring coverage on both; PR 64's cleanup wording
-  comment is marked addressed. Both current publication candidates have their
-  own passing hosted results.
+- PR 63 uses authoritative script settings, narrowly accepts the pinned hosted
+  binding format and documents null nested telemetry values. These fixes did
+  not resolve the replacement hosted candidate's startup failure; it was not
+  promoted. Local workerd acceptance does not establish hosted startup acceptance.
+- The merged PR 63/64 review follow-ups add function contracts without changing
+  parsed runtime ASTs.
   October 30 read-only Cloudflare inspection verified the active release token,
   unchanged deployed/latest baseline, source/bindings, public/preview route
   settings, disabled telemetry, disabled Hyperdrive caching, verified origin TLS
@@ -320,21 +298,12 @@ Rollout follow-up evidence:
   enabled Sentry/beta and the documented wrapped transport with zero outbound
   HTTP attempts. These checks do not establish the hosted binding representation
   or actual startup cause.
-  The local diagnostic/continuation patch passed full `check` (Doctor 20/20,
-  336 API, 1,752 mobile and 35 contracts), full coverage (434 API including
-  database/migrations, 1,752 mobile and 35 contracts; all floors), and actual
-  workerd smoke. The final release-only changes then passed fresh static checks
-  with 573 tooling tests; unchanged workspace/coverage suites were not repeated.
-  Focused continuation regressions, workflow syntax and independent review passed.
-  Owned workerd/fixture processes and the local database are stopped. Changed
-  directories retain their existing responsibility groups; no moves were needed.
-- The backup-reader/health-monitor follow-up's final local `check` passed:
-  Doctor 20/20, 531 tooling, 323 API, 1,752 mobile and 35 contract tests. The prior
-  coverage result with 421 API tests including database checks and all coverage
-  floors remains applicable to unchanged measured source. Focused guard checks
-  and the complete synthetic encrypted recovery rehearsal passed, including
-  default rejection, the exact opted-in cron DELETE exception and continued
-  rejection of other mutations, MAINTAIN and inherited ownership. Real catalog behavior required CASE guards
+  Preserve redacted startup diagnostics and the distinction between a failed
+  health/readiness probe and a successful response with the wrong source identity.
+  Owned workerd/fixture processes and the local database are stopped.
+- The backup-reader guard defaults to rejection and permits only the exact
+  opted-in cron DELETE exception. Unapproved mutations, MAINTAIN and inherited
+  ownership remain rejected. Real catalog behavior required CASE guards
   for relation-specific checks, a narrow standard `pg_settings` UPDATE exception,
   and explicit owner catalogs because pinned-role dependencies are omitted from
   `pg_shdepend`. All fixture roles/databases, key/ciphertext and owned processes
@@ -413,9 +382,9 @@ environment. No existing runtime/migrator credential was rotated during that
 setup. The later backup-parent replacement is recorded below. After the verified
 active deployment readback, `STAGING_BOOTSTRAP_BINDINGS` was removed from the
 protected `justgo-staging` GitHub environment; a fresh secret-name list confirmed
-its absence. The nonempty ignored local `credentials/bootstrap-bindings.json`
-recovery copy remains mode 0600. No secret values were read/logged and Worker
-bindings were unchanged. Do not repeat bootstrap against the existing Worker.
+its absence. The nonempty ignored local recovery copy remains protected with
+mode 0600. No secret values were read/logged and Worker bindings were unchanged.
+Do not repeat bootstrap against the existing Worker.
 
 Anthony approved the dedicated supported backup reader and then accepted DELETE
 on exactly `cron.job_run_details` for the small beta. The reader was re-enabled
