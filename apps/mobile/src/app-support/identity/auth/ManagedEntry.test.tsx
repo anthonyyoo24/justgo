@@ -69,7 +69,7 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
-async function setup(parkedOwner?: string) {
+async function setup(parkedOwner?: string, connectionDiagnostics = false) {
   let state: ManagedIdentityState | null = parkedOwner
     ? managedIdentityStateSchema.parse({
         version: 1,
@@ -104,6 +104,7 @@ async function setup(parkedOwner?: string) {
   };
   let id = 1;
   mockController = new ManagedIdentityController({
+    connectionDiagnostics,
     auth,
     api,
     legacyVault: createMemoryVault(),
@@ -234,7 +235,7 @@ it.each([
 ])(
   'does not carry a failed %s sign-in into %s or a later visit',
   async (from, to) => {
-    const { auth } = await setup();
+    const { auth } = await setup(undefined, true);
     auth.signIn = jest
       .fn()
       .mockRejectedValue(new ProviderAuthError('CONFIGURATION'));
@@ -254,9 +255,13 @@ it.each([
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Sign-in isn’t configured in this build yet. You can continue on this phone.',
     );
+    expect(
+      screen.getByText('Dev sign-in reference: provider-auth / CONFIGURATION'),
+    ).toBeTruthy();
     mockProvider = to;
     await screen.rerender(<ProviderSignInScreen />);
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/Dev sign-in reference:/)).toBeNull();
     await pressSignIn(to);
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Sign-in isn’t configured in this build yet. You can continue on this phone.',
@@ -273,7 +278,7 @@ it.each([
 );
 
 it('ignores a late provider failure after leaving the sign-in visit', async () => {
-  const { auth } = await setup();
+  const { auth } = await setup(undefined, true);
   let rejectSignIn: (error: Error) => void = () => {};
   auth.signIn = jest.fn(
     () =>
@@ -294,6 +299,7 @@ it('ignores a late provider failure after leaving the sign-in visit', async () =
   mockFocused = true;
   await screen.rerender(<ProviderSignInScreen />);
   expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.queryByText(/Dev sign-in reference:/)).toBeNull();
   expect(mockRouter.replace).not.toHaveBeenCalled();
 });
 

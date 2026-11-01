@@ -23,6 +23,10 @@ import type {
   ManagedIdentityStorage,
 } from './managed-state';
 import { legacyLinkProof } from './legacy-link-proof';
+import {
+  connectionReference,
+  type ConnectionPhase,
+} from './connection-reference';
 
 type LegacySnapshot = ReturnType<IdentityController['getSnapshot']>;
 export type ManagedIdentitySnapshot = Omit<LegacySnapshot, 'account'> & {
@@ -34,6 +38,7 @@ export type ManagedIdentitySnapshot = Omit<LegacySnapshot, 'account'> & {
   provider: SignInProvider | null;
   linkedProviders: readonly SignInProvider[];
   pendingGuestId: string | null;
+  connectionReference: string | null;
 };
 type Options = {
   auth: ManagedAuth;
@@ -42,7 +47,9 @@ type Options = {
   legacyVault: CredentialVault;
   api: IdentityApi;
   randomId?: () => string;
+  connectionDiagnostics?: boolean;
 };
+type ConnectionTrace = { phase: ConnectionPhase };
 const deletionProofKey = 'justgo.auth.deletion-proof.v1';
 const legacyProofKey = 'justgo.auth.legacy-link-proof.v1';
 const legacyProofSchema = z
@@ -112,6 +119,7 @@ export class ManagedIdentityController {
     provider: null,
     linkedProviders: [],
     pendingGuestId: null,
+    connectionReference: null,
   };
   readonly vault: CredentialVault;
   constructor(private readonly options: Options) {
@@ -216,7 +224,7 @@ export class ManagedIdentityController {
     if (!this.data) throw new ProviderAuthError('STORAGE');
     return this.data;
   }
-  private reconcile(message = '') {
+  private reconcile(message = '', reference: string | null = null) {
     const state = this.state();
     const account =
       this.verifiedOwner &&
@@ -254,16 +262,33 @@ export class ManagedIdentityController {
           ? 'deleted'
           : null,
       message,
+      connectionReference: reference,
     });
     this.options.auth.setActive(this.active && !!account);
   }
-  private run(work: () => Promise<void>, background = false): Promise<void> {
+  private run(
+    work: () => Promise<void>,
+    background = false,
+    connection?: ConnectionTrace,
+  ): Promise<void> {
     if (this.running) return this.running;
     if (this.disposed) return Promise.resolve();
-    this.publish({ busy: true, busyInBackground: background, message: '' });
+    this.publish({
+      busy: true,
+      busyInBackground: background,
+      message: '',
+      connectionReference: null,
+    });
     const running = Promise.resolve()
       .then(work)
       .catch((error: unknown) => {
+        const cancelled =
+          (error instanceof ApiError || error instanceof ProviderAuthError) &&
+          error.code === 'CANCELLED';
+        const reference =
+          this.options.connectionDiagnostics && connection && !cancelled
+            ? connectionReference(connection.phase, error)
+            : null;
         if (
           error instanceof ApiError &&
           [
@@ -281,12 +306,14 @@ export class ManagedIdentityController {
                 ? 'Your account has been deleted. Please retry to finish clearing this phone’s account data and sign-in credentials.'
                 : 'Couldn’t finish deleting your account. Please try again. Your deletion request is saved.'
               : errorMessage(error),
+            reference,
           );
         else
           this.publish({
             initialized: true,
             needsWelcome: true,
             message: errorMessage(error),
+            connectionReference: reference,
           });
       })
       .finally(() => {
@@ -400,41 +427,49 @@ export class ManagedIdentityController {
   signIn = (
     provider: SignInProvider,
     options: { expectedOwnerId?: string } = {},
-  ) =>
-    this.run(async () => {
-      await this.load();
-      if (this.state().deletion) throw new ProviderAuthError('AUTH');
-      await this.finishGuestRetirement();
-      if (this.state().logoutPending) await this.finishLogout();
-      const state = this.state();
-      await this.save({
-        ...state,
-        pendingSignIn: {
-          provider,
-          // Retain the v1 persisted field for interrupted old sign-ins. New
-          // sign-ins always adopt phone writing after the cloud disclosure.
-          mergeGuest: true,
-          guestId:
-            state.guestAdoption?.status === 'consumed' ? null : state.guestId,
-          mappedOwnerId: null,
-          expectedOwnerId: options.expectedOwnerId ?? null,
-        },
-      });
-      const session = await this.options.auth.signIn(provider);
-      if (this.disposed) throw new ApiError('CANCELLED');
-      if (session === 'redirecting') return;
-      if (!session) {
-        await this.save({ ...this.state(), pendingSignIn: null });
-        this.reconcile();
-        return;
-      }
-      this.providerSession = session;
-      await this.adopt(session);
-    });
-  private async adopt(session: ProviderSession) {
+  ) => {
+    const connection: ConnectionTrace = { phase: 'phone-prepare' };
+    return this.run(
+      async () => {
+        await this.load();
+        if (this.state().deletion) throw new ProviderAuthError('AUTH');
+        await this.finishGuestRetirement();
+        if (this.state().logoutPending) await this.finishLogout();
+        const state = this.state();
+        await this.save({
+          ...state,
+          pendingSignIn: {
+            provider,
+            // Retain the v1 persisted field for interrupted old sign-ins. New
+            // sign-ins always adopt phone writing after the cloud disclosure.
+            mergeGuest: true,
+            guestId:
+              state.guestAdoption?.status === 'consumed' ? null : state.guestId,
+            mappedOwnerId: null,
+            expectedOwnerId: options.expectedOwnerId ?? null,
+          },
+        });
+        connection.phase = 'provider-auth';
+        const session = await this.options.auth.signIn(provider);
+        if (this.disposed) throw new ApiError('CANCELLED');
+        if (session === 'redirecting') return;
+        if (!session) {
+          await this.save({ ...this.state(), pendingSignIn: null });
+          this.reconcile();
+          return;
+        }
+        this.providerSession = session;
+        await this.adopt(session, connection);
+      },
+      false,
+      connection,
+    );
+  };
+  private async adopt(session: ProviderSession, connection?: ConnectionTrace) {
     const providerGeneration = this.providerGeneration;
     const intent = this.state().pendingSignIn;
     if (!intent) throw new ProviderAuthError('AUTH');
+    if (connection) connection.phase = 'legacy-vault';
     const legacy = await this.vault.read();
     let legacySessionToken: string | undefined;
     if (
@@ -444,6 +479,7 @@ export class ManagedIdentityController {
       legacy?.session?.info.userId === this.state().collection.id &&
       !this.state().account
     ) {
+      if (connection) connection.phase = 'legacy-proof';
       // Provider sign-in is explicit. Renew the existing legacy proof internally
       // when needed; never ask for a key/code or choose an unrelated credential.
       const frozen = await this.options.secureStorage.getItem(legacyProofKey);
@@ -474,6 +510,7 @@ export class ManagedIdentityController {
       }
       if (!legacySessionToken) throw new ProviderAuthError('AUTH');
     }
+    if (connection) connection.phase = 'app-session';
     const account = await this.options.api.request(
       'POST',
       '/auth/session',
@@ -492,6 +529,7 @@ export class ManagedIdentityController {
       (intent.expectedOwnerId && intent.expectedOwnerId !== account.userId)
     )
       throw new ApiError('ACCOUNT_CHANGED');
+    if (connection) connection.phase = 'save-mapping';
     await this.save({
       ...this.state(),
       pendingSignIn: { ...intent, mappedOwnerId: account.userId },
@@ -512,6 +550,7 @@ export class ManagedIdentityController {
       previousAdoption?.status !== 'consumed' &&
       (!previousAdoption || previousAdoption.ownerId === account.userId);
     if (adoptGuest && intent.guestId) {
+      if (connection) connection.phase = 'adopt-guest';
       if (!this.mergeGuest) throw new ProviderAuthError('STORAGE');
       await this.save({
         ...this.state(),
@@ -522,6 +561,7 @@ export class ManagedIdentityController {
         token: session.accessToken,
       });
     }
+    if (connection) connection.phase = 'save-account';
     await this.save({
       ...this.state(),
       collection: { kind: 'account', id: account.userId },
@@ -535,6 +575,7 @@ export class ManagedIdentityController {
     });
     // Select the verified durable destination before erasing the old source.
     // A restart with unavailable Auth still displays that local journal.
+    if (connection) connection.phase = 'retire-guest';
     await this.finishGuestRetirement();
     if (
       providerGeneration !== this.providerGeneration ||
@@ -813,6 +854,7 @@ export class ManagedIdentityController {
     );
   };
   dispose = () => {
+    this.snapshot = { ...this.snapshot, connectionReference: null };
     this.disposed = true;
     this.lifetime.abort();
     this.unsubscribeAuth();

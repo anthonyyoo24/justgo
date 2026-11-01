@@ -37,6 +37,7 @@ export function ProviderSignInScreen() {
       ? params.provider
       : undefined;
   const [signInError, setSignInError] = useState('');
+  const [signInReference, setSignInReference] = useState<string | null>(null);
   const [pendingProvider, setPendingProvider] = useState<SignInProvider | null>(
     null,
   );
@@ -46,6 +47,7 @@ export function ProviderSignInScreen() {
     useCallback(() => {
       visit.current = { provider, expectedOwnerId, returnToData };
       setSignInError('');
+      setSignInReference(null);
       setPendingProvider(null);
       return () => {
         visit.current = null;
@@ -60,6 +62,7 @@ export function ProviderSignInScreen() {
     if (!submittedVisit || submitting.current === submittedVisit || state.busy)
       return;
     setSignInError('');
+    setSignInReference(null);
     links.clearLinkError();
     if (state.account) {
       handoff.retry();
@@ -74,7 +77,10 @@ export function ProviderSignInScreen() {
     if (submittedVisit !== visit.current) return;
     setPendingProvider(null);
     const result = identity.getSnapshot();
-    if (!result.account) setSignInError(result.message);
+    if (!result.account) {
+      setSignInError(result.message);
+      setSignInReference(result.connectionReference);
+    }
   };
   return (
     <SettingsPage
@@ -118,6 +124,11 @@ export function ProviderSignInScreen() {
         {!!(signInError || links.linkError || handoff.error) && (
           <Text accessibilityRole="alert" style={styles.error}>
             {links.linkError || signInError || handoff.error}
+          </Text>
+        )}
+        {__DEV__ && !!signInError && !!signInReference && (
+          <Text selectable style={styles.error}>
+            {signInReference}
           </Text>
         )}
         <View style={styles.links}>

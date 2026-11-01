@@ -41,6 +41,7 @@ try {
       env: {
         ...environment,
         JUSTGO_LOCAL_DEVELOPMENT: '1',
+        EXPO_PUBLIC_JUSTGO_DEV_DIAGNOSTICS: '1',
         NODE_OPTIONS:
           `${environment.NODE_OPTIONS ?? ''} --dns-result-order=ipv4first`.trim(),
       },
