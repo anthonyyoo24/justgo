@@ -9,6 +9,7 @@ import {
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import * as calendar from '../calendar-dates';
 import type { ProgressEntry } from '../types';
+import { spacing } from '../../../theme/tokens';
 import { DaySheet } from './DaySheet';
 
 let mockReduceMotion = true;
@@ -22,7 +23,7 @@ jest.mock('./entries/useEntryMotion', () =>
   jest.requireActual('./entries/useEntryMotion.ts'),
 );
 
-it('keeps a larger close target in its own top-right area and preserves the dirty-close guard', async () => {
+it('keeps a larger close target equally inset from the panel edges and preserves the dirty-close guard', async () => {
   const onClose = jest.fn();
   const beforeClose = jest.fn<void, [() => void]>();
   const screen = await render(
@@ -46,7 +47,8 @@ it('keeps a larger close target in its own top-right area and preserves the dirt
   );
   expect(closeStyle.width).toBeGreaterThanOrEqual(56);
   expect(closeStyle.height).toBeGreaterThanOrEqual(56);
-  expect(closeStyle.right).toBe(0);
+  expect(closeStyle.right).toBe(spacing.sm);
+  expect(closeStyle.top).toBe(closeStyle.right);
   expect(closeStyle.top + closeStyle.height).toBeLessThan(controlsStyle.height);
   await fireEvent.press(close);
   expect(beforeClose).toHaveBeenCalledTimes(1);
@@ -309,7 +311,7 @@ it('opens and closes immediately with reduced motion, including repeated show/la
         }).props.style,
       ).pointerEvents,
     ).toBe('none');
-    await fireEvent.press(screen.getByText('×'));
+    await fireEvent.press(screen.getByTestId('day-sheet-close'));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(timing).not.toHaveBeenCalled();
   } finally {
@@ -343,7 +345,8 @@ it.each(['opening', 'closing'])(
         screen.container.queryAll((node) => node.type === 'Modal')[0]!,
         'show',
       );
-      if (stage === 'closing') await fireEvent.press(screen.getByText('×'));
+      if (stage === 'closing')
+        await fireEvent.press(screen.getByTestId('day-sheet-close'));
       mockReduceMotion = true;
       await screen.rerender(<DaySheet {...props} />);
       expect(onClose).toHaveBeenCalledTimes(stage === 'closing' ? 1 : 0);
@@ -383,7 +386,7 @@ it('ignores an exit callback delivered after its sheet unmounts', async () => {
         onClose={onClose}
       />,
     );
-    await fireEvent.press(screen.getByText('×'));
+    await fireEvent.press(screen.getByTestId('day-sheet-close'));
     await screen.unmount();
     finish({ finished: true });
     expect(onClose).not.toHaveBeenCalled();

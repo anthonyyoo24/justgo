@@ -31,7 +31,12 @@ import {
 } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import type { ProgressEntry } from '../types';
-import { colors, fontFamilies, typography } from '../../../theme/tokens';
+import {
+  colors,
+  fontFamilies,
+  spacing,
+  typography,
+} from '../../../theme/tokens';
 import { dayLabel } from '../calendar-dates';
 import { ProgressEntryRow } from './entries/ProgressEntryRow';
 import { DayEntryList } from './entries/DayEntryList';
@@ -47,6 +52,7 @@ export type ProgressDay = {
   entries: ProgressEntry[];
 };
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
+const closeTargetSize = 56;
 function RetryArrow({ color = colors.white }: { color?: string }) {
   return (
     <Svg width={20} height={20} viewBox="0 0 20 20" aria-hidden>
@@ -325,6 +331,30 @@ export function DaySheet({
                 { transform: [{ translateY: sheetOffset }] },
               ]}
             >
+              <Pressable
+                testID="day-sheet-close"
+                accessibilityRole="button"
+                accessibilityLabel="Close day details"
+                onPress={close}
+                style={styles.close}
+              >
+                <Svg
+                  testID="day-sheet-close-icon"
+                  width={32}
+                  height={32}
+                  viewBox="0 0 32 32"
+                  aria-hidden
+                  pointerEvents="none"
+                >
+                  <Path
+                    d="M4 4 28 28M28 4 4 28"
+                    fill="none"
+                    stroke={colors.ink}
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                  />
+                </Svg>
+              </Pressable>
               {/* Keep JS-driven layout sizing off the native entrance/exit host. */}
               <Animated.View
                 testID="day-sheet-size"
@@ -333,17 +363,6 @@ export function DaySheet({
                 <View onLayout={drag.onHeaderLayout} testID="day-sheet-header">
                   <View testID="day-sheet-controls" style={styles.controls}>
                     <DaySheetHandle controls={drag} />
-                    <Pressable
-                      testID="day-sheet-close"
-                      accessibilityRole="button"
-                      accessibilityLabel="Close day details"
-                      onPress={close}
-                      style={styles.close}
-                    >
-                      <Text maxFontSizeMultiplier={1} style={styles.closeText}>
-                        ×
-                      </Text>
-                    </Pressable>
                   </View>
                   {date && <DayHeading date={date} />}
                   {day && (
@@ -502,22 +521,16 @@ const styles = StyleSheet.create({
     maxHeight: '100%',
     minHeight: 0,
   },
-  controls: { height: 64 },
+  controls: { height: closeTargetSize + spacing.sm * 2 },
   close: {
     position: 'absolute',
-    right: 0,
-    top: 4,
-    width: 56,
-    height: 56,
+    right: spacing.sm,
+    top: spacing.sm,
+    width: closeTargetSize,
+    height: closeTargetSize,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
-  },
-  closeText: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 40,
-    color: colors.ink,
-    lineHeight: 44,
   },
   dayHeading: { paddingRight: 20, paddingBottom: 14 },
   dayTitleLayer: { zIndex: 1 },

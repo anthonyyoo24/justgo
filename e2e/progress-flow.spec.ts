@@ -76,22 +76,34 @@ test('Progress matches the Challenge background and keeps its larger close targe
     await expect(close).toBeEnabled();
     await expect
       .poll(async () => {
-        const [sheet, target, heading] = await Promise.all([
+        const [sheet, target, heading, icon] = await Promise.all([
           panel.boundingBox(),
           close.boundingBox(),
           page.getByTestId('day-title-text-layer').boundingBox(),
+          page.getByTestId('day-sheet-close-icon').boundingBox(),
         ]);
-        if (!sheet || !target || !heading) return { missing: true };
+        if (!sheet || !target || !heading || !icon) return { missing: true };
         const rightGap = sheet.x + sheet.width - target.x - target.width;
         const topGap = target.y - sheet.y;
         return {
           largeTarget: target.width >= 56 && target.height >= 56,
           topRight:
-            rightGap >= 0 && rightGap <= 24 && topGap >= 0 && topGap <= 8,
+            rightGap >= 0 && rightGap <= 8 && topGap >= 0 && topGap <= 8,
+          equalInsets: Math.abs(topGap - rightGap) <= 1,
+          equalIconInsets:
+            Math.abs(
+              icon.y - sheet.y - (sheet.x + sheet.width - icon.x - icon.width),
+            ) <= 1,
           aboveHeading: target.y + target.height + 4 <= heading.y,
         };
       })
-      .toEqual({ largeTarget: true, topRight: true, aboveHeading: true });
+      .toEqual({
+        largeTarget: true,
+        topRight: true,
+        equalInsets: true,
+        equalIconInsets: true,
+        aboveHeading: true,
+      });
     // Exercise the enlarged target's edge, away from the visible X glyph.
     await close.click({ position: { x: 2, y: 52 } });
     await expect(panel).toBeHidden();
