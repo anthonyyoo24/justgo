@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "audit:api": "node scripts/quality/audit-api-dependencies.mjs",
     "test": "npm run test:architecture && npm run test --workspaces",
-    "test:architecture": "node --test scripts/quality/*.test.mjs scripts/journeys/*.test.mjs scripts/release/*.test.mjs scripts/backups/*.test.mjs scripts/development/*.test.mjs sites/legal/*.test.mjs",
+    "test:architecture": "node --test scripts/quality/*.test.mjs scripts/journeys/*.test.mjs scripts/release/*.test.mjs scripts/backups/*.test.mjs scripts/backups/clock/*.test.mjs scripts/development/*.test.mjs sites/legal/*.test.mjs",
     "release:beta:check": "node scripts/release/check-beta.mjs",
     "release:staging:local": "node --import tsx apps/api/scripts/local-staging-release.ts",
     "test:db": "npm run test:db -w @justgo/api",
