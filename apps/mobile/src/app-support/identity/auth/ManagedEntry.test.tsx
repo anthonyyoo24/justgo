@@ -132,8 +132,9 @@ beforeEach(() => {
 });
 afterEach(() => mockController?.dispose());
 
-it('places the Apple and Google logo actions above the unchanged Continue button', async () => {
+it('starts native sign-in from the Welcome action without an intermediate page', async () => {
   const ctx = await setup();
+  const signIn = jest.spyOn(ctx.auth, 'signIn');
   const screen = await render(<WelcomeScreen controller={mockController} />);
   expect(
     screen
@@ -143,10 +144,8 @@ it('places the Apple and Google logo actions above the unchanged Continue button
   await fireEvent.press(
     screen.getByRole('button', { name: 'Sign in with Apple' }),
   );
-  expect(mockRouter.push).toHaveBeenCalledWith({
-    pathname: '/account/sign-in',
-    params: { provider: 'apple' },
-  });
+  expect(signIn).toHaveBeenCalledWith('apple');
+  expect(mockRouter.push).not.toHaveBeenCalled();
   expect(ctx.api.request).not.toHaveBeenCalled();
 });
 it('opens Terms on Continue and enters durable guest mode without a server account', async () => {

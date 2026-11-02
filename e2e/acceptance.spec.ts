@@ -138,19 +138,12 @@ test('Welcome shows provider logos above Continue, opens direct documents and co
 });
 
 for (const provider of ['apple', 'google'] as const)
-  test(`${provider} first explains cloud sync without any account mutation until the provider action`, async ({
+  test(`${provider} explains cloud sync on Welcome and signs in with one action`, async ({
     page,
   }) => {
     const mutations = observeMutations(page);
     await page.goto('/welcome');
     const name = `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`;
-    await page.getByRole('button', { name, exact: true }).click();
-    await expect(
-      page.getByRole('heading', {
-        name: 'Keep your data with your account',
-        exact: true,
-      }),
-    ).toBeVisible();
     await expect(
       page.getByText(
         /Signing in saves your challenge history, feelings and reflections/,
@@ -161,6 +154,16 @@ for (const provider of ['apple', 'google'] as const)
       0,
     );
     expect(mutations).toEqual([]);
+    await page.getByRole('button', { name, exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'Accept challenge', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Keep your data with your account',
+        exact: true,
+      }),
+    ).toHaveCount(0);
   });
 
 test('a returning provider account skips legal tracking and reopens the same saved collection', async ({

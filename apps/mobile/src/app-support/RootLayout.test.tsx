@@ -258,7 +258,7 @@ it('removes old account routes after deletion and keeps them removed through rep
   });
   expect(screen.getByText('settings')).toBeTruthy();
   expect(screen.getByText('(tabs)')).toBeTruthy();
-  expect(screen.queryByText('welcome')).toBeNull();
+  expect(screen.getByText('welcome')).toBeTruthy();
   for (const busy of [false, true, false]) {
     mockIdentity = {
       deletionStatus: 'deleted',
@@ -323,7 +323,7 @@ it.each(['pending', 'cleanup'] as const)(
   },
 );
 
-it('removes Welcome immediately after creation while Terms covers the destination until native onShow', async () => {
+it('retains Welcome for provider handoff while Terms can still cover a guest destination until native onShow', async () => {
   mockIdentity = {
     deletionStatus: 'deleted',
     busy: false,
@@ -341,8 +341,8 @@ it('removes Welcome immediately after creation while Terms covers the destinatio
   mockPending = true;
   await screen.rerender(<RootLayout />);
   expect(
-    screen.queryByText('welcome', { includeHiddenElements: true }),
-  ).toBeNull();
+    screen.getByText('welcome', { includeHiddenElements: true }),
+  ).toBeTruthy();
   expect(
     screen.getByText('acceptance', { includeHiddenElements: true }),
   ).toBeTruthy();
@@ -361,15 +361,15 @@ it('removes Welcome immediately after creation while Terms covers the destinatio
   mockPending = false;
   await screen.rerender(<RootLayout />);
   expect(
-    screen.queryByText('welcome', { includeHiddenElements: true }),
-  ).toBeNull();
+    screen.getByText('welcome', { includeHiddenElements: true }),
+  ).toBeTruthy();
   expect(
     screen.queryByText('(tabs)', { includeHiddenElements: true }),
   ).toBeNull();
   await fireEvent(screen.getByTestId('acceptance-cover'), 'layout');
   expect(
-    screen.queryByText('welcome', { includeHiddenElements: true }),
-  ).toBeNull();
+    screen.getByText('welcome', { includeHiddenElements: true }),
+  ).toBeTruthy();
   expect(
     screen.getByText('(tabs)', { includeHiddenElements: true }),
   ).toBeTruthy();

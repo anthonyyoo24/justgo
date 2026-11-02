@@ -36,12 +36,8 @@ for (const provider of ['apple', 'google'] as const) {
     });
     try {
       await page.goto('/welcome');
-      await page.getByRole('button', { name: buttonName, exact: true }).click();
       await expect(
-        page.getByRole('heading', {
-          name: 'Keep your data with your account',
-          exact: true,
-        }),
+        page.getByText(/Signing in saves your challenge history/),
       ).toBeVisible();
       const button = page.getByRole('button', {
         name: buttonName,
@@ -55,9 +51,7 @@ for (const provider of ['apple', 'google'] as const) {
         exact: true,
       });
       const expectBusy = async () => {
-        await expect(page).toHaveURL(
-          new RegExp(`/account/sign-in\\?provider=${provider}$`),
-        );
+        await expect(page).toHaveURL(/\/welcome$/);
         await expect(button).toBeDisabled();
         await expect(button).toHaveAttribute('aria-busy', 'true');
         await expect(button).toHaveText('');
@@ -123,3 +117,78 @@ for (const provider of ['apple', 'google'] as const) {
     }
   });
 }
+
+test('Welcome retains provider failure and retries directly without a second sign-in screen', async ({
+  page,
+}) => {
+  await page.route(`${journeyApiUrl}/__fixtures/provider-sessions`, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        code: 'UNAVAILABLE',
+        requestId: 'welcome-sign-in-fixture',
+      }),
+    }),
+  );
+  await page.goto('/welcome');
+  const google = page.getByRole('button', {
+    name: 'Sign in with Google',
+    exact: true,
+  });
+  await google.click();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Couldn’t finish connecting. Please try again. Your saved data was kept.',
+  );
+  await expect(page).toHaveURL(/\/welcome$/);
+  await expect(google).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: 'Continue', exact: true }),
+  ).toBeEnabled();
+  await page.unroute(`${journeyApiUrl}/__fixtures/provider-sessions`);
+  await google.click();
+  await expect(
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('Welcome retries failed challenge preparation without repeating provider authorization', async ({
+  page,
+}) => {
+  let authorizations = 0;
+  page.on('request', (request) => {
+    if (request.url() === `${journeyApiUrl}/__fixtures/provider-sessions`)
+      authorizations++;
+  });
+  await page.route(`${journeyApiUrl}/v1/challenges`, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        code: 'UNAVAILABLE',
+        requestId: 'welcome-catalog-fixture',
+      }),
+    }),
+  );
+  await page.goto('/welcome');
+  await page
+    .getByRole('button', { name: 'Sign in with Google', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Your challenges couldn’t load. Check your connection and try again.',
+  );
+  await expect(page).toHaveURL(/\/welcome$/);
+  const retry = page.getByRole('button', { name: 'Try again', exact: true });
+  await expect(retry).toHaveCount(1);
+  await expect(retry).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: 'Continue', exact: true }),
+  ).toBeDisabled();
+  await page.unroute(`${journeyApiUrl}/v1/challenges`);
+  await retry.click();
+  await expect(
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+  ).toBeVisible();
+  expect(authorizations).toBe(1);
+});

@@ -401,6 +401,32 @@ it('routes a fresh installation to welcome without silently creating an account'
   expect(navigation.getPathname()).toBe('/welcome');
 });
 
+it('keeps Welcome mounted after provider authentication while its access handoff is pending', async () => {
+  mockSnapshot.identity.account = null;
+  mockSnapshot.identity.needsWelcome = true;
+  mockSnapshot.access = {
+    verified: false,
+    isPending: true,
+    refetch: jest.fn(),
+  };
+  const navigation = await renderRouter(routes, { initialUrl: '/welcome' });
+  expect(await screen.findByText('Welcome ready')).toBeTruthy();
+  await act(() => {
+    mockSnapshot = {
+      ...mockSnapshot,
+      identity: {
+        ...mockSnapshot.identity,
+        account: { userId: 'authenticated-owner' },
+        needsWelcome: false,
+      },
+    };
+    for (const listener of mockListeners) listener();
+  });
+  expect(navigation.getPathname()).toBe('/welcome');
+  expect(screen.getByText('Welcome ready')).toBeTruthy();
+  expect(screen.queryByLabelText('Loading JustGO')).toBeNull();
+});
+
 it.each(['pending', 'cleanup'] as const)(
   'resumes %s deletion before product access despite stale verification',
   async (deletionStatus) => {

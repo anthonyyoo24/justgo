@@ -22,12 +22,14 @@ import {
 export function WelcomeView({
   disabled = false,
   error = '',
+  connectionReference,
   onContinue,
   signInButtons,
   onRetry,
 }: {
   disabled?: boolean;
   error?: string;
+  connectionReference?: string | null;
   onContinue: () => void;
   signInButtons?: ReactNode;
   onRetry?: (() => void) | undefined;
@@ -81,6 +83,11 @@ export function WelcomeView({
               {error}
             </Text>
           )}
+          {__DEV__ && !!error && !!connectionReference && (
+            <Text selectable style={styles.error}>
+              {connectionReference}
+            </Text>
+          )}
           {!!error && onRetry && (
             <Pressable
               accessibilityRole="button"
@@ -90,6 +97,13 @@ export function WelcomeView({
             >
               <Text style={styles.buttonLabel}>Retry connection</Text>
             </Pressable>
+          )}
+          {!!signInButtons && (
+            <Text style={styles.disclosure}>
+              Signing in saves your challenge history, feelings and reflections
+              to JustGO’s cloud to sync across devices. Saved entries on this
+              phone are included.
+            </Text>
           )}
           {signInButtons}
           <Pressable
@@ -169,5 +183,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center',
     color: colors.peach,
+  },
+  disclosure: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    color: '#FFFDF9',
   },
 });
