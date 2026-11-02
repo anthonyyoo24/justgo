@@ -1,7 +1,7 @@
 import { Pool, type PoolConfig } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { getPath } from 'hono/utils/url';
-import { readConfig, type Config } from '../config.js';
+import { readConfig, readDatabaseConfig, type Config } from '../config.js';
 import { createDatabase } from './client.js';
 
 export type WorkerBindings = Record<string, unknown> & {
@@ -81,11 +81,16 @@ export function readWorkerConfig(bindings: WorkerBindings) {
     DATABASE_SSL: 'verify-full',
     DATABASE_POOL_MAX: '1',
   });
-  const lockConfig = readConfig({
-    ...environment,
-    DATABASE_URL: bindings.LOCK_DATABASE_URL,
-    DATABASE_POOL_MAX: '1',
-  });
+  // Auth, beta access and diagnostics are identical for both transports. Validate
+  // them once per invocation, then independently validate the direct DB settings.
+  const lockConfig: Config = {
+    ...config,
+    ...readDatabaseConfig({
+      ...environment,
+      DATABASE_URL: bindings.LOCK_DATABASE_URL,
+      DATABASE_POOL_MAX: '1',
+    }),
+  };
   const lockUrl = new URL(bindings.LOCK_DATABASE_URL);
   if (lockUrl.username !== 'justgo_runtime' || lockUrl.search || lockUrl.hash)
     throw new Error(

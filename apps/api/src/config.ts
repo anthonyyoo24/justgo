@@ -2,7 +2,14 @@ import { z } from 'zod';
 import { readBetaAccessWindow, readBetaGrants } from './access/beta-access.js';
 import { serverDiagnosticConfiguration } from './http/sentry-configuration.js';
 
+const databaseSchema = z.object({
+  DATABASE_URL: z.string().url().optional(),
+  DATABASE_SSL: z.enum(['verify-full', 'disable']).default('verify-full'),
+  DATABASE_CA_CERT: z.string().optional(),
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(5).default(1),
+});
 const configSchema = z.object({
+  ...databaseSchema.shape,
   APP_ENVIRONMENT: z.enum(['production', 'staging']).default('production'),
   JUSTGO_SOURCE_SHA: z
     .string()
@@ -15,10 +22,6 @@ const configSchema = z.object({
     .enum(['development', 'test', 'production'])
     .default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  DATABASE_URL: z.string().url().optional(),
-  DATABASE_SSL: z.enum(['verify-full', 'disable']).default('verify-full'),
-  DATABASE_CA_CERT: z.string().optional(),
-  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(5).default(1),
   LOG_LEVEL: z
     .enum(['silent', 'error', 'warn', 'info', 'debug'])
     .default('info'),
@@ -63,6 +66,29 @@ const configSchema = z.object({
     .default(3000),
 });
 
+function validateDatabase(config: z.infer<typeof databaseSchema>) {
+  if (config.DATABASE_URL) {
+    const url = new URL(config.DATABASE_URL);
+    if (!['postgres:', 'postgresql:'].includes(url.protocol))
+      throw new Error('Database URL must use PostgreSQL');
+    if (
+      config.DATABASE_SSL === 'disable' &&
+      !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    )
+      throw new Error(
+        'Unencrypted database connections are allowed only on loopback',
+      );
+  }
+  return config;
+}
+
+/** Validate an alternate transport after the complete invocation config passed. */
+export function readDatabaseConfig(env: NodeJS.ProcessEnv) {
+  const result = databaseSchema.safeParse(env);
+  if (!result.success) throw new Error('Invalid API environment configuration');
+  return validateDatabase(result.data);
+}
+
 export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   const result = configSchema.safeParse(env);
   if (!result.success) throw new Error('Invalid API environment configuration');
@@ -92,18 +118,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
       'local-development-rate-key-not-for-deployment'
   )
     throw new Error('IDENTITY_RATE_LIMIT_KEY is required in production');
-  if (config.DATABASE_URL) {
-    const url = new URL(config.DATABASE_URL);
-    if (!['postgres:', 'postgresql:'].includes(url.protocol))
-      throw new Error('Database URL must use PostgreSQL');
-    if (
-      config.DATABASE_SSL === 'disable' &&
-      !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-    )
-      throw new Error(
-        'Unencrypted database connections are allowed only on loopback',
-      );
-  }
+  validateDatabase(config);
   return {
     ...config,
     API_SENTRY: serverDiagnosticConfiguration(
