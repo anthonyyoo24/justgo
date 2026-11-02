@@ -331,15 +331,20 @@ export function DaySheet({
                 style={{ height: drag.height }}
               >
                 <View onLayout={drag.onHeaderLayout} testID="day-sheet-header">
-                  <DaySheetHandle controls={drag} />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Close day details"
-                    onPress={close}
-                    style={styles.close}
-                  >
-                    <Text style={styles.closeText}>×</Text>
-                  </Pressable>
+                  <View testID="day-sheet-controls" style={styles.controls}>
+                    <DaySheetHandle controls={drag} />
+                    <Pressable
+                      testID="day-sheet-close"
+                      accessibilityRole="button"
+                      accessibilityLabel="Close day details"
+                      onPress={close}
+                      style={styles.close}
+                    >
+                      <Text maxFontSizeMultiplier={1} style={styles.closeText}>
+                        ×
+                      </Text>
+                    </Pressable>
+                  </View>
                   {date && <DayHeading date={date} />}
                   {day && (
                     <Text style={styles.repCount}>
@@ -497,21 +502,22 @@ const styles = StyleSheet.create({
     maxHeight: '100%',
     minHeight: 0,
   },
+  controls: { height: 64 },
   close: {
     position: 'absolute',
-    right: 8,
-    top: 21,
-    width: 44,
-    height: 44,
+    right: 0,
+    top: 4,
+    width: 56,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
   },
   closeText: {
     fontFamily: fontFamilies.regular,
-    fontSize: 36,
+    fontSize: 40,
     color: colors.ink,
-    lineHeight: 40,
+    lineHeight: 44,
   },
   dayHeading: { paddingRight: 20, paddingBottom: 14 },
   dayTitleLayer: { zIndex: 1 },

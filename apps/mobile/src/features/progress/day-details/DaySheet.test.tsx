@@ -22,6 +22,39 @@ jest.mock('./entries/useEntryMotion', () =>
   jest.requireActual('./entries/useEntryMotion.ts'),
 );
 
+it('keeps a larger close target in its own top-right area and preserves the dirty-close guard', async () => {
+  const onClose = jest.fn();
+  const beforeClose = jest.fn<void, [() => void]>();
+  const screen = await render(
+    <DaySheet
+      date="2026-10-10"
+      loading={false}
+      error={false}
+      loadMoreError={false}
+      hasMore={false}
+      loadingMore={false}
+      fetching={false}
+      onClose={onClose}
+      beforeClose={beforeClose}
+    />,
+  );
+  const close = screen.getByTestId('day-sheet-close');
+  expect(close.props.accessibilityLabel).toBe('Close day details');
+  const closeStyle = StyleSheet.flatten(close.props.style);
+  const controlsStyle = StyleSheet.flatten(
+    screen.getByTestId('day-sheet-controls').props.style,
+  );
+  expect(closeStyle.width).toBeGreaterThanOrEqual(56);
+  expect(closeStyle.height).toBeGreaterThanOrEqual(56);
+  expect(closeStyle.right).toBe(0);
+  expect(closeStyle.top + closeStyle.height).toBeLessThan(controlsStyle.height);
+  await fireEvent.press(close);
+  expect(beforeClose).toHaveBeenCalledTimes(1);
+  expect(onClose).not.toHaveBeenCalled();
+  await act(() => beforeClose.mock.calls[0]![0]());
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
 it('expands above the keyboard while keeping the header below the top safe area', async () => {
   const listeners: ((event: KeyboardEvent) => void)[] = [];
   const listen = Keyboard.addListener.bind(Keyboard);

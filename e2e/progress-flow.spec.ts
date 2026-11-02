@@ -51,6 +51,53 @@ async function expectRowAtViewportBottom(page: Page, number: number) {
     })
     .toBeLessThanOrEqual(1);
 }
+
+test('Progress matches the Challenge background and keeps its larger close target above the date on narrow screens', async ({
+  page,
+}) => {
+  const current = await account(page);
+  await expect(page.getByTestId('challenge-screen-surface')).toHaveCSS(
+    'background-color',
+    'rgb(249, 239, 232)',
+  );
+  await seed(page, current, 1);
+  await page.reload();
+  await progress(page, 1);
+  await expect(page.getByTestId('progress-screen')).toHaveCSS(
+    'background-color',
+    'rgb(249, 239, 232)',
+  );
+
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await openToday(page, 1);
+    const close = page.getByTestId('day-sheet-close');
+    const panel = page.getByTestId('day-sheet-panel');
+    await expect(close).toBeEnabled();
+    await expect
+      .poll(async () => {
+        const [sheet, target, heading] = await Promise.all([
+          panel.boundingBox(),
+          close.boundingBox(),
+          page.getByTestId('day-title-text-layer').boundingBox(),
+        ]);
+        if (!sheet || !target || !heading) return { missing: true };
+        const rightGap = sheet.x + sheet.width - target.x - target.width;
+        const topGap = target.y - sheet.y;
+        return {
+          largeTarget: target.width >= 56 && target.height >= 56,
+          topRight:
+            rightGap >= 0 && rightGap <= 24 && topGap >= 0 && topGap <= 8,
+          aboveHeading: target.y + target.height + 4 <= heading.y,
+        };
+      })
+      .toEqual({ largeTarget: true, topRight: true, aboveHeading: true });
+    // Exercise the enlarged target's edge, away from the visible X glyph.
+    await close.click({ position: { x: 2, y: 52 } });
+    await expect(panel).toBeHidden();
+  }
+});
+
 test('10 + 1 stays 11 through acknowledgement, refresh and restart, with inline Add/Edit reflection', async ({
   page,
   fixtureDatabase,
