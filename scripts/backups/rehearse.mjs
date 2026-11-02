@@ -359,8 +359,74 @@ export async function rehearse(env = process.env) {
       JUSTGO_PG_BIN: pgBin,
       AGE_BIN: ageBin,
     };
-    const result = await restoreLocal(restoreEnv);
+    let beforeFinished = false,
+      afterFinished = false;
+    const result = await restoreLocal(restoreEnv, {
+      preserveOwnership: true,
+      beforeReconcile: async ({ client }) => {
+        const ownership = await client.query(`select
+          (select pg_get_userbyid(nspowner) from pg_namespace where nspname='justgo') as schema_owner,
+          (select pg_get_userbyid(relowner) from pg_class where oid='justgo.users'::regclass) as table_owner,
+          has_table_privilege('justgo_runtime','justgo.users','SELECT') as runtime_read,
+          has_schema_privilege('justgo_runtime','justgo','CREATE') as runtime_create`);
+        assert.deepEqual(ownership.rows[0], {
+          schema_owner: 'justgo_migrator',
+          table_owner: 'justgo_migrator',
+          runtime_read: true,
+          runtime_create: false,
+        });
+        const { rows } = await client.query(
+          'select (select count(*)::int from auth.sessions) as sessions, (select data_epoch from justgo.users where id=$1) as epoch',
+          [erasedOwner.userId],
+        );
+        assert.deepEqual(rows[0], { sessions: 1, epoch: 0 });
+        // An asynchronous SQL round trip must finish before reconciliation starts.
+        await client.query('select pg_sleep(0.01)');
+        beforeFinished = true;
+      },
+      afterReconcile: async ({ client, result: closedResult }) => {
+        assert.equal(beforeFinished, true);
+        assert.equal(closedResult.writersMayOpen, false);
+        assert.equal(Object.isFrozen(closedResult), true);
+        const { rows } = await client.query(
+          'select (select count(*)::int from auth.sessions) as sessions, (select data_epoch from justgo.users where id=$1) as epoch',
+          [erasedOwner.userId],
+        );
+        assert.deepEqual(rows[0], { sessions: 0, epoch: 1 });
+        await client.query('select pg_sleep(0.01)');
+        afterFinished = true;
+      },
+    });
+    assert.equal(beforeFinished && afterFinished, true);
     assert.equal(result.writersMayOpen, false);
+    step = 'closed-target acceptance failure';
+    const rejectedName = `justgo_restore_${randomBytes(6).toString('hex')}`;
+    await admin.query(`create database ${rejectedName} template template0`);
+    ownedDatabases.push(rejectedName);
+    const rejectedUrl = new URL(targetUrl);
+    rejectedUrl.pathname = `/${rejectedName}`;
+    let rejectionHookEntered = false,
+      rejectedAfterEntered = false;
+    await assert.rejects(
+      restoreLocal(
+        { ...restoreEnv, JUSTGO_RESTORE_DATABASE_URL: rejectedUrl.href },
+        {
+          beforeReconcile: async () => {
+            rejectionHookEntered = true;
+            throw new Error('synthetic private diagnostic must not escape');
+          },
+          afterReconcile: async () => {
+            rejectedAfterEntered = true;
+          },
+        },
+      ),
+      {
+        message:
+          'Local restore failed; target remains isolated and writers closed',
+      },
+    );
+    assert.equal(rejectionHookEntered, true);
+    assert.equal(rejectedAfterEntered, false);
     step = 'revoked proof assertions';
     const target = new Client({ ...sourceConfig, database: targetName });
     clients.push(target);
