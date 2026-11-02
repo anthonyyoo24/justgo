@@ -17,6 +17,7 @@ import { verifyBackupRole } from './backup-role.mjs';
 import { restoreLocal } from './restore-local.mjs';
 import { cleanupRehearsal } from './rehearsal-cleanup.mjs';
 import { readPolicy } from './configuration.mjs';
+import { rehearseRecoveryFence } from './recovery-fence-fixture.mjs';
 
 const migrations = new URL('../../apps/api/drizzle/', import.meta.url).pathname;
 const secret = () => randomBytes(32).toString('hex');
@@ -108,6 +109,8 @@ export async function rehearse(env = process.env) {
       create table auth.users(id uuid primary key);
       create table auth.sessions(id uuid primary key,user_id uuid references auth.users(id) on delete cascade,not_after timestamptz);
       create table auth.refresh_tokens(id bigint primary key,user_id uuid references auth.users(id) on delete cascade,session_id uuid references auth.sessions(id) on delete cascade,revoked boolean)`);
+    step = 'bounded recovery fence';
+    await rehearseRecoveryFence(sourceConfig);
     const runtime = localTestDatabaseUrl(env.DATABASE_URL);
     if (runtime.username !== 'justgo_runtime')
       throw new Error('Restricted runtime role required');
