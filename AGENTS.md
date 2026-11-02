@@ -184,6 +184,16 @@ Reload the app to clear stale module/asset paths.
 
 ## Verification and handoff
 
+- Assign verification responsibilities before parallel implementation. Task
+  agents run focused behavior/consumer regressions and scoped checks in their
+  worktrees, reporting commands, results and the tested revision. The integration
+  owner runs cross-task checks, affected workspace typechecks, repository lint,
+  affected journeys and grouped UI verification on the combined candidate,
+  plus applicable phase/publication gates. Reuse valid passing evidence; rerun
+  affected checks when inputs change, failures or stale environments require it,
+  or integration risks justify it. Do not run the full mobile suite once per
+  worktree merely because tasks are separate. Coordinate test database fixtures,
+  server ports and heavy checks; preserve all required gates and coverage floors.
 - Write/update meaningful tests for every code change and run focused checks
   during each slice. Use unit tests for domain decisions, component tests for UI
   behavior, integration tests for runtime wiring and real API/database boundaries,
@@ -233,8 +243,12 @@ Reload the app to clear stale module/asset paths.
   and journeys).
   Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.
   Keep earlier physical-device/staging gates open until evidenced.
-- Before publication, run fresh online Expo validation through `npm run check`
-  and rerun `npm run doctor -w @justgo/mobile` immediately before pushing.
+- Before publication, run fresh online Expo validation through `npm run check`.
+  Its successful online Doctor run also satisfies pre-push validation when the
+  push follows promptly and dependency, Expo/native configuration and validation
+  environment inputs remain unchanged. Rerun `npm run doctor -w @justgo/mobile`
+  immediately before pushing after a substantial delay or relevant input change;
+  do not repeat it back-to-back with a fresh passing `check` just for reporting.
   Installed versions are pinned by the lockfile; Expo's recommended SDK patch
   metadata can change independently. Keep dependency validation enabled and
   preserve native-build/device acceptance when dependency versions change.
