@@ -37,10 +37,14 @@ handoffs; avoid copying competing versions of these rules into every directory.
 
 ## Owner review and Git permissions
 
-- Keep each phase's work together on its phase branch, using small reviewable
-  local commits until Anthony approves the phase-end push. Prepare one consolidated PR at the phase review point; do not open
-  a new PR for each routine fix unless Anthony requests that split. This does
-  not waive the separate push, PR, merge or release permissions below.
+- Use each phase's branch as its integration branch. Independent parallel tasks
+  may use temporary task branches and worktrees based on that phase branch,
+  with explicit file ownership and one integration owner. Use small reviewable
+  local commits; review task changes and obtain Anthony's explicit approval
+  before merging them into the phase branch. Verify the combined result there.
+  Prepare one consolidated PR at the phase review point; do not open a new PR
+  for each routine fix unless Anthony requests that split. This does not waive
+  the separate push, PR, merge or release permissions below.
 - Owner-authorized code-only staging tests may deploy directly from the committed
   phase branch through the guarded local staging command, without a GitHub push
   or PR. This does not authorize migrations, production releases or Git publication.
