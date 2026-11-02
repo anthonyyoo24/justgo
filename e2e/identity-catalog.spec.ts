@@ -384,6 +384,102 @@ test('login switches show one active provider, switch through sign-in and keep l
   await signOut(page);
 });
 
+for (const width of [320, 390]) {
+  for (const provider of ['apple', 'google'] as const) {
+    test(`active ${provider} subtitle preserves original Account row geometry at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await continueAsGuest(page);
+      await page.goto('/recovery');
+      const measure = async (name: 'Apple' | 'Google') => {
+        const row = page.getByRole('switch', { name, exact: true });
+        await expect(row).toBeEnabled();
+        const label = row.getByText(name, { exact: true });
+        const [bounds, logo, track, text, font] = await Promise.all([
+          row.boundingBox(),
+          row.locator('svg').boundingBox(),
+          row.getByTestId('settings-toggle-fill').boundingBox(),
+          label.boundingBox(),
+          label.evaluate((node) => {
+            const style = getComputedStyle(node);
+            return {
+              size: style.fontSize,
+              lineHeight: style.lineHeight,
+              family: style.fontFamily,
+            };
+          }),
+        ]);
+        if (!bounds || !logo || !track || !text)
+          throw new Error(
+            'Login method and original controls must be measurable',
+          );
+        return { bounds, logo, track, text, font };
+      };
+      const before = {
+        Apple: await measure('Apple'),
+        Google: await measure('Google'),
+      };
+      for (const name of ['Apple', 'Google'] as const) {
+        const method = before[name];
+        expect(method.bounds.height).toBe(63);
+        expect(method.logo.width).toBe(20);
+        expect(method.logo.height).toBe(name === 'Apple' ? 24 : 20);
+        expect(method.track.width).toBe(51);
+        expect(method.track.height).toBe(31);
+      }
+      await signInFixture(page, { provider });
+      await page.goto('/recovery');
+      const active = provider === 'apple' ? 'Apple' : 'Google';
+      await expect(
+        page.getByRole('switch', { name: active, exact: true }),
+      ).toBeChecked();
+      const subtitle = page.getByText(`You’re signed in with ${active}.`, {
+        exact: true,
+      });
+      await expect(subtitle).toBeVisible();
+      await expect(async () => {
+        for (const name of ['Apple', 'Google'] as const) {
+          const after = await measure(name);
+          for (const piece of ['bounds', 'logo', 'track'] as const) {
+            for (const dimension of ['x', 'y', 'width', 'height'] as const) {
+              expect(
+                Math.abs(
+                  after[piece][dimension] - before[name][piece][dimension],
+                ),
+              ).toBeLessThanOrEqual(1);
+            }
+          }
+          expect(after.font).toEqual(before[name].font);
+          expect(after.text.width).toBe(before[name].text.width);
+          expect(after.text.height).toBe(before[name].text.height);
+          expect(
+            Math.abs(after.text.x - before[name].text.x),
+          ).toBeLessThanOrEqual(1);
+          expect(
+            Math.abs(
+              after.text.y - before[name].text.y + (name === active ? 6 : 0),
+            ),
+          ).toBeLessThanOrEqual(1);
+        }
+        const [description, label] = await Promise.all([
+          subtitle.boundingBox(),
+          page
+            .getByRole('switch', { name: active, exact: true })
+            .getByText(active, { exact: true })
+            .boundingBox(),
+        ]);
+        if (!description || !label)
+          throw new Error('Signed-in label and subtitle must be measurable');
+        expect(description.y).toBeGreaterThanOrEqual(label.y + label.height);
+        expect(description.y + description.height).toBeLessThanOrEqual(
+          before[active].bounds.y + before[active].bounds.height,
+        );
+      }).toPass();
+    });
+  }
+}
+
 test('retired key, code and transfer URLs return to the managed Account page', async ({
   page,
 }) => {
