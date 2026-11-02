@@ -19,7 +19,7 @@ import {
   uploadArtifact,
   inspectRetention,
 } from './storage.mjs';
-import { localRestoreConnection } from './restore-local.mjs';
+import { localRestoreConnection, restoreLocal } from './restore-local.mjs';
 import { checkIn } from './monitor.mjs';
 import {
   captureLedger,
@@ -67,6 +67,19 @@ const lifecycle = {
     deleteObjectsTransition: { condition: { type: 'Age', maxAge: 604800 } },
   })),
 };
+
+test('restore rejects invalid acceptance options before reading artifacts or using a key', async () => {
+  for (const hooks of [
+    null,
+    [],
+    { beforeReconcile: true },
+    { preserveOwnership: 'true' },
+    { unknown: () => {} },
+  ])
+    await assert.rejects(restoreLocal({}, hooks), {
+      message: 'Invalid closed-target recovery options',
+    });
+});
 
 test('policy requires exact separately approved bytes and compatible ledger/expiry periods', () => {
   const raw = JSON.stringify(policy);
