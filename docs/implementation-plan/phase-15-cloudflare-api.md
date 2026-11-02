@@ -160,8 +160,8 @@ Anthony's [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-a
 Keep phase commits local until the phase-end push. Owner-authorized code-only
 phone-test releases may use the [local staging lane](../operations/SERVER_RELEASES.md#local-phase-branch-staging-tests)
 without a push or PR, retaining actual database/history/source/bundle checks and
-truthful local provenance. It requires the existing protected migrator connection
-on the Mac; that credential is currently missing. This changes the testing route,
+truthful local provenance. It uses the existing protected operator connection in
+ignored `.local/staging.env`, verified before deployment. This changes the testing route,
 not the final merge, migration, production, legal or native-release gates.
 
 - Move the static legal site (`sites/legal`) and API fully to Cloudflare. The

@@ -1244,6 +1244,7 @@ promotion/readback. It records local UUID provenance rather than pretending to b
 a GitHub run. It cannot migrate, bootstrap, target production or bypass a missing
 protected database connection. Owner-local credentials stay in ignored mode-0600
 storage and out of child build/test processes. The existing migrator connection
-is not currently available on the Mac; read-only preparation may proceed, but
-deployment remains blocked until that credential is supplied securely. No Git
+was found in the original protected `.local/staging.env` setup and passed actual
+verified-TLS, restricted-role, history and release-lease preparation. Reuse it
+without a password change; GitHub-held secrets need not be exported. No Git
 publication, secret rotation or broader database grant follows from this decision.

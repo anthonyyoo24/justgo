@@ -132,9 +132,12 @@ no symlink/hard link). It contains only `CLOUDFLARE_API_TOKEN`,
 `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_SUBDOMAIN`, `STAGING_HYPERDRIVE_ID`,
 `MIGRATION_DATABASE_URL`, and `DATABASE_CA_CERT`. Use the existing restricted
 migrator's verified-TLS session-pooler connection; runtime credentials are not a
-substitute. Never paste credentials into chat or command arguments. The prepared
-local file currently lacks the migrator URL; GitHub secret values cannot be read
-back. An empty URL permits read-only baseline/bundle preparation, with
+substitute. Never paste credentials into chat or command arguments. The original
+operator connection and CA already exist in ignored owner-only `.local/staging.env`;
+check that protected setup before asking the owner to supply credentials. The
+local JSON configuration uses the verified existing connection without changing
+its password or GitHub's stored secret. GitHub secret values cannot be read back.
+An empty URL permits read-only baseline/bundle preparation, with
 `databaseVerified: false`, `deployReady: false` and a missing-prerequisite receipt.
 It cannot upload or promote a Worker.
 
