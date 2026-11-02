@@ -41,14 +41,29 @@ function reviewedInspection(value) {
     ].every((name) => names.includes(name))
   )
     throw new Error(failureMessage);
-  parsed.relations.sort((a, b) =>
-    `${a.schema}.${a.name}`.localeCompare(`${b.schema}.${b.name}`, 'en'),
-  );
+  // Identifiers are bounded ASCII; match the SQL inventory's explicit C collation.
+  parsed.relations.sort((a, b) => {
+    const left = `${a.schema}.${a.name}`,
+      right = `${b.schema}.${b.name}`;
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
   return parsed;
 }
 
 function fingerprint(value) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+/** One reviewed scope shared by the direct-client and connected-operator leases. */
+export function recoveryLockPlan(expected) {
+  return reviewedInspection(expected).relations.map((relation) => ({
+    ...relation,
+    mode:
+      relation.schema === 'auth' && relation.name === 'schema_migrations'
+        ? 'AccessShareLock'
+        : 'ShareLock',
+    sql: `lock table only "${relation.schema}"."${relation.name}" in ${relation.schema === 'auth' && relation.name === 'schema_migrations' ? 'access share' : 'share'} mode nowait`,
+  }));
 }
 
 /**
@@ -207,15 +222,9 @@ export async function withRecoveryFence({
       .rows[0]?.lease_id;
     if (!/^[0-9]+$/.test(leaseId ?? '')) throw new Error(failureMessage);
     await assertCurrent();
-    for (const relation of reviewed.relations) {
+    for (const relation of recoveryLockPlan(reviewed)) {
       assertActive();
-      const mode =
-        relation.schema === 'auth' && relation.name === 'schema_migrations'
-          ? 'access share'
-          : 'share';
-      await query(
-        `lock table only "${relation.schema}"."${relation.name}" in ${mode} mode nowait`,
-      );
+      await query(relation.sql);
     }
     locksAcquired = true;
     // READ COMMITTED deliberately starts this inspection after every lock.

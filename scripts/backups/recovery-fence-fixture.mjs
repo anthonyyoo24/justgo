@@ -3,6 +3,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Client } from 'pg';
 import { withRecoveryFence } from './recovery-fence.mjs';
+import {
+  connectedLeaseStatement,
+  inspectConnectedLease,
+  releaseConnectedLease,
+  recoveryCatalogQuery,
+} from './recovery-source-lease.mjs';
 
 /** Actual lock/fault controls on the recovery rehearsal's run-owned local source. */
 export async function rehearseRecoveryFence(connection) {
@@ -165,6 +171,7 @@ export async function rehearseRecoveryFence(connection) {
     );
     assert.equal(stoppedAfterLoss, true);
     await writer.query('delete from auth.users where false');
+    await rehearseConnectedTransport(connection, control, writer);
     return {
       dataWritesBlocked: true,
       readsSucceeded: true,
@@ -177,5 +184,136 @@ export async function rehearseRecoveryFence(connection) {
     await writer.query('rollback').catch(() => {});
     await writer.end();
     await control.end();
+  }
+}
+
+async function rehearseConnectedTransport(connection, control, writer) {
+  // Digit/underscore identifiers distinguish C ordering from English collation.
+  await control.query(
+    'create table auth.a0(id integer); create table auth.a_b(id integer)',
+  );
+  const catalog = (await control.query(recoveryCatalogQuery)).rows[0];
+  const expected = {
+    source: 'synthetic.loopback/recovery-source',
+    database: connection.database,
+    role: 'postgres',
+    compatibilitySha256: 'a'.repeat(64),
+    relations: catalog.relations,
+  };
+  for (const scenario of [
+    'complete',
+    'registry-drift',
+    'database-settings-drift',
+    'timeout',
+    'backend-loss',
+  ]) {
+    const holder = new Client(connection);
+    holder.on('error', () => {});
+    await holder.connect();
+    const ready = [12345, Math.floor(Math.random() * 1000000) + 1];
+    const stop = [12346, ready[1]];
+    const pending = holder.query(
+      connectedLeaseStatement(expected, {
+        ready,
+        stop,
+        catalogSha256: catalog.catalog_sha256,
+        timeoutMs: scenario === 'timeout' ? 500 : 4000,
+      }),
+    );
+    pending.catch(() => {});
+    let unlock;
+    try {
+      if (scenario === 'timeout') {
+        await assert.rejects(pending);
+        await assert.rejects(
+          inspectConnectedLease(
+            control,
+            expected,
+            ready,
+            catalog.catalog_sha256,
+          ),
+        );
+        await writer.query('delete from auth.users where false');
+        continue;
+      }
+      const deadline = Date.now() + 2000;
+      let state;
+      while (!state && Date.now() < deadline) {
+        try {
+          state = await inspectConnectedLease(
+            control,
+            expected,
+            ready,
+            catalog.catalog_sha256,
+          );
+        } catch {
+          await delay(20);
+        }
+      }
+      assert.ok(state, 'Connected source lease became observable');
+      await assert.rejects(writer.query('delete from auth.users where false'), {
+        code: '55P03',
+      });
+      if (scenario === 'backend-loss') {
+        await control.query('select pg_terminate_backend($1)', [state.pid]);
+        await assert.rejects(pending);
+        await assert.rejects(
+          inspectConnectedLease(
+            control,
+            expected,
+            ready,
+            catalog.catalog_sha256,
+            state,
+          ),
+        );
+      } else {
+        if (
+          scenario === 'registry-drift' ||
+          scenario === 'database-settings-drift'
+        ) {
+          await control.query(
+            scenario === 'registry-drift'
+              ? "insert into auth.schema_migrations values('connected-drift')"
+              : `alter role postgres in database ${connection.database} set statement_timeout='4321ms'`,
+          );
+          await assert.rejects(
+            inspectConnectedLease(
+              control,
+              expected,
+              ready,
+              catalog.catalog_sha256,
+              state,
+            ),
+          );
+        } else
+          await inspectConnectedLease(
+            control,
+            expected,
+            ready,
+            catalog.catalog_sha256,
+            state,
+          );
+        unlock = await releaseConnectedLease(control, ready, stop, {
+          targetClosed: true,
+        });
+        if (
+          scenario === 'registry-drift' ||
+          scenario === 'database-settings-drift'
+        )
+          await assert.rejects(pending);
+        else await pending;
+      }
+      await writer.query('delete from auth.users where false');
+    } finally {
+      if (unlock) await unlock();
+      await pending.catch(() => {});
+      await holder.end();
+      if (scenario === 'registry-drift')
+        await control.query('delete from auth.schema_migrations');
+      if (scenario === 'database-settings-drift')
+        await control.query(
+          `alter role postgres in database ${connection.database} reset statement_timeout`,
+        );
+    }
   }
 }
