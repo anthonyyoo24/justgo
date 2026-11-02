@@ -42,6 +42,25 @@ export type JournalMergeResult = {
   conflictIds: string[];
 };
 
+// Fixed identifiers only: never retain raw storage errors, paths or entry data.
+export type LocalStorageDiagnostic =
+  | 'NATIVE_SQLITE_MODULE'
+  | 'SQLITE_NOT_REGISTERED'
+  | 'SQLITE_ASSET_NOT_REGISTERED'
+  | 'SQLITE_BUNDLE_LOAD'
+  | 'SQLITE_OPEN'
+  | 'SQLITE_CONFIGURE'
+  | 'SQLITE_NEWER_SCHEMA'
+  | 'SQLITE_SCHEMA'
+  | 'SQLITE_TRANSACTION'
+  | 'LOCAL_ENTRY_INVALID'
+  | 'LOCAL_OWNER_MISMATCH'
+  | 'LOCAL_STORAGE_UNAVAILABLE'
+  | 'METADATA_READ'
+  | 'COMPLETION_READ'
+  | 'COMPLETION_FORMAT'
+  | 'PRIVATE_PREPARATION';
+
 export class LocalJournalError extends Error {
   constructor(
     readonly code:
@@ -50,6 +69,7 @@ export class LocalJournalError extends Error {
       | 'CONFLICT'
       | 'STOPPED'
       | 'UNAVAILABLE',
+    readonly diagnostic?: LocalStorageDiagnostic,
   ) {
     // Never attach an entry, raw database error or validation issue to errors.
     super(code);
@@ -62,9 +82,10 @@ export function parseOwnedEntry(
   accountId: string,
 ): LocalJournalEntry {
   const result = localJournalEntrySchema.safeParse(value);
-  if (!result.success) throw new LocalJournalError('INVALID_ENTRY');
+  if (!result.success)
+    throw new LocalJournalError('INVALID_ENTRY', 'LOCAL_ENTRY_INVALID');
   if (result.data.accountId !== accountId)
-    throw new LocalJournalError('WRONG_ACCOUNT');
+    throw new LocalJournalError('WRONG_ACCOUNT', 'LOCAL_OWNER_MISMATCH');
   return result.data;
 }
 

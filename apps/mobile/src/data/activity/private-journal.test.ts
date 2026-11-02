@@ -320,6 +320,9 @@ it('retries failed private preservation in the same session before accepting new
   const { repository, database } = setup(storage);
   database.failCommit = true;
   await repository.hydrate();
+  expect(repository.store.getState().hydrationDiagnostic).toBe(
+    'LOCAL_STORAGE_UNAVAILABLE',
+  );
   await expect(repository.snapshotJournal()).rejects.toMatchObject({
     code: 'STORAGE',
   });
@@ -328,6 +331,10 @@ it('retries failed private preservation in the same session before accepting new
   expect((await repository.snapshotJournal()).entries[0]?.reflection.text).toBe(
     'Preserve me',
   );
+  expect(repository.store.getState()).toMatchObject({
+    hydrationError: null,
+    hydrationDiagnostic: null,
+  });
   await repository.submitReflection(uuid(1), uuid(3), {
     text: 'New saved writing',
   });

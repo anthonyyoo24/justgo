@@ -39,7 +39,11 @@ import { DeckPreferencesStorage } from './persistence/deck-preferences';
 import { addCompletion } from './submissions';
 import { createLocalJournal } from '../journal';
 import type { LocalJournalRepository } from '../journal/repository';
-import { LocalJournalError, type LocalJournalEntry } from '../journal/model';
+import {
+  LocalJournalError,
+  type LocalJournalEntry,
+  type LocalStorageDiagnostic,
+} from '../journal/model';
 import {
   completionJournal,
   journalAttempt,
@@ -110,6 +114,7 @@ export class AccountRepository {
       localEntries: {},
       localJournalReady: false,
       hydrationError: null,
+      hydrationDiagnostic: null,
       journal: emptyJournal(options.accountId),
       catalog: null,
       online: true,
@@ -152,6 +157,16 @@ export class AccountRepository {
     this.hydration = this.readStored();
     return this.hydration;
   }
+  private hydrationDiagnostic(
+    fallback: LocalStorageDiagnostic,
+    failure?: unknown,
+  ): LocalStorageDiagnostic {
+    return (
+      this.store.getState().hydrationDiagnostic ??
+      (failure instanceof LocalJournalError ? failure.diagnostic : null) ??
+      fallback
+    );
+  }
   private async readStored() {
     try {
       if (this.store.getState().dataMode !== 'legacy')
@@ -177,7 +192,10 @@ export class AccountRepository {
       }
     } catch {
       this.persistence.protected = true;
-      this.store.setState({ hydrationError: 'unreadable' });
+      this.store.setState({
+        hydrationError: 'unreadable',
+        hydrationDiagnostic: this.hydrationDiagnostic('METADATA_READ'),
+      });
     }
     try {
       const raw = await this.options.storage.getItem(`${this.key}:journal`);
@@ -198,7 +216,10 @@ export class AccountRepository {
           this.legacyJournalSource = cloneJournal(parsed.data);
           this.store.setState({ journal: parsed.data });
         } else {
-          this.store.setState({ hydrationError: 'unreadable' });
+          this.store.setState({
+            hydrationError: 'unreadable',
+            hydrationDiagnostic: this.hydrationDiagnostic('COMPLETION_FORMAT'),
+          });
           this.persistence.protected = true;
           // Never overwrite unvalidated pending bytes without a durable copy.
           try {
@@ -214,7 +235,10 @@ export class AccountRepository {
       }
     } catch {
       this.persistence.protected = true;
-      this.store.setState({ hydrationError: 'unreadable' });
+      this.store.setState({
+        hydrationError: 'unreadable',
+        hydrationDiagnostic: this.hydrationDiagnostic('COMPLETION_READ'),
+      });
     }
     try {
       const raw = await this.options.storage.getItem(`${this.key}:catalog`);
@@ -261,6 +285,7 @@ export class AccountRepository {
           journal: completionJournal(this.store.getState().journal),
           localJournalReady: true,
           hydrationError: null,
+          hydrationDiagnostic: null,
         });
         if (this.privatePreservationFailed)
           this.persistence.protected = this.protectionBeforePrivateFailure;
@@ -274,6 +299,10 @@ export class AccountRepository {
         this.persistence.protected = true;
         this.store.setState({
           hydrationError: 'unreadable',
+          hydrationDiagnostic: this.hydrationDiagnostic(
+            'PRIVATE_PREPARATION',
+            error,
+          ),
           localJournalReady: false,
         });
         throw error;
@@ -713,7 +742,7 @@ export class AccountRepository {
             entries.map((entry) => [entry.id, journalAttempt(entry)]),
           ),
         });
-    } catch {
+    } catch (error) {
       if (!isCurrent()) return;
       // Keep the previous visible records. A later explicit private operation
       // retries preparation, but an unreadable original envelope must never be
@@ -725,6 +754,10 @@ export class AccountRepository {
       }
       this.store.setState({
         hydrationError: 'unreadable',
+        hydrationDiagnostic: this.hydrationDiagnostic(
+          'PRIVATE_PREPARATION',
+          error,
+        ),
         localJournalReady: false,
       });
     }

@@ -79,8 +79,11 @@ function AccountProgress({ repository }: { repository: AccountRepository }) {
         selectedDate ? (
           <>
             <SavingSheetSurface
-              onLeave={() =>
-                reflection.beforeClose(() => setSelectedDate(null))
+              onLeave={(proceed) =>
+                reflection.beforeClose(() => {
+                  setSelectedDate(null);
+                  proceed();
+                })
               }
             />
             {reflection.error && (

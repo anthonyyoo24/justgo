@@ -104,7 +104,7 @@ export class LocalJournalRepository implements LocalJournal {
       .catch((error: unknown) => {
         throw error instanceof LocalJournalError
           ? error
-          : new LocalJournalError('UNAVAILABLE');
+          : new LocalJournalError('UNAVAILABLE', 'LOCAL_STORAGE_UNAVAILABLE');
       });
     this.queue = result.catch(() => undefined);
     return result;

@@ -15,7 +15,7 @@ export function SavingSheetSurface({
   navigationEnabled = true,
   toastHostEnabled = true,
 }: {
-  onLeave?: () => void;
+  onLeave?: (proceed: () => void) => void;
   navigationEnabled?: boolean;
   toastHostEnabled?: boolean;
 }) {
@@ -62,8 +62,8 @@ export function SavingFeedbackShell({ children }: PropsWithChildren) {
   useEffect(() => dismissActivityToasts, []);
   return (
     <View style={{ flex: 1 }}>
-      <SavingNotice />
       {children}
+      <SavingNotice />
       <ToastHost channel="activity" />
     </View>
   );

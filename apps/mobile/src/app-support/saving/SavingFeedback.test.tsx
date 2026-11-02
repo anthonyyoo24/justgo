@@ -1,6 +1,13 @@
 import { SavingNotice } from './SavingNotice';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Linking, Text } from 'react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
+import { SavingRecoveryPanel } from './SavingDetails';
 import { SavingFeedbackShell, SavingSheetSurface } from './SavingFeedback';
 import { savingRiskCopy } from './presentation';
 import {
@@ -29,6 +36,14 @@ const mockActivity = {
   },
 };
 const mockRouter = { push: jest.fn() };
+jest.mock('react-native-safe-area-context', () => ({
+  ...jest.requireActual('react-native-safe-area-context'),
+  useSafeAreaInsets: () => ({ top: 47, bottom: 34, left: 0, right: 0 }),
+}));
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: { platform: { ios: { buildNumber: '2' } } },
+}));
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
 jest.mock('../../platform/toast/Toast', () => ({
   ToastHost: ({ channel }: { channel: string }) => {
@@ -68,6 +83,125 @@ beforeEach(async () => {
   await mockRepository.complete(input(), card);
 });
 afterEach(() => mockRepository.dispose());
+it('keeps storage failures out of layout and discoverable in Data after dismissal', async () => {
+  mockRepository.store.setState({ hydrationError: 'unreadable' });
+  const screen = await render(
+    <>
+      <SavingNotice />
+      <SavingRecoveryPanel />
+      <Text>Route control</Text>
+    </>,
+  );
+  const overlay = screen.getByTestId('saving-notice-overlay');
+  expect(overlay.props.pointerEvents).toBe('box-none');
+  expect(StyleSheet.flatten(overlay.props.style).position).toBe('absolute');
+  expect(screen.queryByLabelText('Saving details')).toBeNull();
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Close saving warning' }),
+  );
+  expect(screen.queryByTestId('saving-notice-overlay')).toBeNull();
+  expect(screen.getByTestId('saving-recovery-panel')).toBeTruthy();
+  expect(mockRepository.store.getState().hydrationError).toBe('unreadable');
+  expect(screen.getByText('Route control')).toBeTruthy();
+});
+it('shows only a fixed storage identifier and native build in opt-in Dev details', async () => {
+  const flag = process.env.EXPO_PUBLIC_JUSTGO_DEV_DIAGNOSTICS;
+  try {
+    process.env.EXPO_PUBLIC_JUSTGO_DEV_DIAGNOSTICS = '1';
+    mockRepository.store.setState({
+      hydrationError: 'unreadable',
+      hydrationDiagnostic: 'NATIVE_SQLITE_MODULE',
+    });
+    const screen = await render(<SavingNotice />);
+    expect(screen.queryByTestId('saving-storage-diagnostic')).toBeNull();
+    await fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Review saved entries that couldn’t load',
+      }),
+    );
+    expect(screen.getByTestId('saving-storage-diagnostic')).toHaveTextContent(
+      /NATIVE_SQLITE_MODULE.*Installed build: 2/,
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Close saving details' }),
+    );
+    expect(screen.queryByLabelText('Saving details')).toBeNull();
+    process.env.EXPO_PUBLIC_JUSTGO_DEV_DIAGNOSTICS = '0';
+    await fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Review saved entries that couldn’t load',
+      }),
+    );
+    expect(screen.queryByTestId('saving-storage-diagnostic')).toBeNull();
+  } finally {
+    if (flag === undefined)
+      delete process.env.EXPO_PUBLIC_JUSTGO_DEV_DIAGNOSTICS;
+    else process.env.EXPO_PUBLIC_JUSTGO_DEV_DIAGNOSTICS = flag;
+  }
+});
+it('waits for the sheet owner to approve navigation after closing details', async () => {
+  const journal = structuredClone(mockRepository.store.getState().journal);
+  journal.operations[0]!.state = 'auth';
+  mockRepository.store.setState({ journal });
+  let resume: (() => void) | undefined;
+  const screen = await render(
+    <SavingSheetSurface
+      onLeave={(proceed) => {
+        resume = proceed;
+      }}
+    />,
+  );
+  await fireEvent.press(
+    screen.getByRole('button', {
+      name: 'Review activity that couldn’t upload',
+    }),
+  );
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Recover account' }),
+  );
+  expect(screen.queryByLabelText('Saving details')).toBeNull();
+  expect(mockRouter.push).not.toHaveBeenCalled();
+  expect(resume).toEqual(expect.any(Function));
+  await act(() => resume?.());
+  expect(mockRouter.push).toHaveBeenCalledWith('/recovery');
+});
+it('keeps recovery feedback on the visible details host while another issue remains', async () => {
+  mockRepository.store.setState({
+    hydrationError: 'unreadable',
+    warning: {
+      visible: true,
+      dismissed: false,
+      episode: 1,
+      online: false,
+      storageFull: true,
+    },
+  });
+  const screen = await render(
+    <SavingFeedbackShell>
+      <View testID="covering-sheet">
+        <SavingSheetSurface />
+      </View>
+    </SavingFeedbackShell>,
+  );
+  await fireEvent.press(
+    within(screen.getByTestId('covering-sheet')).getByRole('button', {
+      name: 'Review saved entries that couldn’t load',
+    }),
+  );
+  expect(mockActivity.toastChannel).toBe('activity-sheet-details');
+  await act(() =>
+    mockRepository.store.setState({ warning: null, recoverySequence: 1 }),
+  );
+  expect(screen.getByLabelText('Saving details')).toBeTruthy();
+  expect(showRecoveryToast).toHaveBeenCalledWith(
+    'activity-sheet-details',
+    `${owner}:1`,
+  );
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Close saving details' }),
+  );
+  expect(mockActivity.toastChannel).toBe('activity-sheet');
+});
 it.each([false, true])(
   'uses private support and the visible toast host in saving recovery (sheet=%s)',
   async (sheet) => {
@@ -81,14 +215,14 @@ it.each([false, true])(
     );
     await fireEvent.press(
       screen.getByRole('button', {
-        name: 'Review activity that couldn’t upload',
+        name: 'Review saved entries that couldn’t load',
       }),
     );
     const help = screen.getByRole('button', { name: 'Get help' });
     await fireEvent.press(help);
     await waitFor(() =>
       expect(showMessageToast).toHaveBeenCalledWith(
-        sheet ? 'activity-sheet' : 'activity',
+        sheet ? 'activity-sheet-details' : 'activity-details',
         contactFailureMessage,
       ),
     );
@@ -136,7 +270,7 @@ it('removes account presentation on disconnection and ignores recovery while the
   );
   expect(showRecoveryToast).not.toHaveBeenCalled();
 });
-it('reserves space for risk, allows manual dismissal, and announces exactly one full recovery even after dismissal', async () => {
+it('floats above content for risk, allows manual dismissal, and announces exactly one full recovery even after dismissal', async () => {
   const screen = await render(
     <SavingFeedbackShell>
       <Text>Route content</Text>
@@ -154,9 +288,7 @@ it('reserves space for risk, allows manual dismissal, and announces exactly one 
     }),
   );
   expect(screen.getByTestId('saving-risk-banner')).toBeTruthy();
-  expect(
-    screen.getByText(/Your phone is offline and storage is full/),
-  ).toBeTruthy();
+  expect(screen.getByText('New activity isn’t saved yet')).toBeTruthy();
   await fireEvent.press(
     screen.getByRole('button', { name: 'Close saving warning' }),
   );
@@ -290,10 +422,10 @@ it('keeps unreadable storage and retained failed records discoverable outside th
   );
   await fireEvent.press(
     screen.getByRole('button', {
-      name: 'Review activity that couldn’t upload',
+      name: 'Review saved entries that couldn’t load',
     }),
   );
-  expect(screen.getByText(/original copy has been kept/)).toBeTruthy();
+  expect(screen.getByText(/existing data has been kept/)).toBeTruthy();
   const journal = structuredClone(mockRepository.store.getState().journal);
   const operation = journal.operations[0]!;
   operation.state = 'rejected';
@@ -346,8 +478,14 @@ it('opens locally preserved writing alongside a rejected completion', async () =
     pathname: '/reflection',
     params: { attemptId: input().id, source: 'recovery' },
   });
+  expect(screen.queryByLabelText('Saving details')).toBeNull();
   await fireEvent.press(
-    screen.getByRole('button', { name: 'Hide saving details' }),
+    screen.getByRole('button', {
+      name: 'Review activity that couldn’t upload',
+    }),
+  );
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Close saving details' }),
   );
   expect(screen.queryByText('Retained writing')).toBeNull();
 });
