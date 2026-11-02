@@ -2,16 +2,35 @@
 
 ## Current status
 
-**Phase 15 remains in progress. Reviewed routing fix `d66c42d` is active on
-staging at 100%, verified by stable provider readback and eight strict probes.
-Its release workflow remains failed after an immediate public identity mismatch;
-manual verification does not change that conclusion. Public samples pass, but
-real-account, complete recovery, Free-plan performance and native acceptance
-remain open. JustGO Dev build 2 compiled, passed signing/artifact checks and
+**Phase 15 remains in progress. Owner-local phase source `762c128` is active on
+staging at 100%, with the managed sign-in/error-reporting transport fix and eight
+strict candidate/public probes passing. Local publication checks, verified-TLS
+database history and release-lease checks passed. No GitHub push, PR or new
+GitHub release run was made. Real-account, complete recovery, Free-plan performance
+and native acceptance remain open. JustGO Dev build 2 compiled, passed signing/artifact checks and
 uploaded successfully. Anthony reports scanning both install/connect codes and
 the app working, confirms guest mode, and confirms a synthetic saved reflection
 survives closing/reopening and remains in Progress. Managed operations and the
 remaining native checks are still open.**
+
+The code-only local release deployed version
+`b1555a49-4d53-49bc-a046-f981602c3a29` in deployment
+`e68527d0-e085-428f-9d0c-4d37ebf545ab`, source
+`762c12841ea5466e3c9dd756bdcf39c451227dc7`, local run
+`local-e3b84f81-7a1d-412b-b875-9d5c9f03bf21`. It reuses the existing operator
+connection from protected `.local/staging.env`; no password reset, new grant or
+GitHub secret change was needed. Both managed Auth verification and minimal
+Sentry delivery now use supported manual redirects and reject redirects without
+forwarding credentials. Workerd rejected the previous `redirect: 'error'` setting
+before sending either request. No application schema or native binary changed.
+Full local `check`, aggregate coverage (including database/migration tests),
+Workers smoke and the selected provider-sign-in/sync/deletion journeys passed.
+The ignored receipt is
+`.local/phase15-cloudflare/local-releases/local-e3b84f81-7a1d-412b-b875-9d5c9f03bf21.json`.
+The same installed Dev app still needs the owner's real Google sign-in retry.
+This successful local release supersedes the serving `d66c42d` baseline below;
+the earlier GitHub run `41346805790` remains failed and is not relabeled successful.
+
 PRs 63–72 are merged. PR 70 merged as `e551604`; PR 71, reviewed head `d0e605e`,
 merged as `0753986bc9ebcfd654e901a1ef25b7fb64c5ff92`. Both PR heads passed all
 seven CI checks and CodeRabbit reported no actionable issues. Combined main
