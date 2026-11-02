@@ -25,8 +25,11 @@ established no writer fence and sent no Sentry Cron check-ins. On November 2,
 manual dispatches of the actual main-branch database and ledger jobs both passed,
 including independent R2 HEAD verification and the ledger's database-freshness check.
 The first healthy Sentry check-in and a controlled failure/resolution were observed.
-The email rule fired, but owner email receipt is not yet confirmed. Scheduled-run,
-complete recovery, missed-run notification and actual expiry evidence remain open.
+The short controlled incident's email was not received. A later real missed-run
+incident stayed open beyond batching; Anthony confirmed its backup email arrived.
+A verified real manual ledger catch-up cleared the monitor and resolved the issue.
+Scheduled execution, timeout-specific behavior, complete recovery and actual expiry
+remain open.
 The [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
 accepts the current-account/DPA/private-consumer-journal assessment with its residual
 interpretation. It adds no provider-confirmation or external-counsel prerequisite.
@@ -106,17 +109,17 @@ The separately accepted reader exception and activation request are described
 under protected-environment setup. Approved objectives still require operational
 evidence; remaining proposals below are not approvals or published promises:
 
-| Decision                      | Policy / proposal                                                                                                                                       | Evidence / acceptance still required                                                                                                                                                                                                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backup and ledger retention   | Approved October 30: seven days for each staging prefix in the private dedicated R2 bucket                                                              | API readback confirms both expiry rules. Retention wording is approved; actual asynchronous deletion, operational evidence, effective date, matching version and publication authorization remain pending.                                                                                   |
-| Lock duration and expiry      | Approved October 30: seven-day prefix locks and lifecycle expiry at day seven                                                                           | API readback and parent-credential overwrite/DELETE rejection passed for both prefixes. R2 removal is asynchronous, typically within 24 hours of expiry, and is not a strict maximum; actual expiry has not yet been observed.                                                               |
-| Ordinary-write recovery point | Approved October 31: up to 24 hours of new activity since the nightly snapshot may be lost                                                              | Hourly identity ledgers do not back up new journals. Actual scheduled copies and failed/missed-copy alerts remain unverified; approval does not establish achieved recovery evidence.                                                                                                        |
-| Recovery time                 | Approved October 31: operator target of four hours when safe recovery is possible                                                                       | Not measured for the actual hosted Auth schema or a provider incident; the synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                                  |
-| Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance and Auth/provider mutations; accepted beta fallback keeps unverified old restored state closed | Independent deletion/revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. Clean restart needs a separate procedure; automatic old-phone recovery is unsupported.                                                       |
-| Restored sessions             | Invalidate every restored legacy/app/Auth session and Auth refresh token; cancel pending transfers                                                      | Reauthentication approved October 30 with the complete Privacy wording. Retain recovery digests and their revocations; do not recreate deleted owners or use an old transfer to recover access. Actual app/Auth recovery still requires evidence.                                            |
-| Key custody                   | Approved October 31: owner-held `age` identity in protected Mac copies locally outside CI                                                               | USB retrieval is not a prerequisite. The owner-confirmed USB copy was not tested. Loss of every copy makes backups unusable; actual hosted-copy decryption passed November 1; complete app/Auth recovery remains unverified.                                                                 |
-| Upload-token renewal          | Maximum seven-day derived credential; Anthony owns manual renewal by day five                                                                           | Parent key remains locally outside CI. The runner rejects tokens with less than 20 minutes remaining, and failed/missed jobs alert through the configured monitor. Day-five renewal is a required operator responsibility; no external reminder or automatic issuer is created by this code. |
-| Alert ownership               | Owner email for one hourly `justgo-staging-backup-health` Sentry Cron monitor                                                                           | The engineering design uses one free Cron with 20-minute grace/runtime settings and checks both backup kinds. Owner notification delivery and failure/missed-run evidence remain unverified.                                                                                                 |
+| Decision                      | Policy / proposal                                                                                                                                       | Evidence / acceptance still required                                                                                                                                                                                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backup and ledger retention   | Approved October 30: seven days for each staging prefix in the private dedicated R2 bucket                                                              | API readback confirms both expiry rules. Retention wording is approved; actual asynchronous deletion, operational evidence, effective date, matching version and publication authorization remain pending.                                                                                          |
+| Lock duration and expiry      | Approved October 30: seven-day prefix locks and lifecycle expiry at day seven                                                                           | API readback and parent-credential overwrite/DELETE rejection passed for both prefixes. R2 removal is asynchronous, typically within 24 hours of expiry, and is not a strict maximum; actual expiry has not yet been observed.                                                                      |
+| Ordinary-write recovery point | Approved October 31: up to 24 hours of new activity since the nightly snapshot may be lost                                                              | Hourly identity ledgers do not back up new journals. Actual scheduled copies remain unverified; real missed-copy detection/email and manual recovery passed November 2; approval does not establish achieved recovery evidence.                                                                     |
+| Recovery time                 | Approved October 31: operator target of four hours when safe recovery is possible                                                                       | Not measured for the actual hosted Auth schema or a provider incident; the synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                                         |
+| Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance and Auth/provider mutations; accepted beta fallback keeps unverified old restored state closed | Independent deletion/revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. Clean restart needs a separate procedure; automatic old-phone recovery is unsupported.                                                              |
+| Restored sessions             | Invalidate every restored legacy/app/Auth session and Auth refresh token; cancel pending transfers                                                      | Reauthentication approved October 30 with the complete Privacy wording. Retain recovery digests and their revocations; do not recreate deleted owners or use an old transfer to recover access. Actual app/Auth recovery still requires evidence.                                                   |
+| Key custody                   | Approved October 31: owner-held `age` identity in protected Mac copies locally outside CI                                                               | USB retrieval is not a prerequisite. The owner-confirmed USB copy was not tested. Loss of every copy makes backups unusable; actual hosted-copy decryption passed November 1; complete app/Auth recovery remains unverified.                                                                        |
+| Upload-token renewal          | Maximum seven-day derived credential; Anthony owns manual renewal by day five                                                                           | Parent key remains locally outside CI. The runner rejects tokens with less than 20 minutes remaining, and failed/missed jobs alert through the configured monitor. Day-five renewal is a required operator responsibility; no external reminder or automatic issuer is created by this code.        |
+| Alert ownership               | Owner email for one hourly `justgo-staging-backup-health` Sentry Cron monitor                                                                           | The engineering design uses one free Cron with 20-minute grace/runtime settings and checks both backup kinds. Real missed-run detection, owner email receipt and verified-copy recovery passed November 2. The short initial error email was not received; timeout-specific behavior is unverified. |
 
 The seven-day upload-token lifetime is the local minting policy, not an established
 Cloudflare maximum. Scheduled copying is unattended only while its credentials
@@ -312,7 +315,9 @@ its own credentials, approved policy and lane when it is introduced.
    email rule; a separate operator recovery check-in resolved that test issue.
    This recovery check-in was not another backup. Anthony received the separate
    built-in test-notification email, proving the basic route. The actual Cron
-   failure email and missed-run/timeout behavior remain unverified. The existing `JustGO API errors and recovery (email)` alert covers
+   short-lived error email was not received. A later real missed run produced the
+   owner-confirmed backup email, and a verified manual copy resolved it. Actual
+   scheduled execution and timeout-specific behavior remain unverified. The existing `JustGO API errors and recovery (email)` alert covers
    all issues in this project and notifies Anthony on new/resolved/regressed
    issues; a duplicate alert was not created. An unused initial setup draft with
    slug `new-monitor` is disabled.
@@ -348,25 +353,53 @@ setup approach. Local `JUSTGO_PG_BIN` selects the PostgreSQL tools. Dependency
 installation failures are failures; an old local dump or ignored environment file
 is never a CI prerequisite.
 
+## Bounded source-fence preparation
+
+`recovery-fence.mjs` prepares a bounded owned PG17 transaction; it is not a hosted
+recovery command. It locks a reviewed ordinary-table/OID inventory and verifies
+actual granted locks and transaction identity. Compatibility is checked before
+work, periodically and after target shutdown. Observed drift stays fatal even if
+metadata later matches again. Lost connection, cancellation, deadline or cleanup
+failure rejects acceptance. The receipt describes only the finite checked interval
+and always retains `writersMayOpen: false`.
+
+Current domain tables use SHARE; `auth.schema_migrations` uses ACCESS SHARE under
+existing SELECT authority. Requiring SHARE on that registry too was an overstrict
+implementation assumption. This approach requires a reviewed window prohibiting
+manual DDL/Auth/config/registry changes and a complete catalog/private-helper/ACL/
+Auth version/public-key inspector. Registry inserts are not physically blocked,
+and endpoint hashes cannot detect every change/reversal. Drift invalidates the
+run; do not automatically expand inventory or regenerate evidence. The complete
+hosted inspector/source transport and actual maintained fence remain open.
+
+The injected metadata-only inspector must use fresh reads, honor cancellation,
+await all reads and issue no writes/transaction control. Work uses a separate
+source reader and awaits subprocesses. Target shutdown is awaited once before
+source locks are released, including failures. `test:backup:recovery` includes
+actual loopback PG17 conflict, blocked-write, post-lock freshness, registry-drift
+and backend-loss controls before encrypted synthetic restoration. These checks
+provide no hosted maintenance, protected-key, restore or reopening authorization.
+See PostgreSQL's [lock semantics](https://www.postgresql.org/docs/17/sql-lock.html)
+and [transaction limits](https://www.postgresql.org/docs/17/runtime-config-client.html).
+
 ## Isolated local recovery
 
-Before proposing a source maintenance window, prepare the isolated Auth/API target
-and verify a working positive provider-session control. The November 2 metadata
-audit found `postgres` eligible for SHARE locks on 44/45 current tables; the sole
-blocked managed table is `auth.schema_migrations`. No lock was attempted and the
-backup-operator role remains NOLOGIN. Resolve actual operator authority and a
-reviewed no-DDL/provider-change window before claiming a complete fence. Locks on
-existing data tables alone do not stop new relation creation or establish that
-provider migrations are paused.
+Before proposing a source maintenance window, complete the hosted source inspector/
+transport and isolated Auth/API acceptance target. The bounded helper above uses
+SHARE on domain tables and ACCESS SHARE on the migration registry; no new grant
+or provider contact is a prerequisite merely to SHARE-lock that registry. A
+reviewed no-manual-change window and maintained domain locks remain required.
+Existing-table locks do not prevent new relation creation or physically pause
+provider migrations.
 
-The repository currently supplies loopback PostgreSQL and synthetic Auth fixtures,
-not a real Supabase Auth runtime with a normally validated HTTPS endpoint. The
-production verifier requires an exact issuer matching the target Auth URL. An old
-token rejected only because its issuer/signing key differs is not proof that
-restoration invalidated a session. Use a real target with working positive and
-negative controls; do not relax the verifier or substitute the synthetic adapter.
-The handoff owns the remaining readiness evidence. The earlier exact-object
-decryption approval does not authorize later key use, restoring or opening writers.
+The repository's ordinary rehearsal uses synthetic Auth tables. Separately, a
+matching v2.197.0 real Auth runtime with normal HTTPS validation passed session,
+refresh, verifier/helper and deletion controls locally; the handoff records its
+scope. The production verifier requires an exact issuer matching the Auth URL.
+Rejection solely from different signing keys/issuer does not prove revocation.
+Complete actual archive and API/provider acceptance with positive controls before
+reopening. The earlier exact-object decryption approval authorizes no later key
+use, restore or opening of writers.
 
 Download the selected encrypted snapshot and newest complete ledger using a
 separate authorized read-only recovery credential. The upload token cannot GET

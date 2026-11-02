@@ -2,14 +2,29 @@
 
 ## Current status
 
-**Phase 15 remains in progress. Owner-local phase source `762c128` is active on
-staging at 100%; no later API deployment, Git push or PR was made. The genuine
-Google/Apple phone checkpoint and native iCloud read-back/cleanup described below
-passed. The existing main-branch backup workflow is now enabled; its manually
-triggered database and ledger copies passed with independent R2 verification.
-Scheduled execution, email delivery, actual expiry, complete recovery and Workers
-Free suitability remain open. Final TestFlight, notices and coordinated cutover
-remain separate gates.**
+**Phase 15 remains in progress. Local phase source `a082087` is active on staging
+at 100%, including the tested static security-policy optimization. Genuine
+Google/Apple phone and native iCloud read-back/cleanup checks passed. Manual
+main-workflow copies, real missed-run email delivery and verified manual catch-up
+passed. Scheduled execution, actual expiry, complete recovery and sustained
+Workers Free suitability remain open. Final TestFlight, notices and coordinated
+cutover remain separate gates. Changes stay local for one phase PR.**
+
+The latest guarded code-only release deployed source
+`a082087b74c417640baf87e3b0916accf5c677be`, version
+`acf11ecb-afa5-4b5f-87fd-b446186f6794`, deployment
+`f7cff9f0-045b-460f-b373-eb7f6623fc83`, local run
+`local-d4c0b028-d121-4638-971d-03b3f70f1385` at November 2 19:53:50 UTC.
+Full `check`, coverage including database/migrations, Workers smoke and selected
+journeys passed before upload/promotion; exact candidate/public/provider readback
+passed. The first attempt stopped before upload because phone Metro occupied
+the journey port. After stopping that owned server, all eight selected journeys
+passed. Another task restored Metro on port 8081 from its `ui-polish-review`
+checkout; actual served iOS Cloudflare configuration was verified. Leave that
+server alone. No Git publication, migration, native build or paid change occurred.
+The safe release receipt is under `.local/phase15-cloudflare/local-releases/`.
+
+The prior Google sign-in release remains its historical acceptance record.
 
 The code-only local release deployed version
 `b1555a49-4d53-49bc-a046-f981602c3a29` in deployment
@@ -163,9 +178,9 @@ savings. Receipts are ignored `staging-2026-11-01/public-latency-d66c42d.json` a
 `worker-metrics-d66c42d.json`. No paid plan or provider setting changed. Avoid
 speculative shared-app, pool or account-state caching.
 
-November 2 readback of current version `b1555a49…` showed approximately 1.41k
+An earlier November 2 readback of then-serving version `b1555a49…` showed approximately 1.41k
 invocations and zero listed CPU-limit or other errors over its roughly 15-hour
-serving period. All 253 CPU errors in the dashboard's current all-version 24-hour
+serving period. All 253 CPU errors in that all-version 24-hour
 window belonged to older `e9356054…`; this does not reconstruct the earlier email's
 1,000+ count. Current-version CPU p50/p90/p99/p999 displayed
 10.4/15.56/23.56/23.73 ms. Zero observed failures does not establish sustained
@@ -199,10 +214,16 @@ out of per-invocation composition. Request responses, CORS, diagnostics, service
 and database/account state remain isolated. A paired native workerd sample no
 longer showed repeated CSP-policy construction; single sampling profiles do not
 establish hosted savings. Focused regression tests, API typecheck, lint and actual
-Workers smoke passed. This commit is not deployed. Concurrent mobile edits belong
-to another task; the guarded local release still requires a completely clean,
-committed phase candidate and must not bypass that guard or include those edits
-without their owning task's completion. Safe receipts/profiles are ignored under
+Workers smoke passed. It is included in the verified `a082087` release above. Its initial active-version
+observation had 156 invocations, zero errors and CPU p50/p90/p99/p999 of
+15.14/29.12/58.13/58.49 ms. This young, different workload establishes neither a
+hosted improvement nor Free suitability. Exact-source public p50/p95 ms were
+health 70.92/230.91, readiness 228.92/341.23, guest access 71.16/121.75 and guest
+challenges 209.92/255.04; all 110 responses had expected statuses.
+The previous `762c128` version later showed five CPU-limit errors, superseding
+its earlier zero-error snapshot. Sentry observed readiness 503s at 19:41–19:43
+UTC and recovery at 19:44; no per-response cause was captured, so those responses
+are not individually attributed to CPU. Safe receipts/profiles are ignored under
 `phone-google-2026-11-01/`.
 
 Local commit `257faf3` adds a post-promotion convergence helper preserving strict probe validation and
@@ -213,7 +234,7 @@ unknown versions, malformed responses, authentication/endpoint/network failures
 and lease loss remain closed failures. Immutable candidate probes remain strict.
 This prevention follows documented propagation behavior without claiming it
 reconstructs release #9. It remains on the phase branch for the consolidated PR;
-reviewed main and the deployed Worker do not contain it yet. See
+reviewed main does not contain it; the local staging release does. See
 [server releases](../operations/SERVER_RELEASES.md#candidate-and-promotion-safeguards).
 
 Hosted verification with synthetic content is already authorized. Anthony accepted the existing-account/DPA/current private-journal assessment and its residual interpretation on November 1; see the [decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption). That disposition does not establish managed-account or operating acceptance. It requires a disposable
@@ -224,7 +245,7 @@ for real OAuth/session verification. The subsequent genuine secondary-account ph
 provider-session evidence; no hosted synthetic fixture proof was used.
 
 Initial real encrypted database and ledger copies were captured from reviewed `d66c42d` and uploaded to the private R2 bucket on November 1 using the existing approved guards. Separate read-only retrieval returned identical ciphertext checksums; HEAD confirmed seven-day expiry rules. These supervised copies are not scheduled workflow evidence. Receipts are ignored `.local/phase15-cloudflare/rollout/recovery-2026-11-01/copy-receipts.json` and `download-receipts.json`. Capture/upload used no private key and established no writer fence. Anthony then specifically approved `age` verification of both exact R2-downloaded ciphertext files. Both authenticated decryptions passed with plaintext discarded; the protected identity was neither printed nor copied. The ignored receipt is `recovery-2026-11-01/decryption-receipt.json`. This verifies actual hosted-copy decryption, not restoration or safe reopening. The four run-owned local ciphertext files were removed after verification; R2 objects remain under their approved expiry rules and safe receipts remain. The actual main-workflow copy and monitor results are recorded below; scheduled
-execution, complete app/Auth recovery, received email and actual expiry remain open.
+execution, complete recovery and actual expiry remain open; actual missed-run email passed below.
 Anthony owns manual credential renewal by day five and confirmed an
 encrypted-USB recovery-key copy. Under the
 [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover),
@@ -329,17 +350,30 @@ Safe receipts are ignored `phone-google-2026-11-01/phone-sign-in-success.json`,
 `phone-apple-icloud.json`, `icloud-native-readback.json` and
 `icloud-native-cleanup.json`; private writing and provider credentials are excluded.
 
-Fresh November 2 source metadata shows `postgres` is eligible for SHARE locks on
-44 of 45 app/Auth/migration tables. The sole blocked table is managed-owned
-`auth.schema_migrations`; `postgres` has SELECT but insufficient lock privilege.
-No locks were attempted or held, and no complete writer fence was established.
-The backup-operator role remains NOLOGIN. A reviewed no-DDL/provider-change window,
-actual protected operator connection and maintained complete locks are still
-required. No reusable local Supabase Auth/HTTPS target exists in the repository;
-plain PostgreSQL restoration cannot establish provider-session acceptance. Prepare
-that isolated target and a working positive Auth/API control before proposing a
-source maintenance window or further protected-key use. Rejection solely from a
-different issuer/key is not recovery-session rejection evidence.
+Fresh November 2 metadata shows `postgres` can SHARE-lock all 44 current domain
+tables, but only ACCESS SHARE-lock `auth.schema_migrations`. Requiring 45 SHARE
+locks was our engineering assumption, not owner policy. A self-service plan can
+freeze domain writes while separately guarding registry/catalog/helper/ACL and
+Auth version/public-key compatibility during a reviewed no-manual-change window.
+ACCESS SHARE prevents registry replacement, not inserts; endpoint hashes do not
+prove absence of change-and-revert activity. No hosted locks, grant or support
+contact occurred. The backup operator remains NOLOGIN.
+
+The bounded `scripts/backups/recovery-fence.mjs` helper checks reviewed OIDs,
+actual granted locks and transaction identity, takes fresh post-lock reads, latches
+drift as fatal and shuts the target before releasing the lease. Its loopback PG17
+fault controls run within the existing encrypted recovery rehearsal. The complete
+hosted catalog/Auth inspector and supported source transport remain to be prepared;
+this helper is not a full hosted coordinator. Results keep `writersMayOpen: false`.
+
+A separate real Supabase Auth v2.197.0 loopback HTTPS service passed certificate
+verification, the unchanged production verifier, restricted private live-session
+helper, old-session/refresh rejection, fresh-session success and actual local
+Auth deletion controls with synthetic records. A valid email-only token passed
+Auth but failed JustGO's Apple/Google policy. Temporary service/database/private
+TLS resources were removed. This proves that service boundary, not genuine OAuth,
+actual R2 recovery or complete API acceptance. No protected recovery key was used.
+Safe receipt: ignored `phone-google-2026-11-01/real-auth-service-rehearsal.json`.
 
 The existing reviewed main workflow was activated November 2 at 18:27 UTC after
 fresh policy/role/TLS/migration/R2/monitor checks. Exact policy readback caught a
@@ -354,17 +388,25 @@ on exact main `d66c42d`. Independent HEAD checks matched ciphertext size/hash:
 check and supplied the monitor's first healthy check-in. No private key was used.
 These manual events do not prove a scheduled run.
 
-The controlled error check-in produced Sentry issue `7825382031` and a recorded
-trigger of email alert `6238426` at 18:39 UTC. A separate operator `ok` check-in
-resolved the test issue; provider readback confirmed healthy status. The owner
-still found no email in All Mail or Spam. Personal issue alerts are enabled, Email
-is selected, the existing primary address matches and there are no project
-overrides. A single built-in routing test returned “Notification fired!”, and Anthony
-confirmed receiving its email. That verifies the basic route, but not delivery of
-the actual Cron failure message. Project issue-email digest settings are
-5–30 minutes, a possible delay rather than an established cause. No alert, digest
-or recipient settings were changed. Keep delivery and missed-run/timeout acceptance open. The combined copy,
-alert and recovery-audit receipts are ignored under `phone-google-2026-11-01/`.
+The initial controlled error at 18:38 UTC created Sentry issue `7825382031` and
+triggered rule `6238426`; it was resolved about three minutes later. Anthony
+received the separate built-in routing test, but not that short incident email.
+Sentry source shows resolved groups can be removed from pending digests and routing
+tests bypass digests. With project settings of 5–30 minutes, early resolution is
+a plausible explanation, not proof of hosted cause. No notification setting changed.
+
+A real missing 19:23 check-in was detected at 19:43 UTC. Anthony confirmed the
+backup-monitor email arrived, distinct from the API recovery email. After the
+incident stayed open beyond batching, real manual ledger catch-up
+[41517995755](https://github.com/anthonyyoo24/justgo/actions/runs/41517995755)
+on reviewed main passed. Independent HEAD matched 32,387 ciphertext bytes,
+SHA-256 `74f22c4e253b8bdbb2d39b8eab3192b6f0355002c65fb574f11892f2e884e5e3`
+and November 9 20:20:27 UTC expiry. Sentry showed Okay at 20:20:29 and the issue
+resolved. This verifies actual missed-run detection/email and real-copy recovery,
+not scheduling or timeout-specific behavior. At 20:28:41 no schedule event had
+appeared for the 20:23 slot; the latest scheduled entry was skipped before
+activation. A manual copy is not scheduled execution. Safe copy/alert receipts
+are ignored under `phone-google-2026-11-01/`.
 
 Seven-day canaries remain present and ineligible for expiry until November 6/7;
 actual asynchronous deletion cannot yet be accepted. Renew the uploader/parent
@@ -745,15 +787,15 @@ runtime/platform/delivery delays, not an SLA. Missing ledger runs use the Cron's
 missed-run detection. Run the first manual database copy before the ledger copy.
 The monitor is created with the exact slug in `justgo-api`, assigned to Anthony,
 and received its first healthy main-workflow ledger check-in November 2. The
-controlled failure/resolution and unconfirmed email receipt are recorded above. The existing API email alert covers all
+controlled failure and verified real missed-run email/recovery are recorded above. The existing API email alert covers all
 project issues and notifies Anthony; no duplicate alert was created. An unused
 initial draft with slug `new-monitor` is disabled.
-Hosted notification delivery and scheduled backup evidence remain open.
+Real missed-run delivery passed; scheduled execution and timeout-specific evidence remain open.
 
 | Item                       | Prepared result / remaining gate                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Owner                                                                                                                                                                |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Cloudflare account and DPA | Personal customer Youngshin Yoo and signed-in incorporation notice recorded. Anthony accepted the reviewed DPA v6.4 Canadian-data/current private-journal assessment and residual interpretation on November 1. The [notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md#accepted-account-and-service-assessment) owns the reasoning and limits. No separate provider confirmation, new agreement or contact is claimed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Settled on reviewed facts; reassess material changes and preserve no-contact instruction.                                                                            |
-| Services, costs and budget | Workers Free remains current. Bounded public latency and active-version CPU chart readbacks are recorded above; per-route managed CPU, cold starts and load capacity remain unmeasured; current Hyperdrive connection health and R2 usage are recorded above. Current `762c128` shows zero listed errors but CPU p50 10.4 ms/p99 23.56 ms; aggregate public/phone traffic does not establish per-route managed workload or sustained Free suitability. The tested local static-policy optimization is not yet deployed. Anthony declined the Paid upgrade and chose to keep Workers Free; checkout was exited with no terms accepted or purchase. Resolve Free-plan performance suitability before claiming workload acceptance.                                                                                                                                                                         | Implementation owner measures; Anthony approves setup/spending and alert ownership.                                                                                  |
+| Services, costs and budget | Workers Free remains current. Bounded public latency and active-version CPU chart readbacks are recorded above; per-route managed CPU, cold starts and load capacity remain unmeasured; current Hyperdrive connection health and R2 usage are recorded above. Previous `762c128` later showed five CPU errors; initial active `a082087` showed zero errors in 156 invocations with CPU p50 15.14 ms/p99 58.13 ms; aggregate public/phone traffic does not establish per-route managed workload or sustained Free suitability. The tested static-policy optimization is deployed on staging source `a082087`. Anthony declined the Paid upgrade and chose to keep Workers Free; checkout was exited with no terms accepted or purchase. Resolve Free-plan performance suitability before claiming workload acceptance.                                                                                    | Implementation owner measures; Anthony approves setup/spending and alert ownership.                                                                                  |
 | Retention and deletion     | Seven-day staging retention/protection/expiry approved October 30; API readback and actual parent overwrite/DELETE lock rejection passed for both prefixes. Approved policy bytes/digest are stored. Initial real R2 database/ledger copies, independent retrieval and protected decryption passed November 1; workflow opt-in is enabled and both actual main-workflow manual copies passed November 2; scheduled execution and operational recovery remain pending. Encrypted canaries remain for November 6 retention and November 7 rotation expiry; actual asynchronous deletion is unobserved. Supabase support response/removal remains a nonblocking follow-up.                                                                                                                                                                                                                                  | Implementation owner observes expiry, verifies activation/restore and owns support follow-up; Anthony/privacy owner owns separate publication date/version approval. |
 | Recovery guarantees        | Small-beta fail-closed limit approved October 29; unverified old restored state stays closed. Independent deletion/revocation recording is explicitly deferred. The October 31 recovery-target decision approves up to 24 hours of ordinary-write loss and a four-hour operator recovery target when safe recovery is possible; sign-in again after a restore was approved October 30. Actual hosted archive compatibility passed locally; initial R2 upload/retrieval/decryption now pass. Writer-fenced ledger reconciliation and complete operational app/Auth recovery remain unverified.                                                                                                                                                                                                                                                                                                            | Anthony and implementation/release owner reassess before paid launch or beta expansion, whichever comes first; release owner proves current app/Auth recovery.       |
 | Keys and restore access    | Anthony chose protected Mac key copies locally outside CI, without a USB-retrieval prerequisite, and owns manual renewal by day five. The owner-confirmed USB copy was not tested. Actual hosted-copy decryption passed November 1; complete recovery remains open. Automatic issuance is deferred to optional Phase 21. October 31 owner-approved rotation revoked the exposed original backup parent and invalidated its derived uploader (HEAD 401); replacement HEAD passed 200 and protected uploader secrets were updated. The replacement derived credential expires November 5 at 15:59:59 UTC and the runner stops accepting it at 15:39:59 UTC; parent expires at 17:00:00 UTC, unchanged inspector at 23:06:08 UTC. Renewing only the derived credential is insufficient, and inspector renewal is needed to observe the November 6 retention-canary expiry. Parent stays outside CI.         | Anthony retains local custody and owns manual renewal; actual hosted-copy decryption passed and the implementation owner verifies complete operational recovery.     |
