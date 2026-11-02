@@ -23,6 +23,26 @@ export type HttpOptions = {
     environment: 'staging' | 'production';
   };
 };
+// The compiled policy holds only static header values; request contexts stay local.
+const securityHeaders = secureHeaders({
+  contentSecurityPolicy: {
+    defaultSrc: ["'self'"],
+    baseUri: ["'self'"],
+    fontSrc: ["'self'", 'https:', 'data:'],
+    formAction: ["'self'"],
+    frameAncestors: ["'self'"],
+    imgSrc: ["'self'", 'data:'],
+    objectSrc: ["'none'"],
+    scriptSrc: ["'self'"],
+    scriptSrcAttr: ["'none'"],
+    styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+    upgradeInsecureRequests: [],
+  },
+  strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+  referrerPolicy: 'no-referrer',
+  crossOriginEmbedderPolicy: false,
+});
+
 /** Shared request/response boundary for ordinary routes and Worker startup failures. */
 export function createHttpApp(options: HttpOptions = {}) {
   const releaseIdentity = options.releaseIdentity;
@@ -44,27 +64,7 @@ export function createHttpApp(options: HttpOptions = {}) {
     if (policy)
       context.header('content-security-policy', policy.replaceAll('; ', ';'));
   });
-  app.use(
-    '*',
-    secureHeaders({
-      contentSecurityPolicy: {
-        defaultSrc: ["'self'"],
-        baseUri: ["'self'"],
-        fontSrc: ["'self'", 'https:', 'data:'],
-        formAction: ["'self'"],
-        frameAncestors: ["'self'"],
-        imgSrc: ["'self'", 'data:'],
-        objectSrc: ["'none'"],
-        scriptSrc: ["'self'"],
-        scriptSrcAttr: ["'none'"],
-        styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
-        upgradeInsecureRequests: [],
-      },
-      strictTransportSecurity: 'max-age=31536000; includeSubDomains',
-      referrerPolicy: 'no-referrer',
-      crossOriginEmbedderPolicy: false,
-    }),
-  );
+  app.use('*', securityHeaders);
   app.use('*', async (context, next) => {
     const id = randomUUID();
     const diagnostic = {

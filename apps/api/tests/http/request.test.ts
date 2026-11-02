@@ -185,4 +185,80 @@ describe('bounded Fetch request parsing', () => {
       );
     }
   });
+
+  it('keeps response headers and diagnostics isolated across interleaved app instances', async () => {
+    const first = createHttpApp({
+      logger: false,
+      origins: ['https://first.example'],
+      releaseIdentity: { sourceSha: 'a'.repeat(40), environment: 'staging' },
+    });
+    const second = createHttpApp({
+      logger: false,
+      origins: ['https://second.example'],
+      releaseIdentity: { sourceSha: 'b'.repeat(40), environment: 'production' },
+    });
+    let release: () => void = () => {};
+    let enter: () => void = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve;
+    });
+    first.get('/health', async (context) => {
+      enter();
+      await pending;
+      return context.json({ app: 'first' });
+    });
+    second.get('/health', (context) => context.json({ app: 'second' }));
+
+    const firstRequest = first.request('/health', {
+      headers: { origin: 'https://first.example' },
+    });
+    await entered;
+    let firstResponse: Response;
+    let secondResponse: Response;
+    try {
+      secondResponse = await second.request('/health', {
+        headers: { origin: 'https://second.example' },
+      });
+      expect(secondResponse.headers.get('x-justgo-source-sha')).toBe(
+        'b'.repeat(40),
+      );
+      expect(secondResponse.headers.get('x-justgo-environment')).toBe(
+        'production',
+      );
+      expect(secondResponse.headers.get('access-control-allow-origin')).toBe(
+        'https://second.example',
+      );
+      expect(await secondResponse.json()).toEqual({ app: 'second' });
+      secondResponse.headers.set('content-security-policy', 'changed response');
+    } finally {
+      release();
+      firstResponse = await firstRequest;
+    }
+    expect(await firstResponse.json()).toEqual({ app: 'first' });
+    expect(firstResponse.headers.get('x-justgo-source-sha')).toBe(
+      'a'.repeat(40),
+    );
+    expect(firstResponse.headers.get('x-justgo-environment')).toBe('staging');
+    expect(firstResponse.headers.get('access-control-allow-origin')).toBe(
+      'https://first.example',
+    );
+    expect(firstResponse.headers.get('x-request-id')).not.toBe(
+      secondResponse.headers.get('x-request-id'),
+    );
+    expect(firstResponse.headers.get('content-security-policy')).toContain(
+      "object-src 'none'",
+    );
+    const missing = await second.request('/missing');
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get('content-security-policy')).toBe(
+      firstResponse.headers.get('content-security-policy'),
+    );
+    expect(missing.headers.get('access-control-allow-origin')).toBeNull();
+    expect(missing.headers.get('x-request-id')).not.toBe(
+      firstResponse.headers.get('x-request-id'),
+    );
+  });
 });
