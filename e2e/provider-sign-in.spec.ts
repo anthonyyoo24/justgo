@@ -36,15 +36,18 @@ for (const provider of ['apple', 'google'] as const) {
     });
     try {
       await page.goto('/welcome');
-      await expect(
-        page.getByText(/Signing in saves your challenge history/),
-      ).toHaveCount(0);
       const actions = [
         'Sign in with Apple',
         'Sign in with Google',
         'Continue',
       ].map((name) => page.getByRole('button', { name, exact: true }));
-      for (const action of actions) await expect(action).toBeEnabled();
+      for (const action of actions) {
+        await expect(action).toBeVisible();
+        await expect(action).toBeEnabled();
+      }
+      await expect(
+        page.getByText(/Signing in saves your challenge history/),
+      ).toHaveCount(0);
       const initialPositions = await Promise.all(
         actions.map((action) => action.boundingBox()),
       );

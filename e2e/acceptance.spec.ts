@@ -144,12 +144,23 @@ for (const provider of ['apple', 'google'] as const)
     const mutations = observeMutations(page);
     await page.goto('/welcome');
     const name = `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}`;
+    for (const buttonName of [
+      'Sign in with Apple',
+      'Sign in with Google',
+      'Continue',
+    ]) {
+      const action = page.getByRole('button', {
+        name: buttonName,
+        exact: true,
+      });
+      await expect(action).toBeVisible();
+      await expect(action).toBeEnabled();
+    }
     await expect(
       page.getByText(
         /Signing in saves your challenge history, feelings and reflections/,
       ),
     ).toHaveCount(0);
-    await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
     await expect(page.getByLabel('Recovery key', { exact: true })).toHaveCount(
       0,
     );
