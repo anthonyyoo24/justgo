@@ -8,7 +8,8 @@ and required-schema `LIMIT 0` access probes passed without fetching private rows
 The main-only `database-backups` GitHub environment holds `BACKUP_DATABASE_URL`,
 `BACKUP_DATABASE_CA_CERT`, the approved `R2_INSPECT_TOKEN` and the three derived
 `R2_UPLOAD_*` secrets, plus approved `BACKUP_POLICY_JSON` and
-`BACKUP_POLICY_SHA256`; workflow opt-in remains unset. A disposable encrypted R2
+`BACKUP_POLICY_SHA256`. The reviewed main workflow was enabled on November 2
+with `JUSTGO_BACKUPS_ENABLED=approved` after the remaining configuration checks. A disposable encrypted R2
 canary passed PUT/HEAD, denied GET/list/out-of-prefix PUT/DELETE, and was retrieved
 and decrypted with the owner's protected local key file before cleanup.
 Seven-day protection and automatic expiry are approved and configured for both
@@ -20,8 +21,12 @@ asynchronous deletion has not yet been observed. The first supervised manual
 encrypted database and ledger copies succeeded through the checked exporters and
 R2 uploader. The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status)
 owns their source/object receipts. They used no private decryption identity,
-established no writer fence and sent no Sentry Cron check-ins. Schedules remain
-off; scheduled-copy, complete recovery and monitor delivery evidence remain open.
+established no writer fence and sent no Sentry Cron check-ins. On November 2,
+manual dispatches of the actual main-branch database and ledger jobs both passed,
+including independent R2 HEAD verification and the ledger's database-freshness check.
+The first healthy Sentry check-in and a controlled failure/resolution were observed.
+The email rule fired, but owner email receipt is not yet confirmed. Scheduled-run,
+complete recovery, missed-run notification and actual expiry evidence remain open.
 The [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
 accepts the current-account/DPA/private-consumer-journal assessment with its residual
 interpretation. It adds no provider-confirmation or external-counsel prerequisite.
@@ -222,7 +227,13 @@ its own credentials, approved policy and lane when it is introduced.
 3. Save exact approved JSON in `BACKUP_POLICY_JSON` and its SHA-256 in
    `BACKUP_POLICY_SHA256`. Both are now stored in the protected environment with
    `backupDays: 7`, `ledgerDays: 7` and `lockDays: 7`; readback matched the exact
-   bytes and digest, and workflow opt-in remains unset.
+   bytes and digest after the November 2 repair described below; workflow opt-in
+   is now `approved`. The earlier saved variable had lost one trailing newline:
+   581 bytes instead of the approved 582. Preserve exact bytes when setting the
+   variable through a structured API body, then read it back and run the policy
+   verifier. Do not normalize the policy or weaken its raw-byte hash check. The
+   approved SHA-256 remains
+   `10ccf6587e8152c95665841324e32e682b4465be2ffb08d60a53571029cfa3c0`.
    Policy fields are `version: 1`, `approvalReference`,
    `accountId`, `bucket`, `environment` (`staging` or `production`), `jurisdiction`
    (`default`, `eu`, `us` or `fedramp`), `backupDays`, `ledgerDays`, `lockDays`,
@@ -278,8 +289,11 @@ its own credentials, approved policy and lane when it is introduced.
    owns the final rotation/scope receipts. Its two replacement canaries become
    eligible for expiry November 7; asynchronous deletion remains unobserved.
    These synthetic scope checks do not establish operational database/ledger
-   copies; the handoff separately records the first supervised manual copies. Schedules
-   remain off; actual hosted-copy decryption passed November 1, while complete writer-fenced hosted recovery and alert delivery remain open. The November 1 accepted
+   copies; the handoff separately records the first supervised local copies and
+   November 2 actual main-workflow manual copies. Schedules are enabled; their
+   successful execution has not yet been observed. Actual hosted-copy decryption
+   passed November 1, while complete writer-fenced hosted recovery and email
+   receipt remain open. The November 1 accepted
    provider assessment settles the earlier contractual-coverage gate. Anthony
    owns manual renewal. Parent revocation invalidates its derived uploader;
    renewing the uploader alone is insufficient when its parent expires. Renew
@@ -292,9 +306,13 @@ its own credentials, approved policy and lane when it is introduced.
    [single-monitor decision](../DECISIONS.md#october-29-single-backup-health-monitor)
    replaces the earlier two-monitor setup.
    The monitor is created in `justgo-api`, assigned to Anthony, and the matching
-   `BACKUP_SENTRY_DSN` is stored in the protected environment. It is waiting for
-   its first check-in; owner email delivery and failure/missed-run drills remain
-   unverified. The existing `JustGO API errors and recovery (email)` alert covers
+   `BACKUP_SENTRY_DSN` is stored in the protected environment. The November 2
+   main-workflow ledger run supplied its first healthy check-in. A controlled
+   fixed-shape error check-in created a Cron failure issue and fired the existing
+   email rule; a separate operator recovery check-in resolved that test issue.
+   This recovery check-in was not another backup. Anthony received the separate
+   built-in test-notification email, proving the basic route. The actual Cron
+   failure email and missed-run/timeout behavior remain unverified. The existing `JustGO API errors and recovery (email)` alert covers
    all issues in this project and notifies Anthony on new/resolved/regressed
    issues; a duplicate alert was not created. An unused initial setup draft with
    slug `new-monitor` is disabled.
@@ -312,15 +330,18 @@ its own credentials, approved policy and lane when it is introduced.
    exception text, SQL, subjects or database URLs. Verify hosted check-ins and
    actual notification delivery; configuration alone does not prove either.
 
-7. Anthony has requested activation; once the remaining operational/configuration
-   requirements are satisfied, set `JUSTGO_BACKUPS_ENABLED=approved`.
-   The supervised local database/ledger copies are initial upload evidence,
-   not trusted GitHub main-workflow database-freshness evidence or Cron health.
-   Run the protected workflow's manual database copy first, then its ledger copy so the combined
-   health check has database success evidence. Inspect the approved source SHA, verified R2
-   object, denied overwrite/delete, retention state, check-ins and received email.
-   Then observe both scheduled copies and a missed-run/failure drill. No hosted
-   scheduled pass is currently recorded.
+7. Anthony requested activation, and its configuration prerequisites passed on
+   November 2. `JUSTGO_BACKUPS_ENABLED=approved` is now set. The manual database
+   run [41500830932](https://github.com/anthonyyoo24/justgo/actions/runs/41500830932)
+   passed before ledger run
+   [41501504987](https://github.com/anthonyyoo24/justgo/actions/runs/41501504987).
+   Both ran reviewed main `d66c42d`, executed the actual copy step and produced
+   independently HEAD-verified encrypted R2 objects. The ledger also verified
+   recent database-copy job/step success and reported healthy Cron check-ins.
+   Manual dispatch proves the existing lane works; it does not prove either
+   scheduled event ran. Observe the hourly and nightly schedules, received email,
+   missed-run behavior and actual asynchronous expiry. Keep their gates open
+   until evidenced; do not shorten retention or monitoring grace to force a pass.
 
 The GitHub runner installs `age` and PostgreSQL 17 clients using the existing PGDG
 setup approach. Local `JUSTGO_PG_BIN` selects the PostgreSQL tools. Dependency
@@ -328,6 +349,24 @@ installation failures are failures; an old local dump or ignored environment fil
 is never a CI prerequisite.
 
 ## Isolated local recovery
+
+Before proposing a source maintenance window, prepare the isolated Auth/API target
+and verify a working positive provider-session control. The November 2 metadata
+audit found `postgres` eligible for SHARE locks on 44/45 current tables; the sole
+blocked managed table is `auth.schema_migrations`. No lock was attempted and the
+backup-operator role remains NOLOGIN. Resolve actual operator authority and a
+reviewed no-DDL/provider-change window before claiming a complete fence. Locks on
+existing data tables alone do not stop new relation creation or establish that
+provider migrations are paused.
+
+The repository currently supplies loopback PostgreSQL and synthetic Auth fixtures,
+not a real Supabase Auth runtime with a normally validated HTTPS endpoint. The
+production verifier requires an exact issuer matching the target Auth URL. An old
+token rejected only because its issuer/signing key differs is not proof that
+restoration invalidated a session. Use a real target with working positive and
+negative controls; do not relax the verifier or substitute the synthetic adapter.
+The handoff owns the remaining readiness evidence. The earlier exact-object
+decryption approval does not authorize later key use, restoring or opening writers.
 
 Download the selected encrypted snapshot and newest complete ledger using a
 separate authorized read-only recovery credential. The upload token cannot GET
