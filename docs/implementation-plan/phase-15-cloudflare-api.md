@@ -157,6 +157,13 @@ Deferred beta recovery work:
 
 Anthony's [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption) makes phone testing the next owner checkpoint before proceeding beyond migration acceptance. Keep remaining changes together on `codex/phase-15-rollout` for one consolidated phase PR. An earlier owner-only synthetic Dev check may use the guarded Cloudflare launcher option under [development builds](../operations/DEVELOPMENT_BUILDS.md#run-the-development-server), once a compatible binary and genuine disposable identity are available. Preserve the final TestFlight/publication/cutover prerequisites below; general continuation does not approve a tag push, new build or release.
 
+Keep phase commits local until the phase-end push. Owner-authorized code-only
+phone-test releases may use the [local staging lane](../operations/SERVER_RELEASES.md#local-phase-branch-staging-tests)
+without a push or PR, retaining actual database/history/source/bundle checks and
+truthful local provenance. It requires the existing protected migrator connection
+on the Mac; that credential is currently missing. This changes the testing route,
+not the final merge, migration, production, legal or native-release gates.
+
 - Move the static legal site (`sites/legal`) and API fully to Cloudflare. The
   [October 30 owner-only cutover decision](../DECISIONS.md#october-30-owner-only-full-cloudflare-cutover)
   selects no external-user grace period or retained legacy redirects.

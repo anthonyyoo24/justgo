@@ -59,7 +59,9 @@ See [Hyperdrive's supported features](https://developers.cloudflare.com/hyperdri
 
 ## Credentials and approval protection
 
-Store these secrets only in the protected `justgo-staging` GitHub environment:
+For the GitHub release lane, store these secrets in the protected `justgo-staging`
+environment. The explicit owner-local code-only lane below uses an owner-only Mac
+credential file instead; no secret is copied into source or build children.
 
 | Secret                         | Purpose                                                                                                                               |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -107,6 +109,57 @@ is a harmless configuration read. Initial provisioning and later secret rotation
 need an approved version disposition. Never put secret values in process
 arguments, source, receipts or chat. The backup runner uses separate narrowly
 scoped credentials described in [Cloudflare backups](CLOUDFLARE_BACKUPS.md).
+
+## Local phase-branch staging tests
+
+The November 1 local-testing decision keeps Phase 15 source on
+`codex/phase-15-rollout` until the phase-end push and consolidated PR. With the
+owner's deployment authorization, `release:staging:local` can publish a clean,
+explicitly selected local commit to the existing **staging** Worker without
+pushing Git, creating a tag/PR or impersonating a GitHub run. The ordinary GitHub
+workflow retains its exact-main CI and protected-environment requirements.
+
+Run from the repository root:
+
+```sh
+npm run release:staging:local -- --prepare --source <full-local-commit-sha> --credentials <protected-json-file>
+npm run db:local
+npm run release:staging:local -- --deploy --source <full-local-commit-sha> --credentials <protected-json-file>
+```
+
+The explicitly selected JSON file must be an owner-only regular file (mode 0600,
+no symlink/hard link). It contains only `CLOUDFLARE_API_TOKEN`,
+`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_SUBDOMAIN`, `STAGING_HYPERDRIVE_ID`,
+`MIGRATION_DATABASE_URL`, and `DATABASE_CA_CERT`. Use the existing restricted
+migrator's verified-TLS session-pooler connection; runtime credentials are not a
+substitute. Never paste credentials into chat or command arguments. The prepared
+local file currently lacks the migrator URL; GitHub secret values cannot be read
+back. An empty URL permits read-only baseline/bundle preparation, with
+`databaseVerified: false`, `deployReady: false` and a missing-prerequisite receipt.
+It cannot upload or promote a Worker.
+
+Before a local deployment, the command serially runs full `check`, coverage
+(including actual local database/migration tests), Workers smoke and the selected
+provider-sign-in, local-sync and account-deletion journeys. Their child environment
+accepts only dedicated loopback `justgo_test` connections from `apps/api/.env`;
+hosted credentials stay out of test and build children. Source must stay clean at
+the selected commit through checks and bundle capture. Both Wrangler invocations
+receive only explicit non-secret build settings.
+
+Deployment reuses the existing restricted migrator connection, advisory lease,
+history checks, lost-connection watcher and final lease assertion. Pending
+migrations block this lane; there are no migration, bootstrap, recovery-attestation
+or abandoned-version exceptions. The shared release core preserves strict secret
+inheritance, baseline/latest stability, inspected bundle bytes, immutable-version
+probes, one promotion and public convergence/readback. It never retries an upload,
+automatically rolls back or changes runtime secret values.
+
+Version annotations identify `Local` and `local-<UUID>` provenance truthfully.
+Receipts remain in ignored `.local/phase15-cloudflare/local-releases/`, without
+credentials or user content. A successful local release does not claim hosted CI,
+merge approval, phone acceptance or completed cutover. Inspect the actual serving
+version before retrying an uncertain release. The same installed Dev app can test
+the updated staging API after verified deployment.
 
 ## Initial Worker and cutover prerequisites
 

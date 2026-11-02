@@ -1229,3 +1229,21 @@ This authorizes and records that completed verification only, not future key use
 restoring a database, a writer fence or reopening restored accounts. The
 [Phase 15 handoff](handoffs/phase-15-cloudflare-api.md#current-status) owns receipts
 and the remaining recovery/provider acceptance gates.
+
+## November 1 local phase staging without Git publication
+
+Anthony wants phase changes committed locally on the phase branch, with the push
+and one consolidated PR at the end. Phone testing must not force an early push,
+PR or merge. Prepare a direct owner-local code-only staging release from the exact
+committed Phase 15 source. Cloudflare deployment is separate from Git publication;
+the GitHub release lane remains main-only and retains its existing review policy.
+
+The local lane keeps the same database/history lease, actual publication checks,
+source/bundle identity, inherited runtime secrets, candidate probes and single
+promotion/readback. It records local UUID provenance rather than pretending to be
+a GitHub run. It cannot migrate, bootstrap, target production or bypass a missing
+protected database connection. Owner-local credentials stay in ignored mode-0600
+storage and out of child build/test processes. The existing migrator connection
+is not currently available on the Mac; read-only preparation may proceed, but
+deployment remains blocked until that credential is supplied securely. No Git
+publication, secret rotation or broader database grant follows from this decision.
