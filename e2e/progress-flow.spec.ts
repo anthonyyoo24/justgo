@@ -90,15 +90,14 @@ test('Progress matches Challenge and keeps its smaller absolute close icon from 
           smallerIcon:
             Math.abs(icon.width - 25.6) <= 1 &&
             Math.abs(icon.height - 25.6) <= 1,
-          topRight:
-            rightGap >= 0 && rightGap <= 8 && topGap >= 0 && topGap <= 8,
+          topRight: Math.abs(rightGap - 12) <= 1 && Math.abs(topGap - 12) <= 1,
           equalInsets: Math.abs(topGap - rightGap) <= 1,
           equalIconInsets:
             Math.abs(
               icon.y - sheet.y - (sheet.x + sheet.width - icon.x - icon.width),
             ) <= 1,
           originalHeadingOffset: Math.abs(heading.y - sheet.y - 44) <= 1,
-          aboveHeading: icon.y + icon.height <= heading.y,
+          iconOffset: Math.abs(icon.y - sheet.y - 21.6) <= 1,
         };
       })
       .toEqual({
@@ -108,7 +107,7 @@ test('Progress matches Challenge and keeps its smaller absolute close icon from 
         equalInsets: true,
         equalIconInsets: true,
         originalHeadingOffset: true,
-        aboveHeading: true,
+        iconOffset: true,
       });
     // Exercise the target's edge, away from the visible X glyph.
     await close.click({ position: { x: 2, y: 42 } });

@@ -522,8 +522,8 @@ const styles = StyleSheet.create({
   },
   close: {
     position: 'absolute',
-    right: spacing.sm,
-    top: spacing.sm,
+    right: spacing.sm + spacing.xs,
+    top: spacing.sm + spacing.xs,
     width: closeTargetSize,
     height: closeTargetSize,
     alignItems: 'center',

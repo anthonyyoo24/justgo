@@ -47,7 +47,7 @@ it('keeps the smaller close target absolute and equally inset while preserving t
   expect(closeStyle.height).toBeCloseTo(44.8);
   expect(closeStyle.width).toBeGreaterThanOrEqual(44);
   expect(closeStyle.height).toBeGreaterThanOrEqual(44);
-  expect(closeStyle.right).toBe(spacing.sm);
+  expect(closeStyle.right).toBe(spacing.sm + spacing.xs);
   expect(closeStyle.top).toBe(closeStyle.right);
   await fireEvent.press(close);
   expect(beforeClose).toHaveBeenCalledTimes(1);
