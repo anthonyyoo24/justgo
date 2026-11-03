@@ -2,8 +2,11 @@
 
 # Phase 15 — Cloudflare API hosting & R2 backups
 
-**Status:** Implementation merged; hosted rollout in progress. Hosted/privacy/device
-acceptance remains open before outside testers store real journals. See the
+**Status:** Cloudflare rollout paused by Anthony on November 2, 2026. The
+[Supabase API migration plan](phase-15-supabase-api.md) describes the proposed
+continuation of Phase 15; only planning is authorized. The Cloudflare scope below
+is retained for reference and must not resume rollout while paused. Existing
+hosted/privacy/device gates remain open; see the
 [implementation handoff](../handoffs/phase-15-cloudflare-api.md).
 
 ## Outcome
