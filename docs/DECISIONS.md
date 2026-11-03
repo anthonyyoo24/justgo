@@ -799,6 +799,12 @@ passed. This does not supply physical-device evidence. The side-chat explanation
 of alerts and deployment automation authorizes no new implementation, account
 changes or purchases.
 
+**November 2 follow-up:** Anthony authorized removing the obsolete Maestro launch
+flow, its `test:native` command, command-wiring test and active setup references.
+Browser/lower-level checks and explicitly arranged physical-device or manual
+simulator checks remain. This retires the old harness; it does not authorize new
+native automation, remove simulator devices/runtimes/tools or close native gates.
+
 ## October 27 error alerts and approved server releases
 
 Anthony subsequently approved implementing Sentry for sanitized API errors and

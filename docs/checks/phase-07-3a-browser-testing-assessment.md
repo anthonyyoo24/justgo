@@ -5,6 +5,12 @@
 code has been removed. Implement after reviewed/finished 07.3 and before 07.4,
 under [the 07.3A plan](../implementation-plan/phase-07-api-offline.md#phase-07-3a).
 
+**Current disposition:** 07.3A remains deferred. Anthony authorized retirement of
+the obsolete Maestro launch flow, `test:native` command and command-wiring test
+on November 2. Their entries below are historical, not instructions to restore
+or extend them. Browser checks remain in place; native automation requires a new
+owner authorization and current coverage assessment.
+
 ## Finding and removal rule
 
 JustGO can retire its browser UI testing setup after equivalent native coverage

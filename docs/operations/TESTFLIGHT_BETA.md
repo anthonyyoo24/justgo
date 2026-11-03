@@ -360,8 +360,8 @@ the current guest expiry is not an approved date for a future cohort.
   [release handoff](../handoffs/phase-14-release.md).
   The October 27 owner
   direction defers the automated iOS simulator smoke test; do not implement it
-  now or mark it passed. The retained Maestro launch file still targets old
-  entry/account UI. His later explicit authorization covers filtered Sentry errors,
+  now or mark it passed. The obsolete Maestro launch file, command and command-wiring
+  test were retired on November 2. His later explicit authorization covers filtered Sentry errors,
   included uptime/email alerts and protected deployment preparation; no paid
   upgrade or simulator smoke test is authorized.
 - Preserve all applicable separate Git, native build, upload and distribution

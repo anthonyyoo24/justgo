@@ -466,9 +466,10 @@ The [native-testing checkpoint](../handoffs/phase-07-3a-testing-checkpoint.md) a
 [browser assessment](../checks/phase-07-3a-browser-testing-assessment.md) remain the
 resume boundary for deferred native automation. Retain Playwright/web adapters,
 fixture safeguards and coverage floors until a native replacement proves equivalent
-actual-app/API/database cases and its authorized commit's hosted gate. Retain the
-Maestro launch smoke (`APP_ID=... npm run test:native -w @justgo/mobile`) and relevant
-manual simulator checks meanwhile. Device/staging gates belong in
+actual-app/API/database cases and its authorized commit's hosted gate. The obsolete
+Maestro launch flow, command and command-wiring test were retired on November 2;
+automated simulator testing remains deferred. Arrange relevant physical-device
+or manual simulator checks explicitly. Device/staging gates belong in
 [Phase 14](../implementation-plan/phase-14-release.md) and the applicable handoffs.
 
 ## File moves and bundle checks
