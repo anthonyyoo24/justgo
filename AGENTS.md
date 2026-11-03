@@ -59,6 +59,17 @@ handoffs; avoid copying competing versions of these rules into every directory.
   merge. Passing tests, green CI and agent reviews do not replace that review or
   the owner's explicit merge approval. Never merge merely to finish a phase.
 
+## Temporary worktree cleanup
+
+- Follow the global worktree integration and cleanup rules. For JustGO, the
+  destination is the agreed phase integration branch or `main`. A temporary task
+  worktree may be retired after verified integration into the retained phase
+  branch; it need not wait for that phase's merge into `main`.
+- Anthony authorizes removal of eligible temporary task worktrees once the
+  global verification, unique-material and active-use checks pass. This standing
+  permission applies only to JustGO. It does not authorize branch deletion or
+  removal of an active phase worktree. Merge and archive approvals remain separate.
+
 ## Design principles
 
 - **Single responsibility and separation of concerns:** Keep rendering,
