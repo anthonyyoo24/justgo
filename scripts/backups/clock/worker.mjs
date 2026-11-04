@@ -73,8 +73,9 @@ export async function dispatchBackup(
       },
       body: JSON.stringify({ ref: 'main', inputs: { kind } }),
     });
-    // This pinned API version returns the accepted run's identity. A redirect,
-    // old 204 response or ambiguous receipt cannot be reported as acceptance.
+    // API version 2026-03-10 returns run details by default (the 2022 version
+    // required return_run_details). Treat redirects and ambiguous receipts as unconfirmed.
+    // https://docs.github.com/en/rest/actions/workflows?apiVersion=2026-03-10#create-a-workflow-dispatch-event
     if (response.status !== 200) {
       await response.body?.cancel().catch(() => {});
       throw failure();
