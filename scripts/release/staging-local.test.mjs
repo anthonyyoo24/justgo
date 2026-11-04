@@ -11,7 +11,6 @@ import { join } from 'node:path';
 import test from 'node:test';
 import {
   localReleaseArguments,
-  localStagingBranch,
   localStagingContext,
   assertLocalSource,
   localReleaseConfiguration,
@@ -22,12 +21,19 @@ import {
 } from './staging-local.mjs';
 
 const sha = 'a'.repeat(40);
+const phaseBranch = 'codex/phase-16-billing';
+const source = { sha, phaseBranch };
+const releaseArgs = (mode, branch = phaseBranch, commit = sha) => [
+  mode,
+  '--phase-branch',
+  branch,
+  '--source',
+  commit,
+  '--credentials',
+  'protected.json',
+];
 const git = async (_command, args) =>
-  args[0] === 'branch'
-    ? localStagingBranch
-    : args[0] === 'rev-parse'
-      ? sha
-      : '';
+  args[0] === 'branch' ? phaseBranch : args[0] === 'rev-parse' ? sha : '';
 const configuration = {
   CLOUDFLARE_API_TOKEN: 'synthetic-private-token',
   CLOUDFLARE_ACCOUNT_ID: '1'.repeat(32),
@@ -39,24 +45,22 @@ const configuration = {
 
 test('local command explicitly selects exact committed source and prepare or deploy', () => {
   for (const mode of ['--prepare', '--deploy']) {
-    assert.deepEqual(
-      localReleaseArguments([
-        mode,
-        '--source',
-        sha,
-        '--credentials',
-        'protected.json',
-      ]),
-      { deploy: mode === '--deploy', sha, credentials: 'protected.json' },
-    );
+    assert.deepEqual(localReleaseArguments(releaseArgs(mode)), {
+      deploy: mode === '--deploy',
+      ...source,
+      credentials: 'protected.json',
+    });
   }
   for (const args of [
     [],
     ['--deploy'],
-    ['--bootstrap', '--source', sha, '--credentials', 'private'],
-    ['--migrate-deploy', '--source', sha, '--credentials', 'private'],
-    ['--deploy', '--source', 'main', '--credentials', 'private'],
-    ['--deploy', '--source', sha, '--credentials', 'private', '--force'],
+    ['--deploy', '--source', sha, '--credentials', 'private'],
+    releaseArgs('--bootstrap'),
+    releaseArgs('--migrate-deploy'),
+    releaseArgs('--deploy', phaseBranch, 'main'),
+    releaseArgs('--deploy', 'main'),
+    releaseArgs('--deploy', ''),
+    [...releaseArgs('--deploy'), '--force'],
   ])
     assert.throws(
       () => localReleaseArguments(args),
@@ -66,7 +70,7 @@ test('local command explicitly selects exact committed source and prepare or dep
 
 test('local provenance is truthful and performs only local Git reads', async () => {
   const calls = [];
-  const context = await localStagingContext(sha, {
+  const context = await localStagingContext(source, {
     env: {},
     run: async (...args) => {
       calls.push(args);
@@ -74,6 +78,7 @@ test('local provenance is truthful and performs only local Git reads', async () 
     },
   });
   assert.equal(context.sha, sha);
+  assert.equal(context.phaseBranch, phaseBranch);
   assert.match(context.runId, /^local-[a-f0-9-]{36}$/);
   assert.equal(context.attempt, '1');
   assert.ok(Object.isFrozen(context));
@@ -101,7 +106,7 @@ for (const [name, env] of Object.entries({
   test(`local context rejects ${name} before any source or provider call`, async () => {
     let called = false;
     await assert.rejects(
-      localStagingContext(sha, {
+      localStagingContext(source, {
         env,
         run: async () => {
           called = true;
@@ -115,13 +120,15 @@ for (const [name, env] of Object.entries({
 
 for (const [name, override] of Object.entries({
   branch: { branch: 'main' },
+  'another phase': { branch: 'codex/phase-15-rollout' },
+  'detached HEAD': { branch: '' },
   source: { 'rev-parse': 'b'.repeat(40) },
   dirty: { status: ' M apps/api/src/worker.ts' },
   untracked: { status: '?? unreviewed.ts' },
 }))
   test(`local source rejects ${name}`, async () => {
     await assert.rejects(
-      assertLocalSource(sha, {
+      assertLocalSource(source, {
         run: async (command, args) => override[args[0]] ?? git(command, args),
       }),
       /STAGING_SOURCE_NOT_CLEAN/,
@@ -228,13 +235,18 @@ test('publication gates use isolated DB credentials and stop at the first failed
     },
   });
   assert.deepEqual(passed, [
-    'check',
+    'doctor',
+    'check:static',
     'coverage-including-database',
     'workers',
     'selected-journeys',
   ]);
-  assert.equal(calls.length, 4);
-  assert.deepEqual(calls[0], ['npm', ['run', 'check']]);
+  assert.deepEqual(calls.slice(0, 3), [
+    ['npm', ['run', 'doctor', '-w', '@justgo/mobile']],
+    ['npm', ['run', 'check:static']],
+    ['npm', ['run', 'test:coverage']],
+  ]);
+  assert.equal(calls.length, 5);
   calls = [];
   await assert.rejects(
     runLocalPublicationChecks(root, {

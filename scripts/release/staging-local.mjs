@@ -20,15 +20,30 @@ import {
 import { buildStagingWorker } from './staging-worker-build.mjs';
 import { localTestDatabaseUrl } from '../../apps/api/scripts/local-test-database.ts';
 
-export const localStagingBranch = 'codex/phase-15-rollout';
 const invalid = 'INVALID_LOCAL_STAGING_CONTEXT';
 const configurationFailure = 'INVALID_LOCAL_STAGING_CONFIGURATION';
+const isPhaseBranch = (branch) =>
+  typeof branch === 'string' &&
+  branch.length > 0 &&
+  branch !== 'main' &&
+  !branch.startsWith('-') &&
+  !/\s/.test(branch);
 
 export function localReleaseArguments(args) {
-  requireRelease(args.length === 5, invalid);
-  const [mode, sourceFlag, sha, credentialsFlag, credentials] = args;
+  requireRelease(args.length === 7, invalid);
+  const [
+    mode,
+    branchFlag,
+    phaseBranch,
+    sourceFlag,
+    sha,
+    credentialsFlag,
+    credentials,
+  ] = args;
   requireRelease(
     ['--prepare', '--deploy'].includes(mode) &&
+      branchFlag === '--phase-branch' &&
+      isPhaseBranch(phaseBranch) &&
       sourceFlag === '--source' &&
       isSourceSha(sha) &&
       credentialsFlag === '--credentials' &&
@@ -36,19 +51,19 @@ export function localReleaseArguments(args) {
       credentials.length > 0,
     invalid,
   );
-  return { deploy: mode === '--deploy', sha, credentials };
+  return { deploy: mode === '--deploy', phaseBranch, sha, credentials };
 }
 
 /** No remote Git operation and no fabricated GitHub environment. */
 export async function assertLocalSource(
-  sha,
+  { sha, phaseBranch },
   { root = process.cwd(), run = privateCommand, signal } = {},
 ) {
-  requireRelease(isSourceSha(sha), invalid);
+  requireRelease(isSourceSha(sha) && isPhaseBranch(phaseBranch), invalid);
   const git = async (...args) =>
     (await run('git', args, { cwd: root, signal })).trim();
   requireRelease(
-    (await git('branch', '--show-current')) === localStagingBranch &&
+    (await git('branch', '--show-current')) === phaseBranch &&
       (await git('rev-parse', 'HEAD')) === sha &&
       !(await git('status', '--porcelain')),
     'STAGING_SOURCE_NOT_CLEAN',
@@ -56,7 +71,7 @@ export async function assertLocalSource(
 }
 
 export async function localStagingContext(
-  sha,
+  source,
   { env = process.env, root, run, signal } = {},
 ) {
   requireRelease(
@@ -69,8 +84,13 @@ export async function localStagingContext(
       (!env.RELEASE_OPERATION || env.RELEASE_OPERATION === 'deploy'),
     invalid,
   );
-  await assertLocalSource(sha, { root, run, signal });
-  return Object.freeze({ sha, runId: `local-${randomUUID()}`, attempt: '1' });
+  await assertLocalSource(source, { root, run, signal });
+  return Object.freeze({
+    sha: source.sha,
+    phaseBranch: source.phaseBranch,
+    runId: `local-${randomUUID()}`,
+    attempt: '1',
+  });
 }
 
 const fields = [
@@ -164,7 +184,8 @@ export async function runLocalPublicationChecks(
 ) {
   const childEnvironment = localPublicationEnvironment(root, env);
   const commands = [
-    ['run', 'check'],
+    ['run', 'doctor', '-w', '@justgo/mobile'],
+    ['run', 'check:static'],
     ['run', 'test:coverage'],
     ['run', 'test:workers'],
     [
@@ -179,7 +200,8 @@ export async function runLocalPublicationChecks(
   for (const args of commands)
     await run('npm', args, { cwd: root, env: childEnvironment });
   return [
-    'check',
+    'doctor',
+    'check:static',
     'coverage-including-database',
     'workers',
     'selected-journeys',
@@ -198,7 +220,7 @@ export async function localStagingApi(operation, options) {
       context.attempt === '1',
     invalid,
   );
-  await assertLocalSource(context.sha, rest);
+  await assertLocalSource(context, rest);
   return runStagingDeployment(operation, {
     ...rest,
     context,
@@ -216,7 +238,7 @@ export async function prepareLocalBundle(
   mkdirSync(parent, { recursive: true, mode: 0o700 });
   const directory = mkdtempSync(join(parent, 'prepare-'));
   try {
-    await assertLocalSource(context.sha, { root, signal });
+    await assertLocalSource(context, { root, signal });
     const bundle = await buildStagingWorker({
       root,
       directory,
@@ -227,7 +249,7 @@ export async function prepareLocalBundle(
       signal,
     });
     requireRelease(!signal?.aborted, 'STAGING_DATABASE_LEASE_LOST');
-    await assertLocalSource(context.sha, { root, signal });
+    await assertLocalSource(context, { root, signal });
     return { uploadSha256: bundle.uploadSha256, bytes: bundle.content.length };
   } finally {
     rmSync(directory, { recursive: true, force: true });

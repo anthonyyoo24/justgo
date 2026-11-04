@@ -105,6 +105,38 @@ async function fixture(fails = false) {
   };
 }
 describe('locked staging release against disposable migration fixtures', () => {
+  it('prepares a candidate with pending migrations without applying migration SQL', async () => {
+    const f = await fixture();
+    try {
+      const pending = await withStagingRelease(
+        client,
+        {
+          ...f.options,
+          operation: 'prepare',
+          planDigest: undefined,
+          attestation: undefined,
+        },
+        async (plan) => {
+          await assertReleaseLease(client);
+          return plan.pending.map(({ tag }) => tag);
+        },
+      );
+      expect(pending).toEqual(['0000_first', '0001_second']);
+      expect(await appliedHistory(client, f.config)).toEqual([]);
+      expect(
+        (
+          await client.query('select to_regclass($1) as target', [
+            `justgo.${f.name}`,
+          ])
+        ).rows[0].target,
+      ).toBeNull();
+      await expect(assertReleaseLease(client)).rejects.toMatchObject({
+        reason: 'staging_release_lease_lost',
+      });
+    } finally {
+      await f.cleanup();
+    }
+  });
   it('blocks pending SQL without approval/recovery evidence and releases the lock', async () => {
     const f = await fixture();
     try {

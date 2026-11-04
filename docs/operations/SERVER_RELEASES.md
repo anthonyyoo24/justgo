@@ -122,10 +122,13 @@ workflow retains its exact-main CI and protected-environment requirements.
 Run from the repository root:
 
 ```sh
-npm run release:staging:local -- --prepare --source <full-local-commit-sha> --credentials <protected-json-file>
+npm run release:staging:local -- --prepare --phase-branch <phase-branch> --source <full-local-commit-sha> --credentials <protected-json-file>
 npm run db:local
-npm run release:staging:local -- --deploy --source <full-local-commit-sha> --credentials <protected-json-file>
+npm run release:staging:local -- --deploy --phase-branch <phase-branch> --source <full-local-commit-sha> --credentials <protected-json-file>
 ```
+
+Specify the owner-approved phase branch and its exact checked-out commit.
+The lane rejects `main`, detached HEAD and dirty checkouts.
 
 The explicitly selected JSON file must be an owner-only regular file (mode 0600,
 no symlink/hard link). It contains only `CLOUDFLARE_API_TOKEN`,
@@ -141,18 +144,21 @@ An empty URL permits read-only baseline/bundle preparation, with
 `databaseVerified: false`, `deployReady: false` and a missing-prerequisite receipt.
 It cannot upload or promote a Worker.
 
-Before a local deployment, the command serially runs full `check`, coverage
-(including actual local database/migration tests), Workers smoke and the selected
+Before a local deployment, the command serially runs online Expo Doctor,
+`check:static`, coverage (including workspace and local database/migration tests),
+Workers smoke and the selected
 provider-sign-in, local-sync and account-deletion journeys. Their child environment
 accepts only dedicated loopback `justgo_test` connections from `apps/api/.env`;
 hosted credentials stay out of test and build children. Source must stay clean at
 the selected commit through checks and bundle capture. Both Wrangler invocations
 receive only explicit non-secret build settings.
 
-Deployment reuses the existing restricted migrator connection, advisory lease,
-history checks, lost-connection watcher and final lease assertion. Pending
-migrations block this lane; there are no migration, bootstrap, recovery-attestation
-or abandoned-version exceptions. The shared release core preserves strict secret
+Preparation with a verified database connection checks migration history under
+the same lease and lists pending migration tags in the receipt. It can build a
+candidate with pending migrations. Deployment requires the entire migration
+chain to be applied already. Both operations reuse the existing restricted
+migrator connection, advisory lease, history checks, lost-connection watcher
+and final lease assertion. The shared release core preserves strict secret
 inheritance, baseline/latest stability, inspected bundle bytes, immutable-version
 probes, one promotion and public convergence/readback. It never retries an upload,
 automatically rolls back or changes runtime secret values.

@@ -52,8 +52,10 @@ vi.mock('../../scripts/staging-release-guard.js', async (original) => ({
 import { runLocalStagingRelease } from '../../scripts/local-staging-release.js';
 
 const sha = 'a'.repeat(40);
+const phaseBranch = 'codex/phase-16-billing';
 const context = {
   sha,
+  phaseBranch,
   runId: 'local-aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',
   attempt: '1',
 };
@@ -61,6 +63,8 @@ let folder: string;
 let signal: AbortSignal;
 const args = (deploy = false) => [
   deploy ? '--deploy' : '--prepare',
+  '--phase-branch',
+  phaseBranch,
   '--source',
   sha,
   '--credentials',
@@ -87,13 +91,17 @@ beforeEach(() => {
   );
   mocks.bundle.mockResolvedValue({ uploadSha256: 'c'.repeat(64), bytes: 100 });
   mocks.checks.mockResolvedValue([
-    'check',
+    'doctor',
+    'check:static',
     'coverage-including-database',
     'workers',
     'selected-journeys',
   ]);
   mocks.watch.mockReturnValue({ signal, stop: mocks.stop });
-  mocks.release.mockImplementation(async (_client, _options, work) => work());
+  mocks.release.mockImplementation(async (_client, options, work) => {
+    expect(await options.previousApiSha()).toBe('b'.repeat(40));
+    return work({ pending: [] });
+  });
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -112,10 +120,15 @@ it('prepares inspected local source without a DB credential or any upload', asyn
     databaseVerified: false,
     deployReady: false,
     deployed: false,
+    phaseBranch,
+    pendingMigrations: null,
     publicationChecks: [],
     missing: ['MIGRATION_DATABASE_URL'],
   });
   expect(mocks.construct).not.toHaveBeenCalled();
+  expect(mocks.source).toHaveBeenCalledWith(
+    expect.objectContaining({ sha, phaseBranch }),
+  );
   expect(mocks.checks).not.toHaveBeenCalled();
   expect(mocks.api.mock.calls.map(([operation]) => operation)).toEqual([
     'preflight',
@@ -155,6 +168,14 @@ it('runs publication checks then holds the code-only lease through deployment an
   });
   expect(mocks.release.mock.calls[0]![1]).not.toHaveProperty('planDigest');
   expect(mocks.release.mock.calls[0]![1]).not.toHaveProperty('attestation');
+  expect(mocks.api.mock.calls.map(([operation]) => operation)).toEqual([
+    'preflight',
+    'deploy',
+  ]);
+  expect(mocks.api.mock.calls[1]![1].env).toMatchObject({
+    STAGING_BASELINE_ID: 'baseline',
+    STAGING_BASELINE_SHA: 'b'.repeat(40),
+  });
   expect(mocks.lease).toHaveBeenCalledOnce();
   expect(mocks.tls).toHaveBeenCalledOnce();
   expect(mocks.end).toHaveBeenCalledOnce();
@@ -163,14 +184,20 @@ it('runs publication checks then holds the code-only lease through deployment an
   expect(env).not.toHaveProperty('MIGRATION_DATABASE_URL');
   expect(env).not.toHaveProperty('DATABASE_CA_CERT');
 });
-it('prepare with a DB lease still does not claim publication checks or deployment', async () => {
+it('prepares with pending migrations under the DB lease without checks or deployment', async () => {
   withDatabase();
+  mocks.release.mockImplementationOnce(async (_client, options, work) => {
+    expect(options.operation).toBe('prepare');
+    expect(await options.previousApiSha()).toBe('b'.repeat(40));
+    return work({ pending: [{ tag: '0001_pending' }] });
+  });
   const result = await runLocalStagingRelease(args());
   expect(result).toMatchObject({
     databaseVerified: true,
     deployReady: false,
     deployed: false,
     publicationChecks: [],
+    pendingMigrations: ['0001_pending'],
   });
   expect(mocks.api.mock.calls.map(([operation]) => operation)).toEqual([
     'preflight',

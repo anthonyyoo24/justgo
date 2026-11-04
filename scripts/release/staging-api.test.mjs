@@ -23,7 +23,7 @@ import {
   validateHyperdrive,
 } from './staging-api-runner.mjs';
 import { abandonedVersionRequested } from './staging-abandoned-version.mjs';
-import { localStagingApi, localStagingBranch } from './staging-local.mjs';
+import { localStagingApi } from './staging-local.mjs';
 
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
@@ -674,6 +674,7 @@ test('local staging uses truthful provenance and the same one-upload/one-promoti
   const f = fixture(t);
   const local = {
     sha,
+    phaseBranch: 'codex/phase-16-billing',
     runId: 'local-aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',
     attempt: '1',
   };
@@ -682,7 +683,7 @@ test('local staging uses truthful provenance and the same one-upload/one-promoti
     ...f,
     context: local,
     run: async (command, args, options) =>
-      args[0] === 'branch' ? localStagingBranch : f.run(command, args, options),
+      args[0] === 'branch' ? local.phaseBranch : f.run(command, args, options),
     request: async (target, path, options) => {
       if (options.method === 'POST')
         uploadedMetadata = JSON.parse(options.body.get('metadata'));

@@ -19,6 +19,7 @@ import {
   withStagingRelease,
   watchReleaseConnection,
   assertReleaseLease,
+  type MigrationEntry,
 } from './staging-release-guard.js';
 import { stagingReleaseDiagnostic } from './staging-release-diagnostic.js';
 
@@ -26,7 +27,7 @@ import { stagingReleaseDiagnostic } from './staging-release-diagnostic.js';
 export async function runLocalStagingRelease(args = process.argv.slice(2)) {
   const options = localReleaseArguments(args);
   const configuration = localReleaseConfiguration(options.credentials);
-  const context = await localStagingContext(options.sha);
+  const context = await localStagingContext(options);
   const root = process.cwd();
   const directory = resolve(root, '.local/phase15-cloudflare/local-releases');
   mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -38,13 +39,17 @@ export async function runLocalStagingRelease(args = process.argv.slice(2)) {
   let watcher: ReturnType<typeof watchReleaseConnection> | undefined;
   let databaseVerified = false;
   let checks: string[] | null = null;
-  const work = async () => {
-    const baseline = await localStagingApi('preflight', {
+  const readBaseline = () =>
+    localStagingApi('preflight', {
       context,
       env,
       root,
       signal: watcher?.signal,
     });
+  let baselineRead: ReturnType<typeof readBaseline> | undefined;
+  const getBaseline = () => (baselineRead ??= readBaseline());
+  const work = async (pending?: MigrationEntry[]) => {
+    const baseline = await getBaseline();
     if (!options.deploy) {
       const bundle = await prepareLocalBundle(context, env, root, {
         signal: watcher?.signal,
@@ -53,7 +58,11 @@ export async function runLocalStagingRelease(args = process.argv.slice(2)) {
         watcher.signal.throwIfAborted();
         await assertReleaseLease(client);
       }
-      return { baseline, bundle };
+      return {
+        baseline,
+        bundle,
+        pendingMigrations: pending?.map(({ tag }) => tag) ?? null,
+      };
     }
     requireRelease(
       databaseVerified && client && watcher,
@@ -85,7 +94,7 @@ export async function runLocalStagingRelease(args = process.argv.slice(2)) {
         'LOCAL_STAGING_DATABASE_CONNECTION_REQUIRED',
       );
       checks = await runLocalPublicationChecks(root);
-      await assertLocalSource(context.sha, { root });
+      await assertLocalSource(context, { root });
     }
     if (!configuration.MIGRATION_DATABASE_URL) {
       requireRelease(
@@ -113,28 +122,21 @@ export async function runLocalStagingRelease(args = process.argv.slice(2)) {
             ),
             migrationsSchema: 'drizzle',
           },
-          operation: 'deploy',
+          operation: options.deploy ? 'deploy' : 'prepare',
           sourceSha: context.sha,
           expectedDatabase: 'postgres',
-          previousApiSha: async () =>
-            (
-              await localStagingApi('preflight', {
-                context,
-                env,
-                root,
-                signal: watcher?.signal,
-              })
-            ).sourceSha,
+          previousApiSha: async () => (await getBaseline()).sourceSha,
         },
-        async () => {
+        async (plan) => {
           databaseVerified = true;
-          return work();
+          return work(plan.pending);
         },
       );
     }
     const receipt = {
       recordedAt: new Date().toISOString(),
       provenance: 'Local',
+      phaseBranch: context.phaseBranch,
       sourceSha: context.sha,
       localRunId: context.runId,
       operation: options.deploy ? 'deploy' : 'prepare',

@@ -1,11 +1,14 @@
 import type { StagingBaseline, StagingReceipt } from './staging-api-runner.mjs';
 
-export const localStagingBranch: 'codex/phase-15-rollout';
-export type LocalContext = Readonly<{
+type LocalSource = Readonly<{
   sha: string;
-  runId: string;
-  attempt: '1';
+  phaseBranch: string;
 }>;
+export type LocalContext = LocalSource &
+  Readonly<{
+    runId: string;
+    attempt: '1';
+  }>;
 export type LocalConfiguration = Record<
   | 'CLOUDFLARE_API_TOKEN'
   | 'CLOUDFLARE_ACCOUNT_ID'
@@ -21,17 +24,16 @@ type Options = {
   signal?: AbortSignal | undefined;
 };
 type ReleaseOptions = Options & { context: LocalContext };
-export function localReleaseArguments(args: string[]): {
+export function localReleaseArguments(args: string[]): LocalSource & {
   deploy: boolean;
-  sha: string;
   credentials: string;
 };
 export function assertLocalSource(
-  sha: string,
+  source: LocalSource,
   options?: Options,
 ): Promise<void>;
 export function localStagingContext(
-  sha: string,
+  source: LocalSource,
   options?: Options,
 ): Promise<LocalContext>;
 export function localReleaseConfiguration(path: string): LocalConfiguration;
