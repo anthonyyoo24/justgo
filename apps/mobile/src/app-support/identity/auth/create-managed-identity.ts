@@ -14,5 +14,10 @@ export function createManagedIdentityController(
     secureStorage: createAuthStorage(),
     legacyVault: createVault(),
     api: createIdentityApi(apiUrl),
+    connectionDiagnostics:
+      __DEV__ &&
+      process.env.EXPO_PUBLIC_JUSTGO_DEV_DIAGNOSTICS === '1' &&
+      process.env.EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER ===
+        'iCloud.com.anthonyyoo.justgo.dev',
   });
 }

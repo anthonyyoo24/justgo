@@ -4,6 +4,7 @@ import type { ManagedIdentityController } from '../auth/managed-controller';
 import { ProviderButtons } from '../auth/ProviderButtons';
 import { WelcomeView } from './WelcomeView';
 import { useBeginWelcomeEntry } from './WelcomeTransition';
+import { useProviderSignIn } from '../account/useProviderSignIn';
 
 export function WelcomeScreen({
   controller,
@@ -17,29 +18,49 @@ export function WelcomeScreen({
     controller.getSnapshot,
     controller.getSnapshot,
   );
+  const signIn = useProviderSignIn(controller, state);
+  const disabled =
+    !state.initialized ||
+    state.busy ||
+    !!signIn.busyProvider ||
+    !!state.account;
+  const connectionError =
+    state.directSignInFailure ||
+    state.message === 'Your account has been deleted.'
+      ? ''
+      : state.message;
   if (state.deletionStatus === 'pending' || state.deletionStatus === 'cleanup')
     return <Redirect href="/delete-account" />;
-  if (state.account) return <Redirect href="/access" />;
-  if (state.mode !== 'welcome' && !state.needsWelcome)
+  if (signIn.destination) return <Redirect href={signIn.destination} />;
+  if (!state.account && state.mode !== 'welcome' && !state.needsWelcome)
     return <Redirect href="/access" />;
   return (
     <WelcomeView
-      disabled={!state.initialized || state.busy}
-      error={
-        state.message === 'Your account has been deleted.' ? '' : state.message
+      disabled={disabled}
+      error={signIn.error || connectionError}
+      connectionReference={
+        signIn.error
+          ? signIn.reference
+          : connectionError
+            ? state.connectionReference
+            : null
       }
-      onRetry={() => {
-        void controller.retry();
-      }}
+      onRetry={
+        !signIn.error && connectionError
+          ? () => {
+              if (state.account) signIn.retry();
+              else void controller.retry();
+            }
+          : undefined
+      }
       signInButtons={
         <ProviderButtons
+          provider={state.account ? (state.provider ?? 'apple') : undefined}
           disabled={!state.initialized || state.busy}
+          busyProvider={signIn.busyProvider}
+          retry={signIn.retryHandoff}
           onSignIn={(provider) => {
-            beginEntry();
-            router.push({
-              pathname: '/account/sign-in',
-              params: { provider },
-            });
+            void signIn.signIn(provider);
           }}
         />
       }

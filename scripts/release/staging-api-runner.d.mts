@@ -11,6 +11,10 @@ export class StagingRunnerFailure extends Error {
   );
 }
 export function stagingRunnerFailureCode(error: unknown): string | undefined;
+export function requireRelease(
+  condition: unknown,
+  code: string,
+): asserts condition;
 export function stagingRunnerPromotionDiagnostic(
   error: unknown,
 ): { promotionPhase: StagingPromotionPhase; causeCode?: string } | undefined;

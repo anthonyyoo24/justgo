@@ -1,5 +1,6 @@
 import worker from '../src/worker.js';
 import { localTestDatabaseUrl } from './local-test-database.js';
+import { checkWorkerOutboundAdapters } from './workers-outbound-smoke.js';
 
 // This entrypoint is used only by the disposable local workerd smoke. Startup
 // must not contact Auth, Sentry or any other hosted HTTP service.
@@ -53,6 +54,14 @@ export default {
         ? { ...bindings, JUSTGO_SOURCE_SHA: 'synthetic-invalid-source' }
         : bindings;
     const response = await worker.fetch(request, fixture, execution);
+    if (
+      mode === 'outbound' &&
+      request.method === 'GET' &&
+      new URL(request.url).pathname === '/health'
+    ) {
+      await checkWorkerOutboundAdapters();
+      response.headers.set('x-justgo-smoke-outbound-adapters', 'passed');
+    }
     response.headers.set('x-justgo-smoke-outbound', String(outboundRequests));
     return response;
   },

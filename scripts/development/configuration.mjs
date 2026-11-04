@@ -14,13 +14,36 @@ export const developmentIdentity = Object.freeze({
 });
 export const releaseGoogleIosClientId =
   '881166911699-nnplpatgdvqogjlnfed198jlbqslj3cn.apps.googleusercontent.com';
+export const developmentApiOrigins = Object.freeze({
+  vercel: 'https://justgo-two.vercel.app',
+  cloudflare: 'https://justgo-api-staging.anthonyyoo24.workers.dev',
+});
+
+export function developmentLaunchOptions(args) {
+  if (args.some((arg) => !['--clear', '--web', '--cloudflare'].includes(arg))) {
+    throw new Error(
+      'JustGO Dev supports --clear, --web and --cloudflare; its app scheme and LAN port are fixed.',
+    );
+  }
+  return {
+    apiTarget: args.includes('--cloudflare') ? 'cloudflare' : 'vercel',
+    expoArgs: args.filter((arg) => arg !== '--cloudflare'),
+  };
+}
 
 /** Public configuration only. Fail with variable names, never supplied values. */
-export function validateDevelopmentEnvironment(environment) {
+export function validateDevelopmentEnvironment(
+  environment,
+  { apiTarget = 'vercel' } = {},
+) {
   const check = (condition, name) => {
     if (!condition)
       throw new Error(`Invalid JustGO Dev configuration: ${name}.`);
   };
+  check(
+    apiTarget === 'vercel' || apiTarget === 'cloudflare',
+    'development API target',
+  );
   check(
     environment.IOS_BUNDLE_IDENTIFIER === developmentIdentity.bundle,
     'IOS_BUNDLE_IDENTIFIER',
@@ -32,7 +55,7 @@ export function validateDevelopmentEnvironment(environment) {
     'separate Production CloudKit container',
   );
   check(
-    environment.EXPO_PUBLIC_API_URL === 'https://justgo-two.vercel.app',
+    environment.EXPO_PUBLIC_API_URL === developmentApiOrigins[apiTarget],
     'EXPO_PUBLIC_API_URL',
   );
   check(
@@ -123,6 +146,7 @@ export async function developmentEnvironment(environment, configuration) {
 export async function localDevelopmentEnvironment(
   base = process.env,
   path = new URL('../../apps/mobile/.env.development.local', import.meta.url),
+  { apiTarget = 'vercel' } = {},
 ) {
   let file;
   try {
@@ -132,7 +156,38 @@ export async function localDevelopmentEnvironment(
       'Pull the configured EAS development environment into apps/mobile/.env.development.local before starting JustGO Dev.',
     );
   }
-  return developmentEnvironment({ ...base, ...parseEnv(file) });
+  // Check the saved EAS environment and native profile before selecting the
+  // explicit local test target, so an override cannot hide stale/unsafe inputs.
+  const resolved = await developmentEnvironment({ ...base, ...parseEnv(file) });
+  return validateDevelopmentEnvironment(
+    { ...resolved, EXPO_PUBLIC_API_URL: developmentApiOrigins[apiTarget] },
+    { apiTarget },
+  );
+}
+
+/** Only the local Dev launcher may replace Expo's development dotenv module. */
+export function validateLocalMetroEnvironment(environment) {
+  if (
+    environment.JUSTGO_LOCAL_DEVELOPMENT !== '1' ||
+    environment.NODE_ENV !== 'development' ||
+    environment.JUSTGO_APP_VARIANT !== 'development' ||
+    environment.EXPO_NO_DOTENV !== '1' ||
+    environment.CI ||
+    environment.GITHUB_ACTIONS ||
+    environment.VERCEL ||
+    environment.EAS_BUILD === 'true' ||
+    (environment.EAS_BUILD_PROFILE &&
+      environment.EAS_BUILD_PROFILE !== 'development')
+  )
+    throw new Error(
+      'The public environment adapter requires local JustGO Dev.',
+    );
+  return validateDevelopmentEnvironment(environment, {
+    apiTarget:
+      environment.EXPO_PUBLIC_API_URL === developmentApiOrigins.cloudflare
+        ? 'cloudflare'
+        : 'vercel',
+  });
 }
 
 if (

@@ -87,11 +87,18 @@ export async function buildStagingWorker({
   ).devDependencies?.wrangler;
   requireRelease(version === '4.155.0', 'PINNED_WRANGLER_REQUIRED');
   const cli = join(root, 'node_modules/wrangler/bin/wrangler.js');
+  // Neither version inspection nor bundling needs provider/database credentials.
+  const buildEnv = {
+    ...(env.PATH ? { PATH: env.PATH } : {}),
+    ...(env.HOME ? { HOME: env.HOME } : {}),
+    WRANGLER_SEND_METRICS: 'false',
+    CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false',
+  };
   requireRelease(
     (
       await run(process.execPath, [cli, '--version'], {
         cwd: root,
-        env,
+        env: buildEnv,
         signal,
       })
     ).trim() === version,
@@ -136,12 +143,6 @@ export async function buildStagingWorker({
     mode: 0o600,
     flag: 'wx',
   });
-  const buildEnv = {
-    ...env,
-    WRANGLER_SEND_METRICS: 'false',
-    CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false',
-  };
-  delete buildEnv.CLOUDFLARE_API_TOKEN;
   await run(
     process.execPath,
     [

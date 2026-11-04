@@ -214,7 +214,7 @@ export async function withStagingRelease<T>(
   client: Connection,
   options: {
     config: MigrationConfig;
-    operation: 'deploy' | 'migrate-deploy';
+    operation: 'prepare' | 'deploy' | 'migrate-deploy';
     sourceSha: string;
     previousApiSha: string | (() => Promise<string>);
     expectedDatabase: string;
@@ -223,7 +223,7 @@ export async function withStagingRelease<T>(
     now?: number;
     onPlan?: (plan: ReturnType<typeof migrationPlan>) => void;
   },
-  deploy: () => Promise<T>,
+  work: (plan: ReturnType<typeof migrationPlan>) => Promise<T>,
 ): Promise<T> {
   return withStagingDatabaseLease(
     client,
@@ -241,6 +241,7 @@ export async function withStagingRelease<T>(
         previousApiSha,
       );
       options.onPlan?.(plan);
+      if (options.operation === 'prepare') return work(plan);
       if (plan.pending.length) {
         ensure(
           options.operation === 'migrate-deploy' &&
@@ -267,7 +268,7 @@ export async function withStagingRelease<T>(
           options.operation === 'deploy' && !options.planDigest,
           'code_only_deploy_required',
         );
-      return deploy();
+      return work(plan);
     },
   );
 }

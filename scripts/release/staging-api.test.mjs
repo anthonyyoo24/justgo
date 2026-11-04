@@ -23,6 +23,7 @@ import {
   validateHyperdrive,
 } from './staging-api-runner.mjs';
 import { abandonedVersionRequested } from './staging-abandoned-version.mjs';
+import { localStagingApi } from './staging-local.mjs';
 
 const sha = 'a'.repeat(40),
   previous = 'b'.repeat(40);
@@ -668,6 +669,135 @@ test('uploads inspected bytes without traffic then probes and promotes precisely
   assert.ok(
     !readdirSync(f.root).some((p) => p.startsWith('justgo-worker-release-')),
   );
+});
+test('local staging uses truthful provenance and the same one-upload/one-promotion path', async (t) => {
+  const f = fixture(t);
+  const local = {
+    sha,
+    phaseBranch: 'codex/phase-16-billing',
+    runId: 'local-aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',
+    attempt: '1',
+  };
+  let uploadedMetadata;
+  const result = await localStagingApi('deploy', {
+    ...f,
+    context: local,
+    run: async (command, args, options) =>
+      args[0] === 'branch' ? local.phaseBranch : f.run(command, args, options),
+    request: async (target, path, options) => {
+      if (options.method === 'POST')
+        uploadedMetadata = JSON.parse(options.body.get('metadata'));
+      const value = await f.request(target, path, options);
+      if (path === `/versions/${candidateId}`)
+        value.resources.bindings.find(
+          (b) => b.name === 'JUSTGO_RELEASE_RUN_ID',
+        ).text = local.runId;
+      return value;
+    },
+  });
+  assert.equal(result.runId, local.runId);
+  assert.match(
+    uploadedMetadata.annotations['workers/message'],
+    / Local local-/,
+  );
+  assert.ok(
+    !uploadedMetadata.annotations['workers/message'].includes('GitHub'),
+  );
+  assert.equal(f.calls.filter((c) => c.method === 'POST').length, 1);
+  assert.equal(f.calls.filter((c) => c.promotion).length, 1);
+  assert.equal(f.calls.filter((c) => c.probe).length, 8);
+});
+test('source changed during bundle capture cannot upload on either release entry', async (t) => {
+  const f = fixture(t);
+  let changed = false;
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      build: async (options) => {
+        const result = await f.build(options);
+        changed = true;
+        return result;
+      },
+      run: async (command, args, options) =>
+        changed && args[0] === 'status'
+          ? ' M private-change.ts'
+          : f.run(command, args, options),
+    }),
+    /STAGING_SOURCE_NOT_CLEAN/,
+  );
+  assert.ok(!f.calls.some((c) => c.method === 'POST' || c.promotion));
+});
+test('public propagation repeats only read probes before one complete candidate round', async (t) => {
+  const f = fixture(t);
+  let publicProbes = 0;
+  const result = await stagingApi('deploy', {
+    ...f,
+    probe: async (origin, path, options) => {
+      const value = await f.probe(origin, path, options);
+      if (origin === target.origin && ++publicProbes === 1)
+        value.headers['x-justgo-source-sha'] = previous;
+      return value;
+    },
+  });
+  assert.equal(result.versionId, candidateId);
+  assert.equal(publicProbes, 8);
+  assert.equal(f.calls.filter((call) => call.probe).length, 12);
+  assert.deepEqual(f.waits, [2000]);
+  assert.equal(f.calls.filter((call) => call.method === 'POST').length, 1);
+  assert.equal(f.calls.filter((call) => call.promotion).length, 1);
+  assert.ok(
+    !f.calls.some((call) => ['DELETE', 'PUT', 'PATCH'].includes(call.method)),
+  );
+  assert.deepEqual(readdirSync(f.root), []);
+});
+test('immutable candidate probes still reject the captured previous source without promotion', async (t) => {
+  const f = fixture(t);
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      probe: async (...args) => {
+        const value = await f.probe(...args);
+        value.headers['x-justgo-source-sha'] = previous;
+        return value;
+      },
+    }),
+    (error) =>
+      stagingRunnerFailureCode(error) === 'STAGING_RUNTIME_IDENTITY_MISMATCH',
+  );
+  assert.deepEqual(f.waits, []);
+  assert.equal(f.calls.filter((call) => call.method === 'POST').length, 1);
+  assert.ok(!f.calls.some((call) => call.promotion));
+  assert.deepEqual(readdirSync(f.root), []);
+});
+test('lease loss during public probes retains the phase and never repeats promotion', async (t) => {
+  const f = fixture(t),
+    controller = new AbortController();
+  await assert.rejects(
+    stagingApi('deploy', {
+      ...f,
+      signal: controller.signal,
+      probe: async (origin, path, options) => {
+        const value = await f.probe(origin, path, options);
+        if (origin === target.origin) controller.abort();
+        return value;
+      },
+    }),
+    (error) => {
+      assert.equal(
+        stagingRunnerFailureCode(error),
+        'STAGING_PROMOTION_UNCONFIRMED',
+      );
+      assert.deepEqual(stagingRunnerPromotionDiagnostic(error), {
+        promotionPhase: 'public-probes',
+        causeCode: 'STAGING_DATABASE_LEASE_LOST',
+      });
+      return true;
+    },
+  );
+  assert.deepEqual(f.waits, []);
+  assert.equal(f.calls.filter((call) => call.method === 'POST').length, 1);
+  assert.equal(f.calls.filter((call) => call.promotion).length, 1);
+  assert.deepEqual(readdirSync(f.root), []);
 });
 test('abandoned continuation requires an exact code-only, account-bound opt-in', async (t) => {
   const f = fixture(t, undefined, true);

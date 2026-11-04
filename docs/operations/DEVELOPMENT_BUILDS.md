@@ -129,9 +129,41 @@ From the repository root:
 npm run dev:mobile -- --clear
 ```
 
+For an owner-only synthetic test of the Cloudflare staging API, select it
+explicitly:
+
+```sh
+npm run dev:mobile -- --cloudflare --clear
+```
+
+The option is consumed by the launcher before Expo starts. It validates the
+saved development environment and pinned native profile first, then changes
+only `EXPO_PUBLIC_API_URL` to
+`https://justgo-api-staging.anthonyyoo24.workers.dev`. The default command retains
+its existing Vercel API target. Identity, Auth/provider pairing, Sentry-off mode,
+current legal URLs and fixture rejection remain enforced; remote EAS settings
+and release profiles are not changed. Arbitrary API origins are not accepted.
+The initial phone screen/navigation check can use guest mode. Use a genuinely
+disposable Apple/Google identity before account synchronization or deletion
+checks, and synthetic writing because Dev shares the staging database. An
+existing secondary provider account is sufficient; a new email is not required.
+This early test can precede final TestFlight
+and legal/Vercel retirement; it does not publish the pending Cloudflare notice
+or close final native/cutover acceptance. Verify a compatible Dev binary before
+loading current source: the recorded October 26 build predates the current
+native patches/source-build policy and is not accepted as compatible.
+
 The launcher reads only ignored `.env.development.local`, validates the Dev
-identity/provider pairing and sets `EXPO_NO_DOTENV=1`. It never falls back to
-release `.env.local`. Metro uses one worker, LAN port 8081 and explicit scheme
+identity/provider pairing and sets `EXPO_NO_DOTENV=1`. Expo 58's development
+virtual environment still merges saved dotenv modules after that CLI setting.
+The explicit local-launcher marker therefore selects a separate public adapter
+for every Metro platform, reading the validated API, provider, diagnostics and notice values
+together from Expo's runtime prelude. It exports no private values or fixture
+authorization. Marked production, CI, EAS-build and fixture contexts are rejected;
+ordinary release and guarded journey resolution remain unchanged. Restart with
+`--clear` after changing this resolver and verify actual served consumers, rather
+than only the launcher's process values. It never falls back to release
+`.env.local`. Metro uses one worker, LAN port 8081 and explicit scheme
 `justgo-dev`; add `--web` for a browser preview. `npm run dev:web` is unchanged.
 
 Use the same Wi-Fi on phone and Mac and scan the current **server** QR. This
@@ -165,15 +197,23 @@ profile separate from the TestFlight profile; freeze credentials during builds.
 
 ## Acceptance still required
 
-[PR #54](https://github.com/anthonyyoo24/justgo/pull/54) is merged. The first hosted
-[Dev compile/upload](https://github.com/anthonyyoo24/justgo/actions/runs/40375898057)
-succeeded from `22d583d01713c4f3b948f6c8873723288b13bea5`, tag
-`development-ios-2026-10-26-1`, producing Dev 0.1.0 (1). IPA SHA-256 is
-`9884f136c8acea3cdc7a48d9802f4657936ba457cdba72ba72b531eadfdeb52a`;
-the [installation artifact](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/38339b73-da09-49da-b9e1-149119481fd7)
-is hosted. Native phone acceptance is still pending. This binary predates the
-later build-5 native patches; its receipt does not establish current native
-compatibility after those inputs change. Verify side-by-side install, both providers' first/returning
-sign-in/cancellation, retained TestFlight data, Dev-container iCloud round trip and
-live Metro on the phone. Account configuration, plugin introspection and browser
-previews do not establish native acceptance or close Phase 14 gates.
+The latest approved [Dev compile/upload](https://github.com/anthonyyoo24/justgo/actions/runs/41348697942)
+succeeded from reviewed `d66c42d3daa2cc990f347fbf674b661845f1c603`, tag
+`staging-cloudflare-2026-11-01`, producing Dev 0.1.0 (2). Signed inspection,
+exact upload and cleanup passed. The downloaded IPA's 31,074,881-byte size and
+SHA-256 `704051dcd4c1db7adcbd3ceba7fd9d4d7711cc06fbbdc578728bcb0d375b1043`
+match its source/run manifest. Its [installation page](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/c1f43ed8-066a-413e-b196-647588a1296f)
+shows Succeeded and the phone QR. This supersedes the October 26 build-1 artifact
+for current testing; no older build or TestFlight installation was retired.
+
+Anthony reports scanning both install/connect QR codes and the app appearing
+to work on his iPhone, confirms both app variants remain present, and confirms
+signed-out/guest mode. He also confirmed that a synthetic “Phone test” reflection
+remains in Progress after fully closing and reopening Dev. These are owner-reported
+launch and guest-persistence results; the installed build number was not
+independently read from the device. Detailed physical phone acceptance remains
+open: both providers' first/returning sign-in and cancellation, retained
+TestFlight data and Dev-container iCloud round trip.
+Use a disposable provider account for synchronization/deletion checks. Local
+bundle inspection, account configuration and browser previews do not establish
+native acceptance or close Phase 14 gates.

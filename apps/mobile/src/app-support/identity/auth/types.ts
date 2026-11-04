@@ -5,11 +5,15 @@ export type ProviderSession = {
   expiresAt: string;
   linkedProviders?: readonly SignInProvider[];
 };
+export const providerAuthErrorCodes = [
+  'CANCELLED',
+  'CONFIGURATION',
+  'AUTH',
+  'STORAGE',
+  'LAST_PROVIDER',
+] as const;
 export class ProviderAuthError extends Error {
-  constructor(
-    readonly code:
-      'CANCELLED' | 'CONFIGURATION' | 'AUTH' | 'STORAGE' | 'LAST_PROVIDER',
-  ) {
+  constructor(readonly code: (typeof providerAuthErrorCodes)[number]) {
     super(code);
     this.name = 'ProviderAuthError';
   }

@@ -143,7 +143,9 @@ export function createServerErrorReporter(
             headers: { 'Content-Type': 'application/x-sentry-envelope' },
             credentials: 'omit',
             referrerPolicy: 'no-referrer',
-            redirect: 'error',
+            // Workers supports manual, not error. Non-2xx responses below
+            // pause delivery without following Location or retrying.
+            redirect: 'manual',
             body,
             signal: controller.signal,
           });

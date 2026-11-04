@@ -106,7 +106,10 @@ function Navigation() {
       <Stack.Screen name="acceptance" options={{ gestureEnabled: false }} />
       <Stack.Screen name="account/sign-in" />
       <Stack.Screen name="auth/callback" />
-      <Stack.Protected guard={welcome}>
+      {/* Welcome owns its sign-in handoff until access and challenges are ready. */}
+      <Stack.Protected
+        guard={welcome || (!!identity.account && !identity.deletionStatus)}
+      >
         <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       {/* Removing these routes also removes the deleted account's Back history. */}

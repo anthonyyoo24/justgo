@@ -40,7 +40,7 @@ const legacyInfo = {
   sessionId: account.sessionId,
   expiresAt: account.expiresAt,
 };
-function setup() {
+function setup(connectionDiagnostics = false) {
   let state: ManagedIdentityState | null = null;
   const stored = new Map<string, string>();
   let provider: ProviderSession | null = null;
@@ -127,6 +127,7 @@ function setup() {
       secureStorage,
       legacyVault: vault,
       randomId: () => uuid(id++),
+      connectionDiagnostics,
     });
     controller.setGuestDataMerger(jest.fn(async () => {}));
     controller.setGuestDataRetirer(jest.fn(async () => {}));
@@ -182,6 +183,96 @@ it('enters a durable guest collection without creating a server or Auth account'
     mode: 'guest',
     account: null,
   });
+});
+
+it('keeps connection diagnostics disabled by default and outside persisted state', async () => {
+  const ctx = setup();
+  await ctx.controller.continueAsGuest();
+  ctx.setFailure(new ApiError('UNAVAILABLE', uuid(99)));
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.getSnapshot().connectionReference).toBeNull();
+  expect(ctx.controller.getSnapshot().message).toContain(
+    'Couldn’t finish connecting',
+  );
+  expect(ctx.saved()).not.toHaveProperty('connectionReference');
+  ctx.controller.dispose();
+});
+
+it.each([
+  'provider-auth',
+  'legacy-vault',
+  'app-session',
+  'adopt-guest',
+  'save-account',
+  'retire-guest',
+] as const)(
+  'identifies the %s failure without changing durable recovery boundaries',
+  async (phase) => {
+    const ctx = setup(true);
+    await ctx.controller.continueAsGuest();
+    const guest = ctx.controller.getSnapshot().collectionId;
+    if (phase === 'provider-auth')
+      ctx.auth.signIn.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+    else if (phase === 'legacy-vault')
+      jest
+        .spyOn(ctx.vault, 'read')
+        .mockRejectedValueOnce(new Error('PRIVATE_TOKEN_AND_WRITING'));
+    else if (phase === 'app-session')
+      ctx.setFailure(new ApiError('UNAVAILABLE', uuid(99)));
+    else if (phase === 'adopt-guest')
+      ctx.controller.setGuestDataMerger(async () => {
+        throw new ApiError('NETWORK');
+      });
+    else if (phase === 'save-account') {
+      const write = ctx.storage.write.getMockImplementation();
+      if (!write) throw new Error('Missing fixture storage');
+      ctx.storage.write.mockImplementation(async (next) => {
+        if (next.mode === 'account')
+          throw new Error('PRIVATE_TOKEN_AND_WRITING');
+        await write(next);
+      });
+    } else
+      ctx.controller.setGuestDataRetirer(async () => {
+        throw new Error('PRIVATE_TOKEN_AND_WRITING');
+      });
+    await ctx.controller.signIn('google');
+    const reference = ctx.controller.getSnapshot().connectionReference;
+    expect(reference).toContain(`Dev sign-in reference: ${phase} / `);
+    expect(reference).not.toContain('PRIVATE_TOKEN_AND_WRITING');
+    if (phase === 'app-session') expect(reference).toContain(uuid(99));
+    expect(ctx.saved()).not.toHaveProperty('connectionReference');
+    if (phase === 'retire-guest') {
+      expect(ctx.saved()).toMatchObject({
+        collection: { kind: 'account', id: account.userId },
+        guestAdoption: { status: 'copied' },
+      });
+    } else {
+      expect(ctx.controller.getSnapshot().collectionId).toBe(guest);
+      expect(ctx.saved()?.pendingSignIn).not.toBeNull();
+    }
+    ctx.controller.dispose();
+    expect(ctx.controller.getSnapshot().connectionReference).toBeNull();
+  },
+);
+
+it('clears a connection reference for cancellation, a new attempt and success', async () => {
+  const ctx = setup(true);
+  await ctx.controller.continueAsGuest();
+  ctx.setFailure(new ApiError('UNAVAILABLE'));
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.getSnapshot().connectionReference).toContain(
+    'app-session / UNAVAILABLE',
+  );
+  ctx.auth.signIn.mockRejectedValueOnce(new ProviderAuthError('CANCELLED'));
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.getSnapshot().connectionReference).toBeNull();
+  ctx.setFailure(null);
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    connectionReference: null,
+    account: { userId: account.userId },
+  });
+  ctx.controller.dispose();
 });
 
 it.each(['apple', 'google'] as const)(
@@ -284,8 +375,8 @@ it('treats provider cancellation quietly and keeps the original guest collection
   expect(ctx.calls).toEqual([]);
 });
 
-it('persists automatic adoption across a PKCE browser redirect', async () => {
-  const ctx = setup();
+it('traces callback and app-session failures while keeping redirect adoption retryable', async () => {
+  const ctx = setup(true);
   ctx.auth.signIn.mockResolvedValueOnce('redirecting');
   await ctx.controller.initialize();
   await ctx.controller.continueAsGuest();
@@ -300,9 +391,26 @@ it('persists automatic adoption across a PKCE browser redirect', async () => {
   const callback = ctx.create();
   const merge = jest.fn(async () => {});
   callback.setGuestDataMerger(merge);
+  ctx.auth.initialize.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
   await callback.initialize();
+  expect(callback.getSnapshot().connectionReference).toBe(
+    'Dev sign-in reference: provider-auth / AUTH',
+  );
+  ctx.setFailure(new ApiError('UNAVAILABLE', uuid(99)));
+  await callback.retry();
+  expect(callback.getSnapshot()).toMatchObject({
+    account: null,
+    hasPending: true,
+    connectionReference: `Dev sign-in reference: app-session / UNAVAILABLE / ${uuid(99)}`,
+  });
+  expect(merge).not.toHaveBeenCalled();
+  ctx.setFailure(null);
+  await callback.retry();
   expect(merge).toHaveBeenCalledTimes(1);
   expect(callback.getSnapshot().account).toEqual(account);
+  expect(callback.getSnapshot().connectionReference).toBeNull();
+  callback.dispose();
+  ctx.controller.dispose();
 });
 
 it('fences uploads immediately on offline logout, retains local ownership and retries secure signout after restart', async () => {

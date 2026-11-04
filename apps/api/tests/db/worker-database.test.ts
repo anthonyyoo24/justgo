@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readConfig, readDatabaseConfig } from '../../src/config.js';
+import * as configuration from '../../src/config.js';
 import {
   createWorkerDatabase,
   hyperdrivePoolOptions,
@@ -33,7 +35,67 @@ const hostedBindings = {
   SUPABASE_PUBLISHABLE_KEY: 'synthetic-publishable-key',
   SUPABASE_AUTH_SECRET_KEY: 'synthetic-auth-secret-with-at-least-32-characters',
 };
+afterEach(() => vi.restoreAllMocks());
 describe('Worker database boundary', () => {
+  it('preserves complete direct configuration while parsing shared settings once per invocation', () => {
+    const environment = {
+      ...hostedBindings,
+      DATABASE_CA_CERT: 'synthetic-origin-ca',
+      API_SENTRY_ENABLED: 'true',
+      API_SENTRY_DSN: `https://${'a'.repeat(32)}@o1.ingest.us.sentry.io/1`,
+      API_SENTRY_RELEASE: 'a'.repeat(40),
+      BETA_ACCESS_WINDOW: JSON.stringify({
+        startsAt: '2026-11-01T00:00:00Z',
+        expiresAt: '2026-12-01T00:00:00Z',
+      }),
+    };
+    const fullConfig = vi.spyOn(configuration, 'readConfig');
+    const settings = readWorkerConfig(environment);
+    expect(fullConfig).toHaveBeenCalledOnce();
+    const { HYPERDRIVE, ...directEnvironment } = environment;
+    expect(settings.lockConfig).toEqual(
+      readConfig({
+        ...directEnvironment,
+        DATABASE_URL: environment.LOCK_DATABASE_URL,
+        DATABASE_POOL_MAX: '1',
+      }),
+    );
+    expect(settings.config.DATABASE_URL).toBe(HYPERDRIVE.connectionString);
+    expect(settings.lockConfig.DATABASE_CA_CERT).toBe('synthetic-origin-ca');
+    expect(settings.lockConfig).not.toBe(settings.config);
+    const next = readWorkerConfig({
+      ...environment,
+      API_SENTRY_RELEASE: 'b'.repeat(40),
+    });
+    expect(next.config.API_SENTRY).not.toBe(settings.config.API_SENTRY);
+    expect(next.config.BETA_ACCESS_WINDOW).not.toBe(
+      settings.config.BETA_ACCESS_WINDOW,
+    );
+    expect(next.config.API_SENTRY?.release).toBe(
+      `justgo-api@${'b'.repeat(40)}`,
+    );
+  });
+  it('uses the same transport validation for complete and alternate database configs', () => {
+    for (const environment of [
+      { DATABASE_URL: 'https://remote.invalid/db' },
+      {
+        DATABASE_URL: 'postgres://justgo_runtime@remote.invalid/db',
+        DATABASE_SSL: 'disable',
+      },
+      { DATABASE_URL: local, DATABASE_POOL_MAX: '0' },
+      { DATABASE_URL: local, DATABASE_SSL: 'invalid' },
+    ]) {
+      expect(() => readConfig(environment)).toThrow();
+      expect(() => readDatabaseConfig(environment)).toThrow();
+    }
+    expect(
+      readDatabaseConfig({ DATABASE_URL: local, DATABASE_SSL: 'disable' }),
+    ).toMatchObject({
+      DATABASE_URL: local,
+      DATABASE_SSL: 'disable',
+      DATABASE_POOL_MAX: 1,
+    });
+  });
   it('bounds per-request connections and SQL deadlines without overriding binding transport', () => {
     expect(hyperdrivePoolOptions(local)).toMatchObject({
       max: 1,

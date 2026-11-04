@@ -1,20 +1,35 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { ManagedIdentityController } from '../auth/managed-controller';
-import type { ManagedAuth } from '../auth/types';
+import { ProviderAuthError, type ManagedAuth } from '../auth/types';
 import type { ManagedIdentityState } from '../auth/managed-state';
 import { createMemoryVault } from '../storage';
 import { WelcomeScreen } from './WelcomeScreen';
 
 const mockPush = jest.fn();
 const mockBeginEntry = jest.fn();
+const mockCancelEntry = jest.fn();
+let mockFocused = true;
+const mockHandoff = { destination: null, error: '', retry: jest.fn() };
+jest.mock('../account/useSignInHandoff', () => ({
+  useSignInHandoff: () => mockHandoff,
+}));
 jest.mock('./WelcomeTransition', () => ({
   useBeginWelcomeEntry: () => mockBeginEntry,
+  useCancelWelcomeEntry: () => mockCancelEntry,
 }));
 jest.mock('expo-router', () => {
+  const React = require('react') as typeof import('react');
   const { Text } = require('react-native') as typeof import('react-native');
   return {
     Redirect: ({ href }: { href: string }) => <Text>Redirect: {href}</Text>,
     useRouter: () => ({ push: mockPush }),
+    useIsFocused: () => mockFocused,
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      const focused = mockFocused;
+      React.useEffect(() => {
+        if (focused) return effect();
+      }, [effect, focused]);
+    },
   };
 });
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
@@ -23,7 +38,11 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 const controllers: ManagedIdentityController[] = [];
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockFocused = true;
+  mockHandoff.error = '';
+});
 afterEach(() => {
   for (const controller of controllers) controller.dispose();
   controllers.length = 0;
@@ -109,21 +128,35 @@ it.each([false, true])(
   },
 );
 
-it.each(['Apple', 'Google'] as const)(
-  'opens the separate %s sign-in page after beginning entry preparation',
-  async (provider) => {
-    const s = await setup();
+it.each([
+  ['Apple', false],
+  ['Google', false],
+  ['Apple', true],
+  ['Google', true],
+] as const)(
+  'starts %s directly from Welcome, including after deletion=%s',
+  async (provider, deleted) => {
+    const s = await setup(deleted);
+    const signIn = jest.spyOn(s.auth, 'signIn');
     const screen = await render(<WelcomeScreen controller={s.controller} />);
+    expect(
+      screen.getByText(/Signing in saves your challenge history/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/Saved entries on this phone are included/),
+    ).toBeTruthy();
     await fireEvent.press(
       screen.getByRole('button', { name: `Sign in with ${provider}` }),
     );
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/account/sign-in',
-      params: { provider: provider.toLowerCase() },
-    });
-    expect(mockBeginEntry.mock.invocationCallOrder[0]).toBeLessThan(
-      Number(mockPush.mock.invocationCallOrder[0]),
-    );
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expect(signIn).toHaveBeenCalledWith(provider.toLowerCase());
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockBeginEntry).not.toHaveBeenCalled();
+    expect(mockCancelEntry).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: `Sign in with ${provider}` }),
+    ).toBeEnabled();
     expect(s.api.request).not.toHaveBeenCalled();
   },
 );
@@ -151,18 +184,34 @@ it('leaves Welcome once a guest collection has been selected', async () => {
   expect(s.api.request).not.toHaveBeenCalled();
 });
 
-it('keeps all entry controls disabled while provider sign-in is running', async () => {
+it.each(['pending', 'cleanup'] as const)(
+  'resumes %s deletion before offering Welcome sign-in',
+  async (deletionStatus) => {
+    const s = await setup();
+    const snapshot = { ...s.controller.getSnapshot(), deletionStatus };
+    jest.spyOn(s.controller, 'getSnapshot').mockReturnValue(snapshot);
+    const screen = await render(<WelcomeScreen controller={s.controller} />);
+    expect(screen.getByText('Redirect: /delete-account')).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: 'Sign in with Apple' }),
+    ).toBeNull();
+  },
+);
+
+it('keeps the selected spinner and blocks duplicate sign-in and Continue until cancellation', async () => {
   const s = await setup();
   let release!: () => void;
-  s.auth.signIn = () =>
-    new Promise((resolve) => {
-      release = () => resolve(null);
-    });
+  s.auth.signIn = jest.fn(
+    () =>
+      new Promise((resolve) => {
+        release = () => resolve(null);
+      }),
+  );
   const screen = await render(<WelcomeScreen controller={s.controller} />);
-  let operation!: Promise<void>;
   await act(async () => {
-    operation = s.controller.signIn('apple');
-    await Promise.resolve();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Sign in with Apple' }),
+    );
   });
   try {
     for (const name of [
@@ -174,16 +223,83 @@ it('keeps all entry controls disabled while provider sign-in is running', async 
       expect(button).toBeDisabled();
       await fireEvent.press(button);
     }
+    expect(s.auth.signIn).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole('progressbar', { name: 'Signing in with Apple' }),
+    ).toBeTruthy();
     expect(mockPush).not.toHaveBeenCalled();
     expect(mockBeginEntry).not.toHaveBeenCalled();
   } finally {
     await act(async () => {
       release();
-      await operation;
     });
   }
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   expect(s.api.request).not.toHaveBeenCalled();
+});
+
+it('keeps provider failure on Welcome and allows an explicit retry', async () => {
+  const s = await setup();
+  s.auth.signIn = jest
+    .fn()
+    .mockRejectedValueOnce(new ProviderAuthError('CONFIGURATION'))
+    .mockResolvedValue(null);
+  const screen = await render(<WelcomeScreen controller={s.controller} />);
+  const press = async () => {
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Sign in with Google' }),
+    );
+  };
+  await press();
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    /Sign-in isn’t configured/,
+  );
+  expect(mockPush).not.toHaveBeenCalled();
+  await press();
+  expect(s.auth.signIn).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('does not show a late provider failure after leaving and returning to Welcome', async () => {
+  const s = await setup();
+  let reject: (error: Error) => void = () => {};
+  s.auth.signIn = () =>
+    new Promise((_resolve, fail) => {
+      reject = fail;
+    });
+  const screen = await render(<WelcomeScreen controller={s.controller} />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Sign in with Google' }),
+  );
+  mockFocused = false;
+  await screen.rerender(<WelcomeScreen controller={s.controller} />);
+  await act(async () => reject(new ProviderAuthError('CONFIGURATION')));
+  mockFocused = true;
+  await screen.rerender(<WelcomeScreen controller={s.controller} />);
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Sign in with Google' }),
+  ).toBeEnabled();
+});
+
+it('offers connection retry for a later controller failure after provider cancellation', async () => {
+  const { auth, controller } = await setup();
+  const screen = await render(<WelcomeScreen controller={controller} />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Sign in with Google' }),
+  );
+  expect(screen.queryByRole('alert')).toBeNull();
+
+  const initialize = jest
+    .spyOn(auth, 'initialize')
+    .mockRejectedValueOnce(new ProviderAuthError('STORAGE'));
+  await act(() => controller.retry());
+  expect(screen.getByRole('alert')).toHaveTextContent(/storage is unavailable/);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Retry connection' }),
+  );
+  expect(initialize).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('alert')).toBeNull();
 });
 
 it('keeps a failed local entry retryable without creating a server account', async () => {

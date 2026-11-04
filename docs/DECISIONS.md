@@ -1,6 +1,6 @@
 # Implementation decision register
 
-Updated November 1, 2026. The [October 31 custody and coordinated-cutover decision](#october-31-local-recovery-key-custody-and-coordinated-cutover) supersedes the earlier offline/off-Mac key prerequisite and accepts a brief legal-URL gap during the prepared cutover. The [October 30 owner-only full-cutover decision](#october-30-owner-only-full-cloudflare-cutover) replaces the transition notice and retained Vercel roles with a full Cloudflare switch after retiring owner-only old builds and hosting. Existing data-preservation, recovery, privacy and device gates remain. The [October 31 recovery-target decision](#october-31-recovery-targets) records accepted ordinary-write loss and recovery-time objectives while preserving the fail-closed beta limit. The [October 30 staging-retention decision](#october-30-seven-day-staging-backup-retention) records approved seven-day protection and expiry with verified lock enforcement; actual expiry remains unobserved. The [October 29 small-beta recovery decision](#october-29-small-beta-recovery-limit) records the accepted beta recovery limit and required reassessment. The [October 28 Cloudflare decision](#october-28-cloudflare-workers-hono-and-r2-backups) adds Phase 15 to move the API to Cloudflare Workers and Hono, with R2 backups instead of Supabase Pro. The [October 28 renumbering](#october-28-phase-renumbering) makes billing Phase 16 and shifts later phases; dated entries keep their original numbers. The [October 28 billing-provider decision](#october-28-superwall-replaces-revenuecat-for-phase-16-billing) replaces RevenueCat with Superwall for Phase 16. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
+Updated November 1, 2026. The [November 1 Cloudflare assessment decision](#november-1-cloudflare-contract-assessment-and-rollout-resumption) records Anthony's acceptance of the current account, Canadian DPA coverage and private consumer-journal assessment, including its residual interpretation. The [October 31 custody and coordinated-cutover decision](#october-31-local-recovery-key-custody-and-coordinated-cutover) supersedes the earlier offline/off-Mac key prerequisite and accepts a brief legal-URL gap during the prepared cutover. The [October 30 owner-only full-cutover decision](#october-30-owner-only-full-cloudflare-cutover) replaces the transition notice and retained Vercel roles with a full Cloudflare switch after retiring owner-only old builds and hosting. Existing data-preservation, recovery, privacy and device gates remain. The [October 31 recovery-target decision](#october-31-recovery-targets) records accepted ordinary-write loss and recovery-time objectives while preserving the fail-closed beta limit. The [October 30 staging-retention decision](#october-30-seven-day-staging-backup-retention) records approved seven-day protection and expiry with verified lock enforcement; actual expiry remains unobserved. The [October 29 small-beta recovery decision](#october-29-small-beta-recovery-limit) records the accepted beta recovery limit and required reassessment. The [October 28 Cloudflare decision](#october-28-cloudflare-workers-hono-and-r2-backups) adds Phase 15 to move the API to Cloudflare Workers and Hono, with R2 backups instead of Supabase Pro. The [October 28 renumbering](#october-28-phase-renumbering) makes billing Phase 16 and shifts later phases; dated entries keep their original numbers. The [October 28 billing-provider decision](#october-28-superwall-replaces-revenuecat-for-phase-16-billing) replaces RevenueCat with Superwall for Phase 16. The [October 20 optional-account decision](#october-20-optional-accounts-and-cloud-sync) owns the current Phase 13 scope and supersedes its earlier local-only/manual-backup outcome. The earlier local-journal decision retains the phase numbering and release sequence. Earlier dated phase numbers and release orders are historical unless explicitly marked “now”; links resolve to the current owning files. Historical evidence and artifact paths remain unchanged. Historical dated decisions below retain their original evidence; the Phase 07 reconciliation supersedes server-backed browsing/active lifecycle, exact content revisions and cloud draft behavior. The October 19 [no-recording decision](#october-19-terms-links-without-acceptance-recording) supersedes the earlier legal receipt/version design and its analytics-permission assumption. The [October 20 territory decision](#october-20-initial-app-store-release-excludes-the-eu) supersedes the earlier worldwide target by excluding EU App Store countries, the UK, Norway, Iceland and Liechtenstein initially. Anthony owns product/account decisions; the implementation owner executes and records technical validation. Open choices below retain their status in [PRD §13](product/PRD.md#13-remaining-decisions-and-design-gaps).
 
 | Decision                                                                       | Owner                          | Due                             | State                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------------ | ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -799,6 +799,12 @@ passed. This does not supply physical-device evidence. The side-chat explanation
 of alerts and deployment automation authorizes no new implementation, account
 changes or purchases.
 
+**November 2 follow-up:** Anthony authorized removing the obsolete Maestro launch
+flow, its `test:native` command, command-wiring test and active setup references.
+Browser/lower-level checks and explicitly arranged physical-device or manual
+simulator checks remain. This retires the old harness; it does not authorize new
+native automation, remove simulator devices/runtimes/tools or close native gates.
+
 ## October 27 error alerts and approved server releases
 
 Anthony subsequently approved implementing Sentry for sanitized API errors and
@@ -1170,3 +1176,81 @@ Existing recovery, healthy-runtime, privacy/DPA and device gates and specific Gi
 permissions remain. The complete Privacy wording approved October 30 is preserved;
 effective date, matching version and publication authorization remain pending.
 Anthony's restriction against Cloudflare correspondence is unchanged.
+
+## November 1 Cloudflare contract assessment and rollout resumption
+
+Anthony accepts proceeding with Cloudflare for JustGO on the reviewed assessment
+of Youngshin Yoo's existing personal account, Canadian personal-data coverage
+under DPA v6.4 and the current lawful private consumer-journal flow through
+Workers, Hyperdrive and encrypted R2 recovery storage. The
+[notice review](legal/CLOUDFLARE_NOTICE_REVIEW.md#accepted-account-and-service-assessment)
+records the sources, reasoning and limits. The account/DPA/sensitive-content
+assessment gate is settled on that basis, including the residual contractual
+interpretation; no additional provider confirmation or external-counsel prerequisite
+is imposed.
+
+The assessment reads SSA §6.1 as a sufficient conditional trigger, not an express
+exclusive limitation, together with the account's unconditional incorporation
+notice and Cloudflare's all-customer statements. The current abuse policy supports
+reading Developer Platform §8(c) as addressing harmful or unauthorized sensitive
+disclosure rather than authorized private journal synchronization. These are
+documented interpretations, not provider-confirmed Canadian coverage or an
+express journal-specific safe harbor. No Cloudflare contact, new agreement or
+plan upgrade occurred; the no-contact restriction and Workers Free choice remain.
+
+This settles the reviewed provider assessment and allows remaining work to
+continue under its existing permissions and prerequisites. It does not approve
+a Git push, PR, merge, tag push or new release action. Actual managed-account,
+performance, backup/recovery/alerts/expiry, notice date/version/publication,
+coordinated retirement and native acceptance remain separate gates. Preserve
+the independent Phase 14 provider, consent, disclosure and device work. Reassess
+the Cloudflare conclusion if the service terms or actual processing materially
+change, including a move into HIPAA-regulated service relationships.
+
+Phone testing is the next owner checkpoint before proceeding beyond migration
+acceptance. Prepare its replacement build through the existing coordinated
+cutover: complete legal-artifact and build preparation first, retire old builds
+and Vercel roles, publish/verify the approved Cloudflare notices and update live
+URLs, then pass diagnostics preflight and build/upload. Preserve the remaining
+prerequisites and report actual evidence and open gates at that checkpoint;
+general rollout resumption does not waive the separate restricted actions.
+
+## November 1 grouped phase branches and protected decryption check
+
+Anthony wants the remaining work within a phase kept on its phase branch, with
+one consolidated PR for the phase changes instead of a new PR for each routine
+fix. Small local commits remain useful for review. Phase 15 continues on
+`codex/phase-15-rollout`, advanced locally to reviewed `d66c42d` after confirming
+it had no branch-only commits; the already merged PRs remain historical and are
+not replayed. No push, new PR, merge, release tag or deployment is authorized by
+this workflow preference. The proposed staging tag remains unpublished pending
+specific permission; it would deploy already reviewed main source without a new
+source PR.
+
+Anthony separately authorized the prepared protected decryption verification for
+the two exact November 1 database/ledger ciphertext objects downloaded from R2.
+Only `age` consumed the existing protected Mac identity; decrypted bytes were
+discarded without display or storage. Both authenticated decryptions passed.
+This authorizes and records that completed verification only, not future key use,
+restoring a database, a writer fence or reopening restored accounts. The
+[Phase 15 handoff](handoffs/phase-15-cloudflare-api.md#current-status) owns receipts
+and the remaining recovery/provider acceptance gates.
+
+## November 1 local phase staging without Git publication
+
+Anthony wants phase changes committed locally on the phase branch, with the push
+and one consolidated PR at the end. Phone testing must not force an early push,
+PR or merge. Prepare a direct owner-local code-only staging release from the exact
+committed Phase 15 source. Cloudflare deployment is separate from Git publication;
+the GitHub release lane remains main-only and retains its existing review policy.
+
+The local lane keeps the same database/history lease, actual publication checks,
+source/bundle identity, inherited runtime secrets, candidate probes and single
+promotion/readback. It records local UUID provenance rather than pretending to be
+a GitHub run. It cannot migrate, bootstrap, target production or bypass a missing
+protected database connection. Owner-local credentials stay in ignored mode-0600
+storage and out of child build/test processes. The existing migrator connection
+was found in the original protected `.local/staging.env` setup and passed actual
+verified-TLS, restricted-role, history and release-lease preparation. Reuse it
+without a password change; GitHub-held secrets need not be exported. No Git
+publication, secret rotation or broader database grant follows from this decision.

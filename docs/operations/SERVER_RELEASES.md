@@ -59,7 +59,9 @@ See [Hyperdrive's supported features](https://developers.cloudflare.com/hyperdri
 
 ## Credentials and approval protection
 
-Store these secrets only in the protected `justgo-staging` GitHub environment:
+For the GitHub release lane, store these secrets in the protected `justgo-staging`
+environment. The explicit owner-local code-only lane below uses an owner-only Mac
+credential file instead; no secret is copied into source or build children.
 
 | Secret                         | Purpose                                                                                                                               |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -107,6 +109,66 @@ is a harmless configuration read. Initial provisioning and later secret rotation
 need an approved version disposition. Never put secret values in process
 arguments, source, receipts or chat. The backup runner uses separate narrowly
 scoped credentials described in [Cloudflare backups](CLOUDFLARE_BACKUPS.md).
+
+## Local phase-branch staging tests
+
+The November 1 local-testing decision keeps Phase 15 source on
+`codex/phase-15-rollout` until the phase-end push and consolidated PR. With the
+owner's deployment authorization, `release:staging:local` can publish a clean,
+explicitly selected local commit to the existing **staging** Worker without
+pushing Git, creating a tag/PR or impersonating a GitHub run. The ordinary GitHub
+workflow retains its exact-main CI and protected-environment requirements.
+
+Run from the repository root:
+
+```sh
+npm run release:staging:local -- --prepare --phase-branch <phase-branch> --source <full-local-commit-sha> --credentials <protected-json-file>
+npm run db:local
+npm run release:staging:local -- --deploy --phase-branch <phase-branch> --source <full-local-commit-sha> --credentials <protected-json-file>
+```
+
+Specify the owner-approved phase branch and its exact checked-out commit.
+The lane rejects `main`, detached HEAD and dirty checkouts.
+
+The explicitly selected JSON file must be an owner-only regular file (mode 0600,
+no symlink/hard link). It contains only `CLOUDFLARE_API_TOKEN`,
+`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_SUBDOMAIN`, `STAGING_HYPERDRIVE_ID`,
+`MIGRATION_DATABASE_URL`, and `DATABASE_CA_CERT`. Use the existing restricted
+migrator's verified-TLS session-pooler connection; runtime credentials are not a
+substitute. Never paste credentials into chat or command arguments. The original
+operator connection and CA already exist in ignored owner-only `.local/staging.env`;
+check that protected setup before asking the owner to supply credentials. The
+local JSON configuration uses the verified existing connection without changing
+its password or GitHub's stored secret. GitHub secret values cannot be read back.
+An empty URL permits read-only baseline/bundle preparation, with
+`databaseVerified: false`, `deployReady: false` and a missing-prerequisite receipt.
+It cannot upload or promote a Worker.
+
+Before a local deployment, the command serially runs online Expo Doctor,
+`check:static`, coverage (including workspace and local database/migration tests),
+Workers smoke and the selected
+provider-sign-in, local-sync and account-deletion journeys. Their child environment
+accepts only dedicated loopback `justgo_test` connections from `apps/api/.env`;
+hosted credentials stay out of test and build children. Source must stay clean at
+the selected commit through checks and bundle capture. Both Wrangler invocations
+receive only explicit non-secret build settings.
+
+Preparation with a verified database connection checks migration history under
+the same lease and lists pending migration tags in the receipt. It can build a
+candidate with pending migrations. Deployment requires the entire migration
+chain to be applied already. Both operations reuse the existing restricted
+migrator connection, advisory lease, history checks, lost-connection watcher
+and final lease assertion. The shared release core preserves strict secret
+inheritance, baseline/latest stability, inspected bundle bytes, immutable-version
+probes, one promotion and public convergence/readback. It never retries an upload,
+automatically rolls back or changes runtime secret values.
+
+Version annotations identify `Local` and `local-<UUID>` provenance truthfully.
+Receipts remain in ignored `.local/phase15-cloudflare/local-releases/`, without
+credentials or user content. A successful local release does not claim hosted CI,
+merge approval, phone acceptance or completed cutover. Inspect the actual serving
+version before retrying an uncertain release. The same installed Dev app can test
+the updated staging API after verified deployment.
 
 ## Initial Worker and cutover prerequisites
 
@@ -271,7 +333,16 @@ still leads to readback, not a second mutation. At most 30 deployment reads, two
 seconds apart, must resolve to the exact candidate. Only the unchanged baseline
 is accepted while waiting; any other version fails closed. The candidate's
 source/run bindings and public health/readiness/auth probes then establish the
-result. Temporary build files are removed on success and failure.
+result. Public verification has one 30-second total budget, including requests
+and waits. A complete, strictly valid response from the captured previous source
+may remain visible during [deployment propagation](https://developers.cloudflare.com/workers/versions-and-deployments/version-overrides/).
+Only that known previous source permits a two-second wait and another full
+four-probe round. Success requires candidate health/readiness and both valid 401
+guards in the same final round. Unknown/missing source, wrong environment,
+invalid contracts/headers, endpoint/authentication failures and network failures
+stop immediately. Lease loss aborts probes and waits. Immutable candidate probes
+remain strict; the convergence check never uploads or promotes again. Temporary
+build files are removed on success and failure.
 
 ## Pending migrations and recovery evidence
 

@@ -16,18 +16,18 @@ Terms & Privacy has ordinary direct links and Continue, without document-view/ag
 
 ## Review outcomes and remaining conditions
 
-| Topic                              | Local candidate                                                                                                                                          | Remaining owner/gate                                                                                                                                                                                                                |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Private cloud/provider suitability | Signed-in journal requests include structured feelings and text; October 27 account readback confirms Vercel Hobby and future model-training sharing OFF | External use remains uncleared: establish an applicable processor/sensitive-content arrangement. Supabase's incorporated DPA has no stated Free exclusion, but notice/consent, active deletion and recovery safeguards still apply. |
-| Managed Auth                       | Supabase Auth adds provider subject, tokens and possible email/profile data; canonical ownership and login switches remain server verified               | Provider configuration, exact audiences, actual profile/session retention, revocation/linking/unlinking, final-method protection and hard-delete/retry acceptance remain open.                                                      |
-| CloudKit                           | Separate off-by-default private Apple database and native module are implemented locally                                                                 | Container/capability/provisioning, Apple-account changes, conflicts/quota/offline/relaunch, deletion generations/permanent closure and real device evidence remain open.                                                            |
-| Guest/local privacy                | No server account created by Continue; disclosed first sign-in adopts unowned phone entries; logout retains the same editable journal                    | Native persistence/lock/system-backup proof, interrupted adoption/source retirement, no cross-account remap; selected file destinations reviewed separately.                                                                        |
-| Download/import                    | One restorable history/journal/preferences ZIP; account-owner validation and explicit preview                                                            | Signed Files/picker/cancel/cleanup, duplicate/conflict/oversize/wrong-owner tests and truthful online-complete versus phone-snapshot scope.                                                                                         |
-| Deletion                           | Separate Delete all and Delete account with durable intents/epochs/receipts and cleanup of previously associated iCloud copies even when OFF             | Hosted managed Auth deletion cleanup, stale-device/backup-ledger replay, CloudKit purge, unavailable-account pending/retry and external/provider-copy boundaries.                                                                   |
-| Legacy server reset                | Old journal endpoint/UI retired; bounded forward server reset requested; phone data preserved                                                            | Approved actual reset/rollout evidence and provider recovery-copy expiry remain separate. No historical content recovery promise.                                                                                                   |
-| Operator/regions/age/EULA          | Existing Ontario personal operator, 18+, standard Apple EULA, exclusions retained                                                                        | Actual App Store eligibility/availability, contextual sensitive-data/regional notices and owner/public-text review before publication.                                                                                              |
-| Telemetry/support                  | Approved notice and signed Sentry DPA; build 5 and API reporter deployed; exact symbols and synthetic issue erasure verified                             | Native final envelope/cache/symbolication and live deployed API fault delivery remain open. Published event/backup retention is documented; no fixed trial/downgrade deadline is promised.                                          |
-| Legal hosting                      | Owner-directed October 25 publication on separate Vercel Hobby project; both HTTPS pages and logo verified anonymously                                   | Signed-iPhone link/accessibility checks remain. Reassess plan eligibility before commercial launch and update disclosures if actual services change.                                                                                |
+| Topic                              | Local candidate                                                                                                                                                     | Remaining owner/gate                                                                                                                                                                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Private cloud/provider suitability | Signed-in journal requests include structured feelings and text; November 1 Cloudflare account/DPA/private-journal assessment accepted with residual interpretation | Cloudflare operating/cutover acceptance and independent Phase 14 provider/consent gates remain. Supabase's incorporated DPA has no stated Free exclusion, but notice/consent, active deletion and recovery safeguards still apply. |
+| Managed Auth                       | Supabase Auth adds provider subject, tokens and possible email/profile data; canonical ownership and login switches remain server verified                          | Provider configuration, exact audiences, actual profile/session retention, revocation/linking/unlinking, final-method protection and hard-delete/retry acceptance remain open.                                                     |
+| CloudKit                           | Separate off-by-default private Apple database and native module are implemented locally                                                                            | Container/capability/provisioning, Apple-account changes, conflicts/quota/offline/relaunch, deletion generations/permanent closure and real device evidence remain open.                                                           |
+| Guest/local privacy                | No server account created by Continue; disclosed first sign-in adopts unowned phone entries; logout retains the same editable journal                               | Native persistence/lock/system-backup proof, interrupted adoption/source retirement, no cross-account remap; selected file destinations reviewed separately.                                                                       |
+| Download/import                    | One restorable history/journal/preferences ZIP; account-owner validation and explicit preview                                                                       | Signed Files/picker/cancel/cleanup, duplicate/conflict/oversize/wrong-owner tests and truthful online-complete versus phone-snapshot scope.                                                                                        |
+| Deletion                           | Separate Delete all and Delete account with durable intents/epochs/receipts and cleanup of previously associated iCloud copies even when OFF                        | Hosted managed Auth deletion cleanup, stale-device/backup-ledger replay, CloudKit purge, unavailable-account pending/retry and external/provider-copy boundaries.                                                                  |
+| Legacy server reset                | Old journal endpoint/UI retired; bounded forward server reset requested; phone data preserved                                                                       | Approved actual reset/rollout evidence and provider recovery-copy expiry remain separate. No historical content recovery promise.                                                                                                  |
+| Operator/regions/age/EULA          | Existing Ontario personal operator, 18+, standard Apple EULA, exclusions retained                                                                                   | Actual App Store eligibility/availability, contextual sensitive-data/regional notices and owner/public-text review before publication.                                                                                             |
+| Telemetry/support                  | Approved notice and signed Sentry DPA; build 5 and API reporter deployed; exact symbols and synthetic issue erasure verified                                        | Native final envelope/cache/symbolication and live deployed API fault delivery remain open. Published event/backup retention is documented; no fixed trial/downgrade deadline is promised.                                         |
+| Legal hosting                      | Owner-directed October 25 publication on separate Vercel Hobby project; both HTTPS pages and logo verified anonymously                                              | Signed-iPhone link/accessibility checks remain. Reassess plan eligibility before commercial launch and update disclosures if actual services change.                                                                               |
 
 ## Apple and regulator research
 
@@ -422,26 +422,33 @@ and later material updates:
 
 The owner separately authorized the public document hosting described above. This record grants no Git publication, private-journal provider activation, plan upgrade, agreement acceptance, billing activation, native signing/upload or App Store submission. The earlier [Phase 12 handoff](../handoffs/phase-12-legal-documents.md) is historical; the reopened [Phase 13 handoff](../handoffs/phase-13-local-journal.md) owns current implementation evidence and remaining gates.
 
-## Phase 15 local preparation and approval boundary
+## Phase 15 provider assessment and remaining acceptance
 
-The Hono API, Workers release lane, encrypted R2 copy/restore tools and static
-legal Worker configuration are local candidates. The
-[notice review](CLOUDFLARE_NOTICE_REVIEW.md) contains exact proposed provider,
-retention and cross-border wording. The approved public Privacy source stays
-unchanged. Cloudflare's public DPA v6.4 is a source for review, not evidence that
-the actual customer/account is covered. After Anthony signed in himself,
-authenticated inspection confirmed his account, Workers Free and existing R2
-activation. Anthony subsequently approved creation of the empty private
-`justgo-staging-backups` bucket. It is created; no private-data connection or
-backup upload occurred. The agent accepted no agreement. The [Self-Serve Agreement](https://www.cloudflare.com/terms/)
-§6.1 incorporates the DPA for its stated personal-data scope; DPA v6.4's own
-applicability and Annex 1 address processor services and customer-controlled
-special-category content. This supports review, not an assertion that the actual
-legal customer, Canadian processing scope or private-journal gates are settled.
+The Hono API, guarded Workers release lane and encrypted R2 copy/restore tooling
+are merged. The staging Worker and cache-disabled, verified-TLS Hyperdrive
+connection are deployed; the [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status)
+owns current source/version, probe and rollout evidence. The private backup
+bucket, seven-day lock/expiry configuration and encrypted synthetic canaries
+are prepared; first supervised encrypted database/ledger uploads and independent ciphertext retrieval pass. Scheduled operation, complete recovery, alerts and observed expiry remain open. Static legal Worker configuration is
+prepared, while the published Privacy source and existing owner-only binaries
+still use the Vercel addresses pending coordinated cutover.
 
-The recovery rehearsal uses synthetic app/Auth data and proves application
-reconciliation, not the actual Supabase Auth schema restore or independence of
-post-hourly deletions after total source loss. Until the current ledger is
-established the restored service must remain closed. See
+On November 1 Anthony accepted the reviewed current-account, Canadian DPA and
+sensitive consumer-journal assessment for personal customer Youngshin Yoo,
+including the residual interpretation. The
+[notice review](CLOUDFLARE_NOTICE_REVIEW.md#accepted-account-and-service-assessment)
+records the primary sources and limits; the
+[decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
+records rollout resumption and the phone-testing checkpoint. This settles that
+provider assessment without claiming separate Cloudflare confirmation, a new
+agreement or a journal-specific contractual exception. No Cloudflare contact or
+paid upgrade occurred; the no-contact restriction and Workers Free choice remain.
+Notice date/version/publication, actual operating acceptance and independent
+Phase 14 provider, consent, disclosure and device gates remain separate.
+
+Synthetic reconciliation and isolated hosted archive/schema-compatibility
+restoration do not establish complete writer-fenced app/Auth recovery or an
+independent post-copy deletion history after total source loss. Until a current
+complete ledger is established, the old restored state stays closed. See
 [cutover acceptance](../operations/CLOUDFLARE_CUTOVER.md) and the
 [backup guide](../operations/CLOUDFLARE_BACKUPS.md).

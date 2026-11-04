@@ -37,6 +37,17 @@ handoffs; avoid copying competing versions of these rules into every directory.
 
 ## Owner review and Git permissions
 
+- Use each phase's branch as its integration branch. Independent parallel tasks
+  may use temporary task branches and worktrees based on that phase branch,
+  with explicit file ownership and one integration owner. Use small reviewable
+  local commits; review task changes and obtain Anthony's explicit approval
+  before merging them into the phase branch. Verify the combined result there.
+  Prepare one consolidated PR at the phase review point; do not open a new PR
+  for each routine fix unless Anthony requests that split. This does not waive
+  the separate push, PR, merge or release permissions below.
+- Owner-authorized code-only staging tests may deploy directly from the committed
+  phase branch through the guarded local staging command, without a GitHub push
+  or PR. This does not authorize migrations, production releases or Git publication.
 - Obtain Anthony's explicit permission before pushing changes, creating any pull
   request (including a draft), merging any branch or PR, or enabling auto-merge.
   Permission for one action does not authorize the next action.
@@ -47,6 +58,17 @@ handoffs; avoid copying competing versions of these rules into every directory.
 - The owner must have an opportunity to review and identify issues before a
   merge. Passing tests, green CI and agent reviews do not replace that review or
   the owner's explicit merge approval. Never merge merely to finish a phase.
+
+## Temporary worktree cleanup
+
+- Follow the global worktree integration and cleanup rules. For JustGO, the
+  destination is the agreed phase integration branch or `main`. A temporary task
+  worktree may be retired after verified integration into the retained phase
+  branch; it need not wait for that phase's merge into `main`.
+- Anthony authorizes removal of eligible temporary task worktrees once the
+  global verification, unique-material and active-use checks pass. This standing
+  permission applies only to JustGO. It does not authorize branch deletion or
+  removal of an active phase worktree. Merge and archive approvals remain separate.
 
 ## Design principles
 
@@ -173,6 +195,16 @@ Reload the app to clear stale module/asset paths.
 
 ## Verification and handoff
 
+- Assign verification responsibilities before parallel implementation. Task
+  agents run focused behavior/consumer regressions and scoped checks in their
+  worktrees, reporting commands, results and the tested revision. The integration
+  owner runs cross-task checks, affected workspace typechecks, repository lint,
+  affected journeys and grouped UI verification on the combined candidate,
+  plus applicable phase/publication gates. Reuse valid passing evidence; rerun
+  affected checks when inputs change, failures or stale environments require it,
+  or integration risks justify it. Do not run the full mobile suite once per
+  worktree merely because tasks are separate. Coordinate test database fixtures,
+  server ports and heavy checks; preserve all required gates and coverage floors.
 - Write/update meaningful tests for every code change and run focused checks
   during each slice. Use unit tests for domain decisions, component tests for UI
   behavior, integration tests for runtime wiring and real API/database boundaries,
@@ -222,8 +254,12 @@ Reload the app to clear stale module/asset paths.
   and journeys).
   Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.
   Keep earlier physical-device/staging gates open until evidenced.
-- Before publication, run fresh online Expo validation through `npm run check`
-  and rerun `npm run doctor -w @justgo/mobile` immediately before pushing.
+- Before publication, run fresh online Expo validation through `npm run check`.
+  Its successful online Doctor run also satisfies pre-push validation when the
+  push follows promptly and dependency, Expo/native configuration and validation
+  environment inputs remain unchanged. Rerun `npm run doctor -w @justgo/mobile`
+  immediately before pushing after a substantial delay or relevant input change;
+  do not repeat it back-to-back with a fresh passing `check` just for reporting.
   Installed versions are pinned by the lockfile; Expo's recommended SDK patch
   metadata can change independently. Keep dependency validation enabled and
   preserve native-build/device acceptance when dependency versions change.

@@ -1,0 +1,26 @@
+// Selected only by the guarded local Dev resolver. Expo's HMR prelude supplies
+// these public process values; dynamic indexing avoids another virtual rewrite.
+const names = [
+  'EXPO_PUBLIC_API_URL',
+  'EXPO_PUBLIC_PROJECT_ROOT',
+  'EXPO_PUBLIC_JUSTGO_DEV_DIAGNOSTICS',
+  'EXPO_PUBLIC_SUPABASE_URL',
+  'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID',
+  'EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME',
+  'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID',
+  'EXPO_PUBLIC_ICLOUD_CONTAINER_IDENTIFIER',
+  'EXPO_PUBLIC_SENTRY_ENABLED',
+  'EXPO_PUBLIC_SENTRY_DSN',
+  'EXPO_PUBLIC_SENTRY_ENVIRONMENT',
+  'EXPO_PUBLIC_PRIVACY_POLICY_URL',
+  'EXPO_PUBLIC_TERMS_URL',
+  'EXPO_PUBLIC_APP_STORE_ID',
+  'EXPO_PUBLIC_INSTAGRAM_URL',
+  'EXPO_PUBLIC_TIKTOK_URL',
+  'EXPO_PUBLIC_TWITTER_URL',
+];
+
+export const env = Object.fromEntries(
+  names.map((name) => [name, process.env[name]]),
+);

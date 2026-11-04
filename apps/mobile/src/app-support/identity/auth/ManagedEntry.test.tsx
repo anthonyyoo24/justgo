@@ -69,7 +69,7 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
-async function setup(parkedOwner?: string) {
+async function setup(parkedOwner?: string, connectionDiagnostics = false) {
   let state: ManagedIdentityState | null = parkedOwner
     ? managedIdentityStateSchema.parse({
         version: 1,
@@ -104,6 +104,7 @@ async function setup(parkedOwner?: string) {
   };
   let id = 1;
   mockController = new ManagedIdentityController({
+    connectionDiagnostics,
     auth,
     api,
     legacyVault: createMemoryVault(),
@@ -131,8 +132,9 @@ beforeEach(() => {
 });
 afterEach(() => mockController?.dispose());
 
-it('places the Apple and Google logo actions above the unchanged Continue button', async () => {
+it('starts native sign-in from the Welcome action without an intermediate page', async () => {
   const ctx = await setup();
+  const signIn = jest.spyOn(ctx.auth, 'signIn');
   const screen = await render(<WelcomeScreen controller={mockController} />);
   expect(
     screen
@@ -142,10 +144,8 @@ it('places the Apple and Google logo actions above the unchanged Continue button
   await fireEvent.press(
     screen.getByRole('button', { name: 'Sign in with Apple' }),
   );
-  expect(mockRouter.push).toHaveBeenCalledWith({
-    pathname: '/account/sign-in',
-    params: { provider: 'apple' },
-  });
+  expect(signIn).toHaveBeenCalledWith('apple');
+  expect(mockRouter.push).not.toHaveBeenCalled();
   expect(ctx.api.request).not.toHaveBeenCalled();
 });
 it('opens Terms on Continue and enters durable guest mode without a server account', async () => {
@@ -234,7 +234,7 @@ it.each([
 ])(
   'does not carry a failed %s sign-in into %s or a later visit',
   async (from, to) => {
-    const { auth } = await setup();
+    const { auth } = await setup(undefined, true);
     auth.signIn = jest
       .fn()
       .mockRejectedValue(new ProviderAuthError('CONFIGURATION'));
@@ -254,9 +254,13 @@ it.each([
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Sign-in isn’t configured in this build yet. You can continue on this phone.',
     );
+    expect(
+      screen.getByText('Dev sign-in reference: provider-auth / CONFIGURATION'),
+    ).toBeTruthy();
     mockProvider = to;
     await screen.rerender(<ProviderSignInScreen />);
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/Dev sign-in reference:/)).toBeNull();
     await pressSignIn(to);
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Sign-in isn’t configured in this build yet. You can continue on this phone.',
@@ -273,7 +277,7 @@ it.each([
 );
 
 it('ignores a late provider failure after leaving the sign-in visit', async () => {
-  const { auth } = await setup();
+  const { auth } = await setup(undefined, true);
   let rejectSignIn: (error: Error) => void = () => {};
   auth.signIn = jest.fn(
     () =>
@@ -294,6 +298,7 @@ it('ignores a late provider failure after leaving the sign-in visit', async () =
   mockFocused = true;
   await screen.rerender(<ProviderSignInScreen />);
   expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.queryByText(/Dev sign-in reference:/)).toBeNull();
   expect(mockRouter.replace).not.toHaveBeenCalled();
 });
 
@@ -307,4 +312,18 @@ it('lets an incomplete web callback restart provider sign-in after a consumed or
     screen.getByRole('button', { name: 'Back to sign in' }),
   );
   expect(mockRouter.replace).toHaveBeenCalledWith('/account/sign-in');
+});
+
+it('shows the redacted Dev reference when retrying a saved web sign-in fails', async () => {
+  const { auth } = await setup(undefined, true);
+  jest.spyOn(auth, 'signIn').mockResolvedValueOnce('redirecting');
+  await mockController.signIn('apple');
+  jest
+    .spyOn(auth, 'initialize')
+    .mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+  const screen = await render(<AuthCallbackRoute />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  expect(
+    screen.getByText('Dev sign-in reference: provider-auth / AUTH'),
+  ).toBeTruthy();
 });

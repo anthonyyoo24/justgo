@@ -16,28 +16,36 @@ confirmed there are no actual app users and selected a full Cloudflare switch,
 with no external-user transition period. Existing owner-only binaries still
 contain Vercel addresses until replaced or retired. The next public notice names
 Cloudflare only, after Vercel API and legal hosting have ended. Scheduled backups,
-actual hosted recovery-copy decryption, complete recovery/alerts/expiry and
-account/privacy gates remain open. Anthony accepts protected Mac key custody
+complete recovery/alerts/expiry and
+independent privacy gates remain open. The first supervised encrypted database
+and ledger copies succeeded; the handoff owns their receipts. They do not establish
+scheduled operation, Cron check-ins or writer-fenced recovery. Anthony accepts protected Mac key custody
 locally outside CI, without a USB-retrieval prerequisite, and owns manual
-credential renewal. Backups and the proposed notice are not activated/published.
+credential renewal. Backup schedules remain off and the proposed notice is unpublished.
 No Cloudflare email correspondence was sent. The
 [October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover)
 also accepts the brief legal-URL gap in the prepared coordinated cutover below.
+The [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
+settles the current-account/DPA/private-consumer-journal assessment, including its
+residual interpretation; it adds no provider-confirmation or counsel prerequisite.
 The handoff also owns current approval evidence; [server releases](SERVER_RELEASES.md)
 owns the guarded lane.
 
 ## Account and service preparation
 
-1. Anthony confirms the customer/account and Cloudflare DPA version/applicability
-   for Workers, Hyperdrive and R2. Anthony subsequently signed in on October 28;
+1. The customer/account and Cloudflare DPA v6.4 assessment for Workers,
+   Hyperdrive and R2 is accepted under the November 1 decision above.
+   Anthony signed in on October 28;
    authenticated inspection confirmed Workers Free and existing R2 activation.
    Subsequent authorized setup created the staging Worker, Hyperdrive and private
    `justgo-staging-backups` bucket; do not repeat initial resource creation.
    Personal customer Youngshin Yoo is confirmed. The account Configurations page
    now supplies a DPA-incorporation notice and links to v6.4; no separate
-   acceptance action was shown. The [notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md)
-   records that evidence and the unresolved SSA §6.1/PIPEDA scope question.
-   Anthony requested further work October 30; no Cloudflare contact is authorized.
+   acceptance action was shown. The [notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md#accepted-account-and-service-assessment)
+   records the accepted Canadian/private-journal reading and its limits. This is
+   a reviewed assessment, not separate provider confirmation or a negotiated
+   exception. No Cloudflare contact is authorized. Reassess material changes to
+   the terms or actual processing; preserve independent Phase 14 privacy gates.
 2. Initial bootstrap, restricted credentials and seven-day staging backup
    retention/protection/expiry have their recorded approvals and evidence in the
    [handoff](../handoffs/phase-15-cloudflare-api.md). Resolve the remaining
@@ -98,9 +106,13 @@ budget; the handoff records their limits. Anthony chose to keep Workers Free;
 checkout was exited without purchase. Resolve Free-plan workload suitability;
 no paid subscription has been enabled.
 
-Run an actual scheduled nightly dump and hourly ledger upload with immutable
-readback, failed/missed-run alerts and actual hosted recovery-copy decryption
-using the protected local key. A read-only hosted
+The first supervised manual encrypted database and ledger copies passed the
+checked exporters and R2 uploader; see the handoff for source/object receipts.
+Those copies used no private decryption identity and captured no writer-fenced
+ledger. They did not run the scheduled workflow or send Sentry Cron check-ins.
+Complete actual recovery acceptance, then verify scheduled nightly and hourly
+copies with immutable
+readback and failed/missed-run alerts. Owner-authorized authenticated decryption of both initial R2-downloaded copies passed with plaintext discarded; that proof does not establish complete recovery. A read-only hosted
 `justgo`/`auth`/`drizzle` archive has passed isolated PostgreSQL 17 compatibility
 restoration with preserved ACLs and verified private session-helper ownership/access;
 it is not a writer-fenced recovery rehearsal or hosted provider acceptance.
@@ -115,12 +127,14 @@ recovery from old phones is unsupported.
 ## Mobile, notices and old-build retirement
 
 1. Before retiring Vercel, accept the healthy Cloudflare Worker and backup
-   operation, resolve applicable account/privacy requirements, and finish the
+   operation, complete the remaining independent privacy requirements, and finish the
    [full-cutover notice package](../legal/CLOUDFLARE_NOTICE_REVIEW.md). Complete
    final date/version approval, publication and verification authorization, and
    legal-artifact preflight with the Cloudflare host marker. The complete Privacy
    wording, including retention, is already approved; its operational claims
-   still require verified copies. Prepare the publication commands, verification
+   still require verified scheduled operation and recovery. The November 1
+   provider-assessment acceptance does not supply that evidence.
+   Prepare the publication commands, verification
    steps and ASC/EAS URL updates using the complete rendered package in ignored
    `.local/phase15-cloudflare/rollout/notice-review/`.
    Prepare the replacement-build path before entering the retirement window:
