@@ -20,10 +20,7 @@ if (process.env.JUSTGO_LOCAL_DEVELOPMENT === '1') {
   validateLocalMetroEnvironment(process.env);
   const normalResolve = config.resolver.resolveRequest;
   config.resolver.resolveRequest = (context, moduleName, platform) => {
-    if (
-      (platform === 'ios' || platform === 'web') &&
-      moduleName === 'expo/virtual/env'
-    )
+    if (moduleName === 'expo/virtual/env')
       return {
         type: 'sourceFile',
         filePath: path.join(

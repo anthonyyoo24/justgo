@@ -29,7 +29,7 @@ function resolve(environment) {
   );
 }
 
-test('only guarded local Dev maps iOS/web public reads and chains all other resolution', async () => {
+test('only guarded local Dev maps public reads for every platform and chains other resolution', async () => {
   const environment = {
     ...(await developmentEnvironment(publicEnvironment())),
     NODE_ENV: 'development',
@@ -47,7 +47,7 @@ test('only guarded local Dev maps iOS/web public reads and chains all other reso
       paths[0].endsWith('src/platform/environment/development-environment.ts'),
     );
     assert.equal(paths[1], paths[0]);
-    assert.equal(paths[2], 'normal');
+    assert.equal(paths[2], paths[0]);
     assert.equal(lines[1], 'normal');
   }
 });

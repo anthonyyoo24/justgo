@@ -157,7 +157,7 @@ The launcher reads only ignored `.env.development.local`, validates the Dev
 identity/provider pairing and sets `EXPO_NO_DOTENV=1`. Expo 58's development
 virtual environment still merges saved dotenv modules after that CLI setting.
 The explicit local-launcher marker therefore selects a separate public adapter
-for iOS/web, reading the validated API, provider, diagnostics and notice values
+for every Metro platform, reading the validated API, provider, diagnostics and notice values
 together from Expo's runtime prelude. It exports no private values or fixture
 authorization. Marked production, CI, EAS-build and fixture contexts are rejected;
 ordinary release and guarded journey resolution remain unchanged. Restart with
