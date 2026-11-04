@@ -81,7 +81,9 @@ JustGO owner. Client requests cannot select that owner.
 
 Auth verification never follows redirects. Use `redirect: 'manual'` and reject
 3xx responses as `UNAVAILABLE` without reading their body: Workers rejects
-`redirect: 'error'` before sending the request. The minimal server-error reporter
+`redirect: 'error'` before sending the request. Auth timeouts (408) and rate limits
+(429) also return `UNAVAILABLE` (503), so temporary provider failures preserve
+the current session. The minimal server-error reporter
 also uses manual redirects and backs off on non-2xx delivery responses. Keep both
 paths covered by native Workers `Request` validation, not only mocked fetch calls.
 

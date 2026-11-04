@@ -375,8 +375,8 @@ it('treats provider cancellation quietly and keeps the original guest collection
   expect(ctx.calls).toEqual([]);
 });
 
-it('persists automatic adoption across a PKCE browser redirect', async () => {
-  const ctx = setup();
+it('traces callback and app-session failures while keeping redirect adoption retryable', async () => {
+  const ctx = setup(true);
   ctx.auth.signIn.mockResolvedValueOnce('redirecting');
   await ctx.controller.initialize();
   await ctx.controller.continueAsGuest();
@@ -391,9 +391,26 @@ it('persists automatic adoption across a PKCE browser redirect', async () => {
   const callback = ctx.create();
   const merge = jest.fn(async () => {});
   callback.setGuestDataMerger(merge);
+  ctx.auth.initialize.mockRejectedValueOnce(new ProviderAuthError('AUTH'));
   await callback.initialize();
+  expect(callback.getSnapshot().connectionReference).toBe(
+    'Dev sign-in reference: provider-auth / AUTH',
+  );
+  ctx.setFailure(new ApiError('UNAVAILABLE', uuid(99)));
+  await callback.retry();
+  expect(callback.getSnapshot()).toMatchObject({
+    account: null,
+    hasPending: true,
+    connectionReference: `Dev sign-in reference: app-session / UNAVAILABLE / ${uuid(99)}`,
+  });
+  expect(merge).not.toHaveBeenCalled();
+  ctx.setFailure(null);
+  await callback.retry();
   expect(merge).toHaveBeenCalledTimes(1);
   expect(callback.getSnapshot().account).toEqual(account);
+  expect(callback.getSnapshot().connectionReference).toBeNull();
+  callback.dispose();
+  ctx.controller.dispose();
 });
 
 it('fences uploads immediately on offline logout, retains local ownership and retries secure signout after restart', async () => {

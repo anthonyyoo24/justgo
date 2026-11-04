@@ -282,6 +282,26 @@ it('does not show a late provider failure after leaving and returning to Welcome
   ).toBeEnabled();
 });
 
+it('offers connection retry for a later controller failure after provider cancellation', async () => {
+  const { auth, controller } = await setup();
+  const screen = await render(<WelcomeScreen controller={controller} />);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Sign in with Google' }),
+  );
+  expect(screen.queryByRole('alert')).toBeNull();
+
+  const initialize = jest
+    .spyOn(auth, 'initialize')
+    .mockRejectedValueOnce(new ProviderAuthError('STORAGE'));
+  await act(() => controller.retry());
+  expect(screen.getByRole('alert')).toHaveTextContent(/storage is unavailable/);
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Retry connection' }),
+  );
+  expect(initialize).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
 it('keeps a failed local entry retryable without creating a server account', async () => {
   const s = await setup();
   s.storage.write.mockRejectedValueOnce(new Error('Synthetic disk failure'));

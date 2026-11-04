@@ -313,3 +313,17 @@ it('lets an incomplete web callback restart provider sign-in after a consumed or
   );
   expect(mockRouter.replace).toHaveBeenCalledWith('/account/sign-in');
 });
+
+it('shows the redacted Dev reference when retrying a saved web sign-in fails', async () => {
+  const { auth } = await setup(undefined, true);
+  jest.spyOn(auth, 'signIn').mockResolvedValueOnce('redirecting');
+  await mockController.signIn('apple');
+  jest
+    .spyOn(auth, 'initialize')
+    .mockRejectedValueOnce(new ProviderAuthError('AUTH'));
+  const screen = await render(<AuthCallbackRoute />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+  expect(
+    screen.getByText('Dev sign-in reference: provider-auth / AUTH'),
+  ).toBeTruthy();
+});

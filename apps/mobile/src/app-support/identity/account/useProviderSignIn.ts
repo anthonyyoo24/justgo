@@ -1,6 +1,9 @@
 import { useFocusEffect, useIsFocused } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import type { ManagedIdentityController } from '../auth/managed-controller';
+import type {
+  ManagedIdentityController,
+  ManagedIdentitySnapshot,
+} from '../auth/managed-controller';
 import type { SignInProvider } from '../auth/types';
 import { useCancelWelcomeEntry } from '../welcome/WelcomeTransition';
 import { useSignInHandoff } from './useSignInHandoff';
@@ -8,6 +11,7 @@ import { useSignInHandoff } from './useSignInHandoff';
 /** Provider feedback belongs to this visit; durable work stays in identity. */
 export function useProviderSignIn(
   identity: ManagedIdentityController | null,
+  snapshot: ManagedIdentitySnapshot | null,
   {
     provider,
     expectedOwnerId,
@@ -22,9 +26,7 @@ export function useProviderSignIn(
 ) {
   const handoff = useSignInHandoff(useIsFocused(), returnToData);
   const cancelWelcomeEntry = useCancelWelcomeEntry();
-  const [error, setError] = useState('');
-  const [reference, setReference] = useState<string | null>(null);
-  const [attempted, setAttempted] = useState(false);
+  const [showDirectFailure, setShowDirectFailure] = useState(false);
   const [pendingProvider, setPendingProvider] = useState<SignInProvider | null>(
     null,
   );
@@ -33,8 +35,7 @@ export function useProviderSignIn(
   useFocusEffect(
     useCallback(() => {
       visit.current = { identity, provider, expectedOwnerId, returnToData };
-      setError('');
-      setReference(null);
+      setShowDirectFailure(false);
       setPendingProvider(null);
       return () => {
         visit.current = null;
@@ -52,9 +53,7 @@ export function useProviderSignIn(
       submitting.current === submittedVisit
     )
       return;
-    setError('');
-    setReference(null);
-    setAttempted(true);
+    setShowDirectFailure(false);
     clearLinkError?.();
     if (state.account) {
       handoff.retry();
@@ -68,17 +67,20 @@ export function useProviderSignIn(
     if (submittedVisit !== visit.current) return;
     setPendingProvider(null);
     const result = identity.getSnapshot();
-    if (!result.account) {
-      setError(result.message);
-      setReference(result.connectionReference);
-    }
+    setShowDirectFailure(!result.account && result.directSignInFailure);
   };
+  const directFailure = showDirectFailure && snapshot?.directSignInFailure;
+  const error = (directFailure ? snapshot.message : '') || handoff.error;
   return {
     ...handoff,
-    error: error || handoff.error,
-    reference,
-    attempted,
-    pendingProvider,
+    error,
+    reference: directFailure ? snapshot.connectionReference : null,
+    busyProvider:
+      pendingProvider ??
+      (snapshot?.account && !error
+        ? (provider ?? snapshot.provider ?? 'apple')
+        : null),
+    retryHandoff: !!error && !!snapshot?.account,
     signIn,
   };
 }

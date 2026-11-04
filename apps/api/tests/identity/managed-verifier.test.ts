@@ -84,19 +84,28 @@ describe('Supabase bearer verification', () => {
       code: 'UNAUTHORIZED',
     });
   });
-  it('fails closed without exposing Auth errors or transport errors', async () => {
-    for (const status of [401, 403, 500]) {
-      const verify = createManagedAuthVerifier(
-        origin,
-        'public-key',
-        vi
-          .fn<typeof fetch>()
-          .mockResolvedValue(new Response('private response', { status })),
-      );
+  it.each([
+    [401, 'UNAUTHORIZED', 401],
+    [403, 'UNAUTHORIZED', 401],
+    [408, 'UNAVAILABLE', 503],
+    [429, 'UNAVAILABLE', 503],
+    [500, 'UNAVAILABLE', 503],
+  ] as const)(
+    'maps Auth HTTP %i to %s without exposing its body',
+    async (status, code, apiStatus) => {
+      const response = new Response('private response', { status });
+      const request = vi.fn<typeof fetch>().mockResolvedValue(response);
+      const verify = createManagedAuthVerifier(origin, 'public-key', request);
       await expect(verify(token())).rejects.toMatchObject({
-        code: status >= 500 ? 'UNAVAILABLE' : 'UNAUTHORIZED',
+        code,
+        status: apiStatus,
+        message: code,
       });
-    }
+      expect(request).toHaveBeenCalledOnce();
+      expect(response.bodyUsed).toBe(true);
+    },
+  );
+  it('fails closed without exposing transport errors', async () => {
     const verify = createManagedAuthVerifier(
       origin,
       'public-key',

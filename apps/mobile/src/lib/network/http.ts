@@ -6,16 +6,18 @@ import {
   type IdentityErrorCode,
 } from '@justgo/contracts';
 
+export const localClientErrorCodes = [
+  'NETWORK',
+  'STORAGE',
+  'TIMEOUT',
+  'CANCELLED',
+  'ACCOUNT_CHANGED',
+  'INVALID_RESPONSE',
+  'DELETION_UNAVAILABLE',
+  'DELETION_REJECTED',
+] as const;
 export type ClientErrorCode =
-  | IdentityErrorCode
-  | 'NETWORK'
-  | 'STORAGE'
-  | 'TIMEOUT'
-  | 'CANCELLED'
-  | 'ACCOUNT_CHANGED'
-  | 'INVALID_RESPONSE'
-  | 'DELETION_UNAVAILABLE'
-  | 'DELETION_REJECTED';
+  IdentityErrorCode | (typeof localClientErrorCodes)[number];
 export class ApiError extends Error {
   constructor(
     readonly code: ClientErrorCode,

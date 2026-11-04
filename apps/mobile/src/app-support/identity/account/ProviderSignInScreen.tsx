@@ -25,12 +25,16 @@ export function ProviderSignInScreen() {
     params.provider === 'apple' || params.provider === 'google'
       ? params.provider
       : undefined;
-  const signIn = useProviderSignIn('signIn' in identity ? identity : null, {
-    provider,
-    expectedOwnerId,
-    returnToData,
-    clearLinkError: links.clearLinkError,
-  });
+  const signIn = useProviderSignIn(
+    'signIn' in identity ? identity : null,
+    'directSignInFailure' in state ? state : null,
+    {
+      provider,
+      expectedOwnerId,
+      returnToData,
+      clearLinkError: links.clearLinkError,
+    },
+  );
   if (!('signIn' in identity)) return <Redirect href="/recovery" />;
   if (signIn.destination) return <Redirect href={signIn.destination} />;
   const guest = 'collectionKind' in state && state.collectionKind === 'guest';
@@ -62,13 +66,8 @@ export function ProviderSignInScreen() {
         <ProviderButtons
           provider={provider}
           disabled={state.busy || !state.initialized}
-          busyProvider={
-            signIn.pendingProvider ??
-            (state.account && !signIn.error
-              ? (provider ?? state.provider ?? 'apple')
-              : null)
-          }
-          retry={!!signIn.error && !!state.account}
+          busyProvider={signIn.busyProvider}
+          retry={signIn.retryHandoff}
           onSignIn={(selected) => {
             void signIn.signIn(selected);
           }}

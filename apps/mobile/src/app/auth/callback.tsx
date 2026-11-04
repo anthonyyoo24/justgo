@@ -24,6 +24,11 @@ export default function AuthCallbackRoute() {
             {state.message ||
               'Sign-in was not completed. Your saved data was kept.'}
           </Text>
+          {__DEV__ &&
+            'connectionReference' in state &&
+            !!state.connectionReference && (
+              <Text selectable>{state.connectionReference}</Text>
+            )}
           <PrimaryButton
             label="Try again"
             onPress={() => {

@@ -53,7 +53,9 @@ export function createManagedAuthVerifier(
       throw new ApiError('UNAVAILABLE', 503);
     }
     if (!response.ok) {
-      const unavailable = response.status < 400 || response.status >= 500;
+      const { status } = response;
+      const unavailable =
+        status < 400 || status === 408 || status === 429 || status >= 500;
       await response.body?.cancel().catch(() => {});
       throw new ApiError(
         unavailable ? 'UNAVAILABLE' : 'UNAUTHORIZED',

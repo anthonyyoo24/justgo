@@ -1,6 +1,6 @@
 import { identityErrorCodeSchema } from '@justgo/contracts';
-import { ApiError } from '../../../lib/network/http';
-import { ProviderAuthError } from './types';
+import { ApiError, localClientErrorCodes } from '../../../lib/network/http';
+import { ProviderAuthError, providerAuthErrorCodes } from './types';
 
 const connectionPhases = [
   'phone-prepare',
@@ -18,22 +18,9 @@ const phases = new Set<string>(connectionPhases);
 
 const apiCodes = new Set<string>([
   ...identityErrorCodeSchema.options,
-  'NETWORK',
-  'STORAGE',
-  'TIMEOUT',
-  'CANCELLED',
-  'ACCOUNT_CHANGED',
-  'INVALID_RESPONSE',
-  'DELETION_UNAVAILABLE',
-  'DELETION_REJECTED',
+  ...localClientErrorCodes,
 ]);
-const providerCodes = new Set<string>([
-  'CANCELLED',
-  'CONFIGURATION',
-  'AUTH',
-  'STORAGE',
-  'LAST_PROVIDER',
-]);
+const providerCodes = new Set<string>(providerAuthErrorCodes);
 const requestIdPattern =
   /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 

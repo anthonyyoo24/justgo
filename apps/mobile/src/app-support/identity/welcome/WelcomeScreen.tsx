@@ -18,12 +18,17 @@ export function WelcomeScreen({
     controller.getSnapshot,
     controller.getSnapshot,
   );
-  const signIn = useProviderSignIn(controller);
-  const busyProvider =
-    signIn.pendingProvider ??
-    (state.account && !signIn.error ? (state.provider ?? 'apple') : null);
+  const signIn = useProviderSignIn(controller, state);
   const disabled =
-    !state.initialized || state.busy || !!busyProvider || !!state.account;
+    !state.initialized ||
+    state.busy ||
+    !!signIn.busyProvider ||
+    !!state.account;
+  const connectionError =
+    state.directSignInFailure ||
+    state.message === 'Your account has been deleted.'
+      ? ''
+      : state.message;
   if (state.deletionStatus === 'pending' || state.deletionStatus === 'cleanup')
     return <Redirect href="/delete-account" />;
   if (signIn.destination) return <Redirect href={signIn.destination} />;
@@ -32,27 +37,28 @@ export function WelcomeScreen({
   return (
     <WelcomeView
       disabled={disabled}
-      error={
-        signIn.error ||
-        (signIn.attempted || state.message === 'Your account has been deleted.'
-          ? ''
-          : state.message)
+      error={signIn.error || connectionError}
+      connectionReference={
+        signIn.error
+          ? signIn.reference
+          : connectionError
+            ? state.connectionReference
+            : null
       }
-      connectionReference={signIn.error ? signIn.reference : null}
       onRetry={
-        signIn.attempted
-          ? undefined
-          : () => {
+        !signIn.error && connectionError
+          ? () => {
               if (state.account) signIn.retry();
               else void controller.retry();
             }
+          : undefined
       }
       signInButtons={
         <ProviderButtons
           provider={state.account ? (state.provider ?? 'apple') : undefined}
           disabled={!state.initialized || state.busy}
-          busyProvider={busyProvider}
-          retry={!!signIn.error && !!state.account}
+          busyProvider={signIn.busyProvider}
+          retry={signIn.retryHandoff}
           onSignIn={(provider) => {
             void signIn.signIn(provider);
           }}
