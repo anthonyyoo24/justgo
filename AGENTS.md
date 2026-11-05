@@ -6,6 +6,8 @@ recorded decisions in force. The phase files own sequencing and approved future 
 `docs/architecture/APP_SHELL.md` and `docs/architecture/TECH_STACK.md` describe the implemented boundaries.
 Keep phase scope bounded and preserve existing behavior unless the task changes it.
 Directory instructions (especially `apps/mobile/AGENTS.md`) also apply.
+The agent process is pstack (in Claude Code, `/pstack:poteto-mode`). Where pstack
+and this file disagree, follow pstack; the Git and autonomy rules below still hold.
 
 Reuse already-read guidance when the checkout, relevant instructions and tool
 versions are unchanged and the context is available. Reread changed or newly
@@ -35,40 +37,56 @@ handoffs; avoid copying competing versions of these rules into every directory.
   explicit owner request or required completion/publication gate; explain the
   trigger briefly without seeking routine implementation approval.
 
-## Owner review and Git permissions
+## Git and autonomy
 
-- Use each phase's branch as its integration branch. Independent parallel tasks
-  may use temporary task branches and worktrees based on that phase branch,
-  with explicit file ownership and one integration owner. Use small reviewable
-  local commits; review task changes and obtain Anthony's explicit approval
-  before merging them into the phase branch. Verify the combined result there.
-  Prepare one consolidated PR at the phase review point; do not open a new PR
-  for each routine fix unless Anthony requests that split. This does not waive
-  the separate push, PR, merge or release permissions below.
-- Owner-authorized code-only staging tests may deploy directly from the committed
-  phase branch through the guarded local staging command, without a GitHub push
-  or PR. This does not authorize migrations, production releases or Git publication.
-- Obtain Anthony's explicit permission before pushing changes, creating any pull
-  request (including a draft), merging any branch or PR, or enabling auto-merge.
-  Permission for one action does not authorize the next action.
-- Requests to implement or continue a phase, general workflow discussions and
-  approval given for earlier work do not authorize publishing or merging the
-  current changes. Prepare the local changes and handoff for the owner's review,
-  then wait for permission for the specific Git action.
-- The owner must have an opportunity to review and identify issues before a
-  merge. Passing tests, green CI and agent reviews do not replace that review or
-  the owner's explicit merge approval. Never merge merely to finish a phase.
+Agents work in pstack's model: small stacked PRs, reversible work without asking,
+and a stop before anything irreversible. Only Anthony merges.
+
+- **Small stacked PRs.** Each PR is narrow, verified and lands on its own; a child
+  PR targets its parent's branch. A phase is a stack of PRs, not one consolidated PR.
+  Parallel agents each get their own worktree and branch, with one owner per branch.
+- **Act without asking** on reversible work: commit, push your own branches, open
+  ready (not draft) PRs, update them, reply to review threads, create or update
+  GitHub issues, and rebase or `--force-with-lease` push your own unshared PR branches.
+- **Stop and ask first** before irreversible work: force-pushing a shared branch
+  (`main`, or a branch someone else works on), deploying, deleting data, or sending
+  messages to users. Here "deploy" includes staging deploys, migrations against
+  any database other than the local `justgo_test`, production releases, TestFlight
+  or App Store submissions, and settings changes in outside services (Supabase,
+  Cloudflare, Sentry, App Store Connect). With Anthony's go, a code-only staging test may deploy a committed branch
+  through `npm run release:staging:local`; that go does not cover migrations,
+  production releases or merges.
+- **Never push to `main`.** Changes reach `main` only through a merged PR.
+- **Only Anthony merges.** Agents stop at merge-ready, never merge a PR and never
+  enable auto-merge. Green CI and agent verdicts do not replace his review.
+
+## Agent effort
+
+- Subagents and helpers run at `medium` effort or higher, never `low`.
+- Use `xhigh` for work that touches sign-in and identity, account data and
+  deletion, database migrations, or release and backup scripts. These live mainly
+  in `apps/api/src/{identity,access,account-export,data-sync}/`,
+  `apps/api/src/http/bearer.ts`, `apps/api/src/db/{schema,managed-session-check}.ts`,
+  `apps/api/drizzle/`, `apps/api/scripts/`, `apps/mobile/src/app-support/{identity,access}/`,
+  `apps/mobile/src/app/account/`, `apps/mobile/src/data/{backup,cloud}/`,
+  `apps/mobile/src/data/activity/sync/`, `scripts/release/`, `scripts/backups/` and the
+  release, staging and backup workflows in `.github/workflows/`.
+- Run `/pstack:interrogate` on every PR that touches those areas before calling
+  it verified.
+- Only Claude models are available here. Where pstack asks for a reviewer, judge
+  or verifier from a different model family, use a separate Claude agent and say
+  so in its verdict.
 
 ## Temporary worktree cleanup
 
 - Follow the global worktree integration and cleanup rules. For JustGO, the
-  destination is the agreed phase integration branch or `main`. A temporary task
-  worktree may be retired after verified integration into the retained phase
-  branch; it need not wait for that phase's merge into `main`.
+  destination is the PR branch that carries the work, or `main`. A temporary task
+  worktree may be retired after verified integration into that branch; it need not
+  wait for the PR to merge into `main`.
 - Anthony authorizes removal of eligible temporary task worktrees once the
   global verification, unique-material and active-use checks pass. This standing
   permission applies only to JustGO. It does not authorize branch deletion or
-  removal of an active phase worktree. Merge and archive approvals remain separate.
+  removal of a worktree still in use. Merge and archive approvals remain separate.
 
 ## Design principles
 

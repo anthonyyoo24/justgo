@@ -536,7 +536,7 @@ provider capability. The [Phase 13 rollout](LOCAL_JOURNAL_ROLLOUT.md) and
 
 Before publication, install with `npm ci` in a clean checkout and run `npm run check`.
 Doctor uses fresh online metadata (`EXPO_NO_CACHE=1`) and stops the command early
-on dependency incompatibility. Recheck Doctor immediately before an authorized push
+on dependency incompatibility. Recheck Doctor immediately before a push
 after longer sessions. Update exact package pins and the root lockfile together;
 never hide live metadata changes with offline mode/exclusions. Native/device
 acceptance for changed dependencies stays separate.
@@ -595,5 +595,5 @@ clean runners must not rely on ignored environment files or existing artifacts.
 
 For split/stacked changes, verify each exact publication candidate. Checks from a
 combined feature branch do not transfer to an older branch's dependency pins or
-source. Hosted acceptance requires inspecting the pushed commit's run after separately
-authorized publication; local checks and prior runs cannot close it.
+source. Hosted acceptance requires inspecting the pushed commit's run after
+publication; local checks and prior runs cannot close it.
