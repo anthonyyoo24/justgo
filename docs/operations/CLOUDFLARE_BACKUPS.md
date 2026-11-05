@@ -34,7 +34,7 @@ The [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-assessm
 accepts the current-account/DPA/private-consumer-journal assessment with its residual
 interpretation. It adds no provider-confirmation or external-counsel prerequisite.
 The [Phase 15 plan](../implementation-plan/phase-15-cloudflare-api.md) owns these
-approvals; the [Phase 14 handoff](../handoffs/phase-14-release.md) preserves the
+approvals; [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) hold the
 independent privacy and device gates. This guide does not authorize those actions.
 A local `age` identity has been prepared in protected local storage with mode
 `0600`, and a synthetic encryption/decryption round trip passed.

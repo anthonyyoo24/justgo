@@ -1,7 +1,7 @@
 # Working on JustGO
 
 Read the requested phase from [the implementation plan](docs/implementation-plan/README.md)
-and its dependency handoffs before editing. Consult `docs/DECISIONS.md` for the
+before editing. Consult `docs/DECISIONS.md` for the
 recorded decisions in force. The phase files own sequencing and approved future changes;
 `docs/architecture/APP_SHELL.md` and `docs/architecture/TECH_STACK.md` describe the implemented boundaries.
 Keep phase scope bounded and preserve existing behavior unless the task changes it.
@@ -18,7 +18,7 @@ This file is the shared coding standard for future features and fixes, not only
 cleanup phases. Read [testing guidance](docs/operations/TESTING.md) before code changes for
 the applicable commands and evidence requirements. Keep detailed architecture in
 the linked architecture docs and phase-specific scope in the plan and results/evidence in
-handoffs; avoid copying competing versions of these rules into every directory.
+PR descriptions; avoid copying competing versions of these rules into every directory.
 
 ## Repository map and common commands
 
@@ -32,7 +32,7 @@ handoffs; avoid copying competing versions of these rules into every directory.
   [testing guidance](docs/operations/TESTING.md) for when each applies.
 - Choose the verification scope before running checks, using the matrix in
   [TESTING.md](docs/operations/TESTING.md#choosing-checks). Routine fixes default to
-  focused behavior/consumer checks. A follow-up fix or handoff edit does not
+  focused behavior/consumer checks. A follow-up fix does not
   reopen phase closeout. Expand for a concrete failure, affected boundary/config,
   explicit owner request or required completion/publication gate; explain the
   trigger briefly without seeking routine implementation approval.
@@ -128,7 +128,7 @@ and a stop before anything irreversible. Only Anthony merges.
   Verify affected interactions on the appropriate browser/native surface and
   measure relevant performance before claiming an improvement. Component mocks
   and web exports cannot establish native accessibility, gestures or Keychain
-  behavior; record any deferred device checks in the release handoff.
+  behavior; file each deferred device check as a `gate` issue.
 
 ## File placement for new mobile code
 
@@ -279,30 +279,32 @@ Reload the app to clear stale module/asset paths.
   `.env` files or existing local artifacts. Reuse common test configuration across
   related steps. Inspect hosted checks for the pushed commit before marking a new
   CI gate verified; a local pass does not establish a hosted pass. Record failures
-  and their fixes in the handoff.
+  and their fixes in the PR description.
   After splitting or stacking PRs, verify each actual publication candidate;
   checks from the combined feature branch do not transfer to older PR branches.
-- Work in small reviewable changes. A handoff records only what the next phase
-  needs: decisions and why, behavior that changed, invariants to preserve,
-  problems that could recur, setup or environment changes, open gates and the
-  final verification run. Edit it in place rather than appending dated entries.
-  Change the plan only when scope or a decision changes (and record the decision
-  in `docs/DECISIONS.md`); update the handoff index row only when status changes.
-  Per-change test runs, small UI adjustments, browser steps and screenshot paths
-  belong in the commit message or PR description. See the
+- Work in small reviewable changes. The PR description carries the results:
+  decisions and why, behavior that changed and the verification run. Long or
+  step-away runs keep a decision trail (`/pstack:show-me-your-work`), and pausing
+  work writes a resume note (pstack's `playbooks/pause-safely.md`). Open gates are
+  GitHub issues labeled `gate` (`gh issue list --label gate`); close each with a
+  link to its evidence. Put a lasting invariant, trap or setup step in the doc that
+  owns it. Change the plan only when scope or a decision changes (and record the
+  decision in `docs/DECISIONS.md`). Per-change test runs, small UI adjustments,
+  browser steps and screenshot paths belong in the commit message or PR
+  description. See the
   [October 16 decision](docs/DECISIONS.md#october-16-codebase-assessment-follow-up).
-  Do not put secrets, real private reflections or credentials in logs or handoffs.
-- Routine follow-up fixes do not refresh all phase evidence or require a new
-  handoff. Update durable behavior/invariant/setup docs and changed paths as
-  needed; keep routine validation in the task/commit/PR record. Editing a handoff
-  does not itself require phase-wide checks or close an existing open gate.
+  Do not put secrets, real private reflections or credentials in logs, issues or
+  PR descriptions.
+- Routine follow-up fixes do not refresh all phase evidence. Update durable
+  behavior/invariant/setup docs and changed paths as needed; keep routine
+  validation in the task/commit/PR record.
 - Keep routine screenshots and diagnostic recordings in ignored `.local/`
   storage. Commit visual evidence only when the owner explicitly requests it.
 - Before claiming completion, reconcile the agreed requirements and relevant
   review findings with the implementation. Each must have passing evidence or
-  an explicit, approved deferral with an owner/phase and an open task. Do not
+  an explicit, approved deferral recorded as an open issue. Do not
   silently drop a finding when moving work between phases. Record reusable coding rules here and domain/incident lessons in the owning
   architecture guide; keep open bug tasks in the plan and lasting results in
-  the handoff. Keep automated checks in CI as enforcement alongside this guide.
+  the PR description. Keep automated checks in CI as enforcement alongside this guide.
 - On the owner's 8 GB Mac, run heavy builds/checks sequentially and reuse existing
   tools/caches. Native signing/build upgrades require a separate task.

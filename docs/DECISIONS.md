@@ -44,7 +44,7 @@ Apple Developer enrollment is complete according to Anthony; account/team access
 
 ## September 24 phase 04 implementation
 
-The six-venue, cycling, no-subtext 39O specification supersedes the September 21 proposal. Implementation defaults are Streets on first use and per-account persisted venue selection; genuinely empty venues invite trying another venue. Server-confirmed outcomes freeze a named IANA zone/local completion date. The elapsed-time storage introduced at that point was removed by the September 29 decision below. No progress aggregate, reflection or payment feature was added in Phase 04. See the [phase 04 handoff](handoffs/phase-04-challenge-loop.md) for schema, retries, tests and remaining physical-device gates.
+The six-venue, cycling, no-subtext 39O specification supersedes the September 21 proposal. Implementation defaults are Streets on first use and per-account persisted venue selection; genuinely empty venues invite trying another venue. Server-confirmed outcomes freeze a named IANA zone/local completion date. The elapsed-time storage introduced at that point was removed by the September 29 decision below. No progress aggregate, reflection or payment feature was added in Phase 04. See the phase 04 handoff for schema, retries, tests and remaining physical-device gates.
 
 ## September 29 Phase 06 scope and validation timing
 
@@ -54,7 +54,7 @@ Physical-iPhone acceptance is scheduled after the full app build in Phase 14. St
 
 ## September 30 Phase 06A sequencing
 
-Anthony approved [Phase 06A — Code quality & test hardening](implementation-plan/phase-06a-code-quality.md#phase-06a) between Progress and billing. It may start and complete against verified local implementations while earlier physical-device/staging gates remain open. API route and persistence redesign is discussed separately. The quality phase is complete; the Phase 06A handoff records its tests and maintained thresholds.
+Anthony approved Phase 06A — Code quality & test hardening between Progress and billing. It may start and complete against verified local implementations while earlier physical-device/staging gates remain open. API route and persistence redesign is discussed separately. The quality phase is complete; the Phase 06A handoff records its tests and maintained thresholds.
 
 ## October 8 Phase 07 implementation reconciliation
 
@@ -67,27 +67,27 @@ Anthony approved [Phase 06A — Code quality & test hardening](implementation-pl
 - Progress independently reconciles each aggregate and merges day rows by attempt ID. Definitive completion rejection removes provisional credit while retaining content; reflection-only rejection retains valid rep credit. The saved app/API/database suite and required browser CI remain; 07.3A is deferred, and native/device/staging gates remain separately owned.
 - Access/earlier-upload provider interfaces have isolated tests, with no production paid bypass. Phase 07A connects RevenueCat verification/coverage, account-scoped saved access, purchase/restore, webhook delivery and scheduled billing recovery. Under the phase ownership recorded before the October 18 reorder, Phase 08 owns support/Settings/data controls, Phases 10–11 acceptance/analytics, Phase 13 legal documents/disclosures and Phase 14 the full physical-device/staging/release pass.
 
-See [APP_SHELL.md](architecture/APP_SHELL.md), [PRD](product/PRD.md) and the [Phase 07 handoff](handoffs/phase-07-api-offline.md) for current implementation and evidence. Earlier dated sections are historical and do not reopen superseded behavior.
+See [APP_SHELL.md](architecture/APP_SHELL.md), [PRD](product/PRD.md) and the Phase 07 handoff for current implementation and evidence. Earlier dated sections are historical and do not reopen superseded behavior.
 
 ## October 14 Phase 08 scope split and renumbering
 
 Historical numbering in this section records the October 14 split; the October 17 mapping below supersedes it.
 
-Anthony reports most Phase 08 work completed and is implementing account deletion. Keep deletion, retention/backup mechanics and the existing Settings/recovery/export/preference acceptance in [Phase 08](implementation-plan/phase-08-settings-privacy.md#phase-08). Move analytics consent, PostHog and product measurement to [then Phase 09 (now 10 and 17)](implementation-plan/phase-17-analytics.md#phase-17), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation to [then Phase 10 (now 12)](implementation-plan/phase-12-legal-documents.md#phase-12). Operational diagnostic redaction/service-health dashboards stay in Phase 08.
+Anthony reports most Phase 08 work completed and is implementing account deletion. Keep deletion, retention/backup mechanics and the existing Settings/recovery/export/preference acceptance in Phase 08. Move analytics consent, PostHog and product measurement to [then Phase 09 (now 10 and 17)](implementation-plan/phase-17-analytics.md#phase-17), and Privacy Policy/Terms, legal review, public hosting and disclosure preparation to then Phase 10 (now 12). Operational diagnostic redaction/service-health dashboards stay in Phase 08.
 
-Former release Phase 09 is now [then Phase 11 (now 14)](implementation-plan/phase-14-release.md#phase-14); lock-screen countdowns, optional US checkout and the future coach shift from 10–12 to 12–14. Earlier IDs and billing's beta-first activation sequence remain unchanged. Existing open device/staging/release gates keep their owners under the new numbering. This is a documentation/planning change, not feature implementation, phase acceptance or publication authorization.
+Former release Phase 09 is now then Phase 11 (now 14); lock-screen countdowns, optional US checkout and the future coach shift from 10–12 to 12–14. Earlier IDs and billing's beta-first activation sequence remain unchanged. Existing open device/staging/release gates keep their owners under the new numbering. This is a documentation/planning change, not feature implementation, phase acceptance or publication authorization.
 
 ## October 15 Terms & Privacy acceptance (now Phase 10)
 
 Anthony approved one Terms & Privacy onboarding page as the only permission request for the disclosed Phase 11 analytics scope. Remove both planned analytics Settings controls; no separate sensitive-metadata choice or post-reflection analytics prompt. This limited page is approved while welcome/questionnaire onboarding stays deferred. Account-owned, versioned acceptance and matching client/server enforcement replace the two-choice boundary. Retain payload exclusions, account/deletion fencing, reliable product saves and provider cleanup.
 
-The How We Feel reference supplies the page structure, not JustGO's data claims: submitted records live on the phone and in the cloud, and persistent pseudonymous analytics is account-linked. Disclose feeling/length fields if included. The [planning handoff](handoffs/phase-10-acceptance.md) records draft copy, dependencies and evidence limits. Implementation/export remains disabled; Phase 13 reviews final wording, regional sufficiency and applicable privacy requests. This update does not authorize publication or close any implementation/release gate.
+The How We Feel reference supplies the page structure, not JustGO's data claims: submitted records live on the phone and in the cloud, and persistent pseudonymous analytics is account-linked. Disclose feeling/length fields if included. The planning handoff records draft copy, dependencies and evidence limits. Implementation/export remains disabled; Phase 13 reviews final wording, regional sufficiency and applicable privacy requests. This update does not authorize publication or close any implementation/release gate.
 
 ## October 16 codebase assessment follow-up
 
 Anthony approved these decisions while reviewing the [October 16 codebase assessment](https://claude.ai/code/artifact/f5067650-3c46-4c2e-bf14-1fcb107617ab):
 
-- **Placement.** New work from the assessment goes only into Phase 08 or later, because Phase 08 is current. CI-unblocking fixes land as [Phase 08 pre-merge work](implementation-plan/phase-08-settings-privacy.md#phase-08-pre-merge); structure, documentation and tooling cleanup with no user-visible change becomes [Phase 08A](implementation-plan/phase-08a-structure-cleanup.md#phase-08a), after Phase 08 merges and before Phase 09; remaining items join Phases 08–14.
+- **Placement.** New work from the assessment goes only into Phase 08 or later, because Phase 08 is current. CI-unblocking fixes land as Phase 08 pre-merge work; structure, documentation and tooling cleanup with no user-visible change becomes Phase 08A, after Phase 08 merges and before Phase 09; remaining items join Phases 08–14.
 - **File-based routes.** Keep every current URL except the access gate, which moves from `/` to `/access` so Home is the only owner of `/`. Group screens with parenthesized folders, which change no URL, and freeze the route list before Phase 14. Turn on Expo Router typed routes.
 - **Implementation plan folder.** Split `IMPLEMENTATION_PLAN.md` into a `docs/implementation-plan/` folder with a README and one file per phase, including Phases 01–07. Moving earlier phases' text is documentation housekeeping, not new work for those phases.
 - **Superseded and finished documents.** Delete files that no longer work or label themselves superseded; Git keeps their history. Archive finished handoffs in `docs/archive/`, and keep handoffs with open gates until those gates close.
@@ -158,15 +158,15 @@ Anthony wants each phase to group related work that can be requested and complet
 
 Split the former Phase 09 without adding or dropping approved scope:
 
-| Previous owner          | Phase on October 17                                            | Responsibility                                                                                                   |
-| ----------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| 09 app changes          | [09](implementation-plan/phase-09-app-continuity.md#phase-09)  | One-time shuffled/saved venue decks, remembered venue and bottom-only post-challenge Reflection exit             |
-| 09 acceptance           | [10](implementation-plan/phase-10-acceptance.md#phase-10)      | Terms & Privacy page, account-owned versioned receipt, eligibility boundary and unavailable Settings-row removal |
-| 09 measurement          | [11](implementation-plan/phase-17-analytics.md#phase-17)       | Explicit events, acceptance-aware adapters, PostHog settings/cleanup, event dictionary and dashboard             |
-| 09 app diagnostics      | [12](implementation-plan/phase-11-crash-reporting.md#phase-11) | App crash/unhandled-error reporting, redaction and provider facts                                                |
-| 10 legal                | [13](implementation-plan/phase-12-legal-documents.md#phase-12) | Legal review, public notices/hosting and release-disclosure preparation                                          |
-| 11 release              | [14](implementation-plan/phase-14-release.md#phase-14)         | Free beta, server monitoring, native/staging/release validation and paid launch                                  |
-| 12–14 optional features | 15–17                                                          | Lock-screen countdowns, optional US web checkout and future AI text coach respectively                           |
+| Previous owner          | Phase on October 17                                      | Responsibility                                                                                                   |
+| ----------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 09 app changes          | 09                                                       | One-time shuffled/saved venue decks, remembered venue and bottom-only post-challenge Reflection exit             |
+| 09 acceptance           | 10                                                       | Terms & Privacy page, account-owned versioned receipt, eligibility boundary and unavailable Settings-row removal |
+| 09 measurement          | [11](implementation-plan/phase-17-analytics.md#phase-17) | Explicit events, acceptance-aware adapters, PostHog settings/cleanup, event dictionary and dashboard             |
+| 09 app diagnostics      | 12                                                       | App crash/unhandled-error reporting, redaction and provider facts                                                |
+| 10 legal                | 13                                                       | Legal review, public notices/hosting and release-disclosure preparation                                          |
+| 11 release              | 14                                                       | Free beta, server monitoring, native/staging/release validation and paid launch                                  |
+| 12–14 optional features | 15–17                                                    | Lock-screen countdowns, optional US web checkout and future AI text coach respectively                           |
 
 The October 17 order was 09 → 10 → 11 → 12 → 13 → 14 free beta → 07A activation/acceptance → 14 paid launch. The October 18 decision below supersedes that order and the table's phase numbers. Legal review may proceed alongside implementation. Phase 10 remains verifiable with labeled legal test URLs and analytics disabled; Phase 11 consumes its tested receipt boundary. Resolve the app-reporting fields/provider/privacy basis before enabling delivery in 12, with final legal reconciliation in 13. Server monitoring stays in 14. Earlier IDs through 08A and billing sequencing remain unchanged.
 
@@ -200,7 +200,7 @@ serves the acceptance endpoint. This permits the matching API deployment and
 required forward migrations on the existing application-staging infrastructure;
 it does not authorize Git publication, release deployment, legal publication,
 retention scheduling, provider activation or native distribution. The
-[Phase 10 handoff](handoffs/phase-10-acceptance.md) records the rollout evidence.
+Phase 10 handoff records the rollout evidence.
 
 ## October 18 focused verification for routine fixes
 
@@ -221,12 +221,12 @@ Keep heavy checks sequential on the 8 GB Mac.
 
 Anthony approved moving product analytics until after paid launch and integrating basic Sentry crash/error reporting before legal finalization. Renumber the current phase files, dependency/handoff references and compatibility index together:
 
-| Previous phase | Current phase                                                  | Responsibility                                                                         |
-| -------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| 12             | [11](implementation-plan/phase-11-crash-reporting.md#phase-11) | Sentry app crash/unhandled-error reporting, redaction, recovery and provider facts     |
-| 13             | [12](implementation-plan/phase-12-legal-documents.md#phase-12) | Final launch notices, acceptance copy/versions, public URLs and disclosure preparation |
-| 14             | [13](implementation-plan/phase-14-release.md#phase-14)         | Free beta, server monitoring, signed-device/release validation and paid launch         |
-| 11             | [14](implementation-plan/phase-17-analytics.md#phase-17)       | PostHog events, cleanup, dictionary and dashboard after paid launch                    |
+| Previous phase | Current phase                                            | Responsibility                                                                         |
+| -------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 12             | 11                                                       | Sentry app crash/unhandled-error reporting, redaction, recovery and provider facts     |
+| 13             | 12                                                       | Final launch notices, acceptance copy/versions, public URLs and disclosure preparation |
+| 14             | 13                                                       | Free beta, server monitoring, signed-device/release validation and paid launch         |
+| 11             | [14](implementation-plan/phase-17-analytics.md#phase-17) | PostHog events, cleanup, dictionary and dashboard after paid launch                    |
 
 Run 10 → 11 crash reporting → 12 legal → 13 free beta → 07A activation/acceptance → 13 paid launch → 14 analytics. Earlier phase IDs and billing's beta-first sequence stay unchanged. Phases 15–17 stay optional after paid launch and do not depend on analytics.
 
@@ -236,7 +236,7 @@ Keep product analytics and unconditional billing-to-PostHog forwarding disabled 
 
 Before Phase 14 activation, review the provider/payloads, update public notices/disclosures and accepted versions, and require current account-owned acceptance through the existing Terms & Privacy page. Preserve the approved event allowlist and analytics-only `start_id` rules; do not backfill pre-activation history. No separate analytics switch or separate prompt is added.
 
-Preserve historical decision numbering and ignored evidence paths. The live hosted-test handoff moved to `phase-13-test-server.md` in this October 18 reordering (its [current location](handoffs/phase-14-test-server.md) follows the later October 20 insertion); its rollout evidence and all earlier device/release gates remain unchanged. This reordering does not implement an SDK or runtime copy change, close an acceptance gate, or authorize Git publication, deployment, native build/upload, legal publication or new data delivery.
+Preserve historical decision numbering and ignored evidence paths. The live hosted-test handoff moved to `phase-13-test-server.md` in this October 18 reordering (its current location follows the later October 20 insertion); its rollout evidence and all earlier device/release gates remain unchanged. This reordering does not implement an SDK or runtime copy change, close an acceptance gate, or authorize Git publication, deployment, native build/upload, legal publication or new data delivery.
 
 ## October 18 minimal Sentry integration
 
@@ -369,7 +369,7 @@ updating the existing test server on October 19. This authorizes the matching
 candidate API/contracts deployment to the existing phone API address and disposable
 acceptance verification. It does not publish the legal website, finalize effective
 dates, upgrade hosting, authorize Git publication or distribute a native build.
-The [Phase 12 handoff](handoffs/phase-12-legal-documents.md) records the verified
+The Phase 12 handoff records the verified
 test-server repair; the public release rollout remains open.
 
 ## October 19 Terms links without acceptance recording
@@ -456,7 +456,7 @@ account recovery restoring basic cloud challenge history but not that private
 journal. He selected manual backup and restore files through iCloud Drive;
 automatic iCloud synchronization and AI coaching are out of scope for now.
 
-Insert [Phase 13 — Local journal and manual backup](implementation-plan/phase-13-local-journal.md)
+Insert Phase 13 — Local journal and manual backup
 before release. Existing release becomes 14, analytics 15, native timers 16,
 optional web checkout 17 and future AI coach 18. The hosted test prerequisite is
 renamed to Phase 14 as well. Number-only compatibility links follow the new map;
@@ -497,7 +497,7 @@ isolation safeguards already implemented. Add a dedicated signed-in journal sync
 boundary rather than replaying retired private queues or blindly reverting the
 phase. Preserve no-private-content diagnostics and analytics/AI activation gates.
 
-The revised [Phase 13 plan](implementation-plan/phase-13-local-journal.md) uses
+The revised Phase 13 plan uses
 managed Supabase Auth with native Apple/Google adapters, the existing API/private
 PostgreSQL boundary and optional private CloudKit synchronization. The precise
 relationship between How We Feel's account cloud storage and its iCloud toggle,
@@ -550,7 +550,7 @@ verification within Phase 13; until available, explain why the control cannot be
 enabled instead of leaving it silently unresponsive.
 
 Anthony requested a written plan before implementation. The revised
-[Phase 13 sequence](implementation-plan/phase-13-local-journal.md#implementation-sequence)
+Phase 13 sequence
 orders continuity/migration, verified provider switches, page layout, shared
 confirmations, backup/deletion reconciliation, external setup/device acceptance
 and final verification/documentation. It specifies implementation defaults for

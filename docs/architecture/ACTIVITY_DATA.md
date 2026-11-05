@@ -3,8 +3,7 @@
 This describes the revised Phase 13 local implementation candidate. Hosted services
 and installed clients keep their earlier behavior until the coordinated rollout.
 [IDENTITY.md](IDENTITY.md) owns account access, [APP_SHELL.md](APP_SHELL.md) owns
-runtime composition, and the [handoff](../handoffs/phase-13-local-journal.md) records
-actual verification and open device/hosting gates.
+runtime composition, and [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) track open device and hosting gates.
 
 ## Ownership and durable saving
 
@@ -228,7 +227,9 @@ provider retention copies require the separate disclosure/retention process in t
 
 ## Deck preferences and compatibility
 
-`DeckPreferencesStorage` remains independent best-effort local state. Persist venue
+`DeckPreferencesStorage` remains independent best-effort local state. Deck and
+venue preferences stay on this phone and never enter activity uploads, iCloud
+sync, downloads or analytics. Persist venue
 and placement order, keep surviving cards across catalog refresh, add new cards
 behind the front and rotate only the matching active front. Owner generations fence
 late preference reads/writes. A preference failure cannot enter journal saving or

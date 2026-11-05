@@ -12,7 +12,7 @@ Eligible users can purchase on the web using the same authenticated app identity
 
 - Dependencies: Phase 14 paid launch; Phase 17 analytics is not a prerequisite.
 - Acceptance: PRD §4.3, §9 · Tech §8; acceptance 7, 14–17
-- Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
+- Preserve the applicable [recorded decisions](../DECISIONS.md) and open [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
 
 ## Implement
 
@@ -29,7 +29,7 @@ Eligible users can purchase on the web using the same authenticated app identity
 - [ ] Optional scope is approved and current storefront/integration rules are verified.
 - [ ] Eligible/ineligible flows, forged redirects/webhooks, delayed payment, return/restore, refund/cancel and duplicate subscriptions pass.
 - [ ] Rollout/rollback, provider reconciliation and measurement evidence are recorded.
-- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
+- [ ] Record exact changes, issues/fixes and test evidence in the PR descriptions, and file remaining gates as `gate` issues.
 
 ## Open gates for Phase 14
 

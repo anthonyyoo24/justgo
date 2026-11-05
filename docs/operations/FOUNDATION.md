@@ -1,6 +1,6 @@
 # Foundation: setup, versions and operations
 
-> Current setup and operations guide, established in Phase 01. See [IDENTITY.md](../architecture/IDENTITY.md) and [ACCOUNT_SYNC_SETUP.md](ACCOUNT_SYNC_SETUP.md) for optional accounts, internal legacy migration and provider/grant prerequisites. [Phase handoffs](../handoffs/README.md) record historical verification and remaining acceptance gates.
+> Current setup and operations guide, established in Phase 01. See [IDENTITY.md](../architecture/IDENTITY.md) and [ACCOUNT_SYNC_SETUP.md](ACCOUNT_SYNC_SETUP.md) for optional accounts, internal legacy migration and provider/grant prerequisites. Remaining acceptance gates are [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
 
 Established September 17, 2026. Start with the [README](../../README.md). The Phase 01 preview did not include account/session endpoints or permanent client credential storage; Phase 02 adds those capabilities. Phase 07 now implements challenge/completion/reflection/Progress saving and synchronization; purchases and verified production coverage remain Phase 16.
 
@@ -42,9 +42,8 @@ and [Reanimated compatibility table](https://docs.swmansion.com/react-native-rea
 as a set when upgrading. Do not update Worklets independently.
 
 SDK 58 adds iOS scene lifecycle integration and requires a new development binary;
-SDK 57 clients cannot load this JavaScript runtime. The signed upgrade build and
-remaining device/release gates are recorded in the
-[native-upgrade handoff](../handoffs/phase-14-native-upgrade.md). The iOS minimum
+SDK 57 clients cannot load this JavaScript runtime. Its remaining device and release
+gates are [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate). The iOS minimum
 remains 16.4. File export/import now awaits SDK 58's asynchronous write/read APIs
 before sharing, checking ownership or closing the file handle.
 
@@ -110,6 +109,8 @@ SQL/hashes and journal checkpoints; transaction-control/setup failures do not
 invent a failing filename.
 
 Staging administrative provisioning is recorded as Supabase migration `foundation_roles`. Application migration `0000_foundation.sql` was applied through Drizzle with its own journal; it creates only `justgo.current_user_id()`. Keep these responsibilities separate. Do not reapply the function SQL through a second migration runner.
+
+PostgreSQL truncates identifiers longer than 63 bytes, so give long generated constraint and foreign-key names an explicit short name in the schema, SQL and snapshot.
 
 The runtime role owns no schema/table, cannot bypass RLS, create roles/databases/tables, or assume the migrator. Future owner-scoped tables must enable **and force** RLS, have `USING` and `WITH CHECK` policies for `justgo_runtime`, grant only required operations, and index `user_id` alongside access-path indexes. Example policy predicate: `user_id = (select justgo.current_user_id())`. Add constraints and indexes with the consuming feature, not a speculative full schema.
 
@@ -188,7 +189,7 @@ Restore and reapply:
 
 Before reopening the app:
 
-5. Confirm in the restored database that every saved account has `deleted_at` set, `analytics_restricted_at` cleared and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
+5. Before comparing text fingerprints between databases, set `TimeZone` to UTC in both sessions, because each session formats timestamps in its own time zone. Confirm in the restored database that every saved account has `deleted_at` set, `analytics_restricted_at` cleared and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
 6. Using an API restricted to the isolated environment, confirm that deleted disposable accounts' old recovery proofs are rejected and their journal data is absent. Only after these checks pass may the operator point the normal API at the restored database and reopen writes. This prevents a public recovery window during verification.
    Also prove managed JWT/app-session rejection for deleted/revoked owners, absence
    of erased Auth profiles, preserved active-account epochs and rejection of stale
@@ -303,9 +304,8 @@ bootstrap and candidate probe behavior are verified without an owner login. The
 code-only hosted release succeeded; no migrations were pending or written. The
 pending-migration path remains unverified and requires current recovery evidence;
 an old dump cannot satisfy that gate. TestFlight 0.1.0 (5) enables app reporting
-and has matching uploaded symbols; build 4 remains reporting-off. See the
-[current release handoff](../handoffs/phase-14-release.md) for exact receipts and
-the owner-skipped native crash test.
+and has matching uploaded symbols; build 4 remains reporting-off. The owner-skipped
+native crash test leaves the fatal path unverified ([#92](https://github.com/anthonyyoo24/justgo/issues/92)).
 
 Before external testers, retain the open deployed 5xx-to-Sentry delivery,
 native diagnostics, supported private-journal processing and current
@@ -343,9 +343,9 @@ Native compilation runs on EAS using `development-simulator`, per the owner’s 
 
 The EAS `development-simulator` build `2c73c1af-3d5d-4216-8f25-875c72691973` completed on September 17, 2026. Its downloaded binary passed native startup and the connection check on one iPhone 17 / iOS 26.4 simulator. The artifact remains at `.local/JustGO-eas-simulator.tar.gz`, with the extracted app at `.local/eas-simulator/JustGO.app`. Start Metro from `apps/mobile` using `NODE_OPTIONS=--dns-result-order=ipv4first npx expo start --dev-client --localhost --max-workers 1`; the IPv4 option avoids a localhost/127.0.0.1 binding mismatch. Reuse this binary until a native dependency/configuration changes.
 
-The Phase 02 binary and its native checks remain historical in [its handoff](../handoffs/phase-02-identity.md). The October 6 EAS simulator build and retained QA device are recorded in the [07.3 simulator setup](../handoffs/phase-07-3-local-flow.md#october-6-simulator-reuse-and-owner-test-setup); that existing binary contains AsyncStorage/NetInfo. The earlier Phase 13 physical build added SQLite/document picker. Revised optional accounts/iCloud additionally require a separately authorized compatible binary with Apple/Google, SecureStore and the CloudKit module/capabilities. JavaScript exports cannot add those modules; see [Apple setup](APPLE_SETUP.md).
+A compatible native binary contains AsyncStorage/NetInfo, SQLite and the document picker. Revised optional accounts/iCloud additionally require a separately authorized compatible binary with Apple/Google, SecureStore and the CloudKit module/capabilities. JavaScript exports cannot add those modules; see [Apple setup](APPLE_SETUP.md).
 
-The obsolete Maestro launch harness and command were retired on November 2; automated simulator testing remains deferred. Browser verification covers the affected states and interactions, including relevant loading/disabled, success, offline failure/retry, keyboard and narrow-screen behavior. At phase closeout/release, cover the full applicable acceptance matrix, arranging applicable physical-device or manual simulator checks explicitly. Native verification is separately recorded in the handoff; a web export proves no Keychain, purchase or device recovery behavior.
+The obsolete Maestro launch harness and command were retired on November 2; automated simulator testing remains deferred. Browser verification covers the affected states and interactions, including relevant loading/disabled, success, offline failure/retry, keyboard and narrow-screen behavior. At phase closeout/release, cover the full applicable acceptance matrix, arranging applicable physical-device or manual simulator checks explicitly. Native verification is recorded separately in the PR or its `gate` issue; a web export proves no Keychain, purchase or device recovery behavior.
 
 The Phase 01 `npm audit` recorded 18 moderate dependency advisories, with no high/critical findings at the recorded installation. They include transitive Expo tooling and Drizzle Kit dependencies. Review compatible upstream fixes before release; do not apply a forced Expo downgrade to silence the audit.
 
@@ -367,4 +367,4 @@ This runbook prepares Phase 14 staging/release integration; Phase 07.5 local imp
 5. Deploy matching canonical API/contracts and distribute/reload the matching mobile client together, then run staged recovery/revocation/transfer and completion/reflection/Progress checks. Check old paths return 404 without writes and reject old public fields. Do not grant a production test entitlement or bundle a deployment-protection bypass. Phase 16 must connect real verified access/earlier-upload coverage before paid release.
 6. If comparison or deployment fails, keep traffic closed. Before contraction, leave additive schema in place and repair forward. After contraction, an old API requires removed tables/columns and cannot safely be rolled back alone. Restore the protected pre-cutover snapshot only under the reviewed maintenance plan, coordinate its matching old API/client state, then repair/rehearse forward; account for writes since the snapshot before any restore. Prefer a new reviewed forward-repair migration when preserved data is sound. Never edit already-applied 0000–0012 SQL, reset shared data or delete credential history to retry.
 
-Relaunch hydrates same-account device-persisted submissions and resumes their stable create/PATCH operations. New-device recovery restores uploaded server history, not another phone's only pending copy. Current old-client handling is coordinated release maintenance/update, not an already implemented in-app forced-upgrade system. Record actual deployed versions, backup/restore proof, comparisons and staged/device results in the release handoff before claiming rollout acceptance.
+Relaunch hydrates same-account device-persisted submissions and resumes their stable create/PATCH operations. New-device recovery restores uploaded server history, not another phone's only pending copy. Current old-client handling is coordinated release maintenance/update, not an already implemented in-app forced-upgrade system. Record actual deployed versions, backup/restore proof, comparisons and staged/device results in the release PR before claiming rollout acceptance.

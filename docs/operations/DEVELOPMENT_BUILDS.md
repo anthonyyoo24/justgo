@@ -110,7 +110,9 @@ temporary keychains are cleaned on failure and success. The TestFlight metadata
 gate stays separate; archive extraction/signature/cleanup code is shared.
 
 Open the new installation URL or its QR on the registered iPhone and install
-**JustGO Dev** alongside TestFlight. Check Developer Mode if requested. If upload
+**JustGO Dev** alongside TestFlight. Check Developer Mode if requested. A
+`devicectl` launch needs the phone unlocked; if the Mac cannot reach the paired
+phone, install from the installation link instead. If upload
 has an uncertain outcome, inspect existing uploaded builds before retrying;
 another upload can consume another slot. A link does not establish installation.
 
@@ -166,7 +168,9 @@ than only the launcher's process values. It never falls back to release
 `.env.local`. Metro uses one worker, LAN port 8081 and explicit scheme
 `justgo-dev`; add `--web` for a browser preview. `npm run dev:web` is unchanged.
 
-Use the same Wi-Fi on phone and Mac and scan the current **server** QR. This
+Use the same Wi-Fi on phone and Mac and scan the current **server** QR. If the
+phone cannot reach Metro, allow JustGO's Local Network access in iOS Settings and
+retry. This
 differs from the **installation** QR. Ordinary UI/JS changes reload; native
 module/configuration changes require another Dev binary. Restart with `--clear`
 after configuration/module-path changes and verify the iOS manifest's LAN host.

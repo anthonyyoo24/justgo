@@ -12,7 +12,7 @@ The same accepted challenge is visible on supported lock screens without a JavaS
 
 - Dependencies: Phase 14 paid launch; Phase 17 analytics is not a prerequisite.
 - Acceptance: PRD AC-06–07, 17 · Tech acceptance 9, 12, 17
-- Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
+- Preserve the applicable [recorded decisions](../DECISIONS.md) and open [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
 
 ## Implement
 
@@ -31,7 +31,7 @@ The same accepted challenge is visible on supported lock screens without a JavaS
 - [ ] Real-device lock, background, reopen and zero behavior on the platforms being released use the captured start and duration; device/OS evidence is saved.
 - [ ] Accepted local completion or Give up ends the display; uncertain native display updates reconcile safely without inventing backend active attempts.
 - [ ] Permission denial, dismissal and unsupported-device paths retain a usable in-app countdown; native limitations are documented.
-- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
+- [ ] Record exact changes, issues/fixes and test evidence in the PR descriptions, and file remaining gates as `gate` issues.
 
 ## Open gates for Phase 14
 

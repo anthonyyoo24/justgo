@@ -9,8 +9,7 @@ TestFlight inputs. The original Phase 13 setup/build records below are historica
 This is the operator checklist for Phase 13. The owner authorized the current
 staging provider/API setup and a compatible internal development build. Git
 publication, public distribution, purchases and scheduling retain their separate
-permissions. The [phase plan](../implementation-plan/phase-13-local-journal.md)
-and [handoff](../handoffs/phase-13-local-journal.md) own acceptance status;
+permissions. [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) own acceptance status;
 [IDENTITY.md](../architecture/IDENTITY.md) owns the safety invariants.
 
 ## Current setup status

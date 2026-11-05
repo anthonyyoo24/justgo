@@ -5,7 +5,7 @@ guest use, signed-in JustGO synchronization, optional CloudKit and complete data
 controls. The authorized October 21 staging rollout applied migrations 0019–0023,
 configured native providers and submitted the configured internal iPhone build.
 Follow [account setup](ACCOUNT_SYNC_SETUP.md) for current API/build status and retain the
-[Phase 14](../implementation-plan/phase-14-release.md) acceptance gates.
+[External beta](https://github.com/anthonyyoo24/justgo/milestone/1) acceptance gates.
 
 ## Coordinated rollout
 

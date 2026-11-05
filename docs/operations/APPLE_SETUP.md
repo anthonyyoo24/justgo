@@ -28,7 +28,7 @@ Started September 17, 2026. Owner: **Anthony**. **October 11 verification:** The
 | Sandbox purchase and restore                                                          | Not run; no purchase code in 01                                                                                                                                                                                            | 16                           |
 | Release-like build, TestFlight, App Review metadata and first subscription submission | Store-signed 0.1.0 (3) built, inspected and uploaded October 25; see the [beta procedure](TESTFLIGHT_BETA.md). Phone acceptance and final disclosures remain open; paid submission follows accepted 16                     | 14                           |
 
-**October 12 haptics build:** The owner-authorized updated internal development build [e48faabd](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/e48faabd-d7e2-4b6e-ac34-e08d9087fce9) succeeded. Its signed app includes native haptics and the existing Keychain module; team/app identity and the registered iPhone provisioning were verified. SDK patches now pass Expo Doctor 21/21. Install this build over the existing app, then reconnect to the running development server. Actual installation and tactile feedback acceptance remain open. See the [build handoff](../handoffs/phase-08-settings-privacy.md).
+**October 12 haptics build:** The owner-authorized updated internal development build [e48faabd](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/e48faabd-d7e2-4b6e-ac34-e08d9087fce9) succeeded. Its signed app includes native haptics and the existing Keychain module; team/app identity and the registered iPhone provisioning were verified. SDK patches now pass Expo Doctor 21/21. Install this build over the existing app, then reconnect to the running development server. Actual installation and tactile feedback acceptance remain open.
 
 **Earlier Phase 13 journal development binary:** Anthony authorized the updated iPhone build [fa3414c1](https://expo.dev/accounts/anthonyyoos-team/projects/justgo/builds/fa3414c1-dbef-46b2-aa40-e3859744f70d), which finished on October 20. Its downloaded IPA contains SQLite, DocumentPicker and the existing Keychain module, with the unchanged `com.anthonyyoo.justgo` identifier, team and registered-iPhone provisioning. Native compilation required static-framework linkage for the pinned Sentry scope API; privacy safeguards remain intact and diagnostics remain disabled. Installation and Phase 13 physical storage/Files acceptance remain unverified. That build predates the revised managed Apple/Google Auth, SecureStore and CloudKit module/capability changes. It is not a compatible acceptance binary for the expanded scope. The matching local API is required until separately approved hosted cutover; existing hosted services retain earlier behavior.
 
@@ -64,9 +64,8 @@ confirmed Home with the existing account and Progress history, normal day-sheet/
 editor opening and closing, and expected iCloud status in Settings → Data.
 This basic upgrade smoke does not close the extended Keychain, Files, lifecycle,
 accessibility or multi-device matrix. Earlier SDK 57 binaries cannot load the new
-runtime. Use the current SDK 58 Metro server with a cleared cache. Exact build,
-source/archive attribution, checks and remaining gates are in the separate
-[native-upgrade handoff](../handoffs/phase-14-native-upgrade.md). Earlier phone
+runtime. Use the current SDK 58 Metro server with a cleared cache. Its remaining
+gates are in the [External beta](https://github.com/anthonyyoo24/justgo/milestone/1) milestone. Earlier phone
 evidence below remains historical, not automatic acceptance of this SDK.
 
 **Configured iCloud testing binary:** The internal development build
@@ -145,8 +144,7 @@ the implementation owner and Phase 14 release owner. The routine iCloud fix used
 focused native/adapter/coordinator/UI checks at his request. Subsequent PR
 publication preparation passed broader checks, coverage, 43 saved journeys and
 exports/smoke. The API audit scope correction passes locally; exact hosted results
-are recorded on PR #43. Mobile/tooling advisories remain separate pre-release work. See the
-[current publication evidence](../handoffs/phase-13-local-journal.md#pr-publication-validation).
+are recorded on PR #43. Mobile/tooling advisories remain separate pre-release work ([#103](https://github.com/anthonyyoo24/justgo/issues/103)).
 These checks do not accept the deferred native cases.
 
 **Configured private iCloud:** Anthony approved assigning
@@ -261,7 +259,7 @@ For full physical app testing, make the matching API reachable from the phone; s
 5. **Done by agent:** EAS reused Anthony's authenticated Apple session, generated the distribution certificate and created a provisioning profile including the selected iPhone. No existing credential was deleted; no signing secret was copied into source.
 6. **Done by agent:** Fresh `npm run check` passed, including online Expo Doctor. EAS archive inspection found the export implementation and custom Keychain module, with no private environment files, local test data or signing credentials. Build `1500d7ee-c49a-4047-b88a-278eccdc21bc` used the `development` profile and **finished successfully at 14:25:51 UTC on October 11**. Cloud compilation avoided a local Xcode build. It includes this branch's uncommitted export code; the dashboard's HEAD commit label does not imply that only committed source was uploaded.
 7. **Installed; Developer Mode verified:** Anthony reports the installed JustGO opens to its development launcher. The downloaded IPA was inspected: its bundle ID/team/version match and its provisioning profile includes the connected iPhone. USB trust is paired. The first USB launch was rejected because Developer Mode was disabled; after Anthony enabled it and restarted, `devicectl device info details` confirmed enabled and the app launch succeeded. The older list-devices result briefly retained stale disabled metadata. See [Expo's instructions](https://docs.expo.dev/guides/ios-developer-mode/) for the phone-side setting/restart steps.
-8. **Hosted prerequisite implemented:** Anthony approved bringing forward the existing test-server update. The [server handoff](../handoffs/phase-14-test-server.md) records the protected backup/restoration, unchanged migrations through 0013, identity preservation and explicit operator approval of his confirmed phone account. `https://justgo-two.vercel.app` is the application-staging API, hosted on the existing Vercel project's stable production slot. Existing preview protection remains unchanged; no fixture or bypass secret is exposed. This is test infrastructure, not a paid production release.
+8. **Hosted prerequisite implemented:** Anthony approved bringing forward the existing test-server update. The update included a protected backup/restoration, unchanged migrations through 0013, identity preservation and explicit operator approval of his confirmed phone account. `https://justgo-two.vercel.app` is the application-staging API, hosted on the existing Vercel project's stable production slot. Existing preview protection remains unchanged; no fixture or bypass secret is exposed. This is test infrastructure, not a paid production release.
 9. **Phone connected:** After Anthony enabled/retried JustGO Local Network access on the same Wi-Fi, Metro received the iOS bundle request and he confirmed Settings opened. The exact cause of the earlier offline error was not isolated. Only the separate one-worker LAN session on port 8084 was restarted with `EXPO_PUBLIC_API_URL=https://justgo-two.vercel.app`; the phone loaded the updated bundle and created its real private account. Anthony confirmed the displayed account reference before operator approval. Existing simulator/worktree processes were not stopped. Mac and phone must remain connected for live refresh.
 10. **Together:** Use disposable entries to verify the Phase 08 checklist below, fix failures and repeat the affected checks. JavaScript/UI edits usually reuse the installed build; new native libraries, native configuration or SDK changes need another compatible build. The final release-like/staging acceptance pass remains separate.
 
@@ -276,7 +274,7 @@ The concrete backend work needed before full phone testing is:
 3. Prepare a reviewed mobile-reachable HTTPS API route and matching Vercel preview deployment while preserving existing deployment protection. Keep database credentials and any provider secrets server-side. This route/access configuration still needs selecting; no public endpoint or bypass was created during build setup.
 4. Verify staged readiness, identity, account isolation, tester access, saved activity and export, then supply its URL to the separate phone Metro session and run the actual device checks. Record this as earlier owner-device preparation for Phase 14's hosted beta prerequisites; it does not complete the beta or paid-launch gates.
 
-Anthony subsequently approved this prerequisite. The [test-server handoff](../handoffs/phase-14-test-server.md) records the completed backup/restoration, migration through 0013, matching protected preview and stable test API, credential fencing of old deployments, private test grant and current verification. The installed native binary was reused. Broader beta/device, durable offline admission, recovery and release gates remain open.
+Anthony subsequently approved this prerequisite. It completed backup/restoration, migration through 0013, a matching protected preview and stable test API, credential fencing of old deployments and a private test grant. The installed native binary was reused. Broader beta/device, durable offline admission, recovery and release gates remain open.
 
 ### Historical Phase 08 phone-check reference
 
@@ -290,7 +288,7 @@ are listed above and in ACCOUNT_SYNC_SETUP.md.
 - **Settings:** Check safe areas, scrolling, Back navigation, large text and VoiceOver. Exercise the existing Account & recovery entry; the full older Keychain/reinstall/two-device recovery matrix is an additional release gate.
 - **Challenge transition fixes made during this branch:** Check first and repeated Accept → challenge and Completed → Success transitions for flashes on the physical phone.
 
-Anthony reported completing Phase 08's required physical-iPhone checks, including haptics and account deletion. Haptics acceptance covers Accept, Completed, feeling selections, the enable preview and the remembered Off preference after relaunch. See the [Phase 08 handoff](../handoffs/phase-08-settings-privacy.md) for the owner-reported acceptance and retained Phase 14 checks on the actual beta/release build. Analytics implementation remains Phase 17. App Store and social links remain unavailable until destinations exist; those do not have a working phone flow to accept today.
+Anthony reported completing Phase 08's required physical-iPhone checks, including haptics and account deletion. Haptics acceptance covers Accept, Completed, feeling selections, the enable preview and the remembered Off preference after relaunch. Gate [#88](https://github.com/anthonyyoo24/justgo/issues/88) retains the recheck on the actual beta/release build. Analytics implementation remains Phase 17. App Store and social links remain unavailable until destinations exist; those do not have a working phone flow to accept today.
 
 ## Release setup sequence
 

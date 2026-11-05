@@ -9,8 +9,7 @@ alert-delivery or native acceptance.
 The [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status) owns
 current source, tag, CI, run, deployment/version, probe and approval evidence.
 Existing owner-only builds still target the Vercel API/legal addresses until
-the approved full cutover replaces or retires them; see the
-[Phase 14 handoff](../handoffs/phase-14-release.md#current-release-evidence). Local implementation does not authorize account creation,
+the approved full cutover replaces or retires them. Local implementation does not authorize account creation,
 spending, deployment, migrations, DNS changes, native releases or Vercel retirement.
 
 ## Fixed target

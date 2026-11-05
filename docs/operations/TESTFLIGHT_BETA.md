@@ -1,7 +1,7 @@
 # JustGO TestFlight beta
 
 This guide owns the prepared build/upload procedure. The
-[Phase 14 plan](../implementation-plan/phase-14-release.md) owns acceptance;
+[External beta](https://github.com/anthonyyoo24/justgo/milestone/1) gates own acceptance;
 [Apple setup](APPLE_SETUP.md) owns accounts/signing, and the
 [legal review](../legal/LEGAL_REVIEW.md) owns publication/provider conditions.
 Preparation does not establish signed-build acceptance or authorize distribution.
@@ -356,8 +356,7 @@ the current guest expiry is not an approved date for a future cohort.
   failure/recovery emails. The API reporter and protected code-only release lane
   are deployed/hosted-verified; actual deployed fault-to-Sentry delivery,
   migration/deploy acceptance and current backup/recovery arrangements remain
-  open. Exact receipts and current concerns are consolidated in the
-  [release handoff](../handoffs/phase-14-release.md).
+  open as gates [#93](https://github.com/anthonyyoo24/justgo/issues/93), [#98](https://github.com/anthonyyoo24/justgo/issues/98) and [#104](https://github.com/anthonyyoo24/justgo/issues/104).
   The October 27 owner
   direction defers the automated iOS simulator smoke test; do not implement it
   now or mark it passed. The obsolete Maestro launch file, command and command-wiring
@@ -365,7 +364,7 @@ the current guest expiry is not an approved date for a future cohort.
   included uptime/email alerts and protected deployment preparation; no paid
   upgrade or simulator smoke test is authorized.
 - Preserve all applicable separate Git, native build, upload and distribution
-  permissions and the original Phase 14 acceptance matrix.
+  permissions and the open [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
 
 References: [Expo profiles](https://docs.expo.dev/build/eas-json/),
 [versions](https://docs.expo.dev/build-reference/app-versions/),

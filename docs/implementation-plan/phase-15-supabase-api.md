@@ -176,6 +176,9 @@ current serving API and database intact; no paid upgrade is a trial prerequisite
       Workers' inactive-version upload/promotion mechanics exist on Supabase.
       Stage using an isolated candidate name/project as approved, and preserve a
       verified redeployment path for the previous serving source.
+- [ ] Remove the Vercel credentials and configuration when Vercel API/legal
+      hosting retires. If Vercel is still needed, rotate its deployment token
+      before January 25, 2027.
 
 ## 5. Cut over only after acceptance
 
@@ -222,7 +225,7 @@ the current commands and thresholds rather than inventing a second test policy.
   signed-device/provider/offline/deletion acceptance. Browser mocks and local Deno
   runs do not prove hosted gateway behavior or iOS Keychain/iCloud behavior.
 - At implementation completion: update decisions, implemented architecture,
-  operations/fixture/build documentation and the handoff together. Review changed
+  operations/fixture/build documentation and the PR descriptions together. Review changed
   directories, account for every earlier finding/open gate, and retire eligible
   tooling/worktrees only under the standing preservation and permission rules.
 

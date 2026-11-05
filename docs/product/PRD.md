@@ -184,7 +184,7 @@ There is no Levels page, level selector, skip action, or automatic advancement i
 
 When levels are scheduled, the intended direction is a pool of challenges larger than the configured number of **different** completions required to advance, plus the previously requested Skip to this level flow. Exact thresholds, unlocking/skip behavior, and whether earlier completions count will be decided then. Do not invent a threshold or count catalog exhaustion as level completion now.
 
-Paper’s Levels screens and [CURRICULUM.md](../archive/product/CURRICULUM.md) are future references, not launch requirements or approved numeric targets.
+Paper’s Levels screens and the draft curriculum (`docs/archive/product/CURRICULUM.md` in git history at `50194ee`) are future references, not launch requirements or approved numeric targets.
 
 ### 5.6 Progress
 
