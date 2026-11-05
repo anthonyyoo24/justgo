@@ -121,7 +121,8 @@ one. JustGO adds these rules:
   one keeps hydration, clocks, cursor validation, account fencing and cache
   acceptance.
 - Keep tests beside their owner and native/web adapter pairs together. API
-  integration tests live in capability groups under `apps/api/tests/`.
+  integration tests live under `apps/api/tests/`, grouped by capability (such as
+  `identity/`) or by layer (`db/`, `http/`, `scripts/`).
 - A move updates imports, dynamic loaders, Jest and coverage selectors, fixture
   seams, assets, packaging and deployment allowlists, scripts and docs together.
   Use import-aware rewrites, and keep move-only work in its own commit.
