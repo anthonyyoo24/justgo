@@ -132,7 +132,7 @@ own the actual protocol and storage rules.
 
 ## Documentation and evidence
 
-[docs/README.md](../README.md) maps each concern. Named files under
+The [root README](../../README.md#documentation) lists the docs. Named files under
 implementation-plan/ own phase scope/status. Architecture and operations explain
 the current system. PR descriptions record outcomes and their reasons, and
 GitHub issues labeled `gate` track open gates. The Phase 15 Cloudflare handoff
