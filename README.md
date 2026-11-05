@@ -13,7 +13,7 @@ optional iCloud Sync and complete Download/Import controls are separate. The
 - Product: the [PRD](docs/product/PRD.md) and the [challenge catalog](docs/product/CHALLENGES.md).
 - Operations: [foundation setup and versions](docs/operations/FOUNDATION.md), [testing](docs/operations/TESTING.md), [Apple setup](docs/operations/APPLE_SETUP.md) and the other [procedures](docs/operations/) for accounts, builds, releases, backups and support.
 - Legal: the [Terms and Privacy drafts, approvals and data inventory](docs/legal/).
-- Roadmap: the [implementation plan](docs/implementation-plan/README.md). Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`).
+- Roadmap: the [implementation plan](docs/implementation-plan/README.md) and [proposals](docs/proposals/) for later phases. The [Phase 15 Cloudflare handoff](docs/handoffs/phase-15-cloudflare-api.md) stays until Workers retires. Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`).
 - Running the app: the [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md).
 
 ## Start locally
