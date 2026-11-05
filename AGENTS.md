@@ -90,11 +90,12 @@ describes.
 
 ## Git and autonomy
 
-Agents work in pstack's model: small stacked PRs, reversible work without asking,
+Agents work in pstack's model: small PRs, reversible work without asking,
 and a stop before anything irreversible. Only Anthony merges.
 
-- **Small stacked PRs.** Each PR is narrow, verified and lands on its own; a child
-  PR targets its parent's branch. A phase is a stack of PRs, not one consolidated PR.
+- **Small PRs.** Each PR is narrow, verified and lands on its own. Start each PR
+  from `main`. Stack one on another only when it needs that PR's change, and then
+  it targets that PR's branch. A phase is several small PRs, not one consolidated PR.
   Parallel agents each get their own worktree and branch, with one owner per branch.
 - **Act without asking** on reversible work: commit, push your own branches, open
   ready (not draft) PRs, update them, reply to review threads, create or update
