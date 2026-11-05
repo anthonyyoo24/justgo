@@ -176,6 +176,9 @@ current serving API and database intact; no paid upgrade is a trial prerequisite
       Workers' inactive-version upload/promotion mechanics exist on Supabase.
       Stage using an isolated candidate name/project as approved, and preserve a
       verified redeployment path for the previous serving source.
+- [ ] Remove the Vercel credentials and configuration when Vercel API/legal
+      hosting retires. If Vercel is still needed, rotate its deployment token
+      before January 25, 2027.
 
 ## 5. Cut over only after acceptance
 

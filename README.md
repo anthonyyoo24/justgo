@@ -8,7 +8,7 @@ optional iCloud Sync and complete Download/Import controls are separate. The
 
 See the [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) for the current directory groupings and responsibilities.
 
-Read [repository coding and verification instructions](AGENTS.md) before changing code, plus directory-specific `AGENTS.md` files. Phase scope and handoffs live in the [implementation plan](docs/implementation-plan/README.md).
+Read [repository coding and verification instructions](AGENTS.md) before changing code, plus directory-specific `AGENTS.md` files. Phase scope lives in the [implementation plan](docs/implementation-plan/README.md), and open gates are GitHub issues labeled `gate` (`gh issue list --label gate`).
 
 ## Start locally
 
@@ -72,6 +72,6 @@ The [testing guide](docs/operations/TESTING.md) owns simulator, device and relea
 - `apps/mobile`: Expo Router, typed design tokens, native Keychain storage, shared network/query handling, local challenge/reflection/Progress UI, account journal/sender and guarded recovery/access composition.
 - `apps/api`: Hono with Node/Workers adapters, Drizzle, `pg`, reviewed SQL and operational endpoints.
 - `packages/contracts`: public Zod response schemas shared by mobile and API.
-- `docs`: product scope, implementation plan, extracted design references and durable phase handoffs.
+- `docs`: product scope, implementation plan and extracted design references.
 
-Read [foundation setup and versions](docs/operations/FOUNDATION.md), [design guide](docs/design/DESIGN.md), [decision register](docs/DECISIONS.md), [Apple/RevenueCat checklist](docs/operations/APPLE_SETUP.md), and the [phase 01 handoff](docs/archive/handoffs/phase-01-foundation.md). The [PRD](docs/product/PRD.md) owns product behavior and the [implementation plan](docs/implementation-plan/README.md) owns release gates.
+Read [foundation setup and versions](docs/operations/FOUNDATION.md), [design guide](docs/design/DESIGN.md), [decision register](docs/DECISIONS.md), [Apple/RevenueCat checklist](docs/operations/APPLE_SETUP.md), and the [phase 01 handoff](docs/archive/handoffs/phase-01-foundation.md). The [PRD](docs/product/PRD.md) owns product behavior, the [implementation plan](docs/implementation-plan/README.md) owns phase scope, and `gate` issues track release gates.

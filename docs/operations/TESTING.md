@@ -2,8 +2,9 @@
 
 [AGENTS.md](../../AGENTS.md) owns coding/verification rules. This guide owns the
 commands, isolated environments and evidence types used to enforce them.
-The [handoff index](../handoffs/README.md) records actual results and open gates;
-[the plan](../implementation-plan/README.md) owns future acceptance work.
+PR descriptions record actual results, and open gates are GitHub issues labeled
+`gate` (`gh issue list --label gate`); [the plan](../implementation-plan/README.md)
+owns future acceptance work.
 Documentation-only changes do not require code tests or UI checks.
 
 ## Choosing checks
@@ -15,7 +16,7 @@ failures before extending the implementation. Review important uncovered branche
 without automatically collecting whole-project coverage after every edit.
 
 Choose the scope before running checks. Classify the actual behavior and boundary
-changed, rather than the directory, phase label or presence of a handoff edit.
+changed, rather than the directory or phase label.
 A routine follow-up does not reopen phase closeout.
 
 | Change                               | Default verification                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -58,13 +59,14 @@ local static output still needs an in-app browser readability/navigation check;
 that is separate from anonymous HTTPS phone verification after publication.
 
 Pass `-- --runTestsByPath src/...test.tsx` to the mobile test script, or
-`-- path/to/test.ts` to API/contracts Vitest scripts, for focused tests. A slice
-changing contracts, tsconfig, ESLint configuration or `e2e/support` also runs
-`npm run build:contracts && npm run typecheck` at the root, covering all consumers
-and journeys. Use the scope matrix above for broader gates; editing a handoff is
-not itself a phase-closeout trigger. A mobile UI/navigation fix alone does not
-change a server protocol or data boundary. Earlier native/staging gates stay open
-until evidenced.
+`-- path/to/test.ts` to API/contracts Vitest scripts, for focused tests. The API
+`test` script skips database cases; to run one, use
+`node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/<area>/<file>.integration.test.ts -t '<name>'`
+from `apps/api`. A slice changing contracts, tsconfig, ESLint configuration or
+`e2e/support` also runs `npm run build:contracts && npm run typecheck` at the
+root, covering all consumers and journeys. Use the scope matrix above for broader
+gates. A mobile UI/navigation fix alone does not change a server protocol or data
+boundary. Earlier native/staging gates stay open until evidenced.
 
 Account for checks included in broader commands instead of repeating a passed
 standalone check merely for final reporting. Repeat when inputs changed, results
@@ -117,7 +119,8 @@ before creating pools; reject query parameters and fragments because connection
 options can override the apparent host, database or role. Use disposable synthetic
 data only; never point fixtures at staging,
 production or private accounts. Keep PostgreSQL service suites serialized where
-shared catalog fixtures require it.
+shared catalog fixtures require it. If `npm run db:local` stops with "postmaster
+became multithreaded", rerun it with `LC_ALL=en_US.UTF-8`.
 
 Use PostgreSQL 17 client tools, including `pg_dump` and `psql`. `JUSTGO_PG_BIN`
 selects their directory when not on PATH or in the standard Apple Silicon Homebrew
@@ -364,7 +367,8 @@ report/results after the smoke, including failures. Traces, video and automatic
 screenshots are off.
 Run the smoke before `export:ios`, which replaces the same default `dist/` output.
 This checks the exported browser app and static assets; native/device evidence
-remains separate.
+remains separate. Sentry's optional Router-store import logs an expected Metro
+resolution warning; do not add a resolver alias or suppress it.
 
 ## Interactive browser and native evidence
 
@@ -385,6 +389,8 @@ rather than bypassing its database guards, request fence or teardown.
 
 Record actual viewport, flow, fixtures, failure and recovery, keeping saved automated
 journeys, one-off walkthroughs, native simulator and physical-device evidence separate.
+React Native Web ignores `accessibilityState` selected/checked, so set
+`aria-selected` or `aria-checked` too, as `VenueTabs` and `ReflectionView` do.
 
 The Metro development client loads local illustration assets over HTTP from the
 Mac; swiping to an uncached card or opening Success after disconnecting can leave
@@ -401,6 +407,12 @@ Apple/Google OAuth, live hosted Auth revocation/deletion or actual CloudKit sync
 The native module requires a compatible signed binary, real private-container
 capabilities and physical multi-device/account-change/failure/deletion checks;
 in-memory cloud adapters establish domain decisions only.
+Earlier automated simulator drags (XcodeBuildMCP, mirrored pointer, Computer Use)
+did not commit native gestures; drive the equivalent button path and leave swipe
+feel to a physical device. A simulator typing through the hardware keyboard shows
+no software keyboard, so it cannot verify keyboard-open layout. For native
+transition frames, record with `xcrun simctl io <udid> recordVideo` and read the
+real sample timestamps; a recording is one-off evidence, not a saved regression.
 Use the [move checks](#file-moves-and-bundle-checks) when module or asset paths change.
 
 The private CloudKit bridge also has a dependency-free SwiftPM regression target:
@@ -417,15 +429,15 @@ its tests cover byte bounds, atomic generation/account fences and sanitized curs
 errors. It excludes the Expo bridge, requires no Apple login and does not contact
 CloudKit. A signed EAS build and actual phone checks still verify those boundaries.
 
-The [native-testing checkpoint](../handoffs/phase-07-3a-testing-checkpoint.md) and
+The native-testing checkpoint ([#114](https://github.com/anthonyyoo24/justgo/issues/114)) and
 [browser assessment](../checks/phase-07-3a-browser-testing-assessment.md) remain the
 resume boundary for deferred native automation. Retain Playwright/web adapters
 and fixture safeguards until a native replacement proves equivalent
 actual-app/API/database cases and its authorized commit's hosted gate. The obsolete
 Maestro launch flow, command and command-wiring test were retired on November 2;
 automated simulator testing remains deferred. Arrange relevant physical-device
-or manual simulator checks explicitly. Device/staging gates belong in
-[Phase 14](../implementation-plan/phase-14-release.md) and the applicable handoffs.
+or manual simulator checks explicitly. Device/staging gates are GitHub issues
+labeled `gate`.
 
 ## File moves and bundle checks
 
@@ -493,7 +505,9 @@ Doctor uses fresh online metadata (`EXPO_NO_CACHE=1`) and stops the command earl
 on dependency incompatibility. Recheck Doctor immediately before a push
 after longer sessions. Update exact package pins and the root lockfile together;
 never hide live metadata changes with offline mode/exclusions. Native/device
-acceptance for changed dependencies stays separate.
+acceptance for changed dependencies stays separate. CodeRabbit's
+docstring-coverage percentage is not a repository gate; do not add blanket
+comments to raise it.
 
 CI runs on pull requests and pushes to `main`, cancels superseded PR runs and keeps
 each main commit's result. Six producer jobs run independently:

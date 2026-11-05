@@ -111,6 +111,8 @@ invent a failing filename.
 
 Staging administrative provisioning is recorded as Supabase migration `foundation_roles`. Application migration `0000_foundation.sql` was applied through Drizzle with its own journal; it creates only `justgo.current_user_id()`. Keep these responsibilities separate. Do not reapply the function SQL through a second migration runner.
 
+PostgreSQL truncates identifiers longer than 63 bytes, so give long generated constraint and foreign-key names an explicit short name in the schema, SQL and snapshot.
+
 The runtime role owns no schema/table, cannot bypass RLS, create roles/databases/tables, or assume the migrator. Future owner-scoped tables must enable **and force** RLS, have `USING` and `WITH CHECK` policies for `justgo_runtime`, grant only required operations, and index `user_id` alongside access-path indexes. Example policy predicate: `user_id = (select justgo.current_user_id())`. Add constraints and indexes with the consuming feature, not a speculative full schema.
 
 The Phase 01 helper `withOwner(db, verifiedUserId, tx => …)` establishes transaction-local ownership after the caller verifies identity. For authenticated feature operations, use `IdentityService.withSession(token, callback)` as described in [IDENTITY.md](../architecture/IDENTITY.md); it verifies the active account/device/session before supplying the owner transaction. It sets `app.user_id` with transaction-local `set_config(..., true)` and executes work on that same connection. Never derive ownership from an untrusted request field, use session-level `SET`, or issue the feature query outside `tx`. A connection without ownership sees no owner data. RLS is defense in depth; it does not replace API authentication/authorization, which Phase 02 implements.
@@ -188,7 +190,7 @@ Restore and reapply:
 
 Before reopening the app:
 
-5. Confirm in the restored database that every saved account has `deleted_at` set, `analytics_restricted_at` cleared and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
+5. Before comparing text fingerprints between databases, set `TimeZone` to UTC in both sessions, because each session formats timestamps in its own time zone. Confirm in the restored database that every saved account has `deleted_at` set, `analytics_restricted_at` cleared and no attempts, receipts, transfers, sessions or devices, and that every saved digest exists with `revoked_at` set. Counts must match the saved ledger.
 6. Using an API restricted to the isolated environment, confirm that deleted disposable accounts' old recovery proofs are rejected and their journal data is absent. Only after these checks pass may the operator point the normal API at the restored database and reopen writes. This prevents a public recovery window during verification.
    Also prove managed JWT/app-session rejection for deleted/revoked owners, absence
    of erased Auth profiles, preserved active-account epochs and rejection of stale

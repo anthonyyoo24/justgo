@@ -417,7 +417,9 @@ heights/drafts survive. Fill underfull viewports using layout/content measuremen
 and await each batch's measurements before extending again. Compare full display
 values and callback identity when memoizing rows. Collapsed detail content/motion
 adapters stay unmounted; do not measure every collapsed panel. Native expanding
-heights and scrolling require native evidence.
+heights and scrolling require native evidence. Do not replace `DayEntryList` with
+`FlatList`: expanding an animated row breaks its estimated offsets, and it then
+mounts every row.
 
 ## Saving feedback and account tools
 

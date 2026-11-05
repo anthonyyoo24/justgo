@@ -207,6 +207,8 @@ chunks. Two slots and a manifest commit retain the previous accepted value if a
 write fails. Locked/unavailable/malformed storage fails visibly. Tokens never go
 to AsyncStorage, journal databases, exports or diagnostics. Nonsecret controller
 state records pending operations and selected collection ownership separately.
+Generate secrets with `expo-crypto` `getRandomValues`, never `getRandomBytes`,
+whose debugging fallback uses `Math.random`.
 
 The existing local Swift Keychain module remains only for internal migration and
 old pending deletion/recovery proofs. Immutable synchronizable recovery items and

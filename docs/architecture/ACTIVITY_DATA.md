@@ -228,7 +228,9 @@ provider retention copies require the separate disclosure/retention process in t
 
 ## Deck preferences and compatibility
 
-`DeckPreferencesStorage` remains independent best-effort local state. Persist venue
+`DeckPreferencesStorage` remains independent best-effort local state. Deck and
+venue preferences stay on this phone and never enter activity uploads, iCloud
+sync, downloads or analytics. Persist venue
 and placement order, keep surviving cards across catalog refresh, add new cards
 behind the front and rotate only the matching active front. Owner generations fence
 late preference reads/writes. A preference failure cannot enter journal saving or
