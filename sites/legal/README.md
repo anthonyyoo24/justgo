@@ -67,7 +67,7 @@ build. Raw HTML is escaped.
 until both sources explicitly record `publication-status: owner-approved` and a
 valid ISO effective date. Record approval only when the owner actually approves
 the text; set the effective date when publication is ready and the checklist in
-[`LEGAL_REVIEW.md`](../../docs/legal/LEGAL_REVIEW.md) is satisfied. A successful
+[`APPROVALS.md`](../../docs/legal/APPROVALS.md#recording-an-approval) is satisfied. A successful
 production build still grants no hosting, Git or publication authorization.
 
 ## Publishing updates
@@ -88,7 +88,7 @@ never upload the source repository, review records or environment files.
 
 After an authorized deploy, verify both stable HTTPS routes anonymously, the
 original logo bytes and footer navigation. The October 27 privacy update passed anonymous byte checks for both documents
-and the root Privacy page; Terms were unchanged. The publication also confirmed `/.env.local` and `/docs/legal/LEGAL_REVIEW.md` returned 404. The
+and the root Privacy page; Terms were unchanged. The publication also confirmed `/.env.local` and the internal review-record path returned 404. The
 project's model-training sharing is disabled. EAS preview public legal URLs and
 App Store Connect's Privacy Policy URL use the published destinations. Actual
 signed-iPhone opening/accessibility remains Phase 14 acceptance.

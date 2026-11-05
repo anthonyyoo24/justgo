@@ -155,7 +155,7 @@ current serving API and database intact; no paid upgrade is a trial prerequisite
 
 ## 4. Privacy, recovery and operations
 
-- [ ] Complete the existing [provider and consent review](../legal/LEGAL_REVIEW.md)
+- [ ] Complete the [provider and consent review](https://github.com/anthonyyoo24/justgo/issues/95)
       for real account journal traffic. Supabase's DPA permits sensitive-data
       processing subject to notice, necessary explicit user consent and lawful
       handling; it is not blanket clearance of the current sign-in disclosure.

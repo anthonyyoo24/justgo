@@ -5,7 +5,7 @@
 <!-- effective-date: 2026-10-27 -->
 <!-- diagnostics-scope: essential-errors-only -->
 
-Anthony approved the exact essential-errors candidate wording and authorized publication at the existing Privacy Policy URL on October 27, 2026, with that date effective. The Terms wording remains unchanged. This record establishes content and publication authorization; it does not establish completed publication, provider suitability, actual diagnostics activation or signed-device acceptance. The static site renders only the marked public block; review metadata remains internal. See [LEGAL_REVIEW.md](LEGAL_REVIEW.md).
+Anthony approved the exact essential-errors candidate wording and authorized publication at the existing Privacy Policy URL on October 27, 2026, with that date effective. The Terms wording remains unchanged. This record establishes content and publication authorization; it does not establish completed publication, provider suitability, actual diagnostics activation or signed-device acceptance. The static site renders only the marked public block; review metadata remains internal. See [APPROVALS.md](APPROVALS.md).
 
 <!-- public:start -->
 
