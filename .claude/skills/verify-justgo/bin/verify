@@ -1,0 +1,91 @@
+#!/bin/sh
+# Run from the JustGO repository root. See ../SKILL.md for when to use each command.
+set -eu
+
+skill=$(cd "$(dirname "$0")/.." && pwd)
+if ! grep -q '"name": "justgo"' package.json 2>/dev/null; then
+  echo "Run bin/verify from the JustGO repository root" >&2
+  exit 2
+fi
+pg_bin=${JUSTGO_PG_BIN:-/opt/homebrew/opt/postgresql@17/bin}
+db_marker=.local/verify-justgo/database-started
+tsx_node() {
+  node --import tsx --env-file-if-exists=apps/api/.env "$@"
+}
+database() {
+  mkdir -p .local/verify-justgo
+  if ! "$pg_bin/pg_ctl" -D .local/postgres status >/dev/null 2>&1; then
+    : >"$db_marker"
+  fi
+  # PostgreSQL 17 refuses to start from a shell with no locale set.
+  LC_ALL=${LC_ALL:-en_US.UTF-8} npm run db:local
+}
+run_id() {
+  echo "${JUSTGO_VERIFY_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$1}"
+}
+
+command=${1:-}
+[ $# -gt 0 ] && shift
+case "$command" in
+doctor)
+  tsx_node "$skill/bin/doctor.ts" "$@"
+  ;;
+drive)
+  [ $# -gt 0 ] || {
+    echo "Usage: bin/verify drive <feature>... [--playwright-flag]" >&2
+    exit 2
+  }
+  id=$(run_id "$1")
+  specs=
+  for arg in "$@"; do
+    case "$arg" in
+    -*) specs="$specs $arg" ;;
+    *)
+      [ -f "$skill/drives/$arg.spec.ts" ] || {
+        echo "No drive for $arg; see $skill/drives" >&2
+        exit 2
+      }
+      specs="$specs $skill/drives/$arg.spec.ts"
+      ;;
+    esac
+  done
+  database
+  echo "Evidence: .local/verify-justgo/$id"
+  # shellcheck disable=SC2086
+  JUSTGO_VERIFY_RUN_ID=$id npm run test:journey -- \
+    "--config=$skill/verify.config.ts" $specs
+  ;;
+serve)
+  id=$(run_id serve)
+  database
+  tsx_node "$skill/bin/serve.ts" start "$id"
+  ;;
+stop)
+  status=0
+  if [ -f .local/verify-justgo/serving.json ]; then
+    if tsx_node "$skill/bin/doctor.ts" 2>/dev/null | node -e '
+      let s = "";
+      process.stdin.on("data", (d) => (s += d));
+      process.stdin.on("end", () => process.exit(JSON.parse(s).state === "serving" ? 0 : 1));
+    '; then
+      id=$(node -p 'require("./.local/verify-justgo/serving.json").runId')
+      JUSTGO_VERIFY_RUN_ID=$id JUSTGO_VERIFY_ATTACH=1 node \
+        --env-file-if-exists=apps/api/.env node_modules/@playwright/test/cli.js \
+        test "--config=$skill/verify.config.ts" || status=$?
+    else
+      echo "Skipped fixture cleanup: the recorded services no longer own their ports" >&2
+      status=1
+    fi
+  fi
+  tsx_node "$skill/bin/serve.ts" stop || status=$?
+  if [ -f "$db_marker" ]; then
+    npm run db:stop || status=$?
+    rm -f "$db_marker"
+  fi
+  exit "$status"
+  ;;
+*)
+  echo "Usage: bin/verify doctor | drive <feature> | serve | stop" >&2
+  exit 2
+  ;;
+esac
