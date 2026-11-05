@@ -135,21 +135,19 @@ later deletions. Recovery requires a current writer-fenced ledger covering app a
 Auth mutations; if that record cannot be established, keep writers closed. R2
 locks/lifecycle and Supabase provider copies have separate deletion obligations.
 Total source loss after the last ledger copy can leave recovery closed
-indefinitely. The [October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit)
-accepts this limit for the small beta; reassess independent per-deletion/revocation
-recording before paid launch or beta expansion, whichever comes first
+indefinitely. Anthony accepted this limit for the small beta on October 29, 2026.
+Reassess independent per-deletion/revocation recording before paid launch or
+beta expansion, whichever comes first
 ([#119](https://github.com/anthonyyoo24/justgo/issues/119)). For that future
-record, Anthony accepted on October 29, 2026 conservative replay of a durably
-saved deletion intent, even when the original database operation appeared to fail.
-The [October 31 recovery targets](../DECISIONS.md#october-31-recovery-targets)
-accept up to 24 hours of ordinary-write loss and a four-hour operator recovery
-target when safe recovery is possible. That target does not cover the ledger gap
-or permit resurrecting deleted data.
+record, Anthony also accepted conservative replay of a durably saved deletion
+intent, even when the original database operation appeared to fail. On October
+31 he accepted up to 24 hours of ordinary-write loss and a four-hour operator
+recovery target when safe recovery is possible. That target does not cover the
+ledger gap or permit resurrecting deleted data.
 
-The [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover)
-accepts protected local Mac key custody outside CI without an off-Mac retrieval
-prerequisite. The backup guide retains the seven-day upload-token renewal
-requirement; scheduled jobs are not proof of unattended renewal or actual
+On October 31 he also accepted protected local Mac key custody outside CI without
+an off-Mac retrieval prerequisite. The backup guide retains the seven-day
+upload-token renewal requirement; scheduled jobs are not proof of unattended renewal or actual
 recovery-copy decryption. A protected local key and synthetic round trip do not
 establish actual hosted recovery-copy decryption or complete app/Auth recovery.
 
@@ -320,17 +318,19 @@ current schema, and earlier cutover dumps are not an unattended backup service.
 There is no current full-restore, off-Mac storage or independently recoverable
 deletion/epoch/Auth-ledger evidence. Storage, retention and recovery still need an
 actual arrangement; local database regression tests do not establish hosted
-disaster recovery. The October 27 [operating decision](../DECISIONS.md#october-27-hosting-backups-and-simulator-test-direction)
-chose Vercel and Supabase; the October 28 [Cloudflare decision](../DECISIONS.md#october-28-cloudflare-workers-hono-and-r2-backups)
-supersedes its hosting and backup parts. Phase 15 moves the API to Cloudflare
-Workers and replaces the planned Supabase Pro upgrade with encrypted nightly R2
-backups and an hourly ledger copy; the database stays on Supabase Free until an
-upgrade trigger. Ask Anthony to approve Pro (US$25/month) when the database nears
-400 MB of its 500 MB limit, monthly egress nears 5 GB, a pause or capacity
-incident occurs, or revenue comfortably covers the cost. This choice does not close the processing/recovery gates. No paid
-upgrade or provider contact is authorized. The later October 27 error-alert and
-release instruction authorizes that implementation separately; it does not close
-the recovery or private-journal processing gates.
+disaster recovery. On October 28, 2026, Anthony moved the API from Vercel to
+Cloudflare Workers and replaced the planned Supabase Pro upgrade with encrypted
+nightly R2 backups and an hourly ledger copy. The
+[Supabase migration plan](../implementation-plan/phase-15-supabase-api.md) now
+proposes Edge Functions instead and keeps the R2 copies until an accepted
+replacement. The database stays on Supabase Free until an upgrade trigger. Ask
+Anthony to approve Pro (US$25/month) when the database nears 400 MB of its 500 MB
+limit, monthly egress nears 5 GB, a pause or capacity incident occurs, or revenue
+comfortably covers the cost. These choices do not close the processing/recovery
+gates. No paid upgrade or provider contact is authorized. The October 27
+error-alert and release instruction authorizes the monitoring and release
+implementation separately; it does not close the recovery or private-journal
+processing gates.
 
 ## Design and tests
 

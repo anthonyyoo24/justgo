@@ -116,10 +116,9 @@ The [beta guide](../operations/TESTFLIGHT_BETA.md#optional-crash-reporting-profi
 | Application and vendor logs           | Owner chose Vercel defaults; Hobby/no configured drain observed October 18              | Safe application serializers are implemented. Hobby runtime-log retention is published as one hour; verify final launch settings and separate edge/firewall/provider retention before a broader numeric promise.                                              |
 | Billing and legally required records  | Separate necessary financial/security records from journal data                         | Confirm legal duties, exact retained fields and vendor cleanup. App account deletion does not cancel an Apple subscription.                                                                                                                                   |
 
-Anthony originally selected seven-day backups on Supabase Pro. The October 28
-[Cloudflare decision](../DECISIONS.md#october-28-cloudflare-workers-hono-and-r2-backups) replaces that with encrypted nightly backups in
-Cloudflare R2 on the Free plan; Phase 15 sets their retention period, which the
-notices must state. Supabase documents seven accessible daily backups on Pro and
+Anthony originally selected seven-day backups on Supabase Pro. On October 28 he
+replaced that with encrypted nightly backups in Cloudflare R2 on the Free plan;
+Phase 15 sets their retention period, which the notices must state. Supabase documents seven accessible daily backups on Pro and
 recommends self-managed exports for Free projects. Do not turn the
 approved target into a current guarantee. See [Supabase backup documentation](https://supabase.com/docs/guides/platform/backups).
 

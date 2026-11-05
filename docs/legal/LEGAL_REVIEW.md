@@ -438,7 +438,7 @@ sensitive consumer-journal assessment for personal customer Youngshin Yoo,
 including the residual interpretation. The
 [notice review](CLOUDFLARE_NOTICE_REVIEW.md#accepted-account-and-service-assessment)
 records the primary sources and limits; the
-[decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
+[Phase 15 Cloudflare plan](../implementation-plan/phase-15-cloudflare-api.md)
 records rollout resumption and the phone-testing checkpoint. This settles that
 provider assessment without claiming separate Cloudflare confirmation, a new
 agreement or a journal-specific contractual exception. No Cloudflare contact or

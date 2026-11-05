@@ -90,8 +90,8 @@ Before building the Phase 15 candidate:
   under the [cutover procedure](CLOUDFLARE_CUTOVER.md): complete every required
   approval and legal-artifact preflight before retiring owner-only old builds
   and Vercel API/legal roles, then immediately publish/verify Cloudflare legal
-  pages and update ASC/EAS URLs. Anthony accepts the brief legal-URL gap under the
-  [October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover).
+  pages and update ASC/EAS URLs. Anthony accepted the brief legal-URL gap on
+  October 31, 2026.
   No external-user transition period or legacy redirect is selected; the final
   Cloudflare-only notice follows the end of Vercel's roles. Its backup statements
   must match activated and verified recovery services. The new Privacy source
@@ -345,11 +345,10 @@ the current guest expiry is not an approved date for a future cohort.
   excludes specified sensitive data; Pro alone does not establish journal-content
   clearance. Preserve the declined-provider-contact direction. Supabase's
   incorporated DPA does not create a generic missing separate-signature task.
-  The October 27 [operating decision](../DECISIONS.md#october-27-hosting-backups-and-simulator-test-direction)
-  chose Vercel and Supabase. The October 28 [Cloudflare decision](../DECISIONS.md#october-28-cloudflare-workers-hono-and-r2-backups)
-  supersedes it: Phase 15 moves the API to Cloudflare Workers and adds encrypted R2
-  backups instead of Supabase Pro before outside testers. No purchase or upgrade is
-  authorized now; provider suitability remains open.
+  Phase 15 moves the API off Vercel before outside testers; the
+  [Supabase migration plan](../implementation-plan/phase-15-supabase-api.md)
+  now proposes Edge Functions, and encrypted R2 backups stay in place. No purchase
+  or upgrade is authorized now; provider suitability remains open.
 - Verify the configured branded icon and native font/splash behavior on the signed
   build. Root `assets/icon.png` and `assets/splash-icon.png` remain unreferenced Expo
   placeholders.

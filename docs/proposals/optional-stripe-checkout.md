@@ -6,9 +6,8 @@ in the [billing proposal](native-billing-and-jobs.md). This is a retained design
 not a current statement of store eligibility; recheck official rules, provider
 support, checkout data collection and rollout scope when the phase is scheduled.
 
-**Provider change:** RevenueCat references below predate the
-[October 28 decision](../DECISIONS.md#october-28-superwall-replaces-revenuecat-for-phase-16-billing)
-to use Superwall; recheck Superwall's Stripe and web-checkout support when this phase is scheduled.
+**Provider change:** RevenueCat references below predate the October 28, 2026
+choice of Superwall for [Phase 16](../implementation-plan/phase-16-billing.md); recheck Superwall's Stripe and web-checkout support when this phase is scheduled.
 
 The retained design assumes an eligible United States storefront app-to-web Checkout path. Confirm that assumption against Apple's current guidelines and Stripe's current documentation before enabling it. Eligibility is based on storefront/rules, not a device's GPS, language, or an IP guess. Recheck at implementation and release; keep a server-controlled disable switch and default to native purchasing when eligibility is unknown. [Apple guideline 3.1.1(a)](https://developer.apple.com/app-store/review/guidelines/), [Stripe digital goods](https://docs.stripe.com/mobile/digital-goods).
 

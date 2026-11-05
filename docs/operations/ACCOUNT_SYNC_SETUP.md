@@ -403,8 +403,7 @@ sync off stops ordinary uploads and retains phone data. Genuine in-app deletion,
 closure and account-epoch fences remain separate and enforced. Access or
 recreation failures remain errors, and phone writing is retained. Actual
 external-deletion/recreation device acceptance remains unverified before release;
-see the [October 23 decision](../DECISIONS.md#october-23-icloud-deletion-retains-phone-data)
-and [activity architecture](../architecture/ACTIVITY_DATA.md).
+see the [activity architecture](../architecture/ACTIVITY_DATA.md).
 
 ## Pending Auth erasure operations
 
