@@ -13,6 +13,10 @@ Dating Apps**. Preserve bundle `com.anthonyyoo.justgo`, Apple team `NPDYTJS425` 
 Expo project `@anthonyyoos-team/justgo` (`53cf0560-8ab5-446a-9bc6-deb193b337b5`).
 The installed app and Expo project retain the JustGO name/identity.
 
+As of October 30, 2026 (owner statement), JustGO has no users besides Anthony, so
+cutovers need no external-user transition period. Reassess once external testers
+are invited.
+
 `build.beta` is a store-signed release build using EAS **preview** variables.
 Its Phase 15 candidate, the beta preflight and all TestFlight workflow commands
 now select `https://justgo-api-staging.anthonyyoo24.workers.dev`. This target uses

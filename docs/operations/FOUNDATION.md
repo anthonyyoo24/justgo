@@ -137,7 +137,10 @@ locks/lifecycle and Supabase provider copies have separate deletion obligations.
 Total source loss after the last ledger copy can leave recovery closed
 indefinitely. The [October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit)
 accepts this limit for the small beta; reassess independent per-deletion/revocation
-recording before paid launch or beta expansion, whichever comes first.
+recording before paid launch or beta expansion, whichever comes first
+([#119](https://github.com/anthonyyoo24/justgo/issues/119)). For that future
+record, Anthony accepted on October 29, 2026 conservative replay of a durably
+saved deletion intent, even when the original database operation appeared to fail.
 The [October 31 recovery targets](../DECISIONS.md#october-31-recovery-targets)
 accept up to 24 hours of ordinary-write loss and a four-hour operator recovery
 target when safe recovery is possible. That target does not cover the ledger gap
@@ -322,7 +325,9 @@ chose Vercel and Supabase; the October 28 [Cloudflare decision](../DECISIONS.md#
 supersedes its hosting and backup parts. Phase 15 moves the API to Cloudflare
 Workers and replaces the planned Supabase Pro upgrade with encrypted nightly R2
 backups and an hourly ledger copy; the database stays on Supabase Free until an
-upgrade trigger. This choice does not close the processing/recovery gates. No paid
+upgrade trigger. Ask Anthony to approve Pro (US$25/month) when the database nears
+400 MB of its 500 MB limit, monthly egress nears 5 GB, a pause or capacity
+incident occurs, or revenue comfortably covers the cost. This choice does not close the processing/recovery gates. No paid
 upgrade or provider contact is authorized. The later October 27 error-alert and
 release instruction authorizes that implementation separately; it does not close
 the recovery or private-journal processing gates.

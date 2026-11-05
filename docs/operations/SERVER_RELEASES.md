@@ -252,6 +252,9 @@ alone establish hosted binding compatibility. If initial upload succeeded before
 a later check failed, inspect the existing version/deployment and use an ordinary
 release for reviewed fixes; never rerun bootstrap or delete/recreate the Worker.
 
+The Vercel API project is `justgo` (root directory `apps/api`, region `yul1`),
+served at `https://justgo-two.vercel.app`. The legal pages are a separate Vercel
+Hobby project at `justgo-legal.vercel.app`.
 Keep the existing Vercel API/legal addresses, deployment configuration and
 credentials until the approved old-build retirement plan is executed. A redirect
 or two working APIs does not prove that private request bodies stopped reaching

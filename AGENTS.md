@@ -56,6 +56,8 @@ and a stop before anything irreversible. Only Anthony merges.
   Cloudflare, Sentry, App Store Connect). With Anthony's go, a code-only staging test may deploy a committed branch
   through `npm run release:staging:local`; that go does not cover migrations,
   production releases or merges.
+- **Do not contact providers.** Do not contact Vercel, Cloudflare or other providers
+  about JustGO without Anthony's explicit instruction.
 - **Never push to `main`.** Changes reach `main` only through a merged PR.
 - **Only Anthony merges.** Agents stop at merge-ready, never merge a PR and never
   enable auto-merge. Green CI and agent verdicts do not replace his review.

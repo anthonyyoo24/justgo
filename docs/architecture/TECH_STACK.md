@@ -216,7 +216,8 @@ Its attempt is awaited before sending the response, once per request, while the
 completed-response hook retains the existing local log contract. Reporting
 failure cannot change the response or create recursive diagnostic events.
 
-API Sentry delivery defaults off. Explicit `API_SENTRY_ENABLED=true` requires a
+API errors report to Sentry project `anthony-corp` / `justgo-api`, also in the
+US region. API Sentry delivery defaults off. Explicit `API_SENTRY_ENABLED=true` requires a
 canonical public US ingestion DSN, a lowercase 40-character commit SHA in
 `API_SENTRY_RELEASE`, and the configured staging/production environment. Built-in
 `fetch` sends rebuilt single-event envelopes without SDK instrumentation. Events
