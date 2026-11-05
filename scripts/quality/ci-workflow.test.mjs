@@ -11,14 +11,8 @@ import {
 } from './ci-workflow-fixture.mjs';
 
 const [triggers] = workflow.split(/^permissions:$/m);
-const producers = [
-  'static',
-  'unit',
-  'database',
-  'journeys',
-  'exports',
-  'native-icloud',
-];
+const appJobs = ['unit', 'database', 'journeys', 'exports', 'native-icloud'];
+const producers = ['static', ...appJobs];
 
 test('database CI runs real Worker and encrypted recovery boundaries after shared prerequisites', () => {
   const job = jobs.database;
@@ -53,17 +47,24 @@ test('pushes run only for main, PRs cancel older revisions, and main results sta
 });
 
 test('independent bounded producer jobs feed one always-evaluated required status', () => {
-  assert.deepEqual(Object.keys(jobs), [...producers, 'checks']);
-  for (const name of producers) assert.doesNotMatch(jobs[name], /^ {4}needs:/m);
+  assert.deepEqual(Object.keys(jobs), ['changes', ...producers, 'checks']);
+  assert.doesNotMatch(jobs.static, /^ {4}needs:/m);
+  for (const name of appJobs) {
+    assert.match(jobs[name], /^ {4}needs: changes$/m);
+    assert.match(
+      jobs[name],
+      /^ {4}if: needs\.changes\.outputs\.app == 'true'$/m,
+    );
+  }
   for (const [name, job] of Object.entries(jobs)) {
     assert.match(job, /^ {4}timeout-minutes: [1-9]\d*$/m);
     assert.match(job, /persist-credentials: false/);
-    if (!['native-icloud', 'checks'].includes(name))
+    if (!['changes', 'native-icloud', 'checks'].includes(name))
       assert.match(job, /uses: \.\/\.github\/actions\/setup-node/);
   }
   assert.match(
     jobs.checks,
-    /^ {4}needs: \[static, unit, database, journeys, exports, native-icloud\]$/m,
+    /^ {4}needs: \[changes, static, unit, database, journeys, exports, native-icloud\]$/m,
   );
   assert.match(jobs.checks, /^ {4}if: always\(\)$/m);
   assert.match(
@@ -74,6 +75,23 @@ test('independent bounded producer jobs feed one always-evaluated required statu
   assert.deepEqual(commands(jobs.checks), [
     'node scripts/quality/api-coverage.mjs require-jobs',
   ]);
+});
+
+test('the change classifier runs first, reads the full PR diff and only feeds the app-job condition', () => {
+  const job = jobs.changes;
+  assert.match(job, /^ {4}timeout-minutes: 5$/m);
+  assert.match(job, /fetch-depth: 0/);
+  assert.match(job, /^ {6}app: \$\{\{ steps\.classify\.outputs\.app \}\}$/m);
+  assert.match(job, /JUSTGO_CI_EVENT: \$\{\{ github\.event_name \}\}/);
+  assert.match(
+    job,
+    /JUSTGO_CI_BASE: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.deepEqual(commands(job), ['node scripts/quality/ci-changes.mjs']);
+  assert.doesNotMatch(
+    job,
+    /^ {4}needs:|setup-node|continue-on-error|\|\|\s*true/m,
+  );
 });
 
 test('native iCloud regressions run on a bounded macOS producer without npm prerequisites', () => {

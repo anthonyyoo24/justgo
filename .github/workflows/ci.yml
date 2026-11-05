@@ -10,6 +10,23 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.classify.outputs.app }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # A pull request that changes only Markdown skips the app jobs; static still runs.
+      - name: Decide whether the app jobs run
+        id: classify
+        env:
+          JUSTGO_CI_EVENT: ${{ github.event_name }}
+          JUSTGO_CI_BASE: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/quality/ci-changes.mjs
   static:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -33,6 +50,8 @@ jobs:
         run: npm run audit:api
   unit:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,6 +90,8 @@ jobs:
           if-no-files-found: error
   database:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     timeout-minutes: 15
     env: &database-test-env
       DATABASE_URL: postgresql://justgo_runtime:runtime-ci-only@localhost:5432/justgo_test
@@ -117,6 +138,8 @@ jobs:
           if-no-files-found: error
   journeys:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     timeout-minutes: 25
     env: *database-test-env
     services: *postgres-service
@@ -143,6 +166,8 @@ jobs:
           if-no-files-found: ignore
   exports:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -168,6 +193,8 @@ jobs:
       - run: npm run export:ios -w @justgo/mobile
   native-icloud:
     runs-on: macos-15
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -178,7 +205,7 @@ jobs:
   checks:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    needs: [static, unit, database, journeys, exports, native-icloud]
+    needs: [changes, static, unit, database, journeys, exports, native-icloud]
     if: always()
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

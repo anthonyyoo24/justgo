@@ -36,23 +36,22 @@ export function runApiCoverage(
 }
 
 export function requireSuccessfulJobs(value) {
-  const required = [
-    'static',
-    'unit',
-    'database',
-    'journeys',
-    'exports',
-    'native-icloud',
-  ];
+  const appJobs = ['unit', 'database', 'journeys', 'exports', 'native-icloud'];
   let jobs;
   try {
     jobs = JSON.parse(value);
   } catch {
     throw new Error('Missing CI producer results.');
   }
-  for (const name of required)
+  for (const name of ['changes', 'static'])
     if (jobs?.[name]?.result !== 'success')
       throw new Error(`CI producer did not pass: ${name}`);
+  const markdownOnly = jobs.changes.outputs?.app === 'false';
+  for (const name of appJobs) {
+    const result = jobs?.[name]?.result;
+    if (result !== 'success' && !(markdownOnly && result === 'skipped'))
+      throw new Error(`CI producer did not pass: ${name}`);
+  }
 }
 
 if (

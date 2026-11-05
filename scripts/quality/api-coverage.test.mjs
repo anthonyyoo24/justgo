@@ -59,15 +59,22 @@ test('producer failures and interrupted processes cannot appear successful', () 
   );
 });
 
+const appJobs = ['unit', 'database', 'journeys', 'exports', 'native-icloud'];
+const codeChange = {
+  changes: { result: 'success', outputs: { app: 'true' } },
+  static: { result: 'success' },
+  ...Object.fromEntries(appJobs.map((name) => [name, { result: 'success' }])),
+};
+const markdownOnly = {
+  ...codeChange,
+  changes: { result: 'success', outputs: { app: 'false' } },
+  ...Object.fromEntries(appJobs.map((name) => [name, { result: 'skipped' }])),
+};
+
 test('the required status rejects failed, skipped, cancelled and absent producer results', () => {
-  const passing = Object.fromEntries(
-    ['static', 'unit', 'database', 'journeys', 'exports', 'native-icloud'].map(
-      (name) => [name, { result: 'success' }],
-    ),
-  );
-  requireSuccessfulJobs(JSON.stringify(passing));
-  for (const name of Object.keys(passing)) {
-    const missing = { ...passing };
+  requireSuccessfulJobs(JSON.stringify(codeChange));
+  for (const name of Object.keys(codeChange)) {
+    const missing = { ...codeChange };
     delete missing[name];
     assert.throws(
       () => requireSuccessfulJobs(JSON.stringify(missing)),
@@ -77,11 +84,48 @@ test('the required status rejects failed, skipped, cancelled and absent producer
       assert.throws(
         () =>
           requireSuccessfulJobs(
-            JSON.stringify({ ...passing, [name]: { result } }),
+            JSON.stringify({
+              ...codeChange,
+              [name]: { ...codeChange[name], result },
+            }),
           ),
         new RegExp(name),
       );
   }
   for (const value of [undefined, '{', 'null', '{}'])
     assert.throws(() => requireSuccessfulJobs(value));
+});
+
+test('a Markdown-only change passes with skipped app jobs and still fails on anything else', () => {
+  requireSuccessfulJobs(JSON.stringify(markdownOnly));
+  for (const name of appJobs)
+    for (const result of ['failure', 'cancelled', undefined])
+      assert.throws(
+        () =>
+          requireSuccessfulJobs(
+            JSON.stringify({ ...markdownOnly, [name]: { result } }),
+          ),
+        new RegExp(name),
+      );
+  for (const name of ['changes', 'static'])
+    assert.throws(
+      () =>
+        requireSuccessfulJobs(
+          JSON.stringify({
+            ...markdownOnly,
+            [name]: { ...markdownOnly[name], result: 'skipped' },
+          }),
+        ),
+      new RegExp(name),
+    );
+  assert.throws(
+    () =>
+      requireSuccessfulJobs(
+        JSON.stringify({
+          ...markdownOnly,
+          changes: { result: 'success', outputs: {} },
+        }),
+      ),
+    /unit/,
+  );
 });
