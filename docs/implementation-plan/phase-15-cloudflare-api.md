@@ -60,7 +60,7 @@ restricted actions, rather than asking for approval at every implementation step
 | Changed notices and disclosure evidence      | Complete Cloudflare/R2, retention and cross-border Privacy wording was approved October 30. Effective date, matching version, publication authorization and the App Privacy assessment remain open. Keep unchanged Supabase consent/provider and Sentry native-linkage questions assigned to Phase 14 rather than declaring them cleared by this migration.                                                                                                                                                                                                                                                                                                                     | Implementation/privacy owner prepares remaining disclosure/publication evidence; Anthony approves date/version and publication before outside testing.                                              |
 
 Carry the unresolved Phase 14 decisions forward through the
-[release handoff](../handoffs/phase-14-release.md#decisions-still-required-and-next-sequence):
+[External beta](https://github.com/anthonyyoo24/justgo/milestone/1) gate issues:
 Supabase/private-journal notice and consent requirements; evidence-based Sentry
 and Apple diagnostic disclosures plus any post-trial cost; disposition of deferred
 phone/recovery/accessibility gates; and actual external testers/dates/distribution
@@ -206,7 +206,7 @@ R2 backups continue after an upgrade.
 - No change to the database provider, Auth, schema or contracts as part of the move.
 - No move to D1, KV, Durable Objects or Queues. Phase 16 decides separately whether
   Cron Triggers or Queues replace QStash.
-- No Cloudflare rate limiting yet; API-6 stays a Phase 14 task.
+- No Cloudflare rate limiting yet; API-6 stays release gate [#102](https://github.com/anthonyyoo24/justgo/issues/102).
 - No unencrypted backup, backup key in the repository or CI logs, or backup older
   than the published retention period.
 

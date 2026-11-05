@@ -15,7 +15,7 @@ owner-held backup decryption key.
 
 - Dependencies: accepted [Phase 16 billing](phase-16-billing.md#phase-16), accepted
   [Phase 17 analytics](phase-17-analytics.md#phase-17), and an actually published
-  [Phase 14 App Store release](phase-14-release.md#phase-14). A TestFlight build,
+  Phase 14 [App Store release](https://github.com/anthonyyoo24/justgo/milestone/2). A TestFlight build,
   submission or review approval alone does not satisfy publication.
 - Phases 18–20 are optional and are not dependencies. This phase does not gate
   Phase 15, beta testing, payments, analytics or the first App Store release.

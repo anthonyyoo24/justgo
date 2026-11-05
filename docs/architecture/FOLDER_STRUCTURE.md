@@ -1,7 +1,7 @@
 # Repository folder structure
 
 This guide describes the implemented tree. [The implementation plan](../implementation-plan/README.md)
-owns future moves; [handoffs](../handoffs/README.md) own verification and open gates.
+owns future moves; [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) track open gates.
 Tests stay beside their mobile/contracts owner; API integration tests live in capability groups under tests. Native/web adapter families stay together.
 
 ## Repository owners
@@ -18,7 +18,7 @@ Tests stay beside their mobile/contracts owner; API integration tests live in ca
 | scripts/design/        | Asset extraction and palette adaptation.                                                      |
 | design/source/         | Preserved original design measurements, source exports and reference illustrations.           |
 | design/paper-variants/ | Design variants and reconstruction source.                                                    |
-| docs/                  | Concern-owned product/architecture/operations guidance, phase plans, handoffs and archives.   |
+| docs/                  | Concern-owned product/architecture/operations guidance and phase plans.                       |
 | .local/                | Ignored disposable databases, temporary fixtures, visual evidence, logs and downloads.        |
 
 ## Mobile boundaries
@@ -132,9 +132,9 @@ own the actual protocol and storage rules.
 
 [docs/README.md](../README.md) maps each concern. Named files under
 implementation-plan/ own phase scope/status; DECISIONS.md owns why. Architecture
-and operations explain the current system. Handoffs record lasting outcomes and
-owned gates, and completed handoffs move to archive/ only after their own gates
-close. Deferred native testing and handoffs with open release gates remain active.
+and operations explain the current system. PR descriptions record outcomes, and
+GitHub issues labeled `gate` track open gates. The Phase 15 Cloudflare handoff
+remains until Workers retires.
 Unbuilt billing/Stripe/coaching designs live in proposals/.
 
 Source design material lives under the repository-level design/ tree. Third-party

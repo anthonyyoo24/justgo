@@ -4,8 +4,8 @@ This guide describes navigation, mobile runtime composition and platform-facing
 presentation. [ACTIVITY_DATA.md](ACTIVITY_DATA.md) owns activity persistence and
 reconciliation; [IDENTITY.md](IDENTITY.md) owns managed account access and legacy migration;
 [TECH_STACK.md](TECH_STACK.md) owns installed technologies/server boundaries.
-The [plan](../implementation-plan/README.md) owns future behavior and the
-[handoffs](../handoffs/README.md) own verification and open release gates.
+The [plan](../implementation-plan/README.md) owns future behavior, and
+[`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) track open release gates.
 
 ## Implemented folder responsibilities
 
@@ -154,7 +154,7 @@ owner transaction to an entitlement reader. The authenticated default provider r
 uses explicit staging beta windows only; production guest admission remains unpaid
 until the billing policy is implemented. Guest mode is not a paid-access bypass. Explicit application staging can compose operator-approved free beta
 grants with start/expiry/revocation and earlier-start coverage; client requests
-cannot grant access. [The beta setup](../handoffs/phase-14-test-server.md) owns its
+cannot grant access. [Server releases](../operations/SERVER_RELEASES.md) own its
 environment and release limits.
 
 `app-support/access/verification/` owns the mobile admission policy, scoped local
@@ -257,7 +257,7 @@ reporting under the Privacy Policy before entry into the app. The legal reader
 records no agreement or permission. Real-user activation stays off until
 Phase 12 completes matching notices/provider review and Phase 14 verifies the
 signed build. See the [field inventory](../legal/DATA_INVENTORY.md#sentry-diagnostic-boundary)
-and [setup/handoff](../handoffs/phase-11-crash-reporting.md).
+and the [crash-reporting build profile](../operations/TESTFLIGHT_BETA.md#optional-crash-reporting-profile).
 
 ## Request policy
 
@@ -548,7 +548,7 @@ without double-scaling native text or remounting forms. Descriptions follow the
 full selected size; headings/actions cap at 2×. Enlarged headers gain a full-width
 title line, unavailable statuses move below labels, and native inputs retain
 platform scaling. Browser/tests and simulator checks do not establish physical
-VoiceOver, software-keyboard or device behavior; track those gates in handoffs.
+VoiceOver, software-keyboard or device behavior; track those gates as `gate` issues.
 
 ## Phase 15 server cutover boundary
 

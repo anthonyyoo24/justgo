@@ -20,8 +20,7 @@ The earlier no-replay and grouped-venue proposals are superseded by the venue li
 These current decisions consolidate the September 24 scope approval, its
 October 8 reconciliation after Phase 07 and the October 15 continuity changes
 implemented in Phase 09. They supersede earlier general-only,
-grouped-venue and no-replay proposals. [Phase 04](../handoffs/phase-04-challenge-loop.md)
-records the original implementation evidence; [Phase 07](../handoffs/phase-07-api-offline.md)
+grouped-venue and no-replay proposals. [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md)
 records the current local-save protocol.
 
 Venue pills filter manually and scroll horizontally when needed. There is no
@@ -79,7 +78,7 @@ controller, and duplicate input cannot advance twice. Completion uses the
 serialized account journal and ordered sender; slow phone writes have delayed
 accessible feedback while ordinary uploads do not gate navigation. Preserve
 accessible button alternatives and Reduce Motion. Native/physical touch feel and
-release accessibility acceptance stay explicit in the handoff rather than being
+release accessibility acceptance stay explicit in gates [#86](https://github.com/anthonyyoo24/justgo/issues/86) and [#87](https://github.com/anthonyyoo24/justgo/issues/87) rather than being
 inferred from browser or component tests.
 
 ## Access and development testing
@@ -90,15 +89,15 @@ window through transient check failures, and accept authenticated uploads of rep
 created under server-verifiable coverage. Saved/pending activity keeps its account
 owner. Recovery and always-available account/data controls remain reachable.
 Production paid access remains unavailable until provider verification is connected.
-The current staging beta admission and its separate offline limits are recorded in
-the [test-server handoff](../handoffs/phase-14-test-server.md).
+The current staging beta admission and its separate offline limits are described in
+[APP_SHELL.md](../architecture/APP_SHELL.md#access-verification).
 
 Before billing, exercise the real loop with disposable local/test entitlement
 fixtures. Presentation previews make no domain writes and cannot become a
 production access bypass. Apple membership, signing and the installed development
 build are recorded in [APPLE_SETUP.md](../operations/APPLE_SETUP.md); a successful
 build does not establish two-iPhone recovery, native accessibility or release
-acceptance. Retain those gates in [Phase 14](../implementation-plan/phase-14-release.md).
+acceptance. Those gates are [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
 
 ## Subtext writing guidance
 

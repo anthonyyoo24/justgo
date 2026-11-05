@@ -273,8 +273,7 @@ Historical safety rules remain in force:
 
 Migration `0003_transfer_verification` erased obsolete plaintext verification and
 cancelled old transfers. Do not restore an older transfer API against that schema.
-Historical protocol evidence remains in the [Phase 02 handoff](../handoffs/phase-02-identity.md);
-later resource contraction follows the
+Later resource contraction follows the
 [coordinated cutover procedure](../operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients).
 
 ## Database, rates and retention

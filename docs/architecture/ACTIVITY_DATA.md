@@ -3,8 +3,7 @@
 This describes the revised Phase 13 local implementation candidate. Hosted services
 and installed clients keep their earlier behavior until the coordinated rollout.
 [IDENTITY.md](IDENTITY.md) owns account access, [APP_SHELL.md](APP_SHELL.md) owns
-runtime composition, and the [handoff](../handoffs/phase-13-local-journal.md) records
-actual verification and open device/hosting gates.
+runtime composition, and [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) track open device and hosting gates.
 
 ## Ownership and durable saving
 

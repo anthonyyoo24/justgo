@@ -3,7 +3,7 @@
 **Assessed:** October 6, 2026, on `codex/phase-07.3-local-flow`, after checkpoint
 `25e2f8c`. **Status:** planning inventory; no app, test runner, dependency or CI
 code has been removed. Implement after reviewed/finished 07.3 and before 07.4,
-under [the 07.3A plan](../implementation-plan/phase-07-api-offline.md#phase-07-3a).
+under the 07.3A plan, now tracked as [#114](https://github.com/anthonyyoo24/justgo/issues/114).
 
 **Current disposition:** 07.3A remains deferred. Anthony authorized retirement of
 the obsolete Maestro launch flow, `test:native` command and command-wiring test

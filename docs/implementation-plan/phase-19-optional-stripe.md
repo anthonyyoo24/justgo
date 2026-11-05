@@ -12,7 +12,7 @@ Eligible users can purchase on the web using the same authenticated app identity
 
 - Dependencies: Phase 14 paid launch; Phase 17 analytics is not a prerequisite.
 - Acceptance: PRD §4.3, §9 · Tech §8; acceptance 7, 14–17
-- Preserve the applicable [recorded decisions](../DECISIONS.md) and [handoff](../handoffs/README.md).
+- Preserve the applicable [recorded decisions](../DECISIONS.md) and open [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
 
 ## Implement
 

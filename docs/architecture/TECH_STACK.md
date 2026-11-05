@@ -4,8 +4,8 @@ This document describes installed technologies and server/storage boundaries.
 [APP_SHELL.md](APP_SHELL.md) owns mobile runtime composition and navigation;
 [ACTIVITY_DATA.md](ACTIVITY_DATA.md) owns activity contracts, phone saving and
 reconciliation. The [implementation plan](../implementation-plan/README.md) owns
-sequencing and approved future changes. Verification results and open release
-gates belong in the [handoff index](../handoffs/README.md). Phase 13's optional
+sequencing and approved future changes. Verification results belong in PR descriptions, and open release
+gates are [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate). Phase 13's optional
 accounts and cloud sync describe the local implementation candidate; hosted
 services and installed clients retain earlier behavior until separately approved
 rollout. [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md) lists the
@@ -128,8 +128,8 @@ preserves deletion after restoring an older backup.
 
 The invoker-rights `justgo.purge_expired_identity_records` function bounds identity
 retention cleanup, with `PUBLIC` execution revoked and migrator-only access.
-Creating the function does not schedule it. Hosted scheduling and backup-policy
-confirmation remain open gates in the [Phase 08 handoff](../handoffs/phase-08-settings-privacy.md#open-gates).
+Creating the function does not schedule it; [beta operating controls](../operations/FOUNDATION.md#beta-operating-controls)
+record its hourly `pg_cron` job. Production backups are gate [#104](https://github.com/anthonyyoo24/justgo/issues/104).
 
 <a id="3-architecture-and-storage-boundaries"></a>
 
@@ -276,15 +276,15 @@ entry; this is not permission collected through Continue or document viewing. Sy
 browser delivery and stored IP redaction were verified; native compilation,
 crash/restart delivery and symbolication remain Phase 14 gates. See the
 [diagnostics boundary](APP_SHELL.md#app-error-reporting) and
-[Phase 11 handoff](../handoffs/phase-11-crash-reporting.md). The current
+gate [#92](https://github.com/anthonyyoo24/justgo/issues/92). The current
 telemetry helper has an event-name allowlist, account-reset consent and no exporter
-or payload API. [Phase 10](../implementation-plan/phase-10-acceptance.md) owns the
+or payload API. Phase 10 implemented the
 Terms & Privacy entry links and ordinary Continue, with no legal
 view/acceptance receipts or version-driven navigation.
 [Phase 17](../implementation-plan/phase-17-analytics.md) owns post-paid-launch
 analytics and the approved event allowlist, and
-[Phase 11](../implementation-plan/phase-11-crash-reporting.md) owns app crash reporting;
-[Phase 12](../implementation-plan/phase-12-legal-documents.md) owns final legal
+Phase 11 implemented app crash reporting;
+the [legal review](../legal/LEGAL_REVIEW.md) owns final legal
 notices, document labels and public destinations. Product analytics stays disabled
 through beta and paid launch. Phase 17 must review its actual permission/collection
 design before activation; Continue and historical legal receipts grant no analytics
