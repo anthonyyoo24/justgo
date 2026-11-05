@@ -22,19 +22,18 @@ and ledger copies succeeded; the handoff owns their receipts. They do not establ
 scheduled operation, Cron check-ins or writer-fenced recovery. Anthony accepts protected Mac key custody
 locally outside CI, without a USB-retrieval prerequisite, and owns manual
 credential renewal. Backup schedules remain off and the proposed notice is unpublished.
-No Cloudflare email correspondence was sent. The
-[October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover)
-also accepts the brief legal-URL gap in the prepared coordinated cutover below.
-The [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
-settles the current-account/DPA/private-consumer-journal assessment, including its
-residual interpretation; it adds no provider-confirmation or counsel prerequisite.
+No Cloudflare email correspondence was sent. On October 31, 2026, Anthony also
+accepted the brief legal-URL gap in the prepared coordinated cutover below. On
+November 1, 2026, he accepted the current-account/DPA/private-consumer-journal
+assessment, including its residual interpretation; it adds no
+provider-confirmation or counsel prerequisite.
 The handoff also owns current approval evidence; [server releases](SERVER_RELEASES.md)
 owns the guarded lane.
 
 ## Account and service preparation
 
 1. The customer/account and Cloudflare DPA v6.4 assessment for Workers,
-   Hyperdrive and R2 is accepted under the November 1 decision above.
+   Hyperdrive and R2 was accepted on November 1 (above).
    Anthony signed in on October 28;
    authenticated inspection confirmed Workers Free and existing R2 activation.
    Subsequent authorized setup created the staging Worker, Hyperdrive and private
@@ -100,7 +99,8 @@ Paid starts at US$5/month and requires approval. Check the separate
 and [R2 storage/operation pricing](https://developers.cloudflare.com/r2/pricing/)
 against measured traffic, encrypted snapshot sizes and retained ledger volume.
 Assign Anthony usage/budget alerts before activation; free allowances are not a
-zero-cost guarantee. Supabase Free upgrade triggers remain in the phase plan.
+zero-cost guarantee. [Foundation](FOUNDATION.md#beta-operating-controls) lists the
+Supabase Free upgrade triggers.
 October 31 public probes and the active-version CPU chart exceed the Free CPU
 budget; the handoff records their limits. Anthony chose to keep Workers Free;
 checkout was exited without purchase. Resolve Free-plan workload suitability;

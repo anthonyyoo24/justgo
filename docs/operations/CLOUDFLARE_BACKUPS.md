@@ -30,9 +30,9 @@ incident stayed open beyond batching; Anthony confirmed its backup email arrived
 A verified real manual ledger catch-up cleared the monitor and resolved the issue.
 Scheduled execution, timeout-specific behavior, complete recovery and actual expiry
 remain open.
-The [November 1 decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
-accepts the current-account/DPA/private-consumer-journal assessment with its residual
-interpretation. It adds no provider-confirmation or external-counsel prerequisite.
+On November 1, Anthony accepted the current-account/DPA/private-consumer-journal
+assessment with its residual interpretation. It adds no provider-confirmation or
+external-counsel prerequisite.
 The [Phase 15 plan](../implementation-plan/phase-15-cloudflare-api.md) owns these
 approvals; [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) hold the
 independent privacy and device gates. This guide does not authorize those actions.
@@ -40,9 +40,8 @@ A local `age` identity has been prepared in protected local storage with mode
 `0600`, and a synthetic encryption/decryption round trip passed.
 The owner's standalone protected local key file also has mode `0600`. Anthony confirmed
 a key copy on an encrypted USB drive; the copy was not mounted or tested. Under
-the [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover),
-the protected Mac copies remain locally outside CI, without a USB-retrieval
-prerequisite. Owner-authorized authenticated decryption of both initial R2-downloaded copies passed November 1 with plaintext discarded; complete operational recovery remains unverified. The handoff owns that receipt.
+his October 31 custody choice, the protected Mac copies remain locally outside CI,
+without a USB-retrieval prerequisite. Owner-authorized authenticated decryption of both initial R2-downloaded copies passed November 1 with plaintext discarded; complete operational recovery remains unverified. The handoff owns that receipt.
 
 ## Implemented boundary
 
@@ -95,16 +94,13 @@ credential; the uploader must not be able to edit locks or public access.
 
 ## Recovery decision and remaining proposals
 
-The small-beta ledger-gap disposition below is approved by the
-[October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit).
-The [October 30 decision](../DECISIONS.md#october-30-seven-day-staging-backup-retention)
-approves seven-day staging retention, protection and automatic expiry.
-The [October 31 decision](../DECISIONS.md#october-31-recovery-targets) approves
-up to 24 hours of ordinary-write loss and a four-hour operator recovery target,
-subject to safe recovery; sign-in again after restoration was approved October 30.
-The [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover)
-approves the owner-held `age` identity in protected local Mac storage outside CI,
-without a USB-retrieval prerequisite.
+Anthony approved the small-beta ledger-gap disposition below on October 29.
+On October 30 he approved seven-day staging retention, protection and automatic
+expiry. On October 31 he approved up to 24 hours of ordinary-write loss and a
+four-hour operator recovery target, subject to safe recovery; sign-in again after
+restoration was approved October 30. Also on October 31 he approved the owner-held
+`age` identity in protected local Mac storage outside CI, without a USB-retrieval
+prerequisite.
 The separately accepted reader exception and activation request are described
 under protected-environment setup. Approved objectives still require operational
 evidence; remaining proposals below are not approvals or published promises:
@@ -148,9 +144,8 @@ whichever comes first. A faster schedule or an outbox stored only in the lost
 database cannot close the gap. The future design must cover app, maintenance and
 Auth/admin paths. Anthony accepts conservative replay of a durably saved deletion
 intent after an apparent database failure. That design still needs implementation
-and evidence; this decision does not change the current restore checks. Recovery
-objectives and reauthentication are governed by the separate October 31 decision;
-staging retention is governed by the October 30 decision.
+and evidence; this acceptance does not change the current restore checks. The
+table above records the recovery objectives, reauthentication and staging retention.
 
 [R2 bucket locks](https://developers.cloudflare.com/r2/buckets/bucket-locks/) prevent
 premature deletion and overwrite, but an administrator can change the rules.
@@ -305,9 +300,7 @@ its own credentials, approved policy and lane when it is introduced.
    schedule `23 * * * *` in UTC, check-in margin 20 minutes, maximum runtime
    20 minutes and the intended owner notification route. Configure
    `BACKUP_SENTRY_DSN`. Account inspection showed three trial days remaining,
-   followed by Developer with one Cron; no paid change is selected. The
-   [single-monitor decision](../DECISIONS.md#october-29-single-backup-health-monitor)
-   replaces the earlier two-monitor setup.
+   followed by Developer with one Cron; no paid change is selected.
    The monitor is created in `justgo-api`, assigned to Anthony, and the matching
    `BACKUP_SENTRY_DSN` is stored in the protected environment. The November 2
    main-workflow ledger run supplied its first healthy check-in. A controlled

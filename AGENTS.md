@@ -1,8 +1,7 @@
 # Working on JustGO
 
 Read the requested phase from [the implementation plan](docs/implementation-plan/README.md)
-before editing. Consult `docs/DECISIONS.md` for the
-recorded decisions in force. The phase files own sequencing and approved future changes;
+before editing. The phase files own sequencing and approved future changes;
 `docs/architecture/APP_SHELL.md` and `docs/architecture/TECH_STACK.md` describe the implemented boundaries.
 Keep phase scope bounded and preserve existing behavior unless the task changes it.
 Directory instructions (especially `apps/mobile/AGENTS.md`) also apply.
@@ -56,6 +55,8 @@ and a stop before anything irreversible. Only Anthony merges.
   Cloudflare, Sentry, App Store Connect). With Anthony's go, a code-only staging test may deploy a committed branch
   through `npm run release:staging:local`; that go does not cover migrations,
   production releases or merges.
+- **Do not contact providers.** Do not contact Vercel, Cloudflare or other providers
+  about JustGO without Anthony's explicit instruction.
 - **Never push to `main`.** Changes reach `main` only through a merged PR.
 - **Only Anthony merges.** Agents stop at merge-ready, never merge a PR and never
   enable auto-merge. Green CI and agent verdicts do not replace his review.
@@ -288,11 +289,12 @@ Reload the app to clear stale module/asset paths.
   work writes a resume note (pstack's `playbooks/pause-safely.md`). Open gates are
   GitHub issues labeled `gate` (`gh issue list --label gate`); close each with a
   link to its evidence. Put a lasting invariant, trap or setup step in the doc that
-  owns it. Change the plan only when scope or a decision changes (and record the
-  decision in `docs/DECISIONS.md`). Per-change test runs, small UI adjustments,
-  browser steps and screenshot paths belong in the commit message or PR
-  description. See the
-  [October 16 decision](docs/DECISIONS.md#october-16-codebase-assessment-follow-up).
+  owns it. Change the plan only when scope or a decision changes. A decision's
+  reasons go in the PR description's Why and Tradeoffs, a design's rationale in
+  its `/pstack:architect` write-up, and a fact outside the repo (a provider
+  setting, a legal acceptance, an account fact) in the operations or legal doc
+  that owns it. Per-change test runs, small UI adjustments, browser steps and
+  screenshot paths belong in the commit message or PR description.
   Do not put secrets, real private reflections or credentials in logs, issues or
   PR descriptions.
 - Routine follow-up fixes do not refresh all phase evidence. Update durable

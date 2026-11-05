@@ -237,7 +237,7 @@ reconstructs release #9. It remains on the phase branch for the consolidated PR;
 reviewed main does not contain it; the local staging release does. See
 [server releases](../operations/SERVER_RELEASES.md#candidate-and-promotion-safeguards).
 
-Hosted verification with synthetic content is already authorized. Anthony accepted the existing-account/DPA/current private-journal assessment and its residual interpretation on November 1; see the [decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption). That disposition does not establish managed-account or operating acceptance. It requires a disposable
+Hosted verification with synthetic content is already authorized. Anthony accepted the existing-account/DPA/current private-journal assessment and its residual interpretation on November 1. That disposition does not establish managed-account or operating acceptance. It requires a disposable
 genuine Apple/Google identity with a live provider session and run-owned cleanup.
 No hosted-safe managed fixture runner exists; never send the loopback smoke's
 synthetic fixture proofs to a hosted API or substitute an admin-created Auth row
@@ -247,8 +247,7 @@ provider-session evidence; no hosted synthetic fixture proof was used.
 Initial real encrypted database and ledger copies were captured from reviewed `d66c42d` and uploaded to the private R2 bucket on November 1 using the existing approved guards. Separate read-only retrieval returned identical ciphertext checksums; HEAD confirmed seven-day expiry rules. These supervised copies are not scheduled workflow evidence. Receipts are ignored `.local/phase15-cloudflare/rollout/recovery-2026-11-01/copy-receipts.json` and `download-receipts.json`. Capture/upload used no private key and established no writer fence. Anthony then specifically approved `age` verification of both exact R2-downloaded ciphertext files. Both authenticated decryptions passed with plaintext discarded; the protected identity was neither printed nor copied. The ignored receipt is `recovery-2026-11-01/decryption-receipt.json`. This verifies actual hosted-copy decryption, not restoration or safe reopening. The four run-owned local ciphertext files were removed after verification; R2 objects remain under their approved expiry rules and safe receipts remain. The actual main-workflow copy and monitor results are recorded below; scheduled
 execution, complete recovery and actual expiry remain open; actual missed-run email passed below.
 Anthony owns manual credential renewal by day five and confirmed an
-encrypted-USB recovery-key copy. Under the
-[October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover),
+encrypted-USB recovery-key copy. Under his October 31 custody choice,
 the protected Mac key copies remain locally outside CI; USB retrieval is not a
 prerequisite. Complete writer-fenced app/Auth recovery remains open. Automatic issuance is
 optional [Phase 21](../implementation-plan/phase-21-backup-credential-issuer.md),
@@ -268,8 +267,8 @@ acceptance remain open. The phone checkpoint below is complete for the tested sc
 performance/recovery and cutover/publication/build prerequisites are preserved.
 
 Remaining implementation and documentation are grouped on local
-`codex/phase-15-rollout` for one consolidated review, under the
-[November 1 workflow decision](../DECISIONS.md#november-1-grouped-phase-branches-and-protected-decryption-check).
+`codex/phase-15-rollout` for one consolidated review, as Anthony asked on
+November 1.
 A guarded `npm run dev:mobile -- --cloudflare --clear` option is prepared locally
 for an earlier owner-only synthetic phone check. It selects only the exact
 staging Worker API after validating the existing Dev environment/profile,
@@ -450,8 +449,8 @@ permission to manufacture a passing gate.
   deletion epochs, tombstones, revoked proofs and Auth subjects, and invalidates
   restored sessions. It never reopens an API. A current complete writer-fenced
   ledger is required; hourly copies alone do not solve the post-copy deletion gap.
-  The [October 29 decision](../DECISIONS.md#october-29-small-beta-recovery-limit)
-  accepts that limit for the small beta: unverified old restored state stays closed.
+  Anthony accepted that limit for the small beta on October 29: unverified old
+  restored state stays closed.
   Independent deletion/revocation recording is deferred, with mandatory
   reassessment before paid launch or beta expansion, whichever comes first.
 - Static legal Worker configuration and an approval-gated build are prepared.
@@ -672,8 +671,7 @@ saved in a protected local file, mode 0600, and checked against the source witho
 printing it. Anthony subsequently confirmed
 a copy on an encrypted USB. That copy was not mounted or tested. Anthony chose
 to retain the protected Mac copies locally outside CI, without a USB-retrieval
-prerequisite, under the
-[October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover).
+prerequisite, on October 31.
 This does not establish actual hosted R2 recovery-copy decryption or complete
 operational recovery. Existing runtime/migrator session-pooler credentials were
 read-only checked as their restricted roles. Vercel exports protected settings as
@@ -771,9 +769,8 @@ asynchronous deletion is not yet observed. The earlier credential-only canary
 was cleaned up before these rules were installed. Readback and enforcement
 evidence are in ignored `.local/phase15-cloudflare/rollout/r2-retention-verified.json`
 and `r2-retention-enforcement.json`. The
-[October 30 decision](../DECISIONS.md#october-30-seven-day-staging-backup-retention)
-does not close Git, privacy/DPA, actual hosted recovery-copy decryption, complete
-app/Auth recovery, alerts or renewal gates. The later October 31 decision accepts
+October 30 retention approval does not close Git, privacy/DPA, actual hosted
+recovery-copy decryption, complete app/Auth recovery, alerts or renewal gates. The later October 31 decision accepts
 protected Mac key custody outside CI without a USB-retrieval prerequisite.
 
 The implementation owner selected one free Sentry Cron,

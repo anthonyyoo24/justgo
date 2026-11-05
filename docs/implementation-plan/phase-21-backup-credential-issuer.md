@@ -19,15 +19,13 @@ owner-held backup decryption key.
   submission or review approval alone does not satisfy publication.
 - Phases 18–20 are optional and are not dependencies. This phase does not gate
   Phase 15, beta testing, payments, analytics or the first App Store release.
-- The [October 31 decision](../DECISIONS.md#october-31-optional-automatic-backup-credential-issuer)
-  authorizes planning only. Implementation, provider access, any cost and activation
-  still need the applicable owner approvals when this optional phase is scheduled.
+- Anthony requested this phase on October 31, which authorizes planning only.
+  Implementation, provider access, any cost and activation still need the applicable owner approvals when this optional phase is scheduled.
 - Until an accepted replacement is active, Anthony owns manual upload-credential
   renewal by day five under the existing [backup guide](../operations/CLOUDFLARE_BACKUPS.md).
-  The current parent credential stays locally outside CI. Under the
-  [October 31 custody decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover),
-  the private `age` decryption identity stays owner-held in protected local Mac
-  storage outside CI and the issuer; USB/off-Mac verification is not a prerequisite.
+  The current parent credential stays locally outside CI. Under his October 31
+  custody choice, the private `age` decryption identity stays owner-held in
+  protected local Mac storage outside CI and the issuer; USB/off-Mac verification is not a prerequisite.
 
 ## Implement
 

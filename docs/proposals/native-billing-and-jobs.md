@@ -5,10 +5,11 @@ owns acceptance and activation. This document preserves the technical design;
 it does not establish purchased access, provider integration or hosted scheduling.
 Revalidate provider SDKs, quotas, prices and policies before implementation.
 
-**Provider change:** The [October 28 decision](../DECISIONS.md#october-28-superwall-replaces-revenuecat-for-phase-16-billing)
-selects Superwall instead of RevenueCat. RevenueCat names below describe the
-original design; apply the same rules through Superwall's compatible subscriber
-endpoint, signed webhooks and Expo SDK, with its pre-activation checks.
+**Provider change:** [Phase 16](../implementation-plan/phase-16-billing.md) uses
+Superwall instead of RevenueCat (Anthony, October 28, 2026). RevenueCat names
+below describe the original design; apply the same rules through Superwall's
+compatible subscriber endpoint, signed webhooks and Expo SDK, with its
+pre-activation checks.
 
 The current access boundary is described in [APP_SHELL.md](../architecture/APP_SHELL.md#access-verification).
 Account activity uploads retain their own phone journal and sender; billing jobs

@@ -38,9 +38,8 @@
 Phase 15 must close before outside testers store real journals. Its Cloudflare
 rollout is paused; the [Supabase migration plan](phase-15-supabase-api.md) is
 planning only and does not authorize implementation or a Pro upgrade. The
-[earlier Cloudflare plan](phase-15-cloudflare-api.md) and
-[October 28 decision](../DECISIONS.md#october-28-cloudflare-workers-hono-and-r2-backups)
-retain the earlier scope; completed evidence remains in the handoff. No later
+[earlier Cloudflare plan](phase-15-cloudflare-api.md) retains the earlier scope;
+completed evidence remains in the handoff. No later
 phase is renumbered, and planning this move does not commit the app to a commercial
 launch. Prepared billing code can be reviewed independently while activation
 waits. Legal review can run alongside crash-reporting implementation, but final
@@ -48,8 +47,7 @@ notices and acceptance copy must describe the verified build with product
 analytics disabled. Phase 17 analytics is deferred until after paid launch; it
 must review notices, its permission/collection design and signed-build delivery
 before activation. Phases 19–20 are separately scheduled after paid launch, do
-not depend on analytics and do not block the first submission. See the
-[October 20 local-journal sequencing decision](../DECISIONS.md#october-20-local-journal-and-manual-backup-phase).
+not depend on analytics and do not block the first submission.
 
 [Optional Phase 21](phase-21-backup-credential-issuer.md#phase-21) may be scheduled
 only after accepted Phase 16 billing, accepted Phase 17 analytics and actual

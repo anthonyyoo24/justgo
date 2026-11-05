@@ -92,9 +92,8 @@ Complete all remaining operational approvals, the final publication
 date/version and authorization, and legal-artifact preflight before retirement.
 In the prepared coordinated cutover, retire old builds and Vercel API/legal
 roles, immediately publish and verify the Cloudflare-only notice and unchanged
-Terms, then update App Store Connect and EAS URLs. Anthony accepts the brief
-legal-URL gap under the
-[October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover).
+Terms, then update App Store Connect and EAS URLs. Anthony accepted the brief
+legal-URL gap on October 31, 2026.
 This sequence does not establish that cutover has happened or authorize provider
 actions through this documentation update.
 
@@ -112,8 +111,7 @@ questions and native evidence remain Phase 14 work.
 ## Accepted account and service assessment
 
 Anthony accepted proceeding on this reviewed assessment on November 1, 2026
-(America/Toronto), including the residual contractual interpretation. The
-[decision](../DECISIONS.md#november-1-cloudflare-contract-assessment-and-rollout-resumption)
+(America/Toronto), including the residual contractual interpretation. This acceptance
 settles this account/DPA/sensitive-content gate for the current consumer service;
 it does not establish worldwide compliance or close the operating, publication
 or independent Phase 14 gates.
@@ -175,8 +173,7 @@ technical-capacity claim.
   recovery-copy decryption, renewal execution and complete operational recovery
   remain open; isolated hosted archive compatibility does not close them.
 - The Cloudflare database-connection disclosure assumes Hyperdrive query caching
-  stays disabled. Preserve the
-  [recorded decision](../DECISIONS.md#october-28-phase-15-runtime-and-recovery-implementation)
+  stays disabled. Preserve that setting
   and verify provider readback under [server releases](../operations/SERVER_RELEASES.md).
 - Follow the [full-cutover checklist](../operations/CLOUDFLARE_CUTOVER.md).
   Prepare all approvals and preflighted legal assets before retirement, then

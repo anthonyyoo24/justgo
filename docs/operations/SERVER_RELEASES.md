@@ -252,6 +252,9 @@ alone establish hosted binding compatibility. If initial upload succeeded before
 a later check failed, inspect the existing version/deployment and use an ordinary
 release for reviewed fixes; never rerun bootstrap or delete/recreate the Worker.
 
+The Vercel API project is `justgo` (root directory `apps/api`, region `yul1`),
+served at `https://justgo-two.vercel.app`. The legal pages are a separate Vercel
+Hobby project at `justgo-legal.vercel.app`.
 Keep the existing Vercel API/legal addresses, deployment configuration and
 credentials until the approved old-build retirement plan is executed. A redirect
 or two working APIs does not prove that private request bodies stopped reaching
@@ -261,8 +264,7 @@ failure/missed-backup delivery remains open. The
 [phase handoff](../handoffs/phase-15-cloudflare-api.md#current-status) records final
 evidence. Complete all required approvals and legal-artifact preflight before
 the prepared coordinated Vercel retirement, Cloudflare publication/verification
-and ASC/EAS URL update. Anthony accepts the brief legal-URL gap under the
-[October 31 decision](../DECISIONS.md#october-31-local-recovery-key-custody-and-coordinated-cutover);
+and ASC/EAS URL update. Anthony accepted the brief legal-URL gap on October 31, 2026;
 no legacy redirect remains and the final Cloudflare-only notice follows the end
 of Vercel's roles. Ship
 an approved TestFlight build only as part of the separately authorized cutover.
