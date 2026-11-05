@@ -1,15 +1,9 @@
 # JustGO — MVP Product Requirements
 
-**Phase 13 account and data revision:** Continue provides durable guest-local use without creating a server account. Optional native Sign in with Apple/Google connects a managed Supabase Auth identity and synchronizes the account's full completion history, feelings and reflections. The disclosed sign-in flow includes saved phone entries and retires the old guest source after verified handover. Log out keeps the same editable journal. Separate private CloudKit synchronization is optional and off by default. Settings provides one restorable Download my data, Import data preview/confirmation, Delete all my data and separate Delete account. This is a local implementation candidate; provider configuration, approved hosted rollout, native/device/staging acceptance and legal publication remain open. Native billing remains [Phase 16](../implementation-plan/phase-16-billing.md#phase-16), with release gates in Phase 14.
-
-**Status:** Revised draft aligned to the final core-app designs; unresolved product decisions are listed in section 13.  
-**Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.  
-**Updated:** October 21, 2026.
-
-**October 19 entry and legal links (Phase 10):** Terms & Privacy presents readable notices and ordinary links. Continue enters a durable local guest collection without a server account; it records no legal agreement, document view, accepted version or acceptance time. There is no per-account legal-version gate. Analytics stays disabled through beta and paid launch. Phase 17 must review its actual permission and collection design before activation, without treating Continue or an old receipt as analytics permission or silently restoring the rejected tracking mechanism. Additional welcome/questionnaire onboarding remains deferred.
-
+**Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.\
+**Open product decisions:** section 13.\
 **Implementation specification:** [TECH_STACK.md](../architecture/TECH_STACK.md).\
-**Implementation plan:** [Stages and handoffs](../implementation-plan/README.md).\
+**Roadmap:** [implementation plan](../implementation-plan/README.md).\
 **Design source:** [Paper — Version 3](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0), reviewed through Paper MCP on September 16, 2026.
 
 ## 1. Product summary and scope

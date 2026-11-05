@@ -6,24 +6,13 @@ Signed-in collections synchronize history and journal through JustGO's API;
 optional iCloud Sync and complete Download/Import controls are separate. The
 [app-shell guide](docs/architecture/APP_SHELL.md) describes the implemented boundaries.
 
-Phase 13's revised local implementation replaces recovery keys/codes with managed
-provider sign-in, one continuous journal through login/logout, verified login
-switches and simple Account/Data pages. Real provider setup, a compatible
-signed native build, CloudKit/device acceptance and coordinated hosted rollout remain
-open; existing installed clients/hosted services keep their earlier behavior. See
-[the handoff](docs/handoffs/phase-13-local-journal.md) and
-[setup](docs/operations/ACCOUNT_SYNC_SETUP.md). Phase 14 owns release acceptance;
-16 billing and post-launch analytics retain their gates. Guest Continue creates no
-account or legal-view/agreement receipts. Diagnostics and analytics stay disabled.
-`npm ci` builds contracts; rerun `npm run build:contracts` after contract edits.
-
 See the [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) for the current directory groupings and responsibilities.
 
 Read [repository coding and verification instructions](AGENTS.md) before changing code, plus directory-specific `AGENTS.md` files. Phase scope and handoffs live in the [implementation plan](docs/implementation-plan/README.md).
 
 ## Start locally
 
-Use Node **24.18.0** and npm **11.16.0**. From this repository root:
+Use Node **24.18.0** and npm **11.16.0**. `npm ci` builds the shared contracts; rerun `npm run build:contracts` after contract edits. From this repository root:
 
 ```sh
 npm ci
@@ -54,7 +43,7 @@ npm run export:ios -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
-CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The required Playwright journey step runs the full local-save/reflection/Progress and controlled recovery suite against isolated app/API/database fixtures, with masked failure artifacts. Current-revision hosted results are distinct from local passes and require authorized publication. The [Phase 07 cutover procedure](docs/operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients) governs migration 0013 and old-client handling; no staging/production deployment is implied by local implementation. See [testing guidance](docs/operations/TESTING.md) for local prerequisites and artifact handling.
+CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The required Playwright journey step runs the full local-save/reflection/Progress and controlled recovery suite against isolated app/API/database fixtures, with masked failure artifacts. Hosted results for a pushed commit are separate from local passes. The [Phase 07 cutover procedure](docs/operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients) governs migration 0013 and old-client handling; no staging/production deployment is implied by local implementation. See [testing guidance](docs/operations/TESTING.md) for local prerequisites and artifact handling.
 
 Coverage scope, thresholds, focused commands and async/UI test conventions are in
 [testing guidance](docs/operations/TESTING.md).
@@ -76,9 +65,7 @@ Generated native projects and completed Xcode caches are retained locally and ex
 
 The local Expo module is auto-linked from `apps/mobile/modules/justgo-keychain`; native dependency or Swift changes require a new EAS build. If `xcrun simctl` resolves only Command Line Tools, use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for simulator commands without changing the global developer selection.
 
-The obsolete Maestro launch flow and its command were retired on November 2. Automated iOS simulator testing remains deferred; use the retained browser/lower-level automated checks and explicitly arranged physical-device or manual simulator checks. The [testing guide](docs/operations/TESTING.md) owns current commands and evidence requirements.
-
-[Phase 07.3A — hybrid/native testing](docs/implementation-plan/phase-07-api-offline.md#phase-07-3a) was deferred by Anthony on October 7. Its checkpoint and [removal assessment](docs/checks/phase-07-3a-browser-testing-assessment.md) remain reference material; it is not a prerequisite for 07.4/07.5. Retain browser journeys/adapters/CI and lower-level coverage. Phase 13 requires a compatible development binary containing Apple/Google Auth, CloudKit, SQLite and document picker before native account/data checks; building it remains separately authorized. Physical-device Keychain/SQLite/AsyncStorage, Files/iCloud Drive, software keyboard, VoiceOver and release acceptance remain separate gates.
+The [testing guide](docs/operations/TESTING.md) owns simulator, device and release-acceptance checks.
 
 ## Workspace
 
