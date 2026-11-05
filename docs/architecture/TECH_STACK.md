@@ -305,7 +305,7 @@ workspace separation and mobile routes/app-support/features/data/shared/develope
 directions, including dynamic imports and re-exports. Native/web adapter pairs and
 tests stay with their owner. Tooling and generated build output must follow moves.
 
-[TESTING.md](../operations/TESTING.md) owns commands, coverage floors, isolated
+[TESTING.md](../operations/TESTING.md) owns commands, coverage reports, isolated
 fixtures and evidence requirements. PostgreSQL ownership/migration tests, saved
 app/API/database journeys, bundle exports, interactive browser checks and native
 checks prove different boundaries. Hosted results must be inspected for the

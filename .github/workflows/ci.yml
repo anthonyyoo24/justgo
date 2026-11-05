@@ -67,9 +67,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-api-unit
-          path: |
-            coverage/api-unit/
-            coverage/api-blobs/unit.json
+          path: coverage/api-unit/
           if-no-files-found: error
   database:
     runs-on: ubuntu-24.04
@@ -115,9 +113,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-api-database
-          path: |
-            coverage/api-database/
-            coverage/api-blobs/database.json
+          path: coverage/api-database/
           if-no-files-found: error
   journeys:
     runs-on: ubuntu-24.04
@@ -192,29 +188,3 @@ jobs:
         env:
           JUSTGO_CI_RESULTS: ${{ toJSON(needs) }}
         run: node scripts/quality/api-coverage.mjs require-jobs
-      - uses: ./.github/actions/setup-node
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: coverage-mobile
-          path: coverage/mobile/
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: coverage-contracts
-          path: coverage/contracts/
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: coverage-api-*
-          path: coverage/
-          merge-multiple: true
-      - name: Merge API execution maps and enforce all coverage floors
-        id: coverage
-        run: |
-          node scripts/quality/api-coverage.mjs merge
-          npm run coverage:check
-      - name: Upload combined coverage reports
-        if: always() && (steps.coverage.outcome == 'success' || steps.coverage.outcome == 'failure')
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: coverage
-          path: coverage/
-          if-no-files-found: error

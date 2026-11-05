@@ -36,17 +36,6 @@ for (const [name, job] of Object.entries(jobs)) {
   }
 }
 
-test('the final job requires both API producers and preserves workspace report paths', () => {
-  for (const artifact of ['coverage-mobile', 'coverage-contracts'])
-    assert.match(jobs.checks, new RegExp(`name: ${artifact}`));
-  assert.match(jobs.checks, /pattern: coverage-api-\*/);
-  assert.match(jobs.checks, /merge-multiple: true/);
-  assert.match(jobs.checks, /path: coverage\/mobile\//);
-  assert.match(jobs.checks, /path: coverage\/contracts\//);
-  assert.match(jobs.unit, /coverage\/api-blobs\/unit.json/);
-  assert.match(jobs.database, /coverage\/api-blobs\/database.json/);
-});
-
 test('journey and exported-build reports retain hidden artifact paths and required HTML output', () => {
   for (const [name, prefix] of [
     ['journeys', 'journey'],

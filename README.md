@@ -36,7 +36,7 @@ For environment-managed development, copy the workspace `.env.example` files to 
 ```sh
 npm run check          # fresh Expo Doctor, TypeScript, lint, formatting and tests
 npm run test:db        # real PostgreSQL isolation/rollback/pool tests; db:local + migrate first
-npm run test:coverage  # all-source reports + regression floors; uses the test DB
+npm run test:coverage  # optional all-source coverage reports; uses the test DB
 npm run test:journey   # saved app/API/database local saving, Progress, lost-acknowledgement and account recovery cases
 npm run export:web -w @justgo/mobile
 npm run export:ios -w @justgo/mobile
@@ -45,7 +45,7 @@ npm run doctor -w @justgo/mobile
 
 CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The required Playwright journey step runs the full local-save/reflection/Progress and controlled recovery suite against isolated app/API/database fixtures, with masked failure artifacts. Hosted results for a pushed commit are separate from local passes. The [Phase 07 cutover procedure](docs/operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients) governs migration 0013 and old-client handling; no staging/production deployment is implied by local implementation. See [testing guidance](docs/operations/TESTING.md) for local prerequisites and artifact handling.
 
-Coverage scope, thresholds, focused commands and async/UI test conventions are in
+Coverage reports, focused commands and async/UI test conventions are in
 [testing guidance](docs/operations/TESTING.md).
 
 ## iOS development

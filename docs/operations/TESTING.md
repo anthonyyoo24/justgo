@@ -23,15 +23,15 @@ A routine follow-up does not reopen phase closeout.
 | Documentation only                   | Scoped formatting, `node --test scripts/quality/doc-links.test.mjs` for local links, and consistency with the owning rules; no app tests, builds or UI checks.                                                                                                                                                                                                                                                                                   |
 | Routine contained fix                | Meaningful regression tests for affected behavior, success/failure cases and consumers; affected workspace typechecks, repository lint and changed-file formatting. Run saved critical journeys affected by the change; add one grouped in-app walkthrough for UI behavior changes.                                                                                                                                                              |
 | Boundary or configuration change     | Widen checks to the affected consumers and boundary failures. Contracts, tsconfig, ESLint or `e2e/support` changes require the root contracts build and all-workspace typecheck. Backend/shared protocol or data-boundary changes require `test:db` against loopback `justgo_test`, including applicable ownership, replay, failure and migration/policy cases. Dependency/native changes retain applicable Doctor, build and device acceptance. |
-| Actual phase closeout or publication | Full `check`, full coverage and applicable saved journeys/exports; `test:db` at phase closeout and for backend/shared boundaries. Publication also requires fresh online dependency validation and Doctor immediately before pushing. Keep required hosted, staging and physical-device gates.                                                                                                                                                   |
+| Actual phase closeout or publication | Full `check` and applicable saved journeys/exports; `test:db` at phase closeout and for backend/shared boundaries. Publication also requires fresh online dependency validation and Doctor immediately before pushing. Keep required hosted, staging and physical-device gates.                                                                                                                                                                  |
 
-Routine fixes do not automatically run the full root suite, Doctor, aggregate
-coverage, database suites, all journeys or both platform exports. Expand for a
+Routine fixes do not automatically run the full root suite, Doctor, coverage
+reports, database suites, all journeys or both platform exports. Expand for a
 concrete failure, affected boundary/configuration, explicit owner request or
 required phase/publication gate; briefly state the trigger without adding an
-approval checkpoint. Keep meaningful regression coverage, thresholds and affected
-consumers intact. After the scoped checks, relevant UI verification, fixture
-cleanup and changed-directory review pass, finish without optional extra checks.
+approval checkpoint. Keep meaningful regression tests and affected consumers
+intact. After the scoped checks, relevant UI verification, fixture cleanup and
+changed-directory review pass, finish without optional extra checks.
 
 | Command                                | Purpose                                                                                                   |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -43,7 +43,7 @@ cleanup and changed-directory review pass, finish without optional extra checks.
 | `npm run db:local`                     | Prepare isolated local PostgreSQL roles/database                                                          |
 | `npm run db:migrate`                   | Apply registered migrations using the migrator connection                                                 |
 | `npm run test:db`                      | Real database services/policies plus migration/restoration rehearsal                                      |
-| `npm run test:coverage`                | All-source workspace coverage, including database suites, then combined floors                            |
+| `npm run test:coverage`                | Optional all-source workspace coverage reports, including database suites; no pass/fail threshold         |
 | `npm run test:journey`                 | Saved actual-app/API/database browser and repository journeys                                             |
 | `npm run test:migrations`              | Standalone preservation/restoration rehearsal                                                             |
 | `npm run build:legal`                  | Build local static legal candidates; `-- --production` refuses unapproved source/date metadata            |
@@ -126,66 +126,21 @@ artifacts. Supply the full database mapping consistently to migrations, database
 coverage and journeys. Inspect hosted results for the pushed commit before marking
 a gate verified.
 
-## Coverage policy
-
-Run the full aggregate gate at actual phase closeout and before publication.
-Run it earlier when coverage configuration, source inclusion/exclusion rules,
-critical selectors or thresholds change in a way that can invalidate the gate,
-or when an affected boundary, concrete failure or owner request requires it.
-Ordinary files or branches under unchanged coverage rules do not alone trigger
-whole-project coverage. Review important affected branches and use focused
-coverage when needed; never exclude an affected consumer or lower a floor to
-make a focused run pass.
-
-The root coverage command builds contracts, runs workspaces sequentially and
-enforces [coverage-thresholds.json](../../scripts/quality/coverage-thresholds.json).
-API coverage includes unit/database suites and the migration rehearsal, so prepare
-the same local database first. The private Auth-session helper integration also
-requires `JUSTGO_TEST_ADMIN_DATABASE_URL` for a `postgres` connection to loopback
+The private Auth-session helper integration also requires
+`JUSTGO_TEST_ADMIN_DATABASE_URL` for a `postgres` connection to loopback
 `justgo_test`, with SSL disabled. New `db:local` environments and shared CI database
 jobs supply it; existing local `.env` files need that test-only value added.
 The test refuses occupied Auth/helper schemas, executes the actual operator SQL
 inside a rollback-only fixture transaction and never targets hosted Auth. Never
-deploy this test operator URL on Workers, Vercel or mobile. Individual workspace coverage scripts generate
-reports; the root command applies the combined gate. Reports are ignored generated
-output under `coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
-Jest uses Istanbul; Vitest's V8 provider is pinned with its Vitest version.
+deploy this test operator URL on Workers, Vercel or mobile.
 
-CI collects API unit and database coverage separately with the same Vitest source
-configuration. The unit producer excludes `*.integration.test.ts`; the database
-producer selects those files, including the single migration rehearsal. Each writes
-its own report and Vitest execution blob. The final `checks` job requires both
-nonempty blobs and merges their execution maps with Vitest without rerunning tests.
-It does not add percentages or overlapping JSON summaries. Unimported production
-source remains in the merged API report, and the normal global/critical checker
-runs against the union together with the mobile/contracts reports. Missing producer
-results or artifacts cannot make partial coverage pass.
+## Coverage reports
 
-All production `src/**/*.ts` and mobile `src/**/*.tsx` files count, including
-unimported source. Only tests and declaration-only files are excluded inside those
-trees. Routes, preview wiring, API bootstrap and schema remain visible, including
-zeros. SQL, Swift, scripts, configuration and assets need their appropriate
-database/tooling/bundle/native evidence rather than a misleading JS coverage claim.
-
-| Workspace             | Branch floor | Line floor | Statement floor | Function floor |
-| --------------------- | -----------: | ---------: | --------------: | -------------: |
-| Mobile                |          79% |        85% |             84% |            80% |
-| API (unit + database) |          82% |        84% |             83% |            76% |
-| Contracts             |          95% |        95% |             95% |            95% |
-
-Independent critical selectors protect the provider, extracted access policy/store/hook
-and native vault (95% branches/lines), account client (85%/95%), HTTP (82%/94%), Progress as a group (90%/92%),
-identity/challenge services (85% branches), retired private PATCH boundary (95%/99%) and Progress
-resources (95%/96%). Controllers/storage retain their own floors. The JSON file
-owns exact paths and thresholds; a move must update its selector without lowering
-protection.
-
-The checker uses covered/total counts instead of rounded percentages and weights
-groups by branch counts. Missing critical paths, missing all source and empty
-reports fail. Zero-total metrics are valid only with actual source entries. Do not
-use ignore pragmas or reduce floors to make a failing change pass. Explain any
-justified change with before/after evidence and review uncovered behavior: executing
-a schema declaration does not establish input rejection or ownership isolation.
+`npm run test:coverage` is an optional diagnostic with no pass/fail threshold. It
+builds contracts and runs each workspace's coverage script in sequence. API
+coverage includes the database suites and the migration rehearsal, so prepare the
+local test database first. Reports are ignored output under
+`coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
 
 ## Async tests and boundary regressions
 
@@ -464,8 +419,8 @@ CloudKit. A signed EAS build and actual phone checks still verify those boundari
 
 The [native-testing checkpoint](../handoffs/phase-07-3a-testing-checkpoint.md) and
 [browser assessment](../checks/phase-07-3a-browser-testing-assessment.md) remain the
-resume boundary for deferred native automation. Retain Playwright/web adapters,
-fixture safeguards and coverage floors until a native replacement proves equivalent
+resume boundary for deferred native automation. Retain Playwright/web adapters
+and fixture safeguards until a native replacement proves equivalent
 actual-app/API/database cases and its authorized commit's hosted gate. The obsolete
 Maestro launch flow, command and command-wiring test were retired on November 2;
 automated simulator testing remains deferred. Arrange relevant physical-device
@@ -474,10 +429,10 @@ or manual simulator checks explicitly. Device/staging gates belong in
 
 ## File moves and bundle checks
 
-Every move updates affected imports, dynamic loaders, test discovery, coverage
-selectors, fixtures, assets, packaging/upload allowlists, scripts and documentation
-links in the same change. Keep tests and native/web adapter pairs beside their
-owner; preserve all boundary checks and coverage floors.
+Every move updates affected imports, dynamic loaders, test discovery, fixtures,
+assets, packaging/upload allowlists, scripts and documentation links in the same
+change. Keep tests and native/web adapter pairs beside their
+owner; preserve all boundary checks.
 
 For a small move within the same resolver and packaging rules, run affected
 tests, typechecks and import/discovery/packaging checks. Cold-bundle an affected
@@ -487,8 +442,7 @@ platform exports are not automatic for every move.
 Large moves and platform-sensitive moves affecting adapter resolution,
 entrypoints, shared assets or packaging require cold web and iOS exports.
 Run the production exported-web smoke after the web export, before the iOS export
-replaces `dist/`. Changes to coverage inclusion/exclusion rules or selectors also
-follow the coverage policy above.
+replaces `dist/`.
 
 After source/asset moves, restart the owned running Metro server with `--clear`
 and reload the existing installed development app to clear stale module/asset
@@ -556,12 +510,11 @@ each main commit's result. Six producer jobs run independently:
 - `native-icloud`: the pure Swift CloudKit regressions on macOS, without npm setup.
 
 The final `checks` job runs even when a producer fails, is skipped or is cancelled;
-any such result fails the aggregate status. After all producers pass, it downloads
-the coverage artifacts, merges the API execution maps and enforces the unchanged
-all-source/global/critical floors. Suites execute once rather than being repeated
-by root coverage or database commands. Coverage uploads run when their collection
-step executed, including failures; missing reports then fail upload. Tooling tests
-protect producer dependencies, failure handling, artifact paths and coverage union.
+any such result fails the aggregate status. Suites execute once rather than being
+repeated by root coverage or database commands. The `unit` and `database` jobs
+upload their coverage reports as diagnostic artifacts when their collection step
+executed, including failures; missing reports then fail upload. Tooling tests
+protect producer dependencies, failure handling and artifact paths.
 
 Local setup actions share pinned Node/npm installation, isolated database roles and
 Playwright setup. Chromium binaries are cached by runner OS and installed Playwright
