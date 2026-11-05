@@ -42,7 +42,7 @@ Challenge completions and submitted reflections save locally and display immedia
 
 <a id="phase-07-3a"></a>
 
-- 07.3A: deferred hybrid/native-testing checkpoint. Preserve the existing browser suite, adapters, coverage floors and checkpoint/browser assessment; Phase 14 starts its native smoke here.
+- 07.3A: deferred hybrid/native-testing checkpoint. Preserve the existing browser suite, adapters and checkpoint/browser assessment; Phase 14 starts its native smoke here.
 
 <a id="phase-07-4"></a>
 

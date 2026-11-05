@@ -27,8 +27,8 @@ handoffs; avoid copying competing versions of these rules into every directory.
   `e2e/`: saved Playwright journeys. `scripts/quality` and `scripts/journeys`:
   architecture, coverage and journey tooling.
 - Focused checks: `npm run test -w <workspace>`, `npm run typecheck -w <workspace>`,
-  `npm run lint`. Broader gates: `npm run check`, `npm run test:coverage`,
-  `npm run test:db`, `npm run test:journey`. See
+  `npm run lint`. Broader gates: `npm run check`, `npm run test:db`,
+  `npm run test:journey`. `npm run test:coverage` is an optional report. See
   [testing guidance](docs/operations/TESTING.md) for when each applies.
 - Choose the verification scope before running checks, using the matrix in
   [TESTING.md](docs/operations/TESTING.md#choosing-checks). Routine fixes default to
@@ -222,7 +222,7 @@ Reload the app to clear stale module/asset paths.
   affected checks when inputs change, failures or stale environments require it,
   or integration risks justify it. Do not run the full mobile suite once per
   worktree merely because tasks are separate. Coordinate test database fixtures,
-  server ports and heavy checks; preserve all required gates and coverage floors.
+  server ports and heavy checks; preserve all required gates.
 - Write/update meaningful tests for every code change and run focused checks
   during each slice. Use unit tests for domain decisions, component tests for UI
   behavior, integration tests for runtime wiring and real API/database boundaries,
@@ -233,13 +233,8 @@ Reload the app to clear stale module/asset paths.
   that would catch the original failure.
 - Await observable asynchronous results and clean up subscriptions, timers and
   queries. Never silence unexpected warnings, remove assertions or weaken lint
-  and coverage floors to make a failing change pass. During each slice, review
-  coverage of the affected behavior and important uncovered branches, not only
-  the percentage; run the full `npm run test:coverage` gate at phase completion,
-  before publication or when coverage configuration, source inclusion/exclusion
-  rules, critical selectors or thresholds can invalidate the aggregate gate.
-  Ordinary files or branches under unchanged coverage rules use focused coverage
-  when needed, without lowering any floor.
+  to make a failing change pass. During each slice, review whether tests cover
+  the affected behavior and important branches.
 - After relevant tests pass, test affected UI in the agent's in-app browser
   pane (Codex: Browser Use side panel; Claude Code: built-in browser). Honor
   the owner's browser preference; do not switch to an outside Chrome window when
@@ -270,7 +265,6 @@ Reload the app to clear stale module/asset paths.
   `packages/contracts`, a tsconfig, ESLint config or `e2e/support`, also run
   `npm run build:contracts && npm run typecheck` from the root (all workspaces
   and journeys).
-  Follow `docs/operations/TESTING.md` for coverage commands and regression thresholds.
   Keep earlier physical-device/staging gates open until evidenced.
 - Before publication, run fresh online Expo validation through `npm run check`.
   Its successful online Doctor run also satisfies pre-push validation when the

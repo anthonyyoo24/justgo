@@ -166,7 +166,7 @@ exist and keeps the approved mobile responsibility groups in the guide.
   and reload the existing app after moves; exports do not refresh a live
   dependency graph.
 - Review complete file lists in touched directories before handoff. Preserve
-  unrelated retained code and all existing coverage/boundary safeguards. Keep
+  unrelated retained code and all existing test and boundary safeguards. Keep
   necessary organization within the task's responsibility; record unrelated
   cleanup separately instead of expanding a routine fix.
 

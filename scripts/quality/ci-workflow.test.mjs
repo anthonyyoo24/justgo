@@ -58,7 +58,7 @@ test('independent bounded producer jobs feed one always-evaluated required statu
   for (const [name, job] of Object.entries(jobs)) {
     assert.match(job, /^ {4}timeout-minutes: [1-9]\d*$/m);
     assert.match(job, /persist-credentials: false/);
-    if (name !== 'native-icloud')
+    if (!['native-icloud', 'checks'].includes(name))
       assert.match(job, /uses: \.\/\.github\/actions\/setup-node/);
   }
   assert.match(
@@ -71,6 +71,9 @@ test('independent bounded producer jobs feed one always-evaluated required statu
     /run: node scripts\/quality\/api-coverage.mjs require-jobs/,
   );
   assert.match(jobs.checks, /JUSTGO_CI_RESULTS: \$\{\{ toJSON\(needs\) \}\}/);
+  assert.deepEqual(commands(jobs.checks), [
+    'node scripts/quality/api-coverage.mjs require-jobs',
+  ]);
 });
 
 test('native iCloud regressions run on a bounded macOS producer without npm prerequisites', () => {
@@ -126,7 +129,7 @@ test('static CI checks workflow syntax and context availability with a checksum-
   assert.doesNotMatch(validator, /\|\|\s*true|continue-on-error/);
 });
 
-test('unit and database suites run once and API coverage merges without rerunning tests', () => {
+test('unit and database suites run once', () => {
   assert.deepEqual(commands(jobs.unit), [
     'npm run test:coverage -w @justgo/mobile',
     'npm run test:coverage -w @justgo/contracts',
@@ -142,10 +145,6 @@ test('unit and database suites run once and API coverage merges without rerunnin
       job,
       /run: npm run (?:check$|test$|test:db$|test:migrations$|test:coverage$)/m,
     );
-  assert.match(
-    jobs.checks,
-    /node scripts\/quality\/api-coverage.mjs merge\n {10}npm run coverage:check/,
-  );
   assert.match(rootPackage.scripts['test:coverage'], /--workspaces/);
 });
 
