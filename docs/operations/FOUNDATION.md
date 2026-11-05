@@ -350,7 +350,7 @@ are not that app.
 
 `design/source/` records Paper provenance and editable-source extracts. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.
 
-Choose checks with the [check matrix](../../AGENTS.md#choosing-checks). File moves follow the [move rules](../architecture/FOLDER_STRUCTURE.md#placement-and-move-rules), rather than requiring both exports for every edit. CI enforces the required gates with PostgreSQL 17.
+Choose checks with the [check matrix](../../AGENTS.md#choosing-checks). File moves follow the [move rules](../../AGENTS.md#placement-and-move-rules), rather than requiring both exports for every edit. CI enforces the required gates with PostgreSQL 17.
 
 Native compilation runs on EAS using `development-simulator`, per the owner’s 8 GB memory constraint. Keep Simulator and local preview servers stopped during cloud compilation; launch only one simulator afterwards and reuse its binary for JS/UI changes. Preserve local Pods/DerivedData caches. Explain any EAS account/quota/configuration blocker before considering a heavy local fallback.
 

@@ -300,8 +300,8 @@ in a plan must not be read as installed dependencies, tables or behavior.
 
 ## Development and quality boundaries
 
-[FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md) owns paths and responsibilities;
-[AGENTS.md](../../AGENTS.md) owns coding standards. Import-boundary tests enforce
+[AGENTS.md](../../AGENTS.md#placement-and-move-rules) owns coding standards and
+placement rules. Import-boundary tests enforce
 workspace separation and mobile routes/app-support/features/data/shared/developer
 directions, including dynamic imports and re-exports. Native/web adapter pairs and
 tests stay with their owner. Tooling and generated build output must follow moves.
