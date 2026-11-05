@@ -60,7 +60,10 @@ a reviewed custom one is supplied, and do not treat its technical-data clause as
 privacy consent. Guideline 5.1.1(ix) expects a legal entity for regulated fields
 or sensitive information. The optional, nonclinical journal supports the
 individual-operator approach, but the guideline has no journal-specific line
-that settles it.
+that settles it. Guideline 5.1.1(ii)'s exception for diagnostics needs
+compliance with the applicable law, not only calling them essential. The UK ICO
+gives Sentry no automatic exemption; a proportionate technical-fault purpose can
+qualify.
 
 Guideline 5.1.1(i) expects the policy to confirm that recipients protect data
 the same way. The provider list alone does not say that. Once every provider
@@ -118,7 +121,11 @@ are not a legal opinion or proof of worldwide compliance.
   ([#96](https://github.com/anthonyyoo24/justgo/issues/96)). The
   requested-service provision
   ([RCW 19.373.030](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.030))
-  may cover necessary requested actions. Broad Terms agreement does not replace
+  may cover necessary requested actions. If Washington applies, record each
+  processor agreement and its actual configuration against purpose-limited
+  processing, access restrictions, request assistance and deletion
+  ([RCW 19.373.060](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.060)).
+  Broad Terms agreement does not replace
   consent where consent is separately required. Do not claim that disclosed
   sign-in, the Terms links or the absence of HealthKit supply every needed
   permission. Bring any needed notice or consent change to Anthony as concrete
