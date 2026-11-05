@@ -51,6 +51,11 @@ change. Assert what a caller, a user or another service can observe, such as ret
 values, errors, stored state and requests sent. Do not assert private helpers, call order or
 data the test built itself.
 
+When behavior depends on storage, transport, time or randomness, control it through
+the code's existing seam, such as the vault, `fetch`, AppState or a clock. The test
+then controls failures, timing and retries without replacing the domain logic under
+test. Add a small interface only where no seam exists.
+
 ## Choosing checks
 
 Use the pinned Node and npm versions from the root manifests and `.nvmrc`. Classify

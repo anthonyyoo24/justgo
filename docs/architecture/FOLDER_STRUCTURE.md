@@ -95,7 +95,8 @@ Features may use shared data and app-support providers; data may use shared
 lib/platform/contracts but imports no feature, app-support, route or visual code.
 Shared components/lib/theme/platform import no app-specific owner. Production
 source may load developer fixtures only through the guarded preview route.
-AGENTS.md and import-boundary tests enforce these directions.
+App-support code imports no route implementation. The `justgo/import-boundaries`
+lint rule enforces these directions, including re-exports, `import()` and `require()`.
 
 Mobile icons live in assets/. Venue artwork, cream variants and shared
 texture/flourish live together in the flat assets/challenges/ directory; welcome
@@ -124,7 +125,8 @@ capability changes need a separately authorized compatible build.
 | packages/contracts/src/activity/         | Catalog, completion/reflection and Progress resource contracts.               |
 
 Runtime and migration credentials remain separate. Mobile and API import the
-public contracts package and do not import each other's implementations. The
+public contracts package and do not import each other's implementations. Contracts
+import neither app. The
 [stack](TECH_STACK.md), [activity design](ACTIVITY_DATA.md) and [identity boundary](IDENTITY.md)
 own the actual protocol and storage rules.
 
@@ -152,9 +154,17 @@ exist and keeps the approved mobile responsibility groups in the guide.
 
 ## Placement and move rules
 
-- Choose a product or supporting responsibility before creating files. Extract
-  cohesive groups when navigation/responsibilities warrant it; avoid empty future
-  folders or automatic components/hooks/services layers.
+- Choose a product or supporting responsibility before creating files, and name
+  the folder after it. Extract cohesive groups when navigation/responsibilities
+  warrant it; avoid empty future folders or automatic components/hooks/services
+  layers.
+- In mobile `src/`, `features/<name>/` holds one product capability with its
+  screens, components, hooks, domain logic, API functions and tests.
+  `app-support/` holds app-wide coordination, such as providers, startup, access,
+  identity, sessions and account recovery, with their own screens. `data/` holds
+  shared persistence, cached activity and synchronization. A feature-specific API
+  function stays with its feature. `components/`, `lib/`, `theme/` and `platform/`
+  hold reusable UI, general helpers, design tokens and platform adapters.
 - Keep routes thin, domain logic with its owner, tests beside their owner and
   native/web pairs together. Developer fixtures remain in dev/.
 - Moves must update imports, dynamic loaders, Jest/coverage selectors, fixture
