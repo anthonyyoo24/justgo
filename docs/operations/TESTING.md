@@ -1,38 +1,79 @@
 # Testing and quality safeguards
 
-[AGENTS.md](../../AGENTS.md) owns coding/verification rules. This guide owns the
-commands, isolated environments and evidence types used to enforce them.
-PR descriptions record actual results, and open gates are GitHub issues labeled
-`gate` (`gh issue list --label gate`); [the plan](../implementation-plan/README.md)
-owns future acceptance work.
-Documentation-only changes do not require code tests or UI checks.
+This guide owns the test commands, the CI gates and the proof standard. The
+[`verify-justgo` skill](../../.claude/skills/verify-justgo/SKILL.md) owns how to
+start, drive, check and clean up the running app, and its feature map holds the
+per-feature recipes and traps. PR descriptions record actual results. Open gates
+are GitHub issues labeled `gate` (`gh issue list --label gate`).
+
+## Proving a change works
+
+Prove a change on the real surface it affects, not on a proxy. For a user-facing
+change, drive the app through `verify-justgo`. For an API or data change, read the
+result back from the database or the response. A passing typecheck or a mocked
+component test does not prove the app behaves.
+
+Script the check when you can, so a reviewer can rerun it. Run the same check on
+the old code and the new code. The check must fail or show
+the defect before the change and pass after it. Give each claim one verdict:
+
+- **Verified.** The check ran on the real surface and showed the claimed behavior.
+- **Not verified.** The check ran and showed something else.
+- **Inconclusive.** The check could not run or could not tell, for example because
+  the surface needs a physical phone. Say what blocked it.
+
+Name the surface in the verdict. Web evidence from the browser build, a saved
+journey or an export does not prove native behavior. Browser, export and component
+checks cannot establish Keychain, SQLite or AsyncStorage durability, the OS
+lifecycle, gestures, the software keyboard, VoiceOver, native Apple or Google
+OAuth, hosted Auth revocation or deletion, or real CloudKit sync. Keychain tests
+prove JavaScript schema and error wiring only. Files, iCloud Drive and multi-device
+CloudKit checks stay physical-device gates in
+[account/sync setup](ACCOUNT_SYNC_SETUP.md) and the
+[rollout runbook](LOCAL_JOURNAL_ROLLOUT.md#device-and-manual-file-acceptance).
+Automated simulator testing resumes through the
+[`verify-justgo` Native section](../../.claude/skills/verify-justgo/SKILL.md#native)
+and [#114](https://github.com/anthonyyoo24/justgo/issues/114). That path is
+unproven until one mapped feature is driven on a simulator. Keep the Playwright
+journeys, the web adapters and the fixture safeguards until a native drive proves
+the same app, API and database cases and passes hosted CI.
+
+### Writing tests
+
+Write a failing test first when a cheap test path exists: the closest unit,
+component, integration or journey test that already covers the code path. Run it
+before the fix and confirm it fails for the intended reason. When no cheap path
+exists, use the closest executable check instead, such as a `verify-justgo` drive
+or a database read-back, and say why. Prefer no new test over a bad test.
+
+A test must fail when the behavior breaks and keep passing when only the internals
+change. Assert what a caller, a user or another service can observe, such as return
+values, errors, stored state and requests sent. Do not assert private helpers, call order or
+data the test built itself.
 
 ## Choosing checks
 
-Use the pinned Node/npm versions from the root manifests and `.nvmrc`. Run heavy
-commands sequentially on the development Mac. During a slice, run inexpensive
-focused tests/typechecks for the changed behavior and affected consumers; correct
-failures before extending the implementation. Review important uncovered branches
-without automatically collecting whole-project coverage after every edit.
+Use the pinned Node and npm versions from the root manifests and `.nvmrc`. Classify
+the behavior and boundary that changed, not the directory.
 
-Choose the scope before running checks. Classify the actual behavior and boundary
-changed, rather than the directory or phase label.
-A routine follow-up does not reopen phase closeout.
+| Change                       | Checks                                                                                                                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Documentation only           | Scoped formatting and `node --test scripts/quality/doc-links.test.mjs`. No app tests, builds or UI checks.                                                                                                          |
+| Contained code change        | Focused tests for the changed behavior and its consumers, affected workspace typechecks, `npm run lint` and changed-file formatting. Affected saved journeys, and a `verify-justgo` drive for a user-facing change. |
+| Contracts, tsconfig, ESLint  | Also `npm run build:contracts && npm run typecheck` from the root, which covers every workspace and the journeys. The same applies to changes in `e2e/support`.                                                     |
+| API, shared protocol or data | Also `npm run test:db` against loopback `justgo_test`, including ownership, replay, failure and migration cases. A mobile UI or navigation change alone does not change this boundary.                              |
+| Dependencies, Expo or native | Full `npm run check`, with its online Expo Doctor, plus the native build and device acceptance the change affects.                                                                                                  |
+| Release build                | Full `npm run check` with online Doctor, the saved journeys and exports, `test:db`, and the open hosted, staging and physical-device gates.                                                                         |
 
-| Change                               | Default verification                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Documentation only                   | Scoped formatting, `node --test scripts/quality/doc-links.test.mjs` for local links, and consistency with the owning rules; no app tests, builds or UI checks.                                                                                                                                                                                                                                                                                   |
-| Routine contained fix                | Meaningful regression tests for affected behavior, success/failure cases and consumers; affected workspace typechecks, repository lint and changed-file formatting. Run saved critical journeys affected by the change; add one grouped in-app walkthrough for UI behavior changes.                                                                                                                                                              |
-| Boundary or configuration change     | Widen checks to the affected consumers and boundary failures. Contracts, tsconfig, ESLint or `e2e/support` changes require the root contracts build and all-workspace typecheck. Backend/shared protocol or data-boundary changes require `test:db` against loopback `justgo_test`, including applicable ownership, replay, failure and migration/policy cases. Dependency/native changes retain applicable Doctor, build and device acceptance. |
-| Actual phase closeout or publication | Full `check` and applicable saved journeys/exports; `test:db` at phase closeout and for backend/shared boundaries. Publication also requires fresh online dependency validation and Doctor immediately before pushing. Keep required hosted, staging and physical-device gates.                                                                                                                                                                  |
+Before pushing, run the checks for the touched paths on the committed head. CI
+runs the full set on every pull request. Run the full `npm run check`, with its
+online Doctor, when dependencies, Expo or native configuration change, and before
+a release build. Expand the local checks for a concrete failure or an explicit
+owner request, and state the trigger.
 
-Routine fixes do not automatically run the full root suite, Doctor, coverage
-reports, database suites, all journeys or both platform exports. Expand for a
-concrete failure, affected boundary/configuration, explicit owner request or
-required phase/publication gate; briefly state the trigger without adding an
-approval checkpoint. Keep meaningful regression tests and affected consumers
-intact. After the scoped checks, relevant UI verification, fixture cleanup and
-changed-directory review pass, finish without optional extra checks.
+Run one heavy check at a time on the owner's 8 GB Mac. Do not repeat a passed
+check that a broader command already ran unless its inputs changed or a failure
+needs investigation.
 
 | Command                                | Purpose                                                                                                   |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -52,90 +93,47 @@ changed-directory review pass, finish without optional extra checks.
 | `npm run test:exported-web`            | Smoke the existing production web export without API/database traffic                                     |
 | `npm run export:ios -w @justgo/mobile` | Cold iOS JavaScript/assets export                                                                         |
 
-Legal-reader regressions run with `node --test sites/legal/*.test.mjs` and are included
-in `test:architecture`. The public Markdown blocks, independent document labels, link
-safety and approval/date checks are verified without a hosted deployment. The
-local static output still needs an in-app browser readability/navigation check;
-that is separate from anonymous HTTPS phone verification after publication.
-
-Pass `-- --runTestsByPath src/...test.tsx` to the mobile test script, or
-`-- path/to/test.ts` to API/contracts Vitest scripts, for focused tests. The API
-`test` script skips database cases; to run one, use
+For focused tests, pass `-- --runTestsByPath src/...test.tsx` to the mobile test
+script, or `-- path/to/test.ts` to the API and contracts Vitest scripts. The API
+`test` script skips database cases. To run one, use
 `node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run tests/<area>/<file>.integration.test.ts -t '<name>'`
-from `apps/api`. A slice changing contracts, tsconfig, ESLint configuration or
-`e2e/support` also runs `npm run build:contracts && npm run typecheck` at the
-root, covering all consumers and journeys. Use the scope matrix above for broader
-gates. A mobile UI/navigation fix alone does not change a server protocol or data
-boundary. Earlier native/staging gates stay open until evidenced.
+from `apps/api`. Legal-reader regressions run with
+`node --test sites/legal/*.test.mjs` and are part of `test:architecture`. The
+local output of `npm run build:legal` still needs a readability and navigation
+check in the built-in browser pane.
 
-Account for checks included in broader commands instead of repeating a passed
-standalone check merely for final reporting. Repeat when inputs changed, results
-are stale or a failure needs investigation. Required phase/publication commands
-still run in full; overlapping internals do not authorize skipping their gates.
+## Type environments
 
-## Type and lint environments
+Mobile `typecheck` regenerates the Expo route declarations before it checks
+`tsconfig.json` and `tsconfig.tests.json`, so stale ignored `.expo/` output cannot
+make a clean checkout pass. Mobile source sees React, React Native and Expo types
+only. Jest globals and Node APIs belong to the separate test program.
 
-Mobile `typecheck` generates fresh Expo route declarations before checking
-`tsconfig.json` and `tsconfig.tests.json`. Generation removes the previous route
-declaration and fails if Expo produces no valid replacement; ignored `.expo/`
-output cannot make a clean checkout pass with stale routes. The tracked route-type
-fixtures are checked by the test program.
-
-The source program admits React, React Native and Expo types, including Expo's
-public environment declarations. Jest globals and Node APIs belong to the separate
-test program. Root tooling/API use the pinned Node 24 declarations; installing those
-types must not make `Buffer`, `__dirname` or Jest globals available to mobile source.
-The ambient-type regression checks that separation.
-
-ESLint applies type-aware rules for promises, exhaustive switches, throwing Error
-objects, unnecessary assertions and redundant unions to production TypeScript. Non-null
-assertions warn. Mobile React rules protect list keys, nested component definitions
-and leaked conditional rendering. Testing Library rules require awaited async
-queries/utilities and reject awaited synchronous queries or promises passed to
-`fireEvent`; host renderer inspection remains synchronous. Focused
-lint fixtures prove that each configured rule detects its intended failure.
-
-Relative imports in API/contracts TypeScript use `.js` for NodeNext's emitted
-modules. Metro app imports omit the extension so platform resolution can select
-native/web adapters; a test may explicitly name the adapter it is exercising.
-Directly executed Node tooling names the actual runtime extension (`.mjs`, or `.ts`
-when Node executes that TypeScript directly). Keep public contract imports through
-`@justgo/contracts`; update imports without rewriting SQL or other data strings.
-
-Mobile Jest uses one worker locally and two in CI, configured in
-`apps/mobile/jest.config.cjs`; package scripts leave that choice to Jest. Workspace
-commands still run sequentially on the development Mac. Split suites keep tests
-beside their owner and reusable fixtures under mobile `test-support/` or API
-`tests/<capability>/fixtures/`. Preserve timer/subscription/query cleanup when
-extracting fixtures. The migration rehearsal remains one ordered test.
+Relative imports in API and contracts TypeScript use `.js` for NodeNext. Metro app
+imports omit the extension so platform resolution can pick native or web adapters.
+Node tooling names the real runtime extension (`.mjs`, or `.ts` when Node runs it
+directly). Import contracts through `@justgo/contracts`.
 
 ## Isolated database environment
 
-Database tests, API coverage and journeys require `DATABASE_URL` for the restricted
-`justgo_runtime` role, `MIGRATION_DATABASE_URL` for fixture setup/cleanup, and
-`DATABASE_SSL=disable`. They refuse non-loopback hosts and databases other than
-`justgo_test`. Validate both URLs with the shared `localTestDatabaseUrl` guard
-before creating pools; reject query parameters and fragments because connection
-options can override the apparent host, database or role. Use disposable synthetic
-data only; never point fixtures at staging,
-production or private accounts. Keep PostgreSQL service suites serialized where
-shared catalog fixtures require it. If `npm run db:local` stops with "postmaster
-became multithreaded", rerun it with `LC_ALL=en_US.UTF-8`.
+Database tests, API coverage and journeys need `DATABASE_URL` for the restricted
+`justgo_runtime` role, `MIGRATION_DATABASE_URL` for fixture setup and cleanup, and
+`DATABASE_SSL=disable`. They refuse non-loopback hosts, databases other than
+`justgo_test`, and URLs with query parameters or fragments, through the shared
+`localTestDatabaseUrl` guard. Use disposable synthetic data only. Never point
+fixtures at staging, production or private accounts. If `npm run db:local` stops
+with "postmaster became multithreaded", rerun it with `LC_ALL=en_US.UTF-8`.
 
 Use PostgreSQL 17 client tools, including `pg_dump` and `psql`. `JUSTGO_PG_BIN`
-selects their directory when not on PATH or in the standard Apple Silicon Homebrew
-location. Fresh CI runners cannot rely on ignored `.env` files or prior generated
-artifacts. Supply the full database mapping consistently to migrations, database
-coverage and journeys. Inspect hosted results for the pushed commit before marking
-a gate verified.
+selects their directory when they are not on PATH or in the Apple Silicon Homebrew
+location. CI runners cannot rely on ignored `.env` files or earlier build output, so
+supply the full database mapping to migrations, database coverage and journeys.
 
-The private Auth-session helper integration also requires
-`JUSTGO_TEST_ADMIN_DATABASE_URL` for a `postgres` connection to loopback
-`justgo_test`, with SSL disabled. New `db:local` environments and shared CI database
-jobs supply it; existing local `.env` files need that test-only value added.
-The test refuses occupied Auth/helper schemas, executes the actual operator SQL
-inside a rollback-only fixture transaction and never targets hosted Auth. Never
-deploy this test operator URL on Workers, Vercel or mobile.
+The Auth-session helper integration test also needs `JUSTGO_TEST_ADMIN_DATABASE_URL`
+for a `postgres` connection to loopback `justgo_test` with SSL disabled. `db:local`
+and the CI database jobs supply it; add it to older local `.env` files. The test runs
+the real operator SQL inside a rollback-only transaction and never targets hosted
+Auth. Never deploy this URL on Workers, Vercel or mobile.
 
 ## Coverage reports
 
@@ -145,277 +143,86 @@ coverage includes the database suites and the migration rehearsal, so prepare th
 local test database first. Reports are ignored output under
 `coverage/{mobile,api,contracts}/`, with HTML, LCOV and JSON summaries.
 
-## Async tests and boundary regressions
+## Component and provider tests
 
-React Native Testing Library 14 uses `test-renderer`, with asynchronous `render`,
-`renderHook`, events, `act`, rerenders and unmounts. Await these operations and
-Router test navigation; do not hide unfinished updates behind synchronous helpers
-or a global async notifier callback that its caller cannot await. Prefer accessible
-host queries. SDK 58 web stacks retain inactive screens in the DOM; use role/name
-queries to assert the active accessible screen instead of matching hidden text.
-The authored SVG host fixture permits geometry assertions at that explicit
-boundary without inspecting composite implementation instances. The modal web
-adapter test creates a narrow JSDOM document in the Node test environment because
-RN 0.88's preset conflicts with Jest 30's nonconfigurable jsdom window property.
-It still exercises real DOM isolation and restores the document after each test.
+React Native Testing Library 14 makes `render`, `renderHook`, events, `act`,
+rerenders and unmounts asynchronous. Await them and Router test navigation. SDK 58
+web stacks keep inactive screens in the DOM, so assert the active screen through
+role and name queries rather than text.
 
-Provider tests mount the actual provider/controller/client with controllable
-vault/fetch/AppState boundaries. Fake timers govern expiry/polling. Unmount,
-cancel, clear and flush queued callbacks before restoring real timers. Controllers
-constructed before hydration must be tested across slow hydration and the
-construction-to-subscription gap, preserving newer input.
+Provider tests mount the real provider, controller and client with controllable
+vault, fetch and AppState boundaries, and fake timers for expiry and polling.
+Unmount, cancel, clear and flush queued callbacks before restoring real timers.
+Drain TanStack notification timers inside async `act` before restoring the global
+notifier. Progress account-switch tests await the old account's focus refresh
+before replacing its transport fixture, observe the new account's request before
+resolving it, and assert distinct totals. Never suppress unexpected warnings or
+add waits to hide a race.
 
-Progress tests retain observable request promises. Await the old account's focus
-refresh before replacing its transport fixture; observe the new account's request
-before resolving it and assert distinct totals. Drain TanStack notification timers
-inside async React `act` after unmount/cancel/clear, before restoring global notifier
-state. Never suppress unexpected warnings or add arbitrary waits to hide races.
+## Saved journeys
 
-`justgo/import-boundaries` checks imports, re-exports, `import()`, literal
-`require()` and TypeScript import assignments, resolving relative traversal.
-Computed loader paths must become literal/reviewable. Literal assets, permitted
-Jest factories and guarded previews stay allowed; fixtures fail on parser errors.
-The type-aware lint rules above reject unhandled/misused promises and invalid
-awaits. `void` denotes intentional background ownership; it does not catch rejection.
-Controllers/query layers must already handle the failure.
-
-Keychain tests establish JS schema/module/error wiring, not native entitlement,
-iCloud synchronization or physical recovery. When switching native worktrees,
-compare persisted schemas and preserve newer recovery/deletion metadata. Rejection
-can surface as generic secure-storage failure; resetting Keychain or loosening
-validation is not a fix. Use synthetic compatibility/account-preservation fixtures.
-
-## Saved app/API/database journeys
-
-The Playwright suite exercises the actual browser app/API/disposable database and
-bundled production repository/transport. It covers explicit saving/Progress,
-offline/reconnect, completion write-failure/cloud fallback/memory recovery, lost
-completion acknowledgements, durable private saves with no cloud fallback,
-ordered local reflection edits, legacy boundary regressions, aggregate reconciliation,
-offline saved history, guest entry, managed sign-in/logout/account ownership,
-signed-in completion/journal sync, complete data download/import and deletion.
-External Apple/Google authorization is replaced only at the guarded provider
-boundary; the app's managed controller, canonical API mapping, owner transactions,
-database RLS and sync routes are real. No external-provider/native claim follows
-from that seam. Saved journeys are distinct from presentation fixtures,
-one-off interactive walkthroughs and native checks.
-
-Install failure routes before navigation/bootstrap can start the targeted work.
-For one-shot faults after an authenticated page, first stop the old document
-(for example, navigate to `about:blank` in the same context) so its background
-requests cannot consume the fault. Gate and observe the intended request before
-releasing its failure; assert no file/output and require a separate explicit
-retry. Keep that user action distinct from transport-level read replays and
-queued background synchronization. Use these observable barriers instead of
-sleeps, larger timeouts or suite retries.
-
-Install pinned Chromium with `npx playwright install chromium`; Linux CI uses the
-shared setup action to install system dependencies on every run and Chromium on
-browser-cache misses. Run the full root journey command or pass a saved spec, for
-example:
+`npm run test:journey` runs the Playwright journeys against the real browser app,
+the fixture API and the disposable database. The
+[`verify-justgo` skill](../../.claude/skills/verify-justgo/SKILL.md) describes the
+wrapper's guards, ports, fixture accounts, request fence, dated seeding and
+cleanup. Install the pinned browser with `npx playwright install chromium`, then
+run the suite or one spec:
 
 ```sh
 npm run test:journey -- e2e/data-export.spec.ts
 ```
 
-The wrapper validates the nonproduction loopback database/roles/SSL before any
-migration or service startup. It refuses occupied fixture ports rather than reusing
-an unknown server, builds contracts and the production repository bundle, migrates,
-and starts its owned fixture API/Expo services. Defaults are 127.0.0.1:3000 and
-127.0.0.1:8081; `JUSTGO_JOURNEY_API_PORT` and `JUSTGO_JOURNEY_APP_PORT` can select
-distinct unprivileged ports. Expo uses `--localhost`; regression checks probe those
-configured service ports and reject non-loopback binding. Select separate fixture
-ports when a phone development server is using LAN port 8081. Startup/assertion
-failures fail the command and owned services are stopped.
-
-Do not assume CLI API overrides defeat Expo's virtual dotenv environment. Preserve
-the guarded public-environment adapter and request-origin fence, and validate the
-browser's resolved API origin as well as database settings. Synthetic proofs must
-never reach hosted APIs. The `JUSTGO_JOURNEY_FIXTURES` Metro seam permits controlled
-journal failures and the synthetic managed provider only for guarded web fixtures;
-normal/native/production resolution cannot load those adapters. The fixture API
-injects its run-owned provider verifier, live-session reader and hard-delete
-adapter. It retains legacy endpoints only for repository compatibility tests.
-Guest catalog access uses the explicit disposable fixture beta policy. There are
-no product UI failure switches or production paid-access bypasses.
-
-Completion AsyncStorage and private IndexedDB fault seams are independent. A
-private commit failure must retain the editor input, report the phone save failure
-and make no PATCH/fallback request. The outbound fixture fence allows only strict
-completion POST payloads for attempt mutations and reports method/path without
-private bodies. Managed completion import and private journal delivery use their
-own strict restore/sync contracts, never the retired private PATCH. Journal adapters have transaction, rollback, account-fencing,
-concurrent edit/import, deletion and relaunch regressions; native adapter tests
-use Node SQLite and cannot establish iOS file protection or OS interruption.
-
-Backup tests cover the complete versioned data-only ZIP, full history, writing,
-preserved alternatives/preferences, bounds/CRC/UTF-8/schema/frozen-context and
-owner validation, cancellation, missing/identical/conflicting records, rollback
-and replay without duplicate reps or raw queue import. Compatible journal-only
-files preserve private context without fabricating completion counts. Browser
-journeys exercise downloaded files and actual IndexedDB reloads. Signed Files /
-iCloud Drive, temporary-file/device-backup and actual optional private CloudKit
-multi-device/account-change/quota/deletion evidence remain separate gates in
-[account/sync setup](ACCOUNT_SYNC_SETUP.md) and the
-[rollout runbook](LOCAL_JOURNAL_ROLLOUT.md#device-and-manual-file-acceptance).
-
-Journey builds enable the real Sentry SDK with a fixed fake ingestion key and
-intercept all hosted Sentry requests. `diagnostics.spec.ts` inspects scrubbed
-payloads for route errors and unhandled rejections and verifies root recovery even
-when ingestion returns 503. Unit/component suites use the explicit SDK boundary
-mock; those mocks do not establish real SDK or native behavior. Any real-provider
-probe must use disposable synthetic errors only, with ordinary delivery disabled.
-
-The fixture registry owns every created account UUID independently of browser
-requests and response delivery. Teardown deletes only that registry's accounts;
-registry failure fails cleanup instead of trusting browser IDs. Failed creations
-can leave absent rows, safely deleted as no-ops. The registry endpoint is absent
-from deployable API. Managed provider fixtures retain disposable sessions/opaque
-subject handles in browser sessionStorage so reload and returning sign-in can
-exercise the actual controller. Only server-allocated run-owned subjects may be
-selected; client UUIDs never authorize ownership or teardown. Legacy repository
-fixtures retain their separate synthetic proof behavior. This is no native token
-storage or real OAuth acceptance evidence.
-
-Before each database-backed case, reset only the fixture run's three hashed rate
-buckets: identity, recovery and managed Auth. Keep real limits active during each
-case and retain unrelated buckets.
-Cases that exhaust an identity allowance cannot contaminate the next case. No
-production rate limit or cleanup authority changes.
-
-Seed dated activity inside the browser's intended local day using
-`e2e/support/seed-times.ts`; counting backward from wall-clock now crosses midnight
-in UTC CI. Use deliberate previous-month fixtures when a case needs an older
-month, including on the first day of a month or year. Managed full-history download
-persists completion history and private versions; previously downloaded history
-and guest/signed-out writing remain available offline beyond the current month.
-Data never downloaded to that phone still requires a connection. Journal-only
-history must not invent completion counts. Test these cases independently. Layout assertions wait for usable controls
-and retry fresh geometry after navigation;
-missing/detached controls keep failing. Preserve alignment limits rather than adding
-sleeps or weakening assertions.
-
-Failures produce `.local/journey-results` and `.local/journey-report`. Traces,
-videos and automatic screenshots are disabled because they retain credentials;
-only masked UI failure screenshots are permitted. Reports must include a nonempty
-`index.html`; CI uploads report/attachments and treats missing required output as
-failure. The repository bundle is rebuilt with pinned esbuild; an ignored prior
-artifact is never a prerequisite.
+Failures write `.local/journey-results` and `.local/journey-report`. Traces,
+videos and automatic screenshots are off because they retain credentials; only
+masked failure screenshots are kept. CI requires a nonempty report `index.html`
+and uploads the report and attachments. Journey builds run the real Sentry SDK
+with a fake ingestion key and intercept hosted Sentry requests. A probe against
+the real provider uses disposable synthetic errors only, with ordinary delivery
+disabled.
 
 ## Workers runtime and encrypted recovery
 
-`npm run test:workers` starts the actual pinned Wrangler/workerd entrypoint against
-only loopback `justgo_test`, checks readiness and authenticated database read/write,
-idempotent completion replay and the safe error envelope, then cleans its known
-owner and owned process. In-memory Auth-verifier and error-reporter transports
-construct native workerd `Request` objects, covering request-option compatibility,
-successful verification/delivery and redirect rejection without outbound HTTP.
-These synthetic proofs never leave the fenced local smoke. It rejects occupied
-ports; `JUSTGO_WORKERS_TEST_PORT`
-may select another unprivileged loopback port. Configuration/ciphertext/log output
-must not disclose credentials. This is local runtime evidence, not hosted
-Hyperdrive, CPU, DPA or account acceptance.
+`npm run test:workers` starts the pinned Wrangler/workerd entrypoint against
+loopback `justgo_test`. It checks readiness, an authenticated database read and
+write, idempotent completion replay and the safe error envelope, then cleans up its
+owner and process. It refuses occupied ports; `JUSTGO_WORKERS_TEST_PORT` selects
+another loopback port. This is local runtime evidence, not hosted Hyperdrive, CPU
+or account acceptance.
 
-`npm run profile:workers` explicitly selects a separate profiling run: 200
-synthetic managed `/health` requests, with a loopback-only inspector on port 9230
-and one fixed 30-second deadline covering discovery, requests and profiler stop.
-`JUSTGO_WORKERS_INSPECTOR_PORT` selects another unprivileged port, distinct from
-`JUSTGO_WORKERS_TEST_PORT`. Profiles are mode-0600 files under ignored
-`.local/workers/profiles/`. This command skips the functional smoke and says so
-in its completion output; run `npm run test:workers` separately for that evidence.
-Local profiles identify hotspots; they do not establish hosted CPU savings or
-Free-plan acceptance.
+`npm run profile:workers` is a separate profiling run of 200 synthetic `/health`
+requests, with a loopback inspector on port 9230 (`JUSTGO_WORKERS_INSPECTOR_PORT`).
+It writes mode-0600 profiles under `.local/workers/profiles/` and skips the
+functional smoke. Local profiles find hotspots; they do not establish hosted CPU
+savings.
 
-`npm run test:backup:recovery` uses PostgreSQL 17 and `age` (1.3.2 locally) to
-create isolated `justgo_restore_<id>` databases, encrypt a stale snapshot and
-newer ledger, restore/reconcile, and check revoked/deleted credential rejection.
-It removes test keys, ciphertext, temporary roles and databases. It requires the
-existing loopback test-only admin URL and refuses hosted targets. Synthetic Auth
-fixtures do not prove a real Supabase Auth dump's roles/extensions/ACLs restore.
-See [Cloudflare backups](CLOUDFLARE_BACKUPS.md) for operational limitations.
-
-Both commands run sequentially after API database coverage in the existing CI
-database job, reusing its PostgreSQL service; `age` joins its PG17 tool setup.
-Pure backup/release/configuration regressions are part of `test:architecture`.
-No new native, simulator or mobile UI gate is introduced by this API port.
+`npm run test:backup:recovery` uses PostgreSQL 17 and `age` to create isolated
+`justgo_restore_<id>` databases, encrypt a stale snapshot and a newer ledger,
+restore and reconcile them, and check that revoked and deleted credentials stay
+rejected. It removes its keys, ciphertext, roles and databases, needs the loopback
+test admin URL and refuses hosted targets. Synthetic Auth fixtures do not prove
+that a real Supabase Auth dump restores. See
+[Cloudflare backups](CLOUDFLARE_BACKUPS.md) for operational limits.
 
 ## Production exported-web smoke
-
-Build the ordinary production web export, then run the independent smoke suite:
 
 ```sh
 npm run export:web -w @justgo/mobile
 npm run test:exported-web
 ```
 
-The smoke requires the resulting `apps/mobile/dist/index.html`. It starts its own
-loopback static server at `127.0.0.1:8093`; `JUSTGO_EXPORTED_WEB_PORT` may select a
-different unprivileged port. It never reuses an existing server. The server serves
-exported assets and falls back to `index.html` for route navigation, rejecting API
-paths, hidden files and paths outside the export directory. No API/database, journey
-fixture flags or account creation are prerequisites.
+The smoke serves `apps/mobile/dist/` from its own loopback server on
+`127.0.0.1:8093` (`JUSTGO_EXPORTED_WEB_PORT`) and never reuses a running server.
+Its request fence rejects every `/v1` request, so it needs no API, database or
+account. It checks supporting routes, unknown-link recovery, absent development
+controls, browser errors and asset failures. Reports go to
+`.local/exported-web-report/` and `.local/exported-web-results/`. Run it before
+`export:ios`, which replaces the same `dist/` output. Sentry's optional Router-store
+import logs an expected Metro resolution warning; do not alias or suppress it.
 
-The request fence permits only that static origin and rejects every `/v1` request.
-The suite checks supporting routes, unknown-link recovery, absent development
-controls, browser errors and asset failures without sending account credentials.
-It has its own Playwright configuration and a five-minute suite limit; the regular
-journey configuration excludes this spec and has a twenty-minute suite limit.
+## Native CloudKit regressions
 
-Reports are `.local/exported-web-report/index.html` and
-`.local/exported-web-results/`. CI requires a nonempty HTML report and uploads the
-report/results after the smoke, including failures. Traces, video and automatic
-screenshots are off.
-Run the smoke before `export:ios`, which replaces the same default `dist/` output.
-This checks the exported browser app and static assets; native/device evidence
-remains separate. Sentry's optional Router-store import logs an expected Metro
-resolution warning; do not add a resolver alias or suppress it.
-
-## Interactive browser and native evidence
-
-After relevant tests pass, verify affected UI in the Codex in-app browser side
-panel using disposable fixture accounts. Use `dev:challenges` for live isolated
-flows and `/preview` for named loading/error presentations. Verify served checkout,
-configuration and API origin before reusing a server. Honor side-panel-only requests;
-record unavailable capabilities rather than switching browsers against preference.
-Keep screenshots/recordings in ignored `.local/` unless explicitly requested for Git.
-
-Group related affected states and screenshots into one walkthrough. Prefer the
-existing guarded launchers and saved specs over building a harness for a one-off
-fix. Reuse a running fixture only after verifying its ownership, current served
-code, configuration and run-specific cleanup authority. Do not adopt another
-run's account registry or leave accounts behind when a check fails. The saved
-journey wrapper owns its service lifecycle; pass affected specs to that wrapper
-rather than bypassing its database guards, request fence or teardown.
-
-Record actual viewport, flow, fixtures, failure and recovery, keeping saved automated
-journeys, one-off walkthroughs, native simulator and physical-device evidence separate.
-React Native Web ignores `accessibilityState` selected/checked, so set
-`aria-selected` or `aria-checked` too, as `VenueTabs` and `ReflectionView` do.
-
-The Metro development client loads local illustration assets over HTTP from the
-Mac; swiping to an uncached card or opening Success after disconnecting can leave
-its artwork blank. Its access and local saving checks remain separate from offline
-asset acceptance. Use a self-contained preview/release binary with bundled
-JavaScript and assets for cold offline launch and artwork checks; inspect the
-packaged assets and verify every venue variant and the Success illustration on
-the physical phone. A successful export alone does not establish that acceptance.
-See [Expo's asset delivery model](https://docs.expo.dev/develop/user-interface/assets/#how-are-assets-served-locally).
-
-Browser/export/component checks cannot establish Keychain/SQLite/AsyncStorage durability,
-OS lifecycle, gestures, software keyboard, VoiceOver, radio/backup, native
-Apple/Google OAuth, live hosted Auth revocation/deletion or actual CloudKit sync.
-The native module requires a compatible signed binary, real private-container
-capabilities and physical multi-device/account-change/failure/deletion checks;
-in-memory cloud adapters establish domain decisions only.
-Earlier automated simulator drags (XcodeBuildMCP, mirrored pointer, Computer Use)
-did not commit native gestures; drive the equivalent button path and leave swipe
-feel to a physical device. A simulator typing through the hardware keyboard shows
-no software keyboard, so it cannot verify keyboard-open layout. For native
-transition frames, record with `xcrun simctl io <udid> recordVideo` and read the
-real sample timestamps; a recording is one-off evidence, not a saved regression.
-Use the [move checks](#file-moves-and-bundle-checks) when module or asset paths change.
-
-The private CloudKit bridge also has a dependency-free SwiftPM regression target:
+The private CloudKit bridge has a dependency-free SwiftPM target, run in CI's
+`native-icloud` job:
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test \
@@ -423,87 +230,43 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test \
   --scratch-path .local/justgo-icloud-swift --jobs 1
 ```
 
-Use the installed Xcode toolchain locally without changing the global developer
-directory. The target compiles production CloudKit code against controllable I/O;
-its tests cover byte bounds, atomic generation/account fences and sanitized cursor
-errors. It excludes the Expo bridge, requires no Apple login and does not contact
-CloudKit. A signed EAS build and actual phone checks still verify those boundaries.
-
-Automated simulator testing resumes through the
-[`verify-justgo` Native section](../../.claude/skills/verify-justgo/SKILL.md#native)
-and [#114](https://github.com/anthonyyoo24/justgo/issues/114). That path is
-unproven until one mapped feature is driven on a simulator. Device and staging
-gates are GitHub issues labeled `gate`.
+It compiles production CloudKit code against controllable I/O and covers byte
+bounds, generation and account fences and sanitized cursor errors. It excludes the
+Expo bridge and never contacts CloudKit, so a signed build and phone checks still
+verify those boundaries.
 
 ## File moves and bundle checks
 
-Every move updates affected imports, dynamic loaders, test discovery, fixtures,
-assets, packaging/upload allowlists, scripts and documentation links in the same
-change. Keep tests and native/web adapter pairs beside their
-owner; preserve all boundary checks.
+Every move updates imports, dynamic loaders, test discovery, fixtures, assets,
+packaging and upload allowlists, scripts and documentation links in the same
+change. Keep tests and native/web adapter pairs beside their owner.
 
-For a small move within the same resolver and packaging rules, run affected
-tests, typechecks and import/discovery/packaging checks. Cold-bundle an affected
-platform when those checks cannot establish module or asset resolution; both
-platform exports are not automatic for every move.
+For a small move within the same resolver and packaging rules, run the affected
+tests, typechecks and import, discovery and packaging checks. Cold-bundle an
+affected platform only when those checks cannot establish module or asset
+resolution. Large moves, and moves that affect adapter resolution, entrypoints,
+shared assets or packaging, need cold web and iOS exports, with the exported-web
+smoke between them.
 
-Large moves and platform-sensitive moves affecting adapter resolution,
-entrypoints, shared assets or packaging require cold web and iOS exports.
-Run the production exported-web smoke after the web export, before the iOS export
-replaces `dist/`.
-
-After source/asset moves, restart the owned running Metro server with `--clear`
-and reload the existing installed development app to clear stale module/asset
-paths. A separate successful export does not refresh that server's live graph.
-Keep functional changes and moves separately reviewable, and review the complete
-file lists only in touched directories; unrelated cleanup remains follow-up work.
-
-<a id="migration-preservation-rehearsal-071"></a>
+After source or asset moves, restart the owned Metro server with `--clear` and
+reload the installed development app. A separate successful export does not
+refresh that server's live module graph. Keep moves and functional changes in
+separate commits.
 
 ## Migration preservation rehearsal
 
-`test:db` includes the standalone `test:migrations` command. The rehearsal builds
-0000–0009 in a unique disposable schema in loopback `justgo_test`, compares schema
-metadata and seeds synthetic history. It saves a SQL snapshot, verifies expansion
-0010, compatibility index 0011 and normalization 0012, stops legacy writes for final
-comparison, and applies registered contraction 0013.
+`test:db` includes `test:migrations`. The rehearsal builds the early migrations in
+a unique disposable schema in loopback `justgo_test`, seeds synthetic history,
+saves a SQL snapshot, applies each later migration with its comparisons, restores
+the snapshot with `psql` and reapplies the forward chain. It verifies clean-database
+installation and the immutable hashes of applied migrations, and its teardown
+leaves application state intact and writes no credentials or private content. It
+is a local and CI acceptance tool, not deployment authorization. The
+[cutover runbook](FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients), the
+[Phase 13 rollout](LOCAL_JOURNAL_ROLLOUT.md) and
+[account setup](ACCOUNT_SYNC_SETUP.md) own hosted changes.
 
-Compare completed IDs/owners/frozen dates/starts, owner-matched submitted feeling/
-text/revisions and inactive references. Prove legacy removal and runtime ownership,
-restore the snapshot with `psql` and reapply forward migrations/comparisons. Verify
-clean-database migrations and immutable 0000–0012 hashes. Draft/skipped records and
-old action receipts retire; nonblank submitted text/revisions survive and blank
-text normalizes to null. Temporary schema/snapshot teardown leaves application
-state intact and writes no credentials/private content to artifacts.
-
-This is a local/CI acceptance tool, not deployment authorization. The
-[cutover/old-client/restore runbook](FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients)
-owns operational rollout and recovery.
-
-The forward chain verifies 0019's historical instruction snapshots, byte-preserved
-old journal/receipts and private column write freeze before applying the separate
-0020 owner-approved old-server-private reset. That reset preserves identity,
-completion context/history and phone journals. The rehearsal then checks 0021
-managed mappings/sessions/epochs/immutable private versions/tombstones, 0022
-independent historical journal context and 0023 durable Auth deletion cleanup,
-including clean installation through the current journal and snapshot metadata.
-API integration covers real runtime-role owner isolation, immutable/idempotent
-completion and version sync, epoch/tombstone rejection, orphan journal context,
-legacy linking/revocation and lost-response/provider-cleanup account deletion.
-Injected provider boundaries establish application behavior, not real hosted Auth
-provider capability. The [Phase 13 rollout](LOCAL_JOURNAL_ROLLOUT.md) and
-[account setup](ACCOUNT_SYNC_SETUP.md) keep hosted changes separately authorized.
-
-## Publication and hosted CI
-
-Before publication, install with `npm ci` in a clean checkout and run `npm run check`.
-Doctor uses fresh online metadata (`EXPO_NO_CACHE=1`) and stops the command early
-on dependency incompatibility. Recheck Doctor immediately before a push
-after longer sessions. Update exact package pins and the root lockfile together;
-never hide live metadata changes with offline mode/exclusions. Native/device
-acceptance for changed dependencies stays separate. CodeRabbit's
-docstring-coverage percentage is not a repository gate; do not add blanket
-comments to raise it.
+## Continuous integration
 
 CI runs on pull requests and pushes to `main`, cancels superseded PR runs and keeps
 each main commit's result. A first `changes` job decides whether the app jobs run.
@@ -511,56 +274,37 @@ A pull request whose changed files are all Markdown runs only `static`, which
 includes the doc-link check and the legal-draft tests; every other pull request and
 every push to `main` runs all six producer jobs:
 
-- `static`: checksum-pinned actionlint validates GitHub workflow syntax/context
-  availability, followed by online Doctor, contracts/type/lint/format/tooling checks and the API
-  production-dependency audit.
+- `static`: pinned actionlint, online Doctor, contracts, type, lint, format and
+  tooling checks, and the API production-dependency audit.
 - `unit`: mobile, contracts and API unit suites with coverage.
-- `database`: isolated PostgreSQL setup, migrations and every API integration suite,
-  including the migration rehearsal, with coverage.
-- `journeys`: isolated PostgreSQL and the actual app/API/database journeys. Their
-  wrapper owns migration and fixture service startup.
-- `exports`: production web export, its independent static smoke, then iOS export.
-- `native-icloud`: the pure Swift CloudKit regressions on macOS, without npm setup.
+- `database`: isolated PostgreSQL, migrations, every API integration suite
+  including the migration rehearsal, then `test:workers` and
+  `test:backup:recovery`.
+- `journeys`: isolated PostgreSQL and the saved journeys.
+- `exports`: production web export, its static smoke, then iOS export.
+- `native-icloud`: the Swift CloudKit regressions on macOS.
 
-The final `checks` job runs even when a producer fails, is skipped or is cancelled;
-any such result fails the aggregate status. The one exception is an app job that
-`changes` skipped for a Markdown-only pull request. Suites execute once rather than being
+The final `checks` job runs even when a producer fails, is skipped or is cancelled,
+and any such result fails the aggregate status. The one exception is an app job
+that `changes` skipped for a Markdown-only pull request. Suites execute once rather than being
 repeated by root coverage or database commands. The `unit` and `database` jobs
 upload their coverage reports as diagnostic artifacts when their collection step
-executed, including failures; missing reports then fail upload. Tooling tests
-protect producer dependencies, failure handling and artifact paths.
+executed, including failures; missing reports then fail upload. The workflow and
+setup actions own exact job limits, versions and prerequisites. A local pass does
+not establish a hosted pass, so inspect the pushed commit's run before marking a
+gate verified. For stacked pull requests, each branch's own run is its evidence.
 
-Local setup actions share pinned Node/npm installation, isolated database roles and
-Playwright setup. Chromium binaries are cached by runner OS and installed Playwright
-version; Linux system dependencies are installed even on cache hits. A cache is not
-correctness evidence or a measured speed improvement. Jobs and Playwright suites
-have explicit timeouts; local heavy workspace commands remain sequential.
-
-External GitHub Actions use commit SHA pins with readable version comments.
-Dependabot checks npm and Actions weekly, groups compatible npm minor/patch updates
-and leaves npm major upgrades for manual scope/native acceptance. Updates do not
-merge automatically. The audit gate is scoped to API production dependencies:
+External GitHub Actions use commit SHA pins with version comments. Dependabot
+checks npm and Actions weekly and groups compatible npm minor and patch updates;
+npm majors need manual scope and native acceptance. Update exact package pins and
+the root lockfile together, and never hide live Doctor metadata changes with
+offline mode or exclusions. The audit gate covers API production dependencies:
 
 ```sh
 npm run audit:api
 ```
 
-The helper projects the API's declared production graph from the shared lockfile
-into a temporary workspace, preserving locked versions, integrity, nested
-resolution and workspace dependencies. Normal dependencies, available optional
-runtime dependencies and required peers remain included. Optional peers supplied
-solely by another workspace (such as Drizzle's unused Expo SQLite driver) do not
-become API roots; a provider declared or required by the API graph is included.
-Manifest/lock drift and missing required packages fail closed. Ordinary npm audit
-runs with the unchanged low severity threshold and propagates failures; no advisory
-is filtered or ignored. This audit does not establish mobile/tooling dependency
-health or inspect the deployed Vercel artifact. Those remain separate release
-responsibilities.
-
-The workflow and setup actions own exact job limits, versions and prerequisites;
-clean runners must not rely on ignored environment files or existing artifacts.
-
-For split/stacked changes, verify each exact publication candidate. Checks from a
-combined feature branch do not transfer to an older branch's dependency pins or
-source. Hosted acceptance requires inspecting the pushed commit's run after
-publication; local checks and prior runs cannot close it.
+It projects the API's production graph from the shared lockfile into a temporary
+workspace and fails closed on manifest or lock drift. No advisory is filtered. It
+does not cover mobile or tooling dependencies. CodeRabbit's docstring-coverage
+percentage is not a repository gate.

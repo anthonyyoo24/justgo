@@ -33,7 +33,7 @@
 
 ## Release order
 
-01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred) → 08 → 08A → 09 → 10 → 11 crash reporting → 12 legal preparation → 13 optional accounts/cloud sync → 14 internal beta → 15 API hosting and recovery → 14 external free beta → 16 billing activation/acceptance → 14 paid launch → 17 analytics.
+01 → 02 → 03 → 04 → 05 → 06 → 06A → 07 (07.1 → 07.2 → 07.3 → 07.4 → 07.5; 07.3A deferred; its native replacement is [#114](https://github.com/anthonyyoo24/justgo/issues/114)) → 08 → 08A → 09 → 10 → 11 crash reporting → 12 legal preparation → 13 optional accounts/cloud sync → 14 internal beta → 15 API hosting and recovery → 14 external free beta → 16 billing activation/acceptance → 14 paid launch → 17 analytics.
 
 Phase 15 must close before outside testers store real journals. Its Cloudflare
 rollout is paused; the [Supabase migration plan](phase-15-supabase-api.md) is
