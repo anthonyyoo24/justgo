@@ -250,7 +250,7 @@ server deployment evidence is recorded below; build 4's reporting mode is unchan
 The October 27 diagnostics update is **0.1.0 (5)** from merged [PR #59](https://github.com/anthonyyoo24/justgo/pull/59), source `311f07323fdaacfe868b5a18dce4b2f516923783`, tag `testflight-beta-2026-10-27-2`.
 The [GitHub Mac build](https://github.com/anthonyyoo24/justgo/actions/runs/40587250274) and separate [upload](https://github.com/anthonyyoo24/justgo/actions/runs/40591517008) succeeded. Exact IPA SHA-256 is `96ddd076399fac183b16f704d485437a4e9f720a71f72d61dbc43051eff830fa`; signature/store identity, Production CloudKit, public staging/diagnostics configuration and all 18 unchanged privacy manifests passed inspection. The main native UUID and embedded JavaScript debug ID match Sentry-stored symbols/source maps. Apple processed build `5740ba53-c8fb-406f-be28-fde95af5b6a5`; per-build and global notes are saved, and **Owner validation** shows **Testing**, still internal with one tester and manual distribution. No external review or invitations occurred. The matching [API release](https://github.com/anthonyyoo24/justgo/actions/runs/40585928393) is live and independent public health/protected-route probes passed.
 
-Anthony subsequently reported that the TestFlight app **looks fine**. Record this as owner-reported general phone/UI smoke in the build-5 handoff context, without inferring an enumerated full test matrix. Physical offline/recovery/deletion/account-switch/two-device iCloud/accessibility checks, native crash/cache/final-envelope/symbolication and live deployed API fault-to-Sentry delivery remain open or owner-deferred. This does not close Phase 14 or external readiness.
+Anthony subsequently reported that the TestFlight app **looks fine**. Record this as owner-reported general phone/UI smoke for build 5, without inferring an enumerated full test matrix. Physical offline/recovery/deletion/account-switch/two-device iCloud/accessibility checks, native crash/cache/final-envelope/symbolication and live deployed API fault-to-Sentry delivery remain open or owner-deferred. This does not close Phase 14 or external readiness.
 
 The local builder fetches signing credentials into a run-owned private temporary
 directory with restrictive permissions. Normal EAS cleanup and an `always()`
@@ -334,6 +334,9 @@ Recommended external cohort: five trusted iPhone users for 14 days, starting aft
 readiness clears. Anthony still needs to select the actual invitees. Verify the
 server access window covers the chosen dates and Apple review before inviting;
 the current guest expiry is not an approved date for a future cohort.
+To stop a tester's access, keep their `BETA_ACCESS_GRANTS` entry and set its
+`revokedAt`. Do not remove the entry: its interval keeps the completions they
+started inside it uploadable.
 
 ## Remaining prerequisites
 
@@ -360,12 +363,14 @@ the current guest expiry is not an approved date for a future cohort.
   are deployed/hosted-verified; actual deployed fault-to-Sentry delivery,
   migration/deploy acceptance and current backup/recovery arrangements remain
   open as gates [#93](https://github.com/anthonyyoo24/justgo/issues/93), [#98](https://github.com/anthonyyoo24/justgo/issues/98) and [#104](https://github.com/anthonyyoo24/justgo/issues/104).
-  The October 27 owner
-  direction defers the automated iOS simulator smoke test; do not implement it
-  now or mark it passed. The obsolete Maestro launch file, command and command-wiring
-  test were retired on November 2. His later explicit authorization covers filtered Sentry errors,
-  included uptime/email alerts and protected deployment preparation; no paid
-  upgrade or simulator smoke test is authorized.
+  Automated simulator testing resumes through the
+  [`verify-justgo` Native section](../../.claude/skills/verify-justgo/SKILL.md#native)
+  and [#114](https://github.com/anthonyyoo24/justgo/issues/114); it is unproven,
+  so do not mark a simulator smoke passed without evidence. The obsolete Maestro
+  launch file, command and command-wiring test were retired on November 2.
+  Anthony's explicit authorization covers filtered Sentry errors, included
+  uptime/email alerts and protected deployment preparation; no paid upgrade is
+  authorized.
 - Preserve all applicable separate Git, native build, upload and distribution
   permissions and the open [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
 

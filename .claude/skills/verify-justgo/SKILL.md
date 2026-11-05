@@ -52,7 +52,7 @@ For pane checks, save screenshots under the same run folder and read `read_netwo
 ## Cleanup
 
 - After a scripted drive, the wrapper has stopped the API and Expo, and the fixture teardown has deleted its accounts. Postgres stays up for the next drive. `bin/verify stop` stops it when a `bin/verify` command started it. So does a `serve` that refused to start.
-- After `serve`, run `bin/verify stop`. When doctor confirms the recorded services still own their ports, it deletes the accounts the served fixture API registered (by running `drives/cleanup.spec.ts` against that API). Otherwise it skips that cleanup and exits 1. It then stops only the recorded process groups, waits for the ports to free and removes `serving.json`.
+- After `serve`, run `bin/verify stop`. When doctor confirms the recorded services still own their ports, it deletes the accounts the served fixture API registered (by running `drives/cleanup.spec.ts` against that API). Otherwise it skips that cleanup and exits 1. It then stops only the recorded process groups, waits for the ports to free and removes `serving.json`. When a foreign process holds `:3000`, `stop` skips the cleanup, keeps `serving.json` and exits 1.
 - In the pane, clear the app origin before closing the tab. Its profile persists across sessions, so the guest identity and journal would carry into the next run. Run this with `javascript_tool`:
 
   ```js
@@ -105,7 +105,16 @@ With those in place, the Claude desktop app's iOS Simulator tool (`mcp__Claude_C
 - Expo logs `Unable to run simctl` when Command Line Tools are selected. Web runs ignore it.
 - Right after navigation, `find` in the pane can miss controls that are still rendering. Read the page again before concluding a control is absent.
 - `bin/verify drive` passes its config after the wrapper's own `--config`. Playwright uses the last one, so the wrapper's guards still run.
-- Web evidence does not establish native behavior. The web build uses an in-memory vault, not Keychain. A reload is not a native relaunch. Browser offline events are not NetInfo. Web toasts are Sonner, not `sonner-native`. Fonts fall back to CSS families. Modal isolation exists only in `useModalIsolation.web.ts`. Journal fault injection loads only through the web journey seam.
+- Web evidence does not establish native behavior. The web build uses an in-memory vault, not Keychain. A reload is not a native relaunch and does not test SQLite, Keychain or AsyncStorage durability or the OS lifecycle. Browser offline events are not NetInfo. Web toasts are Sonner, not `sonner-native`. Fonts fall back to CSS families. Modal isolation exists only in `useModalIsolation.web.ts`. Journal fault injection loads only through the web journey seam. Native has no fault switch, so storage-failure cases need lower-level tests.
+- React Native Web ignores `accessibilityState` selected and checked. Set `aria-selected` or `aria-checked` too, as `VenueTabs` and `ReflectionView` do, or role queries cannot see the state.
+- `aria-*` props, `pointerEvents` and CSS-looking styles in React Native components do not make the code web-only. Do not strip them as browser leftovers.
+- Install a failure route before the navigation that starts the targeted work. For a one-shot fault after sign-in, first send the old page to `about:blank` so its background requests cannot consume the fault. Wait on the intended request, not on a sleep or a longer timeout.
+- A phone development server on LAN port 8081 blocks the drive's Expo port. Move the drive with `JUSTGO_JOURNEY_APP_PORT`.
 - `e2e/local-sync.spec.ts`, `cleanup-isolation.spec.ts` and `network-isolation.spec.ts` test the repository, transport and fixture safety, not UI. A native drive does not replace them.
 - The Maestro flow and `test:native` were retired on November 2. Do not restore them.
 - Uncached illustrations load over HTTP from Metro in a development client. Offline artwork needs a self-contained build.
+- Earlier simulator drags (XcodeBuildMCP, mirrored pointer, Computer Use) did not commit native gestures. Drive the equivalent button path and leave swipe feel to a physical phone.
+- Typing through the simulator's hardware keyboard shows no software keyboard, so it cannot check keyboard-open layout.
+- For native transition frames, record with `xcrun simctl io <udid> recordVideo` and read the real sample timestamps.
+- Moving a simulator or phone between worktrees can leave Keychain data in a newer schema, which can surface as a generic secure-storage failure. Compare the persisted schemas. Do not reset Keychain or loosen validation.
+- Transitive DOM and jsdom packages that Expo and Jest require are not removable because their names mention browsers.

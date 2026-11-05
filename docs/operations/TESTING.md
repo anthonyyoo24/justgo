@@ -429,15 +429,11 @@ its tests cover byte bounds, atomic generation/account fences and sanitized curs
 errors. It excludes the Expo bridge, requires no Apple login and does not contact
 CloudKit. A signed EAS build and actual phone checks still verify those boundaries.
 
-The native-testing checkpoint ([#114](https://github.com/anthonyyoo24/justgo/issues/114)) and
-[browser assessment](../checks/phase-07-3a-browser-testing-assessment.md) remain the
-resume boundary for deferred native automation. Retain Playwright/web adapters
-and fixture safeguards until a native replacement proves equivalent
-actual-app/API/database cases and its authorized commit's hosted gate. The obsolete
-Maestro launch flow, command and command-wiring test were retired on November 2;
-automated simulator testing remains deferred. Arrange relevant physical-device
-or manual simulator checks explicitly. Device/staging gates are GitHub issues
-labeled `gate`.
+Automated simulator testing resumes through the
+[`verify-justgo` Native section](../../.claude/skills/verify-justgo/SKILL.md#native)
+and [#114](https://github.com/anthonyyoo24/justgo/issues/114). That path is
+unproven until one mapped feature is driven on a simulator. Device and staging
+gates are GitHub issues labeled `gate`.
 
 ## File moves and bundle checks
 

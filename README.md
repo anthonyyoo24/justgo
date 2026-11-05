@@ -23,6 +23,8 @@ npm run dev:api
 npm run dev:web
 ```
 
+The [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md) is the tested way to start the app on loopback fixtures and check that it serves this checkout.
+
 `db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere set `JUSTGO_PG_BIN` to their directory. It creates a dedicated, loopback-only cluster at `.local/postgres` on port **54329** and the `justgo_test` database, generates local role credentials and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Local host authentication is trusted on this disposable cluster; never expose its port or use it for personal data.
 
 The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 16, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
@@ -65,7 +67,7 @@ Generated native projects and completed Xcode caches are retained locally and ex
 
 The local Expo module is auto-linked from `apps/mobile/modules/justgo-keychain`; native dependency or Swift changes require a new EAS build. If `xcrun simctl` resolves only Command Line Tools, use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for simulator commands without changing the global developer selection.
 
-The [testing guide](docs/operations/TESTING.md) owns simulator, device and release-acceptance checks.
+Automated simulator testing resumes through the [`verify-justgo` Native section](.claude/skills/verify-justgo/SKILL.md#native) and [#114](https://github.com/anthonyyoo24/justgo/issues/114); it is unproven until one mapped feature is driven on a simulator. The [testing guide](docs/operations/TESTING.md) owns device and release-acceptance checks.
 
 ## Workspace
 
