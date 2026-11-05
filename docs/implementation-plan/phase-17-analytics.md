@@ -96,7 +96,7 @@ Every event carries the pseudonymous account identifier, occurrence timestamp, a
 - [ ] Updated notices/disclosures and any required privacy choices are reviewed before activation for new and existing launch accounts, with no replay of pre-activation history.
 - [ ] ANALYTICS_EVENTS.md defines events and metrics, including sessions, cohort anchors, observation/missing-outcome windows and eligible population; the PostHog dashboard answers the measurement questions and baseline collection is documented before setting targets.
 - [ ] Reports state their actual eligible/best-effort population and do not imply wellbeing improvement or causation from correlations.
-- [ ] Required automated/phase and interactive checks pass; save the handoff with final evidence and remaining gates, and link it from the index.
+- [ ] Required automated/phase and interactive checks pass; record final evidence in the PR descriptions and file remaining gates as `gate` issues.
 
 ## Open gates before analytics activation
 

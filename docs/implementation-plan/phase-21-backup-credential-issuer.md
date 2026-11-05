@@ -83,8 +83,8 @@ owner-held backup decryption key.
       appears in logs or artifacts.
 - [ ] Rotation, failed/missed-job notification delivery, disablement and manual
       rollback are verified before replacing the current renewal procedure.
-- [ ] Update the backup operations guide and save the phase handoff with actual
-      evidence, remaining human duties and next steps; link it from the handoff index.
+- [ ] Update the backup operations guide with the remaining human duties, record
+      actual evidence in the PR descriptions and file remaining gates as `gate` issues.
 
 ## Open gates for earlier phases
 

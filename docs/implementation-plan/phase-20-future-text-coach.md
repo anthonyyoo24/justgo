@@ -32,7 +32,7 @@ A separately approved text coach uses bounded, permitted context in the existing
 - [ ] Feature scope/provider/privacy decisions are approved; quality/context evaluation meets documented targets.
 - [ ] Real-device streams, duplicate sends, interruption/cancellation, unknown outcomes and concurrent allowance enforcement pass.
 - [ ] Cross-user/context-consent isolation, deletion, prompt-injection handling, latency and cost limits are verified.
-- [ ] Save the phase handoff with exact changes, issues/fixes, test evidence and next steps; link it from the handoff index.
+- [ ] Record exact changes, issues/fixes and test evidence in the PR descriptions, and file remaining gates as `gate` issues.
 
 ## Open gates for Phase 14
 

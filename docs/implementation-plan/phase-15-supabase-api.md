@@ -225,7 +225,7 @@ the current commands and thresholds rather than inventing a second test policy.
   signed-device/provider/offline/deletion acceptance. Browser mocks and local Deno
   runs do not prove hosted gateway behavior or iOS Keychain/iCloud behavior.
 - At implementation completion: update decisions, implemented architecture,
-  operations/fixture/build documentation and the handoff together. Review changed
+  operations/fixture/build documentation and the PR descriptions together. Review changed
   directories, account for every earlier finding/open gate, and retire eligible
   tooling/worktrees only under the standing preservation and permission rules.
 
