@@ -340,7 +340,7 @@ provider/signing configuration is recorded in that guide; the first GitHub-built
 installation awaits owner review/merge. Historical same-identifier binaries below
 are not that app.
 
-The [design guide](../design/DESIGN.md), `design/source/` and asset README record Paper provenance, editable-source measurements and raster-only uncertainty. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.
+`design/source/` records Paper provenance and editable-source extracts. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.
 
 Choose checks using the [testing scope matrix](TESTING.md#choosing-checks). Routine fixes use focused behavior/consumer checks; actual phase closeout and publication retain the full required gates. Backend/shared protocol or data-boundary changes retain the dedicated loopback database checks. File moves follow the [move and bundle policy](TESTING.md#file-moves-and-bundle-checks), rather than requiring both exports for every edit. CI enforces the required gates with PostgreSQL 17.
 

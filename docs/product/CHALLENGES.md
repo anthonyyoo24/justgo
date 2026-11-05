@@ -62,8 +62,7 @@ offline recovery rather than the retired empty-venue message.
 
 Use the original [39O Café screen without subtext](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0/OMO-0)
 and its stack fanning right. The bottom-edge variant is not selected. Preserve
-its styling/shadow depth with the current venue and deferred-level decisions;
-[CHALLENGE_FIDELITY.md](../design/CHALLENGE_FIDELITY.md) owns measured visual guidance.
+its styling/shadow depth with the current venue and deferred-level decisions.
 
 The front card follows the thumb and tilts; cancellation settles it back. A
 committed swipe flies offscreen while the middle card moves left/up into front
