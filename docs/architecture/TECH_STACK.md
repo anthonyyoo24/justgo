@@ -319,7 +319,8 @@ format, tooling and the API dependency audit), `unit`, `database` (migrations,
 API integration suites, `test:workers` and `test:backup:recovery`), `journeys`,
 `exports` (web export, its smoke, then iOS export) and `native-icloud`.
 `scripts/quality/ci-workflow.test.mjs` keeps that shape, the SHA pins and the
-prerequisites. For stacked pull requests, each branch's own run is its evidence.
+prerequisites. Pin each action by full commit SHA with its version in a trailing
+comment. For stacked pull requests, each branch's own run is its evidence.
 
 Dependabot checks npm and Actions weekly and groups compatible npm minor and patch
 updates. An npm major needs manual scope and native acceptance. Update exact

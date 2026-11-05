@@ -48,7 +48,7 @@ Classify the behavior and boundary that changed, not the directory.
 | Release build                                | Full `npm run check`, the saved journeys and exports, `test:db`, and the open hosted, staging and physical-device gates.                                                                                            |
 
 Before pushing, run the checks for the touched paths on the committed head. CI
-runs the full set on every pull request. Expand the local checks only for a
+runs the full set on every pull request. Expand the local checks for a
 concrete failure or an explicit owner request, and state the trigger.
 
 On the owner's 8 GB Mac, run one heavy check or build at a time and reuse existing
