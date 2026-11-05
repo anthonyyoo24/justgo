@@ -168,13 +168,19 @@ exist and keeps the approved mobile responsibility groups in the guide.
 - Keep routes thin, domain logic with its owner, tests beside their owner and
   native/web pairs together. Developer fixtures remain in dev/.
 - Moves must update imports, dynamic loaders, Jest/coverage selectors, fixture
-  seams, assets, deployment allowlists, scripts and documentation together.
-- Keep move-only work separately reviewable from behavior changes. Use
-  import-aware rewrites and the [move checks](../operations/TESTING.md#file-moves-and-bundle-checks):
-  focused import/discovery/packaging checks for small moves, cold web/iOS bundles
-  for large or platform-sensitive moves. Restart an owned Metro with `--clear`
-  and reload the existing app after moves; exports do not refresh a live
-  dependency graph.
+  seams, assets, packaging and deployment allowlists, scripts and documentation
+  together.
+- Keep move-only work in its own commit, separate from behavior changes. Use
+  import-aware rewrites.
+- For a small move within the same resolver and packaging rules, run the affected
+  tests, typechecks and import, discovery and packaging checks. Cold-bundle a
+  platform only when those cannot establish module or asset resolution. A large
+  move, or one that affects adapter resolution, entrypoints, shared assets or
+  packaging, needs cold web and iOS exports with the exported-web smoke between
+  them.
+- After source or asset moves, restart the owned Metro server with `--clear` and
+  reload the installed development app. A separate export does not refresh that
+  server's live module graph.
 - Review complete file lists in touched directories before handoff. Preserve
   unrelated retained code and all existing test and boundary safeguards. Keep
   necessary organization within the task's responsibility; record unrelated

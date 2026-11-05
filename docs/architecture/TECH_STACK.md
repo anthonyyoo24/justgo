@@ -306,8 +306,25 @@ workspace separation and mobile routes/app-support/features/data/shared/develope
 directions, including dynamic imports and re-exports. Native/web adapter pairs and
 tests stay with their owner. Tooling and generated build output must follow moves.
 
-[TESTING.md](../operations/TESTING.md) owns commands, coverage reports, isolated
-fixtures and evidence requirements. PostgreSQL ownership/migration tests, saved
+[AGENTS.md](../../AGENTS.md#choosing-checks) owns the commands, the check matrix
+and the proof standard. PostgreSQL ownership/migration tests, saved
 app/API/database journeys, bundle exports, interactive browser checks and native
 checks prove different boundaries. Hosted results must be inspected for the
 actual published commit; local checks do not establish hosted acceptance.
+
+CI runs on pull requests and pushes to `main`, and cancels superseded PR runs. Six
+producer jobs feed one `checks` job that fails when any producer fails, is skipped
+or is cancelled: `static` (actionlint, online Doctor, contracts, types, lint,
+format, tooling and the API dependency audit), `unit`, `database` (migrations,
+API integration suites, `test:workers` and `test:backup:recovery`), `journeys`,
+`exports` (web export, its smoke, then iOS export) and `native-icloud`.
+`scripts/quality/ci-workflow.test.mjs` keeps that shape, the SHA pins and the
+prerequisites. For stacked pull requests, each branch's own run is its evidence.
+
+Dependabot checks npm and Actions weekly and groups compatible npm minor and patch
+updates. An npm major needs manual scope and native acceptance. Update exact
+package pins and the root lockfile together, and never hide a live Doctor metadata
+change with offline mode or exclusions. `npm run audit:api` projects the API's
+production graph from the shared lockfile, fails closed on manifest or lock drift
+and filters no advisory. It does not cover mobile or tooling dependencies.
+CodeRabbit's docstring-coverage percentage is not a repository gate.

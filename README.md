@@ -11,7 +11,7 @@ optional iCloud Sync and complete Download/Import controls are separate. The
 - [Agent instructions](AGENTS.md) and the directory `AGENTS.md` files: the repository map, the rules and what enforces them, and owner permissions. Read them before changing code.
 - Architecture: [tech stack](docs/architecture/TECH_STACK.md), [app shell](docs/architecture/APP_SHELL.md), [activity data](docs/architecture/ACTIVITY_DATA.md), [identity](docs/architecture/IDENTITY.md) and [folder structure](docs/architecture/FOLDER_STRUCTURE.md).
 - Product: the [PRD](docs/product/PRD.md) and the [challenge catalog](docs/product/CHALLENGES.md).
-- Operations: [foundation setup and versions](docs/operations/FOUNDATION.md), [testing](docs/operations/TESTING.md), [Apple setup](docs/operations/APPLE_SETUP.md) and the other [procedures](docs/operations/) for accounts, builds, releases, backups and support.
+- Operations: [foundation setup and versions](docs/operations/FOUNDATION.md), [Apple setup](docs/operations/APPLE_SETUP.md) and the other [procedures](docs/operations/) for accounts, builds, releases, backups and support.
 - Legal: the [Terms and Privacy drafts, approvals and data inventory](docs/legal/).
 - Roadmap: the [implementation plan](docs/implementation-plan/README.md) and [proposals](docs/proposals/) for later phases. The [Phase 15 Cloudflare handoff](docs/handoffs/phase-15-cloudflare-api.md) stays until Workers retires. Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`).
 - Running the app: the [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md).
@@ -35,7 +35,7 @@ The [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md) is the tested
 
 The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 16, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
 
-To exercise the implemented challenge/reflection/Progress flow with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Use the guarded journey launcher for synthetic provider sign-in or guest entry; external-provider fixtures never ship in native/production resolution. The presentation-only screen preview still makes no challenge writes. Apply all registered migrations first. See [testing guidance](docs/operations/TESTING.md) for fixtures and the current native/device gates.
+To exercise the implemented challenge/reflection/Progress flow with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Use the guarded journey launcher for synthetic provider sign-in or guest entry; external-provider fixtures never ship in native/production resolution. The presentation-only screen preview still makes no challenge writes. Apply all registered migrations first. The [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md) covers fixtures and what browser evidence cannot prove.
 
 For environment-managed development, copy the workspace `.env.example` files to `.env` and configure the separate runtime and migration URLs. Never commit credentials. Identity traffic requires HTTPS, except loopback during development. A physical iPhone needs a reachable HTTPS API route; `localhost` on a phone refers to the phone. Do not embed a Vercel protection bypass secret in the app.
 
@@ -51,10 +51,10 @@ npm run export:ios -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
-CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The required Playwright journey step runs the full local-save/reflection/Progress and controlled recovery suite against isolated app/API/database fixtures, with masked failure artifacts. Hosted results for a pushed commit are separate from local passes. The [Phase 07 cutover procedure](docs/operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients) governs migration 0013 and old-client handling; no staging/production deployment is implied by local implementation. See [testing guidance](docs/operations/TESTING.md) for local prerequisites and artifact handling.
+CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The required Playwright journey step runs the full local-save/reflection/Progress and controlled recovery suite against isolated app/API/database fixtures, with masked failure artifacts. Hosted results for a pushed commit are separate from local passes. The [Phase 07 cutover procedure](docs/operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients) governs migration 0013 and old-client handling; no staging/production deployment is implied by local implementation. The [local test database](docs/operations/FOUNDATION.md#local-test-database) section lists local prerequisites.
 
-Coverage reports, focused commands and async/UI test conventions are in
-[testing guidance](docs/operations/TESTING.md).
+Commands, coverage reports and the check matrix are in
+[AGENTS.md](AGENTS.md#choosing-checks).
 
 ## iOS development
 
@@ -73,7 +73,7 @@ Generated native projects and completed Xcode caches are retained locally and ex
 
 The local Expo module is auto-linked from `apps/mobile/modules/justgo-keychain`; native dependency or Swift changes require a new EAS build. If `xcrun simctl` resolves only Command Line Tools, use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for simulator commands without changing the global developer selection.
 
-Automated simulator testing resumes through the [`verify-justgo` Native section](.claude/skills/verify-justgo/SKILL.md#native) and [#114](https://github.com/anthonyyoo24/justgo/issues/114); it is unproven until one mapped feature is driven on a simulator. The [testing guide](docs/operations/TESTING.md) owns device and release-acceptance checks.
+Automated simulator testing resumes through the [`verify-justgo` Native section](.claude/skills/verify-justgo/SKILL.md#native) and [#114](https://github.com/anthonyyoo24/justgo/issues/114); it is unproven until one mapped feature is driven on a simulator. Open device and release-acceptance checks are GitHub issues labeled `gate`.
 
 ## Workspace
 

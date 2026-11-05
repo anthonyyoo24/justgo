@@ -467,10 +467,12 @@ node --test scripts/backups/backups.test.mjs
 ```
 
 Run the complete synthetic encrypted recovery rehearsal with the existing isolated
-PostgreSQL environment prepared:
+PostgreSQL environment prepared, including PostgreSQL 17 client tools, `age` and
+the loopback `JUSTGO_TEST_ADMIN_DATABASE_URL`
+([local test database](FOUNDATION.md#local-test-database)):
 
 ```sh
-node --env-file-if-exists=apps/api/.env --import tsx scripts/backups/rehearse.mjs
+npm run test:backup:recovery
 ```
 
 It validates the loopback `justgo_test` administrator/runtime credentials before

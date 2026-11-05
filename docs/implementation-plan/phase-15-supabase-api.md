@@ -209,8 +209,8 @@ current serving API and database intact; no paid upgrade is a trial prerequisite
 
 The implementation owner integrates the migration and verifies its combined
 behavior. Any delegated work has separate file ownership and focused checks;
-heavy commands run sequentially. Use [TESTING.md](../operations/TESTING.md) for
-the current commands and thresholds rather than inventing a second test policy.
+heavy commands run sequentially. Use the [check matrix](../../AGENTS.md#choosing-checks)
+for the current commands rather than inventing a second test policy.
 
 - During implementation: affected API/mobile regressions and workspace typechecks,
   repository lint, actual local function smoke and relevant saved journeys.
@@ -219,7 +219,7 @@ the current commands and thresholds rather than inventing a second test policy.
   workspace typechecks.
 - At phase closeout/publication: `npm run check`, aggregate
   `npm run test:coverage`, database checks and applicable saved journeys/exports.
-  Reuse overlapping valid evidence according to the testing guide. Check hosted
+  Reuse overlapping valid evidence according to the check matrix. Check hosted
   CI for the actual published candidate once publication is approved.
 - After automated checks: grouped in-app browser verification, followed by actual
   signed-device/provider/offline/deletion acceptance. Browser mocks and local Deno

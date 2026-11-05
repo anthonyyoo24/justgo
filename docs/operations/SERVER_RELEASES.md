@@ -291,6 +291,20 @@ session advisory lock remains held through database checks, candidate build,
 probes and promotion. GitHub also serializes these jobs without cancelling an
 active release.
 
+## Local Worker runtime checks
+
+`npm run test:workers` starts the pinned Wrangler and workerd entrypoint against
+loopback `justgo_test`. It checks readiness, an authenticated database read and
+write, idempotent completion replay and the safe error envelope, then removes its
+owner and stops its process. It refuses an occupied port;
+`JUSTGO_WORKERS_TEST_PORT` selects another loopback port. This is local runtime
+evidence, not hosted Hyperdrive, CPU or account acceptance.
+
+`npm run profile:workers` sends 200 synthetic `/health` requests with a loopback
+inspector on port 9230 (`JUSTGO_WORKERS_INSPECTOR_PORT`) and skips the functional
+smoke. It writes mode-0600 profiles under `.local/workers/profiles/`. Local
+profiles find hotspots; they do not establish hosted CPU savings.
+
 ## Candidate and promotion safeguards
 
 Pinned Node/npm and `npm ci` prepare the reviewed dependency graph before provider

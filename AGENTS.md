@@ -13,14 +13,69 @@ Directory instructions, such as `apps/mobile/AGENTS.md`, also apply.
   `e2e/`: saved Playwright journeys. `scripts/quality` and `scripts/journeys`:
   architecture, coverage and journey tooling. `.claude/skills/verify-justgo`: the
   skill that starts, drives and checks the running app.
-- Focused checks: `npm run test -w <workspace>`, `npm run typecheck -w <workspace>`,
-  `npm run lint`. Broader gates: `npm run check`, `npm run test:db`,
-  `npm run test:journey`. `npm run test:coverage` is an optional report.
-- Pick the checks for a change from
-  [Choosing checks](docs/operations/TESTING.md#choosing-checks). Write tests as
-  [Writing tests](docs/operations/TESTING.md#writing-tests) describes.
-- On the owner's 8 GB Mac, run heavy builds and checks one at a time and reuse
-  existing tools and caches. Native signing or build upgrades need a separate task.
+- Use the pinned Node and npm versions from the root manifests and `.nvmrc`.
+- To run one test file, pass `-- --runTestsByPath src/<path>.test.tsx` to the
+  mobile `test` script, or `-- <path>` to the API and contracts scripts.
+  [`apps/api/AGENTS.md`](apps/api/AGENTS.md) covers one database case.
+
+| Command                                | Purpose                                                                                                                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run test -w <workspace>`          | Workspace unit, component and contract tests. The API default skips database cases.                                                                                 |
+| `npm run typecheck -w <workspace>`     | Focused TypeScript. Mobile regenerates its Expo route types first.                                                                                                  |
+| `npm run lint`                         | Repository lint and dependency-direction rules                                                                                                                      |
+| `npm run test:architecture`            | Tooling, boundary, fixture, legal-reader and quality regressions                                                                                                    |
+| `npm run check`                        | Online Expo Doctor, contracts build, all typechecks, lint, format, architecture and workspace tests                                                                 |
+| `npm run db:local`                     | Prepare the isolated loopback PostgreSQL roles and database                                                                                                         |
+| `npm run db:migrate`                   | Apply registered migrations through the migrator connection                                                                                                         |
+| `npm run test:db`                      | Real database services and policies, plus the migration rehearsal                                                                                                   |
+| `npm run test:journey`                 | Saved Playwright journeys against the real app, the fixture API and the disposable database                                                                         |
+| `npm run test:coverage`                | Optional report with no threshold. It includes the database suites, so prepare the local database first. Output goes to ignored `coverage/{mobile,api,contracts}/`. |
+| `npm run export:web -w @justgo/mobile` | Cold web export. `export:ios` is the iOS one.                                                                                                                       |
+| `npm run test:exported-web`            | Smoke the existing web export with no API or database traffic                                                                                                       |
+| `npm run build:legal`                  | Build the local legal pages, then check their reading and navigation in the built-in browser pane. `-- --production` refuses unapproved source or date metadata.    |
+
+### Choosing checks
+
+Classify the behavior and boundary that changed, not the directory.
+
+| Change                                       | Checks                                                                                                                                                                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Documentation only                           | Changed-file formatting and `node --test scripts/quality/doc-links.test.mjs`. No app tests, builds or UI checks.                                                                                                    |
+| Contained code change                        | Focused tests for the changed behavior and its consumers, affected workspace typechecks, `npm run lint` and changed-file formatting. Affected saved journeys, and a `verify-justgo` drive for a user-facing change. |
+| Contracts, tsconfig, ESLint or `e2e/support` | Also `npm run build:contracts && npm run typecheck` from the root, which covers every workspace and the journeys.                                                                                                   |
+| API, shared protocol or data                 | Also `npm run test:db` against loopback `justgo_test`, with ownership, replay, failure and migration cases. A mobile UI or navigation change alone does not cross this boundary.                                    |
+| Dependencies, Expo or native                 | Full `npm run check` with its online Expo Doctor, plus the native build and device acceptance the change affects.                                                                                                   |
+| Release build                                | Full `npm run check`, the saved journeys and exports, `test:db`, and the open hosted, staging and physical-device gates.                                                                                            |
+
+Before pushing, run the checks for the touched paths on the committed head. CI
+runs the full set on every pull request. Expand the local checks only for a
+concrete failure or an explicit owner request, and state the trigger.
+
+On the owner's 8 GB Mac, run one heavy check or build at a time and reuse existing
+tools and caches. Do not rerun a passed check that a broader command already ran
+unless its inputs changed or a failure needs investigation. Native signing or build
+upgrades need a separate task.
+
+## Proving a change works
+
+pstack's `prove-it-works` principle and `tdd` skill set the method: prove the change
+on the real surface with a check that fails before it and passes after it, write a
+failing test first when a cheap test path exists, and prefer no new test over a bad
+one. JustGO adds these rules:
+
+- Drive a user-facing change through `verify-justgo`. Read an API or data change
+  back from the database or the response.
+- Give each claim one verdict and name its surface. **Verified** means the check
+  ran on the real surface and showed the claimed behavior. **Not verified** means
+  it ran and showed something else. **Inconclusive** means it could not run or
+  could not tell, for example because the surface needs a physical phone; say what
+  blocked it. The `verify-justgo` Gotchas list what browser evidence cannot prove.
+- Keep the Playwright journeys, the web adapters and the fixture safeguards until a
+  native drive proves the same app, API and database cases and passes hosted CI.
+- When behavior depends on storage, transport, time or randomness, control it
+  through the existing seam, such as the vault, `fetch`, AppState or a clock. The
+  test then controls failures, timing and retries without replacing the domain
+  logic. Add a small interface only where no seam exists.
 
 ## Where facts live
 
@@ -37,9 +92,11 @@ Directory instructions, such as `apps/mobile/AGENTS.md`, also apply.
 - The [tech stack](docs/architecture/TECH_STACK.md) and
   [folder structure](docs/architecture/FOLDER_STRUCTURE.md) guides describe the
   implemented boundaries and paths.
-- [Testing guidance](docs/operations/TESTING.md) owns the commands, the CI gates
-  and the proof standard. [`verify-justgo`](.claude/skills/verify-justgo/SKILL.md)
-  owns how to start, drive and check the app.
+- This file owns the commands, the check matrix and the proof standard.
+  [`verify-justgo`](.claude/skills/verify-justgo/SKILL.md) owns how to start, drive
+  and check the app, including the saved journeys and the exported-web smoke. The
+  tech stack guide describes CI, and the operations docs own their own local
+  rehearsals.
 - Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`). File
   each deferred device, hosted or staging check as one, and each approved deferral
   of a review finding as an issue. Close each with a link to its evidence.
@@ -71,6 +128,8 @@ fixes the mistake at the highest level that works and updates this table.
 | Use current Expo APIs.                                                                                                                                                                                                                                                         | `npm run typecheck` against the installed packages, Expo Doctor in `npm run check` and the CI `static` job, and the saved journeys. [`apps/mobile/AGENTS.md`](apps/mobile/AGENTS.md) covers the judgment calls.                                                                                                                                                                          | type, CI, test, written |
 | Diagnostics carry no private text.                                                                                                                                                                                                                                             | The Sentry payload tests in `apps/mobile/src/app-support/diagnostics/event.test.ts`. [Security and privacy](#security-and-privacy) covers the rest.                                                                                                                                                                                                                                      | test, written           |
 | Screens stay accessible.                                                                                                                                                                                                                                                       | Role and accessible-name queries in component tests, journeys and drives fail when a queried label goes missing. [Accessibility](#accessibility) covers the rest.                                                                                                                                                                                                                        | test, written           |
+| Long or step-away runs keep a decision trail at `.local/decision-trails/<run>.tsv` and end with an audit and a separate review in `<run>.review.md`.                                                                                                                           | The Claude Code Stop hook `.claude/hooks/require-trail-review.mjs` (PR #127)                                                                                                                                                                                                                                                                                                             | hook                    |
+| Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.                                                                                                                                                                                                | Nothing. `main` has no branch protection or ruleset, so review catches a break.                                                                                                                                                                                                                                                                                                          | written                 |
 
 ## Security and privacy
 
@@ -85,8 +144,7 @@ fixes the mistake at the highest level that works and updates this table.
 
 Preserve labels, focus and keyboard behavior, scalable text, usable small-screen
 layouts and reduced motion. Prove native accessibility on a native surface, as
-[Proving a change works](docs/operations/TESTING.md#proving-a-change-works)
-describes.
+[Proving a change works](#proving-a-change-works) describes.
 
 ## Git and autonomy
 
