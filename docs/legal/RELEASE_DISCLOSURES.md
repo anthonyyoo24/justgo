@@ -17,7 +17,7 @@ Final answers must describe the actual release configuration under [Apple’s de
 | Signed-in feeling choices                                      | Recommended Health; App Functionality; Linked; no tracking                                | The intentional five-choice retrospective feeling prompt (Compared to before the challenge) requests emotional-state information. Apple's definition is not limited to HealthKit or diagnosis; its [wellbeing guidance](https://developer.apple.com/videos/play/wwdc2024/10109/) supports this recommendation. Generic reflection writing remains Other User Content. This is a classification recommendation, not an Apple ruling or a conclusion that the app provides regulated healthcare.                                                                                                                                                                                                    |
 | Optional private CloudKit history/journal                      | Assess developer/Apple roles under actual private-database flow                           | Off by default; separate Apple account/container. Verify provisioning, account isolation, conflicts, deletion of previously associated copies even when OFF, pending unavailable-account cleanup and permanent account purge on device. No end-to-end encryption claim.                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Manual restorable ZIP / selected import                        | Assess actual destination role and explicit synchronization after import                  | Readable file, user-selected Files/iCloud Drive/share; account import requires same owner; guest file can be explicitly added. No credentials or raw queues.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Support email/messages/attachments                             | Email Address, Customer Support and applicable requested content                          | User composed; no automatic attachments. Verify inbox process/retention and any exemption criteria rather than assuming optional means exempt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Support email/messages/attachments                             | Email Address, Customer Support and applicable requested content                          | User composed; no automatic attachments. Run the [support procedure](../operations/SUPPORT.md) and verify any exemption criteria rather than assuming optional means exempt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Infrastructure metadata                                        | Relevant diagnostics/device/location category if actual use meets definition              | Provider network/security processing is separate from disabled analytics; no app body logging does not prove no infrastructure metadata.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Sentry errors                                                  | Crash Data and Other Diagnostic Data; App Functionality; no tracking; proposed Not Linked | Build 5 enables the reviewed allowlisted reporter and its symbols match Sentry; API reporter is deployed under the approved notice. JS final transport and native event reconstruction remove persistent identity/content. The owner has skipped the deliberate crash test; fatal crash/restart acceptance stays unverified. Not Linked remains proposed and is not entered as a confirmed Apple answer. A future controlled non-fatal native event can inspect the shared filtering/envelope path without crashing, but does not establish fatal cache/restart behavior. No such test build or event has been performed. Both diagnostics categories remain unfinished in the saved Apple draft. |
 | Analytics/advertising                                          | Disabled in launch candidate                                                              | Recheck actual SDK/provider independent use before final no-tracking/ATT answers. Continue is not ATT permission; add an ATT prompt only if the submitted SDKs or data use count as tracking under Apple's definition. Phase 17 owns later activation.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -49,6 +49,83 @@ No GPS, IDFA advertising, contacts, camera, microphone or health-framework acces
 | Account deletion          | Confirmed action revokes sessions, deletes active account/journal/completions and managed Auth user, and clears owned local data plus previously associated app-managed iCloud copies even when OFF. Unavailable associated Apple accounts leave durable pending cleanup. User files remain; disconnected-device/provider-backup limits apply. No Apple/Google account deletion or subscription cancellation. Security records contain no journal content. |
 | Support URL/contact       | Existing email only, selected URL still pending. Verify published support page/contact and any applicable address/phone. Never infer a home address or auto-attach private data.                                                                                                                                                                                                                                                                           |
 | TestFlight / paid release | Hosted managed Auth/provider configuration, exact audiences, guest test window, private-content provider clearance and actual binary remain open. No staging observation transfers automatically to production.                                                                                                                                                                                                                                            |
+
+## App Review assessment
+
+On October 20, 2026, the review kept Apple's standard EULA, the supplementary
+service Terms, the 18+ audience and the individual operator. The Terms keep
+Apple's precedence for the app license, and no conflict was found. This is a
+compatibility assessment, not an App Review ruling. Use the standard EULA unless
+a reviewed custom one is supplied, and do not treat its technical-data clause as
+privacy consent. Guideline 5.1.1(ix) expects a legal entity for regulated fields
+or sensitive information. The optional, nonclinical journal supports the
+individual-operator approach, but the guideline has no journal-specific line
+that settles it.
+
+Guideline 5.1.1(i) expects the policy to confirm that recipients protect data
+the same way. The provider list alone does not say that. Once every provider
+that handles journal data has an arrangement that supports it, Anthony reviews
+adding this sentence to the Privacy Policy
+([#124](https://github.com/anthonyyoo24/justgo/issues/124)):
+
+> We require service providers that handle personal information for us to
+> protect it consistently with this policy and applicable requirements.
+
+Do not add it while any journal provider's processor or sensitive-data scope is
+unresolved. Vercel's is unresolved
+([#123](https://github.com/anthonyyoo24/justgo/issues/123)). The sentence is a
+conditional correction, not a current safeguard, and it authorizes no provider
+agreement.
+
+## Regional assessment
+
+These notes cover the intended storefronts after the initial exclusions. They
+are not a legal opinion or proof of worldwide compliance.
+
+- **Canada.** OPC guidance on
+  [meaningful consent](https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/appropriate-handling-of-personal-information/collecting-personal-information-and-consent/consent/gl_omc_201805/)
+  calls for a contextual sensitivity assessment, and journal text is sensitive.
+  The Privacy Policy separates phone-only use, account sync, private CloudKit and
+  user-chosen files. Each choice covers only its disclosed purpose and permits no
+  profiling, advertising or AI use of the journal. OPC
+  [cross-border guidance](https://www.priv.gc.ca/en/privacy-topics/airports-and-borders/gl_dab_090127/)
+  allows accountable outsourcing for the disclosed purpose, so Canada-only
+  hosting and separate transfer consent are not required. Not asking for a name
+  does not make the journal anonymous. No rule found requires publishing a home
+  address.
+- **UK, Norway, Iceland and Liechtenstein.** Anthony excluded these at first on
+  October 20, 2026, and that choice is settled. Before any UK or EEA
+  availability, resolve any required representative, purpose-specific lawful
+  bases, transfer safeguards and the full
+  [required privacy information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/the-right-to-be-informed/what-privacy-information-should-we-provide/).
+  A contract basis for requested storage does not replace a
+  [special-category condition](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/special-category-data/what-are-the-conditions-for-processing/)
+  when journal text reveals health or beliefs. Do not invent lawful bases or
+  representative contacts, and do not restore legal tracking.
+- **United States.** The app offers no diagnosis, HealthKit, health scores or
+  health inference. Ordinary completion data is not health data, but journal
+  text can reveal health. Washington's My Health My Data Act
+  ([RCW 19.373.010](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.010))
+  covers access, retention and processing, so device-only processing is not an
+  exemption by itself. Confirm the operator's role for the local store and
+  manual files separately from signed-in sync and private CloudKit. Nevada
+  ([NRS 603A](https://www.leg.state.nv.us/NRS/NRS-603A.html)) ties health data to
+  identifying health status. The lack of health inference matters, but it is not
+  a blanket clearance. If Washington applies, its separate prominent notice
+  ([RCW 19.373.020](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.020)) is
+  an open question, and Nevada's notice and request rules (NRS 603A.495 and
+  .505–.520) need their own check
+  ([#96](https://github.com/anthonyyoo24/justgo/issues/96)). The
+  requested-service provision
+  ([RCW 19.373.030](https://app.leg.wa.gov/RCW/default.aspx?cite=19.373.030))
+  may cover necessary requested actions. Broad Terms agreement does not replace
+  consent where consent is separately required. Do not claim that disclosed
+  sign-in, the Terms links or the absence of HealthKit supply every needed
+  permission. Bring any needed notice or consent change to Anthony as concrete
+  wording; do not add a checkbox or acceptance tracking on your own.
+- **California.** No known facts meet the
+  [CCPA thresholds](https://www.cppa.ca.gov/faq.html). Ordinary mobile
+  privacy-policy duties still apply.
 
 ## Required release evidence
 
