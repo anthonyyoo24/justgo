@@ -56,6 +56,44 @@ Hyperdrive. Nonvirtual URLs still require matching literal identity. The release
 advisory lock stays on the separate direct session-pooler migrator connection.
 See [Hyperdrive's supported features](https://developers.cloudflare.com/hyperdrive/reference/supported-databases-and-features/).
 
+## Staging database
+
+The staging database is the Supabase project **JustGo**, project ref
+`kmcpcauaxlgpevkkenwd`, in Canada Central, under the organization
+**anthonyyoo corp**. Anthony approved its creation after Supabase quoted $0 a
+month. That quote does not guarantee a future budget. Production is not
+provisioned.
+
+To provision a database, follow this order:
+
+1. As an administrator, review `apps/api/scripts/provision.sql` and apply it once.
+   It creates the `justgo_migrator` and `justgo_runtime` roles, the private
+   `justgo` and `drizzle` schemas, and their grants and limits. Give each role an
+   independent random password through a secure administrative channel. Never put
+   a password in a migration.
+2. Connect the migration role directly or through the **session** pooler, which
+   listens on port 5432. Staging uses host
+   `aws-0-ca-central-1.pooler.supabase.com` and username
+   `justgo_migrator.<project-ref>`. Supply the project's CA and keep certificate
+   and hostname verification on.
+3. Apply the application migrations with `npm run db:migrate`.
+4. Connect the runtime role with its own password. The Vercel API that build 5
+   still uses connects through the **transaction** pooler on port 6543 as
+   `justgo_runtime.<project-ref>`. The Worker connects through Hyperdrive, as
+   [Fixed target](#fixed-target) lists.
+
+Supabase records the administrative provisioning as its own migration,
+`foundation_roles`. Drizzle's journal in schema `drizzle` records the application
+migrations from `0000_foundation.sql` on. Keep the two runners separate. Managed
+Auth also needs the operator-installed session-check helper in
+[account setup](ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
+
+Give each new owner-scoped table `USING` and `WITH CHECK` policies for
+`justgo_runtime`, only the grants its operations need, and an index on `user_id`.
+PostgreSQL truncates identifiers longer than 63 bytes, so give each long
+generated constraint or foreign-key name an explicit short name in the schema,
+the SQL and the snapshot.
+
 ## Credentials and approval protection
 
 For the GitHub release lane, store these secrets in the protected `justgo-staging`

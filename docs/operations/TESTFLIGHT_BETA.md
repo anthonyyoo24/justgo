@@ -338,6 +338,40 @@ To stop a tester's access, keep their `BETA_ACCESS_GRANTS` entry and set its
 `revokedAt`. Do not remove the entry: its interval keeps the completions they
 started inside it uploadable.
 
+## Beta operating controls
+
+These controls run in the staging Supabase project and in Sentry. Their settings
+live in those services, not in this repository.
+
+### Identity retention job
+
+The operator migration `enable_beta_identity_retention` enabled `pg_cron`. Job
+`justgo-identity-retention` runs hourly at minute 17. It connects as the existing
+`postgres` scheduler login, runs `SET LOCAL ROLE justgo_migrator` inside a
+transaction and calls `justgo.purge_expired_identity_records(1000)` with a
+five-second statement limit. To stop it, call `cron.alter_job` with the job name.
+Never edit the cron tables directly.
+
+### Readiness monitor
+
+Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/)
+checks the public staging `/ready` over HTTPS every minute, with a five-second
+timeout and no account credentials. A check passes only on a successful HTTP
+status with JSON `status: ready`. Three failures in a row open an issue, and one
+success resolves it. The API and mobile Sentry projects email Anthony on new
+issues, regressions and recoveries. The monitor uses the plan's one included
+monitor.
+
+### Supabase Pro upgrade triggers
+
+The database stays on Supabase Free. Ask Anthony to approve Pro (US$25 a month)
+when any of these happens:
+
+- The database nears 400 MB of its 500 MB limit.
+- Monthly egress nears 5 GB.
+- A pause or capacity incident occurs.
+- Revenue comfortably covers the cost.
+
 ## Remaining prerequisites
 
 - Verify the published legal links and accessibility in the signed app. Reconcile

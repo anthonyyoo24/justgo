@@ -458,6 +458,90 @@ actual isolated API/provider checks, before proposing any separate operational
 cutover. After failed reconciliation the target may contain the original snapshot;
 keep it isolated and dispose of it under the approved recovery procedure.
 
+## Restore checklist
+
+Use this checklist for every restore, from an encrypted R2 copy or from a Supabase
+provider backup. A restore must never bring back a deleted journal or revoked
+access. An hourly ledger can miss deletions made after it, so recovery needs a
+current, writer-fenced ledger that covers app and Auth changes. If you cannot
+establish that ledger, keep writers closed. Anthony accepted this limit and the
+recovery targets on October 29 and 31, as
+[Recovery decision and remaining proposals](#recovery-decision-and-remaining-proposals)
+records. Independent per-deletion recording is
+[#119](https://github.com/anthonyyoo24/justgo/issues/119). R2 locks and lifecycle
+rules and Supabase's own provider copies each carry separate deletion obligations.
+
+### Before restoring
+
+1. Fence all API, maintenance and Auth or provider writes, and hold the fence
+   until recovery ends. Note the backup's timestamp, because ordinary writes made
+   after it may be lost. Verify the ciphertext receipts and the full source
+   identity, including a pooler receipt's project reference, before you use the
+   owner-held recovery key.
+2. With the migration role, save these rows to restricted operator storage, never
+   the repository, logs or tickets:
+   - Each `justgo.users` row with `deleted_at` set: `id`, `created_at`,
+     `deleted_at` and `deletion_session_digest`.
+   - Each `justgo.recovery_credentials` row with `revoked_at` set: `id`,
+     `user_id`, `digest`, `kind` and `revoked_at`.
+   - For managed accounts, every owner's current `data_epoch` and
+     `data_deleted_at`, `deleted_completion_ids`, the `managed_auth_accounts`
+     mappings, app-session revocations and `managed_auth_deletions` state. Include
+     **Delete all my data** events on active accounts, not only deleted users.
+
+   Save all of them, not only those after the timestamp. An older snapshot must
+   never undo a later Auth, profile or activity deletion. If the current ledger
+   is lost, do not reopen an older snapshot that may lack later deletions.
+
+### Restore and reapply
+
+3. Restore into an isolated environment, such as a new project or branch, never
+   over the live database, and point no API at it. Prepare the managed Auth roles,
+   extensions, grants and provider configuration without discarding ACLs. Then
+   reapply `session-check-v1.sql` and verify the helper, as
+   [Isolated local recovery](#isolated-local-recovery) describes.
+4. Apply the current registered forward migrations to the isolated database. Then,
+   in one reviewed migration-role transaction, reapply the saved deletions the way
+   `apps/api/src/identity/delete-account.ts` does:
+   - For each deleted account, delete its attempt patch receipts, attempts,
+     journal versions, transfers, sessions and devices, and revoke its managed app
+     sessions. Clear `analytics_restricted_at`, and set `deleted_at` and
+     `deletion_session_digest` from the saved row. Insert the user row if the
+     account is newer than the backup.
+   - Revoke every saved credential. Insert missing rows, and set `revoked_at` on
+     restored rows that are still active.
+   - For active accounts, move deletion epochs forward only, reapply their
+     deleted-ID tombstones, and remove the restored completions and journal
+     versions those IDs cover. Keep pending Auth cleanup work.
+
+   Make no provider network calls inside that transaction. If the target also
+   restores Auth records, reapply hard Auth user deletion for every erased subject
+   before traffic reopens. An old completed outbox marker does not prove that the
+   restored Auth profile is absent. Follow
+   [Pending Auth erasure operations](ACCOUNT_SYNC_SETUP.md#pending-auth-erasure-operations)
+   under the restore plan, and do not trust recovered access tokens.
+
+### Before reopening the app
+
+5. Set `TimeZone` to UTC in both sessions before you compare text fingerprints
+   between databases, because each session formats timestamps in its own time
+   zone. In the restored database, confirm that every saved account has
+   `deleted_at` set, `analytics_restricted_at` cleared, and no attempts, receipts,
+   transfers, sessions or devices. Confirm that every saved digest exists with
+   `revoked_at` set. The counts must match the saved ledger.
+6. Through an API restricted to the isolated environment, confirm that:
+   - Deleted disposable accounts' old recovery proofs fail, and their journal data
+     is absent.
+   - Managed JWTs and app sessions of deleted or revoked owners fail, and erased
+     Auth profiles are absent.
+   - Active accounts keep their epochs, and stale completion and private-version
+     uploads fail. A confirmed explicit import is the only flow that may restore
+     deleted record IDs, and only at the current epoch.
+
+   After these checks pass, point the normal API at the restored database and
+   reopen writes. In that order, no public recovery window opens during
+   verification.
+
 ## Local verification and remaining evidence
 
 Run focused tooling regressions with:
