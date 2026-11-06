@@ -292,8 +292,8 @@ before any real journal traffic.
   ([#95](https://github.com/anthonyyoo24/justgo/issues/95)) must be restated for
   Supabase Edge Functions, including where functions run and what their logs keep.
 - Edge Functions rewrite HTML responses to plain text without a custom domain, so
-  the legal pages cannot move to a function. Where they live is a separate
-  decision.
+  the legal pages cannot move to a function. Anthony decided on November 6 that
+  they stay on Vercel.
 
 ### Release and rollback
 

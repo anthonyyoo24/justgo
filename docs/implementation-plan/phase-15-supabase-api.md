@@ -162,7 +162,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 **Build.**
 
 - [ ] With Anthony's go, set `DATABASE_URL` to the pooler user `justgo_runtime.<project-ref>` on port 6543, and set `DATABASE_CA_CERT` to the Supabase root CA.
-- [ ] With Anthony's go, deploy the trial bundle as `justgo-trial` with a pinned Supabase CLI 3 and `--remote <ref> --yes`.
+- [ ] With Anthony's go, deploy the trial bundle as `justgo-trial` from a workflow on the trial branch. The workflow installs Supabase CLI 3 through the SHA-pinned `supabase/setup-cli` action and runs `--remote <ref> --yes`. Anthony stores the Supabase access token in a protected GitHub environment.
 - [ ] After the lanes, delete the `justgo-trial` function with Anthony's go. Keep the secrets only if Anthony approves them for P15-8.
 
 **You see.**
@@ -184,7 +184,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Lane 7. Repeat lane 6 with `x-region: ca-central-1`, and read `x-sb-edge-region` on every response. Save `region-pin.json`. Pass when the report records both regions and the latency difference, and names the region decision.
 - [ ] Lane 8. Read the guest catalog 20 times. Save `guest-hosted.json`. Pass when every read returns the seeded catalog and release identity headers that name the trial source SHA.
 - [ ] Lane 9. Send 1, 4 and 6 MiB bodies to an unauthenticated POST route. Save `body-limit.json`. Pass when the report records which sizes reach Hono and which the gateway rejects.
-- [ ] Lane 10. Read back the deploy and `supabase secrets list`. Save `deploy-readback.json`. Pass when the function `version` and the bundle hash match the build, and the receipt holds no secret value.
+- [ ] Lane 10. Read back the deploy and `supabase secrets list` in the workflow. Save `deploy-readback.json`. Pass when the function `version` and the bundle hash match the build, and the receipt holds no secret value.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -502,7 +502,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Create `scripts/release/staging-supabase.mjs` and `scripts/release/staging-supabase.test.mjs`.
 - [ ] Edit `scripts/release/staging-api.mjs`, `scripts/release/staging-local.mjs` and `apps/api/scripts/local-staging-release.ts`.
 - [ ] Create `.github/workflows/staging-api.yml` and edit `scripts/quality/staging-api-workflow.test.mjs`.
-- [ ] Edit the root `package.json` to pin the Supabase CLI as a devDependency.
+- [ ] Pin Supabase CLI 3 in `.github/workflows/staging-api.yml` through the SHA-pinned `supabase/setup-cli` action, not as a devDependency, so nothing new installs on the Mac.
 - [ ] Rewrite `docs/operations/SERVER_RELEASES.md` for the Supabase lane, and edit `AGENTS.md` where it names the staging lane.
 
 **Build.**
@@ -512,6 +512,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] The lane deploys the bundle as `api-candidate` with `--remote <ref> --yes` and runs `validateProbe` against it.
 - [ ] Only after the candidate passes does the lane deploy the same bundle as `api` and read back `/health`, the source SHA and the function `version`.
 - [ ] The lane keeps the database guard in `apps/api/scripts/staging-release-guard.ts` and holds its lock through the serving deploy.
+- [ ] The lane runs in GitHub Actions. `release:staging:local` dispatches the staging workflow with `gh workflow run` and waits for its receipt, so the Mac runs no deploy.
 - [ ] `supabase secrets set` runs only as a named lane step with its own receipt.
 - [ ] The recreated workflow test keeps its `VERCEL_|vercel-cli` assertion.
 - [ ] Rollback is the same lane run on the previous tag. The runbook says so and keeps the rule against rolling back across a schema change.
@@ -523,7 +524,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] `staging-supabase.test.mjs` covers an unchanged serving SHA, a failed candidate probe, a lost deploy response, a secret change without a deploy, and a rollback to the previous tag. Run `node --test scripts/release/staging-supabase.test.mjs`.
-- [ ] Run the full `npm run check`, because the Supabase CLI is a new dependency.
+- [ ] Run `node --test scripts/quality/ci-workflow.test.mjs scripts/quality/staging-api-workflow.test.mjs` and `npm run test:architecture`, because the workflow changed.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. Lanes 1 to 3 are local dry runs. Lanes 4 to 10 deploy to the JustGo project and run only after Anthony's go.
 
