@@ -22,6 +22,7 @@ const eslint = new ESLint({
         '@typescript-eslint/only-throw-error': 'off',
         '@typescript-eslint/no-unnecessary-type-assertion': 'off',
         '@typescript-eslint/no-redundant-type-constituents': 'off',
+        '@typescript-eslint/no-deprecated': 'off',
       },
     },
   ],

@@ -29,6 +29,10 @@ export default tseslint.config(
     },
   },
   {
+    files: ['**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     files: ['apps/**/*.{ts,tsx}', 'packages/contracts/**/*.{ts,tsx}'],
     plugins: { justgo: { rules: { 'import-boundaries': importBoundaries } } },
     rules: { 'justgo/import-boundaries': 'error' },
@@ -86,6 +90,15 @@ export default tseslint.config(
       '@typescript-eslint/only-throw-error': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       '@typescript-eslint/no-redundant-type-constituents': 'error',
+      '@typescript-eslint/no-deprecated': [
+        'error',
+        {
+          // react-native-svg types mark Rect geometry x and y with the
+          // deprecation of the same-named transform shorthand. A JSX
+          // attribute can be allowed only by name, so the shorthand passes too.
+          allow: ['x', 'y'],
+        },
+      ],
       '@typescript-eslint/no-non-null-assertion': 'warn',
     },
   },

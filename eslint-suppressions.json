@@ -1,0 +1,22 @@
+{
+  "apps/api/src/config.ts": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 2
+    }
+  },
+  "apps/mobile/src/app-support/diagnostics/reporter.ts": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    }
+  },
+  "apps/mobile/src/data/backup/data-backup.ts": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 3
+    }
+  },
+  "apps/mobile/src/features/challenges/deck/ChallengeDeck.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 2
+    }
+  }
+}

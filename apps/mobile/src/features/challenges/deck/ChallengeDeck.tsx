@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/refs -- Gesture Handler registers callbacks; it does not execute these event handlers during render. */
 import {
   useCallback,
   useEffect,
@@ -207,6 +206,7 @@ export function ChallengeDeck({
         });
       }
     })
+    // eslint-disable-next-line react-hooks/refs -- Gesture Handler registers this callback; it does not run it during render.
     .onEnd((event) => {
       if (locked.get()) return;
       const direction = swipeDirection(event.translationX, event.velocityX);
