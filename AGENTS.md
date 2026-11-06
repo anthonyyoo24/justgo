@@ -93,12 +93,12 @@ these rules:
   `app-support/providers/activity-runtime.ts` rolls the journal day at minute
   boundaries and local midnight through the injected `JournalClock`.
   `app-support/access/verification/policy.ts` defines `serverClockOffset`.
-  `policy.ts` and `useAccessState.ts` beside it apply the server clock offset.
+  It and `useAccessState.ts` beside it apply the server clock offset.
   Their tests sit beside them.
 - The [tech stack](docs/architecture/TECH_STACK.md) guide describes the
   implemented boundaries and CI. The source tree is the path map, and
   [Placement and move rules](#placement-and-move-rules) say where new code goes.
-- Each operations doc owns its own local rehearsal.
+- Each operations doc owns the local rehearsals for its area.
 - Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`). File
   a `gate` issue for each deferred device, hosted or staging check. File an issue
   for each approved deferral of a review finding. Close each with a link to its

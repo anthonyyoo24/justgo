@@ -1,9 +1,10 @@
 # JustGO app icon
 
 Anthony selected the existing navy GO mark on cream for the app icon on
-October 25, 2026. The edit target for the built-in GPT Image tool was the
-existing transparent `apps/mobile/assets/brand/justgo-mark.png`, inspected
-first. The repository has no editable vector original. The launch-screen mark
+October 25, 2026. The existing transparent
+`apps/mobile/assets/brand/justgo-mark.png` was inspected, then supplied as the
+edit target to the built-in GPT Image tool. The repository has no editable
+vector original. The launch-screen mark
 is unchanged.
 
 The result is a model-assisted composition of the approved branding, not an
