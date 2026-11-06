@@ -14,7 +14,6 @@ providers, startup/access, managed identity/account access and saving feedback. 
 capabilities live in `features/`; shared saved activity and synchronization live
 in `data/activity/`, `data/journal/`, `data/cloud/` and `data/backup/`. Shared UI, general infrastructure, design tokens and reusable
 platform adapters live in `components/`, `lib/`, `theme/` and `platform/`.
-[FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md) owns the complete current path map.
 
 Features can consume app-support providers and data. App support can compose
 features/data/shared code, but cannot import route implementations. Data uses
