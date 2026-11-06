@@ -405,8 +405,10 @@ when any of these happens:
   Anthony's explicit authorization covers filtered Sentry errors, included
   uptime/email alerts and protected deployment preparation; no paid upgrade is
   authorized.
-- Preserve all applicable separate Git, native build, upload and distribution
-  permissions and the open [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
+- Uploads, TestFlight distribution and outside-service settings changes need
+  Anthony's go first, as the [Git and autonomy](../../AGENTS.md#git-and-autonomy)
+  rules say. Keep the [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate)
+  open until their evidence lands.
 
 References: [Expo profiles](https://docs.expo.dev/build/eas-json/),
 [versions](https://docs.expo.dev/build-reference/app-versions/),
