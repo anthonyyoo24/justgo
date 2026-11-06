@@ -100,10 +100,9 @@ upload-eligibility rules. `useAccessState` and `serverClockOffset` in
 `apps/mobile/src/app-support/access/verification/` own the access poll, which
 runs every 30 seconds, the verification lifetime and the server clock alignment.
 
-Superwall billing and QStash jobs are unbuilt.
-[Phase 16](../implementation-plan/phase-16-billing.md) owns their scope and
-[native-billing-and-jobs.md](../proposals/native-billing-and-jobs.md) holds
-their design.
+Superwall billing and its QStash jobs are unbuilt.
+[Phase 16](../implementation-plan/phase-16-billing.md) owns their scope, and the
+technical design is redone when the phase starts.
 
 Product analytics is uninstalled and stays disabled through beta and paid launch.
 [Phase 17](../implementation-plan/README.md#unscheduled-roadmap) must review the

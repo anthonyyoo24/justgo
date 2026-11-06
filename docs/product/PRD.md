@@ -1,7 +1,7 @@
 # JustGO — MVP Product Requirements
 
 **Platforms:** iOS first; Android is deferred, using the same shared codebase when scheduled.\
-**Open product decisions:** section 13.\
+**Open product decisions:** section 12.\
 **Implementation specification:** [TECH_STACK.md](../architecture/TECH_STACK.md).\
 **Roadmap:** [implementation plan](../implementation-plan/README.md).\
 **Design source:** [Paper — Version 3](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0), reviewed through Paper MCP on September 16, 2026.
@@ -35,7 +35,7 @@ Goals:
 
 The target user is an adult seeking more confidence in everyday interactions, conversations, friendships, groups, social events, or dating. The app must not imply clinical diagnosis, treatment, or proven changes in mental health.
 
-## 2. Design authority and changes from the previous PRD
+## 2. Design authority
 
 This PRD defines behavior and scope. The selected final core-app row in Paper Version 3 defines visual direction; the page also contains many earlier explorations, which are not additional requirements. The tech stack defines implementation and persistence. Older local design documents, tokens, screenshots, and the draft curriculum must not silently override this revision.
 
@@ -61,22 +61,6 @@ Explicit interpretation rules:
 - Sample dates, counts, challenge copy, course totals, selected feelings, and repeated sample rows are fixture content. They are not defaults, fixed targets, or evidence that completed challenges can be replayed.
 - The medal illustration celebrates a completion; it does not introduce collectible badges or an awards system.
 - Several screens contain raster artwork. Extract/rebuild real controls, text, accessibility semantics, and responsive layout during implementation; do not ship a screenshot as the interface.
-
-### Behavioral changes
-
-| Previous PRD                                               | Revised requirement                                                                                              |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Earlier cross-platform launch plan                         | iOS first; Android implementation and release gates deferred                                                     |
-| Core loop only; onboarding excluded                        | Core loop plus hard paywall and account recovery; Phase 10 adds Terms & Privacy links and Continue               |
-| Swipe up to replace; double tap to accept                  | Swipe left / X to replace; swipe right / heart to accept                                                         |
-| Venue-filtered deck and Levels page                        | One easy Level 1 collection with six manual venues; no extra filters, level selector or Levels page              |
-| Hide navigation throughout an attempt                      | Active Challenge covers navigation; Completed and Give up are its only exits                                     |
-| Streak-focused Success message                             | Completion-focused celebration                                                                                   |
-| Separate anxiety and confidence ratings                    | One five-choice, retrospective feeling comparison                                                                |
-| No free-form notes                                         | Optional per-attempt typed reflection; custom dictation deferred                                                 |
-| Anxiety/confidence calendar heatmap                        | Completion-count calendar with day history                                                                       |
-| Every completion counts; earlier practice can imply replay | Venue decks cycle; repeated accepted cards can become new reps; level credit rules are deferred                  |
-| Earlier phone-and-cloud private submissions                | Durable guest-local data; optional managed full-history/journal sync, private CloudKit and restorable data files |
 
 ## 3. Navigation and common behavior
 
@@ -302,15 +286,7 @@ Future client/server forwarding must enforce the reviewed permission/collection 
 - Automatic inclusion of every Settings reference row or every draft curriculum course.
 - Automatic iCloud enablement, a journal-content AI feature, a multi-phone conflict chooser and a generic arbitrary-data upload outbox. Optional private CloudKit and versioned history/journal/preferences download/import are Phase 13 scope; supported convergence preserves differing writing without adding a conflict-editor product.
 
-## 10. Fit with the tech stack
-
-Keep the proposed React Native + Expo + TypeScript application, API, and PostgreSQL architecture. These screens use the already planned card gestures, animations, sheets, native text input, the in-app countdown, and phone saving with background synchronization and server history. No new charting engine, real-time backend, database type, or AI feature is required by the designs.
-
-Implementation must align contracts with the stable challenge/venue placements, account-scoped phone-only deck preferences, five descriptive feeling values, start-date attribution and explicit local saving. Exact fonts, artwork, tokens, and responsive measurements need a fresh export from the final Paper references; the older Analog design tokens are not the approved final palette/type system.
-
-This PRD carries product behavior; native-library compatibility, secure recovery, billing processing, API retry/concurrency mechanics, and deployment remain governed by [TECH_STACK.md](../architecture/TECH_STACK.md).
-
-## 11. Acceptance criteria
+## 10. Acceptance criteria
 
 | ID    | Required result                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -332,7 +308,7 @@ This PRD carries product behavior; native-library compatibility, secure recovery
 | AC-16 | Product analytics stays disabled through paid launch. Phase 17 must review its permission/collection design before activation without inferring permission from Continue or old receipts. Account changes/deletion/privacy requests fence delivery; failures never block saves. No journal text, audio or credentials enter analytics/diagnostics.                                                                                                |
 | AC-17 | Controls work with screen readers, text scaling, reduced motion, platform back navigation, and keyboard/sheet interactions on iOS. Android verification is deferred.                                                                                                                                                                                                                                                                              |
 
-## 12. Validation and implementation order
+## 11. Validation and implementation order
 
 1. Begin Apple Developer enrollment/account readiness, App Store Connect app identifiers and Expo/EAS signing setup alongside development. Superwall/store-credential connection and subscription-product configuration wait until Phase 16 after the free beta; record unresolved offer/design decisions with the phase they block.
 2. Prove guest-local entry, optional native managed identity/recovery, private CloudKit and their isolated data controls, then build shared API/navigation boundaries; welcome/questionnaire onboarding is deferred.
@@ -345,7 +321,7 @@ Use the detailed [implementation plan](../implementation-plan/README.md) for dep
 
 Include duplicate completion, phone-write failure and warned memory-only recovery, offline/reconnect and lost acknowledgements, serialized local edits, storage-failure retention, full-backup validation/owner matching/idempotency/conflicts, preference durability, disclosed guest adoption with interrupted-copy/retirement retry and same-journal logout, verified provider switches/last-method protection, account-owned import authentication before Files, native provider/CloudKit account changes, durable reset/delete and phone preservation, empty Skip, deck cycling/first-download failure, independent Progress reconciliation, rollover/time-zone boundaries, identity recovery and purchased-but-unverified billing cases. The saved browser app/API/database suite runs through `npm run test:journey` and required CI; publication-specific hosted results and native/device gates are recorded separately in handoffs. Browser previews supplement real iOS development-build/device testing for Keychain and store purchases. Android, native lock-screen surfaces and custom dictation receive their own validation when implemented.
 
-## 13. Remaining decisions and design gaps
+## 12. Remaining decisions and design gaps
 
 The table records outstanding decisions and previously approved reflection rules. Other proposed defaults are recommendations, not newly approved scope. Reduce Motion's saved preference and system priority are implemented; remaining physical-device, VoiceOver and text-scaling acceptance belongs to Phase 14, separately from open design work.
 

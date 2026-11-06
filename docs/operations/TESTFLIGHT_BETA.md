@@ -194,8 +194,9 @@ server to test a standalone launch. Use disposable data for destructive cases.
   stays readable. Unfinished challenges live in memory and are not promised to
   survive a force quit.
 - Run the remaining native Files and iCloud, login and logout, account isolation,
-  deletion, storage protection and accessibility cases in the
-  [journal rollout](LOCAL_JOURNAL_ROLLOUT.md).
+  deletion, storage protection and accessibility cases in the signed-build
+  [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate)
+  #80 to #86.
 - Report the build, device and iOS version, the reproduction steps and the
   connectivity. Keep private writing, credentials and backup contents out of
   screenshots and feedback.

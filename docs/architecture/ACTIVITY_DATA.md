@@ -100,9 +100,9 @@ and the iCloud copy fence their work against it.
 
 Delete all my data erases the current local collection, its JustGO account data
 and its previously associated iCloud copies. Access and purchase entitlement
-stay. [IDENTITY.md](IDENTITY.md) owns account deletion. External downloads and
-provider retention copies follow the
-[rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md).
+stay. [IDENTITY.md](IDENTITY.md) owns account deletion. External downloads stay
+under the user's control. Provider retention copies and their expiry are tracked
+in [gate #96](https://github.com/anthonyyoo24/justgo/issues/96).
 
 ## Optional iCloud copy
 
@@ -117,9 +117,10 @@ entries.
 Older senders keep bounded create retry and backoff for their original
 protocol, and paid admission still gates starting a challenge. Applied migrations
 stay immutable.
-Migrations 0019 to 0023 and their matching API and mobile changes ship together in
-one approved coordinated rollout with deletion- and revocation-aware restoration,
-as the [rollout runbook](../operations/LOCAL_JOURNAL_ROLLOUT.md) describes.
+Migrations 0019 to 0023 and their matching API and mobile changes shipped together
+in the coordinated staging rollout of October 21, 2026. Database restoration stays
+deletion- and revocation-aware, per the
+[restore checklist](../operations/CLOUDFLARE_BACKUPS.md#restore-checklist).
 
 `DeckPreferencesStorage` is best-effort local state. Deck and venue preferences
 stay on this phone and never enter uploads, iCloud, downloads or analytics. A
