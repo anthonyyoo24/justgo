@@ -18,6 +18,8 @@ open release gates.
 - `ProgressRefresh` gets its runtime from the composing provider. Shared
   subscriptions stay context-free, so observers never import their provider and
   create a module cycle.
+- The Motion and Haptics providers sit outside the account and access guards,
+  because both preferences belong to the installation, not to an account.
 
 After you change provider lifecycle effects, fully reload the installed
 development app, because Fast Refresh can keep a disposed runtime. Restart a
@@ -54,6 +56,8 @@ retires the source. Each stage survives a restart.
   and do not add a web provider to force measurements.
 - Old account-tool routes, such as `/account/keys`, stay only as redirects to
   `/recovery`. No key, code or transfer UI returns.
+- The root challenge files share a group without a nested layout, so the root
+  stack keeps owning iOS gestures.
 
 ### Access verification
 
@@ -116,10 +120,14 @@ acceptance, because earlier signed-build receipts cover only their own inputs.
 - Success appears in place inside the native challenge route, so completion never
   shows a native modal dismissal or a route blend.
 - Native full-screen content in the root window uses safe areas measured above the
-  stack on the first frame. Do not add the same inset twice. Android keeps
-  dialog-owned measurement because its window bounds can exclude system bars.
+  stack on the first frame. Do not add the same inset twice. Web uses the root
+  measurements with the inner inset edges disabled. Android keeps dialog-owned
+  measurement because its window bounds can exclude system bars.
 - Do not replace `DayEntryList` with `FlatList`. Expanding an animated row breaks
   `FlatList`'s estimated offsets, and it then mounts every row.
+- Keep `DayEntryList`'s trailing padding at zero. With no paging footer, the last
+  row's bottom then meets the viewport, and the bottom safe area stays outside the
+  list, matching the first row's alignment.
 - A failed reflection save keeps the editor open. It never uploads private content
   or claims a cloud fallback. There is no draft autosave or URL-based completion
   recovery.
@@ -129,6 +137,7 @@ acceptance, because earlier signed-build receipts cover only their own inputs.
 - Returning from an owner-bound sign-in never opens a picker, imports a file or
   confirms deletion by itself.
 - An imported file never restores identity proofs.
+- Leaving the app for Files does not change which account owns the file work.
 - iCloud consent stays scoped to the route visit, the collection and the Apple
   account through the final preference write.
 - Removing the iCloud copy in Apple's Settings keeps phone data. The sheet never
