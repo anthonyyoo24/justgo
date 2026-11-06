@@ -84,10 +84,11 @@ ordinary transactions and owner row locks. Existing-proof recovery creates no
 missing credential, so it takes no advisory lock. The owner lock plus a
 credential re-read protects revocation. Legacy bootstrap creation and transfers
 take advisory locks. `createWorkerDatabase` sends the `needsDirectTransaction`
-paths (every `POST /v1/sessions`, plus transfer `POST` and `DELETE`) to one
-direct connection only when `MANAGED_AUTH_ENABLED` is false, which Worker config
-allows only against loopback `justgo_test`. Workers' direct TLS sockets cannot use the
-Supabase private CA, so hosted Workers never take that path.
+paths (`POST /v1/sessions`, `POST /v1/transfers` and
+`DELETE /v1/transfers/:id`) to one direct connection only when
+`MANAGED_AUTH_ENABLED` is false, which Worker config allows only against
+loopback `justgo_test`. Workers' direct TLS sockets cannot use the Supabase
+private CA, so hosted Workers never take that path.
 
 ## Data and account deletion
 
