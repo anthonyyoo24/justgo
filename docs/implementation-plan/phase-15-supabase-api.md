@@ -42,20 +42,20 @@ Preserve the owning [identity](../architecture/IDENTITY.md),
 
 ## Prerequisites and decisions
 
-- [ ] Reconcile the current phase branch, the paused recovery-work checkpoint and
-      the sign-in and UI work before you select the implementation base. Finish
-      and verify the duplicate-provider-notification fix and the post-deletion
-      sign-in and guest regressions. An ongoing investigation is not accepted
+- [ ] Reconcile the current phase branch, paused recovery-work checkpoint and
+      sign-in and UI work before you select the implementation base. Finish and
+      verify the duplicate-provider-notification fix and post-deletion sign-in
+      and guest regressions. An ongoing investigation is not accepted
       behavior. Preserve unmerged and uncommitted work. Any checkpoint PR, branch
       merge or change to the agreed consolidated-PR workflow needs the existing
       owner approval. This plan creates none of them.
-- [ ] Verify the current provider configuration, deployed source, installed
+- [ ] Verify current provider configuration, deployed source, installed
       clients, running servers, and backup and alert schedules before you use
       earlier evidence. Pausing a chat does not disable hosted backups. Before any
       future recovery operation, recheck credential expiry and the paused task's
       checkpoint.
-- [ ] Identify the existing staging project, the intended production arrangement,
-      the supported client builds and the exact source revision. Do not create a
+- [ ] Identify the existing staging project, intended production arrangement,
+      supported client builds and exact source revision. Do not create a
       second project, database branch or paid environment without the applicable
       approval.
 - [ ] Resolve the operating choices below before dependent hosted work. Routine
@@ -64,9 +64,9 @@ Preserve the owning [identity](../architecture/IDENTITY.md),
 | Choice                     | Required decision or evidence                                                                                                                                                                                                                                                                                           |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Free or Pro                | Default the trial to local or disposable infrastructure. Reuse the existing Free project only for approved hosted testing. Free-plan pausing and quotas must be acceptable for the intended demo. Pro is not presumed inevitable. Before any purchase, present the actual project count, limits and spend-cap behavior. |
-| API address                | Prefer a direct function URL, with safe base-path support in the client. Confirm the function name, public path and region. A custom domain, DNS change or retained proxy is a separate choice and may add cost.                                                                                                        |
-| Recovery service           | Decide whether to keep encrypted R2 backups, adopt paid Supabase backups, or use a justified combination. Keep the current protection until the replacement passes restore, deletion and expiry evidence. Keep the recovery targets and the accepted fail-closed beta limit.                                            |
-| Notices and static hosting | Reconcile the actual roles of Supabase, the retained Cloudflare and R2 services, Sentry and any remaining Vercel hosting. Reuse the coordinated owner-only cutover policy. Reassess it if external users or supported builds have changed.                                                                              |
+| API address                | Prefer a direct function URL, with safe base-path support in the client. Confirm function name, public path and region. A custom domain, DNS change or retained proxy is a separate choice and may add cost.                                                                                                            |
+| Recovery service           | Decide whether to keep encrypted R2 backups, adopt paid Supabase backups, or use a justified combination. Keep the current protection until the replacement passes restore, deletion and expiry evidence. Keep recovery targets and the accepted fail-closed beta limit.                                                |
+| Notices and static hosting | Reconcile actual Supabase, retained Cloudflare and R2, Sentry and any remaining Vercel roles. Reuse the coordinated owner-only cutover policy. Reassess it if external users or supported builds have changed.                                                                                                          |
 
 ## 1. Prove runtime compatibility first
 
@@ -94,7 +94,7 @@ Preserve the owning [identity](../architecture/IDENTITY.md),
 - [ ] Run the actual function locally against disposable PostgreSQL, then against
       an explicitly approved hosted candidate. Prove health, readiness, guest
       catalog access, a protected operation and rejected cross-account access.
-      Readiness must confirm the expected database, role and helper, and the exact
+      Readiness must confirm the expected database, role and helper, and exact
       release identity.
 
 **Trial checkpoint.** Record concrete compatibility gaps, remaining effort and
@@ -122,14 +122,14 @@ upgrade.
       `/functions/v1/<function>` before the API path. Support the chosen base path
       without losing the origin and path fence, forwarding credentials to another
       origin, accepting path traversal, or breaking queries and cancellation.
-      Update origin-scoped access snapshots and the deployment and fixture
+      Update origin-scoped access snapshots and deployment and fixture
       allowlists together. Do not clear saved journals to resolve an address
       change.
 - [ ] Preserve request bounds, CORS and preflight, typed errors, request IDs,
       no-store and security headers, `Retry-After`, health, readiness and OpenAPI.
-      For identity rate limits, find a client address that the gateway provides
-      and that you can trust. Do not trust arbitrary forwarded headers, and do not
-      group all users under the Node adapter's loopback fallback.
+      For identity rate limits, find a trustworthy gateway-provided client
+      address. Do not trust arbitrary forwarded headers, and do not group all
+      users under the Node adapter's loopback fallback.
 - [ ] Keep network and database timeouts and pool use bounded. Close failed and
       cancelled work, keep account context inside its request, and test concurrent
       users and connection exhaustion. Share a pool only if the target runtime's
@@ -157,8 +157,8 @@ upgrade.
 - [ ] Record a cost model from observed requests and CPU, authenticated monthly
       users, retained journal versions, storage and egress. Document what quota
       exhaustion, pausing, spend-cap restrictions and provider outages look like
-      to the app, and how the app preserves accepted local input and useful retry
-      feedback.
+      to the app. The app must preserve accepted local input and useful retry
+      feedback through them.
 
 ## 4. Privacy, recovery and operations
 
@@ -173,14 +173,14 @@ upgrade.
       logs, Sentry and evidence. Verify restricted access, retention and deletion
       for application rows, Auth records, backups and operator exports. Preserve
       deletion-ledger replay before reopening a restored database.
-- [ ] Preserve the accepted recovery objectives and the existing open recovery
+- [ ] Preserve the accepted recovery objectives and existing open recovery
       gates. Pro's accessible backup window is not evidence of when every
       provider copy expires. Do not disable R2 schedules, discard ciphertext, revoke
       required credentials or remove deletion records merely because the API
       moved.
 - [ ] Adapt deployment preflight, source-bound health and readiness, environment
       isolation, migration and release coordination, rollback records, Sentry
-      uptime targets and safe 5xx reporting. Verify the actual provider deployment
+      uptime targets and safe 5xx reporting. Verify actual provider deployment
       behavior, because a function upload may replace serving code immediately. Do
       not assume that the Workers mechanics for uploading and promoting inactive
       versions exist on Supabase. Stage with an isolated candidate name or
@@ -198,7 +198,7 @@ upgrade.
    permissions, and any spending permissions, that the next action requires.
    Earlier Cloudflare approvals do not authorize new Supabase provider actions.
 2. Preserve the last known working Cloudflare artifact and configuration for
-   recovery. Keep the database schema and owner mappings compatible with both API
+   recovery. Keep database schema and owner mappings compatible with both API
    versions. Do not roll back the database or resurrect deleted data to recover
    from an API-hosting failure.
 3. Coordinate the currently supported Dev and TestFlight clients and any queued
@@ -224,20 +224,20 @@ Heavy commands run one at a time. Use the [check matrix](../../AGENTS.md#choosin
 for the current commands rather than inventing a second test policy.
 
 - During implementation: affected API and mobile regressions and workspace
-  typechecks, repository lint, an actual local function smoke and the relevant
-  saved journeys. Database-boundary checks use `npm run test:db` against loopback
+  typechecks, repository lint, actual local function smoke and relevant saved
+  journeys. Database-boundary checks use `npm run test:db` against loopback
   `justgo_test`. Changes at the contracts or tooling boundary also require the
   root contracts build and all workspace typechecks.
 - At phase closeout or publication: `npm run check`, aggregate
-  `npm run test:coverage`, database checks and the applicable saved journeys and
+  `npm run test:coverage`, database checks and applicable saved journeys and
   exports. Reuse overlapping valid evidence as the check matrix allows. Once
   publication is approved, check hosted CI for the actual published candidate.
 - After automated checks: grouped in-app browser verification, then actual
   signed-device, provider, offline and deletion acceptance. Browser mocks and
   local Deno runs do not prove hosted gateway behavior or iOS Keychain and iCloud
   behavior.
-- At implementation completion: update the implemented architecture, the
-  operations, fixture and build documentation, and the PR descriptions together.
+- At implementation completion: update implemented architecture, operations,
+  fixture and build documentation, and the PR descriptions together.
   Review changed directories, and account for every earlier finding and open
   gate. Retire eligible tooling and worktrees only under the standing
   preservation and permission rules.

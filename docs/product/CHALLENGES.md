@@ -41,8 +41,8 @@ Progress are integrated through the same account journal.
 
 Differing durations are outside this version. Minor wording edits show in
 historical entries. Substantially different activities need a new ID. Retain
-inactive content for history and pending references. No separate JSON catalog,
-import workflow or admin dashboard is required.
+inactive content for history and pending references. No separate JSON catalog/import
+workflow or admin dashboard is required.
 
 Do not show subtext, hints, per-challenge illustrations or safety-guideline fields
 in this version. A nullable model field and the authoring drafts below do not
@@ -91,7 +91,7 @@ browser or component tests.
 - **Keep one main purpose per subtext.** Usually one short sentence or opener is enough. Add a brief timing cue to an opener only when both help. Avoid a paragraph of instructions.
 - **Make examples adaptable.** They are suggestions, not scripts to recite exactly. Do not depend on unverified weather, familiarity, preferences, or circumstances. Use the actual situation and keep any placeholders easy to fill.
 
-When you write or assess a subtext, ask these questions:
+When you write or assess a subtext, ask:
 
 1. What is most likely to make this person hesitate: wording, timing, approach, or uncertainty about how much they need to do?
 2. Does this line address that obstacle and add something useful beyond the challenge text?
@@ -202,16 +202,16 @@ Situations: the entrance line, waiting at the bar, nearby tables, and the dance 
 
 These groups make related actions easy to review. Wording and situations can differ by venue, and this index does not merge them into one text. Card labels match `venue_cards.id` in the seed. A challenge can supply several venue cards, and each placement keeps its own order.
 
-| Shared action                                 | Venue cards                                            |
-| --------------------------------------------- | ------------------------------------------------------ |
-| Greet someone passing                         | ST-01, PK-01                                           |
-| Comment on the weather                        | ST-05, PK-02                                           |
-| Compliment a dog                              | ST-06, PK-03                                           |
-| Ask where someone got an item                 | ST-09, PK-05. BC-04 also asks this after a compliment. |
-| Ask for a nearby coffee recommendation        | ST-04, PK-07                                           |
-| Compliment someone's clothing or an item      | ST-02, ST-10, PK-08, CF-06, BC-04                      |
-| Ask how someone's day is going                | PK-06, GY-01, CF-01, BK-01                             |
-| Ask a staff member for a drink recommendation | CF-02, BC-03                                           |
-| Ask what someone is going to order            | CF-03, BC-09                                           |
-| Ask what drink someone already ordered        | CF-04, BC-02                                           |
-| Introduce yourself                            | GY-09, BC-01                                           |
+| Shared action                                 | Venue cards                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------ |
+| Greet someone passing                         | ST-01, PK-01                                                       |
+| Comment on the weather                        | ST-05, PK-02                                                       |
+| Compliment a dog                              | ST-06, PK-03                                                       |
+| Ask where someone got an item                 | ST-09, PK-05; BC-04 also includes this question after a compliment |
+| Ask for a nearby coffee recommendation        | ST-04, PK-07                                                       |
+| Compliment someone's clothing or an item      | ST-02, ST-10, PK-08, CF-06, BC-04                                  |
+| Ask how someone's day is going                | PK-06, GY-01, CF-01, BK-01                                         |
+| Ask a staff member for a drink recommendation | CF-02, BC-03                                                       |
+| Ask what someone is going to order            | CF-03, BC-09                                                       |
+| Ask what drink someone already ordered        | CF-04, BC-02                                                       |
+| Introduce yourself                            | GY-09, BC-01                                                       |
