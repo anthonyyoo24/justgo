@@ -33,8 +33,10 @@
 Phase 15 must close before outside testers store real journals. Its Cloudflare
 rollout is paused; the [Supabase migration plan](phase-15-supabase-api.md) is
 planning only and does not authorize implementation or a Pro upgrade. The
-[earlier Cloudflare plan](phase-15-cloudflare-api.md) retains the earlier scope;
-completed evidence remains in the handoff. No later
+[earlier Cloudflare plan](phase-15-cloudflare-api.md) retains the earlier scope.
+Its evidence stays in the [Phase 15 Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md),
+the one handoff kept, and only until the Cloudflare work is finished or dropped.
+No other work gets a handoff file. No later
 phase is renumbered, and planning this move does not commit the app to a commercial
 launch. Prepared billing code can be reviewed independently while activation
 waits. Legal review can run alongside crash-reporting implementation, but final
