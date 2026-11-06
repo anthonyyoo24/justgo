@@ -2,7 +2,7 @@
 
 # Phase 16 — Native subscriptions & reliable billing
 
-**Status:** Local implementation prepared. Activation and external and native billing acceptance wait until after the free beta.
+**Status:** Local implementation prepared. Activation and billing acceptance, both external and native, wait until after the free beta.
 
 ## Outcome
 
@@ -56,7 +56,7 @@ For every code slice, write and run relevant tests and verify affected UI in the
 4. **Implement durable billing delivery and scheduled repair.** Add customer, subscription, entitlement and event data, authenticated webhook receipt, QStash publication and signed handling, and shared fenced provider refresh. Implement the existing five-minute repair and targeted reconciliation, and the daily rotating scan. Give them bounded work, checkpoints, claim expiry, alerts for exhaustion and missed runs, and replay. Before configuring live schedules, check current provider quotas, SDK and cron eligibility, and production costs.
    **Verify:** none of these can regress entitlements or falsely mark work processed: duplicate or out-of-order notifications, failed or lost publish acknowledgement, termination, unavailable database or provider, invalid signatures or environments, overlapping purchase, job and cron refreshes, and stale claims. Missing notifications and interrupted or missed schedules resume from durable state.
 
-5. **Verify integrated billing, reconcile its guidance.** Run all nine subscription checks and the full Phase 07 offline recording and upload flow, with real sandbox verification and controlled provider failures. Run affected workspace and database tests and browser and native checks. Fix failures and repeat. Update billing and access sections of the PRD, tech stack, and app-shell, identity and setup guidance to the implemented result. Change this plan only for scope or decision changes, and keep deferred release gates as `gate` issues. Put exact mappings (no secrets), contracts and migrations, subscription and cache policy, queue and cron configuration, and the failure and replay runbook in the owning operations or architecture docs. Put test evidence in the PR descriptions.
+5. **Verify integrated billing, reconcile its guidance.** Run all nine subscription checks and the full Phase 07 offline recording and upload flow, with real sandbox verification and controlled provider failures. Run affected workspace and database tests and browser and native checks. Fix failures and repeat. Update the billing and access sections of the PRD, the tech stack, and the app-shell, identity and setup guidance to the implemented result. Change this plan only for scope or decision changes, and keep deferred release gates as `gate` issues. Put exact mappings (no secrets), contracts and migrations, subscription and cache policy, queue and cron configuration, and the failure and replay runbook in the owning operations or architecture docs. Put test evidence in the PR descriptions.
    **Verify:** expiry strands no valid earlier activity, no subscription failure deletes local history, immediate purchase verification does not wait for a queued job, and documentation distinguishes implemented behavior from pending native and staging release validation.
 
 ## Keep out
@@ -70,7 +70,7 @@ For every code slice, write and run relevant tests and verify affected UI in the
 - [ ] Sandbox native purchase, restore, cancel, expire and refund work on iOS. Successful payment uses immediate verification and never asks for duplicate purchase.
 - [ ] All nine subscription rules pass automated and UI checks. These include immediate saved access, event-only five-minute refresh, network failures before expiry, renewal checks at expiry, and earlier-rep uploads after expiry without a new paid-access unlock.
 - [ ] Duplicate or out-of-order events, failed or uncertain handoffs, termination, stale claims and overlapping refreshes cannot regress entitlements or lose business state.
-- [ ] Missing notifications, exhausted delivery, overlapping or missed cron runs and full database outages recover or report honestly. Alerts and the plan and cost settings are recorded.
+- [ ] Missing notifications, exhausted delivery, overlapping or missed cron runs and full database outages recover or report honestly. Alerts and plan and cost settings are recorded.
 - [ ] Integrated Phase 07 recording and synchronization still pass with verified access and after expiry. Account changes and revocation preserve pending data without granting unauthorized paid use. Purchase transfers refresh both affected billing accounts, keep private history separate, and preserve original-account eligibility for earlier valid pending activity.
 - [ ] Deleting an account with an active sandbox subscription removes the billing provider's customer data, and the deletion flow still explains that deleting does not cancel the Apple subscription.
 - [ ] Record exact changes, issues and fixes, and test evidence in the PR descriptions. File remaining gates as `gate` issues, and update implemented billing guidance.

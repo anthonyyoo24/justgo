@@ -102,7 +102,7 @@ The current mobile guard still checks `/v1/access` every 30 seconds with a 60-se
 
 Do not read Phase 07 local-saving acceptance as completed billing. Restore Purchases, subscription management, privacy and terms, recovery, and data controls stay reachable when unpaid.
 
-After anonymous account bootstrap, configure RevenueCat with the backend-assigned stable customer ID. "No signup" does not mean RevenueCat must generate an unrelated identity on every installation. Both recovered iPhones use the same app account and billing mapping, and their sessions stay independent.
+After anonymous account bootstrap, configure RevenueCat with the backend-assigned stable customer ID. “No signup” does not mean RevenueCat must generate an unrelated identity on every installation. Both recovered iPhones use the same app account and billing mapping, and their sessions stay independent.
 
 The app can show RevenueCat SDK purchase state promptly, but API premium guards use server-verified entitlements. After a purchase or restore, call an authenticated API endpoint that immediately fetches current subscription information **from RevenueCat** and updates PostgreSQL. Do not wait for a webhook, a QStash job, or a five-minute recovery run to unlock a successful purchase. Use short, bounded retries for temporary verification or save failures. Show an honest purchased-but-still-verifying state with retry and restore access. Never prompt the user to purchase again to fix synchronization. Never accept a client `is_premium` flag or a success URL as proof. Normal API guards can use sufficiently fresh stored verification rather than calling RevenueCat on every request. [RevenueCat customer information](https://www.revenuecat.com/docs/customers/customer-info).
 

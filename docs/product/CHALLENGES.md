@@ -10,7 +10,7 @@ conflict.
 ## Scope and behavior
 
 - **Difficulty:** Level 1, the easiest version. Each challenge starts an interaction with a small greeting, comment, or question. Continuing the conversation is optional.
-- **Subtext:** The line below the challenge text. Adapt the example wording naturally. Bracketed words such as `[item]` or `[name]` are conversational placeholders.
+- **Subtext:** The line below the challenge text. You can adapt the example wording naturally. Bracketed words such as `[item]` or `[name]` are conversational placeholders.
 - **Venue stacks:** Each account's decks shuffle once on this phone and save their independent order, front card and last selected venue for relaunch. New accounts start in Streets, and so does a missing or unknown saved venue value. Skip, completion and give-up move the matching front placement to the back of its venue's stack. A shared challenge's card in another venue stays in place. [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) keeps these preferences on the phone.
 - **Card copy length:** Review each new batch on the actual card at the standard type size, including database, preview, and demo text. Every challenge should render in two to four complete lines without scrolling. Character count alone cannot reliably predict wrapping.
 
@@ -48,7 +48,7 @@ Do not show subtext, hints, per-challenge illustrations or safety-guideline fiel
 in this version. A nullable model field and the authoring drafts below do not
 make those UI requirements. Existing respectful-content principles still apply.
 Levels and progression are deferred. Retain Level 1 history without thresholds,
-and omit the "3 / 12" indicator or any equivalent progress line. Decks cycle, so
+and omit the “3 / 12” indicator or any equivalent progress line. Decks cycle, so
 there is no normal exhausted state. Validate all six nonempty venues and render
 real downloaded cards. A missing initial catalog uses loading, failure or offline
 recovery.
