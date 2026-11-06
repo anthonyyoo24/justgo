@@ -185,3 +185,65 @@ test('creating a trail with a single redirect binds the session', () => {
   );
   assert.equal(runHook(root, transcript), undefined);
 });
+
+const bugRow = (evidence, result) =>
+  `2026-11-05T00:00:00Z\tbug\tfiled it\tfound outside the task\t${evidence}\t${result}`;
+const issue = 'https://github.com/anthonyyoo24/justgo/issues/170';
+
+function reviewedWorkspace(rows) {
+  const paths = workspace(rows);
+  const review = paths.trail.replace(/\.tsv$/, '.review.md');
+  writeFileSync(review, 'Attention: none');
+  const later = new Date(Date.now() + 2000);
+  utimesSync(review, later, later);
+  return paths;
+}
+
+test('a filed bug with no label blocks a reviewed run', () => {
+  const { root, transcript } = reviewedWorkspace([
+    row('build'),
+    bugRow(issue, 'filed'),
+  ]);
+  const output = runHook(root, transcript);
+  assert.equal(output?.decision, 'block');
+  assert.match(output.reason, /issues\/170/);
+  assert.match(output.reason, /agent-fix, needs-decision or blocked/);
+});
+
+test('a filed bug with no label blocks a paused run', () => {
+  const { root, transcript } = workspace([
+    bugRow(issue, 'filed'),
+    row('waiting'),
+  ]);
+  assert.equal(runHook(root, transcript)?.decision, 'block');
+});
+
+test('a filed bug with one of the three labels lets a reviewed run stop', () => {
+  for (const label of ['agent-fix', 'needs-decision', 'blocked']) {
+    const { root, transcript } = reviewedWorkspace([bugRow(issue, label)]);
+    assert.equal(runHook(root, transcript), undefined, label);
+  }
+});
+
+test('a later bug row for the same issue replaces an unlabeled one', () => {
+  const same = reviewedWorkspace([
+    bugRow('#170', 'filed'),
+    bugRow(issue, 'needs-decision'),
+  ]);
+  assert.equal(runHook(same.root, same.transcript), undefined);
+  const other = reviewedWorkspace([
+    bugRow('#170', 'filed'),
+    bugRow('https://github.com/anthonyyoo24/justgo/issues/171', 'blocked'),
+  ]);
+  assert.equal(runHook(other.root, other.transcript)?.decision, 'block');
+});
+
+test('a skip row lets the run stop only with a reason', () => {
+  const skipped = reviewedWorkspace([
+    bugRow(issue, 'filed'),
+    bugRow(issue, 'skip: duplicate of #12'),
+  ]);
+  assert.equal(runHook(skipped.root, skipped.transcript), undefined);
+  const bare = reviewedWorkspace([bugRow(issue, 'skip:')]);
+  assert.equal(runHook(bare.root, bare.transcript)?.decision, 'block');
+});
