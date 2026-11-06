@@ -83,7 +83,7 @@ CI type-checks these files through `npm run typecheck:journey`.
 Run one instance per machine and one drive at a time. Queue further drives into one `bin/verify drive a b c` invocation. It launches once and runs the drives in order (`workers: 1` in `e2e/playwright.config.ts`).
 
 - Ports: the harness binds `127.0.0.1:3000` and `:8081` and refuses occupied ports before migrating. `JUSTGO_JOURNEY_API_PORT` and `JUSTGO_JOURNEY_APP_PORT` move them, but that only separates sockets.
-- Database: every instance shares the one `justgo_test` database in `.local/postgres`, and every launch migrates it. A second worktree on another branch can migrate it ahead of this checkout. Doctor reports that.
+- Database: every instance shares the one `justgo_test` database in the main checkout's `.local/postgres`, and every launch migrates it. A second worktree on another branch can migrate it ahead of this checkout. Doctor reports that. `db:local` uses the current folder's `.local`, so in a fresh worktree it creates a second cluster on the same port. Symlink the worktree's `.local` to the main checkout's before `db:local`, and let `db:local` write the missing `.env` files. Do not copy the hosted-origin `apps/mobile/.env.local` or `.env.development.local`.
 - Data: lanes on one instance stay apart through fixture accounts. Each run's fixture API registers only its own accounts and rate-limit buckets, and teardown deletes only those.
 - Memory: one launched instance plus headless Chromium took system free memory from 64% down to 31-36% across two runs on the owner's 8 GB Mac.
 - Do not run `npm run test:journey`, `npm run test:db` or `npm run test:coverage` while an instance is serving. They use the same ports or database.
@@ -101,6 +101,7 @@ With those in place, the Claude desktop app's iOS Simulator tool (`mcp__Claude_C
 
 ## Gotchas
 
+- Running from a worktree: before Metro, `serve`, `drive` or the journeys, copy the root, `apps/mobile`, `apps/api` and `packages/contracts` `node_modules` from the main checkout with `cp -cR` (an APFS clone). Never symlink them. With symlinks, Metro can serve another checkout's transform, so the journey sign-in seam does not load ("Sign-in isn't configured"), or a run passes on the wrong tree. Check `test ! -L node_modules` before you trust a worktree run. Symlinks are fine for Node-only checks such as Jest, ESLint and `node --test`. If two runs of the same check disagree, the claim is Inconclusive until you can explain the difference.
 - PostgreSQL 17 refuses to start from a shell with no locale (`postmaster became multithreaded during startup`). `bin/verify` sets `LC_ALL` for `db:local`. Set it yourself if you run `npm run db:local` directly.
 - Never verify with `npm run dev:web`, `dev:api` or `dev:mobile`. The saved mobile `.env` files point at hosted staging, and Expo's virtual env can prefer `.env.local` even when CLI variables override it. `serve` and `drive` replace that module with the guarded journey environment. Doctor checks the served bundle.
 - `justgo_test` keeps rows from earlier runs (42 users on 2026-11-05). Compare doctor counts before and after instead of expecting zero.
