@@ -209,7 +209,6 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Delete `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/` and `scripts/quality/contract-upload.test.mjs`, which tests only `.vercelignore`.
 - [ ] Edit `apps/api/src/server.ts`, `apps/api/src/runtime-app.ts`, `apps/api/src/build-app.ts`, `apps/api/src/identity/address.ts`, `apps/api/src/identity/routes.ts` and `apps/api/src/identity/managed-routes.ts`.
 - [ ] Edit `apps/api/tests/identity/identity.test.ts`, `apps/api/tests/http/routing.test.ts`, `apps/api/tests/http/legal-drafts.test.ts` and `.github/dependabot.yml`.
-- [ ] Edit `docs/architecture/TECH_STACK.md`.
 
 **Build.**
 
@@ -325,7 +324,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Delete `.github/workflows/staging-api.yml`. P15-8 adds the Supabase workflow.
 - [ ] Edit `scripts/release/staging-api.mjs`, `scripts/release/staging-api-deployment.mjs`, `scripts/release/staging-api-runner.mjs`, `scripts/release/staging-public-probes.mjs`, `scripts/release/staging-local.mjs`, `apps/api/scripts/local-staging-release.ts`, `apps/api/tests/http/routing.test.ts` and every other caller that the deletions break.
 - [ ] Edit `apps/api/package.json`, the root `package.json`, `.github/workflows/ci.yml`, `scripts/quality/ci-workflow.test.mjs`, `scripts/quality/staging-api-workflow.test.mjs` and delete `scripts/quality/cloudflare-config.test.mjs`.
-- [ ] Edit `AGENTS.md`, `docs/architecture/TECH_STACK.md`, `docs/architecture/IDENTITY.md` and `docs/operations/SERVER_RELEASES.md`.
+- [ ] Edit `AGENTS.md`, `docs/architecture/IDENTITY.md` and `docs/operations/SERVER_RELEASES.md`.
 
 **Build.**
 
@@ -385,7 +384,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Create `apps/api/scripts/edge-build.mjs` and `apps/api/scripts/edge-smoke.ts`.
 - [ ] Edit `apps/api/package.json`, the root `package.json`, `.github/workflows/ci.yml` and `scripts/quality/ci-workflow.test.mjs`.
 - [ ] Edit `apps/api/src/db/client.ts`, `apps/api/src/identity/managed-verifier.ts`, `apps/api/src/progress/service.ts` and `apps/api/src/http/server-error-reporter.ts` only where P15-1 or P15-2 recorded a failure.
-- [ ] Edit `docs/architecture/TECH_STACK.md` and `docs/architecture/IDENTITY.md`.
+- [ ] Edit `docs/architecture/IDENTITY.md`.
 
 **Build.**
 
@@ -672,7 +671,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Edit `apps/mobile/eas.json`, `scripts/release/check-beta.mjs`, `scripts/release/check-beta.test.mjs`, `.github/workflows/testflight-beta.yml` and `scripts/quality/testflight-workflow.test.mjs`.
 - [ ] Edit `.github/workflows/staging-health.yml` and `scripts/quality/staging-health-workflow.test.mjs`.
 - [ ] Edit `scripts/development/configuration.mjs` to make `--supabase` the Dev default and delete the Vercel and Cloudflare targets.
-- [ ] Edit `docs/operations/TESTFLIGHT_BETA.md`, `docs/operations/DEVELOPMENT_BUILDS.md`, `docs/architecture/TECH_STACK.md` and `docs/architecture/APP_SHELL.md`.
+- [ ] Edit `docs/operations/TESTFLIGHT_BETA.md`, `docs/operations/DEVELOPMENT_BUILDS.md` and `docs/architecture/APP_SHELL.md`.
 - [ ] Before deleting, move the facts that outlive Phase 15 into the docs that keep them. The backup copy, rotation and scope receipts go to `docs/operations/CLOUDFLARE_BACKUPS.md`. The November 1 Cloudflare account and DPA acceptance, from the notice review's accepted account and service assessment, goes to the "Provider agreements" section of `docs/legal/DATA_INVENTORY.md`, and `CLOUDFLARE_BACKUPS.md` links to it there.
 - [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md`, `docs/handoffs/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`. Git history keeps them.
 - [ ] Update the links to them in `docs/implementation-plan/README.md`, `docs/operations/SERVER_RELEASES.md`, `docs/operations/CLOUDFLARE_BACKUPS.md`, `docs/operations/TESTFLIGHT_BETA.md`, `docs/legal/APPROVALS.md`, `docs/legal/DATA_INVENTORY.md`, `docs/legal/RELEASE_DISCLOSURES.md` and `sites/legal/README.md`.
@@ -727,7 +726,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 ## Close the program
 
 - [ ] Every box above is checked with its evidence.
-- [ ] `TECH_STACK.md`, `IDENTITY.md`, `SERVER_RELEASES.md`, the root `README.md` and the implementation plan index describe the implemented state.
+- [ ] `IDENTITY.md`, `SERVER_RELEASES.md`, the root `README.md` and the implementation plan index describe the implemented state.
 - [ ] Every gate issue that names Workers, Hyperdrive or the Vercel API is closed with its evidence or retargeted.
 - [ ] Reply to Anthony with the report that `playbooks/autopilot-full.md` names.
 

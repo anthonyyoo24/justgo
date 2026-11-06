@@ -48,7 +48,8 @@ Classify the behavior and boundary that changed, not the directory.
 | Release build                                | Full `npm run check`, the saved journeys and exports, `test:db`, and the open hosted, staging and physical-device gates.                                                                                            |
 
 Before pushing, run the checks for the touched paths on the committed head. CI
-runs the full set on every pull request that changes more than Markdown. Expand
+runs the full set on every pull request that changes more than Markdown. A local
+pass does not prove a hosted pass, so read each stacked branch's own CI run. Expand
 the local checks for a concrete failure or an explicit owner request, and state
 the trigger.
 
@@ -104,8 +105,9 @@ these rules:
   `app-support/access/verification/policy.ts` defines `serverClockOffset`.
   It and `useAccessState.ts` beside it apply the server clock offset.
   Their tests sit beside them.
-- The [tech stack](docs/architecture/TECH_STACK.md) guide describes the
-  implemented boundaries and CI. The source tree is the path map, and
+- The workspace manifests, `.nvmrc` and the lockfile own the stack and its
+  versions, and `scripts/quality/ci-workflow.test.mjs` owns the CI shape. The
+  source tree is the path map, and
   [Placement and move rules](#placement-and-move-rules) say where new code goes.
 - Each operations doc owns the local rehearsals for its area.
 - Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`). File
