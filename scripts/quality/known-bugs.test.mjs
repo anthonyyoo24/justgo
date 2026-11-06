@@ -7,8 +7,8 @@ import test from 'node:test';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-// .mjs tests run on node:test, which has no `.failing`. Skipping them also
-// keeps the fixtures below from flagging this file.
+// .mjs tests run on node:test, which has no `.failing` or `.fails`. Skipping
+// them also keeps the fixtures below from flagging this file.
 const testFiles = execFileSync(
   'git',
   ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
@@ -22,7 +22,7 @@ const testFiles = execFileSync(
   );
 
 const knownBug =
-  /\b(?:it|test)(?:\.(?:only|skip|concurrent))*\.failing(?:\s*\(|\.each\s*[(`])/g;
+  /\b(?:[fx]?it|x?test)(?:\.(?:only|skip|concurrent))*\.(?:failing|fails)(?:\s*\(|\.each\s*[(`])/g;
 const issueReference =
   /(?:^|[^\w&])#\d+\b|github\.com\/anthonyyoo24\/justgo\/issues\/\d+\b/;
 const commentLine = /^\s*(?:\/\/|\/\*|\*)/;
@@ -54,9 +54,13 @@ test('a known-bug test without an issue reference is reported by line', () => {
         '// https://github.com/someone/else/issues/12',
         "test.failing('keeps the draft', () => {});",
         "it.failing.each([1, 2])('drops row %i', (row) => {});",
+        "test.fails('rejects the token', async () => {});",
+        "xit.failing('drops the row', () => {});",
+        "fit.failing('drops the row', () => {});",
+        "xtest.failing('drops the row', () => {});",
       ].join('\n'),
     ),
-    [2, 5, 7, 8],
+    [2, 5, 7, 8, 9, 10, 11, 12],
   );
 });
 
@@ -78,6 +82,7 @@ test('an issue number or URL in the title or the comment above counts', () => {
         "  test.only.failing('drops the row', () => {});",
         '});',
         "it.failing.each([1, 2])('drops row %i (#12)', (row) => {});",
+        "it.fails('rejects the token (#12)', async () => {});",
         '// Change `it.failing` to `it` once #12 is fixed.',
       ].join('\n'),
     ),
