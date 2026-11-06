@@ -44,16 +44,14 @@ health.
   to intrude on others. Challenges respect consent, social context and personal
   safety.
 - **Private by default.** Writing stays on the phone unless the person signs in,
-  turns on iCloud or saves a file. Reflections never go to analytics, diagnostics
-  or AI.
-- **Nothing is lost.** A completed challenge is saved on the phone first, and
-  syncing never duplicates or silently drops it.
+  turns on iCloud or saves a file. Reflections never go to diagnostics, and go to analytics or AI only with the person's explicit, separately approved permission.
+- **Nothing is lost.** A completed challenge is saved on the phone first, and syncing is built so it never duplicates or silently drops one.
 - **Simple.** One deck, one timer, one optional reflection. No social feed and no
   sharing.
 
 ## Not in the first release
 
-Levels and level progression, reminders, voice dictation, lock-screen timers,
+Levels and level progression, reminders, custom dictation, lock-screen timers,
 questionnaire onboarding, product analytics, an AI coach, web checkout and
 Android. The [implementation plan](../implementation-plan/README.md) tracks the
 roadmap.
