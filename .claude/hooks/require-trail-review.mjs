@@ -33,14 +33,19 @@ function needsReview(trail) {
 }
 
 const bugOutcome = /^(?:agent-fix|needs-decision|blocked|skip:\s*\S.*)$/;
-const issueNumber = /(?:\/issues\/|#)(\d+)\b/;
+const issueUrl = /github\.com\/anthonyyoo24\/justgo\/issues\/(\d+)\b/;
+const issueNumber = /(?:^|[^\w&/])#(\d+)\b/;
+
+function bugKey(evidence = '') {
+  const number =
+    evidence.match(issueUrl)?.[1] ?? evidence.match(issueNumber)?.[1];
+  return number ? `#${number}` : evidence.trim();
+}
 
 function unlabeledBugs(trail) {
   const latest = new Map();
-  rowsOf(trail).forEach((cells, index) => {
-    if (cells[1] !== 'bug') return;
-    latest.set(cells[4]?.match(issueNumber)?.[1] ?? `row ${index}`, cells);
-  });
+  for (const cells of rowsOf(trail))
+    if (cells[1] === 'bug') latest.set(bugKey(cells[4]), cells);
   return [...latest.values()]
     .filter((cells) => !bugOutcome.test(cells[5]?.trim() ?? ''))
     .map((cells) => cells[4] || cells[2]);
@@ -118,6 +123,8 @@ function bugBlockReason(bugs) {
     'Add exactly one of agent-fix, needs-decision or blocked to each issue (`gh issue edit <number> --add-label <label>`).',
     'Then append a row whose phase is `bug`, whose evidence is the issue URL and whose result is that label.',
     'If the issue gets no label, append that row with the result `skip: <reason>`.',
+    "A later row replaces an earlier one when both name the same issue as this repository's issue URL or `#N`, or, when neither names one, when both have the same evidence text.",
+    'On a reviewed run the new row makes the trail newer than its review, so refresh the review afterwards, or append a `waiting` row if the run is only paused.',
   ].join(' ');
 }
 

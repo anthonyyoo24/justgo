@@ -208,6 +208,7 @@ test('a filed bug with no label blocks a reviewed run', () => {
   assert.equal(output?.decision, 'block');
   assert.match(output.reason, /issues\/170/);
   assert.match(output.reason, /agent-fix, needs-decision or blocked/);
+  assert.match(output.reason, /refresh the review/);
 });
 
 test('a filed bug with no label blocks a paused run', () => {
@@ -246,4 +247,33 @@ test('a skip row lets the run stop only with a reason', () => {
   assert.equal(runHook(skipped.root, skipped.transcript), undefined);
   const bare = reviewedWorkspace([bugRow(issue, 'skip:')]);
   assert.equal(runHook(bare.root, bare.transcript)?.decision, 'block');
+});
+
+test('a bug row with no issue reference is replaced by a row with the same evidence', () => {
+  const same = reviewedWorkspace([
+    bugRow('issue for the stale streak', 'filed'),
+    bugRow('issue for the stale streak', 'agent-fix'),
+  ]);
+  assert.equal(runHook(same.root, same.transcript), undefined);
+  const changed = reviewedWorkspace([
+    bugRow('issue for the stale streak', 'filed'),
+    bugRow('streak issue', 'agent-fix'),
+  ]);
+  assert.equal(runHook(changed.root, changed.transcript)?.decision, 'block');
+});
+
+test("this repository's issue URL names the issue before a bare number", () => {
+  const { root, transcript } = reviewedWorkspace([
+    bugRow(`duplicate of #12, ${issue}`, 'filed'),
+    bugRow(issue, 'skip: duplicate of #12'),
+  ]);
+  assert.equal(runHook(root, transcript), undefined);
+});
+
+test("another repository's issue URL does not name this repository's issue", () => {
+  const { root, transcript } = reviewedWorkspace([
+    bugRow('#170', 'filed'),
+    bugRow('https://github.com/someone/else/issues/170', 'agent-fix'),
+  ]);
+  assert.equal(runHook(root, transcript)?.decision, 'block');
 });
