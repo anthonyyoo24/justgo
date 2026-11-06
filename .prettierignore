@@ -1,5 +1,6 @@
 node_modules
 package-lock.json
+eslint-suppressions.json
 .local
 .vercel
 apps/mobile/ios

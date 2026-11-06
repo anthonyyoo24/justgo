@@ -24,6 +24,10 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "export type Value = string | 'literal';",
   ],
   [
+    '@typescript-eslint/no-deprecated',
+    '/** @deprecated Use current(). */ function legacy() { return 1; } export const value = legacy();',
+  ],
+  [
     '@typescript-eslint/no-non-null-assertion',
     'export function unsafe(value?: string) { return value!; }',
     production,
