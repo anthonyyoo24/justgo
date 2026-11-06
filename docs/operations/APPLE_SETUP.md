@@ -58,15 +58,16 @@ signing keys, banking or tax values in this repository.
 
 ## Owner phone acceptance on record
 
-- Phase 08, recorded October 17: Anthony reported completing the required
-  physical-iPhone checks, including haptics and account deletion.
+- Phase 08, reported October 16 and recorded at closeout October 17: Anthony
+  reported completing the required physical-iPhone checks, including haptics and
+  account deletion.
 - October 23, SDK 58 upgrade smoke on build `e9a503b3`: Anthony confirmed Home
   with the existing account and Progress history, day-sheet and editor opening
   and closing, and the expected iCloud status in Settings.
 - October 22, build `1a1174d6`: a full iCloud showed the iCloud-full message.
-- October 23, build `b4da28da`: iCloud sync on, off and re-enabled matched five
-  challenge and journal entry pairs, which still matched after force-quit and
-  reopen.
+- October 23, build `b4da28da`: iCloud sync on matched four challenge and
+  journal entry pairs; off kept a fifth on the phone only; re-enabling caught up
+  all five, which still matched after force-quit and reopen.
 
 ## Open gates from earlier phone testing
 
