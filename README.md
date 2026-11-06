@@ -32,7 +32,7 @@ The [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md) is the tested
 
 `db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere set `JUSTGO_PG_BIN` to their directory; the `test:db` migration rehearsal and the backup scripts read it too. It creates a loopback-only cluster at `.local/postgres` on port **54329** with the `justgo_test` database, and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Database tests need `DATABASE_URL`, `MIGRATION_DATABASE_URL` and `JUSTGO_TEST_ADMIN_DATABASE_URL`, all with `DATABASE_SSL=disable`. `db:local` writes them to a new `apps/api/.env`; copy any that an older `.env` lacks from `.local/database.env`. Local host authentication is trusted on this disposable cluster; never expose its port or use it for personal data.
 
-The browser preview is at `http://localhost:8081` and the API at `http://localhost:3000`. To run the challenge, reflection and Progress flow on disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. It grants a test entitlement only on loopback `justgo_test`.
+The browser preview is at `http://localhost:8081` and the API at `http://localhost:3000`. To run the challenge, reflection and Progress flow on disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`, because plain `dev:api` answers `/v1/access` with access unavailable until Phase 16. It grants a test entitlement only on loopback `justgo_test`.
 
 A physical iPhone needs a reachable HTTPS API route, because `localhost` on a phone refers to the phone.
 

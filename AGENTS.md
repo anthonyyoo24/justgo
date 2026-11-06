@@ -91,9 +91,10 @@ these rules:
   behavior.
 - No doc owns clock coordination. In `apps/mobile/src`,
   `app-support/providers/activity-runtime.ts` rolls the journal day at minute
-  boundaries and local midnight through the injected `JournalClock`, and
-  `app-support/access/verification/policy.ts` applies the server clock offset.
-  Their tests sit beside them.
+  boundaries and local midnight through the injected `JournalClock`.
+  `app-support/access/verification/policy.ts` defines `serverClockOffset`, and
+  both it and `useAccessState.ts` beside it apply the server clock offset. Their
+  tests sit beside them.
 - The [tech stack](docs/architecture/TECH_STACK.md) guide describes the
   implemented boundaries. The source tree is the path map, and
   [Placement and move rules](#placement-and-move-rules) say where new code goes.
@@ -141,9 +142,10 @@ these rules:
 ## Rules and what enforces them
 
 When a checked rule breaks, its check stops the work. A lint, type or test check
-fails CI, the hook blocks the run from finishing, and branch protection blocks the
-merge. A written rule is a judgment call that no check catches. When an agent repeats a mistake, run `/pstack:correct`. It
-fixes the mistake at the highest level that works and updates this table.
+fails CI, the trail hook blocks the run from finishing, and branch protection
+blocks the merge. A written rule is a judgment call that no check catches. When
+an agent repeats a mistake, run `/pstack:correct`. It fixes the mistake at the
+highest level that works and updates this table.
 
 | Rule                                                                                                                                                                                                                                                                                        | Enforced by                                                                                                                                                                                                                                                                                                                                                                              | Kind                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
