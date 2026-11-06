@@ -1,4 +1,4 @@
-# Testing and quality safeguards
+# Testing and quality safeguards (probe)
 
 [AGENTS.md](../../AGENTS.md) owns coding/verification rules. This guide owns the
 commands, isolated environments and evidence types used to enforce them.
