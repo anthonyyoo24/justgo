@@ -42,7 +42,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 
 ### Spawn owners
 
-- [ ] Spawn one owner per PR with the full lifecycle that `autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners of PRs on Agent-effort paths run at `xhigh` effort.
+- [ ] Spawn one owner per PR with the full lifecycle that `autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners of PRs on Agent-effort paths run at `xhigh` effort, and so does the P15-1 owner, because its trial branch touches `apps/api/scripts/`.
 - [ ] Follow this dependency graph. Start dependent work only after its parent merges or reports the named result.
   - [ ] P15-1, P15-3, P15-4 and P15-5 are independent and first. All four branch from `main`.
   - [ ] P15-2 after P15-1 reports `Decision: go`.
@@ -56,6 +56,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
   - [ ] P15-3 touches only `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/`, the `onVercel` code, and their tests and docs.
   - [ ] P15-5 touches only the API Worker code, its scripts, tests, CI step and docs. It never touches `scripts/backups/clock/`, `sites/legal/` or `.github/workflows/staging-health.yml`.
   - [ ] P15-7 touches only `apps/mobile/src/lib/network/`, `scripts/development/`, the fixture API prefix and their tests.
+  - [ ] P15-3 and P15-5 can both edit `apps/api/tests/http/routing.test.ts`. Whichever lands second rebases onto the first.
 - [ ] Hold the review gate. P15-10 changes what users read. It waits for Anthony's review in chat with screenshots and a video before merge.
 - [ ] Hold Anthony's hosted gates. Every deploy, `supabase secrets set`, provider setting change, new build and notice publication waits for his go. These happen in P15-2, P15-8, P15-9 and P15-11.
 
@@ -152,7 +153,8 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 **Files.**
 
 - [ ] Edit `supabase/config.toml` on `phase15/edge-trial` to add `[functions.justgo-trial]` with `verify_jwt = false`.
-- [ ] Create a trial-only route on that branch that returns the client-address headers the function receives. It never merges.
+- [ ] Create a trial-only route on that branch that returns the client-address headers the function receives, the result of `show statement_timeout` inside a transaction, and the mean of ten timed `select 1` round trips. It never merges.
+- [ ] Set `statement_timeout` in `poolOptions` to 4,321 ms on that branch only, so the probe can tell the pool value from the role's 5 s default.
 
 **Build.**
 
@@ -170,9 +172,9 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes call the hosted `justgo-trial` function from the Mac.
 
-- [ ] Lane 1. Regression lane against trunk. Request `GET /health` and `GET /ready` on the serving Worker and on `justgo-trial`. Save `hosted-ready.json`. Pass when both return 200 and the function's readiness confirms `justgo_runtime` over verified TLS. Set the pool's `statement_timeout` to 4,321 ms for this lane and record what `show statement_timeout` returns inside a transaction. 4,321 ms means the pooler accepted it, 5 s means it ignored it, and a connection error means it rejected it.
-- [ ] Lane 2. Request `GET /health` with no `Authorization` and no `apikey` header. Save `no-jwt.json`. Pass when Hono answers, which shows the gateway let it through.
-- [ ] Lane 3. Send a protected request with an invalid bearer. Save `bad-bearer.json`. Pass when the body is the API's typed `UNAUTHORIZED` error, not a gateway 401.
+- [ ] Lane 1. Regression lane against trunk. Request `GET /health` and `GET /ready` on the serving Worker and on `justgo-trial`. Save `hosted-ready.json`. Pass when both return 200 and the function's readiness confirms `justgo_runtime` over verified TLS.
+- [ ] Lane 2. Request `GET /health` with no `Authorization` and no `apikey` header, then send a protected request with an invalid bearer. Save `gateway-pass.json`. Pass when Hono answers both, the second with the API's typed `UNAUTHORIZED` body, not a gateway 401.
+- [ ] Lane 3. Read `show statement_timeout` from the trial route. Save `statement-timeout.json`. Pass when the report records the value. `4321ms` means the pooler accepted the pool setting, any other value means it ignored it, and a connection error means it rejected it and triggers the Appendix C fallback.
 - [ ] Lane 4. Send forged `x-forwarded-for`, `x-real-ip` and `cf-connecting-ip` headers to the trial route. Save `client-address.json`. Pass when one header always carries the Mac's real address, whatever the client sends. Record that header.
 - [ ] Lane 5. Send a canary request with a fake bearer, a canary header and canary body text, then read the Invocations view and the edge logs. Save `log-canary.json`. Pass when no bearer, header value or body text appears in any log. If any appears, stop and present it to Anthony.
 - [ ] Lane 6. Wait 15 minutes idle, then time the first request and 50 warm requests. Save `cold-warm.json`. Pass when the numbers meet the perf rule.
@@ -183,7 +185,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. Cold and warm wall ms for `/health` and the guest catalog measured from the Mac, and the function's per-query database latency from `/ready` timing.
+- [ ] Metric. Cold and warm wall ms for `/health` and the guest catalog measured from the Mac, and the function's per-query database latency, the mean of the trial route's ten timed `select 1` round trips.
 - [ ] Probe. Alternate requests between the serving Worker and `justgo-trial` for 50 rounds after the idle wait in lane 6.
 - [ ] Baseline. Record the Worker's warm p50 and p95 first.
 - [ ] Rule. The trial fails if the function's warm p95 for the guest catalog exceeds 300 ms or its first request after idle exceeds 2,000 ms. It also fails if the P15-1 query count times the measured per-query latency predicts more than 8,000 ms of wall time for the worst-case sync. Hosted requests need a genuine account, so P15-9 measures that sync directly.
@@ -210,13 +212,14 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 **Build.**
 
 - [ ] Delete the `onVercel` option and the `x-vercel-forwarded-for` reader. Rate limits use the `clientAddress` that the entry supplies.
+- [ ] Keep every other Vercel mention. That covers the `VERCEL` refusals in `apps/api/scripts/challenge-dev.ts` and `scripts/release/staging-local.mjs`, the Vercel legal URLs, the Dev profile's Vercel API URL in `apps/mobile/eas.json` and `.github/workflows/development-ios.yml`, and `apps/api/.env.example`. P15-11 changes the API URLs.
 - [ ] Delete the `!process.env.VERCEL` term from `developmentLegalDrafts` in `apps/api/src/runtime-app.ts:44-47`.
 - [ ] If P15-4 merged first, delete the `onVercel` argument from `scripts/backups/recovery-auth-acceptance.mjs`. If P15-3 merged first, P15-4 deletes it.
 - [ ] Before merge, Anthony confirms in the Vercel dashboard that Git deployments are off for the `justgo` project, so the merge cannot start a deploy.
 
 **You see.**
 
-- [ ] `rg -n -i vercel apps/api scripts/release .github` prints nothing.
+- [ ] `rg -n 'onVercel|x-vercel-forwarded-for|vercel-cli' apps scripts .github` matches only the guard regex in `scripts/quality/staging-api-workflow.test.mjs:46`, and `apps/api/vercel.json` and `.vercelignore` are gone.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -228,13 +231,13 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Lane 1. Regression lane against trunk. Run `verify drive welcome challenge progress account data` at trunk and at head. Save `drive-summary.json`. Pass when the same drives pass on both.
 - [ ] Lane 2. Send 121 managed sign-in requests from one address to the Node fixture API. Save `rate-one.json`. Pass when request 121 returns 429 with `Retry-After`.
 - [ ] Lane 3. Repeat lane 2 with a different forged `x-vercel-forwarded-for` value on every request. Save `rate-forged.json`. Pass when request 121 still returns 429.
-- [ ] Lane 4. Start the Node fixture API in development with `VERCEL=1`. Save `vercel-env.json`. Pass when the development legal draft routes answer as they do without the variable.
+- [ ] Lane 4. Start `apps/api/src/server.ts` in development with `VERCEL=1` and the loopback `justgo_test` settings, not the fixture API, which refuses `VERCEL`. Save `vercel-env.json`. Pass when the development legal draft routes answer as they do without the variable.
 - [ ] Lane 5. Request `/health` and `/ready` on the Node entry with `JUSTGO_SOURCE_SHA` set. Save `node-ready.json`. Pass when both return 200 with the release identity headers.
 - [ ] Lane 6. Accept a challenge as a guest in the built-in browser pane. Save `guest.png`. Pass when the deck shows `Accept challenge` and the attempt saves.
 - [ ] Lane 7. Download the complete data export in the pane. Save `export.png`. Pass when the export finishes and doctor counts return to the baseline after cleanup.
 - [ ] Lane 8. Run `npm run test:journey -- e2e/provider-sign-in.spec.ts`. Save `provider-sign-in.txt`. Pass when the journey passes.
 - [ ] Lane 9. Run `npm run export:web -w @justgo/mobile`, then `npm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
-- [ ] Lane 10. Search the shipped code for Vercel. Save `vercel-audit.txt`. Pass when only history docs mention Vercel.
+- [ ] Lane 10. Search `apps`, `scripts` and `.github` for `onVercel`, `x-vercel-forwarded-for`, `vercel.json`, `.vercelignore` and `vercel-cli`. Save `vercel-audit.txt`. Pass when only the guard regex in `scripts/quality/staging-api-workflow.test.mjs:46` matches.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -758,7 +761,7 @@ Reading settled the rest, and the [analysis](phase-15-supabase-analysis.md) cite
 | ----------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
 | `pg` cannot verify the Supabase CA on Deno                                    | P15-1, P15-2  | P15-2 lane 1. The fallback is `drizzle-orm/postgres-js`.                                      |
 | Bundled code has no `Buffer`, so every managed request returns `UNAUTHORIZED` | P15-1         | Lane 8. Import `node:buffer` or use web base64url helpers.                                    |
-| The pooler rejects the `statement_timeout` connection setting                 | P15-2         | P15-2 lane 1. Drop the pool option, because the role sets the timeout.                        |
+| The pooler rejects the `statement_timeout` connection setting                 | P15-2         | P15-2 lane 3. Drop the pool option, because the role sets the timeout.                        |
 | The worst-case sync outlasts the 10 second client deadline                    | P15-1, P15-9  | P15-1 at loopback, a P15-2 prediction, and P15-9 hosted. Batch the parent checks if it fails. |
 | A forged header defeats identity rate limits                                  | P15-2, P15-6  | P15-2 lane 4 and P15-6 lane 9.                                                                |
 | Platform logs keep tokens or private text                                     | P15-2, P15-9  | P15-2 lane 5 stops the program until Anthony decides.                                         |

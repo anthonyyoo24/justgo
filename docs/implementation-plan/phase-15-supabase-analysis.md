@@ -67,7 +67,7 @@ by what happens to it on Supabase.
 - The plan asks to reconcile "the current phase branch"
   (`phase-15-supabase-api.md:45-51`). That branch merged as #73. Only the four
   recovery commits on `codex/phase15-real-recovery` remain unmerged (measured).
-- The plan asks the trial to prove locks through the pooler (`:88-93`). Managed requests
+- The plan asks the trial to prove locks through a direct or pooler connection (`:88-93`). Managed requests
   take none. Only legacy bootstrap and transfers call `pg_advisory_xact_lock`
   (`apps/api/src/identity/service.ts:322`, `:549`, `:627`), and managed mode
   rejects those requests (`apps/api/src/identity/routes.ts:72-79`). The managed
@@ -207,7 +207,7 @@ safe. That is inferred, and the trial must show it.
 
 Supabase allows 2 seconds of CPU and 256 MB of memory per request, and I/O wait
 does not count against CPU. The Worker's dashboards measured CPU from p50
-15.14 ms to p999 58.49 ms, aggregates that mostly reflect public checks
+15.14 ms to p999 58.49 ms, aggregates that include public checks
 (`docs/handoffs/phase-15-cloudflare-api.md:126-128`, `:217-219`). Nobody has measured sync,
 import or export on any host.
 
