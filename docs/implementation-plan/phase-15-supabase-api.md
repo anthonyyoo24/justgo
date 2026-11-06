@@ -4,7 +4,7 @@
 
 **Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. This plan is planning only. Execution starts on Anthony's explicit go.
 
-The API runs today on two staging hosts. Vercel serves the old Fastify build to TestFlight build 5, and a Cloudflare Worker serves Hono to the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. A runtime trial decides whether the port proceeds. The PRs, in order, are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). The [analysis](phase-15-supabase-analysis.md) explains why.
+The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. A runtime trial decides whether the port proceeds. The PRs, in order, are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). The [analysis](phase-15-supabase-analysis.md) explains why.
 
 ## How to read this
 
@@ -44,8 +44,9 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 
 - [ ] Spawn one owner per PR with the full lifecycle that `playbooks/autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners of PRs on Agent-effort paths run at `xhigh` effort, and so does the P15-1 owner, because its trial branch touches `apps/api/scripts/`.
 - [ ] Follow this dependency graph. Start dependent work only after its parent merges or reports the named result.
-  - [ ] P15-1, P15-3, P15-4 and P15-5 are independent and first. All four branch from `main`.
+  - [ ] P15-1, P15-3 and P15-4 are independent and first. All three branch from `main`.
   - [ ] P15-2 after P15-1 reports `Decision: go`.
+  - [ ] P15-5 after P15-2 reports `Decision: go`. It deletes the only working staging deploy lane, so it waits until the port is certain.
   - [ ] P15-7 after P15-1 reports `Decision: go`. It branches from `main`.
   - [ ] P15-6 after P15-2 reports `Decision: go` and P15-5 merges.
   - [ ] P15-8 after P15-6 merges.
@@ -99,7 +100,8 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Create `apps/api/src/edge.ts`, `supabase/config.toml`, `supabase/functions/api/index.ts` and `supabase/functions/api/deno.json` on that branch.
 - [ ] Create `apps/api/scripts/edge-trial.ts` on that branch. Port the route sequence and database readback from `apps/api/scripts/workers-smoke.ts:248-340`.
 - [ ] Create a worst-case sync fixture on that branch with 50 journal versions of 50 parents each, close to the 4 MiB body bound.
-- [ ] Create a CI job on that branch that runs the trial in a pinned `supabase/edge-runtime` image against `justgo_test`.
+- [ ] Create a workflow on that branch, triggered by `push` to `phase15/edge-trial`, that runs the trial in a pinned `supabase/edge-runtime` image against `justgo_test`. It uploads the report, receipts and CPU profiles as a workflow artifact. Download the artifact to `.local/edge-trial/`.
+- [ ] Record whether the pinned image enforces the hosted 2 s CPU limit. If it does not, the CPU rule reads the profiles, and P15-2 and P15-9 confirm on the hosted function.
 
 **Build.**
 
@@ -314,7 +316,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 ## Remove the API Worker and its release lane (P15-5)
 
-**Depends on.** None.
+**Depends on.** P15-2 with `Decision: go`.
 
 **Files.**
 

@@ -19,10 +19,10 @@ are invited.
 
 `build.beta` is a store-signed release build that uses EAS **preview** variables.
 The beta preflight and every TestFlight workflow command still select the retired
-Worker at `https://justgo-api-staging.anthonyyoo24.workers.dev`. Do not ship a
-beta build until P15-11 of the
-[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) points them at
-the Supabase function. Installed build 5 still
+Worker at `https://justgo-api-staging.anthonyyoo24.workers.dev`, so a beta build
+made before P15-11 of the
+[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) targets that
+retired Worker. TestFlight submissions already need Anthony's go. Installed build 5 still
 uses `https://justgo-two.vercel.app`. The Dev profile and its installed build also
 keep their Vercel target until a coordinated migration or retirement.
 

@@ -346,7 +346,8 @@ The branch can land on its own now. It touches backup scripts, so Anthony merges
   distance matters.
 - If the worst-case sync misses its budget, batch the parent checks in
   `data-sync/journal.ts` into one query. That lowers wall time on every host.
-- Remove the Vercel and Workers leftovers first. They do not depend on the trial.
+- Remove the unused Vercel leftovers first. Remove the Workers code once the hosted
+  trial says go, because it holds the only working staging deploy lane.
 - Run the Edge runtime smoke in CI, where Docker exists. The owner's Mac has no
   Docker, Deno or Supabase CLI (measured with `command -v`).
 
