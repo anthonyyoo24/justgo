@@ -4,9 +4,10 @@ The API is the trusted boundary for JustGO data. Mobile never reads private
 PostgreSQL tables directly. Shared Zod contracts and the generated OpenAPI own
 route payloads. Provider settings live in
 [ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md). The open
-physical-device gate issues (#81, #82, #83, #85, #105) track the remaining
-signed-build acceptance. This file keeps
-the rules that tests do not pin and the reasons that code cannot show.
+physical-device gate issues (#81, #82, #83, #85, #105), the identity security
+review (#100) and the hosted existing-phone migration (#117) track the remaining
+acceptance. This file keeps the rules that tests do not pin and the reasons
+that code cannot show.
 
 ## Guest and account ownership
 
@@ -82,9 +83,10 @@ Managed exchange and existing-proof recovery run through Hyperdrive with
 ordinary transactions and owner row locks. Existing-proof recovery creates no
 missing credential, so it takes no advisory lock. The owner lock plus a
 credential re-read protects revocation. Legacy bootstrap creation and transfers
-take advisory locks. `needsDirectTransaction` moves them to one direct
-connection only when `MANAGED_AUTH_ENABLED` is false, which Worker config allows
-only against loopback `justgo_test`. Workers' direct TLS sockets cannot use the
+take advisory locks. `createWorkerDatabase` sends the `needsDirectTransaction`
+paths (every `POST /v1/sessions`, plus transfer `POST` and `DELETE`) to one
+direct connection only when `MANAGED_AUTH_ENABLED` is false, which Worker config
+allows only against loopback `justgo_test`. Workers' direct TLS sockets cannot use the
 Supabase private CA, so hosted Workers never take that path.
 
 ## Data and account deletion
@@ -100,8 +102,10 @@ Each account has a `data_epoch` that only increases.
 | Import data          | Only a user-confirmed import may send `restoreDeleted: true` at the current epoch. Background sync never adds it or silently restores deleted IDs. |
 | Local cleanup        | Local and iCloud cleanup follow the durable remote result, even with sync off. A changed or unavailable Apple account keeps cleanup pending.       |
 
-No hosted schedule runs the operator Auth cleanup or
-`justgo.purge_expired_identity_records` until separately approved.
+Staging runs `justgo.purge_expired_identity_records` hourly (the
+[identity retention job](../operations/TESTFLIGHT_BETA.md#identity-retention-job)).
+No hosted schedule runs the operator Auth cleanup (`npm run auth:cleanup`). Any
+other hosted schedule needs separate approval.
 
 Deletion receipts, canonical subject tombstones, deleted record IDs and revoked
 or retired proof digests must survive purge and database restoration. A restore
@@ -117,7 +121,7 @@ empty credential store. Generate secrets as 32 bytes from `expo-crypto`
 `getRandomValues`, never `getRandomBytes`, whose debugging fallback uses
 `Math.random`.
 
-## Legacy migration compatibility
+## Internal legacy migration compatibility
 
 Old installations may still hold recovery-key proofs. Keep these paths until
 the supported migration window closes, meaning every supported old installation
