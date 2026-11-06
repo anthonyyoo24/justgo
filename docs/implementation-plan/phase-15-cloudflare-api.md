@@ -220,7 +220,7 @@ R2 backups continue after an upgrade.
 - [ ] A physical iPhone running a TestFlight build against the Workers API passed the Phase 14 smoke journeys.
 - [ ] Updated notices are approved and published after Vercel API/legal hosting and owner-only old-build use are retired; no transition period or legacy redirects remain.
 - [ ] Every item in the remaining-decision register has a recorded result or explicit owner/phase disposition; separate Phase 14 gates remain visible and no unverified check is reported as passed.
-- [x] The handoff records the changes, problems, verification and remaining gates; the handoff index links it.
+- [x] The handoff records the changes, problems, verification and remaining gates.
 
 ## Open gates for Phase 14
 
