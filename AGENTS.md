@@ -27,7 +27,7 @@ Directory instructions, such as `apps/mobile/AGENTS.md`, also apply.
 | `npm run db:local`                     | Prepare the isolated loopback PostgreSQL roles and database                                                                                                         |
 | `npm run db:migrate`                   | Apply registered migrations through the migrator connection                                                                                                         |
 | `npm run test:db`                      | Real database services and policies, plus the migration rehearsal                                                                                                   |
-| `npm run test:db:file -w @justgo/api`  | One database test file. Pass `-- tests/<area>/<file>.integration.test.ts` and an optional `-t '<name>'`. Run `npm run db:local` first to write the database URLs.   |
+| `npm run test:db:file -w @justgo/api`  | One database test file: `-- tests/<area>/<file>.integration.test.ts`, optional `-t '<name>'`. First run `db:local` (keeps an existing `.env`), then `db:migrate`.   |
 | `npm run test:journey`                 | Saved Playwright journeys against the real app, the fixture API and the disposable database                                                                         |
 | `npm run test:coverage`                | Optional report with no threshold. It includes the database suites, so prepare the local database first. Output goes to ignored `coverage/{mobile,api,contracts}/`. |
 | `npm run export:web -w @justgo/mobile` | Cold web export. `export:ios` is the iOS one.                                                                                                                       |
