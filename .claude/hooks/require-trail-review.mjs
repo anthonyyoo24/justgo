@@ -27,11 +27,52 @@ function needsReview(trail) {
   );
 }
 
+const trailPath = /decision-trails\/[^\s"'`;)]+\.tsv/g;
+const redirectIntoTrail =
+  /(?:^|[^>&\d])>\s*["']?([^\s"'`;)]*decision-trails\/[^\s"'`;)]+\.tsv)/g;
+const appendsInShell = /(>>|\btee\b|\blog\.sh\b|appendFileSync|writeFileSync)/;
+
+export function trailsWrittenBy(transcript) {
+  const written = new Set();
+  for (const line of transcript.split('\n')) {
+    if (!line.includes('"tool_use"') || !line.includes('decision-trails'))
+      continue;
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    for (const block of entry.message?.content ?? []) {
+      if (block?.type !== 'tool_use') continue;
+      const input = block.input ?? {};
+      const targets =
+        block.name === 'Bash'
+          ? [
+              ...(appendsInShell.test(input.command ?? '')
+                ? (input.command.match(trailPath) ?? [])
+                : []),
+              ...[...(input.command ?? '').matchAll(redirectIntoTrail)].map(
+                (match) => match[1],
+              ),
+            ]
+          : ['Write', 'Edit', 'NotebookEdit'].includes(block.name)
+            ? [input.file_path ?? '']
+            : [];
+      for (const target of targets)
+        if (target.includes('decision-trails/') && target.endsWith('.tsv'))
+          written.add(path.basename(target));
+    }
+  }
+  return written;
+}
+
 export function trailsNeedingReview({ root, transcript, sessionStartMs = 0 }) {
   const directory = path.join(root, trailDirectory);
   if (!existsSync(directory)) return [];
+  const written = trailsWrittenBy(transcript);
   return readdirSync(directory)
-    .filter((name) => name.endsWith('.tsv') && transcript.includes(name))
+    .filter((name) => name.endsWith('.tsv') && written.has(name))
     .filter(
       (name) => statSync(path.join(directory, name)).mtimeMs >= sessionStartMs,
     )
