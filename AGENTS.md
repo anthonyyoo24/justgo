@@ -67,7 +67,7 @@ these rules:
 - Give each claim one verdict and name its surface. **Verified** means the check
   ran on the real surface and showed the claimed behavior. **Not verified** means
   it ran and showed something else. **Inconclusive** means it could not run or
-  could not tell, for example because the surface needs a physical phone; say what
+  could not tell, for example because the surface needs a physical phone. Say what
   blocked it. The `verify-justgo` Gotchas list what browser evidence cannot prove.
 - Keep the Playwright journeys, the web adapters and the fixture safeguards until a
   native drive proves the same app, API and database cases and passes hosted CI.
@@ -92,17 +92,17 @@ these rules:
 - No doc owns clock coordination. In `apps/mobile/src`,
   `app-support/providers/activity-runtime.ts` rolls the journal day at minute
   boundaries and local midnight through the injected `JournalClock`.
-  `app-support/access/verification/policy.ts` defines `serverClockOffset`, and
-  both it and `useAccessState.ts` beside it apply the server clock offset. Their
-  tests sit beside them.
+  `app-support/access/verification/policy.ts` defines `serverClockOffset`.
+  `policy.ts` and `useAccessState.ts` beside it apply the server clock offset.
+  Their tests sit beside them.
 - The [tech stack](docs/architecture/TECH_STACK.md) guide describes the
-  implemented boundaries. The source tree is the path map, and
+  implemented boundaries and CI. The source tree is the path map, and
   [Placement and move rules](#placement-and-move-rules) say where new code goes.
-- The tech stack guide describes CI, and the operations docs own their own local
-  rehearsals.
+- Each operations doc owns its own local rehearsal.
 - Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`). File
-  each deferred device, hosted or staging check as one, and each approved deferral
-  of a review finding as an issue. Close each with a link to its evidence.
+  a `gate` issue for each deferred device, hosted or staging check. File an issue
+  for each approved deferral of a review finding. Close each with a link to its
+  evidence.
 - Put a lasting invariant, trap or setup step in the doc that owns it. Put a fact
   outside the repo, such as a provider setting, a legal approval or an account
   fact, in the operations or legal doc that owns it.
@@ -122,7 +122,7 @@ these rules:
 - Keep `api.ts` modules wire-only. The controller, provider or query that calls
   one keeps hydration, clocks, cursor validation, account fencing and cache
   acceptance.
-- Keep tests beside their owner and native/web adapter pairs together. API
+- Keep tests beside their owner and native and web adapter pairs together. API
   integration tests live under `apps/api/tests/`, grouped by capability (such as
   `identity/`) or by layer (`db/`, `http/`, `scripts/`).
 - A move updates imports, dynamic loaders, Jest and coverage selectors, fixture
@@ -134,10 +134,10 @@ these rules:
   or one that changes adapter resolution, entrypoints, shared assets or
   packaging, needs cold web and iOS exports with the exported-web smoke between
   them. Then follow the Metro restart in the `verify-justgo` Gotchas.
-- Before opening the PR, review the complete file list of each touched directory. Keep
-  organization within the task's responsibility and record unrelated cleanup
-  separately. Preserve unrelated retained code and existing test and boundary
-  safeguards.
+- Before you open the PR, review the complete file list of each touched
+  directory. Keep organization within the task's responsibility and record
+  unrelated cleanup separately. Preserve unrelated retained code and existing
+  test and boundary safeguards.
 
 ## Rules and what enforces them
 
@@ -166,7 +166,7 @@ highest level that works and updates this table.
 | Diagnostics carry no private text.                                                                                                                                                                                                                                                          | The Sentry payload tests in `apps/mobile/src/app-support/diagnostics/event.test.ts`. [Security and privacy](#security-and-privacy) covers the rest.                                                                                                                                                                                                                                                     | test, written                 |
 | Screens stay accessible.                                                                                                                                                                                                                                                                    | Role and accessible-name queries in component tests, journeys and drives fail when a queried label goes missing. [Accessibility](#accessibility) covers the rest.                                                                                                                                                                                                                                       | test, written                 |
 | Long or step-away runs keep a decision trail at `.local/decision-trails/<run>.tsv` and end with an audit and a separate review in `<run>.review.md`.                                                                                                                                        | The Claude Code Stop hook `.claude/hooks/require-trail-review.mjs` (PR #127)                                                                                                                                                                                                                                                                                                                            | hook                          |
-| Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. Keep no standing handoff files. | Nothing; a judgment call.                                                                                                                                                                                                                                                                                                                                                                               | written                       |
+| Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. Keep no standing handoff files. | Nothing. It is a judgment call.                                                                                                                                                                                                                                                                                                                                                                         | written                       |
 | Changes reach `main` only through a PR that passes `checks` and `sections`.                                                                                                                                                                                                                 | Branch protection on `main`, which also binds admins and blocks force-pushes and branch deletion                                                                                                                                                                                                                                                                                                        | GitHub                        |
 | Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.                                                                                                                                                                                                             | Nothing. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.                                                                                                                                                                                                                                                                                             | written                       |
 
@@ -201,9 +201,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   messages to users. Here "deploy" includes staging deploys, migrations against
   any database other than the local `justgo_test`, production releases, TestFlight
   or App Store submissions, and settings changes in outside services (Supabase,
-  Cloudflare, Sentry, App Store Connect). With Anthony's go, a code-only staging test may deploy a committed branch
-  through `npm run release:staging:local`; that go does not cover migrations,
-  production releases or merges.
+  Cloudflare, Sentry, App Store Connect). With Anthony's go, a code-only staging
+  test may deploy a committed branch through `npm run release:staging:local`.
+  That go does not cover migrations, production releases or merges.
 - **Do not contact providers.** Do not contact Vercel, Cloudflare or other providers
   about JustGO without Anthony's explicit instruction.
 - **Never push to `main`.** Changes reach `main` only through a merged PR.
