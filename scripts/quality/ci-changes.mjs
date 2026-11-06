@@ -10,7 +10,7 @@ export function classifyChanges({
   event,
   base,
   listFiles = (from) =>
-    execFileSync('git', ['diff', '--name-only', from, 'HEAD'], {
+    execFileSync('git', ['diff', '--name-only', '--no-renames', from, 'HEAD'], {
       encoding: 'utf8',
     })
       .split('\n')
