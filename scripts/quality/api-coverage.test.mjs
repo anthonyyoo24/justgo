@@ -96,6 +96,31 @@ test('the required status rejects failed, skipped, cancelled and absent producer
     assert.throws(() => requireSuccessfulJobs(value));
 });
 
+test('a code change outside the iCloud module may skip only the native iCloud job', () => {
+  const noICloud = {
+    ...codeChange,
+    changes: { result: 'success', outputs: { app: 'true', icloud: 'false' } },
+    'native-icloud': { result: 'skipped' },
+  };
+  requireSuccessfulJobs(JSON.stringify(noICloud));
+  for (const result of ['failure', 'cancelled', undefined])
+    assert.throws(
+      () =>
+        requireSuccessfulJobs(
+          JSON.stringify({ ...noICloud, 'native-icloud': { result } }),
+        ),
+      /native-icloud/,
+    );
+  for (const name of ['unit', 'database', 'journeys', 'exports'])
+    assert.throws(
+      () =>
+        requireSuccessfulJobs(
+          JSON.stringify({ ...noICloud, [name]: { result: 'skipped' } }),
+        ),
+      new RegExp(name),
+    );
+});
+
 test('a Markdown-only change passes with skipped app jobs and still fails on anything else', () => {
   requireSuccessfulJobs(JSON.stringify(markdownOnly));
   for (const name of appJobs)
