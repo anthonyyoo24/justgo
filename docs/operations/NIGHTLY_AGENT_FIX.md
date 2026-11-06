@@ -20,9 +20,8 @@ records its settings so that review can catch drift.
 - **Connectors:** none. Unless a create or update call sends
   `clear_mcp_connections: true`, the account's connectors are attached on their
   own, and an unattended run can then use tools such as social posting. Confirm the
-  connector list before creating or changing the routine. The routine created on
-  2026-11-06 still has Eden, Claude Docs and Claude Code Remote attached, pending
-  Anthony's go to clear them.
+  connector list before creating or changing the routine. On 2026-11-06, at Anthony's go, the
+  routine was updated with `clear_mcp_connections: true`, so it has no connectors.
 
 ## What each run does
 
