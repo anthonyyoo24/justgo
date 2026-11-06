@@ -1,6 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { changedPaths } from './git.mjs';
 
 export function appJobsNeeded(files) {
   return files.length === 0 || !files.every((file) => file.endsWith('.md'));
@@ -9,12 +9,7 @@ export function appJobsNeeded(files) {
 export function classifyChanges({
   event,
   base,
-  listFiles = (from) =>
-    execFileSync('git', ['diff', '--name-only', '--no-renames', from, 'HEAD'], {
-      encoding: 'utf8',
-    })
-      .split('\n')
-      .filter(Boolean),
+  listFiles = (from) => changedPaths(`${from}..HEAD`),
 }) {
   if (event !== 'pull_request' || !base) return true;
   try {
