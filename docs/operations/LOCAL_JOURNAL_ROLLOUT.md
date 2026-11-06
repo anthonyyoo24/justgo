@@ -4,7 +4,9 @@ Phase 13 implements a local candidate for optional Apple/Google accounts, local
 guest use, signed-in JustGO synchronization, optional CloudKit and complete data
 controls. The authorized October 21 staging rollout applied migrations 0019–0023,
 configured native providers and submitted the configured internal iPhone build.
-Follow [account setup](ACCOUNT_SYNC_SETUP.md) for current API/build status and retain the
+Follow [account setup](ACCOUNT_SYNC_SETUP.md) for provider settings and the
+[`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate) for
+API/build acceptance status. Retain the
 [External beta](https://github.com/anthonyyoo24/justgo/milestone/1) acceptance gates.
 
 ## Coordinated rollout

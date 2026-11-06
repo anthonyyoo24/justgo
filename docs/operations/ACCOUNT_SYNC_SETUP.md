@@ -166,6 +166,9 @@ The bridge uses private custom zones. Deploying the schema copies no user record
 Create `value` as Encrypted String from the start. Keep the signed build's
 environment consistent with the deployed schema, and inspect the final IPA.
 
+To run CI's `native-icloud` `swift test` command locally, prefix it with
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+
 ## Pending Auth erasure operations
 
 Account deletion fences the account, removes application data and records a
@@ -210,6 +213,8 @@ Each gate below has an open issue, but the issue does not name these cases.
 - [#117](https://github.com/anthonyyoo24/justgo/issues/117), existing-phone
   migration: lost exchange responses, revoked proofs, returning provider sign-in
   and old pending deletion receipts, with no replacement owners.
-- [#81](https://github.com/anthonyyoo24/justgo/issues/81), Auth erasure: hard
-  deletion with the real administrative key, interrupted provider or marker
+- [#81](https://github.com/anthonyyoo24/justgo/issues/81), sign-in matrix: hard
+  Auth deletion with the real administrative key, interrupted provider or marker
   cleanup, original-proof replay after provider removal, and the operator retry.
+  Also guest adoption after the sign-in disclosure, and logout, offline edits and
+  sign-in again to the same owner.
