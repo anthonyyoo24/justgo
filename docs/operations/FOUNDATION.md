@@ -118,7 +118,15 @@ The Phase 01 helper `withOwner(db, verifiedUserId, tx => …)` establishes trans
 
 `pg` reuses one pool per warm server instance, max 1 by default, with 5-second connect/statement and 6-second query limits. There are no named prepared statements. Runtime role connection limit is 20. Transaction pooling and those caps bound individual processes; they do not establish a traffic capacity or global Vercel instance limit. Load tests, capacity alerts and budget policy are later operational work. Certificate verification must not be disabled to fix pooler TLS errors; use the dashboard connection host and the Supabase CA.
 
+### Local test database
+
 Local integration tests use a dedicated loopback-only PostgreSQL 17 cluster on 54329. They create a uniquely named fixture table as migrator, execute isolation checks as the actual runtime role, and drop that fixture. The local application catalog seed and synthetic accounts/history are disposable; no customer data belongs in this cluster. Never reset a shared environment to run tests. Use forward-repair migrations; restore and destructive rollback procedures require reviewed backups before domain data exists.
+
+Database tests, API coverage and journeys need `DATABASE_URL` for the restricted `justgo_runtime` role, `MIGRATION_DATABASE_URL` for fixture setup and cleanup, and `DATABASE_SSL=disable`. The `localTestDatabaseUrl` guard refuses any other target. CI supplies the full mapping to migrations, database coverage and journeys because it has no ignored `.env` files. Use PostgreSQL 17 client tools, including `pg_dump` and `psql`. `JUSTGO_PG_BIN` names their directory when they are neither on PATH nor in the Apple Silicon Homebrew location.
+
+The Auth-session helper integration test and the encrypted recovery rehearsal also need `JUSTGO_TEST_ADMIN_DATABASE_URL`, a `postgres` connection to loopback `justgo_test` with SSL disabled. `db:local` and the CI database jobs supply it. Add it to an older local `.env`. The helper test runs the real operator SQL inside a rollback-only transaction and never targets hosted Auth. Never deploy this URL on Workers, Vercel or mobile.
+
+`test:db` includes the migration preservation rehearsal (`test:migrations`). It builds the early migrations in a unique disposable schema, seeds synthetic history and saves a SQL snapshot. It then applies each later migration with its comparisons, restores the snapshot with `psql` and reapplies the forward chain. It also checks clean-database installation and the immutable hashes of applied migrations. Its teardown leaves application state intact and writes no credentials or private content. It is a local and CI acceptance tool, not deployment authorization. The [cutover runbook](#phase-07-coordinated-cutover-and-old-clients), the [Phase 13 rollout](LOCAL_JOURNAL_ROLLOUT.md) and [account setup](ACCOUNT_SYNC_SETUP.md) own hosted changes.
 
 ## Backup restore checklist
 
@@ -342,7 +350,7 @@ are not that app.
 
 `design/source/` records Paper provenance and editable-source extracts. `apps/mobile/src/theme/tokens.ts` is the code authority. Inter font weights are bundled from their licensed package; Baskerville remains the iOS system font. The foundation preview uses an exported illustration and accessible type/button sizes; it is not an approved onboarding or Home screen.
 
-Choose checks using the [testing scope matrix](TESTING.md#choosing-checks). Before pushing, run the checks for the touched paths and let CI run the full set; dependency, Expo or native configuration changes and release builds also run the full `npm run check`. Backend/shared protocol or data-boundary changes retain the dedicated loopback database checks. File moves follow the [move and bundle policy](TESTING.md#file-moves-and-bundle-checks), rather than requiring both exports for every edit. CI enforces the required gates with PostgreSQL 17.
+Choose checks with the [check matrix](../../AGENTS.md#choosing-checks). File moves follow the [move rules](../architecture/FOLDER_STRUCTURE.md#placement-and-move-rules), rather than requiring both exports for every edit. CI enforces the required gates with PostgreSQL 17.
 
 Native compilation runs on EAS using `development-simulator`, per the owner’s 8 GB memory constraint. Keep Simulator and local preview servers stopped during cloud compilation; launch only one simulator afterwards and reuse its binary for JS/UI changes. Preserve local Pods/DerivedData caches. Explain any EAS account/quota/configuration blocker before considering a heavy local fallback.
 

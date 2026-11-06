@@ -142,8 +142,9 @@ checks pass; successful provider login does not establish working iCloud Sync.
       Delete account and interrupted cleanup/retry. Verify existing-phone proof
       migration, a lost exchange response and pending legacy deletion separately.
 - [ ] Record real device/provider evidence separately from unit, browser and
-      fixture journeys. Run the applicable focused and release/phase gates in
-      [TESTING.md](TESTING.md); keep any unavailable device/provider check open.
+      fixture journeys. Run the applicable checks from the
+      [check matrix](../../AGENTS.md#choosing-checks); keep any unavailable
+      device/provider check open.
 
 **Exit:** both real providers complete login in the configured iPhone app, the
 correct data survives logout/returning login, and server-side ownership/deletion
@@ -463,6 +464,20 @@ retention and operational response commitments require final privacy review.
   with sync off or a previously associated Apple account unavailable.
 - Reopened Vercel/Supabase private-journal processing, policy/App Privacy and
   retention/provider review before hosted activation.
+
+The private CloudKit bridge has a dependency-free SwiftPM target, which CI's
+`native-icloud` job runs:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test \
+  --package-path apps/mobile/modules/justgo-icloud \
+  --scratch-path .local/justgo-icloud-swift --jobs 1
+```
+
+It compiles production CloudKit code against controllable I/O and covers byte
+bounds, generation and account fences and sanitized cursor errors. It excludes the
+Expo bridge and never contacts CloudKit, so a signed build and phone checks still
+verify those boundaries.
 
 Local unit/database/browser tests do not close these provider, native or hosted
 gates. Keep deletion receipts, canonical subject tombstones, revoked legacy
