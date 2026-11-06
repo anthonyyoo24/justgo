@@ -304,7 +304,8 @@ current deletion and revocation state.
 
 Staging stays on Workers Free by Anthony's choice after he reviewed Paid pricing.
 Measured public-check CPU exceeds the Free budget, so its suitability is open.
-Sentry readiness monitor `10773615` checks the Cloudflare `/ready`. Delivery of
+API errors go to the US-region Sentry project `anthony-corp` / `justgo-api`, with
+delivery off until gate #93 passes. Sentry readiness monitor `10773615` checks the Cloudflare `/ready`. Delivery of
 Sentry Cron failure and missed-backup alerts is unverified. Full-workload latency
 and CPU, DPA and privacy suitability, old-build retirement and device acceptance
 remain open [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
