@@ -216,5 +216,6 @@ Each gate below has an open issue, but the issue does not name these cases.
 - [#81](https://github.com/anthonyyoo24/justgo/issues/81), sign-in matrix: hard
   Auth deletion with the real administrative key, interrupted provider or marker
   cleanup, original-proof replay after provider removal, and the operator retry.
-  Also guest adoption after the sign-in disclosure, and logout, offline edits and
-  sign-in again to the same owner.
+  Also hidden or different provider email; guest adoption after the sign-in
+  disclosure; the same journal after logout, offline edits and sign-in again to
+  the same owner; and conflicts from a second signed-in device.
