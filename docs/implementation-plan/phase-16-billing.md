@@ -2,7 +2,7 @@
 
 # Phase 16 — Native subscriptions & reliable billing
 
-**Status:** Not started. The October 9 checkpoint on `codex/phase-07a-native-billing` used RevenueCat and QStash, is far behind `main` and reuses migration numbers that `main` has since taken, so it serves only as reference. When the phase starts, rewrite this file as a pstack multi-phase plan that keeps the decisions and rules below. Activation and billing acceptance, both external and native, wait until after the free beta.
+**Status:** Not started. The October 9 checkpoint, commit `4d5c9f2` on the local-only branch `codex/phase-07a-native-billing`, used RevenueCat, which Superwall replaced. It is far behind `main` and reuses migration numbers that `main` has since taken, so it serves only as reference. When the phase starts, rewrite this file as a pstack multi-phase plan that keeps the decisions and rules below. Activation and billing acceptance, both external and native, wait until after the free beta.
 
 ## Outcome
 
