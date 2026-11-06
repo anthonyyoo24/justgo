@@ -113,5 +113,5 @@ Previously associated app-managed iCloud copies and account cloud data must foll
 the promised deletion flow. On both devices, test the sequence enable, disable,
 delete, enable. Also test deletion after an Apple-account change, pending cleanup
 for an unavailable account across relaunch, and a successful retry. User downloads
-remain. Keep the paid-access, accessibility, inherited device, and public-policy
-and provider gates open until their required evidence exists.
+remain. Keep the paid-access, accessibility, inherited-device, public-policy and
+provider gates open until their required evidence exists.

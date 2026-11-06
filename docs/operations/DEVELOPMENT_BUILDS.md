@@ -153,7 +153,7 @@ npm run dev:mobile -- --cloudflare --clear
 
 The launcher consumes the option before Expo starts. It first validates the
 saved development environment and the pinned native profile. Then it changes
-only `EXPO_PUBLIC_API_URL`, to
+only `EXPO_PUBLIC_API_URL` to
 `https://justgo-api-staging.anthonyyoo24.workers.dev`. The default command keeps
 its existing Vercel API target. Identity, Auth and provider pairing, Sentry-off
 mode, current legal URLs and fixture rejection stay enforced. Remote EAS settings
@@ -161,7 +161,7 @@ and release profiles do not change. Arbitrary API origins are not accepted.
 
 The first phone screen and navigation check can use guest mode. Dev shares the
 staging database. Before account synchronization or deletion checks, use a
-disposable Apple or Google identity and synthetic writing. An existing secondary
+genuinely disposable Apple or Google identity and synthetic writing. An existing secondary
 provider account is enough. A new email is not required. This early test can come
 before the final TestFlight and legal/Vercel retirement. It does not publish the
 pending Cloudflare notice or close final native and cutover acceptance. Before
