@@ -151,8 +151,7 @@ Use this order:
    separate actions.
 
 The owner-selected navy GO mark on cream is the opaque 1024-pixel store icon at
-`apps/mobile/assets/brand/justgo-app-icon.png`. See
-[icon provenance](../../design/source/app-icon.md). Gate
+`apps/mobile/assets/brand/justgo-app-icon.png`. Gate
 [#89](https://github.com/anthonyyoo24/justgo/issues/89) holds its phone check.
 
 ## Current build
