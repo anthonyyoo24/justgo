@@ -43,8 +43,11 @@ Supabase Free plan until an upgrade trigger below is reached.
 Workers/Hono, R2, nightly backups, hourly ledger copies, `age` encryption and
 continued Supabase Free use are selected. Do not reopen those choices as
 unanswered questions. Resolve the items below before their dependent action,
-record the final choice and evidence in this phase's handoff, and preserve the
-separate Git/release permissions. The implementation owner handles routine
+record the final choice and evidence in the
+[Phase 15 Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md), and preserve
+the separate Git/release permissions. That handoff is the one kept, and only until
+Workers retires. No other work gets a handoff file.
+The implementation owner handles routine
 engineering choices; bring Anthony concrete policy/cost/legal tradeoffs and
 restricted actions, rather than asking for approval at every implementation step.
 
@@ -137,7 +140,7 @@ Phase 14 paid checkpoint.
 - Update `SERVER_RELEASES.md` and the restore checklist so R2 backups and the ledger
   supply the recovery attestation.
 
-Automatic credential issuance is [optional Phase 21](phase-21-backup-credential-issuer.md#phase-21),
+Automatic credential issuance is [optional Phase 21](README.md#unscheduled-roadmap),
 after accepted billing, analytics and actual App Store publication; it is not a
 Phase 15 or first-launch gate. Anthony owns manual renewal until that separately
 approved replacement is active; the owner-held Mac key and local parent stay outside CI.

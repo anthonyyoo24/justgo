@@ -123,7 +123,7 @@ remain valid. Fully unattended renewal would need an approved online issuer with
 access to the parent signing secret; a longer lifetime would also change the
 proposed policy. Neither change is implemented or approved. Anthony owns manual
 renewal; keep the parent secret outside CI. The optional
-[Phase 21 issuer](../implementation-plan/phase-21-backup-credential-issuer.md)
+[Phase 21 issuer](../implementation-plan/README.md#unscheduled-roadmap)
 is deferred until accepted payments, analytics and actual App Store publication;
 it does not gate Phase 15 or the first launch.
 

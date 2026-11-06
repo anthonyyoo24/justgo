@@ -250,7 +250,7 @@ Anthony owns manual credential renewal by day five and confirmed an
 encrypted-USB recovery-key copy. Under his October 31 custody choice,
 the protected Mac key copies remain locally outside CI; USB retrieval is not a
 prerequisite. Complete writer-fenced app/Auth recovery remains open. Automatic issuance is
-optional [Phase 21](../implementation-plan/phase-21-backup-credential-issuer.md),
+optional [Phase 21](../implementation-plan/README.md#unscheduled-roadmap),
 after accepted billing/analytics and actual App Store publication; it adds no
 Phase 15 or beta gate. The current parent remains locally outside CI.
 Complete simplified Privacy

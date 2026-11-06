@@ -265,8 +265,8 @@ Superwall purchase/restore, provider-backed billing records, QStash and
 billing schedules are unbuilt. Their technical design lives in
 [native-billing-and-jobs.md](../proposals/native-billing-and-jobs.md), with scope
 owned by [Phase 16](../implementation-plan/phase-16-billing.md). The optional
-[Stripe checkout](../proposals/optional-stripe-checkout.md) and future
-[text coach](../proposals/future-text-coach.md) are separate proposals.
+[Stripe checkout](../implementation-plan/README.md#unscheduled-roadmap) and future
+[text coach](../implementation-plan/README.md#unscheduled-roadmap) are unscheduled roadmap rows.
 
 Product analytics remains uninstalled and disabled. Sentry React Native 8.28.0
 (Expo 58's supported version, Cocoa 9.29.0) is installed for errors only under
@@ -282,8 +282,8 @@ telemetry helper has an event-name allowlist, account-reset consent and no expor
 or payload API. Phase 10 implemented the
 Terms & Privacy entry links and ordinary Continue, with no legal
 view/acceptance receipts or version-driven navigation.
-[Phase 17](../implementation-plan/phase-17-analytics.md) owns post-paid-launch
-analytics and the approved event allowlist, and
+[Phase 17](../implementation-plan/README.md#unscheduled-roadmap) owns post-paid-launch
+analytics, and its event allowlist is redone when it is scheduled.
 Phase 11 implemented app crash reporting;
 the [legal approval record](../legal/APPROVALS.md) owns approved legal
 notices, document labels and public destinations. Product analytics stays disabled
