@@ -33,6 +33,31 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   {
+    files: ['scripts/**/*.mjs'],
+    ignores: ['scripts/quality/git.mjs', 'scripts/**/*.test.mjs'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...[
+          'Literal[value=/(^|\\s)--name-(only|status)(\\s|$)/]',
+          'TemplateElement[value.raw=/(^|\\s)--name-(only|status)(\\s|$)/]',
+        ].map((selector) => ({
+          selector,
+          message:
+            'Read changed paths with changedPaths() from scripts/quality/git.mjs, which always uses -z --no-renames.',
+        })),
+        ...[
+          'Literal[value=/^patch-id$|(^|\\s)--stable(\\s|$)|git patch-id/]',
+          'TemplateElement[value.raw=/(^|\\s)--stable(\\s|$)|git patch-id/]',
+        ].map((selector) => ({
+          selector,
+          message:
+            'Hash a diff with patchIdOf() from scripts/quality/git.mjs, which always uses --verbatim.',
+        })),
+      ],
+    },
+  },
+  {
     files: ['apps/**/*.{ts,tsx}', 'packages/contracts/**/*.{ts,tsx}'],
     plugins: { justgo: { rules: { 'import-boundaries': importBoundaries } } },
     rules: { 'justgo/import-boundaries': 'error' },

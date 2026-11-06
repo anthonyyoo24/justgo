@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { changedPaths, patchIdOf } from './git.mjs';
 
 const reviewOnly = [
   /\.md$/,
@@ -10,46 +10,35 @@ const reviewOnly = [
   /^\.prettier(rc|ignore)/,
 ];
 
-function git(args, { cwd, input } = {}) {
-  return execFileSync('git', args, { cwd, input, encoding: 'utf8' });
-}
-
-function patchId(diff, cwd) {
-  const id = git(['patch-id', '--verbatim'], {
-    cwd,
-    input: diff,
-  }).split(' ')[0];
-  return id || createHash('sha1').update(diff).digest('hex');
+function git(args, { cwd } = {}) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' });
 }
 
 export function filePatches(base, head, cwd) {
   const range = `${base}...${head}`;
   return new Map(
-    git(['diff', '--name-only', '-z', '--no-renames', range], { cwd })
-      .split('\0')
-      .filter(Boolean)
-      .map((file) => [
-        file,
-        patchId(
-          git(
-            [
-              'diff',
-              '--binary',
-              '--no-renames',
-              range,
-              '--',
-              `:(literal)${file}`,
-            ],
-            { cwd },
-          ),
-          cwd,
+    changedPaths(range, cwd).map((file) => [
+      file,
+      patchIdOf(
+        git(
+          [
+            'diff',
+            '--binary',
+            '--no-renames',
+            range,
+            '--',
+            `:(literal)${file}`,
+          ],
+          { cwd },
         ),
-      ]),
+        cwd,
+      ),
+    ]),
   );
 }
 
 export function wholePatchId(base, head, cwd) {
-  return patchId(
+  return patchIdOf(
     git(['diff', '--binary', '--no-renames', `${base}...${head}`], { cwd }),
     cwd,
   );

@@ -45,7 +45,7 @@ test('pushes, missing bases and unreadable diffs run every app job', () => {
   );
 });
 
-test('renaming a code file to Markdown still runs the app jobs', () => {
+function classifyCommit(change) {
   const repo = mkdtempSync(path.join(tmpdir(), 'ci-changes-'));
   const git = (...args) =>
     execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
@@ -57,8 +57,9 @@ test('renaming a code file to Markdown still runs the app jobs', () => {
     git('add', '.');
     git('commit', '-q', '-m', 'base');
     const base = git('rev-parse', 'HEAD');
-    git('mv', 'route.ts', 'route.md');
-    git('commit', '-q', '-m', 'rename');
+    change(repo, git);
+    git('add', '-A');
+    git('commit', '-q', '-m', 'change');
     const output = path.join(repo, 'output');
     execFileSync(
       process.execPath,
@@ -73,8 +74,24 @@ test('renaming a code file to Markdown still runs the app jobs', () => {
         },
       },
     );
-    assert.equal(readFileSync(output, 'utf8'), 'app=true\n');
+    return readFileSync(output, 'utf8');
   } finally {
     rmSync(repo, { recursive: true, force: true });
   }
+}
+
+test('renaming a code file to Markdown still runs the app jobs', () => {
+  assert.equal(
+    classifyCommit((repo, git) => git('mv', 'route.ts', 'route.md')),
+    'app=true\n',
+  );
+});
+
+test('a Markdown-only change with a non-ASCII path skips the app jobs', () => {
+  assert.equal(
+    classifyCommit((repo) =>
+      writeFileSync(path.join(repo, 'café.md'), 'Notes\n'),
+    ),
+    'app=false\n',
+  );
 });
