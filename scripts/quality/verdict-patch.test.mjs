@@ -92,15 +92,31 @@ test('a change to code, a new file or a dropped file needs a new verdict', () =>
   }
 });
 
-test('only docs, tests, e2e and lint config count as review-only paths', () => {
+test('whitespace-only and non-ASCII path changes need a new verdict', () => {
+  const repo = repository();
+  try {
+    repo.write('café.ts', 'export const greeting = "hello world";\n');
+    const head = repo.commit('add café');
+    const verdict = filePatches(repo.base, head, repo.cwd);
+    repo.write('café.ts', 'export const greeting = "helloworld";\n');
+    const edited = repo.commit('whitespace');
+    assert.deepEqual(
+      compare(verdict, filePatches(repo.base, edited, repo.cwd)),
+      { result: 're-verify', changed: ['café.ts'] },
+    );
+  } finally {
+    rmSync(repo.cwd, { recursive: true, force: true });
+  }
+});
+
+test('only docs, tests and lint config count as review-only paths', () => {
   const only = (file) =>
     compare(new Map(), new Map([[file, 'x']])).result === 'docs-tests-only';
   for (const file of [
     'docs/operations/SUPPORT.md',
     'apps/mobile/src/App.test.tsx',
     'apps/api/tests/identity/service.integration.test.ts',
-    'apps/mobile/test-support/vault.ts',
-    'e2e/support/fixtures.ts',
+    'e2e/local-flow.spec.ts',
     'eslint.config.mjs',
   ])
     assert.ok(only(file), file);
@@ -110,6 +126,9 @@ test('only docs, tests, e2e and lint config count as review-only paths', () => {
     'package.json',
     '.github/workflows/ci.yml',
     'docs/legal/notes.mdx',
+    'e2e/support/environment.ts',
+    'apps/mobile/test-support/journey-environment.ts',
+    'e2e/tsconfig.json',
   ])
     assert.ok(!only(file), file);
 });

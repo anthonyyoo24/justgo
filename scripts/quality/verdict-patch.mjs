@@ -5,8 +5,7 @@ import { pathToFileURL } from 'node:url';
 const reviewOnly = [
   /\.md$/,
   /(^|\/)[^/]+\.(test|spec)\.[cm]?[jt]sx?$/,
-  /(^|\/)(tests|test-support|__tests__)\//,
-  /^e2e\//,
+  /(^|\/)(tests|__tests__)\//,
   /^eslint\.config\.mjs$/,
   /^\.prettier(rc|ignore)/,
 ];
@@ -16,20 +15,33 @@ function git(args, { cwd, input } = {}) {
 }
 
 function patchId(diff, cwd) {
-  const id = git(['patch-id', '--stable'], { cwd, input: diff }).split(' ')[0];
+  const id = git(['patch-id', '--verbatim'], {
+    cwd,
+    input: diff,
+  }).split(' ')[0];
   return id || createHash('sha1').update(diff).digest('hex');
 }
 
 export function filePatches(base, head, cwd) {
   const range = `${base}...${head}`;
   return new Map(
-    git(['diff', '--name-only', '--no-renames', range], { cwd })
-      .split('\n')
+    git(['diff', '--name-only', '-z', '--no-renames', range], { cwd })
+      .split('\0')
       .filter(Boolean)
       .map((file) => [
         file,
         patchId(
-          git(['diff', '--binary', '--no-renames', range, '--', file], { cwd }),
+          git(
+            [
+              'diff',
+              '--binary',
+              '--no-renames',
+              range,
+              '--',
+              `:(literal)${file}`,
+            ],
+            { cwd },
+          ),
           cwd,
         ),
       ]),
@@ -70,6 +82,18 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   } else if (mode === 'check' && refs.length >= 2) {
     const [verdictBase, verdictHead, base = 'origin/main', head = 'HEAD'] =
       refs;
+    const unknown = [verdictBase, verdictHead, base, head].filter((ref) => {
+      try {
+        git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+        return false;
+      } catch {
+        return true;
+      }
+    });
+    if (unknown.length) {
+      console.error(`Unknown commit: ${unknown.join(', ')}. Fetch it first.`);
+      process.exit(2);
+    }
     const { result, changed } = compare(
       filePatches(verdictBase, verdictHead),
       filePatches(base, head),
