@@ -510,7 +510,10 @@ docstring-coverage percentage is not a repository gate; do not add blanket
 comments to raise it.
 
 CI runs on pull requests and pushes to `main`, cancels superseded PR runs and keeps
-each main commit's result. Six producer jobs run independently:
+each main commit's result. A first `changes` job decides whether the app jobs run.
+A pull request whose changed files are all Markdown runs only `static`, which
+includes the doc-link check and the legal-draft tests; every other pull request and
+every push to `main` runs all six producer jobs:
 
 - `static`: checksum-pinned actionlint validates GitHub workflow syntax/context
   availability, followed by online Doctor, contracts/type/lint/format/tooling checks and the API
@@ -524,7 +527,8 @@ each main commit's result. Six producer jobs run independently:
 - `native-icloud`: the pure Swift CloudKit regressions on macOS, without npm setup.
 
 The final `checks` job runs even when a producer fails, is skipped or is cancelled;
-any such result fails the aggregate status. Suites execute once rather than being
+any such result fails the aggregate status. The one exception is an app job that
+`changes` skipped for a Markdown-only pull request. Suites execute once rather than being
 repeated by root coverage or database commands. The `unit` and `database` jobs
 upload their coverage reports as diagnostic artifacts when their collection step
 executed, including failures; missing reports then fail upload. Tooling tests
