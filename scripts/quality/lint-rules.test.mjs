@@ -69,6 +69,11 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "import { fireEvent, render } from '@testing-library/react-native'; const screen = render(<Text />); fireEvent.press(screen.findByRole('button'));",
     tests,
   ],
+  [
+    'no-restricted-syntax',
+    "import { execFileSync } from 'node:child_process'; execFileSync('git', ['diff', '--name-only', 'origin/main']);",
+    'scripts/quality/changes.mjs',
+  ],
 ]) {
   test(`lint safeguard: ${rule}`, async () => {
     const [result] = await eslint.lintText(source, {
