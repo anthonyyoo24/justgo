@@ -183,7 +183,8 @@ layouts and reduced motion. Prove native accessibility on a native surface, as
 ## Git and autonomy
 
 Agents work in pstack's model: small PRs, reversible work without asking,
-and a stop before anything irreversible. Only Anthony merges.
+and a stop before anything irreversible. Agents merge verified PRs (pstack's
+Autopilot-full).
 
 - **Small PRs.** Each PR is narrow, verified and lands on its own. Start each PR
   from `main`. Stack one on another only when it needs that PR's change, and then
@@ -203,8 +204,15 @@ and a stop before anything irreversible. Only Anthony merges.
 - **Do not contact providers.** Do not contact Vercel, Cloudflare or other providers
   about JustGO without Anthony's explicit instruction.
 - **Never push to `main`.** Changes reach `main` only through a merged PR.
-- **Only Anthony merges.** Agents stop at merge-ready, never merge a PR and never
-  enable auto-merge. Green CI and agent verdicts do not replace his review.
+- **Merge only what is verified.** An agent may merge a PR, or arm GitHub
+  auto-merge on it, once CI is green and an independent verdict from an agent that
+  did not write it covers the current head. Green CI alone is not a verdict. Land
+  stacks bottom-up, one PR at a time, and stop at the first PR without a verdict
+  (pstack's Shipping playbook).
+- **Anthony merges the sensitive areas.** PRs that touch the paths in
+  [Agent effort](#agent-effort) (sign-in and identity, account data and
+  deletion, migrations, release and backup scripts) stop at merge-ready for
+  Anthony. He can also hold any PR, and a hold stops every merge until he lifts it.
 - **A verdict covers a patch, not a commit.** Each verdict comment names the base
   and head it ran on. After a rebase or retarget, run
   `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`.
