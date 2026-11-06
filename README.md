@@ -6,9 +6,15 @@ Signed-in collections synchronize history and journal through JustGO's API;
 optional iCloud Sync and complete Download/Import controls are separate. The
 [app-shell guide](docs/architecture/APP_SHELL.md) describes the implemented boundaries.
 
-See the [folder structure guide](docs/architecture/FOLDER_STRUCTURE.md) for the current directory groupings and responsibilities.
+## Documentation
 
-Read [repository coding and verification instructions](AGENTS.md) before changing code, plus directory-specific `AGENTS.md` files. Phase scope lives in the [implementation plan](docs/implementation-plan/README.md), and open gates are GitHub issues labeled `gate` (`gh issue list --label gate`).
+- [Agent instructions](AGENTS.md) and the directory `AGENTS.md` files: the repository map, the rules and what enforces them, and owner permissions. Read them before changing code.
+- Architecture: [tech stack](docs/architecture/TECH_STACK.md), [app shell](docs/architecture/APP_SHELL.md), [activity data](docs/architecture/ACTIVITY_DATA.md), [identity](docs/architecture/IDENTITY.md) and [folder structure](docs/architecture/FOLDER_STRUCTURE.md).
+- Product: the [PRD](docs/product/PRD.md) and the [challenge catalog](docs/product/CHALLENGES.md).
+- Operations: [foundation setup and versions](docs/operations/FOUNDATION.md), [testing](docs/operations/TESTING.md), [Apple setup](docs/operations/APPLE_SETUP.md) and the other [procedures](docs/operations/) for accounts, builds, releases, backups and support.
+- Legal: the [Terms and Privacy drafts, approvals and data inventory](docs/legal/).
+- Roadmap: the [implementation plan](docs/implementation-plan/README.md) and [proposals](docs/proposals/) for later phases. The [Phase 15 Cloudflare handoff](docs/handoffs/phase-15-cloudflare-api.md) stays until Workers retires. Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`).
+- Running the app: the [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md).
 
 ## Start locally
 
@@ -74,6 +80,4 @@ Automated simulator testing resumes through the [`verify-justgo` Native section]
 - `apps/mobile`: Expo Router, typed design tokens, native Keychain storage, shared network/query handling, local challenge/reflection/Progress UI, account journal/sender and guarded recovery/access composition.
 - `apps/api`: Hono with Node/Workers adapters, Drizzle, `pg`, reviewed SQL and operational endpoints.
 - `packages/contracts`: public Zod response schemas shared by mobile and API.
-- `docs`: product scope, implementation plan and extracted design references.
-
-Read [foundation setup and versions](docs/operations/FOUNDATION.md) and [Apple/RevenueCat checklist](docs/operations/APPLE_SETUP.md). The [PRD](docs/product/PRD.md) owns product behavior, the [implementation plan](docs/implementation-plan/README.md) owns phase scope, and `gate` issues track release gates.
+- `docs`: product, architecture, operations and legal guidance, and the implementation plan.
