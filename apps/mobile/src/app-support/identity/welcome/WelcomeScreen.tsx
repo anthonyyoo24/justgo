@@ -46,19 +46,18 @@ export function WelcomeScreen({
             : null
       }
       onRetry={
-        !signIn.error && connectionError
-          ? () => {
-              if (state.account) signIn.retry();
-              else void controller.retry();
-            }
-          : undefined
+        state.account
+          ? signIn.retry
+          : !signIn.error && connectionError
+            ? () => {
+                void controller.retry();
+              }
+            : undefined
       }
       signInButtons={
         <ProviderButtons
-          provider={state.account ? (state.provider ?? 'apple') : undefined}
-          disabled={!state.initialized || state.busy}
+          disabled={!state.initialized || state.busy || !!state.account}
           busyProvider={signIn.busyProvider}
-          retry={signIn.retryHandoff}
           onSignIn={(provider) => {
             void signIn.signIn(provider);
           }}

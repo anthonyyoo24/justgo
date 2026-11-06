@@ -2,7 +2,7 @@ import { test, expect } from './support/fixtures';
 import { journeyApiUrl } from './support/environment';
 
 for (const provider of ['apple', 'google'] as const) {
-  test(`${provider} keeps one button spinner through authorization, access and challenge preparation`, async ({
+  test(`${provider} keeps both provider buttons fixed through authorization, access and challenge preparation`, async ({
     page,
   }) => {
     const providerLabel = provider === 'apple' ? 'Apple' : 'Google';
@@ -36,9 +36,23 @@ for (const provider of ['apple', 'google'] as const) {
     });
     try {
       await page.goto('/welcome');
+      const actions = [
+        'Sign in with Apple',
+        'Sign in with Google',
+        'Continue',
+      ].map((name) => page.getByRole('button', { name, exact: true }));
+      for (const action of actions) {
+        await expect(action).toBeVisible();
+        await expect(action).toBeEnabled();
+      }
       await expect(
         page.getByText(/Signing in saves your challenge history/),
       ).toBeVisible();
+      const initialPositions = await Promise.all(
+        actions.map((action) => action.boundingBox()),
+      );
+      if (initialPositions.some((position) => !position))
+        throw new Error('Welcome actions must be measurable before sign-in');
       const button = page.getByRole('button', {
         name: buttonName,
         exact: true,
@@ -56,6 +70,10 @@ for (const provider of ['apple', 'google'] as const) {
         await expect(button).toHaveAttribute('aria-busy', 'true');
         await expect(button).toHaveText('');
         await expect(spinner).toBeVisible();
+        for (const action of actions) {
+          await expect(action).toBeVisible();
+          await expect(action).toBeDisabled();
+        }
         await expect(
           page.getByText('Checking your access…', { exact: true }),
         ).toHaveCount(0);
@@ -63,6 +81,19 @@ for (const provider of ['apple', 'google'] as const) {
           page.getByRole('heading', { name: 'Terms & Privacy', exact: true }),
         ).toHaveCount(0);
         await expect(async () => {
+          const positions = await Promise.all(
+            actions.map((action) => action.boundingBox()),
+          );
+          for (let index = 0; index < positions.length; index++) {
+            const position = positions[index];
+            const initial = initialPositions[index];
+            if (!position || !initial)
+              throw new Error('Every Welcome action must remain measurable');
+            for (const axis of ['x', 'y', 'width', 'height'] as const)
+              expect(
+                Math.abs(position[axis] - initial[axis]),
+              ).toBeLessThanOrEqual(1);
+          }
           const [action, indicator] = await Promise.all([
             button.boundingBox(),
             spinner.boundingBox(),
@@ -179,9 +210,18 @@ test('Welcome retries failed challenge preparation without repeating provider au
     'Your challenges couldn’t load. Check your connection and try again.',
   );
   await expect(page).toHaveURL(/\/welcome$/);
-  const retry = page.getByRole('button', { name: 'Try again', exact: true });
+  const retry = page.getByRole('button', {
+    name: 'Retry connection',
+    exact: true,
+  });
   await expect(retry).toHaveCount(1);
   await expect(retry).toBeEnabled();
+  for (const name of ['Sign in with Apple', 'Sign in with Google']) {
+    await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name, exact: true }),
+    ).toBeDisabled();
+  }
   await expect(
     page.getByRole('button', { name: 'Continue', exact: true }),
   ).toBeDisabled();

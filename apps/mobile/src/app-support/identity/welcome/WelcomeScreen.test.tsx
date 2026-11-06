@@ -198,45 +198,109 @@ it.each(['pending', 'cleanup'] as const)(
   },
 );
 
-it('keeps the selected spinner and blocks duplicate sign-in and Continue until cancellation', async () => {
-  const s = await setup();
-  let release!: () => void;
-  s.auth.signIn = jest.fn(
-    () =>
-      new Promise((resolve) => {
-        release = () => resolve(null);
-      }),
-  );
-  const screen = await render(<WelcomeScreen controller={s.controller} />);
-  await act(async () => {
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Sign in with Apple' }),
+it.each(['Apple', 'Google'])(
+  'keeps both providers and blocks duplicate actions during %s sign-in until cancellation',
+  async (provider) => {
+    const s = await setup();
+    let release!: () => void;
+    s.auth.signIn = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve(null);
+        }),
     );
-  });
-  try {
+    const screen = await render(<WelcomeScreen controller={s.controller} />);
+    await act(async () => {
+      await fireEvent.press(
+        screen.getByRole('button', { name: `Sign in with ${provider}` }),
+      );
+    });
+    try {
+      for (const name of [
+        'Sign in with Apple',
+        'Sign in with Google',
+        'Continue',
+      ]) {
+        const button = screen.getByRole('button', { name });
+        expect(button).toBeDisabled();
+        await fireEvent.press(button);
+      }
+      expect(s.auth.signIn).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByRole('progressbar', {
+          name: `Signing in with ${provider}`,
+        }),
+      ).toBeTruthy();
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(mockBeginEntry).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => {
+        release();
+      });
+    }
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(s.api.request).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['apple', 'google'] as const)(
+  'retains both provider buttons after %s establishes the account while challenges prepare',
+  async (provider) => {
+    const s = await setup();
+    const snapshot = {
+      ...s.controller.getSnapshot(),
+      mode: 'account' as const,
+      provider,
+      account: {
+        userId: '00000000-0000-4000-8000-000000000101',
+        deviceId: '00000000-0000-4000-8000-000000000102',
+        sessionId: '00000000-0000-4000-8000-000000000103',
+        authUserId: '00000000-0000-4000-8000-000000000104',
+        expiresAt: '2027-01-01T00:00:00.000Z',
+        dataEpoch: 0,
+      },
+    };
+    jest.spyOn(s.controller, 'getSnapshot').mockReturnValue(snapshot);
+    const signIn = jest.spyOn(s.auth, 'signIn');
+    const screen = await render(<WelcomeScreen controller={s.controller} />);
+    expect(
+      screen
+        .getAllByRole('button')
+        .map((button) => button.props.accessibilityLabel),
+    ).toEqual(['Sign in with Apple', 'Sign in with Google', 'Continue']);
+    expect(
+      screen.getByText(/Signing in saves your challenge history/),
+    ).toBeTruthy();
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toBeDisabled();
+      await fireEvent.press(button);
+    }
+    expect(
+      screen.getByRole('progressbar', {
+        name: `Signing in with ${provider === 'apple' ? 'Apple' : 'Google'}`,
+      }),
+    ).toBeTruthy();
+    expect(signIn).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+
+    mockHandoff.error =
+      'Your challenges couldn’t load. Check your connection and try again.';
+    await screen.rerender(<WelcomeScreen controller={s.controller} />);
+    expect(screen.getByRole('alert')).toHaveTextContent(mockHandoff.error);
+    expect(screen.queryByRole('progressbar')).toBeNull();
     for (const name of [
       'Sign in with Apple',
       'Sign in with Google',
       'Continue',
-    ]) {
-      const button = screen.getByRole('button', { name });
-      expect(button).toBeDisabled();
-      await fireEvent.press(button);
-    }
-    expect(s.auth.signIn).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole('progressbar', { name: 'Signing in with Apple' }),
-    ).toBeTruthy();
-    expect(mockPush).not.toHaveBeenCalled();
-    expect(mockBeginEntry).not.toHaveBeenCalled();
-  } finally {
-    await act(async () => {
-      release();
-    });
-  }
-  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
-  expect(s.api.request).not.toHaveBeenCalled();
-});
+    ])
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Retry connection' }),
+    );
+    expect(mockHandoff.retry).toHaveBeenCalledTimes(1);
+    expect(signIn).not.toHaveBeenCalled();
+  },
+);
 
 it('keeps provider failure on Welcome and allows an explicit retry', async () => {
   const s = await setup();
