@@ -10,7 +10,7 @@
 
 JustGO helps adults build social confidence through short, real-world social challenges. Users find an appropriate challenge, attempt it, acknowledge completion, optionally reflect, and see their activity history and progress.
 
-For the October 9 legal drafts, the owner identified the personal operator as Youngshin Yoo in Canada and proposed adults 18 and older across available App Store countries and regions. Final distribution, eligibility behavior, age rating and regional legal review remain release decisions. The [data inventory and legal review](../legal/LEGAL_REVIEW.md) track the policy assumptions and required follow-up; no new onboarding is approved by these drafts.
+For the October 9 legal drafts, the owner identified the personal operator as Youngshin Yoo in Canada and proposed adults 18 and older across available App Store countries and regions. Final distribution, eligibility behavior, age rating and regional legal review remain release decisions. The [data inventory](../legal/DATA_INVENTORY.md) and [release disclosures](../legal/RELEASE_DISCLOSURES.md) track the policy assumptions and required follow-up; no new onboarding is approved by these drafts.
 
 ```text
 Guest first use: Welcome → Continue → Terms & Privacy → Continue locally → Verify challenge access → Prepare first deck → Home

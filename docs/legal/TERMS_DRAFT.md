@@ -4,7 +4,7 @@
 <!-- publication-status: owner-approved -->
 <!-- effective-date: 2026-10-25 -->
 
-Anthony authorized final necessary wording changes and public hosting on October 25, 2026 after reviewing the managed-sync drafts and comparison. The focused review retained this public Terms wording without adding arbitration, liability caps or a new forum. The effective date is the document publication date. The [review record](LEGAL_REVIEW.md) retains provider, regional and signed-release conditions; document publication does not close those external-beta gates. Paid billing is inactive and needs its separate offer/terms update before paid launch.
+Anthony authorized final necessary wording changes and public hosting on October 25, 2026 after reviewing the managed-sync drafts and comparison. The focused review retained this public Terms wording without adding arbitration, liability caps or a new forum. The effective date is the document publication date. The [approval record](APPROVALS.md) lists approved versions. Provider, regional and signed-release conditions stay open as `gate` issues; document publication does not close them. Paid billing is inactive and needs its separate offer/terms update before paid launch.
 
 <!-- public:start -->
 

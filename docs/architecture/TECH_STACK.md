@@ -285,7 +285,7 @@ view/acceptance receipts or version-driven navigation.
 [Phase 17](../implementation-plan/phase-17-analytics.md) owns post-paid-launch
 analytics and the approved event allowlist, and
 Phase 11 implemented app crash reporting;
-the [legal review](../legal/LEGAL_REVIEW.md) owns final legal
+the [legal approval record](../legal/APPROVALS.md) owns approved legal
 notices, document labels and public destinations. Product analytics stays disabled
 through beta and paid launch. Phase 17 must review its actual permission/collection
 design before activation; Continue and historical legal receipts grant no analytics

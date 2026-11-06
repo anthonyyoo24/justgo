@@ -76,7 +76,7 @@ Record live deletion and expiry separately for provider backups, paused-project
 recovery copies and operator snapshots. The planned Pro seven-day backup target is
 not evidence of today's Free retention or every recovery-copy expiry. Signed-in
 journal sync reopens private-data processing/provider conditions; use the current
-[legal review](../legal/LEGAL_REVIEW.md), not the superseded local-only assessment.
+[data inventory](../legal/DATA_INVENTORY.md) and [regional assessment](../legal/RELEASE_DISCLOSURES.md#regional-assessment), not the superseded local-only assessment.
 
 ## Device and manual-file acceptance
 

@@ -3,7 +3,7 @@
 This guide owns the prepared build/upload procedure. The
 [External beta](https://github.com/anthonyyoo24/justgo/milestone/1) gates own acceptance;
 [Apple setup](APPLE_SETUP.md) owns accounts/signing, and the
-[legal review](../legal/LEGAL_REVIEW.md) owns publication/provider conditions.
+[approval record](../legal/APPROVALS.md) and [data inventory](../legal/DATA_INVENTORY.md) own publication/provider conditions.
 Preparation does not establish signed-build acceptance or authorize distribution.
 
 ## Target and cutover status
