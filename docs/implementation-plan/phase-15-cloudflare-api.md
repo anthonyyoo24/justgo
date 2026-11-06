@@ -30,7 +30,7 @@ Supabase Free plan until an upgrade trigger below is reached.
 - Preserve the [identity boundary](../architecture/IDENTITY.md),
   [activity architecture](../architecture/ACTIVITY_DATA.md),
   [server release safeguards](../operations/SERVER_RELEASES.md) and the
-  [backup restore checklist](../operations/FOUNDATION.md#backup-restore-checklist).
+  [restore checklist](../operations/CLOUDFLARE_BACKUPS.md#restore-checklist).
 - Cost: start on Workers Free. Workers Paid (US$5/month) is expected if measured
   CPU exceeds 10 ms per request, and needs Anthony's approval. R2 stays within its
   10 GB free allowance, but enabling it requires a payment method on the account.

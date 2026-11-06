@@ -123,12 +123,12 @@ durable pending cleanup; toggling sync cannot discard it. Saved deletion receipt
 and copied-source retirement resume before normal Auth initialization, including
 after the managed Auth user has been erased. User-exported files remain external.
 Native cleanup capability is checked before the destructive request. The
-[backup/restore checklist](../operations/FOUNDATION.md#backup-restore-checklist)
+[restore checklist](../operations/CLOUDFLARE_BACKUPS.md#restore-checklist)
 preserves deletion after restoring an older backup.
 
 The invoker-rights `justgo.purge_expired_identity_records` function bounds identity
 retention cleanup, with `PUBLIC` execution revoked and migrator-only access.
-Creating the function does not schedule it; [beta operating controls](../operations/FOUNDATION.md#beta-operating-controls)
+Creating the function does not schedule it; [beta operating controls](../operations/TESTFLIGHT_BETA.md#beta-operating-controls)
 record its hourly `pg_cron` job. Production backups are gate [#104](https://github.com/anthonyyoo24/justgo/issues/104).
 
 <a id="3-architecture-and-storage-boundaries"></a>

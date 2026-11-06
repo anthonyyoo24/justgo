@@ -176,8 +176,8 @@ new guest accounts. Keep old phone journals and secure proofs intact. A failed o
 locked vault must not trigger a reset or automatic replacement account.
 
 Apply the registered Drizzle migrations using the existing separate migration
-connection and `npm run db:migrate -w @justgo/api`. Review backup/restore and
-forward-repair steps in [FOUNDATION.md](FOUNDATION.md) first. Do not rewrite applied
+connection and `npm run db:migrate -w @justgo/api`. Review the
+[restore checklist](CLOUDFLARE_BACKUPS.md#restore-checklist) first. Do not rewrite applied
 migration 0019. The registered 0020 migration is the owner's narrowly approved reset
 of old server inline reflection fields and patch receipts only; it preserves
 accounts, completed reps, frozen context and all local phone writing. Migration

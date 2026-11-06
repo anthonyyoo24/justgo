@@ -338,6 +338,40 @@ To stop a tester's access, keep their `BETA_ACCESS_GRANTS` entry and set its
 `revokedAt`. Do not remove the entry: its interval keeps the completions they
 started inside it uploadable.
 
+## Beta operating controls
+
+These controls run in the staging Supabase project and in Sentry. Their settings
+live in those services, not in this repository.
+
+### Identity retention job
+
+The operator migration `enable_beta_identity_retention` enabled `pg_cron`. Job
+`justgo-identity-retention` runs hourly at minute 17. It connects as the existing
+`postgres` scheduler login, runs `SET LOCAL ROLE justgo_migrator` inside a
+transaction and calls `justgo.purge_expired_identity_records(1000)` with a
+five-second statement limit. To stop it, call `cron.alter_job` with the job name.
+Never edit the cron tables directly.
+
+### Readiness monitor
+
+Sentry uptime monitor [10773615](https://anthony-corp.sentry.io/monitors/10773615/)
+checks the public staging `/ready` over HTTPS every minute, with a five-second
+timeout and no account credentials. A check passes only on a successful HTTP
+status with JSON `status: ready`. Three failures in a row open an issue, and one
+success resolves it. The API and mobile Sentry projects email Anthony on new
+issues, regressions and recoveries. The monitor uses the plan's one included
+monitor.
+
+### Supabase Pro upgrade triggers
+
+The database stays on Supabase Free. Ask Anthony to approve Pro (US$25 a month)
+when any of these happens:
+
+- The database nears 400 MB of its 500 MB limit.
+- Monthly egress nears 5 GB.
+- A pause or capacity incident occurs.
+- Revenue comfortably covers the cost.
+
 ## Remaining prerequisites
 
 - Verify the published legal links and accessibility in the signed app. Reconcile
@@ -355,7 +389,7 @@ started inside it uploadable.
 - Verify the configured branded icon and native font/splash behavior on the signed
   build. Root `assets/icon.png` and `assets/splash-icon.png` remain unreferenced Expo
   placeholders.
-- Confirm beta dates/invitees and the remaining [server operating controls](FOUNDATION.md#beta-operating-controls).
+- Confirm beta dates/invitees and the remaining [server operating controls](#beta-operating-controls).
   Cleanup and rate limits are deployed, and the readiness monitor is active.
   The October 27 Sentry uptime monitor is active, API/mobile email alert rules are
   verified and Anthony confirmed the test email plus controlled monitor
@@ -371,8 +405,10 @@ started inside it uploadable.
   Anthony's explicit authorization covers filtered Sentry errors, included
   uptime/email alerts and protected deployment preparation; no paid upgrade is
   authorized.
-- Preserve all applicable separate Git, native build, upload and distribution
-  permissions and the open [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate).
+- Uploads, TestFlight distribution and outside-service settings changes need
+  Anthony's go first, as the [Git and autonomy](../../AGENTS.md#git-and-autonomy)
+  rules say. Keep the [`gate` issues](https://github.com/anthonyyoo24/justgo/issues?q=label%3Agate)
+  open until their evidence lands.
 
 References: [Expo profiles](https://docs.expo.dev/build/eas-json/),
 [versions](https://docs.expo.dev/build-reference/app-versions/),

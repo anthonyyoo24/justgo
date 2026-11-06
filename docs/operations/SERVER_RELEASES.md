@@ -56,6 +56,48 @@ Hyperdrive. Nonvirtual URLs still require matching literal identity. The release
 advisory lock stays on the separate direct session-pooler migrator connection.
 See [Hyperdrive's supported features](https://developers.cloudflare.com/hyperdrive/reference/supported-databases-and-features/).
 
+## Staging database
+
+The staging database is the Supabase project **JustGo**, project ref
+`kmcpcauaxlgpevkkenwd`, in Canada Central, under the organization
+**anthonyyoo corp**. Anthony approved its creation after Supabase quoted $0 a
+month. That quote does not guarantee a future budget. Production is not
+provisioned.
+
+To provision a database, follow this order:
+
+1. As an administrator, review `apps/api/scripts/provision.sql` and apply it once.
+   It creates the `justgo_migrator` and `justgo_runtime` roles, the private
+   `justgo` and `drizzle` schemas, and their grants and limits. Give each role an
+   independent random password through a secure administrative channel. Never put
+   a password in a migration.
+2. Connect the migration role directly or through the **session** pooler, which
+   listens on port 5432. Staging uses host
+   `aws-0-ca-central-1.pooler.supabase.com` and username
+   `justgo_migrator.<project-ref>`. Supply the project's CA and keep certificate
+   and hostname verification on.
+3. Apply the application migrations with `npm run db:migrate`.
+4. Connect the runtime role with its own password. The Vercel API that build 5
+   still uses connects through the **transaction** pooler on port 6543 as
+   `justgo_runtime.<project-ref>`. The Worker connects through Hyperdrive, as
+   [Fixed target](#fixed-target) lists.
+
+Supabase records the administrative provisioning as its own migration,
+`foundation_roles`. Drizzle's journal in schema `drizzle` records the application
+migrations from `0000_foundation.sql` on. Keep the two runners separate.
+Generate a later domain migration with
+`npm run db:generate -w @justgo/api -- --name <feature_name>`, or a custom one
+with Drizzle Kit's `--custom` option, and review the generated SQL and journal
+together. Managed
+Auth also needs the operator-installed session-check helper in
+[account setup](ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
+
+Give each new owner-scoped table `USING` and `WITH CHECK` policies for
+`justgo_runtime`, only the grants its operations need, and an index on `user_id`.
+PostgreSQL truncates identifiers longer than 63 bytes, so give each long
+generated constraint or foreign-key name an explicit short name in the schema,
+the SQL and the snapshot.
+
 ## Credentials and approval protection
 
 For the GitHub release lane, store these secrets in the protected `justgo-staging`
@@ -90,7 +132,7 @@ those through separately approved setup. The workflow checks sole-owner review
 and the exact main-only branch policy before the protected job and again inside
 it. Adding another User or Team reviewer fails the guard because GitHub permits
 any one configured reviewer to approve. These checks do not replace Anthony's
-review or separate Git publication permissions.
+review or his merge.
 
 Runtime database, Auth, rate-key and diagnostic secrets belong to the staging
 Worker, not mobile or the release bundle. The version guard requires secret
@@ -109,25 +151,26 @@ need an approved version disposition. Never put secret values in process
 arguments, source, receipts or chat. The backup runner uses separate narrowly
 scoped credentials described in [Cloudflare backups](CLOUDFLARE_BACKUPS.md).
 
-## Local phase-branch staging tests
+<a id="local-phase-branch-staging-tests"></a>
 
-The November 1 local-testing decision keeps Phase 15 source on
-`codex/phase-15-rollout` until the phase-end push and consolidated PR. With the
-owner's deployment authorization, `release:staging:local` can publish a clean,
-explicitly selected local commit to the existing **staging** Worker without
-pushing Git, creating a tag/PR or impersonating a GitHub run. The ordinary GitHub
-workflow retains its exact-main CI and protected-environment requirements.
+## Local branch staging tests
+
+With Anthony's go for the deploy, `release:staging:local` publishes a clean
+commit on a local branch to the existing **staging** Worker. It needs no push,
+tag or PR, and it does not impersonate a GitHub run. That go does not cover
+migrations, production releases or merges. The ordinary GitHub workflow keeps
+its exact-main CI and protected-environment requirements.
 
 Run from the repository root:
 
 ```sh
-npm run release:staging:local -- --prepare --phase-branch <phase-branch> --source <full-local-commit-sha> --credentials <protected-json-file>
+npm run release:staging:local -- --prepare --phase-branch <branch> --source <full-local-commit-sha> --credentials <protected-json-file>
 npm run db:local
-npm run release:staging:local -- --deploy --phase-branch <phase-branch> --source <full-local-commit-sha> --credentials <protected-json-file>
+npm run release:staging:local -- --deploy --phase-branch <branch> --source <full-local-commit-sha> --credentials <protected-json-file>
 ```
 
-Specify the owner-approved phase branch and its exact checked-out commit.
-The lane rejects `main`, detached HEAD and dirty checkouts.
+Pass the checked-out branch to `--phase-branch` and its exact commit to
+`--source`. The lane rejects `main`, detached HEAD and dirty checkouts.
 
 The explicitly selected JSON file must be an owner-only regular file (mode 0600,
 no symlink/hard link). It contains only `CLOUDFLARE_API_TOKEN`,
@@ -272,10 +315,11 @@ Keep Phase 14's privacy and physical-device acceptance gates open.
 
 ## Run a code-only release
 
-1. Complete the applicable checks and obtain the specific Git permissions in
-   [AGENTS.md](../../AGENTS.md). Publish and merge reviewed source, require its
-   latest successful Foundation **main push**, and create the reviewed tag under
-   the owner's authorization. PR-only CI does not substitute for that run.
+1. Open a ready PR with the reviewed source. Only Anthony merges it. The release
+   needs a successful **Foundation checks** run from the push to `main` for that
+   commit. CI on the PR does not count. A staging deploy needs Anthony's go, as
+   the [Git and autonomy](../../AGENTS.md#git-and-autonomy) rules say. With that
+   go, create the reviewed tag on the merged commit.
 2. On `main`, dispatch **Staging API release**, choose `deploy`, and provide that
    existing tag. Leave `migration_plan_sha256` empty. The workflow resolves the
    tag to a commit reachable from main and checks out that exact SHA after review.
@@ -386,7 +430,7 @@ placeholder approval values or infer these booleans from a successful upload.
 Encrypted R2 database/ledger receipts and the isolated restore procedure in
 [Cloudflare backups](CLOUDFLARE_BACKUPS.md) supply evidence for this attestation
 once the actual arrangement is accepted. The
-[backup restore checklist](FOUNDATION.md#backup-restore-checklist) remains the
+[restore checklist](CLOUDFLARE_BACKUPS.md#restore-checklist) remains the
 reopening boundary. An hourly ledger copy cannot establish deletions/revocations
 made after that copy; a current writer-fenced ledger must cover application and
 Auth changes. If that state cannot be recovered, keep restored writers closed.

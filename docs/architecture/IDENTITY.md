@@ -191,7 +191,7 @@ never reconnects. No hosted schedule is configured by adding it. Deletion receip
 canonical subject tombstones, deleted record IDs and revoked credential digests
 remain protected from purge/backup resurrection. Restore operations must reapply
 deletions before reopening writes; see the
-[backup checklist](../operations/FOUNDATION.md#backup-restore-checklist).
+[restore checklist](../operations/CLOUDFLARE_BACKUPS.md#restore-checklist).
 
 Native worktrees share the installed app's Keychain namespace. Preserve newer
 known pending-deletion and identity metadata when switching builds; storage/schema
@@ -273,8 +273,6 @@ Historical safety rules remain in force:
 
 Migration `0003_transfer_verification` erased obsolete plaintext verification and
 cancelled old transfers. Do not restore an older transfer API against that schema.
-Later resource contraction follows the
-[coordinated cutover procedure](../operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients).
 
 ## Database, rates and retention
 

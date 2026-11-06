@@ -37,7 +37,7 @@ Follow [account setup](ACCOUNT_SYNC_SETUP.md) for current API/build status and r
 
 Do not restore an older private-writing API against new grants. Repair forward
 while incompatible traffic is closed. Database restoration uses the existing
-[deletion/revocation checklist](FOUNDATION.md#backup-restore-checklist) plus managed
+[restore checklist](CLOUDFLARE_BACKUPS.md#restore-checklist) plus managed
 Auth revocations, canonical owner links, data epochs/tombstones and pending Auth
 cleanup. A database snapshot must not reopen deleted accounts or restore erased
 journal records. The cleanup command is an operator tool; no recurring schedule
