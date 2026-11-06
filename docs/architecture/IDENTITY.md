@@ -2,8 +2,10 @@
 
 The API is the trusted boundary for JustGO data. Mobile never reads private
 PostgreSQL tables directly. Shared Zod contracts and the generated OpenAPI own
-route payloads. Provider settings and rollout state live in
-[ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md). This file keeps
+route payloads. Provider settings live in
+[ACCOUNT_SYNC_SETUP.md](../operations/ACCOUNT_SYNC_SETUP.md). The open
+physical-device gate issues (#81, #82, #83, #85, #105) track the remaining
+signed-build acceptance. This file keeps
 the rules that tests do not pin and the reasons that code cannot show.
 
 ## Guest and account ownership
@@ -76,10 +78,14 @@ on another connection. Private `justgo` tables get no grants to Supabase `anon`,
 capability. It returns no records and changes no data. See the
 [operator setup](../operations/ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
 
-Hyperdrive does not support advisory locks. Managed requests and existing-proof
-recovery therefore serialize on the unique Auth-subject key and owner row locks.
-Legacy bootstrap and transfer transactions still take advisory locks, so
-`needsDirectTransaction` keeps them on one direct TLS connection.
+Managed exchange and existing-proof recovery run through Hyperdrive with
+ordinary transactions and owner row locks. Existing-proof recovery creates no
+missing credential, so it takes no advisory lock. The owner lock plus a
+credential re-read protects revocation. Legacy bootstrap creation and transfers
+take advisory locks. `needsDirectTransaction` moves them to one direct
+connection only when `MANAGED_AUTH_ENABLED` is false, which Worker config allows
+only against loopback `justgo_test`. Workers' direct TLS sockets cannot use the
+Supabase private CA, so hosted Workers never take that path.
 
 ## Data and account deletion
 
@@ -115,7 +121,8 @@ empty credential store. Generate secrets as 32 bytes from `expo-crypto`
 
 Old installations may still hold recovery-key proofs. Keep these paths until
 the supported migration window closes, meaning every supported old installation
-has linked its owner or finished its pending deletion:
+has linked its owner or finished its pending deletion, or the owner explicitly
+approves ending that support:
 
 - Mobile keeps the legacy controller for pending legacy deletion, plus proof
   renewal, frozen exchange proofs, linked-owner markers, secure-vault reads and
@@ -126,6 +133,10 @@ has linked its owner or finished its pending deletion:
   recovery and renewal forms of `POST /v1/sessions`, and original-proof replay of
   pending legacy deletion. The default legacy API mode stays until the
   coordinated rollout.
+
+PostgreSQL stores SHA-256 hex digests (`digest` in
+`apps/api/src/identity/service.ts`). Never change the algorithm: stored digests
+and revoked-proof tombstones would stop matching.
 
 These are internal compatibility paths, not account UI options. Migration
 `0003_transfer_verification` erased plaintext transfer verification. Never
