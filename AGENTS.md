@@ -59,10 +59,8 @@ upgrades need a separate task.
 
 ## Proving a change works
 
-pstack's `prove-it-works` principle and `tdd` skill set the method: prove the change
-on the real surface with a check that fails before it and passes after it, write a
-failing test first when a cheap test path exists, and prefer no new test over a bad
-one. JustGO adds these rules:
+pstack's `prove-it-works` principle and `tdd` skill set the method. JustGO adds
+these rules:
 
 - Drive a user-facing change through `verify-justgo`. Read an API or data change
   back from the database or the response.
@@ -84,19 +82,23 @@ one. JustGO adds these rules:
   and sequencing. When a task names a phase, read that phase before you edit.
   Change the plan only when scope or a decision changes. Keep a task's scope
   bounded, and preserve existing behavior unless the task changes it.
-- The [identity boundary](docs/architecture/IDENTITY.md),
-  [activity data](docs/architecture/ACTIVITY_DATA.md) and
-  [app shell](docs/architecture/APP_SHELL.md) guides own the domain safety
-  invariants: hydration, account deletion and credential preservation, lifecycle
-  and clock coordination, and native modal, animation and list behavior. Read the
-  owner before you change that behavior.
+- The domain safety invariants have three owners. Read the owner before you
+  change that behavior. [IDENTITY.md](docs/architecture/IDENTITY.md) owns account
+  transitions, account deletion and credential preservation.
+  [ACTIVITY_DATA.md](docs/architecture/ACTIVITY_DATA.md) owns saving, sync and
+  deletion epochs. [APP_SHELL.md](docs/architecture/APP_SHELL.md) owns runtime
+  hydration and effect restarts, guest adoption stages, and native modal and list
+  behavior.
+- No doc owns clock coordination. In `apps/mobile/src`,
+  `app-support/providers/activity-runtime.ts` rolls the journal day at minute
+  boundaries and local midnight through the injected `JournalClock`.
+  `app-support/access/verification/policy.ts` defines `serverClockOffset`, and
+  both it and `useAccessState.ts` beside it apply the server clock offset. Their
+  tests sit beside them.
 - The [tech stack](docs/architecture/TECH_STACK.md) guide describes the
   implemented boundaries. The source tree is the path map, and
   [Placement and move rules](#placement-and-move-rules) say where new code goes.
-- This file owns the commands, the check matrix and the proof standard.
-  [`verify-justgo`](.claude/skills/verify-justgo/SKILL.md) owns how to start, drive
-  and check the app, including the saved journeys and the exported-web smoke. The
-  tech stack guide describes CI, and the operations docs own their own local
+- The tech stack guide describes CI, and the operations docs own their own local
   rehearsals.
 - Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`). File
   each deferred device, hosted or staging check as one, and each approved deferral
@@ -139,9 +141,11 @@ one. JustGO adds these rules:
 
 ## Rules and what enforces them
 
-A check fails the build when its rule breaks. A written rule is a judgment call
-that no check catches. When an agent repeats a mistake, run `/pstack:correct`. It
-fixes the mistake at the highest level that works and updates this table.
+When a checked rule breaks, its check stops the work. A lint, type or test check
+fails CI, the trail hook blocks the run from finishing, and branch protection
+blocks the merge. A written rule is a judgment call that no check catches. When
+an agent repeats a mistake, run `/pstack:correct`. It fixes the mistake at the
+highest level that works and updates this table.
 
 | Rule                                                                                                                                                                                                                                                                                        | Enforced by                                                                                                                                                                                                                                                                                                                                                                              | Kind                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -183,9 +187,7 @@ layouts and reduced motion. Prove native accessibility on a native surface, as
 
 ## Git and autonomy
 
-Agents work in pstack's model: small PRs, reversible work without asking,
-and a stop before anything irreversible. Agents merge verified PRs (pstack's
-Autopilot-full).
+Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 - **Small PRs.** Each PR is narrow, verified and lands on its own. Start each PR
   from `main`. Stack one on another only when it needs that PR's change, and then

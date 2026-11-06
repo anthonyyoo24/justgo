@@ -3,8 +3,7 @@
 An iOS-first social-confidence app with local guest use, optional Apple/Google
 accounts, six venue decks, explicit reflections and durable Progress history.
 Signed-in collections synchronize history and journal through JustGO's API;
-optional iCloud Sync and complete Download/Import controls are separate. The
-[app-shell guide](docs/architecture/APP_SHELL.md) describes the implemented boundaries.
+optional iCloud Sync and complete Download/Import controls are separate.
 
 ## Documentation
 
@@ -18,7 +17,7 @@ optional iCloud Sync and complete Download/Import controls are separate. The
 
 ## Start locally
 
-Use Node **24.18.0** and npm **11.16.0**. `npm ci` builds the shared contracts; rerun `npm run build:contracts` after contract edits. From this repository root:
+Use the Node version in `.nvmrc` and the npm version in `package.json`. `npm ci` builds the shared contracts; rerun `npm run build:contracts` after contract edits. From this repository root:
 
 ```sh
 npm ci
@@ -31,53 +30,32 @@ npm run dev:web
 
 The [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md) is the tested way to start the app on loopback fixtures and check that it serves this checkout.
 
-`db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere set `JUSTGO_PG_BIN` to their directory. The `test:db` migration rehearsal and the backup scripts read it too. It creates a dedicated, loopback-only cluster at `.local/postgres` on port **54329** and the `justgo_test` database, generates local role credentials and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Database tests, API coverage and journeys need three URLs on this cluster, all with `DATABASE_SSL=disable`: `DATABASE_URL` for the restricted `justgo_runtime` role, `MIGRATION_DATABASE_URL` for fixture setup and cleanup, and `JUSTGO_TEST_ADMIN_DATABASE_URL`, the `postgres` login that the Auth-session helper test and the encrypted recovery rehearsal use. `db:local` writes all three to a new `apps/api/.env`. Copy any that an older `.env` lacks from `.local/database.env`. Local host authentication is trusted on this disposable cluster; never expose its port or use it for personal data.
+`db:local` requires PostgreSQL 17 binaries. On macOS: `brew install postgresql@17`. Elsewhere set `JUSTGO_PG_BIN` to their directory; the `test:db` migration rehearsal and the backup scripts read it too. It creates a loopback-only cluster at `.local/postgres` on port **54329** with the `justgo_test` database, and creates missing workspace `.env` files without replacing existing ones. Stop it with `npm run db:stop`. Database tests need `DATABASE_URL`, `MIGRATION_DATABASE_URL` and `JUSTGO_TEST_ADMIN_DATABASE_URL`, all with `DATABASE_SSL=disable`. `db:local` writes them to a new `apps/api/.env`; copy any that an older `.env` lacks from `.local/database.env`. Local host authentication is trusted on this disposable cluster; never expose its port or use it for personal data.
 
-The browser preview is at `http://localhost:8081`. The API listens at `http://localhost:3000`: `/health` checks liveness; `/ready` checks the database connection, restricted role and foundation migration. The app connects a real account and checks `/v1/access`. Until phase 16, this returns unavailable; **Preview app screens** opens isolated development UI. `/openapi.json` publishes the shared contracts; `/health` and `/ready` remain operational probes. Without a database, liveness still works and readiness returns 503.
+The browser preview is at `http://localhost:8081` and the API at `http://localhost:3000`. To run the challenge, reflection and Progress flow on disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`, because plain `dev:api` answers `/v1/access` with access unavailable until Phase 16. It grants a test entitlement only on loopback `justgo_test`.
 
-To exercise the implemented challenge/reflection/Progress flow with disposable local data, run `npm run dev:challenges -w @justgo/api` **instead of** `dev:api`. This separate entrypoint grants a test entitlement only on the loopback `justgo_test` database; it refuses production/Vercel and is not part of deployed access behavior. Use the guarded journey launcher for synthetic provider sign-in or guest entry; external-provider fixtures never ship in native/production resolution. The presentation-only screen preview still makes no challenge writes. Apply all registered migrations first. The [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md) covers fixtures and what browser evidence cannot prove.
-
-For environment-managed development, copy the workspace `.env.example` files to `.env` and configure the separate runtime and migration URLs. Never commit credentials. Identity traffic requires HTTPS, except loopback during development. A physical iPhone needs a reachable HTTPS API route; `localhost` on a phone refers to the phone. Do not embed a Vercel protection bypass secret in the app.
+A physical iPhone needs a reachable HTTPS API route, because `localhost` on a phone refers to the phone.
 
 ## Verify
-
-```sh
-npm run check          # fresh Expo Doctor, TypeScript, lint, formatting and tests
-npm run test:db        # real PostgreSQL isolation/rollback/pool tests; db:local + migrate first
-npm run test:coverage  # optional all-source coverage reports; uses the test DB
-npm run test:journey   # saved app/API/database local saving, Progress, lost-acknowledgement and account recovery cases
-npm run export:web -w @justgo/mobile
-npm run export:ios -w @justgo/mobile
-npm run doctor -w @justgo/mobile
-```
-
-CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The required Playwright journey step runs the full local-save/reflection/Progress and controlled recovery suite against isolated app/API/database fixtures, with masked failure artifacts. Hosted results for a pushed commit are separate from local passes. Local implementation implies no staging or production deployment. [Start locally](#start-locally) lists the local database prerequisites.
 
 Commands, coverage reports and the check matrix are in
 [AGENTS.md](AGENTS.md#choosing-checks).
 
 ## iOS development
 
-On the owner's 8 GB Mac, use the linked EAS cloud project for native compilation. Keep Simulator closed while building, retain existing caches, and run heavy checks sequentially.
+Compile native builds on the linked EAS cloud project, not on the owner's 8 GB Mac. Keep Simulator closed while building.
 
 ```sh
 cd apps/mobile
 npx eas-cli@latest build --platform ios --profile development-simulator
 ```
 
-The simulator profile uses the unreserved identifier `dev.justgo.foundation` and localhost API. It needs no Apple signing. The existing Expo project `53cf0560-8ab5-446a-9bc6-deb193b337b5` (`@anthonyyoos-team/justgo`) is linked in `app.config.ts`; do not create another project. Authenticate with `npx eas-cli@latest login` if required. Device/distribution profiles still require the confirmed `IOS_BUNDLE_IDENTIFIER` and Apple setup.
+The simulator profile needs no Apple signing. `app.config.ts` links the existing Expo project; do not create another. Authenticate with `npx eas-cli@latest login` if required. Device and distribution profiles need the confirmed `IOS_BUNDLE_IDENTIFIER` and [Apple setup](docs/operations/APPLE_SETUP.md).
 
 After the cloud build finishes, download its artifact and launch **one** installed simulator. Start the local database/API, then Metro with `NODE_OPTIONS=--dns-result-order=ipv4first npx expo start --dev-client --localhost --max-workers 1` from `apps/mobile`. The IPv4 option keeps Metro’s localhost binding compatible with the simulator’s `127.0.0.1` bundle URL. Install the downloaded `.app` and open `justgo://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081`. Reuse that development binary for JavaScript, styling and UI changes through Fast Refresh; rebuild only when native dependencies/configuration change. Do not restart a heavy local Xcode build as a fallback without first explaining an EAS access/quota/configuration blocker.
 
-Generated native projects and completed Xcode caches are retained locally and excluded from Git/cloud uploads. EAS runs Continuous Native Generation from app config. `.easignore` excludes local secrets, native output, dependencies and design/docs; inspect the archive before changing those rules.
+EAS runs Continuous Native Generation from app config. Inspect the archive before you change `.easignore`.
 
 The local Expo module is auto-linked from `apps/mobile/modules/justgo-keychain`; native dependency or Swift changes require a new EAS build. If `xcrun simctl` resolves only Command Line Tools, use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for simulator commands without changing the global developer selection.
 
-Automated simulator testing resumes through the [`verify-justgo` Native section](.claude/skills/verify-justgo/SKILL.md#native) and [#114](https://github.com/anthonyyoo24/justgo/issues/114); it is unproven until one mapped feature is driven on a simulator. Open device and release-acceptance checks are GitHub issues labeled `gate`.
-
-## Workspace
-
-- `apps/mobile`: Expo Router, typed design tokens, native Keychain storage, shared network/query handling, local challenge/reflection/Progress UI, account journal/sender and guarded recovery/access composition.
-- `apps/api`: Hono with Node/Workers adapters, Drizzle, `pg`, reviewed SQL and operational endpoints.
-- `packages/contracts`: public Zod response schemas shared by mobile and API.
-- `docs`: product, architecture, operations and legal guidance, and the implementation plan.
+Automated simulator drives are unproven; the [`verify-justgo` Native section](.claude/skills/verify-justgo/SKILL.md#native) and [#114](https://github.com/anthonyyoo24/justgo/issues/114) track them.
