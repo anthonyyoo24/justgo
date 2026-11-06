@@ -42,7 +42,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 
 ### Spawn owners
 
-- [ ] Spawn one owner per PR with the full lifecycle that `autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners of PRs on Agent-effort paths run at `xhigh` effort, and so does the P15-1 owner, because its trial branch touches `apps/api/scripts/`.
+- [ ] Spawn one owner per PR with the full lifecycle that `playbooks/autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners of PRs on Agent-effort paths run at `xhigh` effort, and so does the P15-1 owner, because its trial branch touches `apps/api/scripts/`.
 - [ ] Follow this dependency graph. Start dependent work only after its parent merges or reports the named result.
   - [ ] P15-1, P15-3, P15-4 and P15-5 are independent and first. All four branch from `main`.
   - [ ] P15-2 after P15-1 reports `Decision: go`.
@@ -53,7 +53,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
   - [ ] P15-10 after P15-9 merges.
   - [ ] P15-11 after P15-10 merges.
 - [ ] Hold the file boundaries.
-  - [ ] P15-3 touches only `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/`, the `onVercel` code, and their tests and docs.
+  - [ ] P15-3 touches only `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/`, the `onVercel` code, the `VERCEL` legal-draft gates, and their tests and docs.
   - [ ] P15-5 touches only the API Worker code, its scripts, tests, CI step and docs. It never touches `scripts/backups/clock/`, `sites/legal/` or `.github/workflows/staging-health.yml`.
   - [ ] P15-7 touches only `apps/mobile/src/lib/network/`, `scripts/development/`, the fixture API prefix and their tests.
   - [ ] P15-3 and P15-5 can both edit `apps/api/tests/http/routing.test.ts`. Whichever lands second rebases onto the first.
@@ -107,12 +107,13 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Serve the bundle with `Deno.serve`. Strip the `/api` function prefix once before `app.fetch`.
 - [ ] Map `JUSTGO_AUTH_PUBLISHABLE_KEY` and `JUSTGO_AUTH_SECRET_KEY` into the existing `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_AUTH_SECRET_KEY` config fields. Leave `readConfig` unchanged.
 - [ ] Build the app and a one-connection `pg` pool once per worker.
+- [ ] On the Edge entry, time ten `select 1` round trips inside one transaction after one untimed query, and record the median. P15-2 repeats this probe on the hosted function.
 - [ ] Run `pg` both bundled with a `node:buffer` banner and external as an `npm:` import. Record which one works.
 - [ ] If `pg` fails over TLS or inside a transaction, repeat the trial with `drizzle-orm/postgres-js` and record the difference.
 
 **You see.**
 
-- [ ] `.local/edge-trial/report.md` lists every lane with pass or fail, the bundle size, CPU and wall time per route, the query count of the worst-case sync the loopback median of ten timed `select 1` round trips, and one decision line, `Decision: go` or `Decision: stop`.
+- [ ] `.local/edge-trial/report.md` lists every lane with pass or fail, the bundle size, CPU and wall time per route, the query count of the worst-case sync, the loopback median of ten timed `select 1` round trips, and one decision line, `Decision: go` or `Decision: stop`.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -220,7 +221,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **You see.**
 
-- [ ] `rg -n 'onVercel|x-vercel-forwarded-for|vercel-cli' apps scripts .github -g '!apps/api/tests/**'` matches only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs`, and `apps/api/vercel.json` and `.vercelignore` are gone.
+- [ ] `rg -n 'onVercel|x-vercel-forwarded-for|vercel-cli' apps scripts .github -g '!apps/api/tests/**'` matches nothing, or only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs` if P15-5 has not removed it, and `apps/api/vercel.json` and `.vercelignore` are gone.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -238,7 +239,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Lane 7. Download the complete data export in the pane. Save `export.png`. Pass when the export finishes and doctor counts return to the baseline after cleanup.
 - [ ] Lane 8. Run `npm run test:journey -- e2e/provider-sign-in.spec.ts`. Save `provider-sign-in.txt`. Pass when the journey passes.
 - [ ] Lane 9. Run `npm run export:web -w @justgo/mobile`, then `npm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
-- [ ] Lane 10. Search `apps`, `scripts` and `.github`, outside `apps/api/tests/`, for `onVercel`, `x-vercel-forwarded-for`, `vercel.json`, `.vercelignore` and `vercel-cli`. Save `vercel-audit.txt`. Pass when only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs` matches.
+- [ ] Lane 10. Search `apps`, `scripts` and `.github`, outside `apps/api/tests/`, for `onVercel`, `x-vercel-forwarded-for`, `vercel.json`, `.vercelignore` and `vercel-cli`. Save `vercel-audit.txt`. Pass when nothing matches, or only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs`.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -263,7 +264,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 **Files.**
 
 - [ ] Create a branch from `main` and cherry-pick `b27ba34`, `0ccaaa4`, `a9f3a43` and `5966a16` from `codex/phase15-real-recovery`. Leave the parked branch unchanged.
-- [ ] Edit `docs/checks/phase-15-rollout-review.md`, which `a9f3a43` adds, to drop its Workers rows.
+- [ ] Edit the planned `docs/checks/phase-15-rollout-review.md`, which `a9f3a43` adds, to drop its Workers rows.
 - [ ] Drop the `docs/handoffs/phase-15-cloudflare-api.md` hunk of `a9f3a43` unless it records backup or recovery evidence.
 - [ ] Edit `docs/operations/CLOUDFLARE_BACKUPS.md` to record the backup clock activation, the clock token expiry and the renewed R2 credential dates.
 
@@ -394,7 +395,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] A startup failure returns the same safe body and `x-justgo-startup-stage` header as `worker.ts:102-126` at `ce611dd`.
 - [ ] Server error reports flush through `EdgeRuntime.waitUntil`.
 - [ ] `supabase/config.toml` sets `verify_jwt = false` for `api`.
-- [ ] `edge-build.mjs` bundles `edge.ts` with esbuild, writes the bundle's SHA-256, and fails above 5 MB or when an input is untracked or ignored, as the Workers build audit did (`scripts/release/staging-worker-build.mjs:15-74` at `ce611dd`).
+- [ ] `edge-build.mjs` bundles `edge.ts` with esbuild, writes the bundle's SHA-256, and fails above 5 MB. Port the input and output checks of `validateWorkerBundle` (`scripts/release/staging-worker-build.mjs:15-74` at `ce611dd`), which reject untracked, ignored, non-production and secret-like inputs and unexpected output files.
 - [ ] `npm run test:edge` runs the smoke route sequence against the bundle in the pinned Edge runtime image and `justgo_test`. CI runs it where the Workers step was.
 
 **You see.**
@@ -557,7 +558,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Files.**
 
-- [ ] Create `docs/handoffs/phase-15-supabase-api.md` with the acceptance receipts.
+- [ ] Create the planned `docs/handoffs/phase-15-supabase-api.md` with the acceptance receipts.
 - [ ] Edit `docs/implementation-plan/README.md` to point Phase 15 at the new handoff.
 
 **Build.**
@@ -610,7 +611,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 **Files.**
 
 - [ ] Edit `docs/legal/PRIVACY_POLICY_DRAFT.md`, `docs/legal/DATA_INVENTORY.md` and `docs/legal/RELEASE_DISCLOSURES.md`.
-- [ ] Create `docs/legal/SUPABASE_NOTICE_REVIEW.md` from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`.
+- [ ] Create the planned `docs/legal/SUPABASE_NOTICE_REVIEW.md` from the provider-neutral parts of `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`.
 - [ ] Edit `docs/legal/APPROVALS.md` only after Anthony approves the text.
 
 **Build.**
@@ -724,7 +725,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Every box above is checked with its evidence.
 - [ ] `TECH_STACK.md`, `IDENTITY.md`, `SERVER_RELEASES.md`, the root `README.md` and the implementation plan index describe the implemented state.
 - [ ] Every gate issue that names Workers, Hyperdrive or the Vercel API is closed with its evidence or retargeted.
-- [ ] Reply to Anthony with the report that `autopilot-full.md` names.
+- [ ] Reply to Anthony with the report that `playbooks/autopilot-full.md` names.
 
 ## Appendix A. Prototype evidence
 
