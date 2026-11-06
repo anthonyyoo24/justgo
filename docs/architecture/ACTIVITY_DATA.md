@@ -33,13 +33,14 @@ time zone captured at Start fix `activityDate`, and a later save, upload, import
 or trip never moves it.
 
 Private writing has no network fallback and no draft autosave, so the phone holds
-the only copy until sync. Journal writes stay serialized after a timeout. Native
-I/O cannot be cancelled, so a later write waits for the earlier one instead of
-overlapping it.
+the only copy until sync. Native SQLite runs with WAL, `synchronous = FULL` and
+exclusive transactions, and web IndexedDB commits with strict durability. No test
+checks these settings, so review has to catch a change.
 
 Managed guest and account modes keep complete completion history on the phone
-and never prune it into a bounded cache. The bounded aggregate cache remains only
-for legacy senders.
+and never prune it into a bounded cache. Progress totals, calendars, streaks and
+day rows derive from unique saved completion IDs. The bounded aggregate cache
+remains only for legacy senders.
 
 ### Guest source handover
 
@@ -61,9 +62,19 @@ guest source may be adopted while a different account is selected, and that
 account's data stays isolated. Older managed state with an unknown stage goes
 through the disclosure again before its earlier excluded guest writing is copied.
 
-A previously synced guest iCloud copy follows the same stages, even with sync
-off. The old copy is reset and purged only after the destination verifies the
-copied snapshots.
+A guest source with a previously synced iCloud copy also runs an iCloud handover
+during `pending`, even with sync off. The handover keeps its own record, with the
+stages `copying`, `resetting`, `purging` and `complete`. Once it records the
+destination, ordinary guest iCloud delivery fails with `HANDOVER_PENDING` until
+source erasure. The old copy is reset and purged only after the destination
+durably accepts the copied snapshot.
+
+## Account synchronization
+
+A JustGO download reads every completion and version page against one data
+epoch. The download fails when a page reports a different epoch, when a cursor
+repeats, or when it passes 50,000 records. Private fingerprints stay in the
+owner's sync metadata and never enter diagnostics.
 
 ## Deletion epochs
 
