@@ -11,7 +11,7 @@ optional iCloud Sync and complete Download/Import controls are separate. The
 - [Agent instructions](AGENTS.md) and the directory `AGENTS.md` files: the repository map, the rules and what enforces them, and owner permissions. Read them before changing code.
 - Architecture: [tech stack](docs/architecture/TECH_STACK.md), [app shell](docs/architecture/APP_SHELL.md), [activity data](docs/architecture/ACTIVITY_DATA.md) and [identity](docs/architecture/IDENTITY.md).
 - Product: the [PRD](docs/product/PRD.md) and the [challenge catalog](docs/product/CHALLENGES.md).
-- Operations: [foundation setup and versions](docs/operations/FOUNDATION.md), [Apple setup](docs/operations/APPLE_SETUP.md) and the other [procedures](docs/operations/) for accounts, builds, releases, backups and support.
+- Operations: [Apple setup](docs/operations/APPLE_SETUP.md), [server releases](docs/operations/SERVER_RELEASES.md) and the other [procedures](docs/operations/) for accounts, builds, releases, backups and support.
 - Legal: the [Terms and Privacy drafts, approvals and data inventory](docs/legal/).
 - Roadmap: the [implementation plan](docs/implementation-plan/README.md) and [proposals](docs/proposals/) for later phases. The [Phase 15 Cloudflare handoff](docs/handoffs/phase-15-cloudflare-api.md) stays until Workers retires. Open gates are GitHub issues labeled `gate` (`gh issue list --label gate`).
 - Running the app: the [`verify-justgo` skill](.claude/skills/verify-justgo/SKILL.md).
@@ -51,7 +51,7 @@ npm run export:ios -w @justgo/mobile
 npm run doctor -w @justgo/mobile
 ```
 
-CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The required Playwright journey step runs the full local-save/reflection/Progress and controlled recovery suite against isolated app/API/database fixtures, with masked failure artifacts. Hosted results for a pushed commit are separate from local passes. The [Phase 07 cutover procedure](docs/operations/FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients) governs migration 0013 and old-client handling; no staging/production deployment is implied by local implementation. The [local test database](docs/operations/FOUNDATION.md#local-test-database) section lists local prerequisites.
+CI installs from the single root lockfile, provisions an isolated PostgreSQL 17 service, runs the checks and exports both the browser preview and the iOS bundle. Database tests refuse remote hosts, scope fixture cleanup to synthetic accounts/tables and run product operations as `justgo_runtime`. The migration-role rehearsal creates and restores only its uniquely named disposable schema. CI also installs PostgreSQL 17 snapshot tools. The required Playwright journey step runs the full local-save/reflection/Progress and controlled recovery suite against isolated app/API/database fixtures, with masked failure artifacts. Hosted results for a pushed commit are separate from local passes. Local implementation implies no staging or production deployment. [Start locally](#start-locally) lists the local database prerequisites.
 
 Commands, coverage reports and the check matrix are in
 [AGENTS.md](AGENTS.md#choosing-checks).

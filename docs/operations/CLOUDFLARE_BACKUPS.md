@@ -453,7 +453,7 @@ forward-migration step is needed if the registered chain differs.
 
 A successful result still reports `writersMayOpen: false` and
 `providerAcceptanceRequired: true`. Complete the
-[foundation restore checklist](FOUNDATION.md#backup-restore-checklist), including
+[restore checklist](#restore-checklist), including
 actual isolated API/provider checks, before proposing any separate operational
 cutover. After failed reconciliation the target may contain the original snapshot;
 keep it isolated and dispose of it under the approved recovery procedure.
@@ -553,7 +553,7 @@ node --test scripts/backups/backups.test.mjs
 Run the complete synthetic encrypted recovery rehearsal with the existing isolated
 PostgreSQL environment prepared, including PostgreSQL 17 client tools, `age` and
 the loopback `JUSTGO_TEST_ADMIN_DATABASE_URL`
-([local test database](FOUNDATION.md#local-test-database)):
+([local test database](../../README.md#start-locally)):
 
 ```sh
 npm run test:backup:recovery

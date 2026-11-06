@@ -269,7 +269,7 @@ The initial October 11 inventory found that the existing Vercel preview ran the 
 
 The concrete backend work needed before full phone testing is:
 
-1. Preserve the existing identity history with a protected, restorable backup and the [coordinated cutover checks](FOUNDATION.md#phase-07-coordinated-cutover-and-old-clients); review maintenance before applying the registered 0004–0013 migrations. Never reset shared staging or discard its four accounts.
+1. Preserve the existing identity history with a protected, restorable backup; review maintenance before applying the registered 0004–0013 migrations. Never reset shared staging or discard its four accounts.
 2. Implement the already planned server-authorized free tester access in non-production, with explicit admission and expiry, real session ownership, upload eligibility and unchanged production defaults. The current deployed server defaults to unavailable access; deployment alone would leave challenge testing blocked. Keep purchases disabled and preserve tester history. Do not reuse the local fixture or add a client premium flag.
 3. Prepare a reviewed mobile-reachable HTTPS API route and matching Vercel preview deployment while preserving existing deployment protection. Keep database credentials and any provider secrets server-side. This route/access configuration still needs selecting; no public endpoint or bypass was created during build setup.
 4. Verify staged readiness, identity, account isolation, tester access, saved activity and export, then supply its URL to the separate phone Metro session and run the actual device checks. Record this as earlier owner-device preparation for Phase 14's hosted beta prerequisites; it does not complete the beta or paid-launch gates.

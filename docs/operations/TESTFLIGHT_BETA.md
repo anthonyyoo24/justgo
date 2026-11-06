@@ -389,7 +389,7 @@ when any of these happens:
 - Verify the configured branded icon and native font/splash behavior on the signed
   build. Root `assets/icon.png` and `assets/splash-icon.png` remain unreferenced Expo
   placeholders.
-- Confirm beta dates/invitees and the remaining [server operating controls](FOUNDATION.md#beta-operating-controls).
+- Confirm beta dates/invitees and the remaining [server operating controls](#beta-operating-controls).
   Cleanup and rate limits are deployed, and the readiness monitor is active.
   The October 27 Sentry uptime monitor is active, API/mobile email alert rules are
   verified and Anthony confirmed the test email plus controlled monitor

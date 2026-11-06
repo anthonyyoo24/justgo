@@ -99,7 +99,7 @@ Paid starts at US$5/month and requires approval. Check the separate
 and [R2 storage/operation pricing](https://developers.cloudflare.com/r2/pricing/)
 against measured traffic, encrypted snapshot sizes and retained ledger volume.
 Assign Anthony usage/budget alerts before activation; free allowances are not a
-zero-cost guarantee. [Foundation](FOUNDATION.md#beta-operating-controls) lists the
+zero-cost guarantee. [TestFlight beta](TESTFLIGHT_BETA.md#supabase-pro-upgrade-triggers) lists the
 Supabase Free upgrade triggers.
 October 31 public probes and the active-version CPU chart exceed the Free CPU
 budget; the handoff records their limits. Anthony chose to keep Workers Free;

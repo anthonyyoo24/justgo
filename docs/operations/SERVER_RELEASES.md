@@ -424,7 +424,7 @@ placeholder approval values or infer these booleans from a successful upload.
 Encrypted R2 database/ledger receipts and the isolated restore procedure in
 [Cloudflare backups](CLOUDFLARE_BACKUPS.md) supply evidence for this attestation
 once the actual arrangement is accepted. The
-[backup restore checklist](FOUNDATION.md#backup-restore-checklist) remains the
+[restore checklist](CLOUDFLARE_BACKUPS.md#restore-checklist) remains the
 reopening boundary. An hourly ledger copy cannot establish deletions/revocations
 made after that copy; a current writer-fenced ledger must cover application and
 Auth changes. If that state cannot be recovered, keep restored writers closed.
