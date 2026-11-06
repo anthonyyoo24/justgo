@@ -34,8 +34,9 @@ or trip never moves it.
 
 Private writing has no network fallback and no draft autosave, so the phone holds
 the only copy until sync. Native SQLite runs with WAL, `synchronous = FULL` and
-exclusive transactions, and web IndexedDB commits with strict durability. No test
-checks these settings, so review has to catch a change.
+exclusive transactions, and web IndexedDB writes both stores in one
+strict-durability transaction. No test checks these settings, so review has to
+catch a change.
 
 Managed guest and account modes keep complete completion history on the phone
 and never prune it into a bounded cache. Progress totals, calendars, streaks and
