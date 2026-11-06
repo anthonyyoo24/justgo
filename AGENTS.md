@@ -257,9 +257,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   auto-merge on it, once CI is green and an independent verdict from an agent that
   did not write it covers the current head. Green CI alone is not a verdict. Land
   stacks bottom-up, one PR at a time, and stop at the first PR without a verdict
-  (pstack's Shipping playbook). Pin every merge to the verified head with
-  `gh pr merge --match-head-commit <verified-sha>`, both direct and `--auto`, so
-  GitHub refuses a head the verdict did not see.
+  (pstack's Shipping playbook). Pin every merge to the head that a verdict
+  covers, fresh or carried, with `gh pr merge --match-head-commit <head-sha>`,
+  both direct and `--auto`, so GitHub refuses a head no verdict covers.
 - **Anthony merges the sensitive areas.** PRs that touch the paths in
   [Agent effort](#agent-effort) (sign-in and identity, account data and
   deletion, migrations, release and backup scripts) stop at merge-ready for
@@ -290,7 +290,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 - Subagents and helpers run at `medium` effort or higher, never `low`.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
   because a resumed verifier checks only its own findings. To save cost, use a
-  fresh agent on a smaller model, not a resumed one.
+  fresh agent on a smaller model, not a resumed one, except for the `xhigh`
+  work below.
 - When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
   sets the model and effort for each pstack role.
 - Use `xhigh` for work that touches sign-in and identity, account data and
