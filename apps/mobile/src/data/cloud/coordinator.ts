@@ -256,7 +256,17 @@ export class CloudDataCoordinator {
         (metadata.epoch !== null ||
           (remote.epoch > 0 && floor !== remote.epoch)))
     ) {
-      metadata = { ...emptyMetadata(), epoch: remote.epoch, clearing: true };
+      const { deleting, deletionEpoch, deletionId, completedDeletionId } =
+        metadata;
+      metadata = {
+        ...emptyMetadata(),
+        deleting,
+        deletionEpoch,
+        deletionId,
+        completedDeletionId,
+        epoch: remote.epoch,
+        clearing: true,
+      };
       await this.save(metadata);
       await this.repository.observeDataEpoch(remote.epoch);
       await this.repository.clearData();
@@ -380,7 +390,10 @@ export class CloudDataCoordinator {
     await this.work?.catch(() => {});
     this.start();
     const metadata = await this.load();
-    if (metadata.completedDeletionId === intentId && !metadata.clearing) return;
+    if (metadata.completedDeletionId === intentId) {
+      if (metadata.clearing) await this.synchronize();
+      return;
+    }
     await this.save({
       ...metadata,
       deleting: true,

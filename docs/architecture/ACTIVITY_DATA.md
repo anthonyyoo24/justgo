@@ -88,15 +88,15 @@ owner's sync metadata and never enter diagnostics.
 Each account has a data epoch. Delete all my data advances it, and every device
 and the iCloud copy fence their work against it.
 
-| Event                                                 | Rule                                                                                                                   |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Delete all starts                                     | A durable operation UUID is recorded before remote work. New local writes and imports are blocked while it is pending. |
-| The reset acknowledgement is lost                     | The retry reuses the original expected epoch and generation. It never resets newly created remote data.                |
-| Local data is cleared                                 | Only through the coordinated operation. The pending intent is removed afterward.                                       |
-| A device sees a newer epoch                           | It discards obsolete local copies before any upload.                                                                   |
-| A signed-out collection sees a newer iCloud epoch     | It adopts the verified epoch.                                                                                          |
-| A signed-in collection sees a future iCloud epoch     | Sync fails for reconciliation instead of uploading.                                                                    |
-| The reset outcome is uncertain, or history is unknown | The user decides. Sync offers no destructive escape and does not re-upload deleted entries.                            |
+| Event                                                 | Rule                                                                                                                                                        |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Delete all starts                                     | A durable operation UUID is recorded before remote work. New local writes and imports are blocked while it is pending.                                      |
+| The reset acknowledgement is lost                     | The retry reuses the original expected epoch and generation. It never resets newly created remote data.                                                     |
+| Local data is cleared                                 | Only through the coordinated operation. The pending intent is removed afterward.                                                                            |
+| A device sees a newer epoch                           | It discards obsolete local copies before any upload. It keeps the record of a finished delete-all, so a retry of that intent never resets the server again. |
+| A signed-out collection sees a newer iCloud epoch     | It adopts the verified epoch.                                                                                                                               |
+| A signed-in collection sees a future iCloud epoch     | Sync fails for reconciliation instead of uploading.                                                                                                         |
+| The reset outcome is uncertain, or history is unknown | The user decides. Sync offers no destructive escape and does not re-upload deleted entries.                                                                 |
 
 Delete all my data erases the current local collection, its JustGO account data
 and its previously associated iCloud copies. Access and purchase entitlement

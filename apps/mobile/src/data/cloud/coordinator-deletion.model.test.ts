@@ -28,33 +28,35 @@ import {
 import { memoryJournalBackend } from '../../../test-support/local-journal';
 
 // .claude/skills/verify-delete-all-retry/SKILL.md owns the property, bounds and scope.
-const bounds = { faults: 2, others: 2 };
+const bounds = { faults: 2, others: 2, syncs: 1 };
 const intent = uuid(900);
 const prefix = `justgo:v1:${owner}:`;
 const metadataKey = `${prefix}cloud-sync`;
 const pendingKey = `${prefix}delete-all-pending`;
 
-type Step = 'proceed' | 'otherWrite' | 'otherDelete' | 'crash' | 'lostAck';
-const isFault = (step: Step) => step === 'crash' || step === 'lostAck';
+type Step =
+  'proceed' | 'otherWrite' | 'otherDelete' | 'crash' | 'lostAck' | 'sync';
+const budget = (step: Exclude<Step, 'proceed'>): keyof typeof bounds =>
+  step === 'crash' || step === 'lostAck'
+    ? 'faults'
+    : step === 'sync'
+      ? 'syncs'
+      : 'others';
 type Choice = { at: string; kind: string; options: Step[]; picked: number };
 
 /** Replays recorded choices, then takes the first option at each new choice point. */
 class Schedule {
   readonly choices: Choice[] = [];
   readonly story: string[] = [];
-  private faults = 0;
-  private others = 0;
+  private readonly used = { faults: 0, others: 0, syncs: 0 };
   constructor(private readonly replay: readonly Choice[] = []) {}
   get events() {
-    return this.faults + this.others;
+    return this.used.faults + this.used.others + this.used.syncs;
   }
   choose(at: string, kind: string, offered: readonly Step[]): Step {
     const options = offered.filter(
       (step) =>
-        step === 'proceed' ||
-        (isFault(step)
-          ? this.faults < bounds.faults
-          : this.others < bounds.others),
+        step === 'proceed' || this.used[budget(step)] < bounds[budget(step)],
     );
     const recorded = this.replay[this.choices.length];
     if (recorded && recorded.at !== at)
@@ -64,8 +66,7 @@ class Schedule {
     const picked = recorded?.picked ?? 0;
     const step = options[picked] ?? 'proceed';
     this.choices.push({ at, kind, options, picked });
-    if (isFault(step)) this.faults++;
-    else if (step !== 'proceed') this.others++;
+    if (step !== 'proceed') this.used[budget(step)]++;
     return step;
   }
   next(): Schedule | null {
@@ -491,7 +492,30 @@ async function explore(seed: Seed, schedule: Schedule) {
     ),
   };
   let app = open(world);
-  for (;;) {
+  for (let retry = false; ; retry = true) {
+    if (
+      retry &&
+      json(world.storage.values.get(metadataKey)).deleting !== true &&
+      schedule.choose('sync', 'sync', ['proceed', 'sync']) === 'sync'
+    ) {
+      schedule.story.push(
+        'ActivityRuntime.mergeGuestData runs an ordinary synchronize() through adoptData',
+      );
+      const synced = await settle(app, app.coordinator.synchronize());
+      if (synced === 'stalled') {
+        found.push({ invariant: 3, said: 'an ordinary sync never settled' });
+        break;
+      }
+      if (synced === 'crashed') {
+        schedule.story.push('the app restarts');
+        app = open(world);
+      } else
+        schedule.story.push(
+          synced === 'done'
+            ? 'the ordinary sync finishes'
+            : `the ordinary sync fails with ${synced}`,
+        );
+    }
     const events = schedule.events;
     const outcome = await settle(app, deleteAllData(app));
     if (outcome === 'done') break;
@@ -577,7 +601,7 @@ async function explore(seed: Seed, schedule: Schedule) {
   }));
 }
 
-it(`resets the server at most once per delete-all intent under every schedule of up to ${bounds.faults} crashes or lost acknowledgements and ${bounds.others} other-device writes or deletes`, async () => {
+it(`resets the server at most once per delete-all intent under every schedule of up to ${bounds.faults} crashes or lost acknowledgements, ${bounds.others} other-device writes or deletes and ${bounds.syncs} ordinary sync while the intent is pending`, async () => {
   const seed = await synchronizedPhone();
   expect(seed.entries).toHaveLength(1);
   expect(seed.completions).toHaveLength(1);
@@ -624,33 +648,30 @@ it(`resets the server at most once per delete-all intent under every schedule of
       'journal:crash',
       'local journal:crash',
       'delete-all-pending:crash',
+      'sync:sync',
     ]),
   );
 }, 60_000);
 
 // Issue #156: ActivityRuntime.mergeGuestData builds a fresh coordinator whose
 // adoptData runs this ordinary synchronize while delete-all-pending remains.
-// Change `it.failing` to `it` once the fix makes this pass.
-it.failing(
-  'keeps a finished delete-all intent finished across an ordinary sync while delete-all-pending remains (issue #156)',
-  async () => {
-    const world = await restore(await synchronizedPhone(), null);
-    await world.storage.setItem(pendingKey, intent);
-    const first = open(world);
-    await first.coordinator.deleteData(intent);
-    first.repository.dispose();
-    world.server.deleteData(world.server.epoch, 'other');
-    const written = world.server.otherDeviceWrite();
-    const adopting = open(world);
-    await adopting.coordinator.synchronize();
-    await adopting.coordinator.deleteData(intent);
-    expect(
-      world.server.resets
-        .filter((reset) => reset.by === 'phone')
-        .map((reset) => reset.expected),
-    ).toEqual([world.captured]);
-    expect(
-      world.server.completions.map((stored) => stored.attempt.id),
-    ).toContain(written);
-  },
-);
+it('keeps a finished delete-all intent finished across an ordinary sync while delete-all-pending remains (issue #156)', async () => {
+  const world = await restore(await synchronizedPhone(), null);
+  await world.storage.setItem(pendingKey, intent);
+  const first = open(world);
+  await first.coordinator.deleteData(intent);
+  first.repository.dispose();
+  world.server.deleteData(world.server.epoch, 'other');
+  const written = world.server.otherDeviceWrite();
+  const adopting = open(world);
+  await adopting.coordinator.synchronize();
+  await adopting.coordinator.deleteData(intent);
+  expect(
+    world.server.resets
+      .filter((reset) => reset.by === 'phone')
+      .map((reset) => reset.expected),
+  ).toEqual([world.captured]);
+  expect(world.server.completions.map((stored) => stored.attempt.id)).toContain(
+    written,
+  );
+});
