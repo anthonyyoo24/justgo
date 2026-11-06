@@ -137,7 +137,8 @@ acceptance, because earlier signed-build receipts cover only their own inputs.
 - Returning from an owner-bound sign-in never opens a picker, imports a file or
   confirms deletion by itself.
 - An imported file never restores identity proofs.
-- Leaving the app for Files does not change which account owns the file work.
+- Leaving the app for Files alone does not change the file work's owner, guest
+  or account.
 - iCloud consent stays scoped to the route visit, the collection and the Apple
   account through the final preference write.
 - Removing the iCloud copy in Apple's Settings keeps phone data. The sheet never
