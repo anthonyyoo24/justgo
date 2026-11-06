@@ -74,6 +74,10 @@ these rules:
   it ran and showed something else. **Inconclusive** means it could not run or
   could not tell, for example because the surface needs a physical phone. Say what
   blocked it. The `verify-justgo` Gotchas list what browser evidence cannot prove.
+- If two runs of the same check disagree, the claim is Inconclusive until you can
+  explain the difference. Do not keep the passing run. When a change makes the
+  code under test match `main`, a pass proves nothing unless the run shows which
+  code it served, or it first failed at the same level.
 - Keep the Playwright journeys, the web adapters and the fixture safeguards until a
   native drive proves the same app, API and database cases and passes hosted CI.
 - When behavior depends on storage, transport, time or randomness, control it
@@ -253,7 +257,9 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   auto-merge on it, once CI is green and an independent verdict from an agent that
   did not write it covers the current head. Green CI alone is not a verdict. Land
   stacks bottom-up, one PR at a time, and stop at the first PR without a verdict
-  (pstack's Shipping playbook).
+  (pstack's Shipping playbook). Pin every merge to the head that a verdict
+  covers, fresh or carried, with `gh pr merge --match-head-commit <head-sha>`,
+  both direct and `--auto`, so GitHub refuses a head no verdict covers.
 - **Anthony merges the sensitive areas.** PRs that touch the paths in
   [Agent effort](#agent-effort) (sign-in and identity, account data and
   deletion, migrations, release and backup scripts) stop at merge-ready for
@@ -274,9 +280,20 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `carries` keeps the verdict. `docs-tests-only` keeps it, and the listed files
   still get a review. `re-verify` needs a new verdict. CI always reruns.
 
+- **Rebase a stacked PR after its parent squash-merges with `--onto`.** Replay
+  only the child's own commits with `git rebase --onto origin/main <old-parent-tip>`.
+  A plain rebase replays the parent's commits, which `main` already holds as one
+  squashed commit.
+
 ## Agent effort
 
 - Subagents and helpers run at `medium` effort or higher, never `low`.
+- Re-verify a fix with a fresh verifier, not the one that found the problem,
+  because a resumed verifier checks only its own findings. To save cost, use a
+  fresh agent on a smaller model, not a resumed one, except for the `xhigh`
+  work below.
+- When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
+  sets the model and effort for each pstack role.
 - Use `xhigh` for work that touches sign-in and identity, account data and
   deletion, database migrations, or release and backup scripts. These live mainly
   in `apps/api/src/{identity,access,account-export,data-sync}/`,
