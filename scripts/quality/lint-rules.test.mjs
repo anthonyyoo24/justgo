@@ -74,6 +74,21 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "import { execFileSync } from 'node:child_process'; execFileSync('git', ['diff', '--name-only', 'origin/main']);",
     'scripts/quality/changes.mjs',
   ],
+  [
+    'no-restricted-syntax',
+    "import { execSync } from 'node:child_process'; execSync(`git diff --name-only ${process.env.BASE}`);",
+    'scripts/quality/changes.mjs',
+  ],
+  [
+    'no-restricted-syntax',
+    "import { execFileSync } from 'node:child_process'; execFileSync('git', ['patch-id'], { input: '' });",
+    'scripts/quality/changes.mjs',
+  ],
+  [
+    'no-restricted-syntax',
+    "import { execSync } from 'node:child_process'; execSync('git patch-id --stable', { input: '' });",
+    'scripts/quality/changes.mjs',
+  ],
 ]) {
   test(`lint safeguard: ${rule}`, async () => {
     const [result] = await eslint.lintText(source, {

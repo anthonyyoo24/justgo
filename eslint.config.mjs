@@ -34,20 +34,26 @@ export default tseslint.config(
   },
   {
     files: ['scripts/**/*.mjs'],
-    ignores: ['scripts/quality/git.mjs'],
+    ignores: ['scripts/quality/git.mjs', 'scripts/**/*.test.mjs'],
     rules: {
       'no-restricted-syntax': [
         'error',
-        {
-          selector: 'Literal[value=/^--name-(only|status)$/]',
+        ...[
+          'Literal[value=/(^|\\s)--name-(only|status)(\\s|$)/]',
+          'TemplateElement[value.raw=/(^|\\s)--name-(only|status)(\\s|$)/]',
+        ].map((selector) => ({
+          selector,
           message:
             'Read changed paths with changedPaths() from scripts/quality/git.mjs, which always uses -z --no-renames.',
-        },
-        {
-          selector: "Literal[value='--stable']",
+        })),
+        ...[
+          'Literal[value=/^patch-id$|(^|\\s)--stable(\\s|$)|git patch-id/]',
+          'TemplateElement[value.raw=/(^|\\s)--stable(\\s|$)|git patch-id/]',
+        ].map((selector) => ({
+          selector,
           message:
             'Hash a diff with patchIdOf() from scripts/quality/git.mjs, which always uses --verbatim.',
-        },
+        })),
       ],
     },
   },
