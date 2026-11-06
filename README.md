@@ -74,4 +74,4 @@ The [testing guide](docs/operations/TESTING.md) owns simulator, device and relea
 - `packages/contracts`: public Zod response schemas shared by mobile and API.
 - `docs`: product scope, implementation plan and extracted design references.
 
-Read [foundation setup and versions](docs/operations/FOUNDATION.md), [design guide](docs/design/DESIGN.md) and [Apple/RevenueCat checklist](docs/operations/APPLE_SETUP.md). The [PRD](docs/product/PRD.md) owns product behavior, the [implementation plan](docs/implementation-plan/README.md) owns phase scope, and `gate` issues track release gates.
+Read [foundation setup and versions](docs/operations/FOUNDATION.md) and [Apple/RevenueCat checklist](docs/operations/APPLE_SETUP.md). The [PRD](docs/product/PRD.md) owns product behavior, the [implementation plan](docs/implementation-plan/README.md) owns phase scope, and `gate` issues track release gates.

@@ -119,7 +119,7 @@ checks remain explicitly owned by their existing handoffs/Phase 14.
 Update active instructions and current-state descriptions in `AGENTS.md`,
 `README.md`, `docs/operations/TESTING.md`, `docs/architecture/TECH_STACK.md`, `docs/architecture/APP_SHELL.md`,
 `docs/operations/FOUNDATION.md`, `docs/architecture/IDENTITY.md`,
-`docs/architecture/FRONTEND_ARCHITECTURE_LEARNING_MAP.md`, `docs/design/CHALLENGE_FIDELITY.md` and
+`docs/architecture/FRONTEND_ARCHITECTURE_LEARNING_MAP.md` and
 `docs/product/PHASE_04_SCOPE.md` where they prescribe web previews/checks. Update
 `docs/handoffs/TEMPLATE.md` to distinguish saved native journeys, interactive
 native checks and physical-device evidence. Keep implemented architecture docs
