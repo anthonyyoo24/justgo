@@ -229,7 +229,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   test may deploy a committed branch through `npm run release:staging:local`.
   That go does not cover migrations, production releases or merges. Until P15-8
   of the [Phase 15 plan](docs/implementation-plan/phase-15-supabase-api.md) moves
-  that command to Supabase, it deploys the retired Worker, so do not run it.
+  that command to Supabase, it deploys the retired Worker. Run it only when
+  Anthony's go names the Worker.
 - **Do not contact providers.** Do not contact Vercel, Cloudflare or other providers
   about JustGO without Anthony's explicit instruction.
 - **Never push to `main`.** Changes reach `main` only through a merged PR.
