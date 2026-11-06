@@ -231,3 +231,26 @@ test('the sections job checks the verdict and a verdict comment reruns it', () =
   assert.doesNotMatch(recheck, /checkout|pull_request_target/);
   assert.match(recheck, /gh run rerun/);
 });
+
+test('the sections sparse checkout includes every local import of its scripts', () => {
+  const sections = readFileSync(
+    new URL('pr-description.yml', workflows),
+    'utf8',
+  );
+  const listed = new Set(
+    sections
+      .match(/^ {12}scripts\/quality\/[\w.-]+\.mjs$/gm)
+      .map((line) => line.trim()),
+  );
+  for (const script of listed) {
+    const source = readFileSync(
+      new URL(`../../${script}`, import.meta.url),
+      'utf8',
+    );
+    for (const [, local] of source.matchAll(/from '\.\/([\w.-]+\.mjs)'/g))
+      assert.ok(
+        listed.has(`scripts/quality/${local}`),
+        `${script} imports ${local}, which the sections sparse checkout leaves out`,
+      );
+  }
+});

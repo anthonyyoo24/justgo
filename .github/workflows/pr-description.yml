@@ -24,6 +24,7 @@ jobs:
           # Sparse checkout makes a blobless clone, so the verdict check fetches
           # only the commits it diffs and the blobs those diffs touch.
           sparse-checkout: |
+            scripts/quality/git.mjs
             scripts/quality/pr-description.mjs
             scripts/quality/verdict-patch.mjs
             scripts/quality/verdict-status.mjs
