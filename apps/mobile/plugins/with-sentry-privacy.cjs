@@ -1,7 +1,5 @@
 // Expo loads local config plugins synchronously as CommonJS.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withBaseMod } = require('expo/config-plugins');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { version: sdkVersion } = require('@sentry/react-native/package.json');
 
 const begin = '// BEGIN JustGO native diagnostics privacy';

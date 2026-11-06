@@ -29,6 +29,10 @@ export default tseslint.config(
     },
   },
   {
+    files: ['**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     files: ['apps/**/*.{ts,tsx}', 'packages/contracts/**/*.{ts,tsx}'],
     plugins: { justgo: { rules: { 'import-boundaries': importBoundaries } } },
     rules: { 'justgo/import-boundaries': 'error' },
