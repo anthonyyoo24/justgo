@@ -673,7 +673,9 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Edit `.github/workflows/staging-health.yml` and `scripts/quality/staging-health-workflow.test.mjs`.
 - [ ] Edit `scripts/development/configuration.mjs` to make `--supabase` the Dev default and delete the Vercel and Cloudflare targets.
 - [ ] Edit `docs/operations/TESTFLIGHT_BETA.md`, `docs/operations/DEVELOPMENT_BUILDS.md`, `docs/architecture/TECH_STACK.md` and `docs/architecture/APP_SHELL.md`.
-- [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md`, `docs/handoffs/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`, and update their links. Git history keeps them.
+- [ ] Before deleting, move the facts that outlive Phase 15 into the docs that keep them. The backup copy, rotation and scope receipts and the November 1 Cloudflare account and DPA approvals go to `docs/operations/CLOUDFLARE_BACKUPS.md`. The R2 parts of the notice review's accepted account and service assessment go to `docs/legal/DATA_INVENTORY.md`.
+- [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md`, `docs/handoffs/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`. Git history keeps them.
+- [ ] Update the links to them in `docs/implementation-plan/README.md`, `docs/operations/SERVER_RELEASES.md`, `docs/operations/CLOUDFLARE_BACKUPS.md`, `docs/legal/DATA_INVENTORY.md`, `docs/legal/RELEASE_DISCLOSURES.md` and `sites/legal/README.md`.
 
 **Build.**
 
@@ -757,7 +759,7 @@ Reading settled the rest. The [analysis on #171](https://github.com/anthonyyoo24
 - Under `Deno.serve`, `http/app.ts` falls back to `127.0.0.1` for every caller, so the entry must pass a `clientAddress`.
 - The backups run on GitHub Actions and write to R2. They use neither the API Worker nor Hyperdrive. The backup clock Worker is separate and stays.
 - Keep the hand-rolled Sentry sender. Supabase's example warns that `@sentry/deno` shares scope across concurrent requests.
-- The Worker measured CPU from p50 15.14 ms to p999 58.49 ms and an 18.48 ms mean Hyperdrive query. At that latency the worst-case sync of about 2,800 sequential queries would take about 50 seconds.
+- The Worker dashboards showed CPU from p50 15.14 ms to p999 58.49 ms, aggregates that include public checks, and Hyperdrive measured an 18.48 ms mean query. At that latency the worst-case sync, inferred at about 2,800 sequential queries, would take about 50 seconds. Nobody has measured sync on any host.
 - Twelve open `gate` issues name Cloudflare, Workers, Hyperdrive, Vercel or R2. They are #77, #79, #81, #84, #99, #102, #103, #104, #105, #118, #123 and #124. #79, #81, #84 and #99 hold Worker evidence and need retargeting.
 
 ## Appendix B. Alternatives rejected
