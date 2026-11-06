@@ -1,5 +1,3 @@
 Before you change Expo, React Native, or native code, read the docs for the `expo` version in `apps/mobile/package.json` at `docs.expo.dev/versions/v<major>.0.0/`. Your training data may describe an older SDK.
 
-App imports omit the file extension, so Metro can pick the native or web adapter.
-
 In provider tests, mount the real provider, controller, and client. Give them a controllable vault, `fetch`, and AppState, and use fake timers for expiry and polling. Before you restore real timers, unmount, cancel and clear the queries, flush queued callbacks, and drain TanStack notification timers inside an async `act`. In an account-switch test, await the old account's refresh before you replace its transport fixture. Observe the new account's request before you resolve it, and assert distinct totals. Do not add waits to hide a race.
