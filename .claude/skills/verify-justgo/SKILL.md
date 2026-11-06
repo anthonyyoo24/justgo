@@ -111,6 +111,7 @@ With those in place, the Claude desktop app's iOS Simulator tool (`mcp__Claude_C
 - Journey builds run the real Sentry SDK with a fake ingestion key and intercept hosted Sentry requests. A probe against real Sentry sends only disposable synthetic errors, with ordinary delivery disabled.
 - After moving source or asset files, restart the owned Metro server with `--clear` and reload the installed development app. A separate export does not refresh that server's live module graph.
 - The web export logs an expected Metro resolution warning for Sentry's optional Router-store import. Do not alias or suppress it.
+- Expo SDK 58 web stacks keep inactive screens in the DOM, so a text query can match a screen the user cannot see. Assert the active screen with role and name queries, not text.
 - React Native Web ignores `accessibilityState` selected and checked. Set `aria-selected` or `aria-checked` too, as `VenueTabs` and `ReflectionView` do, or role queries cannot see the state.
 - `aria-*` props, `pointerEvents` and CSS-looking styles in React Native components do not make the code web-only. Do not strip them as browser leftovers.
 - Install a failure route before the navigation that starts the targeted work. For a one-shot fault after sign-in, first send the old page to `about:blank` so its background requests cannot consume the fault. Wait on the intended request, not on a sleep or a longer timeout.
