@@ -10,7 +10,7 @@ The API runs today on two staging hosts. Vercel serves the old Fastify build to 
 
 One box is one unit of work. Every box names the evidence that checks it. A nested box is a sub-step of the box above it. Check a box only when its evidence exists, a file, a log line, a screenshot, a test run, or a SHA. The body is a how-to. The appendices explain and record.
 
-The program runs `pstack/skills/poteto-mode/playbooks/autopilot-full.md` from the installed pstack plugin. An agent merges a verified PR that touches no [Agent-effort](../../AGENTS.md#agent-effort) path. P15-3, P15-4, P15-5, P15-6, P15-8, P15-10 and P15-11 are Anthony's items and stop at merge-ready. P15-1 and P15-2 are prototypes and never merge. Only their docs PRs, which record the results, merge.
+The program runs `pstack/skills/poteto-mode/playbooks/autopilot-full.md` from the installed pstack plugin. An agent merges a verified PR that touches no [Agent-effort](../../AGENTS.md#agent-effort) path. P15-3, P15-4, P15-5, P15-6, P15-7, P15-8, P15-10 and P15-11 are Anthony's items and stop at merge-ready. P15-1 and P15-2 are prototypes and never merge. Only their docs PRs, which record the results, merge.
 
 Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -35,7 +35,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
   - [ ] Plan tier. The default stays on Supabase Free. Before any purchase, present the limits and the spend-cap behavior.
   - [ ] Local tools. The Mac has no Deno, Supabase CLI or container runtime. The default runs Edge runtime lanes in CI and installs nothing on the Mac.
 - [ ] Before 23:40 UTC on November 29, 2026, Anthony renews the backup clock's GitHub token. P15-4 records the new expiry.
-- [ ] Comment on issue #77 with the backup-run evidence from the analysis, then close it or update its dates.
+- [ ] Comment on issue #77 with the backup-run evidence from the analysis. Close it only after Anthony records the renewed expiry dates.
 - [ ] On Anthony's go, arm the audit tick as `/loop 1h` with the tick prompt below. Never leave the cadence to memory.
 - [ ] Use this tick prompt, verbatim. "Re-read the execution playbook from trunk. Audit the operation against it and fix drift in this tick. Probe every active lane and judge progress by side effects only. Stand down a stuck lane and dispatch its replacement now. Then post a short status message to the operator in chat only when the audit found a tracked change that no earlier status message reported, such as a PR opened, a code-ready head, a round launched or closed, a verdict, a merge, a stuck agent and the action taken, a blocker added or cleared, or a decision only the operator can make. Name every such change and nothing else. Do not repeat a table, the merged list, or an unchanged blocker. If the audit found none, end the turn with no reply text. Either way, log this tick's row in your decision trail. The row names the items reported, or none."
 - [ ] On Anthony's hold or stand-down, send every owner a zero-writes order at once.
@@ -66,7 +66,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 - [ ] Run the checks that the [check matrix](../../AGENTS.md#choosing-checks) names for the touched paths once before the PR-facing push. Run one heavy check at a time on the 8 GB Mac. Push with hooks on.
 - [ ] Run `/deslop` before each commit when `cursor-team-kit` is installed, and run `/no-comments` before review.
 - [ ] Triage every bot and security-review comment per pstack's `references/bugbot-triage.md`.
-- [ ] Run `/pstack:interrogate` before calling P15-3, P15-4, P15-5, P15-6, P15-8 or P15-11 verified.
+- [ ] Run `/pstack:interrogate` before calling P15-3, P15-4, P15-5, P15-6, P15-7, P15-8 or P15-11 verified. Each touches an Agent-effort path.
 - [ ] Rebase onto current trunk before the code-ready report and babysit. Keep that merge base in fix rounds. Rebase again only at merge prep, on a `git merge-tree` conflict with trunk, on a CI failure that comes from a change on trunk, or when a known concurrent change to the same files lands.
 
 ### Verdict and merge, for every PR
@@ -170,7 +170,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes call the hosted `justgo-trial` function from the Mac.
 
-- [ ] Lane 1. Regression lane against trunk. Request `GET /health` and `GET /ready` on the serving Worker and on `justgo-trial`. Save `hosted-ready.json`. Pass when both return 200 and the function's readiness confirms `justgo_runtime` over verified TLS.
+- [ ] Lane 1. Regression lane against trunk. Request `GET /health` and `GET /ready` on the serving Worker and on `justgo-trial`. Save `hosted-ready.json`. Pass when both return 200 and the function's readiness confirms `justgo_runtime` over verified TLS. Set the pool's `statement_timeout` to 4,321 ms for this lane and record what `show statement_timeout` returns inside a transaction. 4,321 ms means the pooler accepted it, 5 s means it ignored it, and a connection error means it rejected it.
 - [ ] Lane 2. Request `GET /health` with no `Authorization` and no `apikey` header. Save `no-jwt.json`. Pass when Hono answers, which shows the gateway let it through.
 - [ ] Lane 3. Send a protected request with an invalid bearer. Save `bad-bearer.json`. Pass when the body is the API's typed `UNAUTHORIZED` error, not a gateway 401.
 - [ ] Lane 4. Send forged `x-forwarded-for`, `x-real-ip` and `cf-connecting-ip` headers to the trial route. Save `client-address.json`. Pass when one header always carries the Mac's real address, whatever the client sends. Record that header.
@@ -183,10 +183,10 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. Cold and warm wall ms for `/health` and the guest catalog, measured from the Mac.
+- [ ] Metric. Cold and warm wall ms for `/health` and the guest catalog measured from the Mac, and the function's per-query database latency from `/ready` timing.
 - [ ] Probe. Alternate requests between the serving Worker and `justgo-trial` for 50 rounds after the idle wait in lane 6.
 - [ ] Baseline. Record the Worker's warm p50 and p95 first.
-- [ ] Rule. The trial fails if the function's warm p95 for the guest catalog exceeds 300 ms or its first request after idle exceeds 2,000 ms.
+- [ ] Rule. The trial fails if the function's warm p95 for the guest catalog exceeds 300 ms or its first request after idle exceeds 2,000 ms. It also fails if the P15-1 query count times the measured per-query latency predicts more than 8,000 ms of wall time for the worst-case sync. Hosted requests need a genuine account, so P15-9 measures that sync directly.
 
 **Review gate.** None. P15-2 is not review-gated.
 
@@ -211,6 +211,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 - [ ] Delete the `onVercel` option and the `x-vercel-forwarded-for` reader. Rate limits use the `clientAddress` that the entry supplies.
 - [ ] Delete the `!process.env.VERCEL` term from `developmentLegalDrafts` in `apps/api/src/runtime-app.ts:44-47`.
+- [ ] If P15-4 merged first, delete the `onVercel` argument from `scripts/backups/recovery-auth-acceptance.mjs`. If P15-3 merged first, P15-4 deletes it.
 - [ ] Before merge, Anthony confirms in the Vercel dashboard that Git deployments are off for the `justgo` project, so the merge cannot start a deploy.
 
 **You see.**
@@ -267,6 +268,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Keep the restore hooks and preserved object owners in `scripts/backups/rehearse.mjs` and `scripts/backups/restore-local.mjs`.
 - [ ] Keep `scripts/backups/recovery-auth-acceptance.mjs` on the Node `buildRuntimeApp`.
 - [ ] Make CI run `scripts/backups/recovery-auth-acceptance.test.mjs`.
+- [ ] If P15-3 merged first, delete the `onVercel` argument from `scripts/backups/recovery-auth-acceptance.mjs`.
 
 **You see.**
 
@@ -315,7 +317,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Delete `apps/api/scripts/workers-smoke.ts`, `workers-smoke-entry.ts`, `workers-smoke-preflight.ts`, `workers-outbound-smoke.ts` and `workers-cpu-profile.ts`, with their tests.
 - [ ] Delete `scripts/release/staging-cloudflare.mjs`, `staging-worker-build.mjs`, `staging-bootstrap.mjs`, `staging-promotion.mjs` and `staging-abandoned-version.mjs`, with their tests.
 - [ ] Delete `.github/workflows/staging-api.yml`. P15-8 adds the Supabase workflow.
-- [ ] Edit `scripts/release/staging-api.mjs`, `scripts/release/staging-api-deployment.mjs`, `scripts/release/staging-local.mjs`, `apps/api/scripts/local-staging-release.ts` and every other caller that the deletions break.
+- [ ] Edit `scripts/release/staging-api.mjs`, `scripts/release/staging-api-deployment.mjs`, `scripts/release/staging-api-runner.mjs`, `scripts/release/staging-public-probes.mjs`, `scripts/release/staging-local.mjs`, `apps/api/scripts/local-staging-release.ts`, `apps/api/tests/http/routing.test.ts` and every other caller that the deletions break.
 - [ ] Edit `apps/api/package.json`, the root `package.json`, `.github/workflows/ci.yml`, `scripts/quality/ci-workflow.test.mjs`, `scripts/quality/staging-api-workflow.test.mjs` and delete `scripts/quality/cloudflare-config.test.mjs`.
 - [ ] Edit `AGENTS.md`, `docs/architecture/TECH_STACK.md`, `docs/architecture/IDENTITY.md` and `docs/operations/SERVER_RELEASES.md`.
 
@@ -330,7 +332,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **You see.**
 
-- [ ] `rg -n 'Hyperdrive|worker\.ts|test:workers|cloudflare-config' apps scripts .github package.json` prints nothing.
+- [ ] `rg -n 'worker\.js|worker-database|worker-router|cloudflare-config|staging-cloudflare|test:workers' apps scripts .github package.json` prints nothing.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -346,7 +348,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Lane 5. Request `/ready` on the Node fixture API. Save `node-ready.json`. Pass when it returns 200.
 - [ ] Lane 6. Run `npx wrangler deploy --dry-run --config scripts/backups/clock/wrangler.json`. Save `clock-dry-run.txt`. Pass when the clock still builds with the moved dependency and nothing deploys.
 - [ ] Lane 7. Run `npm run test:backup:recovery`. Save `recovery.txt`. Pass when the rehearsal passes through the Node app.
-- [ ] Lane 8. Run `npm run release:staging:local`. Save `staging-lane.txt`. Pass when npm reports that the script does not exist and nothing reaches the network.
+- [ ] Lane 8. Run `npm run` to list the root scripts. Save `staging-lane.txt`. Pass when `release:staging:local` is absent.
 - [ ] Lane 9. Search the code for imports of every deleted module. Save `removed-imports.txt`. Pass when nothing imports a deleted module.
 - [ ] Lane 10. Read `AGENTS.md` and `SERVER_RELEASES.md` at head. Save `docs-audit.txt`. Pass when neither tells an agent to deploy a Worker.
 
@@ -479,10 +481,10 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Merge.**
 
-- [ ] Clean verdict at the exact head SHA.
+- [ ] Clean verdict at the exact head SHA, after `/pstack:interrogate`, because the fixture prefix touches `apps/api/scripts/`.
 - [ ] Review comments triaged.
 - [ ] Rebased onto current trunk after the verdict, with `verdict-patch.mjs check` reporting `carries`.
-- [ ] The owner squash-merges its own PR on green CI.
+- [ ] Anthony merges. The owner stops at merge-ready.
 
 ## Release staging through Supabase Edge Functions (P15-8)
 
@@ -662,7 +664,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Edit `apps/mobile/eas.json`, `scripts/release/check-beta.mjs`, `scripts/release/check-beta.test.mjs`, `.github/workflows/testflight-beta.yml` and `scripts/quality/testflight-workflow.test.mjs`.
 - [ ] Edit `.github/workflows/staging-health.yml` and `scripts/quality/staging-health-workflow.test.mjs`.
 - [ ] Edit `scripts/development/configuration.mjs` to make `--supabase` the Dev default and delete the Vercel and Cloudflare targets.
-- [ ] Edit `docs/operations/TESTFLIGHT_BETA.md`, `docs/architecture/TECH_STACK.md` and `docs/architecture/APP_SHELL.md`.
+- [ ] Edit `docs/operations/TESTFLIGHT_BETA.md`, `docs/operations/DEVELOPMENT_BUILDS.md`, `docs/architecture/TECH_STACK.md` and `docs/architecture/APP_SHELL.md`.
 - [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md` and update its links.
 
 **Build.**
@@ -752,21 +754,21 @@ Reading settled the rest, and the [analysis](phase-15-supabase-analysis.md) cite
 
 ## Appendix C. Risks
 
-| Risk                                                                          | PR            | What the owner watches                                                   |
-| ----------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------ |
-| `pg` cannot verify the Supabase CA on Deno                                    | P15-1, P15-2  | Lane 2 of each trial. The fallback is `drizzle-orm/postgres-js`.         |
-| Bundled code has no `Buffer`, so every managed request returns `UNAUTHORIZED` | P15-1         | Lane 8. Import `node:buffer` or use web base64url helpers.               |
-| The pooler rejects the `statement_timeout` connection setting                 | P15-2         | Lane 1. Drop the pool option, because the role sets the timeout.         |
-| The worst-case sync outlasts the 10 second client deadline                    | P15-1, P15-9  | The perf rules. Batch the parent checks if it fails.                     |
-| A forged header defeats identity rate limits                                  | P15-2, P15-6  | P15-2 lane 4 and P15-6 lane 9.                                           |
-| Platform logs keep tokens or private text                                     | P15-2, P15-9  | P15-2 lane 5 stops the program until Anthony decides.                    |
-| A deploy or a secret change replaces serving code at once, with no rollback   | P15-8         | Candidate first, readback, and rollback by redeploying the previous tag. |
-| The backup clock token stops passing its expiry check on November 29          | Arm, P15-4    | Anthony renews it. P15-4 records the date.                               |
-| Retiring Workers stops the backups                                            | P15-5, P15-11 | The file boundary. The backup clock, R2 and the Cloudflare account stay. |
-| A Git-connected Vercel project deploys on merge                               | P15-3         | Anthony confirms Git deployments are off before merge.                   |
-| The Free project pauses after a week without activity                         | P15-9         | Record the pause behavior and what the app shows.                        |
-| Installed builds keep their embedded API URL                                  | P15-11        | Build 5 keeps Vercel until the new build passes.                         |
-| Edge runtime lanes cannot run on the 8 GB Mac                                 | P15-1, P15-6  | They run in CI. One heavy local check at a time.                         |
+| Risk                                                                          | PR            | What the owner watches                                                                        |
+| ----------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
+| `pg` cannot verify the Supabase CA on Deno                                    | P15-1, P15-2  | P15-2 lane 1. The fallback is `drizzle-orm/postgres-js`.                                      |
+| Bundled code has no `Buffer`, so every managed request returns `UNAUTHORIZED` | P15-1         | Lane 8. Import `node:buffer` or use web base64url helpers.                                    |
+| The pooler rejects the `statement_timeout` connection setting                 | P15-2         | P15-2 lane 1. Drop the pool option, because the role sets the timeout.                        |
+| The worst-case sync outlasts the 10 second client deadline                    | P15-1, P15-9  | P15-1 at loopback, a P15-2 prediction, and P15-9 hosted. Batch the parent checks if it fails. |
+| A forged header defeats identity rate limits                                  | P15-2, P15-6  | P15-2 lane 4 and P15-6 lane 9.                                                                |
+| Platform logs keep tokens or private text                                     | P15-2, P15-9  | P15-2 lane 5 stops the program until Anthony decides.                                         |
+| A deploy or a secret change replaces serving code at once, with no rollback   | P15-8         | Candidate first, readback, and rollback by redeploying the previous tag.                      |
+| The backup clock token stops passing its expiry check on November 29          | Arm, P15-4    | Anthony renews it. P15-4 records the date.                                                    |
+| Retiring Workers stops the backups                                            | P15-5, P15-11 | The file boundary. The backup clock, R2 and the Cloudflare account stay.                      |
+| A Git-connected Vercel project deploys on merge                               | P15-3         | Anthony confirms Git deployments are off before merge.                                        |
+| The Free project pauses after a week without activity                         | P15-9         | Record the pause behavior and what the app shows.                                             |
+| Installed builds keep their embedded API URL                                  | P15-11        | Build 5 keeps Vercel until the new build passes.                                              |
+| Edge runtime lanes cannot run on the 8 GB Mac                                 | P15-1, P15-6  | They run in CI. One heavy local check at a time.                                              |
 
 ## Appendix D. Links and reading list
 
@@ -774,6 +776,6 @@ Reading settled the rest, and the [analysis](phase-15-supabase-analysis.md) cite
 - Before you edit, read [IDENTITY.md](../architecture/IDENTITY.md), [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) and [APP_SHELL.md](../architecture/APP_SHELL.md). They own the invariants this plan must keep.
 - Read [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) and [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) before P15-4, P15-5 and P15-8.
 - History only. The [Cloudflare plan](phase-15-cloudflare-api.md), the [Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md) and the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md).
-- Run pstack's `how` skill before P15-6 and P15-8, and `interrogate` on every PR that Anthony merges.
+- Run pstack's `how` skill before P15-6 and P15-8, and `interrogate` on every PR that touches an Agent-effort path.
 - Keep a decision trail per PR at `.local/decision-trails/phase-15-<pr-id>.tsv`, per pstack's `show-me-your-work` skill and the Stop hook in `.claude/hooks/require-trail-review.mjs`.
 - Recheck these Supabase references before P15-1. Agents read them on November 6, 2026. [Functions](https://supabase.com/docs/guides/functions), [routing](https://supabase.com/docs/guides/functions/routing), [gateway authentication](https://supabase.com/docs/guides/functions/auth-headers), [Postgres from functions](https://supabase.com/docs/guides/functions/connect-to-postgres), [secrets](https://supabase.com/docs/guides/functions/secrets), [limits](https://supabase.com/docs/guides/functions/limits), [deploy](https://supabase.com/docs/guides/functions/deploy), [regional invocation](https://supabase.com/docs/guides/functions/regional-invocation), [logging](https://supabase.com/docs/guides/functions/logging), [function pricing](https://supabase.com/docs/guides/functions/pricing), [project pausing](https://supabase.com/docs/guides/platform/free-project-pausing), [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum) and [data residency](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq).

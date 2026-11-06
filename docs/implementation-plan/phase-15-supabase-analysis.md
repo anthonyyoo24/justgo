@@ -67,7 +67,7 @@ by what happens to it on Supabase.
 - The plan asks to reconcile "the current phase branch"
   (`phase-15-supabase-api.md:45-51`). That branch merged as #73. Only the four
   recovery commits on `codex/phase15-real-recovery` remain unmerged (measured).
-- The plan asks the trial to prove advisory locks (`:88-93`). Managed requests
+- The plan asks the trial to prove locks through the pooler (`:88-93`). Managed requests
   take none. Only legacy bootstrap and transfers call `pg_advisory_xact_lock`
   (`apps/api/src/identity/service.ts:322`, `:549`, `:627`), and managed mode
   rejects those requests (`apps/api/src/identity/routes.ts:72-79`). The managed
@@ -108,7 +108,8 @@ something narrower.
 - **Main dropped Fastify on October 28.** Commit `b3ff19b` replaced Fastify with
   Hono, and PR #61 merged it as `52a991b` on October 29 (measured). Nothing on main
   deploys to Vercel. The staging workflow uses only Cloudflare credentials, and
-  `scripts/quality/staging-api-workflow.test.mjs:46` fails if it mentions Vercel.
+  `scripts/quality/staging-api-workflow.test.mjs:46` fails if it mentions
+  `VERCEL_` or `vercel-cli`.
 - **The Worker serves staging on Hono.** Its last recorded release is source
   `a082087` from November 2 (`docs/handoffs/phase-15-cloudflare-api.md:5-23`).
   That commit is not on main, and its API source differs from `50194ee` in three
@@ -206,8 +207,8 @@ safe. That is inferred, and the trial must show it.
 
 Supabase allows 2 seconds of CPU and 256 MB of memory per request, and I/O wait
 does not count against CPU. The Worker's dashboards measured CPU from p50
-15.14 ms to p999 58.49 ms on public routes
-(`docs/handoffs/phase-15-cloudflare-api.md:217-219`). Nobody has measured sync,
+15.14 ms to p999 58.49 ms, aggregates that mostly reflect public checks
+(`docs/handoffs/phase-15-cloudflare-api.md:126-128`, `:217-219`). Nobody has measured sync,
 import or export on any host.
 
 The bigger risk is wall time, not CPU. A worst-case journal sync is about 2,800
@@ -266,13 +267,14 @@ before any real journal traffic.
 - Backups run on GitHub Actions and write encrypted dumps to R2 over its S3 API.
   They do not use the API Worker or Hyperdrive (read, `scripts/backups/`).
 - The backup clock Worker starts the nightly and hourly runs
-  (`scripts/backups/clock/worker.mjs:42-75`). Since November 3 every nightly copy
-  started from it, and GitHub's own schedule ran 3 of 24 hourly copies on
-  November 5 (measured with `gh run list`). Main's docs never record that it was
+  (`scripts/backups/clock/worker.mjs:42-75`). Since November 3 it has started a
+  nightly copy at 04:43 UTC each day, while GitHub's own schedule ran hours late,
+  and on November 5 GitHub's schedule ran only 3 of 24 hourly copies (measured
+  with `gh run list`). Main's docs never record that it was
   switched on. Only the parked branch's review records it, and the review says its
   GitHub token stops passing the clock's expiry check at 23:40 UTC on November 29.
-- Issue #77's deadlines have passed, yet all 115 backup runs since November 2
-  succeeded (measured with `gh run list`). The credentials were renewed
+- Issue #77's deadlines have passed, yet all 115 backup runs since 12:53 UTC on
+  November 2 succeeded (measured with `gh run list`). The credentials were renewed
   (inferred). The issue and `docs/operations/CLOUDFLARE_BACKUPS.md:250` and
   `:313-317` still show the old dates.
 - The Cloudflare account stays for R2 and the backup clock. Supabase Free has no
