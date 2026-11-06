@@ -8,22 +8,22 @@ and [App Store release][store] milestones.
 | Phase                                                               | Outcome                                                                                                         | Depends on                                  | Status                                      |
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------- |
 | 01 — Foundation & implementation decisions                          | A reproducible workspace and a clear list of decisions to settle before each feature.                           | None                                        | Complete                                    |
-| 02 — No-signup identity & recovery                                  | A real account survives supported recovery paths, without exposing another person’s history.                    | 01                                          | Implemented                                 |
+| 02 — No-signup identity & recovery                                  | A real account survives supported recovery paths, without exposing another person's history.                    | 01                                          | Implemented                                 |
 | 03 — App shell & shared API                                         | The app restores the right account and provides consistent navigation and network behavior.                     | 02                                          | Implemented                                 |
-| 04 — Challenge deck & reliable attempts                             | Browse → accept → complete or give up works against real cloud data exactly once.                               | 03                                          | Implemented                                 |
+| 04 — Challenge deck & reliable attempts                             | Browsing, accepting, and completing or giving up a challenge work against real cloud data exactly once.         | 03                                          | Implemented                                 |
 | 05 — Feelings & typed reflections                                   | A completed attempt can have optional private feedback and typed reflection text.                               | 04                                          | Implemented                                 |
-| 06 — Progress calendar & saved history                              | Users can view the full Progress summary/calendar and read day details and saved reflections.                   | 05                                          | Implemented                                 |
+| 06 — Progress calendar & saved history                              | Users can view the full Progress summary and calendar, and read day details and saved reflections.              | 05                                          | Implemented                                 |
 | 06A — Code quality & test hardening                                 | Existing code is easier to understand and change, with meaningful regression tests and durable coding guidance. | 06 (local)                                  | Complete                                    |
-| 07 — API & offline saving                                           | Completions/reflections display after local saving and synchronize reliably through resource APIs.              | 06A                                         | Implemented                                 |
+| 07 — API & offline saving                                           | Completions and reflections display after local saving and synchronize reliably through resource APIs.          | 06A                                         | Implemented                                 |
 | 08 — Settings & privacy controls                                    | Users control recovery, private data and preferences, including confirmed account deletion.                     | 07.5                                        | Complete                                    |
-| 08A — Structure, docs & tooling cleanup                             | Routes, folders and docs match how the app works today; CI is faster and deterministic; no user-visible change. | 08 merged, no other open feature branch     | Merged; local branch cleanup open           |
+| 08A — Structure, docs & tooling cleanup                             | Routes, folders and docs match how the app works today. CI is faster and deterministic. Users see no change.    | 08 merged, no other open feature branch     | Merged; local branch cleanup open           |
 | 09 — App continuity & Reflection exit                               | Saved shuffled venue decks, remembered venue and one bottom Reflection exit.                                    | 08, 08A                                     | Implemented                                 |
-| 10 — Terms & Privacy entry                                          | Ordinary Terms/Privacy links and Continue-based account creation, without legal tracking.                       | 09                                          | Implemented                                 |
-| 11 — App crash & error reporting                                    | Sentry crash/error delivery excludes private content and preserves recovery.                                    | 08, 10                                      | Implemented                                 |
+| 10 — Terms & Privacy entry                                          | Ordinary Terms and Privacy links and Continue-based account creation, without legal tracking.                   | 09                                          | Implemented                                 |
+| 11 — App crash & error reporting                                    | Sentry crash and error delivery excludes private content and preserves recovery.                                | 08, 10                                      | Implemented                                 |
 | 12 — Legal documents & release disclosures                          | Reviewed public notices and acceptance copy match the launch build, with product analytics disabled.            | 08–11                                       | Notices published                           |
-| 13 — Local data, optional accounts and cloud sync                   | One continuous journal, optional Apple/Google accounts, cloud sync and concise Account/Data controls.           | 07–12                                       | Merged                                      |
+| 13 — Local data, optional accounts and cloud sync                   | One continuous journal, optional Apple and Google accounts, cloud sync and concise Account and Data controls.   | 07–12                                       | Merged                                      |
 | 14 — Release validation & launch                                    | A free beta validates the core product, then the complete paid product is ready for store submission.           | 08–13 for beta; accepted 16 for paid launch | Internal TestFlight build 5 delivered       |
-| [15 — API hosting & recovery](phase-15-supabase-api.md)             | Plan a Hono API move from Cloudflare to Supabase, retaining PostgreSQL/Auth and an accepted recovery path.      | 14 internal beta; before 14 external beta   | Planning only; Cloudflare rollout paused    |
+| [15 — API hosting & recovery](phase-15-supabase-api.md)             | Plan a Hono API move from Cloudflare to Supabase, keeping PostgreSQL and Auth and an accepted recovery path.    | 14 internal beta; before 14 external beta   | Planning only; Cloudflare rollout paused    |
 | [16 — Native subscriptions & reliable billing](phase-16-billing.md) | Verified purchases unlock promptly, and later subscription changes recover reliably.                            | 07.5; activate after free beta              | Local work in progress; activation deferred |
 
 [beta]: https://github.com/anthonyyoo24/justgo/milestone/1
@@ -31,8 +31,14 @@ and [App Store release][store] milestones.
 
 ## Release order
 
-Remaining order: 14 internal beta → 15 API hosting and recovery → 14 external
-free beta → 16 billing activation and acceptance → 14 paid launch → 17 analytics.
+The remaining phases run in this order:
+
+1. 14 internal beta.
+2. 15 API hosting and recovery.
+3. 14 external free beta.
+4. 16 billing activation and acceptance.
+5. 14 paid launch.
+6. 17 analytics.
 
 Phase 15 must close before outside testers store real journals. Its Cloudflare
 rollout is paused. The [Supabase migration plan](phase-15-supabase-api.md) is

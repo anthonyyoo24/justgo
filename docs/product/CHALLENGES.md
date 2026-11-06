@@ -10,87 +10,92 @@ conflict.
 ## Scope and behavior
 
 - **Difficulty:** Level 1, the easiest version. Each challenge starts an interaction with a small greeting, comment, or question. Continuing the conversation is optional.
-- **Subtext:** The accompanying line below the challenge text. Example wording can be adapted naturally; bracketed words such as `[item]` or `[name]` are conversational placeholders.
-- **Venue stacks:** Each account's decks shuffle once on this phone and save their independent order, front card and last selected venue for relaunch. New accounts or missing/unknown saved venue values start in Streets. Skip, completion and give-up move the matching front placement to the back of its venue's stack; a shared challenge's card in another venue stays in place. [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) keeps these preferences on the phone.
-- **Card copy length:** Review each new batch on the actual card at the standard type size, including database, preview, and demo text. Every challenge should render in two to four complete lines without scrolling; character count alone cannot reliably predict wrapping.
+- **Subtext:** The line below the challenge text. Adapt the example wording naturally. Bracketed words such as `[item]` or `[name]` are conversational placeholders.
+- **Venue stacks:** Each account's decks shuffle once on this phone and save their independent order, front card and last selected venue for relaunch. New accounts start in Streets, and so does a missing or unknown saved venue value. Skip, completion and give-up move the matching front placement to the back of its venue's stack. A shared challenge's card in another venue stays in place. [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) keeps these preferences on the phone.
+- **Card copy length:** Review each new batch on the actual card at the standard type size, including database, preview, and demo text. Every challenge should render in two to four complete lines without scrolling. Character count alone cannot reliably predict wrapping.
 
 ## Challenge loop and content
 
 [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) owns the local-save protocol.
 
 Venue pills filter manually and scroll horizontally when needed. There is no
-GPS selection or additional Anywhere/All venue. No server preferences, personal
-queues or per-skip requests remain. Catalog refresh keeps surviving order
-and the front card, inserts new placements randomly behind it, and removes missing
-or inactive placements. If an active card disappears, its outcome must leave the
-untouched next card in place. Invalid or unreadable preferences fall back to a
-fresh shuffle; failed preference writes leave the live deck usable without activity
-saving or loss-risk warnings. A venue change cannot restart an active attempt.
+GPS selection and no additional Anywhere or All venue. No server preferences,
+personal queues or per-skip requests remain. A catalog refresh keeps the surviving
+order and the front card, inserts new placements at random positions behind it,
+and removes missing or inactive placements. If an active card disappears, its
+outcome must leave the untouched next card in place. Invalid or unreadable
+preferences fall back to a fresh shuffle. Failed preference writes leave the live
+deck usable without activity saving or loss-risk warnings. A venue change cannot
+restart an active attempt.
 
 Start captures the selected challenge, start timestamp, named time zone and
 original duration in React memory. The full-screen active view hides Settings and
-tabs and exits only through Completed or Give up. Lock/background preserves the
-attempt while the app remains alive; a fresh mount, account change or process
-restart discards unfinished activity. Zero still awaits an explicit outcome.
-Start and Give up create no saved attempt. Completed allocates one UUID and waits
-for phone saving before Success, then uploads in the background. Retries preserve
-that UUID; another deliberate completion earns a distinct rep. Reflection and
+tabs and exits only through Completed or Give up. Locking the phone or moving the
+app to the background preserves the attempt while the app stays alive. A fresh
+mount, account change or process restart discards unfinished activity. When the
+timer reaches zero, the attempt still waits for an explicit outcome. Start and
+Give up create no saved attempt. Completed allocates one UUID, waits for phone
+saving before Success, and then uploads in the background. Retries preserve that
+UUID, and another deliberate completion earns a distinct rep. Reflection and
 Progress are integrated through the same account journal.
 
-Differing durations are outside this version. Minor wording edits are visible in
-historical entries; substantially different activities need a new ID. Retain
-inactive content for history and pending references. No separate JSON
-catalog/import workflow or admin dashboard is required.
+Differing durations are outside this version. Minor wording edits show in
+historical entries. Substantially different activities need a new ID. Retain
+inactive content for history and pending references. No separate JSON catalog,
+import workflow or admin dashboard is required.
 
 Do not show subtext, hints, per-challenge illustrations or safety-guideline fields
 in this version. A nullable model field and the authoring drafts below do not
 make those UI requirements. Existing respectful-content principles still apply.
-Levels and progression are deferred: retain Level 1 history without thresholds,
-and omit the “3 / 12” indicator or equivalent progress line. A normal exhausted
-state does not exist because decks cycle. Validate all six nonempty venues and
-render real downloaded cards; a missing initial catalog uses loading, failure or
-offline recovery.
+Levels and progression are deferred. Retain Level 1 history without thresholds,
+and omit the "3 / 12" indicator or any equivalent progress line. Decks cycle, so
+there is no normal exhausted state. Validate all six nonempty venues and render
+real downloaded cards. A missing initial catalog uses loading, failure or offline
+recovery.
 
 ## Deck and motion
 
 Use the original [39O Café screen without subtext](https://app.paper.design/file/01M06AN54B8CZHGDPRD8XY0880/3-0/OMO-0)
 and its stack fanning right. The bottom-edge variant is not selected. Preserve
-its styling/shadow depth with the current venue and deferred-level decisions.
+its styling and shadow depth with the current venue and deferred-level decisions.
 
-The front card follows the thumb and tilts; cancellation settles it back. A
-committed swipe flies offscreen while the middle card moves left/up into front
-and the rear moves into the tilted middle position. A fourth card starts hidden
-behind the rear and fans right before the others settle. Overlap these movements,
-using the accepted roughly 300 ms post-release timing without a pronounced
-bounce. The incoming card takes the departing color and next queued content.
+The front card follows the thumb and tilts. Cancelling the swipe settles it back.
+A committed swipe flies offscreen while the middle card moves left and up into
+front and the rear card moves into the tilted middle position. A fourth card
+starts hidden behind the rear and fans right before the others settle. Overlap
+these movements with the accepted post-release timing of roughly 300 ms and no
+pronounced bounce. The incoming card takes the departing color and the next
+queued content.
 
-Gesture Handler, Reanimated and Worklets own the existing native implementation;
-no additional deck library is needed. X/heart buttons use the same animation
-controller, and duplicate input cannot advance twice. Completion uses the
-serialized account journal and ordered sender; slow phone writes have delayed
-accessible feedback while ordinary uploads do not gate navigation. Preserve
-accessible button alternatives and Reduce Motion. Native/physical touch feel and
-release accessibility acceptance stay explicit in gates [#86](https://github.com/anthonyyoo24/justgo/issues/86) and [#87](https://github.com/anthonyyoo24/justgo/issues/87) rather than being
-inferred from browser or component tests.
+Gesture Handler, Reanimated and Worklets own the existing native implementation.
+No additional deck library is needed. The X and heart buttons use the same
+animation controller, and duplicate input cannot advance twice. Completion uses
+the serialized account journal and ordered sender. Slow phone writes get delayed
+accessible feedback, and ordinary uploads do not gate navigation. Preserve
+accessible button alternatives and Reduce Motion. Native touch feel on a physical
+device and release accessibility acceptance stay explicit in gates
+[#86](https://github.com/anthonyyoo24/justgo/issues/86) and
+[#87](https://github.com/anthonyyoo24/justgo/issues/87). Do not infer them from
+browser or component tests.
 
 ## Subtext writing guidance
 
-**Use the subtext to remove the person's most likely hesitation about starting.** The challenge says what to do; the subtext helps them begin. This guidance applies when creating new cards and reviewing existing ones. The card wording below is preserved pending review of individual revisions.
+**Use the subtext to remove the person's most likely hesitation about starting.** The challenge says what to do, and the subtext helps them begin. This guidance applies when you create new cards and review existing ones. The card wording below stays unchanged until each revision is reviewed.
 
 - **Default to an example opening line** when phrasing is the likely obstacle. Make it natural, short, and easy to say. For example, an equipment-sharing challenge can offer: “Hey, would you mind if I worked in with you?”
-- **Use context when timing or approach is the obstacle.** A useful cue might be “Catch them between sets or while they’re taking a break.” Use a situation the person can recognize before accepting; do not make them wait for an unlikely event.
-- **Use specific reassurance when the expected effort is unclear.** For example: “A quick compliment is enough—you don’t have to keep talking.” This should clarify what is sufficient, not promise a positive response.
-- **Avoid merely repeating words already supplied by the challenge.** If the challenge is “Tell someone their dog is cute,” another version of “Your dog is cute” adds little; context or reassurance is usually more useful. A spoken example is still valuable when it translates an instruction into easier, more natural wording.
+- **Use context when timing or approach is the obstacle.** A useful cue might be “Catch them between sets or while they’re taking a break.” Use a situation the person can recognize before accepting. Do not make them wait for an unlikely event.
+- **Use specific reassurance when the expected effort is unclear.** For example: “A quick compliment is enough—you don’t have to keep talking.” The reassurance should clarify what is sufficient, not promise a positive response.
+- **Avoid merely repeating words already supplied by the challenge.** If the challenge is “Tell someone their dog is cute,” another version of “Your dog is cute” adds little. Context or reassurance is usually more useful. A spoken example is still valuable when it translates an instruction into easier, more natural wording.
 - **Keep Level 1 small.** Do not turn a greeting into a required conversation or add mandatory follow-up questions. Any suggested continuation must be clearly optional.
-- **Prefer practical help over generic encouragement.** “You’ve got this” or “Follow your curiosity” should not take the place of a useful opener, timing cue, or explanation of what is enough.
-- **Keep one main purpose per subtext.** Usually one short sentence or opener is enough. Include a brief timing cue alongside an opener only when both help; avoid a paragraph of instructions.
+- **Prefer practical help over generic encouragement.** “You’ve got this” or “Follow your curiosity” should not replace a useful opener, timing cue, or explanation of what is enough.
+- **Keep one main purpose per subtext.** Usually one short sentence or opener is enough. Add a brief timing cue to an opener only when both help. Avoid a paragraph of instructions.
 - **Make examples adaptable.** They are suggestions, not scripts to recite exactly. Do not depend on unverified weather, familiarity, preferences, or circumstances. Use the actual situation and keep any placeholders easy to fill.
 
-When generating or assessing a subtext, ask:
+When you write or assess a subtext, ask these questions:
 
 1. What is most likely to make this person hesitate: wording, timing, approach, or uncertainty about how much they need to do?
 2. Does this line address that obstacle and add something useful beyond the challenge text?
-3. Can they use it to initiate the interaction within the five-minute window, without needing an interaction to have already happened?
+3. Can they use it to start the interaction within the five-minute window, without needing an interaction to have already happened?
 4. Does it keep the action at Level 1, with further conversation optional?
 5. Can it be shortened without losing the useful help?
 
@@ -197,16 +202,16 @@ Situations: the entrance line, waiting at the bar, nearby tables, and the dance 
 
 These groups make related actions easy to review. Wording and situations can differ by venue, and this index does not merge them into one text. Card labels match `venue_cards.id` in the seed. A challenge can supply several venue cards, and each placement keeps its own order.
 
-| Shared action                                 | Venue cards                                                        |
-| --------------------------------------------- | ------------------------------------------------------------------ |
-| Greet someone passing                         | ST-01, PK-01                                                       |
-| Comment on the weather                        | ST-05, PK-02                                                       |
-| Compliment a dog                              | ST-06, PK-03                                                       |
-| Ask where someone got an item                 | ST-09, PK-05; BC-04 also includes this question after a compliment |
-| Ask for a nearby coffee recommendation        | ST-04, PK-07                                                       |
-| Compliment someone's clothing or an item      | ST-02, ST-10, PK-08, CF-06, BC-04                                  |
-| Ask how someone's day is going                | PK-06, GY-01, CF-01, BK-01                                         |
-| Ask a staff member for a drink recommendation | CF-02, BC-03                                                       |
-| Ask what someone is going to order            | CF-03, BC-09                                                       |
-| Ask what drink someone already ordered        | CF-04, BC-02                                                       |
-| Introduce yourself                            | GY-09, BC-01                                                       |
+| Shared action                                 | Venue cards                                            |
+| --------------------------------------------- | ------------------------------------------------------ |
+| Greet someone passing                         | ST-01, PK-01                                           |
+| Comment on the weather                        | ST-05, PK-02                                           |
+| Compliment a dog                              | ST-06, PK-03                                           |
+| Ask where someone got an item                 | ST-09, PK-05. BC-04 also asks this after a compliment. |
+| Ask for a nearby coffee recommendation        | ST-04, PK-07                                           |
+| Compliment someone's clothing or an item      | ST-02, ST-10, PK-08, CF-06, BC-04                      |
+| Ask how someone's day is going                | PK-06, GY-01, CF-01, BK-01                             |
+| Ask a staff member for a drink recommendation | CF-02, BC-03                                           |
+| Ask what someone is going to order            | CF-03, BC-09                                           |
+| Ask what drink someone already ordered        | CF-04, BC-02                                           |
+| Introduce yourself                            | GY-09, BC-01                                           |
