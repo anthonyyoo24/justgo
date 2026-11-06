@@ -1,170 +1,154 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ExternalLinkButton } from '../../components/ExternalLinkButton';
-import { contactFailureMessage, supportContact } from '../contact';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScaledText as Text } from '../../components/typography/ScaledText';
 import { useActivityState } from '../providers/AppProvider';
-import { colors, typography } from '../../theme/tokens';
-import {
-  actionableOperations,
-  operationProblem,
-  savingRiskCopy,
-} from './presentation';
-export function SavingNotice({
-  onNavigate,
-  navigationEnabled = true,
-  toastChannel = 'activity',
-}: {
-  onNavigate?: (() => void) | undefined;
+import { colors, radii, spacing, typography } from '../../theme/tokens';
+import { actionableOperations } from './presentation';
+import { SavingDetailsModal } from './SavingDetailsModal';
+
+type NoticeOptions = {
+  onNavigate?: ((proceed: () => void) => void) | undefined;
   navigationEnabled?: boolean;
   toastChannel?: string;
-} = {}) {
+};
+export function SavingNotice(options: NoticeOptions = {}) {
   const { repository, state } = useActivityState();
-  const [expandedFor, setExpandedFor] = useState<typeof repository>(null);
-  const expanded = expandedFor === repository;
-  const router = useRouter();
   if (!state || !repository) return null;
   const operations = actionableOperations(state);
   const unreadable = state.hydrationError === 'unreadable';
-  const warning = state.warning?.visible ? state.warning : null;
-  if (!warning && !unreadable && !operations.length) return null;
+  const warning = !!state.warning?.visible;
+  if (!unreadable && !warning && !operations.length) return null;
+  const episode = `${unreadable ? 'storage' : ''}:${state.warning?.episode ?? ''}:${operations.map((operation) => `${operation.id}:${operation.state}:${operation.code}`).join(',')}`;
+  // Unmount a resolved episode, so a later failure can be announced again.
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.notice}>
-      {warning && (
-        <View style={styles.row} testID="saving-risk-banner">
-          <Text
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-            style={styles.copy}
+    <NoticeEpisode
+      issueKey={episode}
+      {...options}
+      repository={repository}
+      unreadable={unreadable}
+      warning={warning}
+    />
+  );
+}
+function NoticeEpisode({
+  repository,
+  issueKey,
+  unreadable,
+  warning,
+  onNavigate,
+  navigationEnabled = true,
+  toastChannel = 'activity',
+}: NoticeOptions & {
+  repository: NonNullable<ReturnType<typeof useActivityState>['repository']>;
+  issueKey: string;
+  unreadable: boolean;
+  warning: boolean;
+}) {
+  const insets = useSafeAreaInsets();
+  const [expandedFor, setExpandedFor] = useState<typeof repository | null>(
+    null,
+  );
+  const [dismissedFor, setDismissedFor] = useState<{
+    repository: typeof repository;
+    key: string;
+  } | null>(null);
+  const hidden =
+    dismissedFor?.repository === repository && dismissedFor.key === issueKey;
+  const expanded = expandedFor === repository;
+  const title = unreadable
+    ? 'Your saved entries couldn’t load'
+    : warning
+      ? 'New activity isn’t saved yet'
+      : 'Some activity needs attention';
+  return (
+    <>
+      {!hidden && (
+        <View
+          pointerEvents="box-none"
+          testID="saving-notice-overlay"
+          style={[
+            styles.overlay,
+            {
+              top: insets.top + spacing.sm,
+              left: insets.left + spacing.lg,
+              right: insets.right + spacing.lg,
+            },
+          ]}
+        >
+          <View
+            style={styles.notice}
+            testID={warning ? 'saving-risk-banner' : 'saving-problem-notice'}
           >
-            {savingRiskCopy(warning)}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close saving warning"
-            onPress={() => repository.dismissWarning()}
-            style={styles.action}
-          >
-            <Text style={styles.link}>Close</Text>
-          </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                unreadable
+                  ? 'Review saved entries that couldn’t load'
+                  : warning
+                    ? 'Review saving warning'
+                    : 'Review activity that couldn’t upload'
+              }
+              onPress={() => setExpandedFor(repository)}
+              style={styles.details}
+            >
+              <Text
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+                style={styles.copy}
+              >
+                {title}
+              </Text>
+              <Text style={styles.link}>Details</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close saving warning"
+              onPress={() => {
+                setDismissedFor({ repository, key: issueKey });
+                if (warning) repository.dismissWarning();
+              }}
+              style={styles.close}
+            >
+              <Text style={styles.closeLabel}>×</Text>
+            </Pressable>
+          </View>
         </View>
       )}
-      {(unreadable || operations.length > 0) && (
-        <>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded }}
-            onPress={() => setExpandedFor(expanded ? null : repository)}
-            style={styles.action}
-          >
-            <Text style={styles.link}>
-              {expanded
-                ? 'Hide saving details'
-                : 'Review activity that couldn’t upload'}
-            </Text>
-          </Pressable>
-          {expanded && (
-            <ScrollView
-              style={styles.details}
-              keyboardShouldPersistTaps="handled"
-            >
-              {unreadable && (
-                <Text accessibilityRole="alert" style={styles.copy}>
-                  Saved data on this phone couldn’t be read or migrated. The
-                  original copy has been kept. Free storage or reopen the app,
-                  then retry from Journal in Settings. Cloud recovery restores
-                  completion history.
-                </Text>
-              )}
-              {operations.map((operation) => {
-                const record = state.journal.records[operation.attemptId]!;
-                const attempt =
-                  repository.getAttempt(operation.attemptId) ?? record.attempt;
-                return (
-                  <View key={operation.id} style={styles.entry}>
-                    <Text style={styles.copy}>
-                      {attempt.instruction} · {attempt.activityDate}
-                    </Text>
-                    <Text accessibilityRole="alert" style={styles.copy}>
-                      {operationProblem(operation)}
-                    </Text>
-                    {!!attempt.reflection?.text && (
-                      <Text style={styles.copy}>{attempt.reflection.text}</Text>
-                    )}
-                    {!!operation.requestId && (
-                      <Text style={styles.copy}>
-                        Reference: {operation.requestId}
-                      </Text>
-                    )}
-                    {navigationEnabled && !!attempt.reflection && (
-                      <Pressable
-                        accessibilityRole="button"
-                        style={styles.action}
-                        onPress={() => {
-                          onNavigate?.();
-                          router.push({
-                            pathname: '/reflection',
-                            params: {
-                              attemptId: operation.attemptId,
-                              source: 'recovery',
-                            },
-                          });
-                        }}
-                      >
-                        <Text style={styles.link}>Review reflection</Text>
-                      </Pressable>
-                    )}
-                    {navigationEnabled && operation.state === 'auth' && (
-                      <Pressable
-                        accessibilityRole="button"
-                        style={styles.action}
-                        onPress={() => {
-                          onNavigate?.();
-                          router.push('/recovery');
-                        }}
-                      >
-                        <Text style={styles.link}>Recover account</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                );
-              })}
-              <ExternalLinkButton
-                label="Get help"
-                url={supportContact}
-                failureMessage={contactFailureMessage}
-                channel={toastChannel}
-              />
-            </ScrollView>
-          )}
-        </>
+      {expanded && (
+        <SavingDetailsModal
+          onClose={() => setExpandedFor(null)}
+          onNavigate={onNavigate}
+          navigationEnabled={navigationEnabled}
+          toastChannel={toastChannel}
+        />
       )}
-    </SafeAreaView>
+    </>
   );
 }
 const styles = StyleSheet.create({
-  notice: { backgroundColor: colors.peach },
-  row: {
+  overlay: { position: 'absolute', zIndex: 100 },
+  notice: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 12,
+    backgroundColor: colors.peach,
+    borderRadius: radii.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  copy: {
-    ...typography.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.ink,
-    flexShrink: 1,
-  },
-  action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
+  details: { flex: 1, minHeight: 44, padding: spacing.md, gap: spacing.xs },
+  copy: { ...typography.caption, color: colors.ink },
   link: {
-    ...typography.body,
-    fontSize: 14,
+    ...typography.caption,
     color: colors.ink,
     textDecorationLine: 'underline',
   },
-  details: { maxHeight: 220, paddingHorizontal: 16 },
-  entry: { paddingBottom: 12, gap: 8 },
+  close: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  closeLabel: { ...typography.body, fontSize: 24, color: colors.ink },
 });

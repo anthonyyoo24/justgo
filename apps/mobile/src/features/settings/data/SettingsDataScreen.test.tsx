@@ -68,6 +68,9 @@ jest.mock('../../../app-support/providers/AppProvider', () => ({
     },
   }),
 }));
+jest.mock('../../../app-support/saving/SavingDetails', () => ({
+  SavingRecoveryPanel: () => null,
+}));
 jest.mock('../../../platform/motion/motion', () => ({
   useMotionPreferences: () => mockMotion,
 }));

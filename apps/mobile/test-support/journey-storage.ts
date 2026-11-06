@@ -5,14 +5,19 @@ import type { JournalStorage } from '../src/data/activity/model';
 // No account data or credentials are exposed through this fixture control.
 declare global {
   var justgoJournalFaults: {
-    mode: 'normal' | 'blocked' | 'full';
+    mode: 'normal' | 'blocked' | 'full' | 'unreadable';
     privateMode: 'normal' | 'blocked' | 'full';
     release: () => void;
   };
 }
 const waiters = new Set<() => void>();
 globalThis.justgoJournalFaults = {
-  mode: 'normal',
+  mode:
+    new URLSearchParams(globalThis.location?.search ?? '').get(
+      'storageRead',
+    ) === 'unreadable'
+      ? 'unreadable'
+      : 'normal',
   privateMode: 'normal',
   release: () => {
     globalThis.justgoJournalFaults.mode = 'normal';
@@ -23,6 +28,14 @@ globalThis.justgoJournalFaults = {
 };
 export const asyncStorageJournalStorageFixture: JournalStorage = {
   ...asyncStorageJournalStorage,
+  async getItem(key) {
+    if (
+      key.endsWith(':journal') &&
+      globalThis.justgoJournalFaults.mode === 'unreadable'
+    )
+      throw new Error('Synthetic unreadable journal fixture');
+    return asyncStorageJournalStorage.getItem(key);
+  },
   async setItem(key, value) {
     if (key.endsWith(':journal')) {
       if (globalThis.justgoJournalFaults.mode === 'blocked')

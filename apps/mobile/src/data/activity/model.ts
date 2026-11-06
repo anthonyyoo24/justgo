@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { LocalStorageDiagnostic } from '../journal/model';
 import {
   attemptSchema,
   createAttemptSchema,
@@ -202,6 +203,7 @@ export type JournalState = {
   localEntries?: Record<string, Attempt>;
   localJournalReady?: boolean;
   hydrationError: 'unreadable' | null;
+  hydrationDiagnostic?: LocalStorageDiagnostic | null;
   coordinatorError: 'UNAVAILABLE' | null;
   journal: Journal;
   catalog: Catalog | null;

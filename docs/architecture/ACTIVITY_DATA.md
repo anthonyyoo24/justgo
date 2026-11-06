@@ -38,6 +38,12 @@ exclusive transactions, and web IndexedDB writes both stores in one
 strict-durability transaction. No test checks these settings, so review has to
 catch a change.
 
+Native SQLite loads lazily through a literal `require` that stays in the main
+bundle, so opening saved data never depends on a separate development
+split-bundle request. A failed hydration keeps only a fixed stage identifier in
+live state, never a raw exception or journal text, and keeps the first failing
+stage until a successful preparation clears it.
+
 Managed guest and account modes keep complete completion history on the phone
 and never prune it into a bounded cache. Progress totals, calendars, streaks and
 day rows derive from unique saved completion IDs. The bounded aggregate cache

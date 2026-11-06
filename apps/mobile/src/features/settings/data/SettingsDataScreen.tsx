@@ -31,6 +31,7 @@ import { colors, radii, spacing, typography } from '../../../theme/tokens';
 import { SettingsExportRow } from '../export/SettingsExportRow';
 import { SettingsICloudRow } from './SettingsICloudRow';
 import { applyImportedPreferences } from './import-preferences';
+import { SavingRecoveryPanel } from '../../../app-support/saving/SavingDetails';
 
 type Action = 'download' | 'import' | 'delete' | 'icloud';
 export function SettingsDataScreen() {
@@ -237,6 +238,7 @@ function DataSession() {
   };
   return (
     <SettingsPage title="Data" backHref="/settings">
+      <SavingRecoveryPanel />
       <View style={styles.card}>
         <SettingsICloudRow
           disabled={deletionPending || (busy !== null && busy !== 'icloud')}

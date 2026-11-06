@@ -52,6 +52,34 @@ async function setup(
   return { repo, storage, transport };
 }
 const state = (repo: AccountRepository) => repo.store.getState();
+it('retains the first metadata failure through blocked private preparation without exposing raw errors', async () => {
+  const storage = new MemoryStorage();
+  const read = jest
+    .spyOn(storage, 'getItem')
+    .mockRejectedValueOnce(new Error('Synthetic private native detail'));
+  const repo = new AccountRepository({
+    accountId: owner,
+    storage,
+    transport: backend(),
+    today,
+    timeZone: zone,
+    dataMode: 'local',
+    localJournal: memoryLocalJournal(owner, storage),
+  });
+  repositories.push(repo);
+  repo.setEnvironment({ online: false, active: true });
+  await repo.hydrate();
+  expect(state(repo)).toMatchObject({
+    hydrationError: 'unreadable',
+    hydrationDiagnostic: 'METADATA_READ',
+    localJournalReady: false,
+  });
+  expect(JSON.stringify(state(repo))).not.toContain(
+    'Synthetic private native detail',
+  );
+  expect(storage.values.size).toBe(0);
+  read.mockRestore();
+});
 it('erases only the deleted account, including quarantine, after an outstanding journal write settles', async () => {
   const { repo, storage } = await setup();
   storage.values.set(`justgo:v1:${owner}:quarantine:1`, 'Synthetic quarantine');
@@ -319,6 +347,7 @@ it.each([
     storage.values.set(key, raw);
     const { repo } = await setup(storage);
     expect(state(repo).hydrationError).toBe('unreadable');
+    expect(state(repo).hydrationDiagnostic).toBe('COMPLETION_FORMAT');
     expect(
       [...storage.values.entries()].some(
         ([name, value]) => name.includes(':quarantine:') && value === raw,

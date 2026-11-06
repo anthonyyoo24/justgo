@@ -153,7 +153,10 @@ it('refuses an unsupported schema without replacing it and retries an initializa
   existing.close();
   const backend = backendWithDriver();
   const journal = new LocalJournalRepository(owner, backend);
-  await expect(journal.list()).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  await expect(journal.list()).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+    diagnostic: 'SQLITE_NEWER_SCHEMA',
+  });
   const preserved = new DatabaseSync(filename(owner));
   expect(preserved.prepare('PRAGMA user_version').get()).toMatchObject({
     user_version: 2,
@@ -166,10 +169,74 @@ it('refuses an unsupported schema without replacing it and retries an initializa
   preserved.close();
   await backend.deleteOwned(owner);
   mockFailOpen = true;
-  await expect(journal.list()).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  await expect(journal.list()).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+    diagnostic: 'SQLITE_OPEN',
+  });
   mockFailOpen = false;
   expect(await journal.list()).toEqual([]);
 });
+
+it('identifies native module loading without retaining raw exceptions or private values', async () => {
+  const backend = new SQLiteJournalBackend(() =>
+    Promise.reject(new Error('Synthetic private data and native file path')),
+  );
+  const journal = new LocalJournalRepository(owner, backend);
+  const failure: unknown = await journal
+    .list()
+    .catch((error: unknown) => error);
+  expect(failure).toMatchObject({
+    code: 'UNAVAILABLE',
+    diagnostic: 'NATIVE_SQLITE_MODULE',
+  });
+  expect(JSON.stringify(failure)).not.toMatch(
+    /private data|native file path|10000000/,
+  );
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toBe('UNAVAILABLE');
+});
+
+it.each([
+  [
+    new Error("Cannot find native module 'ExpoSQLite'"),
+    'SQLITE_NOT_REGISTERED',
+  ],
+  [
+    new Error("Cannot find native module 'ExpoAsset'"),
+    'SQLITE_ASSET_NOT_REGISTERED',
+  ],
+  [
+    new Error(
+      'Failed to load split bundle from URL: http://private.invalid/secret',
+    ),
+    'SQLITE_BUNDLE_LOAD',
+  ],
+  [
+    Object.assign(new Error('Synthetic private response'), {
+      name: 'LoadBundleFromServerRequestError',
+    }),
+    'SQLITE_BUNDLE_LOAD',
+  ],
+  [
+    Object.assign(new Error('Synthetic private response'), {
+      code: 'METRO_SERVER_ERROR',
+    }),
+    'SQLITE_BUNDLE_LOAD',
+  ],
+])(
+  'classifies an allowlisted import failure without retaining its payload (%#)',
+  async (failure, diagnostic) => {
+    const backend = new SQLiteJournalBackend(() => Promise.reject(failure));
+    const journal = new LocalJournalRepository(owner, backend);
+    const result: unknown = await journal
+      .list()
+      .catch((error: unknown) => error);
+    expect(result).toMatchObject({ code: 'UNAVAILABLE', diagnostic });
+    expect(JSON.stringify(result)).not.toMatch(
+      /private.invalid|secret|private response|Cannot find/,
+    );
+  },
+);
 
 it('does not reset a database containing malformed or wrong-account rows', async () => {
   const backend = backendWithDriver();
