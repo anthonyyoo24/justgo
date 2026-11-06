@@ -19,16 +19,22 @@ import {
 const hook = fileURLToPath(
   new URL('../../.claude/hooks/require-trail-review.mjs', import.meta.url),
 );
+function toolUse(name, input) {
+  return JSON.stringify({
+    type: 'assistant',
+    message: { content: [{ type: 'tool_use', name, input }] },
+  });
+}
+const appendLine = (trail) =>
+  toolUse('Bash', { command: `printf 'row\\n' >> ${trail}` });
+
 const header = 'ts\tphase\tdecision\twhy\tevidence\tresult\n';
 
 function workspace(rows) {
   const root = mkdtempSync(path.join(tmpdir(), 'trail-hook-'));
   mkdirSync(path.join(root, trailDirectory), { recursive: true });
   const transcript = path.join(root, 'transcript.jsonl');
-  writeFileSync(
-    transcript,
-    `{"text":"appended to ${trailDirectory}/run.tsv"}\n`,
-  );
+  writeFileSync(transcript, `${appendLine(`${trailDirectory}/run.tsv`)}\n`);
   const trail = path.join(root, trailDirectory, 'run.tsv');
   writeFileSync(trail, header + rows.join('\n'));
   const later = new Date(Date.now() + 1000);
@@ -98,7 +104,7 @@ test('a trail last written before this session started does not bind it', () => 
   assert.deepEqual(
     trailsNeedingReview({
       root,
-      transcript: 'pstack run.tsv',
+      transcript: appendLine(`${trailDirectory}/run.tsv`),
       sessionStartMs: Date.now() - 60_000,
     }),
     [],
@@ -138,5 +144,44 @@ test('the hook ignores a trail written before the session transcript began', () 
   const { root, trail, transcript } = workspace([row('build')]);
   const earlier = new Date(Date.now() - 3_600_000);
   utimesSync(trail, earlier, earlier);
+  assert.equal(runHook(root, transcript), undefined);
+});
+
+test('a session that only names a trail in a brief is not bound to it', () => {
+  const { root, transcript } = workspace([row('build')]);
+  writeFileSync(
+    transcript,
+    [
+      toolUse('Agent', {
+        prompt: `Keep a decision trail at ${trailDirectory}/run.tsv`,
+      }),
+      toolUse('Bash', { command: `tail -3 ${trailDirectory}/run.tsv` }),
+    ].join('\n'),
+  );
+  assert.equal(runHook(root, transcript), undefined);
+});
+
+test('writing a trail with the Write or Edit tool binds the session', () => {
+  const { root, transcript } = workspace([row('build')]);
+  writeFileSync(
+    transcript,
+    toolUse('Edit', { file_path: `${root}/${trailDirectory}/run.tsv` }),
+  );
+  assert.equal(runHook(root, transcript)?.decision, 'block');
+});
+
+test('creating a trail with a single redirect binds the session', () => {
+  const { root, transcript } = workspace([row('build')]);
+  writeFileSync(
+    transcript,
+    toolUse('Bash', {
+      command: `printf 'ts\\tphase\\n' > ${trailDirectory}/run.tsv`,
+    }),
+  );
+  assert.equal(runHook(root, transcript)?.decision, 'block');
+  writeFileSync(
+    transcript,
+    toolUse('Bash', { command: `cat ${trailDirectory}/run.tsv 2>&1` }),
+  );
   assert.equal(runHook(root, transcript), undefined);
 });
