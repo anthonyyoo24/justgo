@@ -47,7 +47,7 @@ for (const provider of ['apple', 'google'] as const) {
       }
       await expect(
         page.getByText(/Signing in saves your challenge history/),
-      ).toHaveCount(0);
+      ).toBeVisible();
       const initialPositions = await Promise.all(
         actions.map((action) => action.boundingBox()),
       );

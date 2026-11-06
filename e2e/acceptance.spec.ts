@@ -138,7 +138,7 @@ test('Welcome shows provider logos above Continue, opens direct documents and co
 });
 
 for (const provider of ['apple', 'google'] as const)
-  test(`${provider} signs in directly from Welcome without the removed cloud paragraph`, async ({
+  test(`${provider} explains cloud sync on Welcome and signs in with one action`, async ({
     page,
   }) => {
     const mutations = observeMutations(page);
@@ -160,7 +160,7 @@ for (const provider of ['apple', 'google'] as const)
       page.getByText(
         /Signing in saves your challenge history, feelings and reflections/,
       ),
-    ).toHaveCount(0);
+    ).toBeVisible();
     await expect(page.getByLabel('Recovery key', { exact: true })).toHaveCount(
       0,
     );

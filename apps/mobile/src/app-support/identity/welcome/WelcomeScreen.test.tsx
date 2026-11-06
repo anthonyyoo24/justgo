@@ -123,9 +123,6 @@ it.each([false, true])(
     ).toBeNull();
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(screen.queryByText('Your account has been deleted.')).toBeNull();
-    expect(
-      screen.queryByText(/Signing in saves your challenge history/),
-    ).toBeNull();
     expect(s.api.request).not.toHaveBeenCalled();
     expect(mockBeginEntry).not.toHaveBeenCalled();
   },
@@ -142,6 +139,12 @@ it.each([
     const s = await setup(deleted);
     const signIn = jest.spyOn(s.auth, 'signIn');
     const screen = await render(<WelcomeScreen controller={s.controller} />);
+    expect(
+      screen.getByText(/Signing in saves your challenge history/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/Saved entries on this phone are included/),
+    ).toBeTruthy();
     await fireEvent.press(
       screen.getByRole('button', { name: `Sign in with ${provider}` }),
     );
@@ -265,6 +268,9 @@ it.each(['apple', 'google'] as const)(
         .getAllByRole('button')
         .map((button) => button.props.accessibilityLabel),
     ).toEqual(['Sign in with Apple', 'Sign in with Google', 'Continue']);
+    expect(
+      screen.getByText(/Signing in saves your challenge history/),
+    ).toBeTruthy();
     for (const button of screen.getAllByRole('button')) {
       expect(button).toBeDisabled();
       await fireEvent.press(button);

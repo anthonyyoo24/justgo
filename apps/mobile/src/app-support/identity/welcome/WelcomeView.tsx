@@ -98,6 +98,13 @@ export function WelcomeView({
               <Text style={styles.buttonLabel}>Retry connection</Text>
             </Pressable>
           )}
+          {!!signInButtons && (
+            <Text style={styles.disclosure}>
+              Signing in saves your challenge history, feelings and reflections
+              to JustGO’s cloud to sync across devices. Saved entries on this
+              phone are included.
+            </Text>
+          )}
           {signInButtons}
           <Pressable
             accessibilityRole="button"
@@ -176,5 +183,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center',
     color: colors.peach,
+  },
+  disclosure: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    color: '#FFFDF9',
   },
 });
