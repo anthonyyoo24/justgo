@@ -4,7 +4,7 @@
 
 **Status.** By November 6, 2026, Anthony had confirmed Supabase Edge Functions as the API host and retired the Cloudflare Workers rollout. This plan is planning only. Execution starts on Anthony's explicit go.
 
-The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. A runtime trial decides whether the port proceeds. The PRs, in order, are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). The [analysis](phase-15-supabase-analysis.md) explains why.
+The last recorded deploys put the API on two staging hosts. Vercel has the old Fastify build for TestFlight build 5, and a Cloudflare Worker has Hono for the beta profile. No production API exists. This plan moves main's Hono API to one Edge Function named `api` in the existing JustGo project, for Anthony's builds now and for outside beta testers later. The rule is that no step may weaken account ownership, deletion, local retention or recovery, and every hosted step waits for Anthony's go. A runtime trial decides whether the port proceeds. The PRs, in order, are P15-1 and P15-2 (trials), P15-3, P15-4 and P15-5 (removals and recovery), P15-6 (entry), P15-7 (mobile base path), P15-8 (release lane), P15-9 (hosted acceptance), P15-10 (notices) and P15-11 (switch and retire). Appendix A records why, and the [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the full citations.
 
 ## How to read this
 
@@ -14,7 +14,7 @@ The program runs `pstack/skills/poteto-mode/playbooks/autopilot-full.md` from th
 
 Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), which stays as history. Phase 16 remains billing. Phase 14 privacy, release and device gates stay open.
+This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), which stays until P15-11 deletes it. Phase 16 remains billing. Phase 14 privacy, release and device gates stay open.
 
 ## Program checklist
 
@@ -24,7 +24,6 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 - [ ] Read these from trunk at program start. Re-read them at every tick.
   - [ ] `git show origin/main:AGENTS.md`
   - [ ] `git show origin/main:docs/implementation-plan/phase-15-supabase-api.md`
-  - [ ] `git show origin/main:docs/implementation-plan/phase-15-supabase-analysis.md`
   - [ ] `git show origin/main:.claude/skills/verify-justgo/SKILL.md`
   - [ ] `git show origin/main:docs/operations/SERVER_RELEASES.md`
   - [ ] The installed pstack plugin's `skills/poteto-mode/playbooks/autopilot-full.md`, `skills/poteto-mode/playbooks/opening-a-pr.md`, `skills/swarm/SKILL.md` and `skills/interrogate/SKILL.md`. pstack is a plugin, so these files are not in this repository.
@@ -674,7 +673,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Edit `.github/workflows/staging-health.yml` and `scripts/quality/staging-health-workflow.test.mjs`.
 - [ ] Edit `scripts/development/configuration.mjs` to make `--supabase` the Dev default and delete the Vercel and Cloudflare targets.
 - [ ] Edit `docs/operations/TESTFLIGHT_BETA.md`, `docs/operations/DEVELOPMENT_BUILDS.md`, `docs/architecture/TECH_STACK.md` and `docs/architecture/APP_SHELL.md`.
-- [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md` and update its links.
+- [ ] Delete `docs/operations/CLOUDFLARE_CUTOVER.md`, `docs/implementation-plan/phase-15-cloudflare-api.md`, `docs/handoffs/phase-15-cloudflare-api.md` and `docs/legal/CLOUDFLARE_NOTICE_REVIEW.md`, and update their links. Git history keeps them.
 
 **Build.**
 
@@ -747,7 +746,19 @@ The trials settle these questions, which the documentation leaves open.
 9. What body size does the gateway pass?
 10. What is the bundle size and the cold start time?
 
-Reading settled the rest, and the [analysis](phase-15-supabase-analysis.md) cites each answer. No production API exists. Managed requests take no advisory locks. The beta profile already runs Hono. The backups do not use the API Worker.
+Reading settled the rest. The [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) cites each answer at `ce611dd`.
+
+- No production API exists. The `production` profile sets no API URL. Vercel's slot at `justgo-two.vercel.app` serves staging on Fastify `311f073` to TestFlight build 5 and the Dev profile. The Worker serves staging on Hono `a082087`, which is not on main, to the beta profile. Main's API has no recorded release.
+- Managed requests take no advisory locks. Only legacy bootstrap and transfers call `pg_advisory_xact_lock`, and managed mode rejects them. The managed path holds a `FOR UPDATE` owner lock and a transaction-local owner setting.
+- The transaction pooler should be safe. Every `set_config` is transaction-local, no query in `apps/api/src` names a prepared statement, and the `justgo_runtime` role already sets a 5 second `statement_timeout`.
+- `SUPABASE_DB_URL` is the platform's own connection, not `justgo_runtime`. The function needs its own `DATABASE_URL` with the pooler user `justgo_runtime.<project-ref>`, because readiness fails on any other role.
+- `config.ts` reads three `SUPABASE_` names, a prefix custom secrets cannot use. `SUPABASE_URL` is injected. The entry maps the other two from permitted names.
+- `verify_jwt` is on by default and would reject `/health`, `/ready`, guest routes and preflights, because JustGO's bearer is not a Supabase JWT.
+- Under `Deno.serve`, `http/app.ts` falls back to `127.0.0.1` for every caller, so the entry must pass a `clientAddress`.
+- The backups run on GitHub Actions and write to R2. They use neither the API Worker nor Hyperdrive. The backup clock Worker is separate and stays.
+- Keep the hand-rolled Sentry sender. Supabase's example warns that `@sentry/deno` shares scope across concurrent requests.
+- The Worker measured CPU from p50 15.14 ms to p999 58.49 ms and an 18.48 ms mean Hyperdrive query. At that latency the worst-case sync of about 2,800 sequential queries would take about 50 seconds.
+- Twelve open `gate` issues name Cloudflare, Workers, Hyperdrive, Vercel or R2. They are #77, #79, #81, #84, #99, #102, #103, #104, #105, #118, #123 and #124. #79, #81, #84 and #99 hold Worker evidence and need retargeting.
 
 ## Appendix B. Alternatives rejected
 
@@ -772,7 +783,7 @@ Reading settled the rest, and the [analysis](phase-15-supabase-analysis.md) cite
 | A forged header defeats identity rate limits                                  | P15-2, P15-6  | P15-2 lane 4 and P15-6 lane 9.                                                                |
 | Platform logs keep tokens or private text                                     | P15-2, P15-9  | P15-2 lane 5 stops the program until Anthony decides.                                         |
 | A deploy or a secret change replaces serving code at once, with no rollback   | P15-8         | Candidate first, readback, and rollback by redeploying the previous tag.                      |
-| The backup clock token stops passing its expiry check on November 29          | Arm, P15-4    | Anthony renews it. P15-4 records the date.                                                    |
+| The backup clock token stops passing its expiry check on November 29          | Arm, P15-4    | Backups are paused. Renew the token with the R2 credentials when they resume.                 |
 | Retiring Workers stops the backups                                            | P15-5, P15-11 | The file boundary. The backup clock, R2 and the Cloudflare account stay.                      |
 | A Git-connected Vercel project deploys on merge                               | P15-3         | Anthony confirms Git deployments are off before merge.                                        |
 | The Free project pauses after a week without activity                         | P15-9         | Record the pause behavior and what the app shows.                                             |
@@ -781,10 +792,10 @@ Reading settled the rest, and the [analysis](phase-15-supabase-analysis.md) cite
 
 ## Appendix D. Links and reading list
 
-- Read the [analysis](phase-15-supabase-analysis.md) before any PR. It holds the citations behind this plan.
+- Read Appendix A before any PR. The [analysis on #171](https://github.com/anthonyyoo24/justgo/pull/171#issuecomment-6695056934) holds the citations behind this plan.
 - Before you edit, read [IDENTITY.md](../architecture/IDENTITY.md), [ACTIVITY_DATA.md](../architecture/ACTIVITY_DATA.md) and [APP_SHELL.md](../architecture/APP_SHELL.md). They own the invariants this plan must keep.
 - Read [SERVER_RELEASES.md](../operations/SERVER_RELEASES.md) and [CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) before P15-4, P15-5 and P15-8.
-- History only. The [Cloudflare plan](phase-15-cloudflare-api.md), the [Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md) and the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md).
+- History only, deleted in P15-11. The [Cloudflare plan](phase-15-cloudflare-api.md), the [Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md), the [cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) and the [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md).
 - Run pstack's `how` skill before P15-6 and P15-8, and `interrogate` on every PR that touches an Agent-effort path.
 - Keep a decision trail per PR at `.local/decision-trails/phase-15-<pr-id>.tsv`, per pstack's `show-me-your-work` skill and the Stop hook in `.claude/hooks/require-trail-review.mjs`.
 - Recheck these Supabase references before P15-1. Agents read them on November 6, 2026. [Functions](https://supabase.com/docs/guides/functions), [routing](https://supabase.com/docs/guides/functions/routing), [gateway authentication](https://supabase.com/docs/guides/functions/auth-headers), [Postgres from functions](https://supabase.com/docs/guides/functions/connect-to-postgres), [secrets](https://supabase.com/docs/guides/functions/secrets), [limits](https://supabase.com/docs/guides/functions/limits), [deploy](https://supabase.com/docs/guides/functions/deploy), [regional invocation](https://supabase.com/docs/guides/functions/regional-invocation), [logging](https://supabase.com/docs/guides/functions/logging), [function pricing](https://supabase.com/docs/guides/functions/pricing), [project pausing](https://supabase.com/docs/guides/platform/free-project-pausing), [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum) and [data residency](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq).
