@@ -163,6 +163,30 @@ class Server {
   }
 }
 
+/** Lets other devices act at one choice point, then returns the phone's own step. */
+function interfere(
+  schedule: Schedule,
+  server: Server,
+  at: string,
+  kind: string,
+  offered: readonly Step[],
+): Step {
+  for (;;) {
+    const step = schedule.choose(at, kind, offered);
+    const epoch = server.epoch;
+    if (step === 'otherWrite')
+      schedule.story.push(
+        `another device writes completion ${server.otherDeviceWrite().slice(-3)} at epoch ${epoch}`,
+      );
+    else if (step === 'otherDelete') {
+      server.deleteData(epoch, 'other');
+      schedule.story.push(
+        `another device deletes all data at epoch ${epoch}, so the server epoch is ${server.epoch}`,
+      );
+    } else return step;
+  }
+}
+
 /** A crash keeps the phone's storage, its local journal and the server. */
 type World = {
   storage: MemoryStorage;
@@ -270,49 +294,36 @@ function open(world: World) {
     if (dead) return frozen();
     const schedule = world.schedule;
     if (!schedule) return structuredClone(apply().value);
-    const kind = at.slice(0, at.indexOf('('));
-    for (;;) {
-      const step = schedule.choose(at, kind, offered);
-      if (step === 'otherWrite') {
-        const epoch = world.server.epoch;
-        const id = world.server.otherDeviceWrite();
-        schedule.story.push(
-          `another device writes completion ${id.slice(-3)} at epoch ${epoch}`,
-        );
-        continue;
-      }
-      if (step === 'otherDelete') {
-        const epoch = world.server.epoch;
-        world.server.deleteData(epoch, 'other');
-        schedule.story.push(
-          `another device deletes all data at epoch ${epoch}, so the server epoch is ${world.server.epoch}`,
-        );
-        continue;
-      }
-      if (step === 'crash') {
-        schedule.story.push(
-          `${at}: the app crashes before the request reaches the server`,
-        );
-        return crash();
-      }
-      let result: { value: T; said: string };
-      try {
-        result = apply();
-      } catch (error) {
-        schedule.story.push(
-          `${at} -> ${error instanceof ApiError ? error.code : String(error)}`,
-        );
-        throw error;
-      }
-      if (step === 'lostAck') {
-        schedule.story.push(
-          `${at} -> ${result.said}, but the response is lost (NETWORK)`,
-        );
-        throw new ApiError('NETWORK');
-      }
-      schedule.story.push(`${at} -> ${result.said}`);
-      return structuredClone(result.value);
+    const step = interfere(
+      schedule,
+      world.server,
+      at,
+      at.slice(0, at.indexOf('(')),
+      offered,
+    );
+    if (step === 'crash') {
+      schedule.story.push(
+        `${at}: the app crashes before the request reaches the server`,
+      );
+      return crash();
     }
+    let result: { value: T; said: string };
+    try {
+      result = apply();
+    } catch (error) {
+      schedule.story.push(
+        `${at} -> ${error instanceof ApiError ? error.code : String(error)}`,
+      );
+      throw error;
+    }
+    if (step === 'lostAck') {
+      schedule.story.push(
+        `${at} -> ${result.said}, but the response is lost (NETWORK)`,
+      );
+      throw new ApiError('NETWORK');
+    }
+    schedule.story.push(`${at} -> ${result.said}`);
+    return structuredClone(result.value);
   };
   // A read changes no durable state, so a crash or failure there reaches the
   // same state as one at the next write.
@@ -405,8 +416,6 @@ async function synchronizedPhone(): Promise<Seed> {
     text: 'Written before delete-all',
   });
   await app.coordinator.synchronize();
-  // ActivityRuntime.deleteAllData persists the intent before calling deleteData.
-  await app.storage.setItem(pendingKey, intent);
   app.repository.dispose();
   const journal = await memoryJournalBackend(world.storage).transaction(
     owner,
@@ -422,7 +431,7 @@ async function synchronizedPhone(): Promise<Seed> {
     versions: world.server.versions,
   };
 }
-async function restore(seed: Seed, schedule: Schedule): Promise<World> {
+async function restore(seed: Seed, schedule: Schedule | null): Promise<World> {
   const storage = new MemoryStorage();
   for (const [key, value] of seed.values) storage.values.set(key, value);
   await memoryJournalBackend(storage).transaction(owner, async (tx) => {
@@ -454,37 +463,59 @@ type Counterexample = {
   story: readonly string[];
 };
 
+/** ActivityRuntime.deleteAllData after it persists the intent, without the iCloud step. */
+async function deleteAllData(app: App) {
+  await app.coordinator.deleteData(intent);
+  await app.repository.clearData();
+  await app.storage.removeItem(pendingKey);
+}
+
 async function explore(seed: Seed, schedule: Schedule) {
   const world = await restore(seed, schedule);
   const found: Omit<Counterexample, 'events' | 'story'>[] = [];
+  interfere(schedule, world.server, 'intent', 'intent', [
+    'proceed',
+    'otherWrite',
+    'otherDelete',
+  ]);
+  await world.storage.setItem(pendingKey, intent);
+  schedule.story.push(
+    'ActivityRuntime.deleteAllData persists the intent under delete-all-pending',
+  );
+  const before = {
+    completions: new Set(
+      world.server.completions.map((stored) => stored.attempt.id),
+    ),
+    versions: new Set(
+      world.server.versions.map((version) => version.versionId),
+    ),
+  };
   let app = open(world);
   for (;;) {
     const events = schedule.events;
-    const outcome = await settle(app, app.coordinator.deleteData(intent));
+    const outcome = await settle(app, deleteAllData(app));
+    if (outcome === 'done') break;
     if (outcome === 'stalled') {
-      found.push({ invariant: 3, said: 'deleteData(intent) never settled' });
+      found.push({ invariant: 3, said: 'deleteAllData never settled' });
       break;
     }
-    if (outcome !== 'done' && outcome !== 'crashed') {
-      if (schedule.events === events) {
-        found.push({
-          invariant: 3,
-          said: `a retry with no crash or interference failed with ${outcome}`,
-        });
-        break;
-      }
+    if (outcome === 'crashed') {
       schedule.story.push(
-        `deleteData(intent) fails with ${outcome}; the runtime retries it`,
+        'the app restarts and deleteAllData retries the saved intent',
       );
+      app = open(world);
       continue;
     }
-    if (
-      outcome === 'done' &&
-      (await settle(app, app.storage.removeItem(pendingKey))) !== 'crashed'
-    )
+    if (schedule.events === events) {
+      found.push({
+        invariant: 3,
+        said: `a retry with no crash or interference failed with ${outcome}`,
+      });
       break;
-    schedule.story.push('the app restarts and retries deleteData(intent)');
-    app = open(world);
+    }
+    schedule.story.push(
+      `deleteAllData fails with ${outcome} and runs again with the saved intent`,
+    );
   }
   world.schedule = null;
   const { server, captured } = world;
@@ -510,20 +541,33 @@ async function explore(seed: Seed, schedule: Schedule) {
     restarted.repository.dispose();
     const left = [
       metadata.completedDeletionId !== intent &&
-        `completedDeletionId=${shown(metadata.completedDeletionId)}`,
-      metadata.deleting !== false && `deleting=${shown(metadata.deleting)}`,
-      metadata.clearing !== false && `clearing=${shown(metadata.clearing)}`,
-      local.attempts.length > 0 && `${local.attempts.length} local completions`,
+        `completedDeletionId is ${shown(metadata.completedDeletionId)}`,
+      metadata.deleting !== false && `deleting is ${shown(metadata.deleting)}`,
+      metadata.clearing !== false && `clearing is ${shown(metadata.clearing)}`,
+      local.attempts.length > 0 &&
+        `the phone holds ${local.attempts.length} local completions`,
       local.journal.entries.length + local.journal.alternatives.length > 0 &&
-        'local journal entries',
-      world.storage.values.has(pendingKey) && 'delete-all-pending',
+        'the phone holds local journal entries',
+      world.storage.values.has(pendingKey) && 'delete-all-pending remains',
       !(captured !== null && server.epoch > captured) &&
-        `server epoch ${server.epoch} with captured epoch ${captured}`,
+        `the server epoch ${server.epoch} is not above the captured epoch ${captured}`,
+      ...server.completions
+        .filter((stored) => before.completions.has(stored.attempt.id))
+        .map(
+          (stored) =>
+            `the server still holds completion ${stored.attempt.id.slice(-3)} from before the intent`,
+        ),
+      ...server.versions
+        .filter((version) => before.versions.has(version.versionId))
+        .map(
+          (version) =>
+            `the server still holds journal version ${version.versionId.slice(-3)} from before the intent`,
+        ),
     ].filter(Boolean);
     if (left.length)
       found.push({
         invariant: 3,
-        said: `after the last retry the phone still has ${left.join(', ')}`,
+        said: `after the last retry ${left.join(', ')}`,
       });
   }
   return found.map((counterexample): Counterexample => ({
@@ -567,6 +611,8 @@ it(`resets the server at most once per delete-all intent under every schedule of
   ).toEqual([]);
   expect([...reached]).toEqual(
     expect.arrayContaining([
+      'intent:otherWrite',
+      'intent:otherDelete',
       'completions:otherWrite',
       'completions:otherDelete',
       'deleteData:otherWrite',
@@ -581,3 +627,30 @@ it(`resets the server at most once per delete-all intent under every schedule of
     ]),
   );
 }, 60_000);
+
+// Issue #156: ActivityRuntime.mergeGuestData builds a fresh coordinator whose
+// adoptData runs this ordinary synchronize while delete-all-pending remains.
+// Change `it.failing` to `it` once the fix makes this pass.
+it.failing(
+  'keeps a finished delete-all intent finished across an ordinary sync while delete-all-pending remains (issue #156)',
+  async () => {
+    const world = await restore(await synchronizedPhone(), null);
+    await world.storage.setItem(pendingKey, intent);
+    const first = open(world);
+    await first.coordinator.deleteData(intent);
+    first.repository.dispose();
+    world.server.deleteData(world.server.epoch, 'other');
+    const written = world.server.otherDeviceWrite();
+    const adopting = open(world);
+    await adopting.coordinator.synchronize();
+    await adopting.coordinator.deleteData(intent);
+    expect(
+      world.server.resets
+        .filter((reset) => reset.by === 'phone')
+        .map((reset) => reset.expected),
+    ).toEqual([world.captured]);
+    expect(
+      world.server.completions.map((stored) => stored.attempt.id),
+    ).toContain(written);
+  },
+);
