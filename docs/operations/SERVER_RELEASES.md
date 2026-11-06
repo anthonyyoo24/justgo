@@ -128,7 +128,7 @@ those through separately approved setup. The workflow checks sole-owner review
 and the exact main-only branch policy before the protected job and again inside
 it. Adding another User or Team reviewer fails the guard because GitHub permits
 any one configured reviewer to approve. These checks do not replace Anthony's
-review or separate Git publication permissions.
+review or his merge.
 
 Runtime database, Auth, rate-key and diagnostic secrets belong to the staging
 Worker, not mobile or the release bundle. The version guard requires secret
@@ -147,25 +147,26 @@ need an approved version disposition. Never put secret values in process
 arguments, source, receipts or chat. The backup runner uses separate narrowly
 scoped credentials described in [Cloudflare backups](CLOUDFLARE_BACKUPS.md).
 
-## Local phase-branch staging tests
+<a id="local-phase-branch-staging-tests"></a>
 
-The November 1 local-testing decision keeps Phase 15 source on
-`codex/phase-15-rollout` until the phase-end push and consolidated PR. With the
-owner's deployment authorization, `release:staging:local` can publish a clean,
-explicitly selected local commit to the existing **staging** Worker without
-pushing Git, creating a tag/PR or impersonating a GitHub run. The ordinary GitHub
-workflow retains its exact-main CI and protected-environment requirements.
+## Local branch staging tests
+
+With Anthony's go for the deploy, `release:staging:local` publishes a clean
+commit on a local branch to the existing **staging** Worker. It needs no push,
+tag or PR, and it does not impersonate a GitHub run. That go does not cover
+migrations, production releases or merges. The ordinary GitHub workflow keeps
+its exact-main CI and protected-environment requirements.
 
 Run from the repository root:
 
 ```sh
-npm run release:staging:local -- --prepare --phase-branch <phase-branch> --source <full-local-commit-sha> --credentials <protected-json-file>
+npm run release:staging:local -- --prepare --phase-branch <branch> --source <full-local-commit-sha> --credentials <protected-json-file>
 npm run db:local
-npm run release:staging:local -- --deploy --phase-branch <phase-branch> --source <full-local-commit-sha> --credentials <protected-json-file>
+npm run release:staging:local -- --deploy --phase-branch <branch> --source <full-local-commit-sha> --credentials <protected-json-file>
 ```
 
-Specify the owner-approved phase branch and its exact checked-out commit.
-The lane rejects `main`, detached HEAD and dirty checkouts.
+Pass the checked-out branch to `--phase-branch` and its exact commit to
+`--source`. The lane rejects `main`, detached HEAD and dirty checkouts.
 
 The explicitly selected JSON file must be an owner-only regular file (mode 0600,
 no symlink/hard link). It contains only `CLOUDFLARE_API_TOKEN`,
@@ -310,10 +311,11 @@ Keep Phase 14's privacy and physical-device acceptance gates open.
 
 ## Run a code-only release
 
-1. Complete the applicable checks and obtain the specific Git permissions in
-   [AGENTS.md](../../AGENTS.md). Publish and merge reviewed source, require its
-   latest successful Foundation **main push**, and create the reviewed tag under
-   the owner's authorization. PR-only CI does not substitute for that run.
+1. Open a ready PR with the reviewed source. Only Anthony merges it. The release
+   needs a successful **Foundation checks** run from the push to `main` for that
+   commit. CI on the PR does not count. A staging deploy needs Anthony's go, as
+   the [Git and autonomy](../../AGENTS.md#git-and-autonomy) rules say. With that
+   go, create the reviewed tag on the merged commit.
 2. On `main`, dispatch **Staging API release**, choose `deploy`, and provide that
    existing tag. Leave `migration_plan_sha256` empty. The workflow resolves the
    tag to a commit reachable from main and checks out that exact SHA after review.
