@@ -54,12 +54,15 @@ function localTargets(markdown) {
 // paths and placeholder suffixes such as `<run>.review.md` never match.
 const markdownMention = /(?<=^|[\s`'"([|*])[\w./-]*[\w-]\.md(?![\w-])/gm;
 
-const mentionsOutsideRepo = new Map([
-  [
-    'poteto-mode/playbooks/worktree-cleanup.md',
-    'pstack plugin playbook, shipped outside this repository',
-  ],
-]);
+// Ignored local output and pstack plugin files live outside the tracked tree.
+const outsideRepoPrefixes = [
+  '.local/',
+  'pstack/',
+  'poteto-mode/',
+  'skills/',
+  'playbooks/',
+  'references/',
+];
 
 function staleMentions(file, markdown, files) {
   const basenames = new Set(
@@ -68,14 +71,17 @@ function staleMentions(file, markdown, files) {
   return withoutFences(markdown)
     .split('\n')
     .flatMap((line, index) =>
-      /git history/i.test(line)
+      /git history|\bplanned\b/i.test(line)
         ? []
         : [...line.matchAll(markdownMention)].map(([name]) => ({
             name,
             line: index + 1,
           })),
     )
-    .filter(({ name }) => !mentionsOutsideRepo.has(name))
+    .filter(
+      ({ name }) =>
+        !outsideRepoPrefixes.some((prefix) => name.startsWith(prefix)),
+    )
     .filter(({ name }) =>
       name.includes('/')
         ? ![name, path.posix.join(path.posix.dirname(file), name)].some(
@@ -137,7 +143,7 @@ test('every local link in tracked Markdown points at a file that exists', () => 
   assert.deepEqual(broken, [], `Broken local links:\n${broken.join('\n')}`);
 });
 
-test('mention extraction resolves paths and names and skips code blocks, URLs, placeholders and history notes', () => {
+test('mention extraction resolves paths and names and skips code blocks, URLs, placeholders, history and planned notes, and outside-repo paths', () => {
   const files = new Set(['docs/A.md', 'docs/guide/B.md', 'README.md']);
   assert.deepEqual(
     staleMentions(
@@ -152,12 +158,18 @@ test('mention extraction resolves paths and names and skips code blocks, URLs, p
         'Fenced.md',
         '```',
         'poteto-mode/playbooks/worktree-cleanup.md',
+        'Follow `playbooks/shipping.md` and `skills/swarm/SKILL.md`.',
+        'Write the trial to `.local/edge-trial/report.md`.',
+        'Create `docs/Planned.md` (planned).',
+        'But `shipping.md` alone and `docs/Typo.md` still fail.',
       ].join('\n'),
       files,
     ),
     [
       'docs/guide/C.md:2 mentions docs/Gone.md',
       'docs/guide/C.md:2 mentions Missing.md',
+      'docs/guide/C.md:13 mentions shipping.md',
+      'docs/guide/C.md:13 mentions docs/Typo.md',
     ],
   );
 });
@@ -173,10 +185,11 @@ test('every Markdown file mentioned in tracked Markdown exists', () => {
     [
       'Markdown mentions a .md file that does not exist:',
       ...stale,
-      'Update each mention to the current file, or, if the file legitimately lives',
-      'outside this repo, add it to mentionsOutsideRepo in',
-      'scripts/quality/doc-links.test.mjs with its reason.',
-      'A line that says "git history" may name a deleted file.',
+      'Update each mention to the current file.',
+      'A line that says "git history" may name a deleted file, and a line that says',
+      '"planned" may name a file the plan will create.',
+      'Write pstack plugin files with their folder (playbooks/x.md, skills/x/SKILL.md)',
+      'and ignored output under .local/; those are outside the tracked tree.',
     ].join('\n'),
   );
 });
