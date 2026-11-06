@@ -1,5 +1,9 @@
 # Encrypted Cloudflare recovery copies
 
+Moving the API to Supabase Edge Functions does not change these backups. Keep R2,
+the Cloudflare account and the backup clock Worker in `scripts/backups/clock/`
+when the API Worker retires.
+
 Phase 15 supplies merged backup, upload, ledger and restore tooling. Anthony
 approved creating the empty private `justgo-staging-backups` bucket. Its creation
 and disabled public access are verified. The dedicated reader is now

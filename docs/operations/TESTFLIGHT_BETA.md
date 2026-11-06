@@ -18,10 +18,11 @@ cutovers need no external-user transition period. Reassess once external testers
 are invited.
 
 `build.beta` is a store-signed release build that uses EAS **preview** variables.
-The Phase 15 candidate, the beta preflight and every TestFlight workflow command
-select `https://justgo-api-staging.anthonyyoo24.workers.dev`. Managed-account and
-native acceptance of that Worker remain open in the
-[Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md). Installed build 5 still
+The beta preflight and every TestFlight workflow command still select the retired
+Worker at `https://justgo-api-staging.anthonyyoo24.workers.dev`. Do not ship a
+beta build until P15-11 of the
+[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) points them at
+the Supabase function. Installed build 5 still
 uses `https://justgo-two.vercel.app`. The Dev profile and its installed build also
 keep their Vercel target until a coordinated migration or retirement.
 
@@ -60,6 +61,12 @@ also stay unverified before external testing. The
 instruction.
 
 ## Preflight and release procedure
+
+The three Worker and Cloudflare steps below are retired. Do not build the Phase 15
+candidate from them. P15-9 to P15-11 of the
+[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) replace them
+with the Supabase function, its notice and the build switch. The steps stay here
+as history until P15-11 rewrites this section.
 
 Before building the Phase 15 candidate:
 

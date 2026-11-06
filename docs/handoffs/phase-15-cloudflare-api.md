@@ -1,5 +1,11 @@
 # Phase 15 — Cloudflare API and encrypted recovery
 
+**Superseded.** Anthony retired the Cloudflare Workers rollout in favor of
+Supabase Edge Functions. The [Supabase plan](../implementation-plan/phase-15-supabase-api.md)
+owns Phase 15 now. This handoff is a record of what happened on the Worker, not
+current status. PR #73 merged the rollout branch as `50194ee` on November 4, 2026.
+The backup and recovery evidence below still applies to the R2 backups.
+
 ## Current status
 
 **Phase 15 remains in progress. Local phase source `a082087` is active on staging

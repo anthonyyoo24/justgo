@@ -49,21 +49,23 @@ compile from source.
 ## API hosting and database access
 
 The API's Node entrypoint (`src/server.ts`) and Workers entrypoint
-(`src/worker.ts`) share one Hono runtime. The deployed Vercel service and
-installed build 5 stay unchanged until the separately approved Phase 15 cutover.
-[Server releases](../operations/SERVER_RELEASES.md) and the
-[cutover checklist](../operations/CLOUDFLARE_CUTOVER.md) own hosted configuration.
+(`src/worker.ts`) share one Hono runtime. Anthony retired the Workers rollout,
+and the [Phase 15 plan](../implementation-plan/phase-15-supabase-api.md) moves
+the API to one Supabase Edge Function. Until that plan's last PR, two staging
+hosts serve the API against the one Supabase project. Vercel serves the old
+Fastify source `311f073` to installed build 5 and the Dev profile, and the
+Worker serves Hono to the beta profile. No production API is provisioned.
+[Server releases](../operations/SERVER_RELEASES.md) owns hosted configuration.
 
 Supabase hosts PostgreSQL and the optional Apple and Google Auth. Mobile uses the
 Auth SDK only for provider sessions and reaches application data only through the
 Hono API, never through database tables.
 
 - Node reuses a small `pg` pool. Workers open a one-connection pool per request,
-  and Hyperdrive pools upstream with query caching off, which the
-  [Cloudflare notice review](../legal/CLOUDFLARE_NOTICE_REVIEW.md) assumes.
-- Hyperdrive does not support advisory locks, so identity transactions that take
-  one use the same restricted role over a separate direct verified-TLS
-  connection. Readiness probes both connections.
+  and Hyperdrive pools upstream with query caching off.
+- Managed requests take no advisory locks. Only legacy bootstrap and transfer
+  requests do, and the Worker sends those to a direct connection only against
+  loopback `justgo_test`. [IDENTITY.md](IDENTITY.md) owns the details.
 - The restricted `justgo_runtime` role serves requests. Migrations use a separate
   connection and the `justgo_migrator` role.
 - Hard Auth deletion uses a separate server-only administrative client. Neither it

@@ -1,5 +1,11 @@
 # Staging API and database releases
 
+**The Worker release lane is retired.** Anthony moved the API host to Supabase
+Edge Functions. Do not run the Worker workflow or `npm run release:staging:local`,
+which still deploys the Worker, until the
+[Supabase plan](../implementation-plan/phase-15-supabase-api.md) replaces this
+lane. The database guard, release identity and probe rules below carry over.
+
 The manual [Staging API release workflow](../../.github/workflows/staging-api.yml)
 prepares Cloudflare Worker versions and deploys the exact version after its probes
 pass. Reconfirm the serving and latest baseline before each release. Release

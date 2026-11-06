@@ -1,5 +1,10 @@
 # Cloudflare cutover and acceptance
 
+**Superseded.** Do not run this cutover. Anthony retired the Cloudflare Workers
+rollout, and the API moves to Supabase Edge Functions under the
+[Supabase plan](../implementation-plan/phase-15-supabase-api.md). This checklist
+stays as history until that plan's last PR deletes it.
+
 The staging Worker and Hyperdrive exist. The
 [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#current-status)
 owns current release source, tag, CI, run, deployment/version and probe evidence.
