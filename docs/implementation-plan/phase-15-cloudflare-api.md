@@ -2,12 +2,12 @@
 
 # Phase 15 — Cloudflare API hosting & R2 backups
 
-**Status:** Cloudflare rollout paused by Anthony on November 2, 2026. The
-[Supabase API migration plan](phase-15-supabase-api.md) describes the proposed
-continuation of Phase 15; only planning is authorized. The Cloudflare scope below
-is retained for reference and must not resume rollout while paused. Existing
-hosted/privacy/device gates remain open; see the
-[implementation handoff](../handoffs/phase-15-cloudflare-api.md).
+**Status.** Superseded. Anthony paused this rollout on November 2, 2026, and
+then confirmed Supabase Edge Functions as the API host. The
+[Supabase plan](phase-15-supabase-api.md) replaces this plan. Do not deploy,
+promote or extend the API Worker. This file stays as history. The R2 backups and
+the backup clock Worker that this plan built stay in service, and
+[CLOUDFLARE_BACKUPS.md](../operations/CLOUDFLARE_BACKUPS.md) owns them.
 
 ## Outcome
 

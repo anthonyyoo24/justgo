@@ -23,7 +23,7 @@ and [App Store release][store] milestones.
 | 12 — Legal documents & release disclosures                          | Reviewed public notices and acceptance copy match the launch build, with product analytics disabled.            | 08–11                                       | Notices published                           |
 | 13 — Local data, optional accounts and cloud sync                   | One continuous journal, optional Apple and Google accounts, cloud sync and concise Account and Data controls.   | 07–12                                       | Merged                                      |
 | 14 — Release validation & launch                                    | A free beta validates the core product, then the complete paid product is ready for store submission.           | 08–13 for beta; accepted 16 for paid launch | Internal TestFlight build 5 delivered       |
-| [15 — API hosting & recovery](phase-15-supabase-api.md)             | Plan a Hono API move from Cloudflare to Supabase, keeping PostgreSQL and Auth and an accepted recovery path.    | 14 internal beta; before 14 external beta   | Planning only; Cloudflare rollout paused    |
+| [15 — API hosting & recovery](phase-15-supabase-api.md)             | Move the Hono API to one Supabase Edge Function, keeping PostgreSQL, Auth and the R2 recovery path.             | 14 internal beta; before 14 external beta   | Planned; awaiting Anthony's go              |
 | [16 — Native subscriptions & reliable billing](phase-16-billing.md) | Verified purchases unlock promptly, and later subscription changes recover reliably.                            | 07.5; activate after free beta              | Local work in progress; activation deferred |
 
 [beta]: https://github.com/anthonyyoo24/justgo/milestone/1
@@ -40,10 +40,11 @@ The remaining phases run in this order:
 5. 14 paid launch.
 6. 17 analytics.
 
-Phase 15 must close before outside testers store real journals. Its Cloudflare
-rollout is paused. The [Supabase migration plan](phase-15-supabase-api.md) is
-planning only and does not authorize implementation or a Pro upgrade. The
-[earlier Cloudflare plan](phase-15-cloudflare-api.md) keeps the paused scope.
+Phase 15 must close before outside testers store real journals. Anthony
+confirmed Supabase Edge Functions as the API host and retired the Cloudflare
+Workers rollout. The [Supabase plan](phase-15-supabase-api.md) waits for his go
+and does not authorize a Pro upgrade. The [Cloudflare plan](phase-15-cloudflare-api.md)
+is superseded and stays as history.
 Planning this move does not commit the app to a commercial launch. Prepared
 billing code can be reviewed while activation waits.
 

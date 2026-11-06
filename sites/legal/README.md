@@ -100,6 +100,11 @@ signed iPhone remain Phase 14 acceptance.
 
 ## Cloudflare candidate
 
+Phase 15 no longer moves the API to Cloudflare. On November 6, 2026, Anthony
+decided that the legal pages stay on Vercel, as the
+[Phase 15 plan](../../docs/implementation-plan/phase-15-supabase-api.md) records.
+Do not deploy this candidate without his go.
+
 `wrangler.json` prepares an assets-only Worker with the same stable document
 paths. Its build runs `cloudflare.mjs`, which requires the existing publication
 approval and date metadata plus an explicit `deployment-host: cloudflare` marker.

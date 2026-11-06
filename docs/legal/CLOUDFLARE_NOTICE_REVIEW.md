@@ -1,5 +1,11 @@
 # Cloudflare notice candidate — wording approved, publication pending
 
+**Superseded for the API.** Do not publish this candidate. Its clauses that name
+Cloudflare as the API server and Hyperdrive no longer apply, because the API
+moves to Supabase Edge Functions. The R2 backup wording still applies. The
+[Supabase plan](../implementation-plan/phase-15-supabase-api.md) prepares the
+replacement notice in its P15-10.
+
 Anthony approved the complete simplified public Privacy wording and remaining
 recovery wording on October 30, 2026 (America/Toronto), including signing in again
 after a restore. This Phase 15 cutover candidate is not published, does not change

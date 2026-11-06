@@ -158,7 +158,7 @@ the general limits. File each deferred check as a `gate` issue.
 
 ## Phase 15 server cutover boundary
 
-Installed builds switch to the Worker and legal origins only in a separately
-approved build after [cutover acceptance](../operations/CLOUDFLARE_CUTOVER.md). A
-redirect through Vercel does not prove that private request payloads stopped
-reaching it.
+Installed builds switch to the Supabase function origin only in a separately
+approved build after hosted acceptance in the
+[Phase 15 plan](../implementation-plan/phase-15-supabase-api.md). A redirect
+through Vercel does not prove that private request payloads stopped reaching it.
