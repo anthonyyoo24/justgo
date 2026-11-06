@@ -55,8 +55,8 @@ An internal TestFlight upload does not pass the open native crash, cache,
 envelope and symbolication checks, or invite anyone. Gate
 [#92](https://github.com/anthonyyoo24/justgo/issues/92) holds them, including
 the skipped deliberate crash test. Outage behavior and cached-crash attribution
-also stay unverified before external testing; the
-[data inventory](../legal/DATA_INVENTORY.md) keeps that acceptance. Never add a crash trigger without a new owner
+also stay unverified before external testing. The
+[data inventory](../legal/DATA_INVENTORY.md) keeps the outage acceptance. Never add a crash trigger without a new owner
 instruction.
 
 ## Preflight and release procedure
