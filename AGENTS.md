@@ -170,7 +170,8 @@ highest level that works and updates this table.
 | Long or step-away runs keep a decision trail at `.local/decision-trails/<run>.tsv` and end with an audit and a separate review in `<run>.review.md`.                                                                                                                                        | The Claude Code Stop hook `.claude/hooks/require-trail-review.mjs` (PR #127)                                                                                                                                                                                                                                                                                                                                        | hook                          |
 | Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. Keep no standing handoff files. | Nothing. It is a judgment call.                                                                                                                                                                                                                                                                                                                                                                                     | written                       |
 | Changes reach `main` only through a PR that passes `checks` and `sections`.                                                                                                                                                                                                                 | Branch protection on `main`, which also binds admins and blocks force-pushes and branch deletion                                                                                                                                                                                                                                                                                                                    | GitHub                        |
-| Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.                                                                                                                                                                                                             | Nothing. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.                                                                                                                                                                                                                                                                                                         | written                       |
+| Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.                                                                                                                                                                                                             | Nothing beyond the verdict check below. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.                                                                                                                                                                                                                                                                          | written                       |
+| The newest verdict covers the PR head. A commit pushed after it needs a fresh verdict, unless every file it changes is review-only in `verdict-patch.mjs` (Markdown, tests, `eslint.config.mjs` and Prettier config). Review-only files still get a review.                                 | The required `sections` job in `.github/workflows/pr-description.yml` runs `scripts/quality/verdict-status.mjs`, and `.github/workflows/verdict-recheck.yml` reruns that job when Anthony's account posts or edits a verdict. Cases in `scripts/quality/verdict-status.test.mjs`. A PR with no verdict line passes.                                                                                                 | CI, test                      |
 
 ## Security and privacy
 
@@ -219,7 +220,17 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   deletion, migrations, release and backup scripts) stop at merge-ready for
   Anthony. He can also hold any PR, and a hold stops every merge until he lifts it.
 - **A verdict covers a patch, not a commit.** Each verdict comment names the base
-  and head it ran on. After a rebase or retarget, run
+  and head it ran on in a line of this form, where the verdict is `PASS`,
+  `PASS+NOTES` or `FAIL` and may be bold:
+
+  ```text
+  Verifier verdict: PASS on base `<base-sha>`, head `<head-sha>`
+  ```
+
+  The required `sections` job reads the newest such line from Anthony's account.
+  It fails on `FAIL`, or when that verdict no longer covers the PR head. Posting
+  a fresh verdict reruns it. If that rerun does not start, run
+  `gh run rerun <run-id> --failed`. After a rebase or retarget, run
   `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`.
   `carries` keeps the verdict. `docs-tests-only` keeps it, and the listed files
   still get a review. `re-verify` needs a new verdict. CI always reruns.

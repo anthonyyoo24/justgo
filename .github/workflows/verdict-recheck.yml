@@ -1,0 +1,30 @@
+name: Verdict recheck
+
+# A pull_request run cannot see a verdict posted after it, and an issue_comment
+# run attaches no status to the PR head, so rerun the head's sections job.
+on:
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  actions: write
+  pull-requests: read
+
+jobs:
+  rerun-sections:
+    if: >-
+      github.event.issue.pull_request &&
+      github.event.comment.author_association == 'OWNER' &&
+      contains(github.event.comment.body, 'Verifier verdict:')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Rerun the PR description run for the PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          head=$(gh pr view "$PR_NUMBER" --json headRefOid --jq .headRefOid)
+          run=$(gh run list --workflow pr-description.yml --event pull_request --commit "$head" --limit 1 --json databaseId --jq '.[0].databaseId')
+          gh run rerun "$run"
