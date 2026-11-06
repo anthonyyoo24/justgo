@@ -23,7 +23,7 @@ jest.mock('./entries/useEntryMotion', () =>
   jest.requireActual('./entries/useEntryMotion.ts'),
 );
 
-it('keeps a larger close target equally inset from the panel edges and preserves the dirty-close guard', async () => {
+it('keeps the smaller close target absolute and equally inset while preserving the dirty-close guard', async () => {
   const onClose = jest.fn();
   const beforeClose = jest.fn<void, [() => void]>();
   const screen = await render(
@@ -42,14 +42,13 @@ it('keeps a larger close target equally inset from the panel edges and preserves
   const close = screen.getByTestId('day-sheet-close');
   expect(close.props.accessibilityLabel).toBe('Close day details');
   const closeStyle = StyleSheet.flatten(close.props.style);
-  const controlsStyle = StyleSheet.flatten(
-    screen.getByTestId('day-sheet-controls').props.style,
-  );
-  expect(closeStyle.width).toBeGreaterThanOrEqual(56);
-  expect(closeStyle.height).toBeGreaterThanOrEqual(56);
+  expect(closeStyle.position).toBe('absolute');
+  expect(closeStyle.width).toBeCloseTo(44.8);
+  expect(closeStyle.height).toBeCloseTo(44.8);
+  expect(closeStyle.width).toBeGreaterThanOrEqual(44);
+  expect(closeStyle.height).toBeGreaterThanOrEqual(44);
   expect(closeStyle.right).toBe(spacing.sm);
   expect(closeStyle.top).toBe(closeStyle.right);
-  expect(closeStyle.top + closeStyle.height).toBeLessThan(controlsStyle.height);
   await fireEvent.press(close);
   expect(beforeClose).toHaveBeenCalledTimes(1);
   expect(onClose).not.toHaveBeenCalled();
