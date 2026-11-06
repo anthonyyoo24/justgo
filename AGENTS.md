@@ -205,6 +205,11 @@ and a stop before anything irreversible. Only Anthony merges.
 - **Never push to `main`.** Changes reach `main` only through a merged PR.
 - **Only Anthony merges.** Agents stop at merge-ready, never merge a PR and never
   enable auto-merge. Green CI and agent verdicts do not replace his review.
+- **A verdict covers a patch, not a commit.** Each verdict comment names the base
+  and head it ran on. After a rebase or retarget, run
+  `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`.
+  `carries` keeps the verdict. `docs-tests-only` keeps it, and the listed files
+  still get a review. `re-verify` needs a new verdict. CI always reruns.
 
 ## Agent effort
 
