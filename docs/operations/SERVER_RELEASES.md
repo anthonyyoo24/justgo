@@ -84,7 +84,11 @@ To provision a database, follow this order:
 
 Supabase records the administrative provisioning as its own migration,
 `foundation_roles`. Drizzle's journal in schema `drizzle` records the application
-migrations from `0000_foundation.sql` on. Keep the two runners separate. Managed
+migrations from `0000_foundation.sql` on. Keep the two runners separate.
+Generate a later domain migration with
+`npm run db:generate -w @justgo/api -- --name <feature_name>`, or a custom one
+with Drizzle Kit's `--custom` option, and review the generated SQL and journal
+together. Managed
 Auth also needs the operator-installed session-check helper in
 [account setup](ACCOUNT_SYNC_SETUP.md#live-auth-session-privileges).
 
