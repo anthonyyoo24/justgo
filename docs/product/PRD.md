@@ -44,7 +44,7 @@ health.
   to intrude on others. Challenges respect consent, social context and personal
   safety.
 - **Private by default.** Writing stays on the phone unless the person signs in,
-  turns on iCloud or saves a file. Reflections never go to diagnostics, and go to analytics or AI only with the person's explicit, separately approved permission.
+  turns on iCloud or saves a file. Reflection text never goes to analytics or diagnostics. Feelings go to analytics, and reflections go to AI, only with the person's explicit, separately approved permission.
 - **Nothing is lost.** A completed challenge is saved on the phone first, and syncing is built so it never duplicates or silently drops one.
 - **Simple.** One deck, one timer, one optional reflection. No social feed and no
   sharing.
