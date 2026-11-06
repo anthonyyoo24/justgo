@@ -28,12 +28,12 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
   - [ ] `git show origin/main:.claude/skills/verify-justgo/SKILL.md`
   - [ ] `git show origin/main:docs/operations/SERVER_RELEASES.md`
   - [ ] The installed pstack plugin's `skills/poteto-mode/playbooks/autopilot-full.md`, `skills/poteto-mode/playbooks/opening-a-pr.md`, `skills/swarm/SKILL.md` and `skills/interrogate/SKILL.md`. pstack is a plugin, so these files are not in this repository.
-- [ ] Get Anthony's decisions before dependent work starts. Each decision has a default that applies until he chooses.
-  - [ ] Production arrangement. The default releases staging only in Phase 15. Production uses the same release lane in a later approved step.
-  - [ ] Legal page hosting. The default keeps the legal pages on Vercel, because they carry no account data. Edge Functions rewrite HTML to plain text without a custom domain.
-  - [ ] Backups. The default keeps R2, the backup clock Worker and the Cloudflare account that holds them.
-  - [ ] Plan tier. The default stays on Supabase Free. Before any purchase, present the limits and the spend-cap behavior.
-  - [ ] Local tools. The Mac has no Deno, Supabase CLI or container runtime. The default runs Edge runtime lanes in CI and installs nothing on the Mac.
+- [x] Get Anthony's decisions before dependent work starts. He made all five in the planning session on November 6, 2026.
+  - [x] Production arrangement. Phase 15 releases staging only. Production uses the same release lane in a later approved step.
+  - [x] Legal page hosting. The legal pages stay on Vercel, because they carry no account data. Edge Functions rewrite HTML to plain text without a custom domain.
+  - [x] Backups. R2, the backup clock Worker and the Cloudflare account that holds them stay.
+  - [x] Plan tier. The project stays on Supabase Free. Before any purchase, present the limits and the spend-cap behavior.
+  - [x] Local tools. Edge runtime lanes run in GitHub Actions, and nothing new is installed on the Mac.
 - [ ] Before 23:40 UTC on November 29, 2026, Anthony renews the backup clock's GitHub token. P15-4 records the new expiry.
 - [ ] Comment on issue #77 with the backup-run evidence from the analysis. Close it only after Anthony records the renewed expiry dates.
 - [ ] On Anthony's go, arm the audit tick as `/loop 1h` with the tick prompt below. Never leave the cadence to memory.
@@ -80,7 +80,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 
 ### Boot recipe, for every live lane
 
-Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes run one at a time against one local stack. Edge runtime lanes run in CI until Anthony approves a container runtime on the Mac.
+Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes run one at a time against one local stack. Edge runtime lanes run in GitHub Actions, as Anthony decided on November 6, 2026.
 
 - [ ] `git fetch origin <head-branch> && git checkout <head SHA>`.
 - [ ] Start the database with `LC_ALL=en_US.UTF-8 npm run db:local`, then run `npm run db:migrate`.
