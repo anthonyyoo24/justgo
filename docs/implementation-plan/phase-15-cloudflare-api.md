@@ -193,7 +193,7 @@ merges, migrations, production releases, legal or native-release gates.
   public notice contains no Vercel transition wording. Complete Privacy wording is
   approved; publish only with approved date/version and publication authorization
   after both former hosting roles have ended.
-- Update `TECH_STACK.md`, `APP_SHELL.md` and the operations guides once the cutover
+- Update `APP_SHELL.md` and the operations guides once the cutover
   lands.
 
 ## Supabase Pro upgrade triggers
