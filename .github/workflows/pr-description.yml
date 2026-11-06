@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: pr-description-${{ github.event.pull_request.number }}
@@ -15,14 +16,26 @@ jobs:
   sections:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: scripts/quality/pr-description.mjs
+          # Sparse checkout makes a blobless clone, so the verdict check fetches
+          # only the commits it diffs and the blobs those diffs touch.
+          sparse-checkout: |
+            scripts/quality/pr-description.mjs
+            scripts/quality/verdict-patch.mjs
+            scripts/quality/verdict-status.mjs
           sparse-checkout-cone-mode: false
       - name: Check the pstack sections
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: node scripts/quality/pr-description.mjs
+      - name: Check that the newest verdict covers the head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/quality/verdict-status.mjs
