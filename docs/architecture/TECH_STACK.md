@@ -18,21 +18,21 @@ and the lockfile pin Node 24 and npm 11.
 
 | Responsibility                   | Installed technology                                                                          |
 | -------------------------------- | --------------------------------------------------------------------------------------------- |
-| Mobile runtime                   | Expo SDK 58, React 19.3, React Native 0.88, strict TypeScript                                 |
+| Mobile runtime                   | Expo SDK 58, React 19, React Native 0.88, strict TypeScript                                   |
 | Navigation and native builds     | Expo Router, development client, EAS configuration, Continuous Native Generation              |
 | Native gestures and motion       | Gesture Handler, Reanimated 4, compatible Worklets                                            |
 | UI, art and detail sheets        | React Native StyleSheet/tokens, SVG, Expo Image/Font, Gorhom Bottom Sheet, safe-area context  |
 | Remote reads                     | TanStack Query 5, account-scoped in-memory queries                                            |
 | Live activity state              | Zustand 5 without persistence middleware                                                      |
-| Completion/cache persistence     | AsyncStorage 2.2 with versioned completion/catalog/deck-preference envelopes                  |
-| Private journal persistence      | Expo SQLite 58.0.14 with per-account databases; IndexedDB development-browser adapter         |
+| Completion/cache persistence     | AsyncStorage 2 with versioned completion/catalog/deck-preference envelopes                    |
+| Private journal persistence      | Expo SQLite 58 with per-account databases; IndexedDB development-browser adapter              |
 | Connectivity and saving feedback | NetInfo, Sonner Native and the Sonner web adapter                                             |
 | Optional account sign-in         | Supabase Auth, native Expo Apple Authentication and original Google Sign-In integration       |
 | Managed session storage          | Chunked Expo SecureStore; legacy Swift Keychain proofs retained for internal migration        |
 | Optional personal cloud copy     | Local Swift Expo module using Apple's private CloudKit database                               |
-| Haptics                          | Pulsar 1.7, gated behind the iPhone TurboModule and saved installation preference             |
+| Haptics                          | Pulsar 1, gated behind the iPhone TurboModule and saved installation preference               |
 | Complete data download/import    | fflate ZIP, Expo FileSystem/native sharing, DocumentPicker import, browser Blob/file adapters |
-| Error reporting                  | Sentry React Native 8.28.0 (Cocoa 9.29.0) for errors only; built-in `fetch` on the API        |
+| Error reporting                  | Sentry React Native 8 (Cocoa 9) for errors only; built-in `fetch` on the API                  |
 | API                              | Hono 4, Workers / Node adapters, TypeScript and structured allowlisted diagnostics            |
 | Database                         | PostgreSQL, Drizzle ORM and `pg`                                                              |
 | Shared contracts                 | Zod 4 request/response schemas, types and OpenAPI 3.1                                         |
@@ -83,8 +83,9 @@ only that documented methods match registered routes. Invalid requests keep thei
 
 Sentry projects `anthony-corp` / `justgo-api` and `anthony-corp` /
 `justgo-mobile` are in the US region. Delivery is off in both until matching
-notices, provider review and signed-build or hosted acceptance (gate
-[#92](https://github.com/anthonyyoo24/justgo/issues/92)).
+notices, provider review and signed-build or hosted acceptance (gates
+[#92](https://github.com/anthonyyoo24/justgo/issues/92) for mobile and
+[#93](https://github.com/anthonyyoo24/justgo/issues/93) for the API).
 [APP_SHELL.md](APP_SHELL.md#app-error-reporting) has the reporting rules and the
 owner's approved scope.
 
@@ -94,8 +95,8 @@ Access is an injected verified-owner boundary whose default provider is
 unavailable. Signing in grants no entitlement.
 [APP_SHELL.md](APP_SHELL.md#access-verification) has the guest, beta and
 upload-eligibility rules. `useAccessState` and `serverClockOffset` in
-`apps/mobile/src/app-support/access/verification/` own the poll interval, the
-verification lifetime and the server clock alignment, and their tests pin them.
+`apps/mobile/src/app-support/access/verification/` own the access poll, which
+runs every 30 seconds, the verification lifetime and the server clock alignment.
 
 Superwall billing and QStash jobs are unbuilt.
 [Phase 16](../implementation-plan/phase-16-billing.md) owns their scope and
