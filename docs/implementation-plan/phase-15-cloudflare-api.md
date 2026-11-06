@@ -137,7 +137,7 @@ Phase 14 paid checkpoint.
 - Update `SERVER_RELEASES.md` and the restore checklist so R2 backups and the ledger
   supply the recovery attestation.
 
-Automatic credential issuance is [optional Phase 21](phase-21-backup-credential-issuer.md#phase-21),
+Automatic credential issuance is [optional Phase 21](README.md#unscheduled-roadmap),
 after accepted billing, analytics and actual App Store publication; it is not a
 Phase 15 or first-launch gate. Anthony owns manual renewal until that separately
 approved replacement is active; the owner-held Mac key and local parent stay outside CI.
