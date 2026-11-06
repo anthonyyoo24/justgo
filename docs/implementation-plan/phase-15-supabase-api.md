@@ -74,7 +74,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 
 - [ ] A full swarm runs once, at the code-ready head. Another full swarm runs only for new behavior, a redesign, or a large new diff. A rebase, a merge-conflict resolution, or a minor fix gets a single verifier at the new head, and a wording-only change gets none. Run each full swarm per pstack's `skills/swarm/SKILL.md`. One gates lane. The ten live lanes from the PR's **Verify, live** block. The perf lane from its **Verify, perf** block. Two or more audit lanes, each with its own focus, that read the diff and the receipts and distrust the PR body. The root audits the receipts in the merge-ready report before the verdict.
 - [ ] Judge every finding by the execution playbook's blocking rule. The verdict is clean when none blocks. A failure on trunk behavior in a lane marked `Regression lane against trunk.` is recorded against trunk and does not block the PR. A new head gets a fresh verdict, except for results that stay valid under the patch-id rule in pstack's `playbooks/shipping.md`.
-- [ ] Post each verdict as a PR comment that starts with `Verifier verdict: <PASS|PASS+NOTES|FAIL> on base <sha>, head <sha>`. The verifier is a separate Claude agent that did not write the PR, and the comment says so.
+- [ ] Post each verdict as a PR comment whose verdict line has the form that [AGENTS.md](../../AGENTS.md#git-and-autonomy) gives, with each SHA in backticks. The `sections` check parses only that form. The verifier is a separate Claude agent that did not write the PR, and the comment says so.
 - [ ] Merge only on green CI plus a clean verdict at the exact head. After a rebase, run `node scripts/quality/verdict-patch.mjs check <verdict-base> <verdict-head>`. `carries` and `docs-tests-only` keep the verdict. `re-verify` needs a new one. An agent squash-merges its own PR when the PR touches no Agent-effort path. Anthony merges the rest.
 
 ### Boot recipe, for every live lane
@@ -112,7 +112,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **You see.**
 
-- [ ] `.local/edge-trial/report.md` lists every lane with pass or fail, the bundle size, CPU and wall time per route, the query count of the worst-case sync and one decision line, `Decision: go` or `Decision: stop`.
+- [ ] `.local/edge-trial/report.md` lists every lane with pass or fail, the bundle size, CPU and wall time per route, the query count of the worst-case sync the loopback median of ten timed `select 1` round trips, and one decision line, `Decision: go` or `Decision: stop`.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -153,7 +153,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 **Files.**
 
 - [ ] Edit `supabase/config.toml` on `phase15/edge-trial` to add `[functions.justgo-trial]` with `verify_jwt = false`.
-- [ ] Create a trial-only route on that branch that returns the client-address headers the function receives, the result of `show statement_timeout` inside a transaction, and the mean of ten timed `select 1` round trips. It never merges.
+- [ ] Create a trial-only route on that branch that returns the client-address headers the function receives, the result of `show statement_timeout` inside a transaction, and the median of ten timed `select 1` round trips inside one transaction after one untimed query. It never merges.
 - [ ] Set `statement_timeout` in `poolOptions` to 4,321 ms on that branch only, so the probe can tell the pool value from the role's 5 s default.
 
 **Build.**
@@ -174,7 +174,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 - [ ] Lane 1. Regression lane against trunk. Request `GET /health` and `GET /ready` on the serving Worker and on `justgo-trial`. Save `hosted-ready.json`. Pass when both return 200 and the function's readiness confirms `justgo_runtime` over verified TLS.
 - [ ] Lane 2. Request `GET /health` with no `Authorization` and no `apikey` header, then send a protected request with an invalid bearer. Save `gateway-pass.json`. Pass when Hono answers both, the second with the API's typed `UNAUTHORIZED` body, not a gateway 401.
-- [ ] Lane 3. Read `show statement_timeout` from the trial route. Save `statement-timeout.json`. Pass when the report records the value. `4321ms` means the pooler accepted the pool setting, any other value means it ignored it, and a connection error means it rejected it and triggers the Appendix C fallback.
+- [ ] Lane 3. Read `show statement_timeout` from the trial route. Save `statement-timeout.json`. Pass when the report records the value. `4321ms` means the pooler accepted the pool setting, any other value means it ignored it, and a connection error means it rejected it and triggers the Appendix C fallback. After a rejection, redeploy the trial without the option, with Anthony's go, and rerun lanes 1, 2 and 4 to 10.
 - [ ] Lane 4. Send forged `x-forwarded-for`, `x-real-ip` and `cf-connecting-ip` headers to the trial route. Save `client-address.json`. Pass when one header always carries the Mac's real address, whatever the client sends. Record that header.
 - [ ] Lane 5. Send a canary request with a fake bearer, a canary header and canary body text, then read the Invocations view and the edge logs. Save `log-canary.json`. Pass when no bearer, header value or body text appears in any log. If any appears, stop and present it to Anthony.
 - [ ] Lane 6. Wait 15 minutes idle, then time the first request and 50 warm requests. Save `cold-warm.json`. Pass when the numbers meet the perf rule.
@@ -185,10 +185,10 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. Cold and warm wall ms for `/health` and the guest catalog measured from the Mac, and the function's per-query database latency, the mean of the trial route's ten timed `select 1` round trips.
+- [ ] Metric. Cold and warm wall ms for `/health` and the guest catalog measured from the Mac, and the function's per-query database latency, the median of the trial route's ten timed `select 1` round trips.
 - [ ] Probe. Alternate requests between the serving Worker and `justgo-trial` for 50 rounds after the idle wait in lane 6.
 - [ ] Baseline. Record the Worker's warm p50 and p95 first.
-- [ ] Rule. The trial fails if the function's warm p95 for the guest catalog exceeds 300 ms or its first request after idle exceeds 2,000 ms. It also fails if the P15-1 query count times the measured per-query latency predicts more than 8,000 ms of wall time for the worst-case sync. Hosted requests need a genuine account, so P15-9 measures that sync directly.
+- [ ] Rule. The trial fails if the function's warm p95 for the guest catalog exceeds 300 ms or its first request after idle exceeds 2,000 ms. It also fails if the predicted hosted wall time of the worst-case sync exceeds 8,000 ms. The prediction is the P15-1 loopback sync wall time plus the P15-1 query count times the difference between the hosted and loopback `select 1` medians. Hosted requests need a genuine account, so P15-9 measures that sync directly.
 
 **Review gate.** None. P15-2 is not review-gated.
 
@@ -204,22 +204,23 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Files.**
 
-- [ ] Delete `apps/api/vercel.json`, `.vercelignore` and `scripts/release/vercel-cli/`.
+- [ ] Delete `apps/api/vercel.json`, `.vercelignore`, `scripts/release/vercel-cli/` and `scripts/quality/contract-upload.test.mjs`, which tests only `.vercelignore`.
 - [ ] Edit `apps/api/src/server.ts`, `apps/api/src/runtime-app.ts`, `apps/api/src/build-app.ts`, `apps/api/src/identity/address.ts`, `apps/api/src/identity/routes.ts` and `apps/api/src/identity/managed-routes.ts`.
-- [ ] Edit `apps/api/tests/identity/identity.test.ts`, `apps/api/tests/http/legal-drafts.test.ts`, `scripts/quality/contract-upload.test.mjs` and `.github/dependabot.yml`.
+- [ ] Edit `apps/api/tests/identity/identity.test.ts`, `apps/api/tests/http/routing.test.ts`, `apps/api/tests/http/legal-drafts.test.ts` and `.github/dependabot.yml`.
 - [ ] Edit `docs/architecture/TECH_STACK.md`.
 
 **Build.**
 
 - [ ] Delete the `onVercel` option and the `x-vercel-forwarded-for` reader. Rate limits use the `clientAddress` that the entry supplies.
 - [ ] Keep every other Vercel mention. That covers the `VERCEL` refusals in `apps/api/scripts/challenge-dev.ts` and `scripts/release/staging-local.mjs`, the Vercel legal URLs, the Dev profile's Vercel API URL in `apps/mobile/eas.json` and `.github/workflows/development-ios.yml`, and `apps/api/.env.example`. P15-11 changes the API URLs.
-- [ ] Delete the `!process.env.VERCEL` term from `developmentLegalDrafts` in `apps/api/src/runtime-app.ts:44-47`.
+- [ ] Delete both `VERCEL` gates on the development legal drafts, in `apps/api/src/runtime-app.ts:44-47` and `apps/api/src/build-app.ts:86-91`, and the `vercel: '1'` case in `apps/api/tests/http/legal-drafts.test.ts`.
+- [ ] Keep the forged `x-vercel-forwarded-for` header in the adapter-address test in `apps/api/tests/http/routing.test.ts`. It shows that the header is ignored.
 - [ ] If P15-4 merged first, delete the `onVercel` argument from `scripts/backups/recovery-auth-acceptance.mjs`. If P15-3 merged first, P15-4 deletes it.
 - [ ] Before merge, Anthony confirms in the Vercel dashboard that Git deployments are off for the `justgo` project, so the merge cannot start a deploy.
 
 **You see.**
 
-- [ ] `rg -n 'onVercel|x-vercel-forwarded-for|vercel-cli' apps scripts .github` matches only the guard regex in `scripts/quality/staging-api-workflow.test.mjs:46`, and `apps/api/vercel.json` and `.vercelignore` are gone.
+- [ ] `rg -n 'onVercel|x-vercel-forwarded-for|vercel-cli' apps scripts .github -g '!apps/api/tests/**'` matches only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs`, and `apps/api/vercel.json` and `.vercelignore` are gone.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -237,7 +238,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Lane 7. Download the complete data export in the pane. Save `export.png`. Pass when the export finishes and doctor counts return to the baseline after cleanup.
 - [ ] Lane 8. Run `npm run test:journey -- e2e/provider-sign-in.spec.ts`. Save `provider-sign-in.txt`. Pass when the journey passes.
 - [ ] Lane 9. Run `npm run export:web -w @justgo/mobile`, then `npm run test:exported-web`. Save `exported-web.txt`. Pass when the smoke passes.
-- [ ] Lane 10. Search `apps`, `scripts` and `.github` for `onVercel`, `x-vercel-forwarded-for`, `vercel.json`, `.vercelignore` and `vercel-cli`. Save `vercel-audit.txt`. Pass when only the guard regex in `scripts/quality/staging-api-workflow.test.mjs:46` matches.
+- [ ] Lane 10. Search `apps`, `scripts` and `.github`, outside `apps/api/tests/`, for `onVercel`, `x-vercel-forwarded-for`, `vercel.json`, `.vercelignore` and `vercel-cli`. Save `vercel-audit.txt`. Pass when only the `VERCEL_|vercel-cli` assertion in `scripts/quality/staging-api-workflow.test.mjs` matches.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -393,7 +394,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] A startup failure returns the same safe body and `x-justgo-startup-stage` header as `worker.ts:102-126` at `ce611dd`.
 - [ ] Server error reports flush through `EdgeRuntime.waitUntil`.
 - [ ] `supabase/config.toml` sets `verify_jwt = false` for `api`.
-- [ ] `edge-build.mjs` bundles `edge.ts` with esbuild, writes the bundle's SHA-256, and fails above 5 MB.
+- [ ] `edge-build.mjs` bundles `edge.ts` with esbuild, writes the bundle's SHA-256, and fails above 5 MB or when an input is untracked or ignored, as the Workers build audit did (`scripts/release/staging-worker-build.mjs:15-74` at `ce611dd`).
 - [ ] `npm run test:edge` runs the smoke route sequence against the bundle in the pinned Edge runtime image and `justgo_test`. CI runs it where the Workers step was.
 
 **You see.**
@@ -509,6 +510,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 - [ ] Only after the candidate passes does the lane deploy the same bundle as `api` and read back `/health`, the source SHA and the function `version`.
 - [ ] The lane keeps the database guard in `apps/api/scripts/staging-release-guard.ts` and holds its lock through the serving deploy.
 - [ ] `supabase secrets set` runs only as a named lane step with its own receipt.
+- [ ] The recreated workflow test keeps its `VERCEL_|vercel-cli` assertion.
 - [ ] Rollback is the same lane run on the previous tag. The runbook says so and keeps the rule against rolling back across a schema change.
 
 **You see.**
