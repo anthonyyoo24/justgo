@@ -18,6 +18,25 @@ jest.mock('./day-details/entries/useEntryMotion', () =>
 
 import { month, callbacks } from '../../../test-support/progress/view';
 
+it.each(['loaded', 'loading', 'error'])(
+  'uses the Challenge page background while %s',
+  async (state) => {
+    const screen = await render(
+      <ProgressView
+        month="2026-09"
+        data={state === 'loaded' ? month : undefined}
+        loading={state === 'loading'}
+        error={state === 'error'}
+        selectedDate={null}
+        {...callbacks()}
+      />,
+    );
+    expect(screen.getByTestId('progress-screen')).toHaveStyle({
+      backgroundColor: colors.cream,
+    });
+  },
+);
+
 it.each([0, 1, 2])(
   'uses singular and plural Progress copy for %s',
   async (days) => {

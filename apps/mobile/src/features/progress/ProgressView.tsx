@@ -66,6 +66,7 @@ export function ProgressView({
 }: ProgressViewProps) {
   return (
     <SafeAreaView
+      testID="progress-screen"
       edges={insetTop ? ['top', 'left', 'right'] : ['left', 'right']}
       style={styles.safe}
     >
@@ -112,5 +113,5 @@ export function ProgressView({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.paper },
+  safe: { flex: 1, backgroundColor: colors.cream },
 });

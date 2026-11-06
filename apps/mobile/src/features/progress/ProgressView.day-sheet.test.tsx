@@ -197,7 +197,7 @@ it('keeps the current slide when day data arrives and a show event arrives durin
     expect(timing).toHaveBeenCalledTimes(1);
     expect(reset).not.toHaveBeenCalled();
 
-    await fireEvent.press(screen.getByText('×'));
+    await fireEvent.press(screen.getByTestId('day-sheet-close'));
     expect(timing).toHaveBeenCalledTimes(2);
     expect(timing.mock.calls[1]![1]).toMatchObject({ duration: 220 });
     await fireEvent(
@@ -337,7 +337,7 @@ it('clears the backdrop immediately when the sheet close button is pressed', asy
   });
   expect(backdrop).toHaveStyle({ backgroundColor: '#102C49AA' });
 
-  await fireEvent.press(screen.getByText('×'));
+  await fireEvent.press(screen.getByTestId('day-sheet-close'));
   expect(backdrop).toHaveStyle({ backgroundColor: 'transparent' });
   expect(actions.onCloseDay).not.toHaveBeenCalled();
   await waitFor(() => expect(actions.onCloseDay).toHaveBeenCalledTimes(1));
