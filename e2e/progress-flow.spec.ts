@@ -52,7 +52,7 @@ async function expectRowAtViewportBottom(page: Page, number: number) {
     .toBeLessThanOrEqual(1);
 }
 
-test('Progress matches the Challenge background and keeps its larger close target above the date on narrow screens', async ({
+test('Progress matches Challenge and keeps its smaller absolute close icon from lowering the date on narrow screens', async ({
   page,
 }) => {
   const current = await account(page);
@@ -86,26 +86,31 @@ test('Progress matches the Challenge background and keeps its larger close targe
         const rightGap = sheet.x + sheet.width - target.x - target.width;
         const topGap = target.y - sheet.y;
         return {
-          largeTarget: target.width >= 56 && target.height >= 56,
-          topRight:
-            rightGap >= 0 && rightGap <= 8 && topGap >= 0 && topGap <= 8,
+          accessibleTarget: target.width >= 44 && target.height >= 44,
+          smallerIcon:
+            Math.abs(icon.width - 25.6) <= 1 &&
+            Math.abs(icon.height - 25.6) <= 1,
+          topRight: Math.abs(rightGap - 12) <= 1 && Math.abs(topGap - 12) <= 1,
           equalInsets: Math.abs(topGap - rightGap) <= 1,
           equalIconInsets:
             Math.abs(
               icon.y - sheet.y - (sheet.x + sheet.width - icon.x - icon.width),
             ) <= 1,
-          aboveHeading: target.y + target.height + 4 <= heading.y,
+          originalHeadingOffset: Math.abs(heading.y - sheet.y - 44) <= 1,
+          iconOffset: Math.abs(icon.y - sheet.y - 21.6) <= 1,
         };
       })
       .toEqual({
-        largeTarget: true,
+        accessibleTarget: true,
+        smallerIcon: true,
         topRight: true,
         equalInsets: true,
         equalIconInsets: true,
-        aboveHeading: true,
+        originalHeadingOffset: true,
+        iconOffset: true,
       });
-    // Exercise the enlarged target's edge, away from the visible X glyph.
-    await close.click({ position: { x: 2, y: 52 } });
+    // Exercise the target's edge, away from the visible X glyph.
+    await close.click({ position: { x: 2, y: 42 } });
     await expect(panel).toBeHidden();
   }
 });

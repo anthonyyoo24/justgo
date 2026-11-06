@@ -52,7 +52,8 @@ export type ProgressDay = {
   entries: ProgressEntry[];
 };
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
-const closeTargetSize = 56;
+const closeTargetSize = 56 * 0.8;
+const closeIconSize = 32 * 0.8;
 function RetryArrow({ color = colors.white }: { color?: string }) {
   return (
     <Svg width={20} height={20} viewBox="0 0 20 20" aria-hidden>
@@ -340,8 +341,8 @@ export function DaySheet({
               >
                 <Svg
                   testID="day-sheet-close-icon"
-                  width={32}
-                  height={32}
+                  width={closeIconSize}
+                  height={closeIconSize}
                   viewBox="0 0 32 32"
                   aria-hidden
                   pointerEvents="none"
@@ -361,9 +362,7 @@ export function DaySheet({
                 style={{ height: drag.height }}
               >
                 <View onLayout={drag.onHeaderLayout} testID="day-sheet-header">
-                  <View testID="day-sheet-controls" style={styles.controls}>
-                    <DaySheetHandle controls={drag} />
-                  </View>
+                  <DaySheetHandle controls={drag} />
                   {date && <DayHeading date={date} />}
                   {day && (
                     <Text style={styles.repCount}>
@@ -521,11 +520,10 @@ const styles = StyleSheet.create({
     maxHeight: '100%',
     minHeight: 0,
   },
-  controls: { height: closeTargetSize + spacing.sm * 2 },
   close: {
     position: 'absolute',
-    right: spacing.sm,
-    top: spacing.sm,
+    right: spacing.sm + spacing.xs,
+    top: spacing.sm + spacing.xs,
     width: closeTargetSize,
     height: closeTargetSize,
     alignItems: 'center',

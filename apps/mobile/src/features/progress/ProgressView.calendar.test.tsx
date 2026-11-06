@@ -224,7 +224,7 @@ it('uses the warm Paper calendar panel and inactive day colors', async () => {
   );
 
   expect(screen.getByTestId('progress-calendar-card')).toHaveStyle({
-    backgroundColor: '#FCF4EA',
+    backgroundColor: '#FFFCF8',
     borderColor: '#E6D6C8',
   });
   expect(screen.getByLabelText('Wednesday, September 2, 0 reps')).toHaveStyle({
