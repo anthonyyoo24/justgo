@@ -46,7 +46,7 @@ unanswered questions. Resolve the items below before their dependent action,
 record the final choice and evidence in the
 [Phase 15 Cloudflare handoff](../handoffs/phase-15-cloudflare-api.md), and preserve
 the separate Git/release permissions. That handoff is the one kept, and only until
-the Cloudflare work is finished or dropped. No other work gets a handoff file.
+Workers retires. No other work gets a handoff file.
 The implementation owner handles routine
 engineering choices; bring Anthony concrete policy/cost/legal tradeoffs and
 restricted actions, rather than asking for approval at every implementation step.

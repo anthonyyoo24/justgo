@@ -283,7 +283,7 @@ or payload API. Phase 10 implemented the
 Terms & Privacy entry links and ordinary Continue, with no legal
 view/acceptance receipts or version-driven navigation.
 [Phase 17](../implementation-plan/README.md#unscheduled-roadmap) owns post-paid-launch
-analytics and the approved event allowlist, and
+analytics, and its event allowlist is redone when it is scheduled.
 Phase 11 implemented app crash reporting;
 the [legal approval record](../legal/APPROVALS.md) owns approved legal
 notices, document labels and public destinations. Product analytics stays disabled
