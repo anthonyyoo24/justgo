@@ -312,9 +312,12 @@ app/API/database journeys, bundle exports, interactive browser checks and native
 checks prove different boundaries. Hosted results must be inspected for the
 actual published commit; local checks do not establish hosted acceptance.
 
-CI runs on pull requests and pushes to `main`, and cancels superseded PR runs. Six
-producer jobs feed one `checks` job that fails when any producer fails, is skipped
-or is cancelled: `static` (actionlint, online Doctor, contracts, types, lint,
+CI runs on pull requests and pushes to `main`, and cancels superseded PR runs. A
+first `changes` job decides whether the app jobs run. A pull request that changes
+only Markdown runs only `static`, and every other run gets all six producer jobs.
+They feed one `checks` job that fails when any producer fails, is skipped or is
+cancelled, except an app job that `changes` skipped for a Markdown-only pull
+request. A failed `changes` job also fails `checks`. The producers are `static` (actionlint, online Doctor, contracts, types, lint,
 format, tooling and the API dependency audit), `unit`, `database` (migrations,
 API integration suites, `test:workers` and `test:backup:recovery`), `journeys`,
 `exports` (web export, its smoke, then iOS export) and `native-icloud`.
