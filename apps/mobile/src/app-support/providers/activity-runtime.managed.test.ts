@@ -1,4 +1,8 @@
-import type { CompletionAttempt, JournalSyncVersion } from '@justgo/contracts';
+import {
+  completionAttemptSchema,
+  type CompletionAttempt,
+  type JournalSyncVersion,
+} from '@justgo/contracts';
 import { ActivityRuntime } from './activity-runtime';
 import {
   AccountClient,
@@ -21,6 +25,7 @@ import { clearBackupFiles } from '../../platform/backup/backup-file';
 import type { RestorableData } from '../../data/backup/data-backup';
 import {
   MemoryStorage,
+  attempt,
   card,
   input,
   owner,
@@ -648,6 +653,49 @@ it('keeps delete-all intent durable through failure, blocks stale delivery and r
   expect(target.attempts.size).toBe(0);
   expect(servers.get(otherOwner)?.attempts.size).toBe(1);
   expect(cloud.zone(`account:${otherOwner}`).records.size).toBeGreaterThan(0);
+});
+
+it('finishes a delete-all intent with one reset after guest adoption syncs another device deletion (issue #156)', async () => {
+  const { runtime, activate, storage } = setup();
+  const repository = await activate(owner, 'cloud', 'account');
+  await repository.complete(input(), card);
+  runtime.setEnvironment({ active: true, online: true });
+  await repository.synchronize();
+  const target = servers.get(owner)!;
+  jest
+    .spyOn(runtime.getICloudCoordinator()!, 'deletePreviouslySyncedData')
+    .mockRejectedValueOnce(new ApiError('UNAVAILABLE'));
+  await expect(runtime.deleteAllData()).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  const otherDevice = new AbortController().signal;
+  await target.transport.deleteData(1, otherDevice);
+  await target.transport.putCompletions(
+    {
+      expectedEpoch: 2,
+      attempts: [completionAttemptSchema.strip().parse(attempt(7))],
+    },
+    otherDevice,
+  );
+  const guest = await activate(otherOwner, 'local', 'guest');
+  await guest.complete(input(5), card);
+  await runtime.mergeGuestData(otherOwner, owner, {
+    userId: owner,
+    token: 'fixture-session',
+  });
+  await activate(owner, 'cloud', 'account');
+  runtime.setEnvironment({ active: true, online: true });
+  await runtime.deleteAllData();
+  expect(
+    jest
+      .mocked(target.transport.deleteData)
+      .mock.calls.filter(([, signal]) => signal !== otherDevice)
+      .map(([epoch]) => epoch),
+  ).toEqual([0]);
+  expect([...target.attempts.keys()].sort()).toEqual([uuid(5), uuid(7)]);
+  expect(storage.values.has(`justgo:v1:${owner}:delete-all-pending`)).toBe(
+    false,
+  );
 });
 
 it('rehydrates a failed deletion intent and blocks new local writing before retry', async () => {
