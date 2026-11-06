@@ -2,16 +2,17 @@
 
 Anthony selected the existing navy GO mark on cream for the app icon on
 October 25, 2026. The existing transparent
-`apps/mobile/assets/brand/justgo-mark.png` was inspected and supplied as the
-edit target to the built-in GPT Image tool. No editable vector original exists
-in the repository. The launch-screen mark remains unchanged.
+`apps/mobile/assets/brand/justgo-mark.png` was inspected, then supplied as the
+edit target to the built-in GPT Image tool. The repository has no editable
+vector original. The launch-screen mark
+is unchanged.
 
 The result is a model-assisted composition of the approved branding, not an
 exact pixel export of the transparent source. The opaque generated square was
 resampled from 1254 × 1254 to 1024 × 1024 with macOS `sips`, without cropping.
-It is saved as `apps/mobile/assets/brand/justgo-app-icon.png` and selected by
-the Expo app configuration. The PNG is RGB without an alpha channel. A new
-native build is required to inspect its appearance on a device.
+It is saved as `apps/mobile/assets/brand/justgo-app-icon.png`, and the Expo app
+configuration selects it. The PNG is RGB without an alpha channel. To inspect
+the icon on a device, make a new native build.
 
 ## Prompt
 

@@ -4,7 +4,7 @@ Source: [corrected initial attempts failure screen in Paper](https://app.paper.d
 
 Paper's image fill: `https://app.paper.design/file-assets/01M06AN54B8CZHGDPRD8XY0880/4H3HNWCXDGSWXBJ90KSSEZGXS2.png`, displayed at 390 × 916. The matching local reference is `design/paper-variants/initial-load-failed-v2.png` (818 × 1922).
 
-Runtime asset: `apps/mobile/assets/illustrations/disconnected-plugs.png` (2022 × 778, transparent PNG). Prepared using the built-in GPT Image tool on 2026-09-29. The design is a flattened screen image; the runtime cutout is a model-assisted reproduction, not an exact pixel export. Keep the right connector as a receiving socket with two holes and no prongs. Render without tinting or stretching, and keep decorative artwork hidden from assistive technology.
+Runtime asset: `apps/mobile/assets/illustrations/disconnected-plugs.png` (2022 × 778, transparent PNG). It was prepared with the built-in GPT Image tool on 2026-09-29. The design is a flattened screen image. The runtime cutout is a model-assisted reproduction, not an exact pixel export. Keep the right connector as a receiving socket with two holes and no prongs. Render without tinting or stretching, and keep decorative artwork hidden from assistive technology.
 
 ## Final image prompt
 
