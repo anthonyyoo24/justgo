@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       app: ${{ steps.classify.outputs.app }}
+      icloud: ${{ steps.classify.outputs.icloud }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -194,7 +195,7 @@ jobs:
   native-icloud:
     runs-on: macos-15
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.icloud == 'true'
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

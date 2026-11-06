@@ -1,11 +1,21 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { appJobsNeeded, classifyChanges } from './ci-changes.mjs';
+import {
+  appJobsNeeded,
+  classifyChanges,
+  nativeICloudNeeded,
+} from './ci-changes.mjs';
 
 test('only a change made entirely of Markdown skips the app jobs', () => {
   assert.equal(appJobsNeeded(['docs/README.md', 'AGENTS.md']), false);
@@ -15,17 +25,30 @@ test('only a change made entirely of Markdown skips the app jobs', () => {
   assert.equal(appJobsNeeded([]), true);
 });
 
+test('only a change to the iCloud module or the CI workflow runs the native iCloud tests', () => {
+  assert.equal(
+    nativeICloudNeeded(['apps/mobile/modules/justgo-icloud/ios/Sync.swift']),
+    true,
+  );
+  assert.equal(nativeICloudNeeded(['.github/workflows/ci.yml']), true);
+  assert.equal(
+    nativeICloudNeeded(['apps/mobile/src/App.tsx', 'eslint.config.mjs']),
+    false,
+  );
+  assert.equal(nativeICloudNeeded([]), true);
+});
+
 test('pushes, missing bases and unreadable diffs run every app job', () => {
   const docsOnly = () => ['README.md'];
-  assert.equal(
+  assert.deepEqual(
     classifyChanges({ event: 'push', base: 'abc', listFiles: docsOnly }),
-    true,
+    { app: true, icloud: true },
   );
-  assert.equal(
+  assert.deepEqual(
     classifyChanges({ event: 'pull_request', base: '', listFiles: docsOnly }),
-    true,
+    { app: true, icloud: true },
   );
-  assert.equal(
+  assert.deepEqual(
     classifyChanges({
       event: 'pull_request',
       base: 'abc',
@@ -33,15 +56,15 @@ test('pushes, missing bases and unreadable diffs run every app job', () => {
         throw new Error('bad revision');
       },
     }),
-    true,
+    { app: true, icloud: true },
   );
-  assert.equal(
+  assert.deepEqual(
     classifyChanges({
       event: 'pull_request',
       base: 'abc',
       listFiles: docsOnly,
     }),
-    false,
+    { app: false, icloud: false },
   );
 });
 
@@ -83,7 +106,7 @@ function classifyCommit(change) {
 test('renaming a code file to Markdown still runs the app jobs', () => {
   assert.equal(
     classifyCommit((repo, git) => git('mv', 'route.ts', 'route.md')),
-    'app=true\n',
+    'app=true\nicloud=false\n',
   );
 });
 
@@ -92,6 +115,17 @@ test('a Markdown-only change with a non-ASCII path skips the app jobs', () => {
     classifyCommit((repo) =>
       writeFileSync(path.join(repo, 'café.md'), 'Notes\n'),
     ),
-    'app=false\n',
+    'app=false\nicloud=false\n',
+  );
+});
+
+test('a change inside the iCloud module runs the native iCloud tests', () => {
+  assert.equal(
+    classifyCommit((repo) => {
+      const dir = path.join(repo, 'apps/mobile/modules/justgo-icloud');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(path.join(dir, 'Package.swift'), '// swift\n');
+    }),
+    'app=true\nicloud=true\n',
   );
 });

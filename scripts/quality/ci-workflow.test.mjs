@@ -53,7 +53,9 @@ test('independent bounded producer jobs feed one always-evaluated required statu
     assert.match(jobs[name], /^ {4}needs: changes$/m);
     assert.match(
       jobs[name],
-      /^ {4}if: needs\.changes\.outputs\.app == 'true'$/m,
+      name === 'native-icloud'
+        ? /^ {4}if: needs\.changes\.outputs\.icloud == 'true'$/m
+        : /^ {4}if: needs\.changes\.outputs\.app == 'true'$/m,
     );
   }
   for (const [name, job] of Object.entries(jobs)) {
@@ -82,6 +84,10 @@ test('the change classifier runs first, reads the full PR diff and only feeds th
   assert.match(job, /^ {4}timeout-minutes: 5$/m);
   assert.match(job, /fetch-depth: 0/);
   assert.match(job, /^ {6}app: \$\{\{ steps\.classify\.outputs\.app \}\}$/m);
+  assert.match(
+    job,
+    /^ {6}icloud: \$\{\{ steps\.classify\.outputs\.icloud \}\}$/m,
+  );
   assert.match(job, /JUSTGO_CI_EVENT: \$\{\{ github\.event_name \}\}/);
   assert.match(
     job,
