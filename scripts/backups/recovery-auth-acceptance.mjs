@@ -60,6 +60,18 @@ export function unexpiredLocalToken(token, secret, issuer, subject) {
   }
 }
 
+async function startNodeRuntime(environment) {
+  const { readConfig } = await import('../../apps/api/src/config.ts');
+  const { createDatabase } = await import('../../apps/api/src/db/client.ts');
+  const { buildRuntimeApp } = await import('../../apps/api/src/runtime-app.ts');
+  const config = readConfig(environment);
+  const database = createDatabase(config);
+  return {
+    app: buildRuntimeApp(config, database, { onVercel: false }),
+    pool: database.pool,
+  };
+}
+
 /**
  * Programmatic hooks for a closed, disposable loopback target. The caller owns
  * the pinned local Auth service, normal TLS trust, strict gateway and cleanup.
@@ -73,6 +85,7 @@ export function recoveryAuthAcceptance({
   jwtSecret,
   expectedRegistrySha256,
   request = fetch,
+  startRuntime = startNodeRuntime,
 }) {
   const runtime = new URL(databaseUrl);
   check(runtime.username === 'justgo_runtime');
@@ -95,7 +108,7 @@ export function recoveryAuthAcceptance({
   );
   check(/^[a-f0-9]{64}$/.test(expectedRegistrySha256 ?? ''));
   const issuer = new URL('/auth/v1', authOrigin).href;
-  let database, app, owner, before, after, t0;
+  let pool, app, owner, before, after, t0;
   const result = {};
   async function auth(path, { token, body, admin: privileged = false } = {}) {
     check(
@@ -256,7 +269,7 @@ export function recoveryAuthAcceptance({
     hooks: {
       preserveOwnership: true,
       beforeReconcile: async ({ client }) => {
-        check(!before && !after && !database);
+        check(!before && !after && !pool);
         const health = await auth('/health');
         check(health.status === 200 && health.body.version === 'v2.197.0');
         check((await authRegistrySignature(client)) === expectedRegistrySha256);
@@ -278,12 +291,7 @@ export function recoveryAuthAcceptance({
             where i.user_id=a.id and i.provider='apple')`)
           ).rows,
         );
-        const { readConfig } = await import('../../apps/api/src/config.ts');
-        const { createDatabase } =
-          await import('../../apps/api/src/db/client.ts');
-        const { buildRuntimeApp } =
-          await import('../../apps/api/src/runtime-app.ts');
-        const config = readConfig({
+        ({ app, pool } = await startRuntime({
           NODE_ENV: 'test',
           APP_ENVIRONMENT: 'production',
           LOG_LEVEL: 'silent',
@@ -295,25 +303,23 @@ export function recoveryAuthAcceptance({
           SUPABASE_AUTH_SECRET_KEY: adminKey,
           API_SENTRY_ENABLED: 'false',
           IDENTITY_RATE_LIMIT_KEY: jwtSecret,
-        });
-        database = createDatabase(config);
-        app = buildRuntimeApp(config, database, { onVercel: false });
+        }));
         check((await api('/ready')).status === 200);
-        const helper = await database.pool.query(
+        const helper = await pool.query(
           'select justgo_auth_private.is_live_session_v1($1::uuid,$2::uuid) as live',
           [randomUUID(), owner.auth_user_id],
         );
         check(helper.rows[0].live === false);
         let directDenied = false;
         try {
-          await database.pool.query('select id from auth.sessions limit 0');
+          await pool.query('select id from auth.sessions limit 0');
         } catch (error) {
           directDenied = error.code === '42501';
         }
         check(directDenied);
         t0 = await signIn();
         before = await exchange(t0.access_token, owner.data_epoch);
-        const live = await database.pool.query(
+        const live = await pool.query(
           'select justgo_auth_private.is_live_session_v1($1::uuid,$2::uuid) as live',
           [before.sessionId, owner.auth_user_id],
         );
@@ -351,7 +357,7 @@ export function recoveryAuthAcceptance({
           [before.sessionId, owner.auth_user_id, owner.user_id],
         );
         check(applicationRevocation.rows[0].revoked === true);
-        const missing = await database.pool.query(
+        const missing = await pool.query(
           'select justgo_auth_private.is_live_session_v1($1::uuid,$2::uuid) as live',
           [before.sessionId, owner.auth_user_id],
         );
@@ -416,7 +422,7 @@ export function recoveryAuthAcceptance({
     },
     result: () => Object.freeze({ ...result, writersMayOpen: false }),
     close: async () => {
-      if (database) await database.pool.end();
+      if (pool) await pool.end();
     },
   };
 }
