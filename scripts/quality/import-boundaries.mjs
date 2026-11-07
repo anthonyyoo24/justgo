@@ -9,15 +9,20 @@ const relative = (filename) =>
   path.relative(root, filename).split(path.sep).join('/');
 const under = (value, directory) =>
   value === directory || value.startsWith(`${directory}/`);
+const targetOf = (filename, specifier) =>
+  specifier.startsWith('./') ||
+  specifier.startsWith('../') ||
+  path.isAbsolute(specifier)
+    ? relative(path.resolve(path.dirname(filename), specifier))
+    : specifier.replace(/^@justgo\/api\//, 'apps/api/');
+const setsRlsContext = (target) =>
+  target.replace(/\.[jt]s$/, '') === 'apps/api/src/db/transaction-context';
+const passedRlsContext =
+  'Call setTransactionContext() where you import it. Re-exporting, storing or passing it lets code outside identity set RLS context.';
 
-function boundaryMessage(filename, specifier) {
+function boundaryMessage(filename, specifier, reexport) {
   const file = relative(filename);
-  const target =
-    specifier.startsWith('./') ||
-    specifier.startsWith('../') ||
-    path.isAbsolute(specifier)
-      ? relative(path.resolve(path.dirname(filename), specifier))
-      : specifier;
+  const target = targetOf(filename, specifier);
   const api = under(target, '@justgo/api') || under(target, 'apps/api');
   const mobile =
     under(target, '@justgo/mobile') || under(target, 'apps/mobile');
@@ -38,9 +43,15 @@ function boundaryMessage(filename, specifier) {
     !apiOpenApi
   )
     return 'Import shared contracts through @justgo/contracts.';
+  const apiSource = under(file, 'apps/api/src');
+  if (apiSource && under(target, 'apps/api/tests'))
+    return 'API source cannot import test code from apps/api/tests.';
+  if (apiSource && ['module', 'node:module'].includes(specifier))
+    return 'Load API modules with import, not createRequire(), so these boundaries stay checkable.';
+  if (apiSource && setsRlsContext(target) && reexport) return passedRlsContext;
   if (
-    under(file, 'apps/api/src') &&
-    target.replace(/\.[jt]s$/, '') === 'apps/api/src/db/transaction-context' &&
+    apiSource &&
+    setsRlsContext(target) &&
     !under(file, 'apps/api/src/identity') &&
     file !== 'apps/api/src/access/guest.ts'
   )
@@ -105,12 +116,37 @@ export default {
         context.report({ node, messageId: 'literal' });
         return;
       }
-      const message = boundaryMessage(context.filename, specifier);
+      const message = boundaryMessage(
+        context.filename,
+        specifier,
+        node.type.startsWith('Export'),
+      );
       if (message)
         context.report({ node, messageId: 'boundary', data: { message } });
     }
+    const called = (node) =>
+      node.parent.type === 'TSTypeQuery' ||
+      (node.parent.type === 'CallExpression' && node.parent.callee === node) ||
+      (node.parent.type === 'MemberExpression' &&
+        node.parent.object === node &&
+        called(node.parent));
     return {
-      ImportDeclaration: (node) => check(node, node.source),
+      ImportDeclaration: (node) => {
+        check(node, node.source);
+        if (
+          !under(relative(context.filename), 'apps/api/src') ||
+          !setsRlsContext(targetOf(context.filename, node.source.value))
+        )
+          return;
+        for (const variable of context.sourceCode.getDeclaredVariables(node))
+          for (const { identifier } of variable.references)
+            if (!called(identifier))
+              context.report({
+                node: identifier,
+                messageId: 'boundary',
+                data: { message: passedRlsContext },
+              });
+      },
       ExportNamedDeclaration: (node) => check(node, node.source),
       ExportAllDeclaration: (node) => check(node, node.source),
       ImportExpression: (node) => check(node, node.source),
