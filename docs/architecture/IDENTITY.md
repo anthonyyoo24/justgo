@@ -34,6 +34,29 @@ retained on the phone never becomes guest data for another account.
 `offlineAccountOwner()` exposes only a local beta-admission scope. That scope
 never authenticates a request or enables synchronization.
 
+## Switching the active provider
+
+On November 2, 2026, Anthony chose Account's Apple and Google switches to show
+the active sign-in provider, not the linked identities. At most one is on. The
+active switch opens the Log out confirmation, and an off switch opens that
+provider's sign-in page. The switches never link or unlink identities, and
+linked identities stay intact.
+
+- Cancellation or failure before the provider SDK replaces its session keeps the
+  old login. The SDK notifies a new session before its sign-in promise resolves,
+  so fence account requests as soon as that session changes, even for a
+  same-subject token replacement.
+- Keep the source bearer only in secure storage until its JustGO app session is
+  revoked, then adopt the destination under the ownership rules above. Logout
+  revokes a leftover source proof, and accepted account deletion clears it.
+- Restore a changed source bearer only after trusted session verification matches
+  the saved owner, Auth subject and app-session ID. A completed switch resumes at
+  startup without another provider prompt. An exchange that cannot prove which
+  provider completed keeps the old journal and asks the user to sign in again.
+- The active provider is a display fact. Successful sign-in saves it. Older
+  installations fall back to the most recently signed-in supported identity. It
+  never establishes ownership or grants access.
+
 ## Sessions and verification
 
 **Security acceptances.** Apple sign-in sends the SHA-256 form of a random nonce
