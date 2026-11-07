@@ -6,6 +6,13 @@ import testingLibrary from 'eslint-plugin-testing-library';
 import globals from 'globals';
 import importBoundaries from './scripts/quality/import-boundaries.mjs';
 
+const outboundFetchFix =
+  'Send requests through outboundFetch() from apps/api/src/http/outbound-fetch.ts. It keeps redirects manual so credentials never follow a Location, and fails a 3xx as UNAVAILABLE unread.';
+const requestPackages = ['undici', 'node-fetch', 'cross-fetch'].map((name) => ({
+  name,
+  message: outboundFetchFix,
+}));
+
 export default tseslint.config(
   {
     ignores: [
@@ -63,23 +70,34 @@ export default tseslint.config(
     rules: { 'justgo/import-boundaries': 'error' },
   },
   {
-    files: ['apps/api/src/**/*.ts'],
+    files: ['apps/api/src/**/*.{ts,tsx,mts,cts}'],
     ignores: ['apps/api/src/http/outbound-fetch.ts'],
     rules: {
       'no-restricted-globals': [
         'error',
+        ...['fetch', 'globalThis', 'self', 'window'].map((name) => ({
+          name,
+          message: `${outboundFetchFix} Name other globals directly, not through the global object.`,
+        })),
+      ],
+      'no-restricted-imports': [
+        'error',
         {
-          checkGlobalObject: true,
-          globals: [
+          paths: requestPackages,
+          patterns: [
             {
-              name: 'fetch',
+              group: ['@supabase/*'],
               message:
-                'Wrap the transport with outboundFetch() from apps/api/src/http/outbound-fetch.ts. It keeps redirects manual so credentials never follow a Location, and fails a 3xx as UNAVAILABLE unread.',
+                "Pass global: { fetch: outboundFetch(transport) } to createClient as apps/api/src/identity/managed-deletion.ts does, then allow the file in eslint.config.mjs. The SDK's default fetch follows a redirect and resends apikey to the Location.",
             },
           ],
         },
       ],
     },
+  },
+  {
+    files: ['apps/api/src/identity/managed-deletion.ts'],
+    rules: { 'no-restricted-imports': ['error', { paths: requestPackages }] },
   },
   {
     files: ['apps/mobile/**/*.{ts,tsx}'],
