@@ -159,16 +159,20 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "import { fetch } from 'undici'; export const send = fetch;",
     'apps/api/src/identity/managed-deletion.ts',
   ],
-  [
-    'no-restricted-syntax',
+  ...[
     "import { sql } from 'drizzle-orm'; export const leak = (tx: { execute(query: unknown): unknown }, id: string) => tx.execute(sql`select set_config('app.user_id', ${id}, false)`);",
-    'apps/api/src/access/guest.ts',
-  ],
-  [
-    'no-restricted-syntax',
     "export const leak = (client: { query(text: string): unknown }) => client.query('SET app.user_id = 1');",
-    'apps/api/src/access/guest.ts',
-  ],
+    "export const leak = (id: string) => `-- owner context\\nSET app.user_id = '${id}'`;",
+    "export const leak = (id: string) => `/* owner */ SET app.user_id = '${id}'`;",
+    'export const leak = (id: string) => `SET"app.user_id" TO \'${id}\'`;',
+    "export const leak = (id: string) => `select 1; SET SESSION app.user_id = '${id}'`;",
+    "import { Pool } from 'pg'; export const leak = (id: string) => new Pool({ options: `-c app.user_id=${id}` });",
+    "export const leak = (id: string) => 'select set_' + `config('app.user_id', '${id}', false)`;",
+  ].map((source) => [
+    'justgo/rls-context',
+    source,
+    'apps/api/src/data-sync/journal.ts',
+  ]),
 ]) {
   test(`lint safeguard: ${rule}`, async () => {
     const [result] = await eslint.lintText(source, {
@@ -182,6 +186,30 @@ for (const [rule, source, filePath = production, severity = 2] of [
     assert.ok(violations.every((message) => message.severity === severity));
   });
 }
+
+test('RLS context lint accepts ordinary SQL, messages and built-in connection options', async () => {
+  const [result] = await eslint.lintText(
+    `
+    import { sql } from 'drizzle-orm';
+    import { Pool } from 'pg';
+    import { users } from '../db/schema.js';
+    export const update = (id: string) =>
+      sql\`update \${users} set deleted_at = now() where \${users.id} = \${id}\`;
+    export const upsert = (id: string) =>
+      sql\`insert into justgo.users (id) values (\${id}) on conflict (id) do update set deleted_at = null\`;
+    export const hint = () => new Error('Set DATABASE_URL to the loopback justgo_test database.');
+    export const pool = new Pool({ options: '-c statement_timeout=5000' });
+  `,
+    { filePath: path.join(root, 'apps/api/src/data-sync/journal.ts') },
+  );
+  assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
+  assert.deepEqual(
+    result.messages.filter(
+      (message) => message.ruleId === 'justgo/rls-context',
+    ),
+    [],
+  );
+});
 
 test('Testing Library accepts awaited native queries and synchronous renderer inspection', async () => {
   const [result] = await eslint.lintText(

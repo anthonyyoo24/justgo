@@ -309,6 +309,25 @@ const cases = [
     restricted: false,
   },
   {
+    name: 'a package self-reference cannot bypass the RLS context boundary',
+    file: 'apps/api/src/data-sync/BoundaryFixture.ts',
+    source:
+      "import { setTransactionContext } from '@justgo/api/src/db/transaction-context.js';",
+    restricted: true,
+  },
+  {
+    name: 'API source cannot import test fixtures',
+    file: 'apps/api/src/data-sync/BoundaryFixture.ts',
+    source: "import { withOwner } from '../../tests/db/fixtures/owner.js';",
+    restricted: true,
+  },
+  {
+    name: 'API source cannot load modules through createRequire',
+    file: 'apps/api/src/data-sync/BoundaryFixture.ts',
+    source: "import { createRequire } from 'node:module';",
+    restricted: true,
+  },
+  {
     name: 'shared code may import a sibling with dot-slash',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
     source: "import './account-client';",
@@ -484,6 +503,47 @@ cases.push(
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
     source: "import '../data';",
     restricted: true,
+  },
+  {
+    name: 'identity cannot re-export the RLS context setter',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "export { setTransactionContext } from '../db/transaction-context.js';",
+    restricted: true,
+  },
+  {
+    name: 'identity cannot re-export all of the RLS context module',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source: "export * from '../db/transaction-context.js';",
+    restricted: true,
+  },
+  {
+    name: 'identity cannot export an imported RLS context setter',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js'; export { setTransactionContext };",
+    restricted: true,
+  },
+  {
+    name: 'identity cannot store the RLS context setter',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import * as context from '../db/transaction-context.js'; export const set = context.setTransactionContext;",
+    restricted: true,
+  },
+  {
+    name: 'identity may call the RLS context setter',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js'; export const own = (tx: Parameters<typeof setTransactionContext>[0], id: string) => setTransactionContext(tx, 'app.user_id', id);",
+    restricted: false,
+  },
+  {
+    name: 'API tests may import the RLS context setter',
+    file: 'apps/api/tests/db/fixtures/BoundaryFixture.ts',
+    source:
+      "import { setTransactionContext } from '../../../src/db/transaction-context.js'; export { setTransactionContext };",
+    restricted: false,
   },
   {
     name: 'feature directory entrypoints cannot bypass data boundaries',
