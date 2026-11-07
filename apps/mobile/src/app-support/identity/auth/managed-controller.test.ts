@@ -1897,3 +1897,53 @@ it('explains a cancelled switch that lost the active login while its sheet was o
   });
   ctx.controller.dispose();
 });
+
+it.each(['returns no session', 'throws CANCELLED'] as const)(
+  'keeps the source login published when the switch sheet %s',
+  async (outcome) => {
+    const ctx = setup();
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    const published: (string | null)[] = [];
+    const unsubscribe = ctx.controller.subscribe(() => {
+      published.push(ctx.controller.getSnapshot().account?.userId ?? null);
+    });
+    if (outcome === 'returns no session')
+      ctx.auth.signIn.mockResolvedValueOnce(null);
+    else
+      ctx.auth.signIn.mockRejectedValueOnce(new ProviderAuthError('CANCELLED'));
+    await ctx.controller.signIn('google');
+    unsubscribe();
+    // Unpublishing the account would read as an owner change downstream.
+    expect(published).not.toContain(null);
+    expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+    expect(ctx.saved()?.pendingSignIn).toBeNull();
+    expect(ctx.stored.has('justgo.auth.provider-switch-proof.v1')).toBe(false);
+    ctx.controller.dispose();
+  },
+);
+
+it('clears a link an older build left unfinished once a sign-in is verified', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.controller.dispose();
+  await ctx.storage.write({
+    ...ctx.saved()!,
+    pendingLink: {
+      provider: 'google',
+      ownerId: account.userId,
+      authUserId: account.authUserId,
+    },
+  });
+  const restarted = ctx.create();
+  await restarted.initialize();
+  await restarted.signIn('google');
+  expect(ctx.saved()?.pendingLink).toBeNull();
+  expect(restarted.getSnapshot()).toMatchObject({
+    hasPending: false,
+    provider: 'google',
+  });
+  expect(restarted.getSnapshot().account).not.toBeNull();
+  restarted.dispose();
+});
