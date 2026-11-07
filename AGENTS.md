@@ -325,10 +325,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   never `xhigh` or `max`. Anthony capped effort at `high` on 2026-11-07 to cut
   usage. `high` is the default, including for the sensitive areas below.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
-  because a resumed verifier checks only its own findings. Brief it with
-  `node scripts/quality/recheck-brief.mjs <pr>`, which quotes the newest
-  verdict's findings, scopes the check to the diff since that verdict, and asks
-  for a full re-read after a rebase that needs `re-verify` or on a sensitive PR.
+  because a resumed verifier checks only its own findings. It re-reads the
+  whole PR, not only the change since the last verdict.
 - Verifiers run on Opus at `high`. The `PreToolUse` hook
   `.claude/hooks/verifier-model.mjs` sets the model of every verifier or
   re-verifier `Agent` call. It picks Sonnet only for a re-check whose PR diff
