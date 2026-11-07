@@ -605,21 +605,25 @@ export class ManagedIdentityController {
     // published: unpublishing it would read as an owner change downstream.
     // Fence only a changed source, or one the server rejected during the sheet,
     // while it is checked, and fence any source this restore gives up on.
+    // Only a login this process already verified can skip the check.
     const unchanged =
+      this.verifiedOwner &&
       !this.networkBlocked &&
       !!candidate &&
       candidate.accessToken === unchangedToken;
     let fenced = false;
+    const fence = () => {
+      if (fenced) return;
+      fenced = true;
+      this.networkBlocked = true;
+      this.verifiedOwner = false;
+      this.reconcile();
+    };
     const fail = () => {
-      if (!fenced) {
-        fenced = true;
-        this.networkBlocked = true;
-        this.verifiedOwner = false;
-        this.reconcile();
-      }
+      fence();
       return false;
     };
-    if (!unchanged) fail();
+    if (!unchanged) fence();
     const intent = this.state().pendingSignIn;
     if (
       !candidate ||
@@ -629,53 +633,61 @@ export class ManagedIdentityController {
     )
       return fail();
     const generation = this.providerGeneration;
-    const current = () =>
+    // A same-session SDK refresh may replace the token at any await, so
+    // ownership never depends on the token. The token is checked separately.
+    const owned = () =>
       !this.disposed &&
       generation === this.providerGeneration &&
-      this.providerSession?.accessToken === candidate.accessToken &&
-      this.providerSession.authUserId === original.authUserId &&
+      this.providerSession?.authUserId === original.authUserId &&
       this.state().account?.userId === original.userId &&
       this.state().account?.authUserId === original.authUserId &&
       this.state().account?.sessionId === original.sessionId &&
       !this.state().deletion;
+    const verifies = async (token: string) => {
+      try {
+        const verified = await this.options.api.request(
+          'GET',
+          '/auth/session',
+          managedSessionResponseSchema,
+          undefined,
+          token,
+          this.lifetime.signal,
+        );
+        return (
+          verified.userId === original.userId &&
+          verified.authUserId === original.authUserId &&
+          verified.sessionId === original.sessionId
+        );
+      } catch {
+        return false;
+      }
+    };
     const proof = providerSwitchProof(this.options.secureStorage);
     const source = await proof.read();
-    if (!source || !current()) return fail();
+    if (!source || !owned()) return fail();
     this.switchingFromToken = source.token;
     try {
-      if (!unchanged) {
-        let verified: ManagedSessionResponse;
-        try {
-          verified = await this.options.api.request(
-            'GET',
-            '/auth/session',
-            managedSessionResponseSchema,
-            undefined,
-            candidate.accessToken,
-            this.lifetime.signal,
-          );
-        } catch {
-          // Failed verification leaves the source proof and destination intent retryable.
-          return fail();
-        }
-        if (
-          verified.userId !== original.userId ||
-          verified.authUserId !== original.authUserId ||
-          verified.sessionId !== original.sessionId
-        )
-          return fail();
-      }
-      if (!current()) return fail();
+      // Failed verification leaves the source proof and destination intent retryable.
+      if (!unchanged && !(await verifies(candidate.accessToken))) return fail();
+      if (!owned()) return fail();
+      const trusted = candidate.accessToken;
       await this.save({ ...this.state(), pendingSignIn: null });
-      if (!current()) {
+      const rollBack = async (restoreProof: boolean) => {
+        if (restoreProof) await proof.write(source);
         await this.save({ ...this.state(), pendingSignIn: intent });
         return fail();
-      }
+      };
+      if (!owned()) return rollBack(false);
       await proof.clear();
-      if (!current()) {
-        await proof.write(source);
-        await this.save({ ...this.state(), pendingSignIn: intent });
-        return fail();
+      if (!owned()) return rollBack(true);
+      // A rejection or refresh may have landed while the source stayed
+      // published. Re-verify whatever token the SDK holds now before reuse.
+      const token = this.providerSession?.accessToken;
+      if (token !== trusted || (this.networkBlocked && !fenced)) {
+        fence();
+        if (!token || !(await verifies(token))) return rollBack(true);
+        if (!owned() || this.providerSession?.accessToken !== token)
+          return rollBack(true);
       }
       this.networkBlocked = false;
       this.verifiedOwner = true;
@@ -707,7 +719,10 @@ export class ManagedIdentityController {
           });
         } else {
           const original = this.state().account;
-          if (original && (await this.restoreSwitchSource(session, original)))
+          if (
+            original &&
+            (await this.restoreSwitchSource(session, original, source?.token))
+          )
             return;
           // An interrupted SDK exchange cannot prove which provider completed.
           // Retain the old journal and revocation proof for an explicit sign-in.
