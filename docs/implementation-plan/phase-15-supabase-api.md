@@ -93,7 +93,7 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Depends on.** None.
 
-**Result.** `Decision: stop` on November 7, 2026. All ten lanes passed and the worst-case sync met its bound, but the health route's p95 CPU on the Edge runtime was more than twice trunk's. [Appendix A](#appendix-a-prototype-evidence) holds the evidence.
+**Result.** `Decision: stop` on November 7, 2026. All ten lanes passed and the worst-case sync met its bound, but the health route's p95 CPU on the Edge runtime was more than twice trunk's. [Appendix A](#appendix-a-prototype-evidence) holds the evidence, including how the failing route depends on the CPU reading.
 
 **Files.**
 
@@ -808,9 +808,10 @@ The probe alternated 20 rounds between the trunk Node entry and the head Edge en
 | Worst-case sync | 316              | 523             | 1,000        | 704               | 918              | Passes |
 
 - The sync's wall bound is 5,000 ms. The sync sends 2,812 queries.
-- The Edge health median is 1.18 ms against 0.81 ms on trunk. Its p95 falls in a second group of samples, 5 to 8 ms, that carry a garbage-collection pause. The CPU profiles of the same route show `(garbage collector)` samples of 2.8 to 9.9 ms in 7 of 20 Edge health requests, and 2 smaller ones on trunk.
-- The previous run with the same measurement, [run 42378770410](https://github.com/anthonyyoo24/justgo/actions/runs/42378770410) at `de2507d`, saw one pause in 20 Edge health requests and reported `Decision: go`. A p95 of 20 samples falls in the pause group once two or more requests pause. Across both runs 7 of 40 Edge health requests paused, so the stop is the stable reading.
-- Whole-process CPU also counts the trial's gateway stand-in, the inspector server and Tokio threads on Edge. By that measure the health and guest catalog routes fail in every run. The inspector profiles held no `(idle)` samples on either runtime, so profile time includes waiting, and the rule does not read it.
+- The Edge health median is 1.18 ms against 0.81 ms on trunk. Its p95 falls in a second group of samples, 5 to 8 ms, that carry a garbage-collection pause. The CPU profiles of the same route show `(garbage collector)` samples of 2.8 to 9.9 ms in 6 of 20 Edge health requests, and 2 smaller ones on trunk.
+- Each entry's turn starts with health, so a health request often follows a 4 MiB sync, the largest allocator in the script. The pauses collect garbage from earlier requests. The pauses are small against the 2,000 ms limit, but the rule compares p95 with trunk's, and trunk has one such outlier per run.
+- Two other runs with the same measurement reported `Decision: go`. [Run 42378770410](https://github.com/anthonyyoo24/justgo/actions/runs/42378770410) at `de2507d` saw one pause in 20 Edge health requests. Attempt 1 of the final run, on the same SHA, also said go, and its samples were lost when attempt 2 started. A p95 of 20 samples falls in the pause group once two or more requests pause. Run 42378770410's profiled pass shows garbage-collection time in 6 of 20 Edge health profiles, the same rate as the final run, so its single pause in the unprofiled pass was a low draw. Across the two kept runs 7 of 40 Edge health requests paused, which puts the p95 in the pause group.
+- Every CPU reading fails the trial, but the failing route depends on the reading. Whole-process CPU also counts the trial's gateway stand-in, the inspector server and Tokio threads on Edge. Before the first run the owner chose it as the fallback for profiles without `(idle)` samples, and it fails health and the guest catalog in every run. The Edge profiles held no `(idle)` samples, so Edge profile time includes waiting on Postgres. Read as CPU, the profiles pass the small routes and put the sync at a 1,032 ms p95, which is the case the rule answers with a batching section. The owner switched to the worker thread clock after the first runs because it is the clock the runtime's limit reads.
 - The sync spends about 0.18 ms of Edge worker CPU per query, against 0.10 ms on Node. The profiles put that time in socket writes and reads through Deno's `node:net` layer, `Buffer` conversions and garbage collection.
 - The loopback median of ten timed `select 1` round trips in one transaction was 0.244 ms on the first probe and 0.137 to 0.156 ms on four more.
 
