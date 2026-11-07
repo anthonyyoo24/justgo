@@ -52,7 +52,7 @@ function hasCommits(...shas) {
   );
 }
 
-test('the canonical verdict line is parsed and free-form verdicts are ignored', () => {
+test('the canonical verdict line is parsed and free-form verdicts are unreadable', () => {
   assert.deepEqual(newestVerdict([recorded.pr141Fresh]), {
     verdict: 'PASS',
     base: '959e944',
@@ -64,7 +64,11 @@ test('the canonical verdict line is parsed and free-form verdicts are ignored', 
     recorded.pr141Free,
     recorded.pr145Free,
   ])
-    assert.equal(newestVerdict([free]), undefined, free.html_url);
+    assert.deepEqual(
+      newestVerdict([free]),
+      { unreadable: true, url: free.html_url },
+      free.html_url,
+    );
   for (const line of [
     'Verifier verdict: PASS+NOTES on base `abc1234`, head `def5678`.',
     'Verifier verdict: **FAIL** on base `abc1234`, head `def5678`',
@@ -82,9 +86,40 @@ test('the canonical verdict line is parsed and free-form verdicts are ignored', 
         1,
         '> Verifier verdict: PASS on base `abc1234`, head `def5678`',
       ),
-    ]),
-    undefined,
+    ])?.unreadable,
+    true,
   );
+  assert.equal(newestVerdict([comment(1, 1, 'Thanks!')]), undefined);
+});
+
+test('a missing, heading-style or prose verdict fails with the exact format', () => {
+  const unused = () => assert.fail('verdict-patch should not run');
+  const missing = verdictStatus([comment(1, 1, 'Thanks!')], pr, unused);
+  assert.equal(missing.ok, false);
+  assert.match(
+    missing.message,
+    /waiting for an independent verdict on head bbbbbbb/i,
+  );
+  for (const body of [
+    '## Verdict: PASS+NOTES\n\nAll good at `bbbbbbb`.',
+    'Final verdict: PASS at `bbbbbbb`.',
+    '## verifier VERDICT\nPASS',
+    '**Verifier verdict:** PASS on `bbbbbbb`',
+  ]) {
+    const ok = comment(
+      1,
+      1,
+      'Verifier verdict: PASS on base `aaaaaaa`, head `bbbbbbb`',
+    );
+    const result = verdictStatus([ok, comment(1, 2, body)], pr, unused);
+    assert.equal(result.ok, false, body);
+    assert.match(result.message, /unreadable/, body);
+    assert.match(
+      result.message,
+      /Verifier verdict: PASS\|PASS\+NOTES\|FAIL on base `<base-sha>`, head `<head-sha>`/,
+      body,
+    );
+  }
 });
 
 test('the newest owner verdict wins and other authors are ignored', () => {
@@ -100,7 +135,7 @@ test('the newest owner verdict wins and other authors are ignored', () => {
   assert.equal(newestVerdict(comments)?.head, '2222222');
 });
 
-test('no verdict passes, FAIL fails, and verdict-patch decides the rest', () => {
+test('no verdict fails, FAIL fails, and verdict-patch decides the rest', () => {
   const verdict = (word) => [
     comment(
       1,
@@ -109,7 +144,7 @@ test('no verdict passes, FAIL fails, and verdict-patch decides the rest', () => 
     ),
   ];
   const unused = () => assert.fail('verdict-patch should not run');
-  assert.equal(verdictStatus([], pr, unused).ok, true);
+  assert.equal(verdictStatus([], pr, unused).ok, false);
   const failed = verdictStatus(verdict('FAIL'), pr, unused);
   assert.equal(failed.ok, false);
   assert.match(failed.message, /gh run rerun 42 --failed/);

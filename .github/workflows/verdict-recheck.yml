@@ -15,7 +15,7 @@ jobs:
     if: >-
       github.event.issue.pull_request &&
       github.event.comment.author_association == 'OWNER' &&
-      contains(github.event.comment.body, 'Verifier verdict:')
+      contains(github.event.comment.body, 'verdict')
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
