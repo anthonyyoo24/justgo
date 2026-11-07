@@ -89,6 +89,16 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "import { execSync } from 'node:child_process'; execSync('git patch-id --stable', { input: '' });",
     'scripts/quality/changes.mjs',
   ],
+  [
+    'no-restricted-globals',
+    'export const erase = (request: typeof fetch = fetch) => request;',
+    'apps/api/src/identity/managed-deletion.ts',
+  ],
+  [
+    'no-restricted-globals',
+    "export const send = () => globalThis.fetch('https://example.invalid');",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
 ]) {
   test(`lint safeguard: ${rule}`, async () => {
     const [result] = await eslint.lintText(source, {
