@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   bootstrapSchema,
+  secretSchema,
   syncPageQuerySchema,
+  transferCodeSchema,
   transferStartSchema,
 } from '@justgo/contracts';
 import { rateAddress } from '../../src/identity/address.js';
 import { readConfig } from '../../src/config.js';
-import { IdentityService } from '../../src/identity/service.js';
+import { IdentityService, digest } from '../../src/identity/service.js';
 
 describe('identity input and deployment configuration', () => {
   it('never trusts client forwarding headers outside the Vercel runtime', () => {
@@ -24,6 +26,17 @@ describe('identity input and deployment configuration', () => {
         true,
       ),
     ).toBe('127.0.0.1');
+  });
+  it('keeps stored digests as lowercase-hex SHA-256 so legacy proofs and revoked-proof tombstones still match', () => {
+    expect(digest('abc')).toBe(
+      'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+    );
+    expect(digest(secretSchema.parse('0123456789abcdef'.repeat(4)))).toBe(
+      'a8ae6e6ee929abea3afcfc5258c8ccd6f85273e0d4626d26c7279f3250f77c8e',
+    );
+    expect(digest(transferCodeSchema.parse('0123456789ABCDEF'))).toBe(
+      '2125b2c332b1113aae9bfc5e9f7e3b4c91d828cb942c2df1eeb02502eccae9e9',
+    );
   });
   it('requires an independent deployment secret and bounded identity settings', () => {
     expect(() =>
