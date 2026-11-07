@@ -11,7 +11,6 @@ implementation, phone and provider evidence.
 | Area                | Current evidence                                                                                                                                                                                                                                                                                                                                                                                                        | Limit                                                                                                                                                                                                                                               |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phone               | Genuine Google/Apple sign-in, guest preservation, online/offline synchronization, account/data deletion, native iCloud read-back and cleanup passed.                                                                                                                                                                                                                                                                    | Concurrent UI follow-up has its own phone acceptance; do not repeat or disturb it. Final replacement TestFlight is separate.                                                                                                                        |
-| API                 | Guarded code-only release of `abea5f56a2bab436f7750192643e0a335a213f29`, version `c230b339-f512-4ab4-b901-f4f2762e88c0`, deployment `7b31b03e-1cd4-4040-a2f9-5c82cc901816`, passed full release checks and provider/public readback.                                                                                                                                                                                    | Staging only. Local configuration parsing was reduced from twice to once per invocation; hosted CPU improvement is not established.                                                                                                                 |
 | Hourly copies       | Native scheduled ledger run [41531402685](https://github.com/anthonyyoo24/justgo/actions/runs/41531402685) and Cloudflare-clock ledger runs [41536825031](https://github.com/anthonyyoo24/justgo/actions/runs/41536825031), [41545030056](https://github.com/anthonyyoo24/justgo/actions/runs/41545030056) succeeded on reviewed main `d66c42d`. Independent R2 HEAD checks matched size/checksum and seven-day expiry. | Native schedules were hours late. These ledger copies do not establish scheduled nightly database execution.                                                                                                                                        |
 | Backup timer        | Approved separate Cron Worker `justgo-staging-backup-clock`, version `8dcf5dc4-5fc2-413c-aaa6-9b16f4a04b6a`, dispatched at 22:23:13 and 23:23:13 UTC. Each recorded one successful invocation/outbound request and zero errors.                                                                                                                                                                                         | No public HTTP route or database/R2/recovery-key credentials. Repository Actions write access cannot be restricted to one workflow. The tracked configuration stays disabled; preserve the protected activated configuration for later deployments. |
 | Alerts              | Owner received the actual missed-backup email. Sentry monitor `justgo-staging-backup-health` later showed successful check-ins and the incident resolved.                                                                                                                                                                                                                                                               | A short initial drill did not deliver mail. Built-in test mail alone was not treated as incident-delivery evidence. The monitor's `production` environment tag does not change its staging purpose.                                                 |
@@ -30,32 +29,17 @@ read through its analytics API. Safe receipts remain in ignored
    set for November 3 at 12:10 a.m. Toronto. Verify Cron attribution, the database
    job, encrypted object size/checksum/expiry and monitor health. The latest
    database copy before this slot was manual run `41500830932`.
-2. **Cloudflare Free suitability.** The active-version dashboard showed 110
-   invocations, zero errors, CPU p50 16.73 ms, p90 25.52 ms and p99 42.19 ms.
-   These are dashboard aggregates of the observed traffic, not a representative
-   full workload or proof of sustained reliability. The previous version's five
-   CPU-limit failures are historical and are not attributed to the current version.
-   Free's published CPU allowance is 10 ms; built-in burst flexibility explains
-   why an above-budget sample can still show no failures. Free is not accepted
-   for rollout. Keep the current plan until Anthony decides on a concrete option.
-3. **Real recovery.** Wait until phone UI testing finishes. Refresh and review all
+2. **Real recovery.** Wait until phone UI testing finishes. Refresh and review all
    source/target bindings below, then obtain specific key/source-pause approval.
    Keep the target isolated throughout; a successful test never authorizes API reopening.
-4. **Credentials and expiry.** Complete the renewal approval below before the
+3. **Credentials and expiry.** Complete the renewal approval below before the
    November 5 cutoff, then observe the November 6–8 canary removal. Expiry metadata
    and lock rejection are verified; eligibility dates and removal remain ahead.
-5. **Phase integration and release.** Review the recovery task commits and
+4. **Phase integration and release.** Review the recovery task commits and
    accepted UI changes together, obtain explicit local merge/publication
    permissions, then run combined publication gates. One final phase PR remains
    the agreed workflow. Notices/date/version, final TestFlight acceptance and
    coordinated Vercel retirement remain separate approvals and gates.
-
-The published [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
-and [pricing](https://developers.cloudflare.com/workers/platform/pricing/) were
-checked November 2. Workers Paid starts at US$5/month, including 10 million
-requests and 30 million CPU milliseconds; additional usage is charged separately.
-This is a prepared spending option, not an approved subscription or a guarantee
-that every reliability issue would be resolved. No upgrade or load test occurred.
 
 ## Prepared credential renewal approval
 
