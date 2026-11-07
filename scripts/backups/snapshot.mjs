@@ -27,6 +27,21 @@ export const ledgerTables = Object.freeze({
   managed_auth_deletions: 'user_id,auth_user_id,requested_at,completed_at',
   deleted_completion_ids: 'user_id,attempt_id',
 });
+export const dumpOnlyTables = Object.freeze([
+  'identity_rate_buckets',
+  'levels',
+  'venues',
+  'challenges',
+  'venue_cards',
+  'attempts',
+  'attempt_patch_receipts',
+  'journal_versions',
+]);
+export const dumpOnlyLedgerColumns = Object.freeze({
+  users: 'analytics_restricted_at',
+  device_transfers:
+    'code_digest,claim_digest,device_id,session_id,session_digest,verification,verification_attempts,created_at,approved_at',
+});
 export async function verifyMigrationRegistry(client, directory) {
   const registry = JSON.parse(
     await readFile(join(directory, 'meta/_journal.json'), 'utf8'),
