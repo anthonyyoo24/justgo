@@ -1731,10 +1731,24 @@ it('keeps a late token replacement fenced while verifying a refreshed source ses
     ...session,
     accessToken: 'synthetic-late-replacement-token',
   };
+  // A same-subject replacement during a switch is a different Supabase
+  // session, so the server reports another app session for it.
+  ctx.setVerifiedAccount(replacement.accessToken, {
+    ...account,
+    sessionId: uuid(61),
+  });
   ctx.setProvider(replacement);
   ctx.auth.subscribe.mock.calls[0]![0](replacement);
   verification.resolve(account);
   await switching;
+  expect(
+    ctx.calls.some(
+      ({ method, path, token }) =>
+        method === 'GET' &&
+        path === '/auth/session' &&
+        token === replacement.accessToken,
+    ),
+  ).toBe(true);
   expect(ctx.controller.currentSession()).toBeNull();
   expect(ctx.controller.getSnapshot()).toMatchObject({
     account: null,
@@ -1946,4 +1960,141 @@ it('clears a link an older build left unfinished once a sign-in is verified', as
   });
   expect(restarted.getSnapshot().account).not.toBeNull();
   restarted.dispose();
+});
+
+const proofKey = 'justgo.auth.provider-switch-proof.v1';
+const flush = async () => {
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+};
+
+it('re-verifies a source the server rejects while a cancelled switch restores it', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const verifications = () =>
+    ctx.calls.filter(
+      ({ method, path, token }) =>
+        method === 'GET' &&
+        path === '/auth/session' &&
+        token === session.accessToken,
+    ).length;
+  const before = verifications();
+  // The server now rejects the source bearer.
+  ctx.setVerifiedAccount(session.accessToken, new ApiError('SESSION_REVOKED'));
+  // Hold the restore's proof clear, so an in-flight sync request can finish.
+  const gate = deferred<void>();
+  let clearing = false;
+  ctx.secureStorage.removeItem.mockImplementation(async (key: string) => {
+    if (key === proofKey) {
+      clearing = true;
+      await gate.promise;
+    }
+    ctx.stored.delete(key);
+  });
+  ctx.auth.signIn.mockResolvedValueOnce(null);
+  const switching = ctx.controller.signIn('google');
+  for (let i = 0; i < 50 && !clearing; i++) await flush();
+  expect(clearing).toBe(true);
+  // The account stayed published, so a sync request still used the source
+  // token, and AccountClient reports the server's rejection.
+  expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+  ctx.controller.rejectSession(session.accessToken, 'SESSION_REVOKED');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    message: 'Please sign in again. Saved data remains on this phone.',
+  });
+  gate.resolve();
+  await switching;
+  const after = {
+    verificationsSinceRejection: verifications() - before,
+    currentSessionToken: ctx.controller.currentSession()?.token ?? null,
+    publishedAccount: ctx.controller.getSnapshot().account?.userId ?? null,
+    message: ctx.controller.getSnapshot().message,
+  };
+  // Intent: a server-rejected source bearer is restored only after
+  // GET /auth/session verifies it. The server rejects it, so it stays fenced.
+  expect(after).toEqual({
+    verificationsSinceRejection: 1,
+    currentSessionToken: null,
+    publishedAccount: null,
+    message: expect.stringMatching(/sign in again/),
+  });
+  ctx.controller.dispose();
+});
+
+it.each(['sheet (control)', 'reading', 'clearing'] as const)(
+  'keeps the login when an SDK refresh of the same session lands during a cancelled switch (%s)',
+  async (phase) => {
+    const ctx = setup();
+    const notifyProvider = ctx.auth.subscribe.mock.calls[0]![0];
+    await ctx.controller.initialize();
+    await ctx.controller.signIn('apple');
+    // Same Supabase session, new access token: the server verifies it as the
+    // same owner, Auth subject and app session.
+    const refreshed = { ...session, accessToken: 'refreshed-provider-token' };
+    ctx.setVerifiedAccount(refreshed.accessToken, account);
+    const refresh = () => {
+      ctx.setProvider(refreshed);
+      notifyProvider(refreshed);
+    };
+    if (phase === 'sheet (control)')
+      ctx.auth.signIn.mockImplementationOnce(async () => {
+        refresh();
+        return null;
+      });
+    else ctx.auth.signIn.mockResolvedValueOnce(null);
+    if (phase === 'reading') {
+      let reads = 0;
+      ctx.secureStorage.getItem.mockImplementation(async (key: string) => {
+        // signIn reads the proof once before the sheet; the restore reads it next.
+        if (key === proofKey && ++reads === 2) refresh();
+        return ctx.stored.get(key) ?? null;
+      });
+    } else if (phase === 'clearing')
+      ctx.secureStorage.removeItem.mockImplementation(async (key: string) => {
+        if (key === proofKey) refresh();
+        ctx.stored.delete(key);
+      });
+    await ctx.controller.signIn('google');
+    const result = {
+      account: ctx.controller.getSnapshot().account?.userId ?? null,
+      currentSessionToken: ctx.controller.currentSession()?.token ?? null,
+      offlineAccountOwner: ctx.controller.offlineAccountOwner(),
+      message: ctx.controller.getSnapshot().message,
+      directSignInFailure: ctx.controller.getSnapshot().directSignInFailure,
+      hasPending: ctx.controller.getSnapshot().hasPending,
+    };
+    // Intent: a cancel before the SDK replaces its session keeps the old login;
+    // a changed source is restored after /auth/session verifies it. The
+    // control (refresh while the sheet is open) shows that outcome.
+    expect(result).toEqual({
+      account: account.userId,
+      currentSessionToken: refreshed.accessToken,
+      offlineAccountOwner: account.userId,
+      message: '',
+      directSignInFailure: false,
+      hasPending: false,
+    });
+    ctx.controller.dispose();
+  },
+);
+
+it('keeps the source published when a web switch redirect is abandoned with Back', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  expect(ctx.saved()?.pendingSignIn?.switching).toBe(true);
+  const published: (string | null)[] = [];
+  const unsubscribe = ctx.controller.subscribe(() => {
+    published.push(ctx.controller.getSnapshot().account?.userId ?? null);
+  });
+  // The page comes back without a callback, and the SDK still holds the source.
+  await ctx.controller.retry({ background: true });
+  unsubscribe();
+  expect(published).not.toContain(null);
+  expect(ctx.controller.currentSession()?.token).toBe(session.accessToken);
+  expect(ctx.saved()?.pendingSignIn).toBeNull();
+  ctx.controller.dispose();
 });
