@@ -2,13 +2,18 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { changedPaths, patchIdOf } from './git.mjs';
 
-const reviewOnly = [
+// Files a reviewer still reads, but whose change keeps an earlier verdict.
+export const reviewOnly = [
   /\.md$/,
   /(^|\/)[^/]+\.(test|spec)\.[cm]?[jt]sx?$/,
   /(^|\/)(tests|__tests__)\//,
   /^eslint\.config\.mjs$/,
   /^\.prettier(rc|ignore)/,
 ];
+
+export function isReviewOnly(file) {
+  return reviewOnly.some((rule) => rule.test(file));
+}
 
 function git(args, { cwd } = {}) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' });
@@ -50,9 +55,7 @@ export function compare(verdict, current) {
     .sort();
   if (changed.length === 0) return { result: 'carries', changed };
   return {
-    result: changed.every((file) => reviewOnly.some((rule) => rule.test(file)))
-      ? 'docs-tests-only'
-      : 're-verify',
+    result: changed.every(isReviewOnly) ? 'docs-tests-only' : 're-verify',
     changed,
   };
 }
