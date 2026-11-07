@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { createServer, type RequestListener } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { createClient } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { createManagedAuthDeletion } from '../../src/identity/managed-deletion.js';
@@ -7,6 +9,18 @@ vi.mock('@supabase/supabase-js', { spy: true });
 
 const origin = 'https://example.supabase.co',
   key = 'sb_secret_server_only_synthetic_fixture_key';
+
+async function loopback(handler: RequestListener) {
+  const server = createServer(handler);
+  await new Promise<void>((resolve) =>
+    server.listen(0, '127.0.0.1', () => resolve()),
+  );
+  return {
+    origin: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+}
+
 describe('server-only Auth profile erasure', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockClear();
@@ -118,4 +132,31 @@ describe('server-only Auth profile erasure', () => {
       )(randomUUID()),
     ).rejects.toMatchObject({ code: 'UNAVAILABLE' });
   });
+
+  it.each([301, 302, 303, 307, 308])(
+    'fails closed on Auth redirect %s without sending the secret to its Location',
+    async (status) => {
+      const authRequests: string[] = [];
+      const locationRequests: string[] = [];
+      const location = await loopback((request, response) => {
+        locationRequests.push(`${request.method} ${request.url}`);
+        response.end('{}');
+      });
+      const auth = await loopback((request, response) => {
+        authRequests.push(`${request.method} ${request.url}`);
+        response
+          .writeHead(status, { location: `${location.origin}/collect` })
+          .end('{}');
+      });
+      try {
+        await expect(
+          createManagedAuthDeletion(auth.origin, key)(randomUUID()),
+        ).rejects.toMatchObject({ code: 'UNAVAILABLE', status: 503 });
+        expect(authRequests).toHaveLength(1);
+        expect(locationRequests).toEqual([]);
+      } finally {
+        await Promise.all([auth.close(), location.close()]);
+      }
+    },
+  );
 });
