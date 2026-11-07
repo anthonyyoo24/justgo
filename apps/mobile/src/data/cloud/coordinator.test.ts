@@ -333,11 +333,15 @@ it('rejects older server epochs before importing or uploading after a newer iClo
   expect(upload).not.toHaveBeenCalled();
 });
 
-const served = <Page>(pages: Page[]) => {
+const served = <Page extends { nextCursor: string | null }>(pages: Page[]) => {
   let next = 0;
-  return async () => {
-    const page = pages[next++];
+  return async (cursor: string | null) => {
+    const page = pages[next];
     if (!page) throw new Error('read past the last served page');
+    const expected = pages[next - 1]?.nextCursor ?? null;
+    if (cursor !== expected)
+      throw new Error(`requested cursor ${cursor} instead of ${expected}`);
+    next++;
     return page;
   };
 };
@@ -346,14 +350,21 @@ const history = Array.from({ length: 25_001 }, (_, n) => ({
   ...completion,
   id: uuid(1_000 + n),
 }));
-const reflections = history.slice(1).map((context, n): JournalSyncVersion => ({
-  versionId: uuid(100_000 + n),
-  attemptId: context.id,
-  parents: [],
-  feelingScaleVersion: 1,
-  reflection: { text: 'Synthetic history', feeling: null, revision: 1 },
-  context,
-}));
+const reflectionPages = (lastCursor: string | null) =>
+  Array.from({ length: 25 }, (_, page): JournalSyncPage => ({
+    dataEpoch: 0,
+    versions: history
+      .slice(page * 1_000, page * 1_000 + 1_000)
+      .map((context, n) => ({
+        versionId: uuid(100_000 + page * 1_000 + n),
+        attemptId: context.id,
+        parents: [],
+        feelingScaleVersion: 1,
+        reflection: { text: 'Synthetic history', feeling: null, revision: 1 },
+        context,
+      })),
+    nextCursor: page < 24 ? uuid(900_000 + page) : lastCursor,
+  }));
 
 it.each<{
   fault: string;
@@ -368,7 +379,25 @@ it.each<{
     versions: [{ dataEpoch: 1, versions: [], nextCursor: null }],
   },
   {
-    fault: 'repeats a cursor',
+    fault: 'changes epoch between two completion pages',
+    code: 'DATA_EPOCH_CHANGED',
+    completions: [
+      { dataEpoch: 0, attempts: [completion], nextCursor: uuid(500) },
+      { dataEpoch: 1, attempts: [], nextCursor: null },
+    ],
+    versions: [{ dataEpoch: 0, versions: [], nextCursor: null }],
+  },
+  {
+    fault: 'changes epoch between two version pages',
+    code: 'DATA_EPOCH_CHANGED',
+    completions: [{ dataEpoch: 0, attempts: [completion], nextCursor: null }],
+    versions: [
+      { dataEpoch: 0, versions: [], nextCursor: uuid(500) },
+      { dataEpoch: 1, versions: [], nextCursor: null },
+    ],
+  },
+  {
+    fault: 'repeats a completion cursor',
     code: 'INVALID_RESPONSE',
     completions: [
       { dataEpoch: 0, attempts: [completion], nextCursor: uuid(500) },
@@ -377,17 +406,28 @@ it.each<{
     versions: [{ dataEpoch: 0, versions: [], nextCursor: null }],
   },
   {
-    fault: 'returns 50,001 records across completions and versions',
+    fault: 'cycles version cursors A, B, A',
+    code: 'INVALID_RESPONSE',
+    completions: [{ dataEpoch: 0, attempts: [completion], nextCursor: null }],
+    versions: [
+      { dataEpoch: 0, versions: [], nextCursor: uuid(500) },
+      { dataEpoch: 0, versions: [], nextCursor: uuid(501) },
+      { dataEpoch: 0, versions: [], nextCursor: uuid(500) },
+    ],
+  },
+  {
+    fault: 'keeps paging past 50,000 records across completions and versions',
     code: 'INVALID_RESPONSE',
     completions: [{ dataEpoch: 0, attempts: history, nextCursor: null }],
-    versions: [{ dataEpoch: 0, versions: reflections, nextCursor: null }],
+    versions: reflectionPages(uuid(900_024)),
   },
 ])(
-  'rejects a download that $fault before importing or uploading',
+  'rejects a download that $fault before writing or uploading anything',
   async ({ code, completions, versions }) => {
-    const { repository, sync, remote } = setup();
+    const { repository, sync, remote, storage } = setup();
     await repository.complete(input(), card);
     const before = await repository.snapshotData();
+    const writes = storage.writes.length;
     jest
       .spyOn(remote.transport, 'completions')
       .mockImplementation(served(completions));
@@ -397,11 +437,29 @@ it.each<{
     const putCompletions = jest.spyOn(remote.transport, 'putCompletions');
     const putVersions = jest.spyOn(remote.transport, 'putVersions');
     await expect(sync.synchronize()).rejects.toMatchObject({ code });
+    expect(storage.writes.slice(writes).map(({ key }) => key)).toEqual([]);
     expect(await repository.snapshotData()).toEqual(before);
     expect(putCompletions).not.toHaveBeenCalled();
     expect(putVersions).not.toHaveBeenCalled();
   },
 );
+
+it('accepts exactly 50,000 downloaded records across both kinds and reaches the first local write', async () => {
+  const { repository, sync, remote, storage } = setup();
+  await repository.hydrate();
+  jest
+    .spyOn(remote.transport, 'completions')
+    .mockImplementation(
+      served([
+        { dataEpoch: 0, attempts: history.slice(0, 25_000), nextCursor: null },
+      ]),
+    );
+  jest
+    .spyOn(remote.transport, 'versions')
+    .mockImplementation(served(reflectionPages(null)));
+  storage.fail = true;
+  await expect(sync.synchronize()).rejects.toMatchObject({ code: 'ENOSPC' });
+});
 
 it('fences an in-flight import after logout before local writes and later journal batches', async () => {
   const { repository, sync, remote } = setup();
