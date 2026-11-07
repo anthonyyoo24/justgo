@@ -75,10 +75,29 @@ test('restore rejects invalid acceptance options before reading artifacts or usi
     { beforeReconcile: true },
     { preserveOwnership: 'true' },
     { unknown: () => {} },
+    Object.create({ preserveOwnership: 'false' }),
+    Object.create({ preserveOwnership: true }),
+    Object.defineProperty({}, 'preserveOwnership', { value: 'false' }),
+    { [Symbol('preserveOwnership')]: true },
   ])
     await assert.rejects(restoreLocal({}, hooks), {
       message: 'Invalid closed-target recovery options',
     });
+  for (const hooks of [
+    {},
+    Object.assign(Object.create(null), { preserveOwnership: true }),
+    { preserveOwnership: false, beforeReconcile() {}, afterReconcile() {} },
+  ])
+    await assert.rejects(
+      restoreLocal(
+        {
+          JUSTGO_RESTORE_DATABASE_URL:
+            'postgres://postgres@db.example.com/justgo_restore_abcdef012345',
+        },
+        hooks,
+      ),
+      { message: 'Restore requires a dedicated disposable loopback database' },
+    );
 });
 
 test('policy requires exact separately approved bytes and compatible ledger/expiry periods', () => {
