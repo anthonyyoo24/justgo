@@ -601,11 +601,25 @@ export class ManagedIdentityController {
     original: ManagedSessionResponse,
     unchangedToken?: string,
   ) {
-    // A source the server rejected during the sheet is re-verified before reuse.
-    const sourceRejected = this.networkBlocked;
-    this.networkBlocked = true;
-    this.verifiedOwner = false;
-    this.reconcile();
+    // A plain cancel leaves the SDK on the verified source, so its login stays
+    // published: unpublishing it would read as an owner change downstream.
+    // Fence only a changed source, or one the server rejected during the sheet,
+    // while it is checked, and fence any source this restore gives up on.
+    const unchanged =
+      !this.networkBlocked &&
+      !!candidate &&
+      candidate.accessToken === unchangedToken;
+    let fenced = false;
+    const fail = () => {
+      if (!fenced) {
+        fenced = true;
+        this.networkBlocked = true;
+        this.verifiedOwner = false;
+        this.reconcile();
+      }
+      return false;
+    };
+    if (!unchanged) fail();
     const intent = this.state().pendingSignIn;
     if (
       !candidate ||
@@ -613,7 +627,7 @@ export class ManagedIdentityController {
       intent.authenticated ||
       candidate.authUserId !== original.authUserId
     )
-      return false;
+      return fail();
     const generation = this.providerGeneration;
     const current = () =>
       !this.disposed &&
@@ -626,10 +640,10 @@ export class ManagedIdentityController {
       !this.state().deletion;
     const proof = providerSwitchProof(this.options.secureStorage);
     const source = await proof.read();
-    if (!source || !current()) return false;
+    if (!source || !current()) return fail();
     this.switchingFromToken = source.token;
     try {
-      if (sourceRejected || candidate.accessToken !== unchangedToken) {
+      if (!unchanged) {
         let verified: ManagedSessionResponse;
         try {
           verified = await this.options.api.request(
@@ -642,26 +656,26 @@ export class ManagedIdentityController {
           );
         } catch {
           // Failed verification leaves the source proof and destination intent retryable.
-          return false;
+          return fail();
         }
         if (
           verified.userId !== original.userId ||
           verified.authUserId !== original.authUserId ||
           verified.sessionId !== original.sessionId
         )
-          return false;
+          return fail();
       }
-      if (!current()) return false;
+      if (!current()) return fail();
       await this.save({ ...this.state(), pendingSignIn: null });
       if (!current()) {
         await this.save({ ...this.state(), pendingSignIn: intent });
-        return false;
+        return fail();
       }
       await proof.clear();
       if (!current()) {
         await proof.write(source);
         await this.save({ ...this.state(), pendingSignIn: intent });
-        return false;
+        return fail();
       }
       this.networkBlocked = false;
       this.verifiedOwner = true;
@@ -816,6 +830,9 @@ export class ManagedIdentityController {
         ? { ownerId: account.userId, status: 'copied' }
         : this.state().guestAdoption,
       pendingSignIn: null,
+      // A verified sign-in supersedes a link an older build left unfinished;
+      // Account no longer offers linking, so nothing else would clear it.
+      pendingLink: null,
       provider: intent.provider,
       deleted: false,
     });
