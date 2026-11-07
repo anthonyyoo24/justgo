@@ -24,15 +24,11 @@ function hookClient(client: PoolClient) {
     queries++;
     const first = args[0];
     const config: QueryConfig =
-      typeof first === 'string'
-        ? { text: first, values: args[1] as unknown[] }
-        : ((first as QueryConfig) ?? {});
+      typeof first === 'string' ? { text: first } : ((first as QueryConfig) ?? {});
     const text = config.text ?? '';
-    if (
-      failpoint &&
-      /set_config/.test(text) &&
-      config.values?.[0] === 'app.user_id'
-    )
+    // Drizzle passes { text } first and the parameters as the second argument.
+    const values = config.values ?? (args[1] as unknown[] | undefined);
+    if (failpoint && /set_config/.test(text) && values?.[0] === 'app.user_id')
       ownerContextSet = true;
     const result = query(...args);
     if (

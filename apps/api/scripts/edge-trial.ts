@@ -174,7 +174,8 @@ const tlsEdgeEnv = (): Env => {
 };
 
 // ---------- bundles ----------
-type BundleKind = 'bundled' | 'npm-pg';
+type BundleKind = 'bundled' | 'npm-pg' | 'npm-pg-buffer';
+const kinds: BundleKind[] = ['bundled', 'npm-pg', 'npm-pg-buffer'];
 const banners: Record<BundleKind, string> = {
   bundled: [
     "import { createRequire as __trialCreateRequire } from 'node:module';",
@@ -186,6 +187,11 @@ const banners: Record<BundleKind, string> = {
   ].join('\n'),
   'npm-pg': [
     "import { createRequire as __trialCreateRequire } from 'node:module';",
+    'const require = __trialCreateRequire(import.meta.url);',
+  ].join('\n'),
+  'npm-pg-buffer': [
+    "import { createRequire as __trialCreateRequire } from 'node:module';",
+    "import { Buffer } from 'node:buffer';",
     'const require = __trialCreateRequire(import.meta.url);',
   ].join('\n'),
 };
@@ -202,7 +208,7 @@ async function bundle(entry: string, outfile: string, kind: BundleKind) {
     logLevel: 'error',
     banner: { js: banners[kind] },
     external:
-      kind === 'npm-pg'
+      kind !== 'bundled'
         ? ['pg', 'pg-native', 'pg-cloudflare']
         : ['pg-native', 'pg-cloudflare'],
     alias: {
@@ -226,7 +232,7 @@ async function bundle(entry: string, outfile: string, kind: BundleKind) {
 
 async function buildFunctions() {
   const results = [];
-  for (const kind of ['bundled', 'npm-pg'] as const) {
+  for (const kind of kinds) {
     const dir = resolve(out, 'functions', kind);
     await mkdir(resolve(dir, 'dist'), { recursive: true });
     await cp(resolve(root, 'supabase/functions/api/index.ts'), `${dir}/index.ts`);
@@ -306,7 +312,7 @@ const cliLimits = { cpuSoftMs: 1000, cpuHardMs: 2000, memoryMb: 256, wallMs: 150
 const noLimits = { cpuSoftMs: 0, cpuHardMs: 0, memoryMb: 256, wallMs: 3_600_000 };
 const functionDir = (kind: BundleKind) => `/repo/.local/edge-trial/functions/${kind}`;
 const importMap = (kind: BundleKind) =>
-  kind === 'npm-pg' ? `${functionDir(kind)}/deno.json` : undefined;
+  kind === 'bundled' ? undefined : `${functionDir(kind)}/deno.json`;
 
 async function startEdge(
   name: string,
@@ -1307,6 +1313,8 @@ type Sample = {
   status: number;
   wallMs: number;
   processCpuMs?: number;
+  threadCpuMs?: Record<string, number>;
+  isolateCpuMs?: number;
   profileCpuMs?: number;
   profileJsMs?: number;
   profileIdleMs?: number;
@@ -1314,26 +1322,41 @@ type Sample = {
 };
 type Route = 'health' | 'guest catalog' | 'attempt write' | 'worst sync';
 const routes: Route[] = ['health', 'guest catalog', 'attempt write', 'worst sync'];
+type Threads = Map<string, { comm: string; ns: number }>;
 
-async function processCpuNs(pid: number) {
-  const read = async () => {
-    const tasks = await readdir(`/proc/${pid}/task`);
-    let total = 0;
-    for (const task of tasks) {
-      const text = await readFile(`/proc/${pid}/task/${task}/schedstat`, 'utf8').catch(() => '0');
-      total += Number(text.split(' ')[0] ?? '0');
-    }
-    return total;
-  };
+/** On-CPU nanoseconds per thread from /proc/<pid>/task/<tid>/schedstat. */
+async function threadCpu(pid: number): Promise<Threads> {
+  const threads: Threads = new Map();
   try {
-    return await read();
+    for (const tid of await readdir(`/proc/${pid}/task`)) {
+      const stat = await readFile(`/proc/${pid}/task/${tid}/schedstat`, 'utf8').catch(() => '');
+      const comm = await readFile(`/proc/${pid}/task/${tid}/comm`, 'utf8').catch(() => '?');
+      if (stat) threads.set(tid, { comm: comm.trim(), ns: Number(stat.split(' ')[0]) });
+    }
+    if (threads.size) return threads;
   } catch {
-    const { stdout } = await run('sudo', ['-n', 'sh', '-c', `cat /proc/${pid}/task/*/schedstat`]);
-    return stdout
-      .trim()
-      .split('\n')
-      .reduce((sum, line) => sum + Number(line.split(' ')[0] ?? '0'), 0);
+    /* fall back to sudo below */
   }
+  const { stdout } = await run('sudo', [
+    '-n',
+    'sh',
+    '-c',
+    `for t in /proc/${pid}/task/*; do printf '%s\\t%s\\t%s\\n' "\${t##*/}" "$(cat "$t/comm")" "$(cut -d' ' -f1 "$t/schedstat")"; done`,
+  ]);
+  for (const line of stdout.trim().split('\n')) {
+    const [tid, comm, ns] = line.split('\t');
+    if (tid) threads.set(tid, { comm: comm ?? '?', ns: Number(ns) });
+  }
+  return threads;
+}
+
+function threadDelta(before: Threads, after: Threads) {
+  const delta: Record<string, number> = {};
+  for (const [tid, item] of after) {
+    const ms = (item.ns - (before.get(tid)?.ns ?? 0)) / 1e6;
+    if (ms > 0) delta[tid] = ms;
+  }
+  return delta;
 }
 
 class Inspector {
@@ -1439,10 +1462,6 @@ async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: 
     node: (await Inspector.connect(`http://127.0.0.1:${nodeInspectPort}`)).inspector,
     edge: edgeInspector.inspector,
   };
-  for (const inspector of Object.values(inspectors)) {
-    await inspector.send('Profiler.enable');
-    await inspector.send('Profiler.setSamplingInterval', { interval: 100 });
-  }
   const samples: Sample[] = [];
   const profileDir = resolve(out, 'profiles');
   await mkdir(profileDir, { recursive: true });
@@ -1470,14 +1489,18 @@ async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: 
   // Warm both entries once per route before measuring.
   for (const which of ['node', 'edge'] as const)
     for (const route of routes) await request(which, route);
+  // Plain pass first: per-thread CPU and wall with the profiler off.
+  const comms: Record<'node' | 'edge', Record<string, string>> = { node: {}, edge: {} };
   for (let round = 1; round <= rounds; round++) {
     const order = round % 2 ? (['node', 'edge'] as const) : (['edge', 'node'] as const);
     for (const which of order) {
       const pid = entries[which].pid!;
       for (const route of routes) {
-        const before = await processCpuNs(pid);
+        const before = await threadCpu(pid);
         const plain = await request(which, route);
-        const after = await processCpuNs(pid);
+        const after = await threadCpu(pid);
+        for (const [tid, item] of after) comms[which][tid] = item.comm;
+        const delta = threadDelta(before, after);
         samples.push({
           pass: 'plain',
           entry: which,
@@ -1485,9 +1508,36 @@ async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: 
           route,
           status: plain.status,
           wallMs: plain.wallMs,
-          processCpuMs: (after - before) / 1e6,
+          processCpuMs: Object.values(delta).reduce((sum, ms) => sum + ms, 0),
+          threadCpuMs: delta,
           queries: Number(plain.headers['x-justgo-trial-queries'] ?? 'NaN'),
         });
+      }
+    }
+    console.info(`perf plain round ${round} done`);
+  }
+  // The isolate thread runs the app's JavaScript: Node's main thread, and the
+  // Edge thread that spent the most CPU on the worst-case syncs.
+  const edgeSyncCpu: Record<string, number> = {};
+  for (const sample of samples)
+    if (sample.entry === 'edge' && sample.route === 'worst sync')
+      for (const [tid, ms] of Object.entries(sample.threadCpuMs ?? {}))
+        edgeSyncCpu[tid] = (edgeSyncCpu[tid] ?? 0) + ms;
+  const isolateThread = {
+    node: String(entries.node.pid),
+    edge: Object.entries(edgeSyncCpu).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '',
+  };
+  for (const sample of samples)
+    sample.isolateCpuMs = sample.threadCpuMs?.[isolateThread[sample.entry]] ?? 0;
+  // Profiled pass second, for the CPU profiles the plan asks for.
+  for (const inspector of Object.values(inspectors)) {
+    await inspector.send('Profiler.enable');
+    await inspector.send('Profiler.setSamplingInterval', { interval: 100 });
+  }
+  for (let round = 1; round <= rounds; round++) {
+    const order = round % 2 ? (['node', 'edge'] as const) : (['edge', 'node'] as const);
+    for (const which of order) {
+      for (const route of routes) {
         const inspector = inspectors[which];
         await inspector.send('Profiler.start');
         const profiled = await request(which, route);
@@ -1508,12 +1558,20 @@ async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: 
         });
       }
     }
-    console.info(`perf round ${round} done`);
+    console.info(`perf profiled round ${round} done`);
   }
   for (const inspector of Object.values(inspectors)) inspector.close();
   const facts = (await call(edge, 'GET', '/__trial/runtime')).body;
   await stopEdge(container.name);
-  return { samples, select1, edgeTargets, edgeWorker: facts };
+  return {
+    samples,
+    select1,
+    edgeTargets,
+    edgeWorker: facts,
+    isolateThread,
+    threadNames: comms,
+    edgeSyncCpuByThread: edgeSyncCpu,
+  };
 }
 
 // ---------- statistics and report ----------
@@ -1542,6 +1600,7 @@ function summarize(samples: Sample[]) {
       const js = pick(entry, route, 'profiled', 'profileJsMs');
       const idle = pick(entry, route, 'profiled', 'profileIdleMs');
       const processCpu = pick(entry, route, 'plain', 'processCpuMs');
+      const isolateCpu = pick(entry, route, 'plain', 'isolateCpuMs');
       const wall = pick(entry, route, 'plain', 'wallMs');
       const queries = pick(entry, route, 'plain', 'queries');
       const statuses = [...new Set(samples.filter((s) => s.entry === entry && s.route === route).map((s) => s.status))];
@@ -1554,6 +1613,7 @@ function summarize(samples: Sample[]) {
         profileJs: { median: median(js), p95: p95(js) },
         profileIdleTotal: idle.reduce((sum, value) => sum + value, 0),
         processCpu: { median: median(processCpu), p95: p95(processCpu), max: Math.max(...processCpu) },
+        isolateCpu: { median: median(isolateCpu), p95: p95(isolateCpu), max: Math.max(...isolateCpu) },
         wall: { median: median(wall), p95: p95(wall), max: Math.max(...wall) },
         queries: queries.length ? median(queries) : undefined,
       };
@@ -1579,7 +1639,7 @@ async function main() {
   const nodeLegacy = await startNode('node-legacy2', 3102, legacyEnv());
 
   const laneMeta: Record<string, unknown> = {};
-  for (const kind of ['bundled', 'npm-pg'] as const) {
+  for (const kind of kinds) {
     const container = await startEdge(`edge-trial-lanes-${kind}`, 9100, 'per_request', [
       { name: `${kind}-managed`, functionDir: functionDir(kind), importMap: importMap(kind), env: managedEdgeEnv(), ...cliLimits },
       { name: `${kind}-legacy2`, functionDir: functionDir(kind), importMap: importMap(kind), env: legacyEdgeEnv(), ...cliLimits },
@@ -1595,8 +1655,7 @@ async function main() {
   }
   const passes = (kind: string) =>
     (laneResults[kind] ?? []).filter((item) => item.lane >= 1 && item.pass).length;
-  const chosen: BundleKind =
-    passes('bundled') >= passes('npm-pg') ? 'bundled' : 'npm-pg';
+  const chosen = kinds.reduce((best, kind) => (passes(kind) > passes(best) ? kind : best));
 
   const harnessErrors: string[] = [];
   const failure = (stage: string, error: unknown) =>
@@ -1618,15 +1677,26 @@ async function main() {
   const samples = perf?.samples ?? [];
   const table = summarize(samples);
   await writeFile(resolve(out, 'perf-samples.json'), mask(samples));
-  await writeFile(resolve(out, 'perf-summary.json'), mask({ table, select1: perf?.select1, edgeTargets: perf?.edgeTargets, edgeWorker: perf?.edgeWorker, harnessErrors }));
+  await writeFile(
+    resolve(out, 'perf-summary.json'),
+    mask({
+      table,
+      select1: perf?.select1,
+      edgeTargets: perf?.edgeTargets,
+      edgeWorker: perf?.edgeWorker,
+      isolateThread: perf?.isolateThread,
+      threadNames: perf?.threadNames,
+      edgeSyncCpuByThread: perf?.edgeSyncCpuByThread,
+      harnessErrors,
+    }),
+  );
 
   const row = (route: Route, entry: 'node' | 'edge') =>
     table.find((item) => item.route === route && item.entry === entry && item.n > 0);
   const idleSeen = (row('health', 'edge')?.profileIdleTotal ?? 0) > 0;
-  const cpuOf = (route: Route, entry: 'node' | 'edge') => {
-    const item = row(route, entry);
-    return item ? (idleSeen ? item.profileCpu : item.processCpu) : { median: NaN, p95: NaN, max: NaN };
-  };
+  const missing = { median: NaN, p95: NaN, max: NaN };
+  const cpuOf = (route: Route, entry: 'node' | 'edge') => row(route, entry)?.isolateCpu ?? missing;
+  const processOf = (route: Route, entry: 'node' | 'edge') => row(route, entry)?.processCpu ?? missing;
   const sync = row('worst sync', 'edge');
   const syncCpu = cpuOf('worst sync', 'edge').p95;
   const syncWall = sync?.wall.p95 ?? NaN;
@@ -1636,6 +1706,8 @@ async function main() {
     edgeP95: cpuOf(route, 'edge').p95,
     nodeP95: cpuOf(route, 'node').p95,
     fails: !(cpuOf(route, 'edge').p95 <= 2 * cpuOf(route, 'node').p95),
+    processEdgeP95: processOf(route, 'edge').p95,
+    processNodeP95: processOf(route, 'node').p95,
   }));
   const allStatusesOk = samples.length > 0 && samples.every((s) => s.status === 200 || s.status === 201);
   const lanesChosen = (laneResults[chosen] ?? []).filter((item) => item.lane >= 1);
@@ -1661,10 +1733,11 @@ async function main() {
     lines.push(`| \`${item.entry}\` | ${item.kind} | ${item.bytes} | \`${item.sha256.slice(0, 16)}\` | ${item.externals.join(', ')} |`);
   lines.push('', `Banner for bundled pg: \`${banners.bundled.replaceAll('\n', ' ')}\``);
   lines.push('', `Banner for npm pg: \`${banners['npm-pg'].replaceAll('\n', ' ')}\``);
+  lines.push('', `Banner for npm pg with Buffer: \`${banners['npm-pg-buffer'].replaceAll('\n', ' ')}\``);
   lines.push('', '## Runtime facts', '');
   for (const [kind, meta] of Object.entries(laneMeta)) lines.push(`- ${kind}: \`${JSON.stringify(meta)}\``);
   lines.push('', '## Lanes', '');
-  for (const kind of ['bundled', 'npm-pg']) {
+  for (const kind of kinds) {
     lines.push(`### pg ${kind}`, '', '| Lane | Receipt | Result | Detail |', '| --- | --- | --- | --- |');
     for (const item of laneResults[kind] ?? [])
       lines.push(`| ${item.lane || 'TLS'} | \`receipts/${kind}/${item.slug}\` | ${item.pass ? 'pass' : 'fail'} | ${item.summary.replaceAll('|', '/')} |`);
@@ -1680,16 +1753,16 @@ async function main() {
     lines.push('');
   }
   lines.push('## Perf', '');
-  lines.push(`CPU source for the rule: ${idleSeen ? 'inspector profiles (non-idle samples at 100 us)' : 'whole-process CPU from /proc schedstat, because the Edge profiles held no idle samples'}. Wall time comes from the unprofiled pass.`, '');
-  lines.push('| Route | Entry | n | Profile CPU median / p95 ms | Profile JS+GC median ms | Process CPU median / p95 ms | Wall median / p95 / max ms | Queries | Statuses |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  lines.push(`CPU source for the rule: on-CPU time of the isolate thread from /proc/<pid>/task/<tid>/schedstat in the unprofiled pass. That is Node's main thread and the Edge user worker thread (\`${perf?.isolateThread.edge}\` named \`${perf?.threadNames.edge[perf?.isolateThread.edge ?? ''] ?? '?'}\`), the clock the runtime's own CPU limit reads. Process CPU sums every thread, which on Edge includes the trial main service that stands in for the gateway, the inspector server and Tokio threads. The profiles held ${idleSeen ? 'idle samples' : 'no (idle) samples on either runtime, so profile time includes waiting and only JS+GC samples bound CPU from below'}. Wall time comes from the unprofiled pass.`, '');
+  lines.push('| Route | Entry | n | Isolate CPU median / p95 / max ms | Process CPU median / p95 ms | Profile JS+GC median ms | Wall median / p95 / max ms | Queries | Statuses |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const item of table)
-    lines.push(`| ${item.route} | ${item.entry === 'node' ? 'trunk Node' : 'head Edge'} | ${item.n} | ${fixed(item.profileCpu.median)} / ${fixed(item.profileCpu.p95)} | ${fixed(item.profileJs.median)} | ${fixed(item.processCpu.median)} / ${fixed(item.processCpu.p95)} | ${fixed(item.wall.median, 0)} / ${fixed(item.wall.p95, 0)} / ${fixed(item.wall.max, 0)} | ${item.queries ?? 'n/a'} | ${item.statuses.join(',')} |`);
+    lines.push(`| ${item.route} | ${item.entry === 'node' ? 'trunk Node' : 'head Edge'} | ${item.n} | ${fixed(item.isolateCpu.median)} / ${fixed(item.isolateCpu.p95)} / ${fixed(item.isolateCpu.max)} | ${fixed(item.processCpu.median)} / ${fixed(item.processCpu.p95)} | ${fixed(item.profileJs.median)} | ${fixed(item.wall.median, 0)} / ${fixed(item.wall.p95, 0)} / ${fixed(item.wall.max, 0)} | ${item.queries ?? 'n/a'} | ${item.statuses.join(',')} |`);
   lines.push('', `Worst-case sync query count: ${sync?.queries ?? 'n/a'} per request (counted at the pg client, BEGIN and COMMIT included).`);
   lines.push(`Loopback select 1 median of ten timed round trips in one transaction after one untimed query: ${select1Medians.map((value) => fixed(value, 3)).join(', ')} ms over five probes; first probe ${fixed(select1Medians[0], 3)} ms.`);
   lines.push('', '## Rule', '');
-  lines.push(`- Worst-case sync p95 CPU ${fixed(syncCpu)} ms (limit 1,000) and p95 wall ${fixed(syncWall, 0)} ms (limit 5,000): ${syncFails ? 'fails' : 'passes'}.`);
+  lines.push(`- Worst-case sync p95 isolate CPU ${fixed(syncCpu)} ms (limit 1,000) and p95 wall ${fixed(syncWall, 0)} ms (limit 5,000): ${syncFails ? 'fails' : 'passes'}. Process CPU p95 for comparison: ${fixed(processOf('worst sync', 'edge').p95)} ms.`);
   for (const item of smallRoutes)
-    lines.push(`- ${item.route} Edge p95 CPU ${fixed(item.edgeP95, 2)} ms against twice trunk p95 ${fixed(2 * item.nodeP95, 2)} ms: ${item.fails ? 'fails' : 'passes'}.`);
+    lines.push(`- ${item.route} Edge p95 isolate CPU ${fixed(item.edgeP95, 2)} ms against twice trunk p95 ${fixed(2 * item.nodeP95, 2)} ms: ${item.fails ? 'fails' : 'passes'}. Process CPU for comparison: Edge p95 ${fixed(item.processEdgeP95, 2)} ms, trunk p95 ${fixed(item.processNodeP95, 2)} ms.`);
   lines.push(`- Every perf request returned 200 or 201: ${allStatusesOk}.`);
   lines.push(`- All ten lanes pass on ${chosen}: ${lanesPass}.`);
   for (const error of harnessErrors) lines.push(`- Harness error: ${error}`);
