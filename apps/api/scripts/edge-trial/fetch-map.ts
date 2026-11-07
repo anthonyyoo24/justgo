@@ -1,4 +1,3 @@
-/** Route the synthetic Auth and Sentry origins to loopback stubs and refuse every other origin. */
 export function installFetchMap(serialized: string | undefined) {
   const map = JSON.parse(serialized ?? '{}') as Record<string, string>;
   const original = globalThis.fetch;

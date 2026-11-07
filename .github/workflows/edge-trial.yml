@@ -1,6 +1,4 @@
 name: Edge runtime trial
-# P15-1 prototype on the throwaway phase15/edge-trial branch. No secrets, no
-# deploys and no hosted Supabase project: everything runs on this runner.
 on:
   push:
     branches: [phase15/edge-trial]

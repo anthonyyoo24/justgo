@@ -1,4 +1,3 @@
-import { isIP } from 'node:net';
 import { readConfig } from './config.js';
 import { createDatabase } from './db/client.js';
 import { createHttpApp } from './http/app.js';
@@ -20,11 +19,7 @@ export function edgeConfigEnvironment(env: Environment): Environment {
   };
 }
 
-// P15-2 records which header the Supabase gateway owns. Until then no header is trusted.
-function edgeClientAddress(request: Request) {
-  const address = request.headers.get('cf-connecting-ip') ?? '';
-  return isIP(address) ? address : 'unknown';
-}
+const unprovenClientAddress = 'unknown';
 
 export function stripFunctionPrefix(request: Request) {
   const url = new URL(request.url);
@@ -51,7 +46,6 @@ function startupFailure(stage: StartupStage) {
   return failed;
 }
 
-/** Compose the app and its one-connection pool once per Edge worker. */
 export function createEdgeHandler(
   env: Environment,
   options: { onDatabase?: (database: Database) => void } = {},
@@ -64,7 +58,7 @@ export function createEdgeHandler(
     options.onDatabase?.(database);
     stage = 'composition';
     const app = buildRuntimeApp(config, database, {
-      clientAddress: (context) => edgeClientAddress(context.req.raw),
+      clientAddress: () => unprovenClientAddress,
     });
     return {
       database,

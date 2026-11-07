@@ -1,7 +1,3 @@
-// P15-1 local runtime trial. Runs only in .github/workflows/edge-trial.yml on
-// the throwaway phase15/edge-trial branch: it builds the Edge bundle, serves it
-// on the pinned supabase/edge-runtime image against loopback justgo_test, runs
-// the ten live lanes and the perf probe, and writes .local/edge-trial/.
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { openSync, readFileSync } from 'node:fs';
@@ -49,7 +45,6 @@ if (
 const caPem = readFileSync(required('EDGE_TRIAL_DB_CA'), 'utf8');
 const admin = new Pool({ connectionString: adminUrl.toString(), ssl: false });
 
-// ---------- shared values ----------
 const authOrigin = 'https://justgo-auth.trial.invalid';
 const sentryOrigin = 'https://o1.ingest.us.sentry.io';
 const publishableKey = `sb_publishable_${randomBytes(12).toString('hex')}`;
@@ -67,7 +62,6 @@ const mask = (value: unknown) => {
   return text;
 };
 
-// ---------- stubs ----------
 const authTokens = new Map<string, string>();
 const authCalls = { ok: 0, rejected: 0, wrongKey: 0 };
 const envelopes: { receivedAt: string; text: string }[] = [];
@@ -120,7 +114,6 @@ const sentryStub = createServer((request, response) => {
   });
 });
 
-// ---------- environments ----------
 type Env = Record<string, string>;
 let fetchMap = '';
 
@@ -174,7 +167,6 @@ const tlsEdgeEnv = (): Env => {
   };
 };
 
-// ---------- bundles ----------
 type BundleKind = 'bundled' | 'npm-pg' | 'npm-pg-buffer';
 const kinds: BundleKind[] = ['bundled', 'npm-pg', 'npm-pg-buffer'];
 const banners: Record<BundleKind, string> = {
@@ -236,7 +228,10 @@ async function buildFunctions() {
   for (const kind of kinds) {
     const dir = resolve(out, 'functions', kind);
     await mkdir(resolve(dir, 'dist'), { recursive: true });
-    await cp(resolve(root, 'supabase/functions/api/index.ts'), `${dir}/index.ts`);
+    await cp(
+      resolve(root, 'supabase/functions/api/index.ts'),
+      `${dir}/index.ts`,
+    );
     await cp(
       resolve(root, 'supabase/functions/api/deno.json'),
       `${dir}/deno.json`,
@@ -259,7 +254,6 @@ async function buildFunctions() {
   return results;
 }
 
-// ---------- processes ----------
 const children: ChildProcess[] = [];
 const containers: string[] = [];
 
@@ -277,13 +271,19 @@ async function startNode(
       '--import',
       'tsx',
       '--import',
-      pathToFileURL(resolve(root, 'apps/api/scripts/edge-trial/node-preload.ts'))
-        .href,
+      pathToFileURL(
+        resolve(root, 'apps/api/scripts/edge-trial/node-preload.ts'),
+      ).href,
       resolve(root, 'apps/api/src/server.ts'),
     ],
     {
       cwd: root,
-      env: { PATH: process.env.PATH, HOME: process.env.HOME, ...env, PORT: String(port) },
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        ...env,
+        PORT: String(port),
+      },
       stdio: ['ignore', log, log],
     },
   );
@@ -309,9 +309,20 @@ type Variant = {
   memoryMb: number;
   wallMs: number;
 };
-const cliLimits = { cpuSoftMs: 1000, cpuHardMs: 2000, memoryMb: 256, wallMs: 150_000 };
-const noLimits = { cpuSoftMs: 0, cpuHardMs: 0, memoryMb: 256, wallMs: 3_600_000 };
-const functionDir = (kind: BundleKind) => `/repo/.local/edge-trial/functions/${kind}`;
+const cliLimits = {
+  cpuSoftMs: 1000,
+  cpuHardMs: 2000,
+  memoryMb: 256,
+  wallMs: 150_000,
+};
+const noLimits = {
+  cpuSoftMs: 0,
+  cpuHardMs: 0,
+  memoryMb: 256,
+  wallMs: 3_600_000,
+};
+const functionDir = (kind: BundleKind) =>
+  `/repo/.local/edge-trial/functions/${kind}`;
 const importMap = (kind: BundleKind) =>
   kind === 'bundled' ? undefined : `${functionDir(kind)}/deno.json`;
 
@@ -350,7 +361,9 @@ async function startEdge(
   ]);
   containers.push(name);
   const pid = Number(
-    (await run('docker', ['inspect', '-f', '{{.State.Pid}}', name])).stdout.trim(),
+    (
+      await run('docker', ['inspect', '-f', '{{.State.Pid}}', name])
+    ).stdout.trim(),
   );
   const origin = `http://127.0.0.1:${port}`;
   const deadline = Date.now() + 60_000;
@@ -376,7 +389,6 @@ async function stopEdge(name: string) {
   await run('docker', ['rm', '-f', name]).catch(() => undefined);
 }
 
-// ---------- HTTP ----------
 type Entry = {
   name: string;
   origin: string;
@@ -406,7 +418,8 @@ async function call(
   } = {},
 ): Promise<Reply> {
   const payload =
-    options.raw ?? (options.body === undefined ? undefined : JSON.stringify(options.body));
+    options.raw ??
+    (options.body === undefined ? undefined : JSON.stringify(options.body));
   const start = performance.now();
   const response = await fetch(entry.origin + entry.prefix + path, {
     method,
@@ -455,7 +468,6 @@ async function waitFor(entry: Entry, path: string, timeoutMs = 60_000) {
   );
 }
 
-// ---------- fixtures ----------
 type ManagedUser = {
   authUserId: string;
   sessionId: string;
@@ -510,7 +522,9 @@ async function exchange(
     body: { deviceId: identity.deviceId },
   });
   if (reply.status !== 200)
-    throw new Error(`${entry.name} exchange returned ${reply.status} ${reply.text.slice(0, 200)}`);
+    throw new Error(
+      `${entry.name} exchange returned ${reply.status} ${reply.text.slice(0, 200)}`,
+    );
   const body = reply.body as { userId: string; dataEpoch: number };
   return { ...identity, userId: body.userId, dataEpoch: body.dataEpoch };
 }
@@ -539,17 +553,22 @@ async function deleteUser(userId: string) {
   await admin.query('delete from justgo.users where id=$1', [userId]);
 }
 
-/** Install the Auth fixture schema and the audited live-session helper, as CI's database tests do. */
 async function prepareDatabase() {
   for (const role of ['anon', 'authenticated', 'service_role'])
-    if (!(await admin.query('select 1 from pg_roles where rolname=$1', [role])).rowCount)
+    if (
+      !(await admin.query('select 1 from pg_roles where rolname=$1', [role]))
+        .rowCount
+    )
       await admin.query(`create role ${role} nologin`);
   await admin.query(`create schema if not exists auth authorization postgres;
     create table if not exists auth.sessions (
       id uuid primary key, user_id uuid not null, not_after timestamptz
     );`);
   await admin.query(
-    readFileSync(resolve(root, 'apps/api/scripts/managed-auth/session-check-v1.sql'), 'utf8'),
+    readFileSync(
+      resolve(root, 'apps/api/scripts/managed-auth/session-check-v1.sql'),
+      'utf8',
+    ),
   );
 }
 
@@ -614,22 +633,31 @@ const maxBody = 4 * 1024 * 1024;
 const worstTarget = maxBody - 40_000;
 const syncStart = new Date(now - 2 * 3600_000);
 
-/** 50 versions of 50 parents each, padded to just under the 4 MiB body bound. */
+const versionsPerBatch = 50;
+const maxTextLength = 10_000;
+const paddedFields = versionsPerBatch * 2;
+const extraBytesPerEscapedCharacter = '\\u0001'.length - Buffer.byteLength('€');
+
 function worstBatch(user: ManagedUser, attemptId: string, parents: string[]) {
   const make = (escaped: number) => {
-    const field = '\u0001'.repeat(escaped) + '€'.repeat(10_000 - escaped);
+    const field =
+      '\u0001'.repeat(escaped) + '€'.repeat(maxTextLength - escaped);
     return {
       expectedEpoch: user.dataEpoch,
-      versions: Array.from({ length: 50 }, () =>
+      versions: Array.from({ length: versionsPerBatch }, () =>
         version(attemptId, syncStart, parents, field, field),
       ),
     };
   };
   const base = Buffer.byteLength(JSON.stringify(make(0)));
-  // Each escaped control character adds 3 JSON bytes over a 3-byte euro sign.
   const escaped = Math.min(
-    10_000,
-    Math.max(0, Math.floor((worstTarget - base) / (3 * 100))),
+    maxTextLength,
+    Math.max(
+      0,
+      Math.floor(
+        (worstTarget - base) / (extraBytesPerEscapedCharacter * paddedFields),
+      ),
+    ),
   );
   const batch = make(escaped);
   const raw = JSON.stringify(batch);
@@ -647,11 +675,12 @@ async function seedParents(entry: Entry, user: ManagedUser) {
     body: { expectedEpoch: user.dataEpoch, versions: seeds },
   });
   if (reply.status !== 200)
-    throw new Error(`${entry.name} seed sync ${reply.status} ${reply.text.slice(0, 200)}`);
+    throw new Error(
+      `${entry.name} seed sync ${reply.status} ${reply.text.slice(0, 200)}`,
+    );
   return { attemptId, parents: seeds.map((seed) => seed.versionId) };
 }
 
-// ---------- lanes ----------
 type LaneResult = {
   lane: number;
   slug: string;
@@ -671,16 +700,32 @@ async function lane(
     result = await work();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    result = { pass: false, summary: `error: ${message}`, receipt: { error: message } };
+    result = {
+      pass: false,
+      summary: `error: ${message}`,
+      receipt: { error: message },
+    };
   }
   const dir = resolve(out, 'receipts', group);
   await mkdir(dir, { recursive: true });
   await writeFile(
     resolve(dir, slug),
-    mask({ lane, pass: result.pass, summary: result.summary, receipt: result.receipt }),
+    mask({
+      lane,
+      pass: result.pass,
+      summary: result.summary,
+      receipt: result.receipt,
+    }),
   );
-  (laneResults[group] ??= []).push({ lane, slug, pass: result.pass, summary: result.summary });
-  console.info(`[${group}] lane ${lane} ${result.pass ? 'pass' : 'FAIL'}: ${result.summary}`);
+  (laneResults[group] ??= []).push({
+    lane,
+    slug,
+    pass: result.pass,
+    summary: result.summary,
+  });
+  console.info(
+    `[${group}] lane ${lane} ${result.pass ? 'pass' : 'FAIL'}: ${result.summary}`,
+  );
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -706,7 +751,12 @@ async function routeSequence(
   identity: Awaited<ReturnType<typeof managedIdentity>>,
   ids: { attempt: string; version: string; startedAt: Date },
 ) {
-  const steps: { step: string; status: number; body: unknown; headers: Record<string, string | undefined> }[] = [];
+  const steps: {
+    step: string;
+    status: number;
+    body: unknown;
+    headers: Record<string, string | undefined>;
+  }[] = [];
   let userId = '';
   const record = (step: string, reply: Reply) =>
     steps.push({
@@ -722,7 +772,10 @@ async function routeSequence(
     });
   record('GET /health', await call(entry, 'GET', '/health'));
   record('GET /ready', await call(entry, 'GET', '/ready'));
-  record('GET /v1/guest/challenges', await call(entry, 'GET', '/v1/guest/challenges'));
+  record(
+    'GET /v1/guest/challenges',
+    await call(entry, 'GET', '/v1/guest/challenges'),
+  );
   const exchanged = await call(entry, 'POST', '/v1/auth/session', {
     token: identity.token,
     body: { deviceId: identity.deviceId },
@@ -731,8 +784,14 @@ async function routeSequence(
   const session = exchanged.body as { userId: string; dataEpoch: number };
   userId = session.userId;
   const token = identity.token;
-  record('GET /v1/auth/session', await call(entry, 'GET', '/v1/auth/session', { token }));
-  record('GET /v1/challenges', await call(entry, 'GET', '/v1/challenges', { token }));
+  record(
+    'GET /v1/auth/session',
+    await call(entry, 'GET', '/v1/auth/session', { token }),
+  );
+  record(
+    'GET /v1/challenges',
+    await call(entry, 'GET', '/v1/challenges', { token }),
+  );
   const input = {
     id: ids.attempt,
     challengeId: card.challengeId,
@@ -741,10 +800,19 @@ async function routeSequence(
     startTimeZone: 'UTC',
     expectedEpoch: session.dataEpoch,
   };
-  record('POST /v1/attempts', await call(entry, 'POST', '/v1/attempts', { token, body: input }));
-  record('POST /v1/attempts retry', await call(entry, 'POST', '/v1/attempts', { token, body: input }));
+  record(
+    'POST /v1/attempts',
+    await call(entry, 'POST', '/v1/attempts', { token, body: input }),
+  );
+  record(
+    'POST /v1/attempts retry',
+    await call(entry, 'POST', '/v1/attempts', { token, body: input }),
+  );
   const date = ids.startedAt.toISOString().slice(0, 10);
-  record('GET /v1/attempts?date', await call(entry, 'GET', `/v1/attempts?date=${date}`, { token }));
+  record(
+    'GET /v1/attempts?date',
+    await call(entry, 'GET', `/v1/attempts?date=${date}`, { token }),
+  );
   record(
     'POST /v1/journal-sync',
     await call(entry, 'POST', '/v1/journal-sync', {
@@ -757,18 +825,28 @@ async function routeSequence(
             attemptId: ids.attempt,
             parents: [],
             feelingScaleVersion: 1,
-            reflection: { feeling: 'a_little_better', text: 'synthetic', revision: 1 },
+            reflection: {
+              feeling: 'a_little_better',
+              text: 'synthetic',
+              revision: 1,
+            },
           },
         ],
       },
     }),
   );
-  record('GET /v1/journal-sync', await call(entry, 'GET', '/v1/journal-sync', { token }));
+  record(
+    'GET /v1/journal-sync',
+    await call(entry, 'GET', '/v1/journal-sync', { token }),
+  );
   record(
     'GET /v1/progress/summary',
     await call(entry, 'GET', '/v1/progress/summary?timeZone=UTC', { token }),
   );
-  record('GET /v1/challenges without bearer', await call(entry, 'GET', '/v1/challenges'));
+  record(
+    'GET /v1/challenges without bearer',
+    await call(entry, 'GET', '/v1/challenges'),
+  );
   record('GET /v1/missing', await call(entry, 'GET', '/v1/missing'));
   const readback = (
     await admin.query<{ attempts: number; versions: number }>(
@@ -780,7 +858,12 @@ async function routeSequence(
   return { steps, userId, readback };
 }
 
-async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, nodeLegacy: Entry) {
+async function lanes(
+  group: BundleKind,
+  edgeOrigin: string,
+  nodeManaged: Entry,
+  nodeLegacy: Entry,
+) {
   const edge: Entry = {
     name: `edge-${group}`,
     origin: edgeOrigin,
@@ -806,21 +889,41 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
 
   await lane(group, 1, 'route-sequence.json', async () => {
     const identity = await managedIdentity();
-    const ids = { attempt: randomUUID(), version: randomUUID(), startedAt: new Date(now - 600_000) };
+    const ids = {
+      attempt: randomUUID(),
+      version: randomUUID(),
+      startedAt: new Date(now - 600_000),
+    };
     const node = await routeSequence(nodeManaged, identity, ids);
     await deleteUser(node.userId);
     const head = await routeSequence(edge, identity, ids);
-    const left = normalize(node.steps.map(({ step, status, body }) => ({ step, status, body })), node.userId);
-    const right = normalize(head.steps.map(({ step, status, body }) => ({ step, status, body })), head.userId);
-    const mismatches = (left as { step: string }[]).flatMap((step, index) =>
-      JSON.stringify(step) === JSON.stringify((right as unknown[])[index]) ? [] : [step.step],
+    const left = normalize(
+      node.steps.map(({ step, status, body }) => ({ step, status, body })),
+      node.userId,
     );
-    const readbackSame = JSON.stringify(node.readback) === JSON.stringify(head.readback);
+    const right = normalize(
+      head.steps.map(({ step, status, body }) => ({ step, status, body })),
+      head.userId,
+    );
+    const mismatches = (left as { step: string }[]).flatMap((step, index) =>
+      JSON.stringify(step) === JSON.stringify((right as unknown[])[index])
+        ? []
+        : [step.step],
+    );
+    const readbackSame =
+      JSON.stringify(node.readback) === JSON.stringify(head.readback);
     return {
-      pass: mismatches.length === 0 && readbackSame && node.steps.length === head.steps.length,
+      pass:
+        mismatches.length === 0 &&
+        readbackSame &&
+        node.steps.length === head.steps.length,
       summary: `${node.steps.length} steps, ${mismatches.length} mismatches${mismatches.length ? ` (${mismatches.join(', ')})` : ''}, readback node ${JSON.stringify(node.readback)} edge ${JSON.stringify(head.readback)}`,
       receipt: {
-        normalized: ['requestId values', 'checkedAt values', 'the server-allocated userId'],
+        normalized: [
+          'requestId values',
+          'checkedAt values',
+          'the server-allocated userId',
+        ],
         trunkNode: { steps: node.steps, readback: node.readback },
         headEdge: { steps: head.steps, readback: head.readback },
         mismatches,
@@ -856,7 +959,13 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
         withoutHelper.status === 503 &&
         restored.status === 200,
       summary: `health ${health.status}, ready ${ready.status}, ready without helper grant ${withoutHelper.status}, restored ${restored.status}`,
-      receipt: { health, ready, withoutHelper, restored, runtimeConnections: sessions },
+      receipt: {
+        health,
+        ready,
+        withoutHelper,
+        restored,
+        runtimeConnections: sessions,
+      },
     };
   });
 
@@ -868,9 +977,14 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
          where v.active and c.active and c.level_id='level-1' order by v.venue_id,v.position,v.id`,
       )
     ).rows.map((row) => row.id);
-    const cards = ((reply.body as { cards?: { id: string }[] }).cards ?? []).map((item) => item.id);
+    const cards = (
+      (reply.body as { cards?: { id: string }[] }).cards ?? []
+    ).map((item) => item.id);
     return {
-      pass: reply.status === 200 && cards.length > 0 && JSON.stringify(cards) === JSON.stringify(seeded),
+      pass:
+        reply.status === 200 &&
+        cards.length > 0 &&
+        JSON.stringify(cards) === JSON.stringify(seeded),
       summary: `status ${reply.status}, ${cards.length} cards, seeded ${seeded.length}`,
       receipt: { status: reply.status, cards, seeded },
     };
@@ -882,20 +996,40 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
     const writes: { owner: 'a' | 'b'; id: string; status: number }[] = [];
     for (let pair = 0; pair < 10; pair++) {
       const inputs = [
-        { owner: 'a' as const, user: a, input: attemptInput(a, new Date(now - (pair * 2 + 1) * 1000)) },
-        { owner: 'b' as const, user: b, input: attemptInput(b, new Date(now - (pair * 2 + 2) * 1000)) },
+        {
+          owner: 'a' as const,
+          user: a,
+          input: attemptInput(a, new Date(now - (pair * 2 + 1) * 1000)),
+        },
+        {
+          owner: 'b' as const,
+          user: b,
+          input: attemptInput(b, new Date(now - (pair * 2 + 2) * 1000)),
+        },
       ];
       const replies = await Promise.all(
-        inputs.map((item) => call(edge, 'POST', '/v1/attempts', { token: item.user.token, body: item.input })),
+        inputs.map((item) =>
+          call(edge, 'POST', '/v1/attempts', {
+            token: item.user.token,
+            body: item.input,
+          }),
+        ),
       );
       inputs.forEach((item, index) =>
-        writes.push({ owner: item.owner, id: item.input.id, status: replies[index]!.status }),
+        writes.push({
+          owner: item.owner,
+          id: item.input.id,
+          status: replies[index]!.status,
+        }),
       );
     }
     const readOwn = async (user: ManagedUser) =>
       (
-        (await call(edge, 'GET', `/v1/attempts?date=${today()}&limit=50`, { token: user.token }))
-          .body as { entries?: { id: string }[] }
+        (
+          await call(edge, 'GET', `/v1/attempts?date=${today()}&limit=50`, {
+            token: user.token,
+          })
+        ).body as { entries?: { id: string }[] }
       ).entries?.map((entry) => entry.id) ?? [];
     const apiA = await readOwn(a);
     const apiB = await readOwn(b);
@@ -905,10 +1039,23 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
         [writes.map((write) => write.id)],
       )
     ).rows;
-    const expected = new Map(writes.map((write) => [write.id, write.owner === 'a' ? a.userId : b.userId]));
-    const crossOwnerRows = rows.filter((row) => expected.get(row.id) !== row.user_id);
-    const idsA = writes.filter((w) => w.owner === 'a').map((w) => w.id).sort();
-    const idsB = writes.filter((w) => w.owner === 'b').map((w) => w.id).sort();
+    const expected = new Map(
+      writes.map((write) => [
+        write.id,
+        write.owner === 'a' ? a.userId : b.userId,
+      ]),
+    );
+    const crossOwnerRows = rows.filter(
+      (row) => expected.get(row.id) !== row.user_id,
+    );
+    const idsA = writes
+      .filter((w) => w.owner === 'a')
+      .map((w) => w.id)
+      .sort();
+    const idsB = writes
+      .filter((w) => w.owner === 'b')
+      .map((w) => w.id)
+      .sort();
     const pass =
       writes.every((write) => write.status === 201) &&
       JSON.stringify([...apiA].sort()) === JSON.stringify(idsA) &&
@@ -918,7 +1065,14 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
     return {
       pass,
       summary: `${writes.filter((w) => w.status === 201).length}/20 created, A reads ${apiA.length}, B reads ${apiB.length}, ${rows.length} rows, ${crossOwnerRows.length} cross-owner rows`,
-      receipt: { writes, apiA, apiB, sqlRows: rows, crossOwnerRows, owners: { a: a.userId, b: b.userId } },
+      receipt: {
+        writes,
+        apiA,
+        apiB,
+        sqlRows: rows,
+        crossOwnerRows,
+        owners: { a: a.userId, b: b.userId },
+      },
     };
   });
 
@@ -928,7 +1082,10 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
       const b = await managedUser(entry);
       const startedAt = new Date(now - 300_000);
       const attempt = attemptInput(b, startedAt);
-      const written = await call(entry, 'POST', '/v1/attempts', { token: b.token, body: attempt });
+      const written = await call(entry, 'POST', '/v1/attempts', {
+        token: b.token,
+        body: attempt,
+      });
       const synced = await call(entry, 'POST', '/v1/journal-sync', {
         token: b.token,
         body: {
@@ -939,7 +1096,11 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
               attemptId: attempt.id,
               parents: [],
               feelingScaleVersion: 1,
-              reflection: { feeling: null, text: 'second user private text', revision: 1 },
+              reflection: {
+                feeling: null,
+                text: 'second user private text',
+                revision: 1,
+              },
             },
           ],
         },
@@ -956,8 +1117,15 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
         ).rows[0];
       const before = await snapshot();
       const date = startedAt.toISOString().slice(0, 10);
-      const list = await call(entry, 'GET', `/v1/attempts?date=${date}&limit=50`, { token: a.token });
-      const journal = await call(entry, 'GET', '/v1/journal-sync', { token: a.token });
+      const list = await call(
+        entry,
+        'GET',
+        `/v1/attempts?date=${date}&limit=50`,
+        { token: a.token },
+      );
+      const journal = await call(entry, 'GET', '/v1/journal-sync', {
+        token: a.token,
+      });
       const patch = await call(entry, 'PATCH', `/v1/attempts/${attempt.id}`, {
         token: a.token,
         body: {
@@ -968,7 +1136,9 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
       });
       const after = await snapshot();
       const leaked =
-        list.text.includes(attempt.id) || journal.text.includes(attempt.id) || patch.text.includes(attempt.id);
+        list.text.includes(attempt.id) ||
+        journal.text.includes(attempt.id) ||
+        patch.text.includes(attempt.id);
       return {
         setup: [written.status, synced.status],
         statuses: [list.status, journal.status, patch.status],
@@ -993,16 +1163,31 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
   await lane(group, 6, 'rollback.json', async () => {
     const user = await managedUser(edge);
     const input = attemptInput(user, new Date(now - 120_000));
-    const bucketsBefore = (await admin.query('select key, count from justgo.identity_rate_buckets order by key')).rows;
+    const bucketsBefore = (
+      await admin.query(
+        'select key, count from justgo.identity_rate_buckets order by key',
+      )
+    ).rows;
     const failed = await call(edge, 'POST', '/v1/attempts', {
       token: user.token,
       body: input,
       headers: { 'x-justgo-trial-failpoint': 'after-insert' },
     });
-    const rows = (await admin.query('select id from justgo.attempts where user_id=$1', [user.userId])).rows;
-    const bucketsAfter = (await admin.query('select key, count from justgo.identity_rate_buckets order by key')).rows;
+    const rows = (
+      await admin.query('select id from justgo.attempts where user_id=$1', [
+        user.userId,
+      ])
+    ).rows;
+    const bucketsAfter = (
+      await admin.query(
+        'select key, count from justgo.identity_rate_buckets order by key',
+      )
+    ).rows;
     const ready = await call(edge, 'GET', '/ready');
-    const retry = await call(edge, 'POST', '/v1/attempts', { token: user.token, body: input });
+    const retry = await call(edge, 'POST', '/v1/attempts', {
+      token: user.token,
+      body: input,
+    });
     const body = failed.body as { code?: string; requestId?: string };
     return {
       pass:
@@ -1017,7 +1202,8 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
       receipt: {
         failed,
         rowsAfterFailure: rows,
-        rateBucketsUnchanged: JSON.stringify(bucketsBefore) === JSON.stringify(bucketsAfter),
+        rateBucketsUnchanged:
+          JSON.stringify(bucketsBefore) === JSON.stringify(bucketsAfter),
         ready: ready.status,
         retry,
       },
@@ -1053,7 +1239,10 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
       let replies: Reply[] = [];
       try {
         await holder.query('begin');
-        await holder.query('select pg_advisory_xact_lock(hashtextextended($1,1))', [codeDigest]);
+        await holder.query(
+          'select pg_advisory_xact_lock(hashtextextended($1,1))',
+          [codeDigest],
+        );
         const pending = [transfer(), transfer()].map((body) =>
           call(entry, 'POST', '/v1/transfers', { body }),
         );
@@ -1068,7 +1257,8 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
             )
           ).rows;
           waiting = rows.length;
-          if (waiting) waits.push({ atMs: 4000 - (deadline - Date.now()), rows });
+          if (waiting)
+            waits.push({ atMs: 4000 - (deadline - Date.now()), rows });
           await delay(50);
         }
         await holder.query('commit');
@@ -1077,13 +1267,19 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
         holder.release();
       }
       const rows = (
-        await admin.query('select count(*)::int as count from justgo.device_transfers where code_digest=$1', [codeDigest])
+        await admin.query(
+          'select count(*)::int as count from justgo.device_transfers where code_digest=$1',
+          [codeDigest],
+        )
       ).rows[0] as { count: number };
       return {
         session: session.status,
         statuses: replies.map((reply) => reply.status).sort(),
         bodies: replies.map((reply) => normalize(reply.body)),
-        maxWaiting: Math.max(0, ...waits.map((wait) => (wait as { rows: unknown[] }).rows.length)),
+        maxWaiting: Math.max(
+          0,
+          ...waits.map((wait) => (wait as { rows: unknown[] }).rows.length),
+        ),
         waits: waits.slice(-1),
         transferRows: rows.count,
       };
@@ -1104,16 +1300,27 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
 
   await lane(group, 8, 'buffer-paths.json', async () => {
     const user = await managedUser(edge);
-    const session = await call(edge, 'GET', '/v1/auth/session', { token: user.token });
+    const session = await call(edge, 'GET', '/v1/auth/session', {
+      token: user.token,
+    });
     const first = attemptInput(user, new Date(now - 240_000));
     const second = attemptInput(user, new Date(now - 230_000));
     const writes = [
-      await call(edge, 'POST', '/v1/attempts', { token: user.token, body: first }),
-      await call(edge, 'POST', '/v1/attempts', { token: user.token, body: second }),
+      await call(edge, 'POST', '/v1/attempts', {
+        token: user.token,
+        body: first,
+      }),
+      await call(edge, 'POST', '/v1/attempts', {
+        token: user.token,
+        body: second,
+      }),
     ];
     const date = first.startedAt.slice(0, 10);
-    const page = await call(edge, 'GET', `/v1/attempts?date=${date}&limit=1`, { token: user.token });
-    const cursor = (page.body as { nextCursor?: string | null }).nextCursor ?? '';
+    const page = await call(edge, 'GET', `/v1/attempts?date=${date}&limit=1`, {
+      token: user.token,
+    });
+    const cursor =
+      (page.body as { nextCursor?: string | null }).nextCursor ?? '';
     const next = await call(
       edge,
       'GET',
@@ -1122,9 +1329,13 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
     );
     const facts = await call(edge, 'GET', '/__trial/runtime');
     const sessionBody = session.body as { sessionId?: string };
-    const firstPage = (page.body as { entries?: { id: string }[] }).entries ?? [];
-    const nextPage = (next.body as { entries?: { id: string }[] }).entries ?? [];
-    const noReferenceError = ![session, page, next].some((reply) => reply.text.includes('ReferenceError'));
+    const firstPage =
+      (page.body as { entries?: { id: string }[] }).entries ?? [];
+    const nextPage =
+      (next.body as { entries?: { id: string }[] }).entries ?? [];
+    const noReferenceError = ![session, page, next].some((reply) =>
+      reply.text.includes('ReferenceError'),
+    );
     return {
       pass:
         session.status === 200 &&
@@ -1192,7 +1403,8 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
     });
     const requestId = reply.headers['x-request-id'] ?? '';
     const deadline = Date.now() + 5000;
-    while (Date.now() < deadline && envelopes.length === before) await delay(50);
+    while (Date.now() < deadline && envelopes.length === before)
+      await delay(50);
     const received = envelopes.slice(before);
     const match = received.find((item) => item.text.includes(requestId));
     const text = match?.text ?? '';
@@ -1240,13 +1452,19 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
     });
     let nodeTls: unknown;
     try {
-      nodeTls = (await node.query('select ssl, version from pg_stat_ssl where pid = pg_backend_pid()')).rows[0];
+      nodeTls = (
+        await node.query(
+          'select ssl, version from pg_stat_ssl where pid = pg_backend_pid()',
+        )
+      ).rows[0];
     } finally {
       await node.end();
     }
     const ready = await call(edgeTls, 'GET', '/ready');
     const user = await managedUser(edgeTls);
-    const session = await call(edgeTls, 'GET', '/v1/auth/session', { token: user.token });
+    const session = await call(edgeTls, 'GET', '/v1/auth/session', {
+      token: user.token,
+    });
     const attempt = await call(edgeTls, 'POST', '/v1/attempts', {
       token: user.token,
       body: attemptInput(user, new Date(now - 60_000)),
@@ -1259,9 +1477,20 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
       )
     ).rows;
     return {
-      pass: ready.status === 200 && session.status === 200 && attempt.status === 201 && tlsSessions.length > 0,
+      pass:
+        ready.status === 200 &&
+        session.status === 200 &&
+        attempt.status === 201 &&
+        tlsSessions.length > 0,
       summary: `verify-full against the throwaway CA: ready ${ready.status}, managed session ${session.status}, write transaction ${attempt.status}, TLS runtime connections ${tlsSessions.length}`,
-      receipt: { nodeTls, ready, session: session.status, attempt: attempt.status, select1: select1.body, tlsSessions },
+      receipt: {
+        nodeTls,
+        ready,
+        session: session.status,
+        attempt: attempt.status,
+        select1: select1.body,
+        tlsSessions,
+      },
     };
   });
 
@@ -1273,14 +1502,30 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
   };
 }
 
-// ---------- CPU limit probe ----------
 async function cpuLimitProbe(kind: BundleKind) {
   const results: Record<string, unknown[]> = {};
   for (const policy of ['per_request', 'per_worker'] as const) {
-    const container = await startEdge(`edge-trial-limit-${policy}`, 9300, policy, [
-      { name: 'cli', functionDir: functionDir(kind), importMap: importMap(kind), env: managedEdgeEnv(), ...cliLimits },
-      { name: 'off', functionDir: functionDir(kind), importMap: importMap(kind), env: managedEdgeEnv(), ...noLimits },
-    ]);
+    const container = await startEdge(
+      `edge-trial-limit-${policy}`,
+      9300,
+      policy,
+      [
+        {
+          name: 'cli',
+          functionDir: functionDir(kind),
+          importMap: importMap(kind),
+          env: managedEdgeEnv(),
+          ...cliLimits,
+        },
+        {
+          name: 'off',
+          functionDir: functionDir(kind),
+          importMap: importMap(kind),
+          env: managedEdgeEnv(),
+          ...noLimits,
+        },
+      ],
+    );
     const entry = (variant: string): Entry => ({
       name: `limit-${policy}-${variant}`,
       origin: container.origin,
@@ -1289,10 +1534,18 @@ async function cpuLimitProbe(kind: BundleKind) {
     });
     const steps: unknown[] = [];
     const burn = async (variant: string, ms: number) => {
-      const reply = await call(entry(variant), 'GET', `/__trial/burn?ms=${ms}`, { timeoutMs: 60_000 }).catch(
-        (error: Error) => ({ status: -1, body: error.message, wallMs: 0 }) as unknown as Reply,
+      const reply = await call(
+        entry(variant),
+        'GET',
+        `/__trial/burn?ms=${ms}`,
+        { timeoutMs: 60_000 },
+      ).catch(
+        (error: Error) =>
+          ({ status: -1, body: error.message, wallMs: 0 }) as unknown as Reply,
       );
-      const facts = await call(entry(variant), 'GET', '/__trial/runtime').catch(() => undefined);
+      const facts = await call(entry(variant), 'GET', '/__trial/runtime').catch(
+        () => undefined,
+      );
       steps.push({
         variant,
         requestedMs: ms,
@@ -1313,7 +1566,6 @@ async function cpuLimitProbe(kind: BundleKind) {
   return results;
 }
 
-// ---------- perf probe ----------
 type Sample = {
   pass: 'plain' | 'profiled';
   entry: 'node' | 'edge';
@@ -1330,17 +1582,28 @@ type Sample = {
   queries?: number;
 };
 type Route = 'health' | 'guest catalog' | 'attempt write' | 'worst sync';
-const routes: Route[] = ['health', 'guest catalog', 'attempt write', 'worst sync'];
+const routes: Route[] = [
+  'health',
+  'guest catalog',
+  'attempt write',
+  'worst sync',
+];
 type Threads = Map<string, { comm: string; ns: number }>;
 
-/** On-CPU nanoseconds per thread from /proc/<pid>/task/<tid>/schedstat. */
 async function threadCpu(pid: number): Promise<Threads> {
   const threads: Threads = new Map();
   try {
     for (const tid of await readdir(`/proc/${pid}/task`)) {
-      const stat = await readFile(`/proc/${pid}/task/${tid}/schedstat`, 'utf8').catch(() => '');
-      const comm = await readFile(`/proc/${pid}/task/${tid}/comm`, 'utf8').catch(() => '?');
-      if (stat) threads.set(tid, { comm: comm.trim(), ns: Number(stat.split(' ')[0]) });
+      const stat = await readFile(
+        `/proc/${pid}/task/${tid}/schedstat`,
+        'utf8',
+      ).catch(() => '');
+      const comm = await readFile(
+        `/proc/${pid}/task/${tid}/comm`,
+        'utf8',
+      ).catch(() => '?');
+      if (stat)
+        threads.set(tid, { comm: comm.trim(), ns: Number(stat.split(' ')[0]) });
     }
     if (threads.size) return threads;
   } catch {
@@ -1368,25 +1631,53 @@ function threadDelta(before: Threads, after: Threads) {
   return delta;
 }
 
+function edgeSyncCpuByThread(samples: Sample[]) {
+  const totals: Record<string, number> = {};
+  for (const sample of samples)
+    if (sample.entry === 'edge' && sample.route === 'worst sync')
+      for (const [tid, ms] of Object.entries(sample.threadCpuMs ?? {}))
+        totals[tid] = (totals[tid] ?? 0) + ms;
+  return totals;
+}
+
+/** The Edge user worker isolate is the thread that runs the app's JavaScript for the sync. */
+function busiestThread(totals: Record<string, number>) {
+  return Object.entries(totals).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+}
+
 class Inspector {
   private id = 0;
-  private waiting = new Map<number, (value: { result?: unknown; error?: unknown }) => void>();
+  private waiting = new Map<
+    number,
+    (value: { result?: unknown; error?: unknown }) => void
+  >();
   private constructor(private readonly socket: WebSocket) {
     socket.addEventListener('message', (event) => {
-      const message = JSON.parse(String(event.data)) as { id?: number; result?: unknown; error?: unknown };
+      const message = JSON.parse(String(event.data)) as {
+        id?: number;
+        result?: unknown;
+        error?: unknown;
+      };
       if (message.id !== undefined) this.waiting.get(message.id)?.(message);
     });
   }
   static async connect(httpOrigin: string) {
     const deadline = Date.now() + 30_000;
-    let targets: { webSocketDebuggerUrl?: string; url?: string; title?: string }[] = [];
+    let targets: {
+      webSocketDebuggerUrl?: string;
+      url?: string;
+      title?: string;
+    }[] = [];
     while (Date.now() < deadline) {
-      targets = (await (await fetch(`${httpOrigin}/json/list`)).json()) as typeof targets;
+      targets = (await (
+        await fetch(`${httpOrigin}/json/list`)
+      ).json()) as typeof targets;
       if (targets.some((target) => target.webSocketDebuggerUrl)) break;
       await delay(250);
     }
     const target = targets.filter((item) => item.webSocketDebuggerUrl).at(-1);
-    if (!target?.webSocketDebuggerUrl) throw new Error(`no inspector target at ${httpOrigin}`);
+    if (!target?.webSocketDebuggerUrl)
+      throw new Error(`no inspector target at ${httpOrigin}`);
     const socket = new WebSocket(target.webSocketDebuggerUrl);
     await new Promise((resolveOpen, rejectOpen) => {
       socket.addEventListener('open', resolveOpen, { once: true });
@@ -1396,16 +1687,22 @@ class Inspector {
   }
   async send(method: string, params: Record<string, unknown> = {}) {
     const id = ++this.id;
-    const reply = await new Promise<{ result?: unknown; error?: unknown }>((resolveReply, rejectReply) => {
-      const timer = setTimeout(() => rejectReply(new Error(`${method} timed out`)), 60_000);
-      this.waiting.set(id, (value) => {
-        clearTimeout(timer);
-        resolveReply(value);
-      });
-      this.socket.send(JSON.stringify({ id, method, params }));
-    });
+    const reply = await new Promise<{ result?: unknown; error?: unknown }>(
+      (resolveReply, rejectReply) => {
+        const timer = setTimeout(
+          () => rejectReply(new Error(`${method} timed out`)),
+          60_000,
+        );
+        this.waiting.set(id, (value) => {
+          clearTimeout(timer);
+          resolveReply(value);
+        });
+        this.socket.send(JSON.stringify({ id, method, params }));
+      },
+    );
     this.waiting.delete(id);
-    if (reply.error) throw new Error(`${method}: ${JSON.stringify(reply.error)}`);
+    if (reply.error)
+      throw new Error(`${method}: ${JSON.stringify(reply.error)}`);
     return reply.result as Record<string, unknown>;
   }
   close() {
@@ -1419,7 +1716,9 @@ type CpuProfile = {
   timeDeltas?: number[];
 };
 function profileCpu(profile: CpuProfile) {
-  const names = new Map(profile.nodes.map((node) => [node.id, node.callFrame.functionName]));
+  const names = new Map(
+    profile.nodes.map((node) => [node.id, node.callFrame.functionName]),
+  );
   let total = 0;
   let idle = 0;
   let program = 0;
@@ -1437,12 +1736,24 @@ function profileCpu(profile: CpuProfile) {
   };
 }
 
-async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: number) {
+async function perfProbe(
+  kind: BundleKind,
+  nodeManaged: Entry,
+  nodeInspectPort: number,
+) {
   const container = await startEdge(
     'edge-trial-perf',
     9200,
     'per_worker',
-    [{ name: 'perf', functionDir: functionDir(kind), importMap: importMap(kind), env: managedEdgeEnv(), ...noLimits }],
+    [
+      {
+        name: 'perf',
+        functionDir: functionDir(kind),
+        importMap: importMap(kind),
+        env: managedEdgeEnv(),
+        ...noLimits,
+      },
+    ],
     9229,
   );
   const edge: Entry = {
@@ -1468,7 +1779,8 @@ async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: 
   const edgeInspector = await Inspector.connect('http://127.0.0.1:9229');
   const edgeTargets = edgeInspector.targets;
   const inspectors = {
-    node: (await Inspector.connect(`http://127.0.0.1:${nodeInspectPort}`)).inspector,
+    node: (await Inspector.connect(`http://127.0.0.1:${nodeInspectPort}`))
+      .inspector,
     edge: edgeInspector.inspector,
   };
   const samples: Sample[] = [];
@@ -1490,86 +1802,100 @@ async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: 
       case 'worst sync':
         return call(entry, 'POST', '/v1/journal-sync', {
           token: user.token,
-          raw: worstBatch(user, seeds[which].attemptId, seeds[which].parents).raw,
+          raw: worstBatch(user, seeds[which].attemptId, seeds[which].parents)
+            .raw,
           timeoutMs: 120_000,
         });
     }
   };
-  // Warm both entries the same way, so JIT tiering does not land in round 1.
-  for (let round = 0; round < warmupRounds; round++)
-    for (const which of ['node', 'edge'] as const)
-      for (const route of routes) await request(which, route);
-  // Plain pass first: per-thread CPU and wall with the profiler off.
-  const comms: Record<'node' | 'edge', Record<string, string>> = { node: {}, edge: {} };
-  for (let round = 1; round <= rounds; round++) {
-    const order = round % 2 ? (['node', 'edge'] as const) : (['edge', 'node'] as const);
-    for (const which of order) {
-      const pid = entries[which].pid!;
-      for (const route of routes) {
-        const before = await threadCpu(pid);
-        const plain = await request(which, route);
-        const after = await threadCpu(pid);
-        for (const [tid, item] of after) comms[which][tid] = item.comm;
-        const delta = threadDelta(before, after);
-        samples.push({
-          pass: 'plain',
-          entry: which,
-          round,
-          route,
-          status: plain.status,
-          wallMs: plain.wallMs,
-          processCpuMs: Object.values(delta).reduce((sum, ms) => sum + ms, 0),
-          threadCpuMs: delta,
-          queries: Number(plain.headers['x-justgo-trial-queries'] ?? 'NaN'),
-        });
+  const comms: Record<'node' | 'edge', Record<string, string>> = {
+    node: {},
+    edge: {},
+  };
+  const warmUp = async () => {
+    for (let round = 0; round < warmupRounds; round++)
+      for (const which of ['node', 'edge'] as const)
+        for (const route of routes) await request(which, route);
+  };
+  const plainPass = async () => {
+    for (let round = 1; round <= rounds; round++) {
+      const order =
+        round % 2 ? (['node', 'edge'] as const) : (['edge', 'node'] as const);
+      for (const which of order) {
+        const pid = entries[which].pid!;
+        for (const route of routes) {
+          const before = await threadCpu(pid);
+          const plain = await request(which, route);
+          const after = await threadCpu(pid);
+          for (const [tid, item] of after) comms[which][tid] = item.comm;
+          const delta = threadDelta(before, after);
+          samples.push({
+            pass: 'plain',
+            entry: which,
+            round,
+            route,
+            status: plain.status,
+            wallMs: plain.wallMs,
+            processCpuMs: Object.values(delta).reduce((sum, ms) => sum + ms, 0),
+            threadCpuMs: delta,
+            queries: Number(plain.headers['x-justgo-trial-queries'] ?? 'NaN'),
+          });
+        }
       }
+      console.info(`perf plain round ${round} done`);
     }
-    console.info(`perf plain round ${round} done`);
-  }
-  // The isolate thread runs the app's JavaScript: Node's main thread, and the
-  // Edge thread that spent the most CPU on the worst-case syncs.
-  const edgeSyncCpu: Record<string, number> = {};
-  for (const sample of samples)
-    if (sample.entry === 'edge' && sample.route === 'worst sync')
-      for (const [tid, ms] of Object.entries(sample.threadCpuMs ?? {}))
-        edgeSyncCpu[tid] = (edgeSyncCpu[tid] ?? 0) + ms;
+  };
+  await warmUp();
+  await plainPass();
+  const edgeSyncCpu = edgeSyncCpuByThread(samples);
   const isolateThread = {
     node: String(entries.node.pid),
-    edge: Object.entries(edgeSyncCpu).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '',
+    edge: busiestThread(edgeSyncCpu),
   };
   for (const sample of samples)
-    sample.isolateCpuMs = sample.threadCpuMs?.[isolateThread[sample.entry]] ?? 0;
-  // Profiled pass second, for the CPU profiles the plan asks for.
-  for (const inspector of Object.values(inspectors)) {
-    await inspector.send('Profiler.enable');
-    await inspector.send('Profiler.setSamplingInterval', { interval: 100 });
-  }
-  for (let round = 1; round <= rounds; round++) {
-    const order = round % 2 ? (['node', 'edge'] as const) : (['edge', 'node'] as const);
-    for (const which of order) {
-      for (const route of routes) {
-        const inspector = inspectors[which];
-        await inspector.send('Profiler.start');
-        const profiled = await request(which, route);
-        const { profile } = (await inspector.send('Profiler.stop')) as { profile: CpuProfile };
-        await writeFile(
-          resolve(profileDir, `${which}-${route.replaceAll(' ', '-')}-round${String(round).padStart(2, '0')}.cpuprofile`),
-          JSON.stringify(profile),
-        );
-        samples.push({
-          pass: 'profiled',
-          entry: which,
-          round,
-          route,
-          status: profiled.status,
-          wallMs: profiled.wallMs,
-          ...profileCpu(profile),
-          queries: Number(profiled.headers['x-justgo-trial-queries'] ?? 'NaN'),
-        });
-      }
+    sample.isolateCpuMs =
+      sample.threadCpuMs?.[isolateThread[sample.entry]] ?? 0;
+  const profiledPass = async () => {
+    for (const inspector of Object.values(inspectors)) {
+      await inspector.send('Profiler.enable');
+      await inspector.send('Profiler.setSamplingInterval', { interval: 100 });
     }
-    console.info(`perf profiled round ${round} done`);
-  }
+    for (let round = 1; round <= rounds; round++) {
+      const order =
+        round % 2 ? (['node', 'edge'] as const) : (['edge', 'node'] as const);
+      for (const which of order) {
+        for (const route of routes) {
+          const inspector = inspectors[which];
+          await inspector.send('Profiler.start');
+          const profiled = await request(which, route);
+          const { profile } = (await inspector.send('Profiler.stop')) as {
+            profile: CpuProfile;
+          };
+          await writeFile(
+            resolve(
+              profileDir,
+              `${which}-${route.replaceAll(' ', '-')}-round${String(round).padStart(2, '0')}.cpuprofile`,
+            ),
+            JSON.stringify(profile),
+          );
+          samples.push({
+            pass: 'profiled',
+            entry: which,
+            round,
+            route,
+            status: profiled.status,
+            wallMs: profiled.wallMs,
+            ...profileCpu(profile),
+            queries: Number(
+              profiled.headers['x-justgo-trial-queries'] ?? 'NaN',
+            ),
+          });
+        }
+      }
+      console.info(`perf profiled round ${round} done`);
+    }
+  };
+  await profiledPass();
   for (const inspector of Object.values(inspectors)) inspector.close();
   const facts = (await call(edge, 'GET', '/__trial/runtime')).body;
   await stopEdge(container.name);
@@ -1584,12 +1910,13 @@ async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: 
   };
 }
 
-// ---------- statistics and report ----------
 const sortNumbers = (values: number[]) => [...values].sort((a, b) => a - b);
 const median = (values: number[]) => {
   const sorted = sortNumbers(values);
   const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
+  return sorted.length % 2
+    ? sorted[middle]!
+    : (sorted[middle - 1]! + sorted[middle]!) / 2;
 };
 const p95 = (values: number[]) => {
   const sorted = sortNumbers(values);
@@ -1613,17 +1940,35 @@ function summarize(samples: Sample[]) {
       const isolateCpu = pick(entry, route, 'plain', 'isolateCpuMs');
       const wall = pick(entry, route, 'plain', 'wallMs');
       const queries = pick(entry, route, 'plain', 'queries');
-      const statuses = [...new Set(samples.filter((s) => s.entry === entry && s.route === route).map((s) => s.status))];
+      const statuses = [
+        ...new Set(
+          samples
+            .filter((s) => s.entry === entry && s.route === route)
+            .map((s) => s.status),
+        ),
+      ];
       return {
         route,
         entry,
         n: wall.length,
         statuses,
-        profileCpu: { median: median(profile), p95: p95(profile), max: Math.max(...profile) },
+        profileCpu: {
+          median: median(profile),
+          p95: p95(profile),
+          max: Math.max(...profile),
+        },
         profileJs: { median: median(js), p95: p95(js) },
         profileIdleTotal: idle.reduce((sum, value) => sum + value, 0),
-        processCpu: { median: median(processCpu), p95: p95(processCpu), max: Math.max(...processCpu) },
-        isolateCpu: { median: median(isolateCpu), p95: p95(isolateCpu), max: Math.max(...isolateCpu) },
+        processCpu: {
+          median: median(processCpu),
+          p95: p95(processCpu),
+          max: Math.max(...processCpu),
+        },
+        isolateCpu: {
+          median: median(isolateCpu),
+          p95: p95(isolateCpu),
+          max: Math.max(...isolateCpu),
+        },
         wall: { median: median(wall), p95: p95(wall), max: Math.max(...wall) },
         queries: queries.length ? median(queries) : undefined,
       };
@@ -1643,33 +1988,77 @@ async function main() {
   await prepareDatabase();
   card = await loadCard();
   const bundles = await buildFunctions();
-  console.info(`bundles: ${JSON.stringify(bundles.map((b) => [b.entry, b.kind, b.bytes]))}`);
+  console.info(
+    `bundles: ${JSON.stringify(bundles.map((b) => [b.entry, b.kind, b.bytes]))}`,
+  );
   const nodeInspectPort = 9230;
-  const nodeManaged = await startNode('node-managed', 3101, managedNodeEnv(), nodeInspectPort);
+  const nodeManaged = await startNode(
+    'node-managed',
+    3101,
+    managedNodeEnv(),
+    nodeInspectPort,
+  );
   const nodeLegacy = await startNode('node-legacy2', 3102, legacyEnv());
 
   const laneMeta: Record<string, unknown> = {};
   for (const kind of kinds) {
-    const container = await startEdge(`edge-trial-lanes-${kind}`, 9100, 'per_request', [
-      { name: `${kind}-managed`, functionDir: functionDir(kind), importMap: importMap(kind), env: managedEdgeEnv(), ...cliLimits },
-      { name: `${kind}-legacy2`, functionDir: functionDir(kind), importMap: importMap(kind), env: legacyEdgeEnv(), ...cliLimits },
-      { name: `${kind}-tls`, functionDir: functionDir(kind), importMap: importMap(kind), env: tlsEdgeEnv(), ...cliLimits },
-    ]);
+    const container = await startEdge(
+      `edge-trial-lanes-${kind}`,
+      9100,
+      'per_request',
+      [
+        {
+          name: `${kind}-managed`,
+          functionDir: functionDir(kind),
+          importMap: importMap(kind),
+          env: managedEdgeEnv(),
+          ...cliLimits,
+        },
+        {
+          name: `${kind}-legacy2`,
+          functionDir: functionDir(kind),
+          importMap: importMap(kind),
+          env: legacyEdgeEnv(),
+          ...cliLimits,
+        },
+        {
+          name: `${kind}-tls`,
+          functionDir: functionDir(kind),
+          importMap: importMap(kind),
+          env: tlsEdgeEnv(),
+          ...cliLimits,
+        },
+      ],
+    );
     try {
-      laneMeta[kind] = await lanes(kind, container.origin, nodeManaged, nodeLegacy);
+      laneMeta[kind] = await lanes(
+        kind,
+        container.origin,
+        nodeManaged,
+        nodeLegacy,
+      );
     } catch (error) {
-      laneMeta[kind] = { error: error instanceof Error ? error.message : String(error) };
-      console.error(`[${kind}] lanes stopped: ${String(laneMeta[kind] && (laneMeta[kind] as { error: string }).error)}`);
+      laneMeta[kind] = {
+        error: error instanceof Error ? error.message : String(error),
+      };
+      console.error(
+        `[${kind}] lanes stopped: ${String(laneMeta[kind] && (laneMeta[kind] as { error: string }).error)}`,
+      );
     }
     await stopEdge(container.name);
   }
   const passes = (kind: string) =>
-    (laneResults[kind] ?? []).filter((item) => item.lane >= 1 && item.pass).length;
-  const chosen = kinds.reduce((best, kind) => (passes(kind) > passes(best) ? kind : best));
+    (laneResults[kind] ?? []).filter((item) => item.lane >= 1 && item.pass)
+      .length;
+  const chosen = kinds.reduce((best, kind) =>
+    passes(kind) > passes(best) ? kind : best,
+  );
 
   const harnessErrors: string[] = [];
   const failure = (stage: string, error: unknown) =>
-    harnessErrors.push(`${stage}: ${error instanceof Error ? error.message : String(error)}`);
+    harnessErrors.push(
+      `${stage}: ${error instanceof Error ? error.message : String(error)}`,
+    );
   let cpuLimit: Record<string, unknown[]> = {};
   try {
     cpuLimit = await cpuLimitProbe(chosen);
@@ -1702,16 +2091,22 @@ async function main() {
   );
 
   const row = (route: Route, entry: 'node' | 'edge') =>
-    table.find((item) => item.route === route && item.entry === entry && item.n > 0);
+    table.find(
+      (item) => item.route === route && item.entry === entry && item.n > 0,
+    );
   const idleSeen = (row('health', 'edge')?.profileIdleTotal ?? 0) > 0;
   const missing = { median: NaN, p95: NaN, max: NaN };
-  const cpuOf = (route: Route, entry: 'node' | 'edge') => row(route, entry)?.isolateCpu ?? missing;
-  const processOf = (route: Route, entry: 'node' | 'edge') => row(route, entry)?.processCpu ?? missing;
+  const cpuOf = (route: Route, entry: 'node' | 'edge') =>
+    row(route, entry)?.isolateCpu ?? missing;
+  const processOf = (route: Route, entry: 'node' | 'edge') =>
+    row(route, entry)?.processCpu ?? missing;
   const sync = row('worst sync', 'edge');
   const syncCpu = cpuOf('worst sync', 'edge').p95;
   const syncWall = sync?.wall.p95 ?? NaN;
   const syncFails = !(syncCpu <= 1000) || !(syncWall <= 5000);
-  const smallRoutes = (['health', 'guest catalog', 'attempt write'] as const).map((route) => ({
+  const smallRoutes = (
+    ['health', 'guest catalog', 'attempt write'] as const
+  ).map((route) => ({
     route,
     edgeP95: cpuOf(route, 'edge').p95,
     nodeP95: cpuOf(route, 'node').p95,
@@ -1719,70 +2114,161 @@ async function main() {
     processEdgeP95: processOf(route, 'edge').p95,
     processNodeP95: processOf(route, 'node').p95,
   }));
-  const allStatusesOk = samples.length > 0 && samples.every((s) => s.status === 200 || s.status === 201);
-  const lanesChosen = (laneResults[chosen] ?? []).filter((item) => item.lane >= 1);
-  const lanesPass = lanesChosen.length === 10 && lanesChosen.every((item) => item.pass);
+  const allStatusesOk =
+    samples.length > 0 &&
+    samples.every((s) => s.status === 200 || s.status === 201);
+  const lanesChosen = (laneResults[chosen] ?? []).filter(
+    (item) => item.lane >= 1,
+  );
+  const lanesPass =
+    lanesChosen.length === 10 && lanesChosen.every((item) => item.pass);
   const decision =
-    harnessErrors.length === 0 && lanesPass && allStatusesOk && !syncFails && smallRoutes.every((item) => !item.fails)
+    harnessErrors.length === 0 &&
+    lanesPass &&
+    allStatusesOk &&
+    !syncFails &&
+    smallRoutes.every((item) => !item.fails)
       ? 'go'
       : 'stop';
 
-  const select1Medians = ((perf?.select1 ?? []) as { medianMs?: number }[]).map((item) => item.medianMs ?? NaN);
+  const select1Medians = ((perf?.select1 ?? []) as { medianMs?: number }[]).map(
+    (item) => item.medianMs ?? NaN,
+  );
   const shared = process.env.EDGE_TRIAL_SHARED_DIFF ?? 'not checked';
   const lines: string[] = [];
   lines.push('# P15-1 local runtime trial report', '');
   lines.push(`- Trial SHA: \`${sourceSha}\``);
   lines.push(`- Workflow run: ${runUrl}`);
   lines.push(`- Edge runtime image: \`${image}\``);
-  lines.push(`- Rounds per entry: ${rounds}, after ${warmupRounds} untimed warmup rounds per entry`);
-  lines.push(`- Shared code against origin/main (apps/api/src without edge.ts, packages/contracts): ${shared}`);
-  lines.push(`- Unit tests on the trial branch: ${process.env.EDGE_TRIAL_UNIT ?? 'not run'}`);
+  lines.push(
+    `- Rounds per entry: ${rounds}, after ${warmupRounds} untimed warmup rounds per entry`,
+  );
+  lines.push(
+    `- Shared code against origin/main (apps/api/src without edge.ts, packages/contracts): ${shared}`,
+  );
+  lines.push(
+    `- Unit tests on the trial branch: ${process.env.EDGE_TRIAL_UNIT ?? 'not run'}`,
+  );
   lines.push('', '## Bundles', '');
-  lines.push('| Entry | pg | Bytes | SHA-256 | External imports |', '| --- | --- | --- | --- | --- |');
+  lines.push(
+    '| Entry | pg | Bytes | SHA-256 | External imports |',
+    '| --- | --- | --- | --- | --- |',
+  );
   for (const item of bundles)
-    lines.push(`| \`${item.entry}\` | ${item.kind} | ${item.bytes} | \`${item.sha256.slice(0, 16)}\` | ${item.externals.join(', ')} |`);
-  lines.push('', `Banner for bundled pg: \`${banners.bundled.replaceAll('\n', ' ')}\``);
-  lines.push('', `Banner for npm pg: \`${banners['npm-pg'].replaceAll('\n', ' ')}\``);
-  lines.push('', `Banner for npm pg with Buffer: \`${banners['npm-pg-buffer'].replaceAll('\n', ' ')}\``);
+    lines.push(
+      `| \`${item.entry}\` | ${item.kind} | ${item.bytes} | \`${item.sha256.slice(0, 16)}\` | ${item.externals.join(', ')} |`,
+    );
+  lines.push(
+    '',
+    `Banner for bundled pg: \`${banners.bundled.replaceAll('\n', ' ')}\``,
+  );
+  lines.push(
+    '',
+    `Banner for npm pg: \`${banners['npm-pg'].replaceAll('\n', ' ')}\``,
+  );
+  lines.push(
+    '',
+    `Banner for npm pg with Buffer: \`${banners['npm-pg-buffer'].replaceAll('\n', ' ')}\``,
+  );
   lines.push('', '## Runtime facts', '');
-  for (const [kind, meta] of Object.entries(laneMeta)) lines.push(`- ${kind}: \`${JSON.stringify(meta)}\``);
+  for (const [kind, meta] of Object.entries(laneMeta))
+    lines.push(`- ${kind}: \`${JSON.stringify(meta)}\``);
   lines.push('', '## Lanes', '');
   for (const kind of kinds) {
-    lines.push(`### pg ${kind}`, '', '| Lane | Receipt | Result | Detail |', '| --- | --- | --- | --- |');
+    lines.push(
+      `### pg ${kind}`,
+      '',
+      '| Lane | Receipt | Result | Detail |',
+      '| --- | --- | --- | --- |',
+    );
     for (const item of laneResults[kind] ?? [])
-      lines.push(`| ${item.lane || 'TLS'} | \`receipts/${kind}/${item.slug}\` | ${item.pass ? 'pass' : 'fail'} | ${item.summary.replaceAll('|', '/')} |`);
+      lines.push(
+        `| ${item.lane || 'TLS'} | \`receipts/${kind}/${item.slug}\` | ${item.pass ? 'pass' : 'fail'} | ${item.summary.replaceAll('|', '/')} |`,
+      );
     lines.push('');
   }
-  lines.push(`Chosen pg variant for the perf probe and the decision: **${chosen}**.`, '');
+  lines.push(
+    `Chosen pg variant for the perf probe and the decision: **${chosen}**.`,
+    '',
+  );
   lines.push('## CPU limit', '');
-  lines.push('The main service creates user workers with the CLI local-serve limits (soft 1,000 ms, hard 2,000 ms) for `cli` and no limits for `off`. Each step burns CPU in one request. Receipt `cpu-limit.json`.', '');
+  lines.push(
+    'The main service creates user workers with the CLI local-serve limits (soft 1,000 ms, hard 2,000 ms) for `cli` and no limits for `off`. Each step burns CPU in one request. Receipt `cpu-limit.json`.',
+    '',
+  );
   for (const [policy, steps] of Object.entries(cpuLimit)) {
-    lines.push(`### ${policy}`, '', '| Variant | Burn ms | Status | Wall ms | Worker booted at |', '| --- | --- | --- | --- | --- |');
-    for (const step of steps as { variant: string; requestedMs: number; status: number; wallMs: number; workerAfter?: { bootedAt?: string } }[])
-      lines.push(`| ${step.variant} | ${step.requestedMs} | ${step.status} | ${step.wallMs} | ${step.workerAfter?.bootedAt ?? 'n/a'} |`);
+    lines.push(
+      `### ${policy}`,
+      '',
+      '| Variant | Burn ms | Status | Wall ms | Worker booted at |',
+      '| --- | --- | --- | --- | --- |',
+    );
+    for (const step of steps as {
+      variant: string;
+      requestedMs: number;
+      status: number;
+      wallMs: number;
+      workerAfter?: { bootedAt?: string };
+    }[])
+      lines.push(
+        `| ${step.variant} | ${step.requestedMs} | ${step.status} | ${step.wallMs} | ${step.workerAfter?.bootedAt ?? 'n/a'} |`,
+      );
     lines.push('');
   }
   lines.push('## Perf', '');
-  lines.push(`CPU source for the rule: on-CPU time of the isolate thread from /proc/<pid>/task/<tid>/schedstat in the unprofiled pass. That is Node's main thread and the Edge user worker thread (\`${perf?.isolateThread.edge}\` named \`${perf?.threadNames.edge[perf?.isolateThread.edge ?? ''] ?? '?'}\`), the clock the runtime's own CPU limit reads. Process CPU sums every thread, which on Edge includes the trial main service that stands in for the gateway, the inspector server and Tokio threads. The profiles held ${idleSeen ? 'idle samples' : 'no (idle) samples on either runtime, so profile time includes waiting and only JS+GC samples bound CPU from below'}. Wall time comes from the unprofiled pass.`, '');
-  lines.push('| Route | Entry | n | Isolate CPU median / p95 / max ms | Process CPU median / p95 ms | Profile JS+GC median ms | Wall median / p95 / max ms | Queries | Statuses |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  lines.push(
+    `CPU source for the rule: on-CPU time of the isolate thread from /proc/<pid>/task/<tid>/schedstat in the unprofiled pass. That is Node's main thread and the Edge user worker thread (\`${perf?.isolateThread.edge}\` named \`${perf?.threadNames.edge[perf?.isolateThread.edge ?? ''] ?? '?'}\`), the clock the runtime's own CPU limit reads. Process CPU sums every thread, which on Edge includes the trial main service that stands in for the gateway, the inspector server and Tokio threads. The profiles held ${idleSeen ? 'idle samples' : 'no (idle) samples on either runtime, so profile time includes waiting and only JS+GC samples bound CPU from below'}. Wall time comes from the unprofiled pass.`,
+    '',
+  );
+  lines.push(
+    '| Route | Entry | n | Isolate CPU median / p95 / max ms | Process CPU median / p95 ms | Profile JS+GC median ms | Wall median / p95 / max ms | Queries | Statuses |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  );
   for (const item of table)
-    lines.push(`| ${item.route} | ${item.entry === 'node' ? 'trunk Node' : 'head Edge'} | ${item.n} | ${fixed(item.isolateCpu.median)} / ${fixed(item.isolateCpu.p95)} / ${fixed(item.isolateCpu.max)} | ${fixed(item.processCpu.median)} / ${fixed(item.processCpu.p95)} | ${fixed(item.profileJs.median)} | ${fixed(item.wall.median, 0)} / ${fixed(item.wall.p95, 0)} / ${fixed(item.wall.max, 0)} | ${item.queries ?? 'n/a'} | ${item.statuses.join(',')} |`);
-  lines.push('', `Worst-case sync query count: ${sync?.queries ?? 'n/a'} per request (counted at the pg client, BEGIN and COMMIT included).`);
-  lines.push(`Loopback select 1 median of ten timed round trips in one transaction after one untimed query: ${select1Medians.map((value) => fixed(value, 3)).join(', ')} ms over five probes; first probe ${fixed(select1Medians[0], 3)} ms.`);
+    lines.push(
+      `| ${item.route} | ${item.entry === 'node' ? 'trunk Node' : 'head Edge'} | ${item.n} | ${fixed(item.isolateCpu.median)} / ${fixed(item.isolateCpu.p95)} / ${fixed(item.isolateCpu.max)} | ${fixed(item.processCpu.median)} / ${fixed(item.processCpu.p95)} | ${fixed(item.profileJs.median)} | ${fixed(item.wall.median, 0)} / ${fixed(item.wall.p95, 0)} / ${fixed(item.wall.max, 0)} | ${item.queries ?? 'n/a'} | ${item.statuses.join(',')} |`,
+    );
+  lines.push(
+    '',
+    `Worst-case sync query count: ${sync?.queries ?? 'n/a'} per request (counted at the pg client, BEGIN and COMMIT included).`,
+  );
+  lines.push(
+    `Loopback select 1 median of ten timed round trips in one transaction after one untimed query: ${select1Medians.map((value) => fixed(value, 3)).join(', ')} ms over five probes; first probe ${fixed(select1Medians[0], 3)} ms.`,
+  );
   lines.push('', '## Rule', '');
-  lines.push(`- Worst-case sync p95 isolate CPU ${fixed(syncCpu)} ms (limit 1,000) and p95 wall ${fixed(syncWall, 0)} ms (limit 5,000): ${syncFails ? 'fails' : 'passes'}. Process CPU p95 for comparison: ${fixed(processOf('worst sync', 'edge').p95)} ms.`);
+  lines.push(
+    `- Worst-case sync p95 isolate CPU ${fixed(syncCpu)} ms (limit 1,000) and p95 wall ${fixed(syncWall, 0)} ms (limit 5,000): ${syncFails ? 'fails' : 'passes'}. Process CPU p95 for comparison: ${fixed(processOf('worst sync', 'edge').p95)} ms.`,
+  );
   for (const item of smallRoutes)
-    lines.push(`- ${item.route} Edge p95 isolate CPU ${fixed(item.edgeP95, 2)} ms against twice trunk p95 ${fixed(2 * item.nodeP95, 2)} ms: ${item.fails ? 'fails' : 'passes'}. Process CPU for comparison: Edge p95 ${fixed(item.processEdgeP95, 2)} ms, trunk p95 ${fixed(item.processNodeP95, 2)} ms.`);
+    lines.push(
+      `- ${item.route} Edge p95 isolate CPU ${fixed(item.edgeP95, 2)} ms against twice trunk p95 ${fixed(2 * item.nodeP95, 2)} ms: ${item.fails ? 'fails' : 'passes'}. Process CPU for comparison: Edge p95 ${fixed(item.processEdgeP95, 2)} ms, trunk p95 ${fixed(item.processNodeP95, 2)} ms.`,
+    );
   lines.push(`- Every perf request returned 200 or 201: ${allStatusesOk}.`);
   lines.push(`- All ten lanes pass on ${chosen}: ${lanesPass}.`);
   for (const error of harnessErrors) lines.push(`- Harness error: ${error}`);
   if (syncFails && lanesPass && smallRoutes.every((item) => !item.fails))
-    lines.push('- Only the sync fails. The plan says to add a section that batches the parent checks in `apps/api/src/data-sync/journal.ts` and land it before P15-6.');
+    lines.push(
+      '- Only the sync fails. The plan says to add a section that batches the parent checks in `apps/api/src/data-sync/journal.ts` and land it before P15-6.',
+    );
   lines.push('', `Decision: ${decision}`);
   await writeFile(resolve(out, 'report.md'), `${lines.join('\n')}\n`);
   await writeFile(
     resolve(out, 'results.json'),
-    mask({ sourceSha, runUrl, image, bundles, laneMeta, laneResults, chosen, cpuLimit, table, select1: perf?.select1, decision, authCalls, harnessErrors }),
+    mask({
+      sourceSha,
+      runUrl,
+      image,
+      bundles,
+      laneMeta,
+      laneResults,
+      chosen,
+      cpuLimit,
+      table,
+      select1: perf?.select1,
+      decision,
+      authCalls,
+      harnessErrors,
+    }),
   );
   console.info(`Decision: ${decision}`);
   if (harnessErrors.length) {
@@ -1795,7 +2281,8 @@ try {
   await main();
 } finally {
   for (const child of children) child.kill('SIGTERM');
-  for (const name of containers) await run('docker', ['rm', '-f', name]).catch(() => undefined);
+  for (const name of containers)
+    await run('docker', ['rm', '-f', name]).catch(() => undefined);
   authStub.close();
   sentryStub.close();
   await admin.end();

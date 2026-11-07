@@ -1,6 +1,3 @@
-// Trial-only Edge runtime main service. It plays the gateway: it routes
-// /api/... to one user worker per trial variant with that variant's secrets
-// and resource limits, the way `supabase functions serve` creates workers.
 type Variant = {
   name: string;
   functionDir: string;
@@ -14,10 +11,15 @@ type Variant = {
 type UserWorker = {
   fetch(request: Request): Promise<Response>;
 };
-type WorkerErrors = Record<string, (new (...args: never[]) => Error) | undefined>;
+type WorkerErrors = Record<
+  string,
+  (new (...args: never[]) => Error) | undefined
+>;
 
 declare const EdgeRuntime: {
-  userWorkers: { create(options: Record<string, unknown>): Promise<UserWorker> };
+  userWorkers: {
+    create(options: Record<string, unknown>): Promise<UserWorker>;
+  };
   getRuntimeMetrics(): Promise<unknown>;
 };
 declare const Deno: {
@@ -101,7 +103,11 @@ Deno.serve(async (request) => {
     } catch (error) {
       const name = errorName(error);
       // A retired worker refuses the request before running it.
-      if (name === 'WorkerAlreadyRetired' && request.body === null && attempt < 2)
+      if (
+        name === 'WorkerAlreadyRetired' &&
+        request.body === null &&
+        attempt < 2
+      )
         continue;
       console.error(
         JSON.stringify({

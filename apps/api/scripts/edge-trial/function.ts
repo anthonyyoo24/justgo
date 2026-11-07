@@ -1,5 +1,3 @@
-// Trial-only Edge entry. It wraps the production entry with stubs, a query
-// counter, a rollback failpoint and three probe routes. It never merges.
 import type { PoolClient } from 'pg';
 import { createEdgeHandler as createProductionHandler } from '../../src/edge.js';
 import { installFetchMap } from './fetch-map.js';
@@ -24,7 +22,9 @@ function hookClient(client: PoolClient) {
     queries++;
     const first = args[0];
     const config: QueryConfig =
-      typeof first === 'string' ? { text: first } : ((first as QueryConfig) ?? {});
+      typeof first === 'string'
+        ? { text: first }
+        : ((first as QueryConfig) ?? {});
     const text = config.text ?? '';
     // Drizzle passes { text } first and the parameters as the second argument.
     const values = config.values ?? (args[1] as unknown[] | undefined);
