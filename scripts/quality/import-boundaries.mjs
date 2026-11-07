@@ -44,6 +44,13 @@ function boundaryMessage(filename, specifier) {
   const mobileSource = under(file, 'apps/mobile/src');
   const testSource = /\.test\.[jt]sx?$/.test(file);
   if (
+    under(file, 'apps/mobile') &&
+    under(target, 'expo-secure-store') &&
+    file !== 'apps/mobile/src/platform/auth/auth-storage.ts' &&
+    !testSource
+  )
+    return 'Store managed sessions with createAuthStorage() from apps/mobile/src/platform/auth/auth-storage.ts, which keeps them in their own WHEN_UNLOCKED_THIS_DEVICE_ONLY keychain service.';
+  if (
     mobileSource &&
     under(mobileTarget, 'apps/mobile/src/dev') &&
     !under(file, 'apps/mobile/src/dev') &&
