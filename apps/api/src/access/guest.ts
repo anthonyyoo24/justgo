@@ -3,6 +3,7 @@ import type { AccessResponse, ChallengeCard } from '@justgo/contracts';
 import { hasVerifiedAccess } from '@justgo/contracts';
 import type { IdentityService } from '../identity/service.js';
 import { ApiError } from '../http/api-error.js';
+import { setTransactionContext } from '../db/transaction-context.js';
 export type GuestAccessReader = () => Promise<AccessResponse>;
 export const unavailableGuestAccess: GuestAccessReader = async () => ({
   status: 'unpaid',
@@ -29,7 +30,7 @@ export class GuestService {
         access.status === 'unavailable' ? 503 : 403,
       );
     return this.identity.db.transaction(async (tx) => {
-      await tx.execute(sql`select set_config('app.guest_catalog','on',true)`);
+      await setTransactionContext(tx, 'app.guest_catalog', 'on');
       return {
         cards: (
           await tx.execute<ChallengeCard & Record<string, unknown>>(
