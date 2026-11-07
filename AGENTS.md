@@ -268,13 +268,27 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   When a hook or gate fires on state your session does not own, check
   `git fetch -q && git rev-list --count HEAD..origin/main` in the main checkout
   first.
-- **Merge only what is verified.** An agent may merge a PR, or arm GitHub
-  auto-merge on it, once CI is green and an independent verdict from an agent that
-  did not write it covers the current head. Green CI alone is not a verdict. Land
+- **Merge only what is verified.** An agent may merge a PR directly once CI is
+  green and an independent verdict from an agent that did not write it covers the
+  current head. Auto-merge follows the next bullet instead. The required `checks`
+  and `sections` hold an auto-merge until a verdict covers the head. Green CI
+  alone is not a verdict. Land
   stacks bottom-up, one PR at a time, and stop at the first PR without a verdict
   (pstack's Shipping playbook). Pin every merge to the head that a verdict
   covers, fresh or carried, with `gh pr merge --match-head-commit <head-sha>`,
   both direct and `--auto`, so GitHub refuses a head no verdict covers.
+- **Arm auto-merge when you open a PR.** Outside the sensitive areas below, run
+  `gh pr merge <n> --auto --squash --match-head-commit <head-sha>` right after
+  opening the PR, and again after each push, pinned to the new head. The
+  required `sections` check stays red until a readable `PASS` covers that head,
+  so GitHub merges on its own once the verdict and CI are green. The agent does
+  not wait for CI to merge. After a `PASS`, push nothing more to the PR. Put
+  optional notes and later additions in a follow-up PR or issue. If a push after
+  a `PASS` cannot be avoided, run `gh pr merge <n> --disable-auto` first, and
+  re-arm only after a fresh verdict covers the new head. A docs- or tests-only
+  push keeps `sections` green without a review. Also disarm with
+  `--disable-auto` when a PR comes to touch a sensitive area, and on Anthony's
+  hold.
 - **Anthony merges the sensitive areas.** PRs that touch the paths in
   [Agent effort](#agent-effort) (sign-in and identity, account data and
   deletion, migrations, release and backup scripts) stop at merge-ready for
@@ -306,15 +320,30 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 ## Agent effort
 
-- Subagents and helpers run at `medium` effort or higher, never `low`.
+- Subagents and helpers run at `medium` or `high` effort. Never use `low`, and
+  never `xhigh` or `max`. Anthony capped effort at `high` on 2026-11-07 to cut
+  usage. `high` is the default, including for the sensitive areas below.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
   because a resumed verifier checks only its own findings. To save cost, use a
-  fresh agent on a smaller model, not a resumed one, except for the `xhigh`
-  work below.
+  fresh agent on a smaller model, not a resumed one, except for the sensitive
+  areas below.
 - When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
   sets the model and effort for each pstack role.
-- Use `xhigh` for work that touches sign-in and identity, account data and
-  deletion, database migrations, or release and backup scripts. These live mainly
+- Start routine helpers on Sonnet at `high` (`model: "sonnet"`) when pstack's
+  per-role settings do not already cover them. Routine helpers are decision-trail
+  and audit reviews, inventories and research, docs-only writing passes,
+  mechanical fix rounds (lint, formatting and small review notes), and re-checks
+  after a rebase whose `verdict-patch.mjs check` says `carries`. Owners that
+  change behavior, a PR's first independent verifier and interrogate reviewers
+  stay on Opus. A re-verify after a fix round may use Sonnet, as the re-verify
+  bullet above allows.
+- A session that starts or tracks other sessions hands off to a fresh session
+  when its context reaches about 200k tokens (`get_usage` reports it). Use the
+  session-pickup brief from [Rules and what enforces them](#rules-and-what-enforces-them).
+  Every turn rereads the whole context, so a long-lived coordinator costs more
+  per turn as it grows.
+- The sensitive areas are sign-in and identity, account data and
+  deletion, database migrations, and release and backup scripts. These live mainly
   in `apps/api/src/{identity,access,account-export,data-sync}/`,
   `apps/api/src/http/bearer.ts`, `apps/api/src/db/{schema,managed-session-check}.ts`,
   `apps/api/drizzle/`, `apps/api/scripts/`, `apps/mobile/src/app-support/{identity,access}/`,
