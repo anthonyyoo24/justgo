@@ -93,58 +93,60 @@ Each live lane runs at the PR head in its own worktree. On the 8 GB Mac, lanes r
 
 **Depends on.** None.
 
+**Result.** `Decision: stop` on November 7, 2026. All ten lanes passed and the worst-case sync met its bound, but the health route's p95 CPU on the Edge runtime was more than twice trunk's. [Appendix A](#appendix-a-prototype-evidence) holds the evidence, including how the failing route depends on the CPU reading.
+
 **Files.**
 
-- [ ] Create the throwaway branch `phase15/edge-trial` from `main`. Never merge it.
-- [ ] Create `apps/api/src/edge.ts`, `supabase/config.toml`, `supabase/functions/api/index.ts` and `supabase/functions/api/deno.json` on that branch.
-- [ ] Create `apps/api/scripts/edge-trial.ts` on that branch. Port the route sequence and database readback from `apps/api/scripts/workers-smoke.ts:248-340`.
-- [ ] Create a worst-case sync fixture on that branch with 50 journal versions of 50 parents each, close to the 4 MiB body bound.
-- [ ] Create a workflow on that branch, triggered by `push` to `phase15/edge-trial`, that runs the trial in a pinned `supabase/edge-runtime` image against `justgo_test`. It uploads the report, receipts and CPU profiles as a workflow artifact. Download the artifact to `.local/edge-trial/`.
-- [ ] Record whether the pinned image enforces the hosted 2 s CPU limit. If it does not, the CPU rule reads the profiles, and P15-2 and P15-9 confirm on the hosted function.
+- [x] Create the throwaway branch `phase15/edge-trial` from `main`. Never merge it.
+- [x] Create `apps/api/src/edge.ts`, `supabase/config.toml`, `supabase/functions/api/index.ts` and `supabase/functions/api/deno.json` on that branch.
+- [x] Create `apps/api/scripts/edge-trial.ts` on that branch. Port the route sequence and database readback from `apps/api/scripts/workers-smoke.ts:248-340`.
+- [x] Create a worst-case sync fixture on that branch with 50 journal versions of 50 parents each, close to the 4 MiB body bound.
+- [x] Create a workflow on that branch, triggered by `push` to `phase15/edge-trial`, that runs the trial in a pinned `supabase/edge-runtime` image against `justgo_test`. It uploads the report, receipts and CPU profiles as a workflow artifact. Download the artifact to `.local/edge-trial/`.
+- [x] Record whether the pinned image enforces the hosted 2 s CPU limit. If it does not, the CPU rule reads the profiles, and P15-2 and P15-9 confirm on the hosted function.
 
 **Build.**
 
-- [ ] Bundle `apps/api/src/edge.ts` with esbuild into one ESM file. Reuse the contracts alias in `scripts/release/staging-worker-build.mjs:132-138`. Record the bundle size.
-- [ ] Serve the bundle with `Deno.serve`. Strip the `/api` function prefix once before `app.fetch`.
-- [ ] Map `JUSTGO_AUTH_PUBLISHABLE_KEY` and `JUSTGO_AUTH_SECRET_KEY` into the existing `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_AUTH_SECRET_KEY` config fields. Leave `readConfig` unchanged.
-- [ ] Build the app and a one-connection `pg` pool once per worker.
-- [ ] On the Edge entry, time ten `select 1` round trips inside one transaction after one untimed query, and record the median. P15-2 repeats this probe on the hosted function.
-- [ ] Run `pg` both bundled with a `node:buffer` banner and external as an `npm:` import. Record which one works.
-- [ ] If `pg` fails over TLS or inside a transaction, repeat the trial with `drizzle-orm/postgres-js` and record the difference.
+- [x] Bundle `apps/api/src/edge.ts` with esbuild into one ESM file. Reuse the contracts alias in `scripts/release/staging-worker-build.mjs:132-138`. Record the bundle size.
+- [x] Serve the bundle with `Deno.serve`. Strip the `/api` function prefix once before `app.fetch`.
+- [x] Map `JUSTGO_AUTH_PUBLISHABLE_KEY` and `JUSTGO_AUTH_SECRET_KEY` into the existing `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_AUTH_SECRET_KEY` config fields. Leave `readConfig` unchanged.
+- [x] Build the app and a one-connection `pg` pool once per worker.
+- [x] On the Edge entry, time ten `select 1` round trips inside one transaction after one untimed query, and record the median. P15-2 repeats this probe on the hosted function.
+- [x] Run `pg` both bundled with a `node:buffer` banner and external as an `npm:` import. Record which one works.
+- [x] If `pg` fails over TLS or inside a transaction, repeat the trial with `drizzle-orm/postgres-js` and record the difference.
 
 **You see.**
 
-- [ ] `.local/edge-trial/report.md` lists every lane with pass or fail, the bundle size, CPU and wall time per route, the query count of the worst-case sync, the loopback median of ten timed `select 1` round trips, and one decision line, `Decision: go` or `Decision: stop`.
+- [x] `.local/edge-trial/report.md` lists every lane with pass or fail, the bundle size, CPU and wall time per route, the query count of the worst-case sync, the loopback median of ten timed `select 1` round trips, and one decision line, `Decision: go` or `Decision: stop`.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `npm run test -w @justgo/api` passes on the trial branch, which shows the trial entry changed no shared code.
+- [x] `npm run test -w @justgo/api` passes on the trial branch, which shows the trial entry changed no shared code.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `opus high` at the PR head, per the boot recipe. These lanes run the bundle on the Edge runtime in CI against `justgo_test`.
 
-- [ ] Lane 1. Regression lane against trunk. Run the trial route sequence on the trunk Node entry and on the head Edge entry. Save `route-sequence.json`. Pass when every status and body matches apart from request IDs.
-- [ ] Lane 2. Request `GET /api/health` and `GET /api/ready` on the Edge entry. Save `ready.json`. Pass when `/ready` returns 200 after readiness confirmed `justgo_runtime`, the `justgo` schema and the live-session helper.
-- [ ] Lane 3. Read the guest catalog with no bearer. Save `guest-catalog.json`. Pass when it returns 200 with the seeded challenges.
-- [ ] Lane 4. Send 20 interleaved attempt writes from two fixture users. Save `owner-isolation.json`. Pass when each user reads back only their own attempts and SQL readback shows no cross-owner row.
-- [ ] Lane 5. Read the second user's attempt with the first user's bearer. Save `cross-account.json`. Pass when the status matches the Node entry's and no row changes.
-- [ ] Lane 6. Throw from a trial-only failpoint after `set_config` inside a write. Save `rollback.json`. Pass when the API returns its typed 5xx body and SQL readback shows no partial row.
-- [ ] Lane 7. Create a loopback legacy session and two concurrent transfers with the same code, which take `pg_advisory_xact_lock`. Save `xact-locks.json`. Pass when one transfer succeeds and the other waits, then fails with the Node entry's status.
-- [ ] Lane 8. Decode a managed token payload with a stubbed Auth endpoint, and decode a progress cursor. Save `buffer-paths.json`. Pass when both decode with no `ReferenceError` for `Buffer`.
-- [ ] Lane 9. Post the worst-case journal sync batch. Save `worst-sync.json`. Pass when it returns 200, the saved count matches the batch, and the report records CPU ms, wall ms and the query count.
-- [ ] Lane 10. Trigger a server error with diagnostics on and a stub Sentry endpoint. Save `sentry-envelope.json`. Pass when the envelope reaches the stub with no request body, token or reflection text.
+- [x] Lane 1. Regression lane against trunk. Run the trial route sequence on the trunk Node entry and on the head Edge entry. Save `route-sequence.json`. Pass when every status and body matches apart from request IDs.
+- [x] Lane 2. Request `GET /api/health` and `GET /api/ready` on the Edge entry. Save `ready.json`. Pass when `/ready` returns 200 after readiness confirmed `justgo_runtime`, the `justgo` schema and the live-session helper.
+- [x] Lane 3. Read the guest catalog with no bearer. Save `guest-catalog.json`. Pass when it returns 200 with the seeded challenges.
+- [x] Lane 4. Send 20 interleaved attempt writes from two fixture users. Save `owner-isolation.json`. Pass when each user reads back only their own attempts and SQL readback shows no cross-owner row.
+- [x] Lane 5. Read the second user's attempt with the first user's bearer. Save `cross-account.json`. Pass when the status matches the Node entry's and no row changes.
+- [x] Lane 6. Throw from a trial-only failpoint after `set_config` inside a write. Save `rollback.json`. Pass when the API returns its typed 5xx body and SQL readback shows no partial row.
+- [x] Lane 7. Create a loopback legacy session and two concurrent transfers with the same code, which take `pg_advisory_xact_lock`. Save `xact-locks.json`. Pass when one transfer succeeds and the other waits, then fails with the Node entry's status.
+- [x] Lane 8. Decode a managed token payload with a stubbed Auth endpoint, and decode a progress cursor. Save `buffer-paths.json`. Pass when both decode with no `ReferenceError` for `Buffer`.
+- [x] Lane 9. Post the worst-case journal sync batch. Save `worst-sync.json`. Pass when it returns 200, the saved count matches the batch, and the report records CPU ms, wall ms and the query count.
+- [x] Lane 10. Trigger a server error with diagnostics on and a stub Sentry endpoint. Save `sentry-envelope.json`. Pass when the envelope reaches the stub with no request body, token or reflection text.
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. CPU ms and wall ms per request for `/health`, the guest catalog, an attempt write and the worst-case journal sync, plus the sync's query count.
-- [ ] Probe. Run one request script against the trunk Node entry and the head Edge entry, alternating, for 20 rounds each. Capture CPU profiles from the inspector port.
-- [ ] Baseline. Record the trunk Node numbers first.
-- [ ] Rule. The trial fails if the worst-case sync takes more than 1,000 ms of CPU or 5,000 ms of wall time at loopback, or if a small route's p95 CPU is more than twice trunk's. If only the sync fails, add a plan section that batches the parent checks in `apps/api/src/data-sync/journal.ts`, and land it before P15-6.
+- [x] Metric. CPU ms and wall ms per request for `/health`, the guest catalog, an attempt write and the worst-case journal sync, plus the sync's query count.
+- [x] Probe. Run one request script against the trunk Node entry and the head Edge entry, alternating, for 20 rounds each. Capture CPU profiles from the inspector port.
+- [x] Baseline. Record the trunk Node numbers first.
+- [x] Rule. The trial fails if the worst-case sync takes more than 1,000 ms of CPU or 5,000 ms of wall time at loopback, or if a small route's p95 CPU is more than twice trunk's. If only the sync fails, add a plan section that batches the parent checks in `apps/api/src/data-sync/journal.ts`, and land it before P15-6.
 
 **Review gate.** None. P15-1 is not review-gated.
 
 **Merge.**
 
-- [ ] Never merge `phase15/edge-trial`. Keep the branch and its SHA for Appendix A.
+- [x] Never merge `phase15/edge-trial`. Keep the branch and its SHA for Appendix A.
 - [ ] Open a docs-only PR that records the report in Appendix A and the decision in this plan. An agent merges it after an independent verdict.
 - [ ] On `Decision: stop`, present the failed lanes to Anthony and stop the program.
 
@@ -760,6 +762,75 @@ Reading settled the rest. The [analysis on #171](https://github.com/anthonyyoo24
 - Keep the hand-rolled Sentry sender. Supabase's example warns that `@sentry/deno` shares scope across concurrent requests.
 - The Worker dashboards showed CPU from p50 15.14 ms to p999 58.49 ms, aggregates that include public checks, and Hyperdrive measured an 18.48 ms mean query. At that latency the worst-case sync, inferred at about 2,800 sequential queries, would take about 50 seconds. Nobody has measured sync on any host.
 - Twelve open `gate` issues name Cloudflare, Workers, Hyperdrive, Vercel or R2. They are #77, #79, #81, #84, #99, #102, #103, #104, #105, #118, #123 and #124. #79, #81, #84 and #99 hold Worker evidence and need retargeting.
+
+### P15-1 local runtime trial
+
+P15-1 ran on November 7, 2026, from the throwaway branch `phase15/edge-trial` at `d0c2f229ba57dc6f3c2c06baa2289bcef79a386f`. The [final workflow run](https://github.com/anthonyyoo24/justgo/actions/runs/42379458521), attempt 2, served the bundle on `supabase/edge-runtime:v1.78.0@sha256:0d21a556a2bf1c090d4558f3fcf2897b93de46036f0e8a973444c614ecca2d91`. The Supabase CLI pins that image for local serving, and it reports Deno 2.1.4 compatibility with V8 11.6. The run used a loopback Postgres 17 `justgo_test` on the runner, local Auth and Sentry stubs, no repository secrets and no hosted project. Its artifact holds the report, one receipt per lane, 160 CPU profiles and the raw samples. The coordinating worktree keeps a copy, with the report at `.local/edge-trial/report.md`.
+
+The same run passed `npm run test -w @justgo/api` with 498 tests in 39 files. `apps/api/src` and `packages/contracts` on the trial branch match `main` apart from the new `apps/api/src/edge.ts`, so the trunk Node entry and the trial's Node entry run the same code.
+
+The report ends with `Decision: stop`. Every lane passed and the worst-case sync met its bound. The health route failed the rule that a small route's p95 CPU stays within twice trunk's, because 6 of 20 Edge health requests took 5 to 8 ms of worker thread CPU. The timed pass took no profiles, so a garbage-collection pause is the inferred cause. Each of the six coincided with 14.5 to 20.4 ms of CPU on V8's garbage-collection helper threads. Of the other 14, one coincided with 9.0 ms on those threads and the rest with at most 0.38 ms. Trunk had one request like the six, with 21.1 ms on its helper threads.
+
+#### Lanes
+
+The trial ran every lane on three builds of the bundle.
+
+| Build                                                                                                             | Result                                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `pg` bundled, with a banner that imports `Buffer`, `process`, the timers and `createRequire` from `node:` modules | All ten lanes pass.                                                                                             |
+| `pg` external as `npm:pg@8.23.1` through `deno.json`, with a `createRequire` banner only                          | Lanes 2, 3 and 7 pass. Every managed request returns 401 `UNAUTHORIZED`, so lanes 1, 4, 5, 6, 8, 9 and 10 fail. |
+| `pg` external as `npm:pg@8.23.1`, with a banner that also imports `Buffer` from `node:buffer`                     | All ten lanes pass.                                                                                             |
+
+The report and the decision use the bundled build. Its lanes showed the following.
+
+- Lane 1. The trunk Node entry and the head Edge entry return the same status and body on all 14 steps of the route sequence. The comparison ignores request IDs, `checkedAt` times and the user ID that the server allocates. SQL readback shows one attempt and one journal version on both entries.
+- Lane 2. `/ready` returns 200. It returns 503 after the runtime role loses `EXECUTE` on the live-session helper, and 200 again after the grant returns.
+- Lane 3. The guest catalog returns all 61 seeded cards in the seeded order.
+- Lane 4. All 20 interleaved writes return 201. Each user reads back only their own 10 attempts, and SQL shows no cross-owner row.
+- Lane 5. The first user's three requests that target the second user's attempt return 200, 200 and 410 on both entries. They leak no ID and change no row.
+- Lane 6. The failpoint after the attempt insert returns the typed 503 `UNAVAILABLE` body. SQL shows no row, `/ready` stays 200, and the same write then returns 201.
+- Lane 7. Both concurrent transfers wait on `pg_advisory_xact_lock`. One returns 200 and the other returns 409, as on the Node entry, and one row exists.
+- Lane 8. The managed token payload decodes to the expected session ID, and the progress cursor encodes and decodes with no `ReferenceError`.
+- Lane 9. The 4,154,082-byte batch of 50 versions with 50 parents each returns 200 with 50 saved, after 985 ms of wall time and 2,812 queries. It ran under the CLI's 2,000 ms CPU limit. The lanes container used the `per_request` policy, not the `per_worker` policy in the trial's `supabase/config.toml`.
+- Lane 10. The Sentry stub receives one envelope for the 503. It holds no bearer token, token payload, reflection text, attempt ID or user ID.
+
+An extra probe connected with `DATABASE_SSL=verify-full` to a Postgres that serves a certificate from a throwaway CA. Readiness, a managed session and a write transaction passed on both builds that pass the lanes. `pg` did not fail over TLS or inside a transaction, so the trial did not try `drizzle-orm/postgres-js`.
+
+#### Perf
+
+The probe alternated 20 rounds between the trunk Node entry and the head Edge entry, after 5 untimed warm-up rounds on each. Round 1 started with trunk Node. CPU is the on-CPU time of the thread that runs the app's JavaScript, read from `/proc/<pid>/task/<tid>/schedstat` around each unprofiled request. On Node that is the main thread. On Edge it is the user worker thread, whose CPU clock the runtime's own limit reads. The client timed the wall time of the same requests.
+
+| Route           | Trunk CPU p95 ms | Edge CPU p95 ms | CPU bound ms | Trunk wall p95 ms | Edge wall p95 ms | Result |
+| --------------- | ---------------- | --------------- | ------------ | ----------------- | ---------------- | ------ |
+| `/health`       | 0.96             | 7.85            | 1.93         | 3.8               | 9.7              | Fails  |
+| Guest catalog   | 1.46             | 2.80            | 2.93         | 3.6               | 9.2              | Passes |
+| Attempt write   | 4.59             | 6.04            | 9.17         | 11.9              | 15.6             | Passes |
+| Worst-case sync | 316              | 523             | 1,000        | 704               | 918              | Passes |
+
+- The sync's wall bound is 5,000 ms. The sync sends 2,812 queries.
+- The Edge health median is 1.18 ms against 0.81 ms on trunk. Its p95 falls in a second group of samples, 5 to 8 ms, that carry a garbage-collection pause. The CPU profiles of the same route show `(garbage collector)` samples of 2.8 to 9.9 ms in 6 of 20 Edge health requests, and 2 smaller ones on trunk.
+- Each entry's turn starts with health, so a health request often follows a 4 MiB sync, the largest allocator in the script. The pauses collect garbage from earlier requests. The pauses are small against the 2,000 ms limit, but the rule compares p95 with trunk's, and trunk has one such outlier per run.
+- Two other runs with the same measurement reported `Decision: go`. [Run 42378770410](https://github.com/anthonyyoo24/justgo/actions/runs/42378770410) at `de2507d` saw one pause in 20 Edge health requests. Attempt 1 of the final run, on the same SHA, also said go, and its samples were lost when attempt 2 started. A p95 of 20 samples falls in the pause group once two or more requests pause. Run 42378770410's profiled pass shows garbage-collection time in 6 of 20 Edge health profiles, the same rate as the final run, so its single pause in the unprofiled pass was a low draw. Across the two kept runs 7 of 40 Edge health requests paused, which puts the p95 in the pause group. If Anthony wants a stable verdict, the perf auditor suggests a randomized route order, at least 100 rounds, a count of the requests that coincide with a pause, and a timed pass without the inspector.
+- Every CPU reading fails the trial, but the failing route depends on the reading. Whole-process CPU also counts the trial's gateway stand-in, the inspector server and Tokio threads on Edge. Before the first run the owner chose it as the fallback for profiles without `(idle)` samples, and it fails health and the guest catalog in every run. In the final run it also fails the attempt write, at a p95 of 11.06 ms against twice trunk's, 9.25 ms. The Edge profiles held no `(idle)` samples, so Edge profile time includes waiting on Postgres. Read as CPU, the profiles pass the small routes and put the sync at a 1,032 ms p95, which is the case the rule answers with a batching section. The owner switched to the worker thread clock after the first runs because it is the clock the runtime's limit reads.
+- The sync spends about 0.18 ms of Edge worker CPU per query, against 0.10 ms on Node. The profiles put that time in socket writes and reads through Deno's `node:net` layer, `Buffer` conversions and garbage collection.
+- The loopback median of ten timed `select 1` round trips in one transaction was 0.244 ms on the first probe and 0.137 to 0.156 ms on four more.
+
+#### CPU limit
+
+The pinned image enforces a CPU limit only when the main service passes one to `EdgeRuntime.userWorkers.create`. The Supabase CLI's local serve passes a 1,000 ms soft limit and a 2,000 ms hard limit with the `per_worker` policy. With those limits and the `per_request` policy, a request that burns 2,500 ms of CPU returns 546 after 2,006 ms, and a 1,500 ms burn returns 200. Under `per_worker` the runtime adds up CPU across a worker's requests, so a 500 ms burn followed by a 1,500 ms burn ends in 546. With no limits set, a 2,500 ms burn returns 200. The perf probe ran with no limits and one long-lived worker, and it read CPU from the worker thread. P15-2 and P15-9 confirm the hosted limit.
+
+#### Answers from P15-1
+
+1. Partly. Bundled `pg` and `npm:pg` both verify a custom CA with `verify-full` on the Edge runtime. P15-2 still checks the Supabase CA through the transaction pooler as `justgo_runtime.<project-ref>`.
+2. P15-2 answers it.
+3. No. `typeof globalThis.Buffer` is `undefined` in a user worker. `process` is an object and `global` is undefined. Without a `node:buffer` import, every managed request returns 401 `UNAUTHORIZED`, which is the Appendix C risk. A `Buffer` import in the bundle banner fixes it with no change to shared code.
+4. P15-2 answers it.
+5. P15-2 answers it. The trial entry passed the fixed address `unknown` to every rate limit.
+6. P15-2 answers it. Lane 10 shows that the API's own Sentry envelope carries no body, token or reflection text.
+7. At loopback the p95 is 523 ms of Edge worker CPU and 918 ms of wall time. P15-2 predicts the hosted wall time, and P15-9 measures it.
+8. P15-2 answers it.
+9. P15-2 answers it for the gateway. The local runtime passed the 4,154,082-byte body to the worker.
+10. The production entry bundles to 2,197,373 bytes with `pg` bundled and to 2,014,633 bytes with `npm:pg`, under the 5 MB server-side cap. On the runner the first request to a new worker took 540 ms. P15-2 measures the hosted cold start.
 
 ## Appendix B. Alternatives rejected
 
