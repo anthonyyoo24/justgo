@@ -99,6 +99,66 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "export const send = () => globalThis.fetch('https://example.invalid');",
     'apps/api/src/http/server-error-reporter.ts',
   ],
+  [
+    'no-restricted-globals',
+    'export const send = (url: string) => fetch(url);',
+    'apps/api/src/http/outbound.mts',
+  ],
+  [
+    'no-restricted-globals',
+    'export const send = (url: string) => fetch(url);',
+    'apps/api/src/http/outbound.cts',
+  ],
+  [
+    'no-restricted-globals',
+    'const global = globalThis; export const send = (url: string) => global.fetch(url);',
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-globals',
+    'const { fetch: send } = globalThis; export { send };',
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-globals',
+    "export const send = Reflect.get(globalThis, 'fetch');",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-globals',
+    "export const send = () => self.fetch('https://example.invalid');",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-globals',
+    "export const send = () => window.fetch('https://example.invalid');",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-imports',
+    "import { fetch } from 'undici'; export const send = fetch;",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-imports',
+    "import { request } from 'undici'; export const send = request;",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-imports',
+    "import crossFetch from 'cross-fetch'; export const send = crossFetch;",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-imports',
+    "import { createClient } from '@supabase/supabase-js'; export const admin = createClient('https://example.invalid', 'secret');",
+    'apps/api/src/http/server-error-reporter.ts',
+  ],
+  [
+    'no-restricted-imports',
+    "import { fetch } from 'undici'; export const send = fetch;",
+    'apps/api/src/identity/managed-deletion.ts',
+  ],
 ]) {
   test(`lint safeguard: ${rule}`, async () => {
     const [result] = await eslint.lintText(source, {
