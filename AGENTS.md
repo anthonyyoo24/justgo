@@ -294,17 +294,23 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   deletion, migrations, release and backup scripts) stop at merge-ready for
   Anthony. He can also hold any PR, and a hold stops every merge until he lifts it.
 - **A verdict covers a patch, not a commit.** Each verdict comment names the base
-  and head it ran on in a line of this form, where the verdict is `PASS`,
-  `PASS+NOTES` or `FAIL` and may be bold:
+  and head it ran on, and whether the change is sensitive, in two lines of this
+  form. The verdict is `PASS`, `PASS+NOTES` or `FAIL`, and either line may be
+  bold:
 
   ```text
   Verifier verdict: PASS on base `<base-sha>`, head `<head-sha>`
+  Sensitive: no
   ```
 
-  This is the one place that defines the format. The required `sections` job
+  Write `Sensitive: yes` when the change touches a path in
+  [`sensitive-paths`](#agent-effort), or affects sign-in, account data,
+  migrations or release from outside those paths. Otherwise write
+  `Sensitive: no`. This is the one place that defines the format. The required `sections` job
   reads the newest comment from Anthony's account that mentions a verdict. It
-  fails when there is none, when that comment has no line of this form (a
-  heading such as `## Verdict: PASS` or prose is unreadable), on `FAIL`, or when
+  fails when there is none, when that comment lacks either line (a heading
+  such as `## Verdict: PASS`, prose, or a verdict with no `Sensitive` line is
+  unreadable), on `FAIL`, or when
   that verdict no longer covers the PR head. So every PR shows `sections` red
   until a readable `PASS` or `PASS+NOTES` covers its head. Posting
   a fresh verdict reruns it. If that rerun does not start, run

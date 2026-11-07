@@ -6,8 +6,10 @@ const verdictLine =
 // A comment that talks about a verdict in any other shape, such as a heading or
 // prose, is unreadable and fails the check instead of being skipped.
 const verdictMention = /verifier[\s*_]+verdicts?|\bverdicts?[ \t*_]*:/i;
+// Every verdict also says whether the change is sensitive, on a line of its own.
+const sensitiveLine = /^[ \t]*\**Sensitive:\**[ \t]*\**(yes|no)\**[ \t]*$/gim;
 export const verdictFormat =
-  'Verifier verdict: PASS|PASS+NOTES|FAIL on base `<base-sha>`, head `<head-sha>`';
+  'Verifier verdict: PASS|PASS+NOTES|FAIL on base `<base-sha>`, head `<head-sha>`, followed by a line `Sensitive: yes` or `Sensitive: no`';
 const verdictPatch = fileURLToPath(
   new URL('./verdict-patch.mjs', import.meta.url),
 );
@@ -20,10 +22,18 @@ export function newestVerdict(comments) {
     if (comment.author_association !== 'OWNER') continue;
     const body = comment.body ?? '';
     const match = [...body.matchAll(verdictLine)].at(-1);
-    if (match) {
+    const flag = [...body.matchAll(sensitiveLine)].at(-1);
+    if (match && flag) {
       const [, verdict, base, head] = match;
-      return { verdict, base, head, url: comment.html_url };
+      return {
+        verdict,
+        base,
+        head,
+        sensitive: flag[1].toLowerCase() === 'yes',
+        url: comment.html_url,
+      };
     }
+    if (match) return { unreadable: true, url: comment.html_url };
     if (verdictMention.test(body))
       return { unreadable: true, url: comment.html_url };
   }
@@ -34,12 +44,12 @@ export function verdictStatus(comments, pr, check) {
   if (!found)
     return {
       ok: false,
-      message: `No verdict comment yet. Waiting for an independent verdict on head ${pr.head}, posted from the owner account as a line of the form: ${verdictFormat}`,
+      message: `No verdict comment yet. Waiting for an independent verdict on head ${pr.head}, posted from the owner account as lines of the form: ${verdictFormat}`,
     };
   if (found.unreadable)
     return {
       ok: false,
-      message: `The newest verdict comment (${found.url}) is unreadable. Post the verdict on head ${pr.head} as a line of exactly this form: ${verdictFormat}`,
+      message: `The newest verdict comment (${found.url}) is unreadable. Post the verdict on head ${pr.head} as lines of exactly this form: ${verdictFormat}`,
     };
   const named = `The newest verdict (${found.url}) is ${found.verdict} on base ${found.base}, head ${found.head}.`;
   const rerun = `Then rerun this check with \`gh run rerun ${pr.runId ?? '<run-id>'} --failed\`.`;

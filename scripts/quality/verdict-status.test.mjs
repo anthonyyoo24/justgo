@@ -11,9 +11,11 @@ import {
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const workflows = new URL('../../.github/workflows/', import.meta.url);
-const comment = (pr, id, body, author_association = 'OWNER') => ({
+// Verdicts posted before the Sensitive line was required lack it. The fixtures
+// add `Sensitive: no` so they keep testing the verdict line itself.
+const comment = (pr, id, body, author_association = 'OWNER', flag = 'no') => ({
   author_association,
-  body,
+  body: flag ? `${body}\nSensitive: ${flag}` : body,
   html_url: `https://github.com/anthonyyoo24/justgo/pull/${pr}#issuecomment-${id}`,
 });
 const realCheck = (...refs) => runVerdictPatch(refs, root);
@@ -57,6 +59,7 @@ test('the canonical verdict line is parsed and free-form verdicts are unreadable
     verdict: 'PASS',
     base: '959e944',
     head: '1b1eca3',
+    sensitive: false,
     url: recorded.pr141Fresh.html_url,
   });
   for (const free of [
@@ -90,6 +93,33 @@ test('the canonical verdict line is parsed and free-form verdicts are unreadable
     true,
   );
   assert.equal(newestVerdict([comment(1, 1, 'Thanks!')]), undefined);
+});
+
+test('a verdict without a Sensitive yes or no line is unreadable', () => {
+  const line = 'Verifier verdict: PASS on base `aaaaaaa`, head `bbbbbbb`';
+  assert.equal(
+    newestVerdict([comment(1, 1, line, 'OWNER', null)])?.unreadable,
+    true,
+  );
+  for (const flag of ['maybe', '', 'yes, partly'])
+    assert.equal(
+      newestVerdict([comment(1, 1, line, 'OWNER', flag)])?.unreadable,
+      true,
+      flag,
+    );
+  assert.equal(
+    newestVerdict([comment(1, 1, line, 'OWNER', 'yes')])?.sensitive,
+    true,
+  );
+  assert.equal(
+    newestVerdict([comment(1, 1, `${line}\n**Sensitive:** No`, 'OWNER', null)])
+      ?.sensitive,
+    false,
+  );
+  const result = verdictStatus([comment(1, 1, line, 'OWNER', null)], pr, () =>
+    assert.fail('verdict-patch should not run'),
+  );
+  assert.match(result.message, /unreadable[\s\S]*Sensitive: yes/);
 });
 
 test('a missing, heading-style or prose verdict fails with the exact format', () => {
