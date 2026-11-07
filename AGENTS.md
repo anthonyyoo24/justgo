@@ -306,15 +306,22 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 ## Agent effort
 
-- Subagents and helpers run at `medium` effort or higher, never `low`.
+- Subagents and helpers run at `medium` or `high` effort. Never use `low`, and
+  never `xhigh` or `max`. Anthony capped effort at `high` on 2026-11-07 to cut
+  usage. `high` is the default, including for the sensitive areas below.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
   because a resumed verifier checks only its own findings. To save cost, use a
-  fresh agent on a smaller model, not a resumed one, except for the `xhigh`
-  work below.
+  fresh agent on a smaller model, not a resumed one, except for the sensitive
+  areas below.
 - When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
   sets the model and effort for each pstack role.
-- Use `xhigh` for work that touches sign-in and identity, account data and
-  deletion, database migrations, or release and backup scripts. These live mainly
+- A session that starts or tracks other sessions hands off to a fresh session
+  when its context reaches about 200k tokens (`get_usage` reports it). Use the
+  session-pickup brief from [Rules and what enforces them](#rules-and-what-enforces-them).
+  Every turn rereads the whole context, so a long-lived coordinator costs more
+  per turn as it grows.
+- The sensitive areas are sign-in and identity, account data and
+  deletion, database migrations, and release and backup scripts. These live mainly
   in `apps/api/src/{identity,access,account-export,data-sync}/`,
   `apps/api/src/http/bearer.ts`, `apps/api/src/db/{schema,managed-session-check}.ts`,
   `apps/api/drizzle/`, `apps/api/scripts/`, `apps/mobile/src/app-support/{identity,access}/`,

@@ -41,7 +41,7 @@ This plan replaces the paused [Cloudflare plan](phase-15-cloudflare-api.md), whi
 
 ### Spawn owners
 
-- [ ] Spawn one owner per PR with the full lifecycle that `playbooks/autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners of PRs on Agent-effort paths run at `xhigh` effort, and so does the P15-1 owner, because its trial branch touches `apps/api/scripts/`.
+- [ ] Spawn one owner per PR with the full lifecycle that `playbooks/autopilot-full.md` names. In Claude Code an owner is an `Agent` with `isolation: "worktree"`. Owners run at `high` effort, the cap that [Agent effort](../../AGENTS.md#agent-effort) sets, including the P15-1 owner whose trial branch touches `apps/api/scripts/`.
 - [ ] Follow this dependency graph. Start dependent work only after its parent merges or reports the named result.
   - [ ] P15-1, P15-3 and P15-4 are independent and first. All three branch from `main`.
   - [ ] P15-2 after P15-1 reports `Decision: go`.
