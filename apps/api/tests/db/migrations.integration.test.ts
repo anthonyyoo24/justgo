@@ -810,6 +810,8 @@ describe('Phase 07 expansion, final contraction and disposable restoration', () 
     await compareMetadata(22);
     await migration(23);
     await compareMetadata(23);
+    await migration(24);
+    await compareMetadata(24);
     // Restore the pre-cutover protected snapshot, then apply the same registered
     // migration again. This proves forward recovery without discarding journals.
     await admin.query(`DROP SCHEMA ${schema} CASCADE`);
@@ -825,8 +827,8 @@ describe('Phase 07 expansion, final contraction and disposable restoration', () 
     await admin.query(
       `DROP SCHEMA ${schema} CASCADE; CREATE SCHEMA ${schema} AUTHORIZATION justgo_migrator; REVOKE ALL ON SCHEMA ${schema} FROM public; GRANT USAGE ON SCHEMA ${schema} TO justgo_runtime`,
     );
-    for (let index = 0; index <= 23; index++) await migration(index);
-    await compareMetadata(23);
+    for (let index = 0; index <= 24; index++) await migration(index);
+    await compareMetadata(24);
     expect(
       (
         await admin.query(
