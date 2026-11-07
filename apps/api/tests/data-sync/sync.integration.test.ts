@@ -1,6 +1,7 @@
 import { apiRequest } from '../request.js';
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { sql } from 'drizzle-orm';
 import { afterAll, describe, it, expect } from 'vitest';
 import type {
   CompletionAttempt,
@@ -8,7 +9,7 @@ import type {
   ManagedSessionResponse,
   JournalSyncVersion,
 } from '@justgo/contracts';
-import { createDatabase, poolOptions } from '../../src/db/client.js';
+import { createDatabase, poolOptions, withOwner } from '../../src/db/client.js';
 import { readConfig } from '../../src/config.js';
 import { localTestDatabaseUrl } from '../../scripts/local-test-database.js';
 import {
@@ -854,6 +855,32 @@ describe('signed-in immutable journal versions and deletion', () => {
         ])
       ).rows[0]!.deleted_at,
     ).toBeNull();
+  });
+  it('rejects any write that lowers a data epoch, from the API role or a migration, and keeps advancing it', async () => {
+    const a = await signIn(),
+      owner = a.session.userId;
+    expect(
+      (await request(a.token, '/data', 'DELETE', { expectedEpoch: 0 })).json()
+        .dataEpoch,
+    ).toBe(1);
+    await expect(
+      withOwner(db.db, owner, (tx) =>
+        tx.execute(sql`update justgo.users set data_epoch=0 where id=${owner}`),
+      ),
+    ).rejects.toMatchObject({ cause: { code: '23514' } });
+    await expect(
+      admin.query('update justgo.users set data_epoch=0 where id=$1', [owner]),
+    ).rejects.toMatchObject({ code: '23514' });
+    await withOwner(db.db, owner, (tx) =>
+      tx.execute(
+        sql`update justgo.users set data_epoch=data_epoch where id=${owner}`,
+      ),
+    );
+    expect((await request(a.token, '/auth/session')).json().dataEpoch).toBe(1);
+    expect(
+      (await request(a.token, '/data', 'DELETE', { expectedEpoch: 1 })).json()
+        .dataEpoch,
+    ).toBe(2);
   });
   it('synchronizes journal-only historical writing without fabricating completion counts, including explicit restore after deletion', async () => {
     const a = await signIn(),

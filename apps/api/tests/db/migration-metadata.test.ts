@@ -9,7 +9,7 @@ describe('reviewed migration history', () => {
   it('keeps the current declarative schema equal to its latest Drizzle snapshot', async () => {
     const generated = generateDrizzleJson(schema, undefined, ['justgo']);
     const saved = JSON.parse(
-      await readFile(new URL('meta/0023_snapshot.json', root), 'utf8'),
+      await readFile(new URL('meta/0024_snapshot.json', root), 'utf8'),
     );
     expect({ ...generated, id: saved.id, prevId: saved.prevId }).toEqual(saved);
   });
@@ -29,11 +29,12 @@ describe('reviewed migration history', () => {
     const journal = JSON.parse(
       await readFile(new URL('meta/_journal.json', root), 'utf8'),
     ) as { entries: { tag: string }[] };
-    expect(journal.entries.at(-1)?.tag).toBe(
+    expect(journal.entries.at(-1)?.tag).toBe('0024_data_epoch_never_decreases');
+    expect(journal.entries.at(-2)?.tag).toBe(
       '0023_managed_auth_deletion_cleanup',
     );
-    expect(journal.entries.at(-2)?.tag).toBe('0022_journal_historical_context');
-    expect(journal.entries.at(-3)?.tag).toBe('0021_managed_accounts_and_sync');
+    expect(journal.entries.at(-3)?.tag).toBe('0022_journal_historical_context');
+    expect(journal.entries.at(-4)?.tag).toBe('0021_managed_accounts_and_sync');
     expect(
       journal.entries.filter((entry) => /contract/i.test(entry.tag)),
     ).toHaveLength(1);
