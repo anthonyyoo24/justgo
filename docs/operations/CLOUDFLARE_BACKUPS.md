@@ -51,8 +51,8 @@ The first healthy Sentry check-in and a controlled failure and resolution were
 observed. The short controlled incident's email was not received. A later real
 missed-run incident stayed open beyond batching, and Anthony confirmed that its
 backup email arrived. A verified real manual ledger catch-up cleared the monitor
-and resolved the issue. Scheduled execution, timeout-specific behavior, complete
-recovery and actual expiry remain open.
+and resolved the issue. [Backup clock](#backup-clock) records the scheduled runs.
+Timeout-specific behavior, complete recovery and actual expiry remain open.
 
 On November 1, Anthony accepted the current-account, DPA and
 private-consumer-journal assessment with its residual interpretation. It adds no
@@ -190,7 +190,7 @@ in this table are not approvals or published promises.
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backup and ledger retention   | Approved October 30: seven days for each staging prefix in the private dedicated R2 bucket                                                                   | API readback confirms both expiry rules. Retention wording is approved. Actual asynchronous deletion, operational evidence, the effective date, a matching version and publication authorization remain pending.                                                                                        |
 | Lock duration and expiry      | Approved October 30: seven-day prefix locks and lifecycle expiry at day seven                                                                                | API readback and rejection of parent-credential overwrite and DELETE passed for both prefixes. R2 removal is asynchronous, typically within 24 hours of expiry, and that time is not a strict maximum. Actual expiry has not yet been observed.                                                         |
-| Ordinary-write recovery point | Approved October 31: up to 24 hours of new activity since the nightly snapshot may be lost                                                                   | Hourly identity ledgers do not back up new journals. Actual scheduled copies remain unverified. Real missed-copy detection and email, and manual recovery, passed November 2. Approval does not establish achieved recovery evidence.                                                                   |
+| Ordinary-write recovery point | Approved October 31: up to 24 hours of new activity since the nightly snapshot may be lost                                                                   | Hourly identity ledgers do not back up new journals. Scheduled copies passed until the November 6 pause. Real missed-copy detection and email, and manual recovery, passed November 2. Approval does not establish achieved recovery evidence.                                                          |
 | Recovery time                 | Approved October 31: operator target of four hours when safe recovery is possible                                                                            | Not measured for the actual hosted Auth schema or a provider incident. The synthetic local rehearsal is not an operational RTO measurement.                                                                                                                                                             |
 | Current deletion ledger       | Obtain a final ledger after fencing all API, maintenance, Auth and provider mutations. The accepted beta fallback keeps unverified old restored state closed | Independent deletion and revocation recording is deferred for the small beta. Reassess before paid launch or beta expansion, whichever comes first. A clean restart needs a separate procedure. Automatic old-phone recovery is unsupported.                                                            |
 | Restored sessions             | Invalidate every restored legacy, app and Auth session and every Auth refresh token. Cancel pending transfers                                                | Reauthentication was approved October 30 with the complete Privacy wording. Retain recovery digests and their revocations. Do not recreate deleted owners or use an old transfer to recover access. Actual app and Auth recovery still requires evidence.                                               |
@@ -370,14 +370,14 @@ lane.
    On October 31, an agent tool-output mistake exposed the original parent API
    token. Anthony approved replacing and revoking it. The old parent is revoked,
    and its derived uploader now returns HEAD 401. The replacement,
-   `justgo-staging-backup-parent-rotation-2026-10-31`, keeps the same bucket-only
-   Object Read & Write parent scope and remains local outside CI. It expires
-   `2026-11-05T17:00:00Z`. Its derived uploader permits only PutObject and
-   HeadObject on the two approved staging prefixes and expires
-   `2026-11-05T15:59:59Z`. It stops passing the runner's 20-minute minimum at
-   `2026-11-05T15:39:59Z`. The protected `R2_UPLOAD_*` secrets hold the
-   replacement uploader. The unchanged inspector expires `2026-11-05T23:06:08Z`.
-   The recovery key was not read or exposed and is unchanged.
+   `justgo-staging-backup-parent-rotation-2026-10-31`, kept the same bucket-only
+   Object Read & Write parent scope and stayed local outside CI. It had the expiry
+   `2026-11-05T17:00:00Z`. Its derived uploader permitted only PutObject and
+   HeadObject on the two approved staging prefixes, with the expiry
+   `2026-11-05T15:59:59Z` and the runner cutoff `2026-11-05T15:39:59Z`. The
+   November 3 renewal replaced that uploader and the inspector, whose expiry was
+   `2026-11-05T23:06:08Z`. The recovery key was not read or exposed and is
+   unchanged.
 
    Scope verification passed with synthetic encrypted canaries only. The
    [Phase 15 handoff](../handoffs/phase-15-cloudflare-api.md#approval-and-acceptance-register)
@@ -385,8 +385,8 @@ lane.
    eligible for expiry November 7, and asynchronous deletion remains unobserved.
    These synthetic scope checks do not establish operational database or ledger
    copies. The handoff separately records the first supervised local copies and
-   the November 2 actual main-workflow manual copies. Schedules are enabled, but
-   their successful execution has not yet been observed. Actual hosted-copy
+   the November 2 actual main-workflow manual copies. [Backup clock](#backup-clock)
+   records the scheduled copies that followed. Actual hosted-copy
    decryption passed November 1, while complete writer-fenced hosted recovery and
    email receipt remain open. The November 1 accepted provider assessment settles
    the earlier contractual-coverage gate. Anthony owns manual renewal. Parent
@@ -409,8 +409,9 @@ lane.
    This recovery check-in was not another backup. Anthony received the separate
    built-in test-notification email, which proves the basic route. The actual Cron
    short-lived error email was not received. A later real missed run produced the
-   owner-confirmed backup email, and a verified manual copy resolved it. Actual
-   scheduled execution and timeout-specific behavior remain unverified. The
+   owner-confirmed backup email, and a verified manual copy resolved it.
+   Timeout-specific behavior remains unverified. [Backup clock](#backup-clock)
+   records the scheduled runs. The
    existing `JustGO API errors and recovery (email)` alert covers all issues in
    this project and notifies Anthony on new, resolved and regressed issues. No
    duplicate alert was created. An unused initial setup draft with slug
@@ -439,8 +440,9 @@ lane.
    independently HEAD-verified encrypted R2 objects. The ledger run also verified
    recent success of the database-copy job and step, and it reported healthy Cron
    check-ins. Manual dispatch proves that the existing lane works. It does not
-   prove that either scheduled event ran. Observe the hourly and nightly
-   schedules, email receipt, missed-run behavior and actual asynchronous expiry.
+   prove that either scheduled event ran. The clock-dispatched runs that
+   [Backup clock](#backup-clock) records show both running on time. Observe email
+   receipt, missed-run behavior and actual asynchronous expiry.
    Keep their gates open until you have evidence. Do not shorten retention or
    monitoring grace to force a pass.
 
@@ -503,8 +505,12 @@ approval authorizes no later key use, restore or opening of writers.
 `scripts/backups/recovery-auth-acceptance.mjs` supplies the closed-target hooks
 for that acceptance. It needs a pinned local Auth v2.197.0 service over HTTPS,
 and it saves and then deletes one local completion and reflection through the
-Node API. `scripts/backups/recovery-target-access.sql` reads object owners and
-ACLs, so you can compare the source and the target. The
+Node API. Install the session helper described below inside your own
+`beforeReconcile`, after the restore, and then await the acceptance's
+`beforeReconcile`. The helper needs the restored `auth.sessions`.
+`scripts/backups/recovery-target-access.sql` reads object owners, ACLs, RLS flags
+and RLS policies, so you can compare the source and the target. Run both captures
+with an empty `search_path`, because the policy text depends on it. The
 [rollout review](../checks/phase-15-rollout-review.md#coordinated-real-recovery-procedure)
 holds the reviewed procedure. The complete coordinated run is still unverified.
 
@@ -683,7 +689,11 @@ an extra MAINTAIN grant and inherited ownership. It then takes a real encrypted
 encrypted ledger and restores into the second database with the archive's object
 owners. Before the ledger replay, it checks those owners and the runtime grants,
 and it confirms that the restored database holds the synthetic writing that the
-replay must delete. Actual `IdentityService`
+replay must delete. It also requires the same `recovery-target-access.sql`
+output from the source and the target, and checks that a weakened policy, a
+policy granted to PUBLIC and an extra grant each change that output. A failing
+hook must not leak its message to the console or the rejected error. Actual
+`IdentityService`
 calls reject old recovery and session proofs. SQL assertions check missing private
 history and Auth subjects, epochs and tombstones, and repeat replay. Cleanup
 removes its databases, role, temporary key and ciphertext without touching

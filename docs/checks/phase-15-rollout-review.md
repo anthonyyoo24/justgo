@@ -90,7 +90,8 @@ The clock's separate GitHub token has a later guard cutoff: November 29 at
    using the private key. Refresh source catalog, reviewed object access, Auth
    version/public-key configuration and verified-TLS reader identity. The current
    reviewed object-access query is `scripts/backups/recovery-target-access.sql`;
-   compare its `.metadata`, not observation timestamp/database name.
+   run it with an empty `search_path` and compare its `.metadata`, not
+   observation timestamp/database name.
 3. After phone testing, present one specific approval covering those artifacts,
    protected `age` key use through pipes and a maximum 45-second staging write
    pause/no-manual-DDL/Auth/config/migration-change window. The prior two-file
@@ -104,8 +105,10 @@ The clock's separate GitHub token has a later guard cutoff: November 29 at
    a physical fence against provider migrations or change-and-revert detection.
 5. Restore the exact database and final ledger with the guarded `restoreLocal`,
    `preserveOwnership: true` and closed-target hooks. Compare reviewed owners,
-   current-object ACLs/RLS, extensions and restricted roles; install/check the exact
-   private session helper. Record the Auth migration-registry hash before starting
+   current-object ACLs, RLS flags and RLS policies, extensions and restricted
+   roles. Inside the caller's `beforeReconcile`, install and check the exact
+   private session helper, which needs the restored `auth.sessions`, before the
+   acceptance hooks run. Record the Auth migration-registry hash before starting
    `serve`; do not run `migrate` on the actual archive. Fail if startup or later
    checks change the registry/version or expected access metadata.
 6. Require one unambiguous existing archived disposable Apple subject and its
