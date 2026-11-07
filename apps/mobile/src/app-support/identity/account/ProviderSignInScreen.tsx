@@ -16,10 +16,12 @@ export function ProviderSignInScreen() {
     provider?: string;
     returnTo?: string;
     ownerId?: string;
+    switchProvider?: string;
   }>();
   const parsedOwner = z.uuid().safeParse(params.ownerId);
   const expectedOwnerId = parsedOwner.success ? parsedOwner.data : undefined;
   const returnToData = params.returnTo === 'data';
+  const switchProvider = params.switchProvider === '1';
   const links = useAcceptanceLinks();
   const provider =
     params.provider === 'apple' || params.provider === 'google'
@@ -32,6 +34,7 @@ export function ProviderSignInScreen() {
       provider,
       expectedOwnerId,
       returnToData,
+      switchProvider,
       clearLinkError: links.clearLinkError,
     },
   );

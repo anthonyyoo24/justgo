@@ -16,15 +16,30 @@ export function useProviderSignIn(
     provider,
     expectedOwnerId,
     returnToData = false,
+    switchProvider = false,
     clearLinkError,
   }: {
     provider?: SignInProvider | undefined;
     expectedOwnerId?: string | undefined;
     returnToData?: boolean;
+    switchProvider?: boolean;
     clearLinkError?: () => void;
   } = {},
 ) {
-  const handoff = useSignInHandoff(useIsFocused(), returnToData);
+  // A completed switch may have been resumed by identity during startup or a
+  // different visit. Linked identities alone never establish the active login.
+  const switchCompleted = !!(
+    switchProvider &&
+    provider &&
+    snapshot?.account &&
+    snapshot.provider === provider &&
+    !snapshot.hasPending
+  );
+  const handoffReady = !switchProvider || switchCompleted;
+  const handoff = useSignInHandoff(
+    useIsFocused() && handoffReady,
+    returnToData,
+  );
   const cancelWelcomeEntry = useCancelWelcomeEntry();
   const [showDirectFailure, setShowDirectFailure] = useState(false);
   const [pendingProvider, setPendingProvider] = useState<SignInProvider | null>(
@@ -34,13 +49,19 @@ export function useProviderSignIn(
   const submitting = useRef<object | null>(null);
   useFocusEffect(
     useCallback(() => {
-      visit.current = { identity, provider, expectedOwnerId, returnToData };
+      visit.current = {
+        identity,
+        provider,
+        expectedOwnerId,
+        returnToData,
+        switchProvider,
+      };
       setShowDirectFailure(false);
       setPendingProvider(null);
       return () => {
         visit.current = null;
       };
-    }, [identity, provider, expectedOwnerId, returnToData]),
+    }, [identity, provider, expectedOwnerId, returnToData, switchProvider]),
   );
   const signIn = async (selected: SignInProvider) => {
     const submittedVisit = visit.current;
@@ -55,7 +76,7 @@ export function useProviderSignIn(
       return;
     setShowDirectFailure(false);
     clearLinkError?.();
-    if (state.account) {
+    if (state.account && handoffReady) {
       handoff.retry();
       return;
     }
@@ -67,7 +88,11 @@ export function useProviderSignIn(
     if (submittedVisit !== visit.current) return;
     setPendingProvider(null);
     const result = identity.getSnapshot();
-    setShowDirectFailure(!result.account && result.directSignInFailure);
+    // A switch lands only on the requested provider; the old login staying
+    // active after a failed switch is still this visit's failure.
+    const landed =
+      !!result.account && (!switchProvider || result.provider === selected);
+    setShowDirectFailure(!landed && result.directSignInFailure);
   };
   const directFailure = showDirectFailure && snapshot?.directSignInFailure;
   const error = (directFailure ? snapshot.message : '') || handoff.error;
@@ -77,10 +102,10 @@ export function useProviderSignIn(
     reference: directFailure ? snapshot.connectionReference : null,
     busyProvider:
       pendingProvider ??
-      (snapshot?.account && !error
+      (snapshot?.account && !error && handoffReady
         ? (provider ?? snapshot.provider ?? 'apple')
         : null),
-    retryHandoff: !!error && !!snapshot?.account,
+    retryHandoff: !!error && !!snapshot?.account && handoffReady,
     signIn,
   };
 }

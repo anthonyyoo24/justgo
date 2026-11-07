@@ -35,6 +35,7 @@ const mockIdentityListeners = new Set<() => void>();
 let mockState = {
   account: null as { userId: string; sessionId?: string } | null,
   collectionId: 'owner',
+  provider: 'apple' as 'apple' | 'google' | null,
   linkedProviders: [] as ('apple' | 'google')[],
   initialized: true,
   busy: false,
@@ -79,6 +80,7 @@ beforeEach(() => {
     account: null,
     collectionId: 'owner',
     linkedProviders: [],
+    provider: 'apple',
     initialized: true,
     busy: false,
     hasPending: false,
@@ -130,37 +132,50 @@ it('shows two branded login switches while signed out without a separate guest o
   expect(mockIdentity.linkProvider).not.toHaveBeenCalled();
 });
 
-it('reflects verified connections and delegates connect/disconnect without optimistic status changes', async () => {
-  mockState.account = { userId: 'owner' };
-  mockState.linkedProviders = ['google'];
-  const screen = await render(<RecoveryRoute />);
-  expect(screen.getByRole('switch', { name: 'Apple' })).toHaveProp(
-    'accessibilityState',
-    expect.objectContaining({ checked: false }),
-  );
-  expect(screen.getByRole('switch', { name: 'Google' })).toHaveProp(
-    'accessibilityState',
-    expect.objectContaining({ checked: true }),
-  );
-  await fireEvent.press(screen.getByRole('switch', { name: 'Apple' }));
-  await fireEvent.press(screen.getByRole('switch', { name: 'Google' }));
-  expect(mockIdentity.linkProvider).toHaveBeenCalledWith('apple');
-  expect(mockIdentity.unlinkProvider).toHaveBeenCalledWith('google');
-  expect(screen.getByRole('switch', { name: 'Apple' })).toHaveProp(
-    'accessibilityState',
-    expect.objectContaining({ checked: false }),
-  );
-  expect(screen.getByRole('switch', { name: 'Google' })).toHaveProp(
-    'accessibilityState',
-    expect.objectContaining({ checked: true }),
-  );
-  mockState.linkedProviders = ['google', 'apple'];
-  await screen.rerender(<RecoveryRoute />);
-  expect(screen.getByRole('switch', { name: 'Apple' })).toHaveProp(
-    'accessibilityState',
-    expect.objectContaining({ checked: true }),
-  );
-});
+it.each(['apple', 'google'] as const)(
+  'shows only the active %s login even when both methods are linked, and opens the other provider sign-in',
+  async (provider) => {
+    mockState.account = { userId: 'owner' };
+    mockState.provider = provider;
+    mockState.linkedProviders = ['apple', 'google'];
+    const other = provider === 'apple' ? 'google' : 'apple';
+    const label = provider === 'apple' ? 'Apple' : 'Google';
+    const otherLabel = other === 'apple' ? 'Apple' : 'Google';
+    const screen = await render(<RecoveryRoute />);
+    expect(screen.getByRole('switch', { name: label })).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: true }),
+    );
+    expect(screen.getByRole('switch', { name: otherLabel })).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: false }),
+    );
+    expect(screen.getByText(`You’re signed in with ${label}.`)).toBeTruthy();
+    expect(
+      screen.queryByText(`You’re signed in with ${otherLabel}.`),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Log out' })).toBeNull();
+    await fireEvent.press(screen.getByRole('switch', { name: otherLabel }));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/account/sign-in',
+      params: { provider: other, switchProvider: '1' },
+    });
+    expect(mockIdentity.linkProvider).not.toHaveBeenCalled();
+    expect(mockIdentity.unlinkProvider).not.toHaveBeenCalled();
+    expect(screen.getByRole('switch', { name: label })).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: true }),
+    );
+    await fireEvent.press(screen.getByRole('switch', { name: label }));
+    const dialog = within(screen.getByLabelText('Log out?'));
+    await fireEvent.press(dialog.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('switch', { name: label })).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: true }),
+    );
+    expect(mockIdentity.signOut).not.toHaveBeenCalled();
+  },
+);
 
 it('opens logout in the shared modal, cancels without signing out and closes after success', async () => {
   mockState.account = { userId: 'owner', sessionId: 'session' };
@@ -169,7 +184,7 @@ it('opens logout in the shared modal, cancels without signing out and closes aft
   expect(screen.getByRole('button', { name: 'Delete account' })).toBeTruthy();
   expect(screen.queryByRole('link', { name: 'Delete account' })).toBeNull();
   expect(screen.getByText('Delete account')).toHaveStyle({ color: '#B3261E' });
-  await fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  await fireEvent.press(screen.getByRole('switch', { name: 'Apple' }));
   let dialog = within(screen.getByLabelText('Log out?'));
   expect(
     dialog.getByText(
@@ -182,7 +197,7 @@ it('opens logout in the shared modal, cancels without signing out and closes aft
   await fireEvent.press(dialog.getByRole('button', { name: 'Cancel' }));
   expect(screen.queryByLabelText('Log out?')).toBeNull();
   expect(mockIdentity.signOut).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  await fireEvent.press(screen.getByRole('switch', { name: 'Apple' }));
   dialog = within(screen.getByLabelText('Log out?'));
   await act(
     async () =>
@@ -190,6 +205,13 @@ it('opens logout in the shared modal, cancels without signing out and closes aft
   );
   expect(mockIdentity.signOut).toHaveBeenCalledTimes(1);
   expect(screen.queryByLabelText('Log out?')).toBeNull();
+  await screen.rerender(<RecoveryRoute />);
+  for (const name of ['Apple', 'Google']) {
+    expect(screen.getByRole('switch', { name })).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: false }),
+    );
+  }
 });
 
 it('holds the modal and disables repeated logout and cancellation while logout is in flight', async () => {
@@ -206,7 +228,7 @@ it('holds the modal and disables repeated logout and cancellation while logout i
     });
   });
   const screen = await render(<RecoveryRoute />);
-  await fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  await fireEvent.press(screen.getByRole('switch', { name: 'Apple' }));
   const dialog = within(screen.getByLabelText('Log out?'));
   await fireEvent.press(dialog.getByRole('button', { name: 'Log out' }));
   await act(() => mockIdentityListeners.forEach((listener) => listener()));
@@ -229,7 +251,7 @@ it('keeps logout failure in the modal and retries after the local account is alr
     return false;
   });
   const screen = await render(<RecoveryRoute />);
-  await fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  await fireEvent.press(screen.getByRole('switch', { name: 'Apple' }));
   const dialog = within(screen.getByLabelText('Log out?'));
   await act(
     async () =>
@@ -257,7 +279,7 @@ it('does not mistake a cleared account for successful logout when saving the log
     return false;
   });
   const screen = await render(<RecoveryRoute />);
-  await fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  await fireEvent.press(screen.getByRole('switch', { name: 'Apple' }));
   const dialog = within(screen.getByLabelText('Log out?'));
   await act(
     async () =>
@@ -274,7 +296,7 @@ it('recovers unexpected logout rejection without leaking exception details', asy
   mockState.account = { userId: 'owner', sessionId: 'session' };
   mockIdentity.signOut.mockRejectedValueOnce(new Error('private details'));
   const screen = await render(<RecoveryRoute />);
-  await fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+  await fireEvent.press(screen.getByRole('switch', { name: 'Apple' }));
   const dialog = within(screen.getByLabelText('Log out?'));
   await act(
     async () =>
@@ -291,7 +313,7 @@ it.each(['owner', 'session'] as const)(
   async (change) => {
     mockState.account = { userId: 'owner', sessionId: 'session' };
     const screen = await render(<RecoveryRoute />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Apple' }));
     const staleConfirm =
       jest.mocked(ConfirmationModal).mock.lastCall![0].onConfirm;
     mockState.account =
@@ -305,7 +327,7 @@ it.each(['owner', 'session'] as const)(
   },
 );
 
-it('disables operations while busy and keeps failure/last-method feedback contextual', async () => {
+it('disables operations while busy and keeps provider failure feedback contextual', async () => {
   mockState.account = { userId: 'owner' };
   mockState.linkedProviders = ['apple'];
   mockState.busy = true;
@@ -315,7 +337,7 @@ it('disables operations while busy and keeps failure/last-method feedback contex
   expect(screen.getByRole('button', { name: 'Delete account' })).toBeDisabled();
   mockState.busy = false;
   mockState.message =
-    'Keep one login method connected. Use Log out to end this session.';
+    'Couldn’t finish connecting. Please try again. Your saved data was kept.';
   mockState.hasPending = true;
   await screen.rerender(<RecoveryRoute />);
   expect(screen.getByRole('alert')).toHaveTextContent(mockState.message);

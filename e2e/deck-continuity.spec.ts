@@ -17,7 +17,7 @@ const savedDeckSchema = z.object({
 
 async function createAccount(page: Page) {
   await page.goto('/recovery');
-  const signOut = page.getByRole('button', { name: 'Log out', exact: true });
+  const signOut = page.getByRole('switch', { checked: true });
   const signIn = page.getByRole('switch', {
     name: 'Apple',
     exact: true,
@@ -36,7 +36,7 @@ async function createAccount(page: Page) {
 }
 async function recover(page: Page, subjectHandle: string) {
   await page.goto('/recovery');
-  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await page.getByRole('switch', { checked: true }).click();
   await page
     .getByRole('alertdialog', { name: 'Log out?', exact: true })
     .getByRole('button', { name: 'Log out', exact: true })
