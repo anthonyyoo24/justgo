@@ -13,27 +13,30 @@ describe('reviewed migration history', () => {
     );
     expect({ ...generated, id: saved.id, prevId: saved.prevId }).toEqual(saved);
   });
-  it('keeps already-applied SQL unchanged and registers the non-destructive journal cutover', async () => {
-    const hashes = JSON.parse(
+  it('keeps already-applied SQL unchanged, pins every journal entry as applied or unapplied and has one contract migration', async () => {
+    const pins = 'apps/api/tests/db/fixtures/applied-migration-hashes.json';
+    const { applied, unapplied } = JSON.parse(
       await readFile(
         new URL('./fixtures/applied-migration-hashes.json', import.meta.url),
         'utf8',
       ),
-    ) as Record<string, string>;
-    for (const [name, hash] of Object.entries(hashes))
-      expect(
-        createHash('sha256')
-          .update(await readFile(new URL(name, root)))
-          .digest('hex'),
-      ).toBe(hash);
+    ) as { applied: Record<string, string>; unapplied: string[] };
     const journal = JSON.parse(
       await readFile(new URL('meta/_journal.json', root), 'utf8'),
     ) as { entries: { tag: string }[] };
-    expect(journal.entries.at(-1)?.tag).toBe(
-      '0023_managed_auth_deletion_cleanup',
-    );
-    expect(journal.entries.at(-2)?.tag).toBe('0022_journal_historical_context');
-    expect(journal.entries.at(-3)?.tag).toBe('0021_managed_accounts_and_sync');
+    expect(
+      journal.entries.map((entry) => `${entry.tag}.sql`),
+      `List each apps/api/drizzle/meta/_journal.json migration once, in journal order, in ${pins}. A new migration goes under "unapplied". Once a hosted database runs it, move it to "applied" with its \`shasum -a 256\` hash.`,
+    ).toEqual([...Object.keys(applied), ...unapplied]);
+    const current: Record<string, string> = {};
+    for (const name of Object.keys(applied))
+      current[name] = createHash('sha256')
+        .update(await readFile(new URL(name, root)))
+        .digest('hex');
+    expect(
+      current,
+      `A hosted database already ran each "applied" migration in ${pins}, so revert the edit and add a new migration instead.`,
+    ).toEqual(applied);
     expect(
       journal.entries.filter((entry) => /contract/i.test(entry.tag)),
     ).toHaveLength(1);
