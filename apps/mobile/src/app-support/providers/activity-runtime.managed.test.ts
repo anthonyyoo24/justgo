@@ -34,6 +34,7 @@ import {
   zone,
   deferred,
 } from '../../../test-support/journal';
+import { globalJournalBackend } from '../../../test-support/setup-global-local-journal';
 
 jest.mock('expo-crypto', () => {
   const crypto = require('node:crypto') as typeof import('node:crypto');
@@ -551,6 +552,76 @@ it('finishes an already accepted target clear before copying guest writing into 
     'Guest writing retained after a pending account clear',
   );
   expect(destination.attempts.has(uuid(1))).toBe(true);
+});
+
+it('copies guest writing accepted before sign-in only after it finishes saving', async () => {
+  const { runtime, activate, storage } = setup();
+  await cloud.transport.setEnabled(false);
+  const guest = await activate(otherOwner, 'local', 'guest');
+  await guest.complete(input(), card);
+  const destination = server();
+  servers.set(owner, destination);
+
+  const journalBackend = globalJournalBackend();
+  const reflectionCommitting = deferred<void>();
+  const releaseReflection = deferred<void>();
+  journalBackend.beforeCommit = async () => {
+    journalBackend.beforeCommit = null;
+    reflectionCommitting.resolve();
+    await releaseReflection.promise;
+  };
+  const reflecting = guest.submitReflection(uuid(1), uuid(2), {
+    text: 'Reflection accepted just before sign-in',
+  });
+  await reflectionCommitting.promise;
+
+  const completionSaving = deferred<void>();
+  const releaseCompletion = deferred<void>();
+  const write = storage.setItem.bind(storage);
+  let holdNextSave = true;
+  jest.spyOn(storage, 'setItem').mockImplementation(async (key, value) => {
+    if (holdNextSave && key === `justgo:v1:${otherOwner}:journal`) {
+      holdNextSave = false;
+      completionSaving.resolve();
+      await releaseCompletion.promise;
+    }
+    await write(key, value);
+  });
+  const completing = guest.complete(input(3), card);
+  await completionSaving.promise;
+
+  const adoption = runtime.mergeGuestData(otherOwner, owner, {
+    userId: owner,
+    token: 'fixture-session',
+  });
+  let uploadsWhileCompletionSaving: number;
+  try {
+    await jest.advanceTimersByTimeAsync(0);
+    releaseReflection.resolve();
+    await jest.advanceTimersByTimeAsync(0);
+    uploadsWhileCompletionSaving = jest.mocked(
+      destination.transport.putCompletions,
+    ).mock.calls.length;
+  } finally {
+    releaseReflection.resolve();
+    releaseCompletion.resolve();
+  }
+  expect(uploadsWhileCompletionSaving).toBe(0);
+  await expect(reflecting).resolves.toMatchObject({
+    reflection: { text: 'Reflection accepted just before sign-in' },
+  });
+  await expect(completing).resolves.toMatchObject({ id: uuid(3) });
+  await adoption;
+
+  const target = await activate(owner, 'cloud', 'account');
+  await runtime.retireGuestData(otherOwner);
+  expect(
+    (await target.snapshotData()).attempts.map(({ id }) => id).sort(),
+  ).toEqual([uuid(1), uuid(3)]);
+  expect((await target.snapshotJournal()).entries[0]?.reflection.text).toBe(
+    'Reflection accepted just before sign-in',
+  );
+  expect([...destination.attempts.keys()].sort()).toEqual([uuid(1), uuid(3)]);
 });
 
 it('adopts parked guest writing into another account without moving the previously selected account data', async () => {
