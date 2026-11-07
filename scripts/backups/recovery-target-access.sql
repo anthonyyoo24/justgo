@@ -1,6 +1,3 @@
--- Metadata only: no table contents, function bodies, settings, keys or tokens.
--- Compare reviewed_access.metadata across source and isolated target.
--- Source/database/timestamp identify this observation and are not comparison data.
 with scoped_schemas as (
   select oid, nspname, nspowner, nspacl
   from pg_catalog.pg_namespace

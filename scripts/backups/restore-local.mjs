@@ -122,7 +122,6 @@ export async function restoreLocal(env = process.env, options = {}) {
       env.JUSTGO_PG_BIN ? join(env.JUSTGO_PG_BIN, 'pg_restore') : 'pg_restore',
       [
         // Custom archives retain owners even when pg_dump used --no-owner.
-        // The operator must provision the reviewed roles before opting in.
         ...(options.preserveOwnership ? [] : ['--no-owner']),
         '--exit-on-error',
         '--single-transaction',

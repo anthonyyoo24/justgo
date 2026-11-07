@@ -359,8 +359,8 @@ export async function rehearse(env = process.env) {
       JUSTGO_PG_BIN: pgBin,
       AGE_BIN: ageBin,
     };
-    let beforeFinished = false,
-      afterFinished = false;
+    let beforeHookAwaited = false,
+      afterHookAwaited = false;
     const result = await restoreLocal(restoreEnv, {
       preserveOwnership: true,
       beforeReconcile: async ({ client }) => {
@@ -395,12 +395,11 @@ export async function rehearse(env = process.env) {
             reflections: rows[0].reflections,
           }),
         );
-        // An asynchronous SQL round trip must finish before reconciliation starts.
         await client.query('select pg_sleep(0.01)');
-        beforeFinished = true;
+        beforeHookAwaited = true;
       },
       afterReconcile: async ({ client, result: closedResult }) => {
-        assert.equal(beforeFinished, true);
+        assert.equal(beforeHookAwaited, true);
         assert.equal(closedResult.writersMayOpen, false);
         assert.equal(Object.isFrozen(closedResult), true);
         const { rows } = await client.query(
@@ -409,10 +408,10 @@ export async function rehearse(env = process.env) {
         );
         assert.deepEqual(rows[0], { sessions: 0, epoch: 1 });
         await client.query('select pg_sleep(0.01)');
-        afterFinished = true;
+        afterHookAwaited = true;
       },
     });
-    assert.equal(beforeFinished && afterFinished, true);
+    assert.equal(beforeHookAwaited && afterHookAwaited, true);
     assert.equal(result.writersMayOpen, false);
     step = 'closed-target acceptance failure';
     const rejectedName = `justgo_restore_${randomBytes(6).toString('hex')}`;
