@@ -13,29 +13,36 @@ describe('reviewed migration history', () => {
     );
     expect({ ...generated, id: saved.id, prevId: saved.prevId }).toEqual(saved);
   });
-  it('keeps already-applied SQL unchanged, pins every journal entry as applied or unapplied and has one contract migration', async () => {
+  it('keeps each applied migration SQL and journal when unchanged, lists every journal entry as applied or unapplied and has one contract migration', async () => {
     const pins = 'apps/api/tests/db/fixtures/applied-migration-hashes.json';
     const { applied, unapplied } = JSON.parse(
       await readFile(
         new URL('./fixtures/applied-migration-hashes.json', import.meta.url),
         'utf8',
       ),
-    ) as { applied: Record<string, string>; unapplied: string[] };
+    ) as {
+      applied: Record<string, { sha256: string; when: number }>;
+      unapplied: string[];
+    };
+    const names = Object.keys(applied);
     const journal = JSON.parse(
       await readFile(new URL('meta/_journal.json', root), 'utf8'),
-    ) as { entries: { tag: string }[] };
+    ) as { entries: { tag: string; when: number }[] };
     expect(
       journal.entries.map((entry) => `${entry.tag}.sql`),
-      `List each apps/api/drizzle/meta/_journal.json migration once, in journal order, in ${pins}. A new migration goes under "unapplied". Once a hosted database runs it, move it to "applied" with its \`shasum -a 256\` hash.`,
-    ).toEqual([...Object.keys(applied), ...unapplied]);
-    const current: Record<string, string> = {};
-    for (const name of Object.keys(applied))
-      current[name] = createHash('sha256')
-        .update(await readFile(new URL(name, root)))
-        .digest('hex');
+      `List each apps/api/drizzle/meta/_journal.json migration once, in journal order, in ${pins}. A new migration goes under "unapplied". Once a hosted database runs it, move it to "applied" with its \`shasum -a 256\` hash and journal \`when\`.`,
+    ).toEqual([...names, ...unapplied]);
+    const current: typeof applied = {};
+    for (const { tag, when } of journal.entries.slice(0, names.length))
+      current[`${tag}.sql`] = {
+        sha256: createHash('sha256')
+          .update(await readFile(new URL(`${tag}.sql`, root)))
+          .digest('hex'),
+        when,
+      };
     expect(
       current,
-      `A hosted database already ran each "applied" migration in ${pins}, so revert the edit and add a new migration instead.`,
+      `A hosted database stored the SQL hash and journal \`when\` of each "applied" migration in ${pins}, and Drizzle runs a migration again once its \`when\` passes the newest one stored. If you changed an applied migration's SQL or journal entry, revert it and add a new migration. If you just moved this entry from "unapplied", fix the pin to the SQL hash and \`when\` of the commit the hosted database ran.`,
     ).toEqual(applied);
     expect(
       journal.entries.filter((entry) => /contract/i.test(entry.tag)),
