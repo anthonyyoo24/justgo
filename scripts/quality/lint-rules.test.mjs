@@ -70,6 +70,18 @@ for (const [rule, source, filePath = production, severity = 2] of [
     tests,
   ],
   [
+    'no-restricted-imports',
+    "import { getRandomBytes } from 'expo-crypto'; export const secret = getRandomBytes(32);",
+  ],
+  [
+    'no-restricted-imports',
+    "import * as Crypto from 'expo-crypto'; export const secret = Crypto.getRandomBytesAsync(32);",
+  ],
+  [
+    'no-restricted-imports',
+    "import { getRandomValues } from 'expo-crypto'; export const secret = getRandomValues(new Uint8Array(16));",
+  ],
+  [
     'no-restricted-syntax',
     "import { execFileSync } from 'node:child_process'; execFileSync('git', ['diff', '--name-only', 'origin/main']);",
     'scripts/quality/changes.mjs',
