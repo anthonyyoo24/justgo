@@ -1,8 +1,9 @@
-import { getRandomValues, randomUUID } from 'expo-crypto';
+import { randomUUID } from 'expo-crypto';
 import { sessionResponseSchema, type SessionProposal } from '@justgo/contracts';
 import type { CredentialVault, DeviceState } from '../storage';
 import type { IdentityApi } from '../api';
 import { ApiError } from '../../../lib/network/http';
+import { randomSecretHex } from '../random-secret';
 
 /** The retired UI is never revived: renew only this installation's exact owner proof. */
 export async function legacyLinkProof(
@@ -92,8 +93,6 @@ function makeProposal(deviceId: string): SessionProposal {
   return {
     deviceId,
     sessionId: randomUUID(),
-    sessionToken: Array.from(getRandomValues(new Uint8Array(32)), (value) =>
-      value.toString(16).padStart(2, '0'),
-    ).join(''),
+    sessionToken: randomSecretHex(),
   };
 }

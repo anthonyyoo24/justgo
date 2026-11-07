@@ -1,9 +1,5 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
-import {
-  CryptoDigestAlgorithm,
-  digestStringAsync,
-  getRandomValues,
-} from 'expo-crypto';
+import { CryptoDigestAlgorithm, digestStringAsync } from 'expo-crypto';
 import {
   GoogleSignin,
   isSuccessResponse,
@@ -11,6 +7,7 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { ProviderAuthError, type SignInProvider } from './types';
+import { randomSecretHex } from '../random-secret';
 
 /** Native provider UI yields only the ID token needed by managed Auth. */
 export async function nativeProviderToken(
@@ -19,9 +16,7 @@ export async function nativeProviderToken(
   if (provider === 'apple') {
     if (!(await AppleAuthentication.isAvailableAsync()))
       throw new ProviderAuthError('CONFIGURATION');
-    const nonce = Array.from(getRandomValues(new Uint8Array(32)), (value) =>
-      value.toString(16).padStart(2, '0'),
-    ).join('');
+    const nonce = randomSecretHex();
     const hashed = await digestStringAsync(CryptoDigestAlgorithm.SHA256, nonce);
     try {
       const credential = await AppleAuthentication.signInAsync({
