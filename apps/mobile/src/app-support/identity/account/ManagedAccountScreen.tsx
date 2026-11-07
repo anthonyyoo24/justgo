@@ -9,7 +9,6 @@ import { SettingsPage } from '../../../components/settings/SettingsPage';
 import {
   SettingsActionRow,
   SettingsGroup,
-  SettingsRowDivider,
 } from '../../../components/settings/SettingsRows';
 import { SettingsToggleRow } from '../../../components/settings/SettingsToggleRow';
 import { ScaledText as Text } from '../../../components/typography/ScaledText';
@@ -23,13 +22,8 @@ export function ManagedAccountScreen() {
   const reduceMotion = useReduceMotion();
   const logout = useLogoutDialog();
   if (!('signIn' in identity)) return null;
-  const connected = 'linkedProviders' in state ? state.linkedProviders : null;
-  const linkedProviders =
-    state.account && Array.isArray(connected)
-      ? (['apple', 'google'] as const).filter((provider) =>
-          connected.includes(provider),
-        )
-      : [];
+  const activeProvider =
+    state.account && 'provider' in state ? state.provider : null;
   return (
     <SettingsPage title="Account" backHref="/settings">
       <SettingsGroup title="Login methods">
@@ -39,43 +33,35 @@ export function ManagedAccountScreen() {
             icon={provider}
             label={provider === 'apple' ? 'Apple' : 'Google'}
             hint={
-              state.account
-                ? `Connect or disconnect ${provider === 'apple' ? 'Apple' : 'Google'} for this account.`
+              activeProvider === provider
+                ? `You’re signed in with ${provider === 'apple' ? 'Apple' : 'Google'}. Turn off to log out on this phone.`
                 : `Sign in with ${provider === 'apple' ? 'Apple' : 'Google'}.`
             }
-            value={linkedProviders.includes(provider)}
+            subtitle={
+              activeProvider === provider
+                ? `You’re signed in with ${provider === 'apple' ? 'Apple' : 'Google'}.`
+                : undefined
+            }
+            value={activeProvider === provider}
             busy={state.busy}
             disabled={state.busy || pending || !state.initialized}
             reduceMotion={reduceMotion}
-            onValueChange={(connected) => {
-              if (!state.account) {
+            onValueChange={() => {
+              if (activeProvider === provider) logout.open();
+              else
                 router.push({
                   pathname: '/account/sign-in',
-                  params: { provider },
+                  params: {
+                    provider,
+                    ...(state.account ? { switchProvider: '1' } : {}),
+                  },
                 });
-              } else if (connected) {
-                // The controller owns provider failure and cancellation feedback.
-                void identity.linkProvider(provider);
-              } else {
-                void identity.unlinkProvider(provider);
-              }
             }}
           />
         ))}
       </SettingsGroup>
       {(state.account || pending) && (
         <View style={styles.card}>
-          {state.account && (
-            <>
-              <SettingsActionRow
-                icon="logout"
-                label="Log out"
-                disabled={state.busy || pending}
-                onPress={logout.open}
-              />
-              <SettingsRowDivider />
-            </>
-          )}
           <SettingsActionRow
             icon="delete"
             label="Delete account"

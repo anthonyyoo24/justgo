@@ -13,6 +13,7 @@ import AuthCallbackRoute from '../../../app/auth/callback';
 
 let mockController: ManagedIdentityController;
 let mockProvider = 'apple';
+let mockSwitchProvider = false;
 let mockFocused = true;
 const mockAccess = { verified: false, isPending: true, isFetching: true };
 const mockRouter = {
@@ -53,7 +54,10 @@ jest.mock('expo-router', () => {
   return {
     useRouter: () => mockRouter,
     useIsFocused: () => mockFocused,
-    useLocalSearchParams: () => ({ provider: mockProvider }),
+    useLocalSearchParams: () => ({
+      provider: mockProvider,
+      ...(mockSwitchProvider ? { switchProvider: '1' } : {}),
+    }),
     useFocusEffect: (effect: () => void | (() => void)) => {
       const focused = mockFocused;
       React.useEffect(() => {
@@ -128,7 +132,11 @@ async function setup(parkedOwner?: string, connectionDiagnostics = false) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockProvider = 'apple';
+  mockSwitchProvider = false;
   mockFocused = true;
+  mockAccess.verified = false;
+  mockAccess.isPending = true;
+  mockAccess.isFetching = true;
 });
 afterEach(() => mockController?.dispose());
 
@@ -327,3 +335,120 @@ it('shows the redacted Dev reference when retrying a saved web sign-in fails', a
     screen.getByText('Dev sign-in reference: provider-auth / AUTH'),
   ).toBeTruthy();
 });
+
+it.each(['cancel', 'failure', 'success'] as const)(
+  'keeps an already signed-in provider-entry page in place until switch %s resolves',
+  async (outcome) => {
+    await setup();
+    const current = {
+      ...mockController.getSnapshot(),
+      provider: 'apple' as const,
+      linkedProviders: ['apple', 'google'] as const,
+      account: {
+        userId: '10000000-0000-4000-8000-000000000050',
+        authUserId: '10000000-0000-4000-8000-000000000040',
+        deviceId: '10000000-0000-4000-8000-000000000002',
+        sessionId: '10000000-0000-4000-8000-000000000060',
+        expiresAt: '2030-01-01T00:00:00.000Z',
+        dataEpoch: 0,
+      },
+      collectionKind: 'account' as const,
+    };
+    const snapshot = jest
+      .spyOn(mockController, 'getSnapshot')
+      .mockReturnValue(current);
+    let finish = () => {};
+    const signIn = jest.spyOn(mockController, 'signIn').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    mockProvider = 'google';
+    mockSwitchProvider = true;
+    mockAccess.isPending = false;
+    mockAccess.isFetching = false;
+    const screen = await render(<ProviderSignInScreen />);
+    const button = screen.getByRole('button', { name: 'Sign in with Google' });
+    expect(button).toBeEnabled();
+    expect(screen.queryByText('Redirect: /access')).toBeNull();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    await fireEvent.press(button);
+    await fireEvent.press(button);
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expect(signIn).toHaveBeenCalledWith('google', {});
+    expect(screen.getByRole('progressbar')).toBeTruthy();
+    await act(async () => {
+      snapshot.mockReturnValue(
+        outcome === 'success'
+          ? { ...current, provider: 'google' }
+          : {
+              ...current,
+              message: outcome === 'failure' ? 'Couldn’t connect.' : '',
+              directSignInFailure: true,
+            },
+      );
+      finish();
+    });
+    if (outcome === 'success')
+      expect(screen.getByText('Redirect: /access')).toBeTruthy();
+    else {
+      expect(screen.queryByText('Redirect: /access')).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Sign in with Google' }),
+      ).toBeEnabled();
+      expect(screen.queryByRole('progressbar')).toBeNull();
+      if (outcome === 'failure')
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          'Couldn’t connect.',
+        );
+      else expect(screen.queryByRole('alert')).toBeNull();
+    }
+  },
+);
+
+it.each(['restored', 'hydrating'] as const)(
+  'hands off a %s completed provider switch without authorizing the provider again',
+  async (stage) => {
+    await setup();
+    const connected = {
+      ...mockController.getSnapshot(),
+      provider: 'google' as const,
+      linkedProviders: ['apple', 'google'] as const,
+      account: {
+        userId: '10000000-0000-4000-8000-000000000050',
+        authUserId: '10000000-0000-4000-8000-000000000040',
+        deviceId: '10000000-0000-4000-8000-000000000002',
+        sessionId: '10000000-0000-4000-8000-000000000061',
+        expiresAt: '2030-01-01T00:00:00.000Z',
+        dataEpoch: 0,
+      },
+      collectionKind: 'account' as const,
+      hasPending: false,
+    };
+    const snapshot = jest.spyOn(mockController, 'getSnapshot').mockReturnValue(
+      stage === 'restored'
+        ? connected
+        : {
+            ...connected,
+            provider: null,
+            account: null,
+            busy: true,
+            hasPending: true,
+          },
+    );
+    const signIn = jest.spyOn(mockController, 'signIn');
+    mockProvider = 'google';
+    mockSwitchProvider = true;
+    mockAccess.isPending = false;
+    mockAccess.isFetching = false;
+    const screen = await render(<ProviderSignInScreen />);
+    if (stage === 'hydrating') {
+      expect(screen.queryByText('Redirect: /access')).toBeNull();
+      snapshot.mockReturnValue(connected);
+      await screen.rerender(<ProviderSignInScreen />);
+    }
+    expect(screen.getByText('Redirect: /access')).toBeTruthy();
+    expect(signIn).not.toHaveBeenCalled();
+  },
+);

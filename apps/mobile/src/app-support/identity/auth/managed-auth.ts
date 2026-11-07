@@ -28,6 +28,26 @@ function linkedProviders(identities: readonly { provider: string }[]) {
     ),
   ];
 }
+/** Infer legacy display only from verified identity activity, never authorization. */
+function latestIdentityProvider(
+  identities: readonly { provider: string; last_sign_in_at?: string }[],
+) {
+  let latest: SignInProvider | undefined;
+  let latestAt = -Infinity;
+  for (const identity of identities) {
+    const at = Date.parse(identity.last_sign_in_at ?? '');
+    if (
+      (identity.provider === 'apple' || identity.provider === 'google') &&
+      Number.isFinite(at) &&
+      at > latestAt
+    ) {
+      latest = identity.provider;
+      latestAt = at;
+    }
+  }
+  return latest;
+}
+
 function projection(session: Session | null): ProviderSession | null {
   if (!session) return null;
   return {
@@ -129,10 +149,12 @@ export function createManagedAuth(): ManagedAuth {
     )
       throw new ProviderAuthError('AUTH');
     const identities = result.data.user.identities ?? [];
+    const provider = latestIdentityProvider(identities);
     return {
       session: {
         ...current,
         linkedProviders: linkedProviders(identities),
+        ...(provider ? { provider } : {}),
       },
       identities,
     };
@@ -144,6 +166,7 @@ export function createManagedAuth(): ManagedAuth {
         if (!url && !key) return null;
         const expected = generation;
         const auth = getClient().auth;
+        let freshSignIn = false;
         if (Platform.OS === 'web') {
           const callback = new URL(window.location.href);
           if (
@@ -157,10 +180,14 @@ export function createManagedAuth(): ManagedAuth {
             if (failed || !code) throw new ProviderAuthError('AUTH');
             const result = await auth.exchangeCodeForSession(code);
             if (result.error) throw new ProviderAuthError('AUTH');
+            freshSignIn = true;
           }
         }
         if (active) await auth.startAutoRefresh();
-        return (await verifiedSession(expected))?.session ?? null;
+        const restored = (await verifiedSession(expected))?.session ?? null;
+        return restored && freshSignIn
+          ? { ...restored, freshSignIn: true }
+          : restored;
       }),
     signIn: (provider: SignInProvider) =>
       safe(async () => {

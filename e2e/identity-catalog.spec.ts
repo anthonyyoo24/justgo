@@ -10,7 +10,7 @@ import { localJournalEntries } from './support/journal';
 
 async function signOut(page: Page) {
   await page.goto('/recovery');
-  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await page.getByRole('switch', { checked: true }).click();
   await expect(
     page
       .getByRole('alertdialog', { name: 'Log out?', exact: true })
@@ -35,7 +35,7 @@ test('logout uses an isolated modal without expanding Account and retains failur
 }) => {
   await signInFixture(page);
   await page.goto('/recovery');
-  const logout = page.getByRole('button', { name: 'Log out', exact: true });
+  const logout = page.getByRole('switch', { checked: true });
   const deleteAccount = page.getByRole('button', {
     name: 'Delete account',
     exact: true,
@@ -332,28 +332,153 @@ test('guest writing remains the same journal through automatic sign-in, logout a
     .toBe(1);
 });
 
-test('login switches reflect verified linking and unlinking while protecting the last method', async ({
+test('login switches show one active provider, switch through sign-in and keep logout cancellable', async ({
   page,
+  fixtureDatabase,
 }) => {
-  await signInFixture(page, { provider: 'apple' });
+  const account = await signInFixture(page, { provider: 'apple' });
   await page.goto('/recovery');
   const apple = page.getByRole('switch', { name: 'Apple', exact: true });
   const google = page.getByRole('switch', { name: 'Google', exact: true });
   await expect(apple).toBeChecked();
   await expect(google).not.toBeChecked();
-  await google.click();
-  await expect(google).toBeChecked();
-  await apple.click();
-  await expect(apple).not.toBeChecked();
-  await google.click();
-  await expect(google).toBeChecked();
   await expect(
-    page.getByText(
-      'Keep one login method connected. Use Log out to sign out on this phone.',
-      { exact: true },
-    ),
+    page.getByText('You’re signed in with Apple.', { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Log out', exact: true }),
+  ).toHaveCount(0);
+  await google.click();
+  await expect(page).toHaveURL(/account\/sign-in/);
+  await page
+    .getByRole('button', { name: 'Sign in with Google', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+  ).toBeVisible();
+  await page.goto('/recovery');
+  await expect(google).toBeChecked();
+  await expect(apple).not.toBeChecked();
+  await expect(
+    page.getByText('You’re signed in with Google.', { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(google).toBeChecked();
+  await expect(apple).not.toBeChecked();
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select revoked_at is not null as revoked from justgo.managed_auth_sessions where id=$1',
+        [account.sessionId],
+      )
+    ).rows[0].revoked,
+  ).toBe(true);
+  await google.click();
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Log out?',
+    exact: true,
+  });
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(google).toBeChecked();
+  await expect(apple).not.toBeChecked();
+  await signOut(page);
 });
+
+for (const width of [320, 390]) {
+  for (const provider of ['apple', 'google'] as const) {
+    test(`active ${provider} subtitle preserves original Account row geometry at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await continueAsGuest(page);
+      await page.goto('/recovery');
+      const measure = async (name: 'Apple' | 'Google') => {
+        const row = page.getByRole('switch', { name, exact: true });
+        await expect(row).toBeEnabled();
+        const label = row.getByText(name, { exact: true });
+        const [bounds, logo, track, text, font] = await Promise.all([
+          row.boundingBox(),
+          row.locator('svg').boundingBox(),
+          row.getByTestId('settings-toggle-fill').boundingBox(),
+          label.boundingBox(),
+          label.evaluate((node) => {
+            const style = getComputedStyle(node);
+            return {
+              size: style.fontSize,
+              lineHeight: style.lineHeight,
+              family: style.fontFamily,
+            };
+          }),
+        ]);
+        if (!bounds || !logo || !track || !text)
+          throw new Error(
+            'Login method and original controls must be measurable',
+          );
+        return { bounds, logo, track, text, font };
+      };
+      const before = {
+        Apple: await measure('Apple'),
+        Google: await measure('Google'),
+      };
+      for (const name of ['Apple', 'Google'] as const) {
+        const method = before[name];
+        expect(method.bounds.height).toBe(63);
+        expect(method.logo.width).toBe(20);
+        expect(method.logo.height).toBe(name === 'Apple' ? 24 : 20);
+        expect(method.track.width).toBe(51);
+        expect(method.track.height).toBe(31);
+      }
+      await signInFixture(page, { provider });
+      await page.goto('/recovery');
+      const active = provider === 'apple' ? 'Apple' : 'Google';
+      await expect(
+        page.getByRole('switch', { name: active, exact: true }),
+      ).toBeChecked();
+      const subtitle = page.getByText(`You’re signed in with ${active}.`, {
+        exact: true,
+      });
+      await expect(subtitle).toBeVisible();
+      await expect(async () => {
+        for (const name of ['Apple', 'Google'] as const) {
+          const after = await measure(name);
+          for (const piece of ['bounds', 'logo', 'track'] as const) {
+            for (const dimension of ['x', 'y', 'width', 'height'] as const) {
+              expect(
+                Math.abs(
+                  after[piece][dimension] - before[name][piece][dimension],
+                ),
+              ).toBeLessThanOrEqual(1);
+            }
+          }
+          expect(after.font).toEqual(before[name].font);
+          expect(after.text.width).toBe(before[name].text.width);
+          expect(after.text.height).toBe(before[name].text.height);
+          expect(
+            Math.abs(after.text.x - before[name].text.x),
+          ).toBeLessThanOrEqual(1);
+          expect(
+            Math.abs(
+              after.text.y - before[name].text.y + (name === active ? 6 : 0),
+            ),
+          ).toBeLessThanOrEqual(1);
+        }
+        const [description, label] = await Promise.all([
+          subtitle.boundingBox(),
+          page
+            .getByRole('switch', { name: active, exact: true })
+            .getByText(active, { exact: true })
+            .boundingBox(),
+        ]);
+        if (!description || !label)
+          throw new Error('Signed-in label and subtitle must be measurable');
+        expect(description.y).toBeGreaterThanOrEqual(label.y + label.height);
+        expect(description.y + description.height).toBeLessThanOrEqual(
+          before[active].bounds.y + before[active].bounds.height,
+        );
+      }).toPass();
+    });
+  }
+}
 
 test('retired key, code and transfer URLs return to the managed Account page', async ({
   page,
