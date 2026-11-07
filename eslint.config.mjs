@@ -119,6 +119,32 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  {
+    files: ['apps/mobile/**/*.{ts,tsx}'],
+    ignores: [
+      'apps/mobile/src/app-support/identity/random-secret.ts',
+      '**/*.test.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'expo-crypto',
+              importNames: [
+                'getRandomValues',
+                'getRandomBytes',
+                'getRandomBytesAsync',
+              ],
+              message:
+                'Generate secrets with randomSecretHex() from apps/mobile/src/app-support/identity/random-secret.ts. getRandomBytes falls back to Math.random in development.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 
   {
     files: ['apps/mobile/src/**/*.tsx'],
