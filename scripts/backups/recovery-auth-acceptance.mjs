@@ -19,7 +19,6 @@ export async function authRegistrySignature(client) {
   return createHash('sha256').update(JSON.stringify(rows)).digest('hex');
 }
 
-/** Select one existing archived Apple owner; never create or repoint a mapping. */
 export function existingAppleOwner(rows) {
   check(Array.isArray(rows) && rows.length === 1);
   const owner = rows[0];
@@ -34,7 +33,6 @@ export function existingAppleOwner(rows) {
   return Object.freeze({ ...owner });
 }
 
-/** Prove rejection was caused by missing state, with the old JWT still valid. */
 export function unexpiredLocalToken(token, secret, issuer, subject) {
   try {
     const [header, payload, signature, extra] = token.split('.');
@@ -65,8 +63,7 @@ export function unexpiredLocalToken(token, secret, issuer, subject) {
 /**
  * Programmatic hooks for a closed, disposable loopback target. The caller owns
  * the pinned local Auth service, normal TLS trust, strict gateway and cleanup.
- * Never use hosted Auth keys or a hosted database here. No OAuth claim is made:
- * actual archived identities are retained while local recovery links mint tokens.
+ * Never use hosted Auth keys or a hosted database here.
  */
 export function recoveryAuthAcceptance({
   databaseUrl,
@@ -172,6 +169,88 @@ export function recoveryAuthAcceptance({
     );
     check((await api('/v1/auth/session', { token })).status === 200);
     return exchanged.body;
+  }
+  async function saveWritingToErase(client, token, epoch) {
+    const card = (
+      await client.query(`select c.id as challenge_id,c.text as instruction,
+        c.level_id,v.venue_id as venue from justgo.challenges c
+        join justgo.venue_cards v on v.challenge_id=c.id
+        where c.level_id='level-1' order by c.id,v.venue_id limit 1`)
+    ).rows[0];
+    check(card);
+    const attemptId = randomUUID(),
+      versionId = randomUUID();
+    const startedAt = new Date().toISOString();
+    const completion = await api('/v1/completion-restores', {
+      token,
+      method: 'POST',
+      body: {
+        expectedEpoch: epoch,
+        attempts: [
+          {
+            id: attemptId,
+            challengeId: card.challenge_id,
+            venue: card.venue,
+            levelId: card.level_id,
+            instruction: card.instruction,
+            startedAt,
+            startTimeZone: 'UTC',
+            displayTimeZone: 'UTC',
+            activityDate: startedAt.slice(0, 10),
+          },
+        ],
+      },
+    });
+    check(completion.status === 200);
+    const { completionRestoreResponseSchema, journalSyncResponseSchema } =
+      await import('@justgo/contracts');
+    const restored = completionRestoreResponseSchema.parse(completion.body);
+    check(
+      restored.dataEpoch === epoch &&
+        restored.added === 1 &&
+        restored.identical === 0 &&
+        restored.attempts.length === 1 &&
+        restored.attempts[0].id === attemptId,
+    );
+    const text = 'Local recovery deletion control';
+    const journal = await api('/v1/journal-sync', {
+      token,
+      method: 'POST',
+      body: {
+        expectedEpoch: epoch,
+        versions: [
+          {
+            versionId,
+            attemptId,
+            parents: [],
+            feelingScaleVersion: 1,
+            reflection: { feeling: null, text, revision: 1 },
+          },
+        ],
+      },
+    });
+    check(journal.status === 200);
+    const saved = journalSyncResponseSchema.parse(journal.body);
+    check(
+      saved.dataEpoch === epoch &&
+        saved.saved === 1 &&
+        saved.identical === 0 &&
+        saved.versions.length === 1 &&
+        saved.versions[0].attemptId === attemptId &&
+        saved.versions[0].versionId === versionId,
+    );
+    const present = (
+      await client.query(
+        `select
+      exists(select 1 from justgo.attempts where user_id=$1 and id=$2) as attempt_present,
+      exists(select 1 from justgo.journal_versions where user_id=$1 and attempt_id=$2
+        and version_id=$3 and reflection->>'text'=$4) as reflection_present`,
+        [owner.user_id, attemptId, versionId, text],
+      )
+    ).rows[0];
+    check(
+      present.attempt_present === true && present.reflection_present === true,
+    );
   }
   return {
     hooks: {
@@ -297,89 +376,7 @@ export function recoveryAuthAcceptance({
         after = await exchange(t1.access_token, current.data_epoch);
         check(after.sessionId !== before.sessionId);
         result.freshSignInSameCanonicalOwnerPassed = true;
-        // A previously cleared archive may contain no writing. Save one local
-        // disposable control through the real sync routes before testing erasure.
-        const card = (
-          await client.query(`select c.id as challenge_id,c.text as instruction,
-            c.level_id,v.venue_id as venue from justgo.challenges c
-            join justgo.venue_cards v on v.challenge_id=c.id
-            where c.level_id='level-1' order by c.id,v.venue_id limit 1`)
-        ).rows[0];
-        check(card);
-        const attemptId = randomUUID(),
-          versionId = randomUUID();
-        const startedAt = new Date().toISOString();
-        const completion = await api('/v1/completion-restores', {
-          token: t1.access_token,
-          method: 'POST',
-          body: {
-            expectedEpoch: current.data_epoch,
-            attempts: [
-              {
-                id: attemptId,
-                challengeId: card.challenge_id,
-                venue: card.venue,
-                levelId: card.level_id,
-                instruction: card.instruction,
-                startedAt,
-                startTimeZone: 'UTC',
-                displayTimeZone: 'UTC',
-                activityDate: startedAt.slice(0, 10),
-              },
-            ],
-          },
-        });
-        check(completion.status === 200);
-        const { completionRestoreResponseSchema, journalSyncResponseSchema } =
-          await import('@justgo/contracts');
-        const restored = completionRestoreResponseSchema.parse(completion.body);
-        check(
-          restored.dataEpoch === current.data_epoch &&
-            restored.added === 1 &&
-            restored.identical === 0 &&
-            restored.attempts.length === 1 &&
-            restored.attempts[0].id === attemptId,
-        );
-        const text = 'Local recovery deletion control';
-        const journal = await api('/v1/journal-sync', {
-          token: t1.access_token,
-          method: 'POST',
-          body: {
-            expectedEpoch: current.data_epoch,
-            versions: [
-              {
-                versionId,
-                attemptId,
-                parents: [],
-                feelingScaleVersion: 1,
-                reflection: { feeling: null, text, revision: 1 },
-              },
-            ],
-          },
-        });
-        check(journal.status === 200);
-        const saved = journalSyncResponseSchema.parse(journal.body);
-        check(
-          saved.dataEpoch === current.data_epoch &&
-            saved.saved === 1 &&
-            saved.identical === 0 &&
-            saved.versions.length === 1 &&
-            saved.versions[0].attemptId === attemptId &&
-            saved.versions[0].versionId === versionId,
-        );
-        const present = (
-          await client.query(
-            `select
-          exists(select 1 from justgo.attempts where user_id=$1 and id=$2) as attempt_present,
-          exists(select 1 from justgo.journal_versions where user_id=$1 and attempt_id=$2
-            and version_id=$3 and reflection->>'text'=$4) as reflection_present`,
-            [owner.user_id, attemptId, versionId, text],
-          )
-        ).rows[0];
-        check(
-          present.attempt_present === true &&
-            present.reflection_present === true,
-        );
+        await saveWritingToErase(client, t1.access_token, current.data_epoch);
         result.localWritingSavedBeforeDeletion = true;
         const deletion = await api('/v1/account', {
           token: t1.access_token,
