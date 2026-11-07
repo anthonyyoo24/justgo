@@ -315,8 +315,10 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `apps/api/src/http/bearer.ts`, `apps/api/src/db/{schema,managed-session-check}.ts`,
   `apps/api/drizzle/`, `apps/api/scripts/`, `apps/mobile/src/app-support/{identity,access}/`,
   `apps/mobile/src/app/account/`, `apps/mobile/src/data/{backup,cloud}/`,
-  `apps/mobile/src/data/activity/sync/`, `scripts/release/`, `scripts/backups/` and the
-  release, staging and backup workflows in `.github/workflows/`.
+  `apps/mobile/src/data/activity/sync/`, `apps/mobile/src/platform/auth/`,
+  `apps/mobile/src/app-support/providers/activity-runtime.ts`, `scripts/release/`,
+  `scripts/backups/` and the release, staging and backup workflows in
+  `.github/workflows/`.
 - Run `/pstack:interrogate` on every PR that touches those areas before calling
   it verified. An interrogate run covers a patch, like a verdict. After a new
   head, run `verdict-patch.mjs check` against the base and head the panel saw. A
