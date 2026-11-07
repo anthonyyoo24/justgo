@@ -140,8 +140,8 @@ at 22:23 UTC on November 2, 2026, from deployed version
 `8dcf5dc4-5fc2-413c-aaa6-9b16f4a04b6a`. Its first nightly dispatch started
 database run
 [41579744704](https://github.com/anthonyyoo24/justgo/actions/runs/41579744704)
-at 04:43 UTC on November 3, and that run passed. Every clock-dispatched run passed
-until the November 6 pause. The ledger slot at 23:23 UTC on November 5 has no run,
+at 04:43 UTC on November 3, and that run passed. Every dispatched run passed until
+the November 6 pause. The ledger slot at 23:23 UTC on November 5 has no run,
 and its cause is unknown. Since the pause, the clock still dispatches, and the
 `backup` job skips. The [Phase 15 rollout review](../checks/phase-15-rollout-review.md)
 records the activation evidence.
@@ -152,10 +152,10 @@ The November 3, 2026 renewal replaced the R2 upload and inspector secrets in the
 `database-backups` environment at 00:09 UTC, as
 [#77](https://github.com/anthonyyoo24/justgo/issues/77) records. Copies kept
 passing after the old uploader, parent and inspector expiry times on November 5,
-so the runner used renewed credentials. Nobody has read the new expiry dates in
-Cloudflare. The run logs do not print them.
+so the runner used renewed credentials. No record holds the new expiry dates, and
+the run logs do not print them.
 
-| Credential                       | Recorded expiry                                                                                          |
+| Credential                       | Recorded expiry or cutoff                                                                                |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Derived uploader, `R2_UPLOAD_*`  | Unknown. Issue #77 reports November 9, 2026, from another tool, and nobody has checked it in Cloudflare. |
 | Inspector, `R2_INSPECT_TOKEN`    | Unknown.                                                                                                 |
