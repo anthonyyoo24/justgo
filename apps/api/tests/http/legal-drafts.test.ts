@@ -6,7 +6,6 @@ afterEach(() => vi.unstubAllEnvs());
 describe('local development legal destinations', () => {
   it('renders public, labeled draft destinations only after explicit development opt-in', async () => {
     vi.stubEnv('NODE_ENV', 'test');
-    vi.stubEnv('VERCEL', undefined);
     const app = buildApp({
       logger: false,
       checkDatabase: async () => {},
@@ -78,14 +77,12 @@ describe('local development legal destinations', () => {
     }
   });
   it.each([
-    { enabled: false, environment: 'test', vercel: undefined },
-    { enabled: true, environment: 'production', vercel: undefined },
-    { enabled: true, environment: 'test', vercel: '1' },
+    { enabled: false, environment: 'test' },
+    { enabled: true, environment: 'production' },
   ])(
-    'does not expose drafts for $environment / $vercel / $enabled',
-    async ({ enabled, environment, vercel }) => {
+    'does not expose drafts for $environment / $enabled',
+    async ({ enabled, environment }) => {
       vi.stubEnv('NODE_ENV', environment);
-      vi.stubEnv('VERCEL', vercel);
       const app = buildApp({
         logger: false,
         checkDatabase: async () => {},

@@ -21,7 +21,6 @@ export function buildRuntimeApp(
     router?: ApiApp['router'];
     clientAddress?: (context: ApiContext) => string;
     reportServerError?: ServerErrorReporter;
-    onVercel?: boolean;
     checkAdditionalDatabase?: () => Promise<void>;
   } = {},
 ) {
@@ -39,12 +38,9 @@ export function buildRuntimeApp(
           },
         }
       : {}),
-    onVercel: runtime.onVercel ?? false,
     legacyIdentityEnabled: !config.MANAGED_AUTH_ENABLED,
     developmentLegalDrafts:
-      config.NODE_ENV === 'development' &&
-      config.APP_ENVIRONMENT !== 'staging' &&
-      !process.env.VERCEL,
+      config.NODE_ENV === 'development' && config.APP_ENVIRONMENT !== 'staging',
     ...(config.APP_ENVIRONMENT === 'staging'
       ? createBetaAccess(
           config.BETA_ACCESS_GRANTS,

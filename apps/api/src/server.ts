@@ -7,9 +7,7 @@ import { buildRuntimeApp } from './runtime-app.js';
 const config = readConfig();
 // The Node server retains a bounded pool for its process lifetime.
 const database = config.DATABASE_URL ? createDatabase(config) : undefined;
-const app = buildRuntimeApp(config, database, {
-  onVercel: process.env.VERCEL === '1',
-});
+const app = buildRuntimeApp(config, database);
 // Shutdown must also own a listener that is still binding when a signal arrives.
 const listening = listen(app, { port: config.PORT, host: '0.0.0.0' });
 let shutdown: Promise<void> | undefined;
@@ -29,7 +27,6 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     });
   });
 }
-// The retained Vercel adapter captures listen while the candidate awaits cutover.
 void listening
   .catch(async () => {
     createLogger(loggerOptions(config.LOG_LEVEL)).error(
