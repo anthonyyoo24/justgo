@@ -20,10 +20,10 @@ A user signs in with Apple or Google, sees the active provider on the Account sc
 Preconditions:
 
 - Doctor is `idle`. Drive: `bin/verify drive account`.
-- A fresh fixture account from `signInFixture(page)`. It returns a session token kept only in memory.
+- A fresh fixture account from `signInFixture(page, { provider: 'apple' })`. It returns a session token kept only in memory.
 
 - **Open Account.** Click link `Open Settings`, then link `Account`. The URL ends in `/recovery`, switch `Apple` is checked and `Google` is not. Capture `01-account-apple`.
-- **Switch.** Click switch `Google`. The URL ends in `/account/sign-in`. Capture `02-switch-sign-in`. Click button `Sign in with Google` and wait for the deck. Reopen Account: `Google` is checked and `Apple` is not. Capture `03-account-google`. The first session's `revoked_at` is set.
+- **Switch.** Click switch `Google`. The URL path is `/account/sign-in`, with query `provider=google` and `switchProvider=1`. Capture `02-switch-sign-in`. Click button `Sign in with Google` and wait for the deck. Reopen Account: `Google` is checked and `Apple` is not. Capture `03-account-google`. The first session's `revoked_at` is set.
 - **Ask to log out.** Click switch `Google`. Alert dialog `Log out?` is visible. Capture `04-logout-dialog`.
 - **Confirm.** Click button `Log out` inside the dialog. Switches `Apple` and `Google` are unchecked and enabled. Capture `05-signed-out`.
 - **Proof.** `GET http://127.0.0.1:3000/v1/auth/session` with the first token returns `401`.
@@ -31,7 +31,8 @@ Preconditions:
 ## Gotchas
 
 - Sign-in uses the synthetic provider, loaded only through the web journey seam. It says nothing about real Apple or Google OAuth, which needs a physical phone. The same holds for a native provider switch.
-- The page has two `Log out` buttons once the dialog opens. Scope the second click to the dialog.
+- Account has no `Log out` row. The active switch opens the dialog, and `Log out` exists only inside it.
+- After the switch the stack holds two Account screens. Scope subtitle text to its switch, or `getByText` matches both.
 - The web build keeps credentials in an in-memory vault. A reload loses the session, unlike native Keychain.
 - Modal isolation (`inert`, `aria-hidden`) exists only on web. Native VoiceOver scope needs a device check.
 - `account-delete` has no drive step. `e2e/account-deletion.spec.ts` covers it, including a lost acknowledgement.
