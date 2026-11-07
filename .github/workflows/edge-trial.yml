@@ -1,0 +1,72 @@
+name: Edge runtime trial
+# P15-1 prototype on the throwaway phase15/edge-trial branch. No secrets, no
+# deploys and no hosted Supabase project: everything runs on this runner.
+on:
+  push:
+    branches: [phase15/edge-trial]
+permissions:
+  contents: read
+concurrency:
+  group: edge-trial
+  cancel-in-progress: true
+jobs:
+  trial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      EDGE_RUNTIME_IMAGE: supabase/edge-runtime:v1.78.0@sha256:0d21a556a2bf1c090d4558f3fcf2897b93de46036f0e8a973444c614ecca2d91
+      POSTGRES_IMAGE: postgres:17@sha256:ff87138949ad9a46f32ff23bd6852b52ce024a13dffe9b4087be98292cdd3b4f
+      DATABASE_URL: postgresql://justgo_runtime:runtime-ci-only@localhost:5432/justgo_test
+      MIGRATION_DATABASE_URL: postgresql://justgo_migrator:migration-ci-only@localhost:5432/justgo_test
+      JUSTGO_TEST_ADMIN_DATABASE_URL: postgresql://postgres:local-ci-only@localhost:5432/justgo_test
+      DATABASE_SSL: disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Start PostgreSQL 17 with TLS from a throwaway CA
+        run: |
+          dir="$RUNNER_TEMP/edge-trial-pg"
+          mkdir -p "$dir"
+          cd "$dir"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj '/CN=edge-trial-ca' -keyout ca.key -out ca.crt
+          openssl req -newkey rsa:2048 -nodes -subj '/CN=localhost' -keyout server.key -out server.csr
+          printf 'subjectAltName=DNS:localhost,IP:127.0.0.1\n' > san.ext
+          openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 2 -extfile san.ext -out server.crt
+          chmod 644 server.key server.crt ca.crt
+          docker run -d --name edge-trial-postgres --network host \
+            -e POSTGRES_PASSWORD=local-ci-only -e POSTGRES_DB=justgo_test \
+            -v "$dir:/certs:ro" --entrypoint bash "$POSTGRES_IMAGE" -c \
+            'install -o postgres -m 600 /certs/server.key /tmp/server.key && install -o postgres -m 644 /certs/server.crt /tmp/server.crt && exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/tmp/server.crt -c ssl_key_file=/tmp/server.key'
+          for attempt in $(seq 1 60); do
+            pg_isready -h localhost -p 5432 && break
+            sleep 1
+          done
+          pg_isready -h localhost -p 5432
+          echo "EDGE_TRIAL_DB_CA=$dir/ca.crt" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-node
+      - name: Verify unit tests on the trial branch
+        run: |
+          set +e
+          npm run test -w @justgo/api 2>&1 | tee "$RUNNER_TEMP/api-unit.log"
+          status=${PIPESTATUS[0]}
+          summary=$(grep -E '^\s+(Test Files|Tests) ' "$RUNNER_TEMP/api-unit.log" | tr -s ' ' | tr '\n' ';')
+          echo "EDGE_TRIAL_UNIT=exit $status;$summary" >> "$GITHUB_ENV"
+      - name: Check that the trial changed no shared API or contracts code
+        run: |
+          changed=$(git diff --name-only origin/main...HEAD -- apps/api/src packages/contracts ':(exclude)apps/api/src/edge.ts' | tr '\n' ' ')
+          echo "EDGE_TRIAL_SHARED_DIFF=${changed:-no changes against $(git rev-parse --short origin/main)}" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-database
+      - run: npm run db:migrate
+      - run: docker pull "$EDGE_RUNTIME_IMAGE"
+      - name: Run the trial lanes and perf probe
+        run: node --import tsx apps/api/scripts/edge-trial.ts
+      - name: Upload the report, receipts and CPU profiles
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: edge-trial
+          path: .local/edge-trial/
+          include-hidden-files: true
+          if-no-files-found: error
