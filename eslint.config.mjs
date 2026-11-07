@@ -63,6 +63,25 @@ export default tseslint.config(
     rules: { 'justgo/import-boundaries': 'error' },
   },
   {
+    files: ['apps/api/src/**/*.ts'],
+    ignores: ['apps/api/src/http/outbound-fetch.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        {
+          checkGlobalObject: true,
+          globals: [
+            {
+              name: 'fetch',
+              message:
+                'Wrap the transport with outboundFetch() from apps/api/src/http/outbound-fetch.ts. It keeps redirects manual so credentials never follow a Location, and fails a 3xx as UNAVAILABLE unread.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/mobile/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: {
