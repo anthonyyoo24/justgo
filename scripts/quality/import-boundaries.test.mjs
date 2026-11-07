@@ -295,6 +295,20 @@ const cases = [
     restricted: true,
   },
   {
+    name: 'API services outside identity cannot set RLS context',
+    file: 'apps/api/src/data-sync/BoundaryFixture.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js';",
+    restricted: true,
+  },
+  {
+    name: 'identity services may set RLS context',
+    file: 'apps/api/src/identity/BoundaryFixture.ts',
+    source:
+      "import { setTransactionContext } from '../db/transaction-context.js';",
+    restricted: false,
+  },
+  {
     name: 'shared code may import a sibling with dot-slash',
     file: 'apps/mobile/src/lib/BoundaryFixture.ts',
     source: "import './account-client';",

@@ -38,6 +38,13 @@ function boundaryMessage(filename, specifier) {
     !apiOpenApi
   )
     return 'Import shared contracts through @justgo/contracts.';
+  if (
+    under(file, 'apps/api/src') &&
+    target.replace(/\.[jt]s$/, '') === 'apps/api/src/db/transaction-context' &&
+    !under(file, 'apps/api/src/identity') &&
+    file !== 'apps/api/src/access/guest.ts'
+  )
+    return 'Only identity services set RLS context, after verifying the bearer. Run owner work inside IdentityService.withSession.';
   const mobileTarget = target.startsWith('@justgo/mobile/src/')
     ? target.replace('@justgo/mobile/src/', 'apps/mobile/src/')
     : target;

@@ -65,6 +65,23 @@ export default tseslint.config(
     },
   },
   {
+    files: ['apps/api/src/**/*.ts'],
+    ignores: ['apps/api/src/db/transaction-context.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...[
+          'Literal[value=/set_config|(^|;)\\s*set\\s/i]',
+          'TemplateElement[value.raw=/set_config|(^|;)\\s*set\\s/i]',
+        ].map((selector) => ({
+          selector,
+          message:
+            'Set RLS context with setTransactionContext() from apps/api/src/db/transaction-context.ts. A session-level SET or set_config(..., false) leaks one owner into the next request on a pooled connection.',
+        })),
+      ],
+    },
+  },
+  {
     files: ['apps/**/*.{ts,tsx}', 'packages/contracts/**/*.{ts,tsx}'],
     plugins: { justgo: { rules: { 'import-boundaries': importBoundaries } } },
     rules: { 'justgo/import-boundaries': 'error' },
