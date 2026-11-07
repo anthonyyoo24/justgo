@@ -183,7 +183,7 @@ test('a returning provider account skips legal tracking and reopens the same sav
   const mutations = observeMutations(page);
   const account = await signInFixture(page, { provider: 'google' });
   await page.goto('/recovery');
-  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await page.getByRole('switch', { name: 'Google', exact: true }).click();
   await page
     .getByRole('alertdialog', { name: 'Log out?', exact: true })
     .getByRole('button', { name: 'Log out', exact: true })
