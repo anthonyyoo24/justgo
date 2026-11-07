@@ -1,10 +1,9 @@
 import { ApiError } from './api-error.js';
 
 /**
- * The API's only route to another service. A followed redirect resends headers
- * such as `apikey` to the Location (Fetch strips only Authorization across
- * origins), and Workers rejects `redirect: 'error'` before sending. So
- * redirects stay manual, and a 3xx fails closed with its body unread.
+ * Fetch drops only Authorization on a cross-origin redirect, so following one
+ * would resend `apikey` to the Location. Workers rejects `redirect: 'error'`
+ * before sending, so this uses `manual`.
  */
 export function outboundFetch(transport: typeof fetch = fetch): typeof fetch {
   return async (input, init) => {
