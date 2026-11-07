@@ -24,6 +24,7 @@ export const managedIdentityStateSchema = z
       .strict(),
     mode: z.enum(['welcome', 'guest', 'signed-out', 'account']),
     account: managedSessionResponseSchema.nullable(),
+    provider: z.enum(['apple', 'google']).nullable().optional(),
     pendingSignIn: z
       .object({
         provider: z.enum(['apple', 'google']),
@@ -31,6 +32,8 @@ export const managedIdentityStateSchema = z
         guestId: z.uuid().nullable(),
         mappedOwnerId: z.uuid().nullable(),
         expectedOwnerId: z.uuid().nullable().default(null),
+        switching: z.boolean().optional(),
+        authenticated: z.boolean().optional(),
       })
       .strict()
       .nullable(),

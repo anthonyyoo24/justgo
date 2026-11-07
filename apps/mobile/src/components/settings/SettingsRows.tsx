@@ -51,6 +51,7 @@ export function SettingsRowContent({
   icon,
   label,
   status,
+  subtitle,
   chevron = false,
   accessory,
   destructive = false,
@@ -58,6 +59,7 @@ export function SettingsRowContent({
   icon: SettingsIconName;
   label: string;
   status?: string | undefined;
+  subtitle?: string | undefined;
   chevron?: boolean;
   accessory?: ReactNode;
   destructive?: boolean;
@@ -80,6 +82,11 @@ export function SettingsRowContent({
         >
           {label}
         </Text>
+        {subtitle && (
+          <Text maxFontSizeMultiplier={2} style={styles.subtitle}>
+            {subtitle}
+          </Text>
+        )}
         {status && expanded && (
           <Text maxFontSizeMultiplier={2} style={styles.expandedStatus}>
             {status}
@@ -215,6 +222,7 @@ const styles = StyleSheet.create({
   icon: { width: 24, height: 24, flexShrink: 0, justifyContent: 'center' },
   copy: { flex: 1, gap: spacing.xs },
   label: { ...typography.body, color: colors.ink },
+  subtitle: { ...typography.caption, color: colors.ink },
   destructive: { color: '#B3261E' },
   status: {
     ...typography.caption,

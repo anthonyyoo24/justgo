@@ -10,7 +10,7 @@ import { localJournalEntries } from './support/journal';
 
 async function signOut(page: Page) {
   await page.goto('/recovery');
-  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await page.getByRole('switch', { checked: true }).click();
   await expect(
     page
       .getByRole('alertdialog', { name: 'Log out?', exact: true })
@@ -35,7 +35,7 @@ test('logout uses an isolated modal without expanding Account and retains failur
 }) => {
   await signInFixture(page);
   await page.goto('/recovery');
-  const logout = page.getByRole('button', { name: 'Log out', exact: true });
+  const logout = page.getByRole('switch', { checked: true });
   const deleteAccount = page.getByRole('button', {
     name: 'Delete account',
     exact: true,
@@ -332,27 +332,56 @@ test('guest writing remains the same journal through automatic sign-in, logout a
     .toBe(1);
 });
 
-test('login switches reflect verified linking and unlinking while protecting the last method', async ({
+test('login switches show one active provider, switch through sign-in and keep logout cancellable', async ({
   page,
+  fixtureDatabase,
 }) => {
-  await signInFixture(page, { provider: 'apple' });
+  const account = await signInFixture(page, { provider: 'apple' });
   await page.goto('/recovery');
   const apple = page.getByRole('switch', { name: 'Apple', exact: true });
   const google = page.getByRole('switch', { name: 'Google', exact: true });
   await expect(apple).toBeChecked();
   await expect(google).not.toBeChecked();
-  await google.click();
-  await expect(google).toBeChecked();
-  await apple.click();
-  await expect(apple).not.toBeChecked();
-  await google.click();
-  await expect(google).toBeChecked();
   await expect(
-    page.getByText(
-      'Keep one login method connected. Use Log out to sign out on this phone.',
-      { exact: true },
-    ),
+    page.getByText('You’re signed in with Apple.', { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Log out', exact: true }),
+  ).toHaveCount(0);
+  await google.click();
+  await expect(page).toHaveURL(/account\/sign-in/);
+  await page
+    .getByRole('button', { name: 'Sign in with Google', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Accept challenge', exact: true }),
+  ).toBeVisible();
+  await page.goto('/recovery');
+  await expect(google).toBeChecked();
+  await expect(apple).not.toBeChecked();
+  await expect(
+    page.getByText('You’re signed in with Google.', { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(google).toBeChecked();
+  await expect(apple).not.toBeChecked();
+  expect(
+    (
+      await fixtureDatabase.query(
+        'select revoked_at is not null as revoked from justgo.managed_auth_sessions where id=$1',
+        [account.sessionId],
+      )
+    ).rows[0].revoked,
+  ).toBe(true);
+  await google.click();
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Log out?',
+    exact: true,
+  });
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(google).toBeChecked();
+  await expect(apple).not.toBeChecked();
+  await signOut(page);
 });
 
 test('retired key, code and transfer URLs return to the managed Account page', async ({
