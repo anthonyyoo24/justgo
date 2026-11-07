@@ -1795,3 +1795,60 @@ it.each([false, true])(
     ctx.controller.dispose();
   },
 );
+
+it('keeps an older install’s inferred provider across an SDK refresh, so a cancelled switch never reads as completed', async () => {
+  const ctx = setup();
+  const first = ctx.create();
+  await first.initialize();
+  await first.signIn('apple');
+  first.dispose();
+  // Installs from before the active provider was saved have none stored.
+  await ctx.storage.write({ ...ctx.saved()!, provider: undefined });
+  ctx.setProvider({
+    ...session,
+    provider: 'google',
+    linkedProviders: ['apple', 'google'],
+  });
+  const controller = ctx.create();
+  const notifyProvider = ctx.auth.subscribe.mock.lastCall![0];
+  await controller.initialize();
+  expect(controller.getSnapshot().provider).toBe('google');
+  // Ordinary SDK refresh: its projection carries no display provider.
+  notifyProvider({
+    ...session,
+    accessToken: 'refreshed-provider-token',
+    linkedProviders: ['apple', 'google'],
+  });
+  ctx.auth.signIn.mockResolvedValueOnce(null);
+  await controller.signIn('apple');
+  expect(controller.getSnapshot()).toMatchObject({
+    provider: 'google',
+    hasPending: false,
+  });
+  expect(controller.getSnapshot().account).not.toBeNull();
+  controller.dispose();
+});
+
+it('re-verifies a source the server rejected while the switch sheet was open before restoring it', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  const verifications = () =>
+    ctx.calls.filter(
+      ({ method, path, token }) =>
+        method === 'GET' &&
+        path === '/auth/session' &&
+        token === session.accessToken,
+    ).length;
+  const before = verifications();
+  ctx.setVerifiedAccount(session.accessToken, new ApiError('SESSION_REVOKED'));
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.controller.rejectSession(session.accessToken, 'SESSION_REVOKED');
+    return null;
+  });
+  await ctx.controller.signIn('google');
+  expect(verifications()).toBe(before + 1);
+  expect(ctx.controller.currentSession()).toBeNull();
+  expect(ctx.controller.getSnapshot().account).toBeNull();
+  ctx.controller.dispose();
+});

@@ -137,7 +137,16 @@ export class ManagedIdentityController {
     this.vault = options.legacyVault;
     this.unsubscribeAuth = options.auth.subscribe((session) => {
       const hadLocalAdmission = this.offlineAccountOwner() !== null;
-      this.providerSession = session;
+      const previous = this.providerSession;
+      // SDK notifications never carry the display provider. Keep the inferred
+      // one across a same-subject refresh so it cannot fall back to a guess.
+      this.providerSession =
+        session &&
+        !session.provider &&
+        previous?.provider &&
+        previous.authUserId === session.authUserId
+          ? { ...session, provider: previous.provider }
+          : session;
       const expectedAuthOwner =
         this.snapshot.account?.authUserId ??
         (this.data?.mode === 'account' ? this.data.account?.authUserId : null);
@@ -590,6 +599,8 @@ export class ManagedIdentityController {
     original: ManagedSessionResponse,
     unchangedToken?: string,
   ) {
+    // A source the server rejected during the sheet is re-verified before reuse.
+    const sourceRejected = this.networkBlocked;
     this.networkBlocked = true;
     this.verifiedOwner = false;
     this.reconcile();
@@ -616,7 +627,7 @@ export class ManagedIdentityController {
     if (!source || !current()) return false;
     this.switchingFromToken = source.token;
     try {
-      if (candidate.accessToken !== unchangedToken) {
+      if (sourceRejected || candidate.accessToken !== unchangedToken) {
         let verified: ManagedSessionResponse;
         try {
           verified = await this.options.api.request(
