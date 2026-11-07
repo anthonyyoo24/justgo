@@ -51,7 +51,7 @@ jobs:
           set +e
           npm run test -w @justgo/api 2>&1 | tee "$RUNNER_TEMP/api-unit.log"
           status=${PIPESTATUS[0]}
-          summary=$(grep -E '^\s+(Test Files|Tests) ' "$RUNNER_TEMP/api-unit.log" | tr -s ' ' | tr '\n' ';')
+          summary=$(sed -E 's/\x1b\[[0-9;]*m//g' "$RUNNER_TEMP/api-unit.log" | grep -E '(Test Files|Tests) ' | tr -s ' ' | tr '\n' ';')
           echo "EDGE_TRIAL_UNIT=exit $status;$summary" >> "$GITHUB_ENV"
       - name: Check that the trial changed no shared API or contracts code
         run: |

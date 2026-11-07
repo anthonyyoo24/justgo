@@ -78,18 +78,8 @@ async function forward(variant: Variant, request: Request) {
     context: { useReadSyncFileAPI: true },
     staticPatterns: [],
   });
-  const headers = new Headers(request.headers);
-  headers.delete('x-edge-trial-variant');
-  return worker.fetch(
-    new Request(request.url, {
-      method: request.method,
-      headers,
-      body: request.body,
-      signal: request.signal,
-      // @ts-expect-error Deno accepts duplex for streamed request bodies.
-      duplex: 'half',
-    }),
-  );
+  // Forward the original request: the runtime tracks its body stream and tag.
+  return worker.fetch(request);
 }
 
 Deno.serve(async (request) => {

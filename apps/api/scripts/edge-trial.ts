@@ -295,7 +295,7 @@ async function startNode(
 type Variant = {
   name: string;
   functionDir: string;
-  importMap?: string;
+  importMap?: string | undefined;
   env: Env;
   cpuSoftMs: number;
   cpuHardMs: number;
@@ -375,7 +375,7 @@ type Entry = {
   origin: string;
   prefix: string;
   headers: Record<string, string>;
-  pid?: number;
+  pid?: number | undefined;
 };
 type Reply = {
   status: number;
@@ -1598,33 +1598,54 @@ async function main() {
   const chosen: BundleKind =
     passes('bundled') >= passes('npm-pg') ? 'bundled' : 'npm-pg';
 
-  const cpuLimit = await cpuLimitProbe(chosen);
+  const harnessErrors: string[] = [];
+  const failure = (stage: string, error: unknown) =>
+    harnessErrors.push(`${stage}: ${error instanceof Error ? error.message : String(error)}`);
+  let cpuLimit: Record<string, unknown[]> = {};
+  try {
+    cpuLimit = await cpuLimitProbe(chosen);
+  } catch (error) {
+    failure('cpu limit probe', error);
+  }
   await writeFile(resolve(out, 'cpu-limit.json'), mask(cpuLimit));
-  const perf = await perfProbe(chosen, nodeManaged, nodeInspectPort);
-  const table = summarize(perf.samples);
-  await writeFile(resolve(out, 'perf-samples.json'), mask(perf.samples));
-  await writeFile(resolve(out, 'perf-summary.json'), mask({ table, select1: perf.select1, edgeTargets: perf.edgeTargets, edgeWorker: perf.edgeWorker }));
+  let perf: Awaited<ReturnType<typeof perfProbe>> | undefined;
+  try {
+    perf = await perfProbe(chosen, nodeManaged, nodeInspectPort);
+  } catch (error) {
+    failure('perf probe', error);
+    await stopEdge('edge-trial-perf').catch(() => undefined);
+  }
+  const samples = perf?.samples ?? [];
+  const table = summarize(samples);
+  await writeFile(resolve(out, 'perf-samples.json'), mask(samples));
+  await writeFile(resolve(out, 'perf-summary.json'), mask({ table, select1: perf?.select1, edgeTargets: perf?.edgeTargets, edgeWorker: perf?.edgeWorker, harnessErrors }));
 
   const row = (route: Route, entry: 'node' | 'edge') =>
-    table.find((item) => item.route === route && item.entry === entry)!;
-  const idleSeen = row('health', 'edge').profileIdleTotal > 0;
-  const cpuOf = (route: Route, entry: 'node' | 'edge') =>
-    idleSeen ? row(route, entry).profileCpu : row(route, entry).processCpu;
+    table.find((item) => item.route === route && item.entry === entry && item.n > 0);
+  const idleSeen = (row('health', 'edge')?.profileIdleTotal ?? 0) > 0;
+  const cpuOf = (route: Route, entry: 'node' | 'edge') => {
+    const item = row(route, entry);
+    return item ? (idleSeen ? item.profileCpu : item.processCpu) : { median: NaN, p95: NaN, max: NaN };
+  };
   const sync = row('worst sync', 'edge');
   const syncCpu = cpuOf('worst sync', 'edge').p95;
-  const syncFails = syncCpu > 1000 || sync.wall.p95 > 5000;
+  const syncWall = sync?.wall.p95 ?? NaN;
+  const syncFails = !(syncCpu <= 1000) || !(syncWall <= 5000);
   const smallRoutes = (['health', 'guest catalog', 'attempt write'] as const).map((route) => ({
     route,
     edgeP95: cpuOf(route, 'edge').p95,
     nodeP95: cpuOf(route, 'node').p95,
-    fails: cpuOf(route, 'edge').p95 > 2 * cpuOf(route, 'node').p95,
+    fails: !(cpuOf(route, 'edge').p95 <= 2 * cpuOf(route, 'node').p95),
   }));
-  const allStatusesOk = perf.samples.every((s) => s.status === 200 || s.status === 201);
+  const allStatusesOk = samples.length > 0 && samples.every((s) => s.status === 200 || s.status === 201);
   const lanesChosen = (laneResults[chosen] ?? []).filter((item) => item.lane >= 1);
   const lanesPass = lanesChosen.length === 10 && lanesChosen.every((item) => item.pass);
-  const decision = lanesPass && allStatusesOk && !syncFails && smallRoutes.every((item) => !item.fails) ? 'go' : 'stop';
+  const decision =
+    harnessErrors.length === 0 && lanesPass && allStatusesOk && !syncFails && smallRoutes.every((item) => !item.fails)
+      ? 'go'
+      : 'stop';
 
-  const select1Medians = (perf.select1 as { medianMs?: number }[]).map((item) => item.medianMs ?? NaN);
+  const select1Medians = ((perf?.select1 ?? []) as { medianMs?: number }[]).map((item) => item.medianMs ?? NaN);
   const shared = process.env.EDGE_TRIAL_SHARED_DIFF ?? 'not checked';
   const lines: string[] = [];
   lines.push('# P15-1 local runtime trial report', '');
@@ -1663,23 +1684,28 @@ async function main() {
   lines.push('| Route | Entry | n | Profile CPU median / p95 ms | Profile JS+GC median ms | Process CPU median / p95 ms | Wall median / p95 / max ms | Queries | Statuses |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const item of table)
     lines.push(`| ${item.route} | ${item.entry === 'node' ? 'trunk Node' : 'head Edge'} | ${item.n} | ${fixed(item.profileCpu.median)} / ${fixed(item.profileCpu.p95)} | ${fixed(item.profileJs.median)} | ${fixed(item.processCpu.median)} / ${fixed(item.processCpu.p95)} | ${fixed(item.wall.median, 0)} / ${fixed(item.wall.p95, 0)} / ${fixed(item.wall.max, 0)} | ${item.queries ?? 'n/a'} | ${item.statuses.join(',')} |`);
-  lines.push('', `Worst-case sync query count: ${sync.queries ?? 'n/a'} per request (counted at the pg client, BEGIN and COMMIT included).`);
+  lines.push('', `Worst-case sync query count: ${sync?.queries ?? 'n/a'} per request (counted at the pg client, BEGIN and COMMIT included).`);
   lines.push(`Loopback select 1 median of ten timed round trips in one transaction after one untimed query: ${select1Medians.map((value) => fixed(value, 3)).join(', ')} ms over five probes; first probe ${fixed(select1Medians[0], 3)} ms.`);
   lines.push('', '## Rule', '');
-  lines.push(`- Worst-case sync p95 CPU ${fixed(syncCpu)} ms (limit 1,000) and p95 wall ${fixed(sync.wall.p95, 0)} ms (limit 5,000): ${syncFails ? 'fails' : 'passes'}.`);
+  lines.push(`- Worst-case sync p95 CPU ${fixed(syncCpu)} ms (limit 1,000) and p95 wall ${fixed(syncWall, 0)} ms (limit 5,000): ${syncFails ? 'fails' : 'passes'}.`);
   for (const item of smallRoutes)
     lines.push(`- ${item.route} Edge p95 CPU ${fixed(item.edgeP95, 2)} ms against twice trunk p95 ${fixed(2 * item.nodeP95, 2)} ms: ${item.fails ? 'fails' : 'passes'}.`);
   lines.push(`- Every perf request returned 200 or 201: ${allStatusesOk}.`);
   lines.push(`- All ten lanes pass on ${chosen}: ${lanesPass}.`);
+  for (const error of harnessErrors) lines.push(`- Harness error: ${error}`);
   if (syncFails && lanesPass && smallRoutes.every((item) => !item.fails))
     lines.push('- Only the sync fails. The plan says to add a section that batches the parent checks in `apps/api/src/data-sync/journal.ts` and land it before P15-6.');
   lines.push('', `Decision: ${decision}`);
   await writeFile(resolve(out, 'report.md'), `${lines.join('\n')}\n`);
   await writeFile(
     resolve(out, 'results.json'),
-    mask({ sourceSha, runUrl, image, bundles, laneMeta, laneResults, chosen, cpuLimit, table, select1: perf.select1, decision, authCalls }),
+    mask({ sourceSha, runUrl, image, bundles, laneMeta, laneResults, chosen, cpuLimit, table, select1: perf?.select1, decision, authCalls, harnessErrors }),
   );
   console.info(`Decision: ${decision}`);
+  if (harnessErrors.length) {
+    console.error(harnessErrors.join('\n'));
+    process.exitCode = 1;
+  }
 }
 
 try {
