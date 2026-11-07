@@ -26,6 +26,7 @@ const runUrl = process.env.GITHUB_RUN_ID
   ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
   : 'local';
 const rounds = Number(process.env.EDGE_TRIAL_ROUNDS ?? '20');
+const warmupRounds = 5;
 
 function required(name: string) {
   const value = process.env[name];
@@ -796,7 +797,10 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
     name: `edge-${group}-tls`,
     headers: { 'x-edge-trial-variant': `${group}-tls` },
   };
+  const coldStart = performance.now();
   const boot = await waitFor(edge, '/health', 90_000);
+  const coldHealthMs = performance.now() - coldStart;
+  const warmHealthMs = (await call(edge, 'GET', '/health')).wallMs;
   await waitFor(edgeLegacy, '/health', 90_000);
   const runtime = await call(edge, 'GET', '/__trial/runtime');
 
@@ -1261,7 +1265,12 @@ async function lanes(group: BundleKind, edgeOrigin: string, nodeManaged: Entry, 
     };
   });
 
-  return { boot: boot.status, runtime: runtime.body };
+  return {
+    boot: boot.status,
+    coldHealthMs: Math.round(coldHealthMs),
+    warmHealthMs: Math.round(warmHealthMs * 10) / 10,
+    runtime: runtime.body,
+  };
 }
 
 // ---------- CPU limit probe ----------
@@ -1486,9 +1495,10 @@ async function perfProbe(kind: BundleKind, nodeManaged: Entry, nodeInspectPort: 
         });
     }
   };
-  // Warm both entries once per route before measuring.
-  for (const which of ['node', 'edge'] as const)
-    for (const route of routes) await request(which, route);
+  // Warm both entries the same way, so JIT tiering does not land in round 1.
+  for (let round = 0; round < warmupRounds; round++)
+    for (const which of ['node', 'edge'] as const)
+      for (const route of routes) await request(which, route);
   // Plain pass first: per-thread CPU and wall with the profiler off.
   const comms: Record<'node' | 'edge', Record<string, string>> = { node: {}, edge: {} };
   for (let round = 1; round <= rounds; round++) {
@@ -1724,7 +1734,7 @@ async function main() {
   lines.push(`- Trial SHA: \`${sourceSha}\``);
   lines.push(`- Workflow run: ${runUrl}`);
   lines.push(`- Edge runtime image: \`${image}\``);
-  lines.push(`- Rounds per entry: ${rounds}`);
+  lines.push(`- Rounds per entry: ${rounds}, after ${warmupRounds} untimed warmup rounds per entry`);
   lines.push(`- Shared code against origin/main (apps/api/src without edge.ts, packages/contracts): ${shared}`);
   lines.push(`- Unit tests on the trial branch: ${process.env.EDGE_TRIAL_UNIT ?? 'not run'}`);
   lines.push('', '## Bundles', '');
