@@ -1,41 +1,58 @@
-import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { changedPaths } from '../../scripts/quality/git.mjs';
-import {
-  isSensitivePath,
-  sensitiveFlag,
-} from '../../scripts/quality/sensitive-paths.mjs';
-import { isReviewOnly } from '../../scripts/quality/verdict-patch.mjs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 // PreToolUse hook on Agent. Verifiers run on Opus. A re-check of a docs- or
-// tests-only, non-sensitive change runs on Sonnet. Any doubt keeps Opus.
-const verifier = /\bverif(?:y|ier|ication)\b|\bverdict\b/i;
-const recheck = /\bre-?(?:verif\w*|check\w*)\b/i;
+// tests-only, non-sensitive PR runs on Sonnet. Any doubt keeps Opus.
+// settings.json sets onFailure "block", so a hook that cannot start, crashes or
+// times out stops the Agent call instead of letting a requested Sonnet through.
 
-const textOf = (input) => `${input.description ?? ''}\n${input.prompt ?? ''}`;
-export const isVerifier = (input) =>
-  verifier.test(textOf(input)) || recheck.test(textOf(input));
+// A verifier is named as one in the description, or asked for a verdict line.
+const verifierName =
+  /^\s*(?:independent\s+|fresh\s+)?(?:re-?verif\w*|verif(?:y|ier|ication)\b|re-?check\b)/i;
+const verdictAsk = /Verifier verdict:/;
+const recheckName = /^\s*(?:fresh\s+)?(?:re-?verif\w*|re-?check\b)/i;
+// The PR the brief names. Without exactly one, the hook cannot know the diff.
+const prReference = /(?:\bPR\s*#|\/pull\/)(\d+)\b/gi;
 
-export function decide(input, changed) {
-  const text = textOf(input);
+export function isVerifier(input) {
+  return (
+    verifierName.test(input.description ?? '') ||
+    verdictAsk.test(input.prompt ?? '')
+  );
+}
+
+export function prOf(input) {
+  const numbers = new Set(
+    [
+      ...`${input.description ?? ''}\n${input.prompt ?? ''}`.matchAll(
+        prReference,
+      ),
+    ].map(([, number]) => number),
+  );
+  return numbers.size === 1 ? [...numbers][0] : undefined;
+}
+
+export function decide(
+  input,
+  changed,
+  { isReviewOnly, isSensitivePath, sensitiveFlag },
+) {
   if (!isVerifier(input)) return undefined;
   const sonnet =
-    recheck.test(text) &&
-    !sensitiveFlag.test(text) &&
+    recheckName.test(input.description ?? '') &&
+    !sensitiveFlag.test(input.prompt ?? '') &&
     Array.isArray(changed) &&
     changed.length > 0 &&
     changed.every((file) => isReviewOnly(file) && !isSensitivePath(file));
   return sonnet
-    ? {
-        model: 'sonnet',
-        reason: 'docs- or tests-only, non-sensitive re-check',
-      }
+    ? { model: 'sonnet', reason: 'docs- or tests-only, non-sensitive re-check' }
     : {
         model: 'opus',
         reason:
           changed === undefined
-            ? 'could not read the PR diff'
-            : 'verifier default, or code or sensitive files changed',
+            ? 'no single PR named, or its files could not be read'
+            : 'first verifier, or code or sensitive files changed',
       };
 }
 
@@ -51,33 +68,42 @@ export function output(input, decision) {
   };
 }
 
-function prDiff(cwd) {
+// The files of the PR the brief names, read from GitHub, not from the
+// spawning session's checkout.
+function prFiles(number) {
+  if (!number) return undefined;
   try {
-    const base = process.env.JUSTGO_VERIFY_BASE ?? 'origin/main';
-    return changedPaths(`${base}...HEAD`, cwd);
+    const files = execFileSync(
+      'gh',
+      ['pr', 'view', number, '--json', 'files', '--jq', '.files[].path'],
+      { encoding: 'utf8', timeout: 8000 },
+    )
+      .split('\n')
+      .filter(Boolean);
+    return files.length ? files : undefined;
   } catch {
     return undefined;
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  let input = {};
+async function main() {
+  const event = JSON.parse(readFileSync(0, 'utf8'));
+  if (event.tool_name !== 'Agent') return;
+  const input = event.tool_input ?? {};
+  if (!isVerifier(input)) return;
+  let result;
   try {
-    const event = JSON.parse(readFileSync(0, 'utf8'));
-    if (event.tool_name !== 'Agent') process.exit(0);
-    input = event.tool_input ?? {};
-    const result = output(
-      input,
-      decide(input, prDiff(event.cwd ?? process.env.CLAUDE_PROJECT_DIR)),
-    );
-    if (result) process.stdout.write(JSON.stringify(result));
+    const rules = {
+      ...(await import('../../scripts/quality/sensitive-paths.mjs')),
+      ...(await import('../../scripts/quality/verdict-patch.mjs')),
+    };
+    result = output(input, decide(input, prFiles(prOf(input)), rules));
   } catch {
-    // A broken hook must not hand a verifier to a smaller model. Forcing Opus
-    // only applies when the input names a verifier; otherwise the parent
-    // model, Opus here, stays in place.
-    const result = isVerifier(input)
-      ? output(input, { model: 'opus', reason: 'hook error' })
-      : undefined;
-    if (result) process.stdout.write(JSON.stringify(result));
+    result = output(input, { model: 'opus', reason: 'hook error' });
   }
+  if (result) process.stdout.write(JSON.stringify(result));
 }
+
+const self = fileURLToPath(import.meta.url);
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(self))
+  await main();
