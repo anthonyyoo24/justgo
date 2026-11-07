@@ -1,7 +1,5 @@
 import { Pool, type PoolConfig } from 'pg';
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { sql } from 'drizzle-orm';
-import { z } from 'zod';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Config } from '../config.js';
 import { checkManagedSessionHelper } from './managed-session-check.js';
 
@@ -36,21 +34,6 @@ export function createDatabase(config: Config) {
     console.error(JSON.stringify({ event: 'database_pool_error' }));
   });
   return { pool, db: drizzle(pool) };
-}
-
-type Transaction = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
-
-/** Pass only an identity derived from a verified server session, never a request field. */
-export async function withOwner<T>(
-  db: NodePgDatabase,
-  verifiedUserId: string,
-  operation: (tx: Transaction) => Promise<T>,
-): Promise<T> {
-  const userId = z.uuid().parse(verifiedUserId);
-  return db.transaction(async (tx) => {
-    await tx.execute(sql`select set_config('app.user_id', ${userId}, true)`);
-    return operation(tx);
-  });
 }
 
 export async function checkDatabase(pool: Pool): Promise<void> {

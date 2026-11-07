@@ -6,6 +6,7 @@ import type {
   ManagedSessionResponse,
 } from '@justgo/contracts';
 import { ApiError } from '../http/api-error.js';
+import { setTransactionContext } from '../db/transaction-context.js';
 import type {
   ManagedAuthVerifier,
   VerifiedManagedIdentity,
@@ -21,8 +22,6 @@ type LegacyReader = (
   token: string,
   linkedOwner?: string,
 ) => Promise<string>;
-const context = (tx: Tx, key: string, value: string) =>
-  tx.execute(sql`select set_config(${key},${value},true)`);
 const liveSession: ManagedLiveSessionReader = async (tx, identity) =>
   (
     await tx.execute<{ live: boolean | null }>(
@@ -45,11 +44,11 @@ export class ManagedIdentityService {
     return this.verify(token);
   }
   private async prepare(tx: Tx, identity: VerifiedManagedIdentity) {
-    await context(tx, 'app.auth_user_id', identity.authUserId);
+    await setTransactionContext(tx, 'app.auth_user_id', identity.authUserId);
     if (!(await this.live(tx, identity))) throw new ApiError('SESSION_REVOKED');
   }
   private async lockOwner(tx: Tx, userId: string) {
-    await context(tx, 'app.user_id', userId);
+    await setTransactionContext(tx, 'app.user_id', userId);
     const row = (
       await tx.execute<{ deleted_at: Date | null; data_epoch: number }>(
         sql`select deleted_at,data_epoch from justgo.users where id=${userId} for update`,
@@ -89,7 +88,7 @@ export class ManagedIdentityService {
         if (mapping && legacyOwner && mapping.user_id !== legacyOwner)
           throw new ApiError('CONFLICT', 409);
         const userId = mapping?.user_id ?? legacyOwner ?? this.allocateUserId();
-        await context(tx, 'app.user_id', userId);
+        await setTransactionContext(tx, 'app.user_id', userId);
         if (!mapping) {
           if (!legacyOwner)
             await tx.execute(
