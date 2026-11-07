@@ -376,10 +376,25 @@ export async function rehearse(env = process.env) {
           runtime_create: false,
         });
         const { rows } = await client.query(
-          'select (select count(*)::int from auth.sessions) as sessions, (select data_epoch from justgo.users where id=$1) as epoch',
+          `select (select count(*)::int from auth.sessions) as sessions,
+          (select data_epoch from justgo.users where id=$1) as epoch,
+          (select count(*)::int from justgo.attempts) as attempts,
+          (select count(*)::int from justgo.journal_versions where reflection->>'text'='synthetic recovery fixture') as reflections`,
           [erasedOwner.userId],
         );
-        assert.deepEqual(rows[0], { sessions: 1, epoch: 0 });
+        assert.deepEqual(rows[0], {
+          sessions: 1,
+          epoch: 0,
+          attempts: 2,
+          reflections: 2,
+        });
+        console.log(
+          JSON.stringify({
+            event: 'local_recovery_writing_present',
+            attempts: rows[0].attempts,
+            reflections: rows[0].reflections,
+          }),
+        );
         // An asynchronous SQL round trip must finish before reconciliation starts.
         await client.query('select pg_sleep(0.01)');
         beforeFinished = true;
@@ -512,7 +527,7 @@ export async function rehearse(env = process.env) {
     );
   }
   console.log(
-    'Encrypted local app/Auth restore, deletion replay, epoch fencing, revoked proofs and idempotency passed. Synthetic Auth tables are not hosted provider acceptance.',
+    'Encrypted local app/Auth restore with preserved owners, restored writing before replay, deletion replay, epoch fencing, revoked proofs and idempotency passed. Synthetic Auth tables are not hosted provider acceptance.',
   );
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
