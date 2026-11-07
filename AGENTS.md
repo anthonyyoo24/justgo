@@ -275,6 +275,13 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   (pstack's Shipping playbook). Pin every merge to the head that a verdict
   covers, fresh or carried, with `gh pr merge --match-head-commit <head-sha>`,
   both direct and `--auto`, so GitHub refuses a head no verdict covers.
+- **Arm auto-merge when you open a PR.** Outside the sensitive areas below, run
+  `gh pr merge <n> --auto --squash --match-head-commit <head-sha>` right after
+  opening the PR, and again after each push, pinned to the new head. The
+  required `sections` check stays red until a readable `PASS` covers that head,
+  so GitHub merges on its own once the verdict and CI are green. The agent does
+  not wait for CI to merge. After a `PASS`, push nothing more to the PR. Put
+  optional notes and later additions in a follow-up PR or issue.
 - **Anthony merges the sensitive areas.** PRs that touch the paths in
   [Agent effort](#agent-effort) (sign-in and identity, account data and
   deletion, migrations, release and backup scripts) stop at merge-ready for
