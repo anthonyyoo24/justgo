@@ -20,6 +20,10 @@ import { readPolicy } from './configuration.mjs';
 import { rehearseRecoveryFence } from './recovery-fence-fixture.mjs';
 
 const migrations = new URL('../../apps/api/drizzle/', import.meta.url).pathname;
+const reviewedAccessSql = new URL(
+  './recovery-target-access.sql',
+  import.meta.url,
+);
 const secret = () => randomBytes(32).toString('hex');
 const proposal = () => ({
   credential: secret(),
@@ -27,6 +31,18 @@ const proposal = () => ({
   sessionId: randomUUID(),
   sessionToken: secret(),
 });
+
+async function reviewedAccess(client, change) {
+  const sql = await readFile(reviewedAccessSql, 'utf8');
+  await client.query("begin; set local search_path to ''");
+  try {
+    if (change) await client.query(change);
+    const { rows } = await client.query(sql);
+    return rows[0].reviewed_access.metadata;
+  } finally {
+    await client.query('rollback');
+  }
+}
 
 /**
  * Exercise encrypted backup, privilege-drift rejection and deletion replay using
@@ -375,6 +391,22 @@ export async function rehearse(env = process.env) {
           runtime_read: true,
           runtime_create: false,
         });
+        const reviewed = await reviewedAccess(source);
+        assert.deepEqual(await reviewedAccess(client), reviewed);
+        for (const drift of [
+          'alter policy owner_read on justgo.users using (true)',
+          'alter policy owner_read on justgo.users to public',
+          'grant delete on justgo.users to justgo_runtime',
+        ])
+          assert.notDeepEqual(await reviewedAccess(client, drift), reviewed);
+        console.log(
+          JSON.stringify({
+            event: 'local_recovery_access_matches',
+            objects: reviewed.objects.length,
+            policies: reviewed.objects.filter(({ kind }) => kind === 'policy')
+              .length,
+          }),
+        );
         const { rows } = await client.query(
           `select (select count(*)::int from auth.sessions) as sessions,
           (select data_epoch from justgo.users where id=$1) as epoch,
