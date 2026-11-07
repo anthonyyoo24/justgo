@@ -1,6 +1,8 @@
 import {
   completionAttemptSchema,
+  type CompletionRestorePage,
   type CompletionRestoreRequest,
+  type JournalSyncPage,
   type JournalSyncVersion,
 } from '@justgo/contracts';
 import { AccountRepository } from '../activity/repository';
@@ -330,6 +332,76 @@ it('rejects older server epochs before importing or uploading after a newer iClo
   });
   expect(upload).not.toHaveBeenCalled();
 });
+
+const served = <Page>(pages: Page[]) => {
+  let next = 0;
+  return async () => {
+    const page = pages[next++];
+    if (!page) throw new Error('read past the last served page');
+    return page;
+  };
+};
+const completion = completionAttemptSchema.strip().parse(attempt(2));
+const history = Array.from({ length: 25_001 }, (_, n) => ({
+  ...completion,
+  id: uuid(1_000 + n),
+}));
+const reflections = history.slice(1).map((context, n): JournalSyncVersion => ({
+  versionId: uuid(100_000 + n),
+  attemptId: context.id,
+  parents: [],
+  feelingScaleVersion: 1,
+  reflection: { text: 'Synthetic history', feeling: null, revision: 1 },
+  context,
+}));
+
+it.each<{
+  fault: string;
+  code: string;
+  completions: CompletionRestorePage[];
+  versions: JournalSyncPage[];
+}>([
+  {
+    fault: "spans another device's delete-all",
+    code: 'DATA_EPOCH_CHANGED',
+    completions: [{ dataEpoch: 0, attempts: [completion], nextCursor: null }],
+    versions: [{ dataEpoch: 1, versions: [], nextCursor: null }],
+  },
+  {
+    fault: 'repeats a cursor',
+    code: 'INVALID_RESPONSE',
+    completions: [
+      { dataEpoch: 0, attempts: [completion], nextCursor: uuid(500) },
+      { dataEpoch: 0, attempts: [], nextCursor: uuid(500) },
+    ],
+    versions: [{ dataEpoch: 0, versions: [], nextCursor: null }],
+  },
+  {
+    fault: 'returns 50,001 records across completions and versions',
+    code: 'INVALID_RESPONSE',
+    completions: [{ dataEpoch: 0, attempts: history, nextCursor: null }],
+    versions: [{ dataEpoch: 0, versions: reflections, nextCursor: null }],
+  },
+])(
+  'rejects a download that $fault before importing or uploading',
+  async ({ code, completions, versions }) => {
+    const { repository, sync, remote } = setup();
+    await repository.complete(input(), card);
+    const before = await repository.snapshotData();
+    jest
+      .spyOn(remote.transport, 'completions')
+      .mockImplementation(served(completions));
+    jest
+      .spyOn(remote.transport, 'versions')
+      .mockImplementation(served(versions));
+    const putCompletions = jest.spyOn(remote.transport, 'putCompletions');
+    const putVersions = jest.spyOn(remote.transport, 'putVersions');
+    await expect(sync.synchronize()).rejects.toMatchObject({ code });
+    expect(await repository.snapshotData()).toEqual(before);
+    expect(putCompletions).not.toHaveBeenCalled();
+    expect(putVersions).not.toHaveBeenCalled();
+  },
+);
 
 it('fences an in-flight import after logout before local writes and later journal batches', async () => {
   const { repository, sync, remote } = setup();
