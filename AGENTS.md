@@ -311,6 +311,12 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   areas below.
 - When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
   sets the model and effort for each pstack role.
+- Start routine helpers on Sonnet at `high` (`model: "sonnet"`) when pstack's
+  per-role settings do not already cover them. Routine helpers are decision-trail
+  and audit reviews, inventories and research, docs-only writing passes,
+  mechanical fix rounds (lint, formatting and small review notes), and re-checks
+  after a rebase whose `verdict-patch.mjs check` says `carries`. Owners that
+  change behavior, independent verifiers and interrogate reviewers stay on Opus.
 - A session that starts or tracks other sessions hands off to a fresh session
   when its context reaches about 200k tokens (`get_usage` reports it). Use the
   session-pickup brief from [Rules and what enforces them](#rules-and-what-enforces-them).
