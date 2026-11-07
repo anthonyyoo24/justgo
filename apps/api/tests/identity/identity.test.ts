@@ -1,30 +1,68 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import {
   bootstrapSchema,
   syncPageQuerySchema,
   transferStartSchema,
 } from '@justgo/contracts';
-import { rateAddress } from '../../src/identity/address.js';
+import { buildApp } from '../../src/build-app.js';
 import { readConfig } from '../../src/config.js';
 import { IdentityService } from '../../src/identity/service.js';
+import { apiRequest } from '../request.js';
 
 describe('identity input and deployment configuration', () => {
-  it('never trusts client forwarding headers outside the Vercel runtime', () => {
-    expect(
-      rateAddress('127.0.0.1', { 'x-vercel-forwarded-for': '1.2.3.4' }, false),
-    ).toBe('127.0.0.1');
-    expect(
-      rateAddress('127.0.0.1', { 'x-vercel-forwarded-for': '1.2.3.4' }, true),
-    ).toBe('1.2.3.4');
-    expect(
-      rateAddress(
-        '127.0.0.1',
-        { 'x-vercel-forwarded-for': '1.2.3.4,5.6.7.8' },
-        true,
-      ),
-    ).toBe('127.0.0.1');
-  });
+  it.each([
+    { url: '/v1/auth/session', method: 'GET', limit: 120 },
+    { url: '/v1/sessions/current', method: 'GET', limit: 120 },
+    {
+      url: '/v1/sessions',
+      method: 'POST',
+      payload: { kind: 'recovery' },
+      limit: 30,
+    },
+  ])(
+    'keys the $method $url rate bucket by the entry client address and ignores x-vercel-forwarded-for',
+    async ({ limit, ...request }) => {
+      const dialect = new PgDialect();
+      const buckets = new Map<unknown, number>();
+      const db = drizzle.mock();
+      type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+      const execute = vi.fn(async (statement: SQL) => {
+        const { sql, params } = dialect.sqlToQuery(statement);
+        if (!sql.includes('insert into justgo.identity_rate_buckets'))
+          return { rows: [] };
+        const count = (buckets.get(params[0]) ?? 0) + 1;
+        buckets.set(params[0], count);
+        return { rows: [{ count, retry_after_seconds: 600 }] };
+      });
+      vi.spyOn(db, 'transaction').mockImplementation((work) =>
+        work({ execute } as unknown as Tx),
+      );
+      let address = '198.51.100.7';
+      const app = buildApp({
+        logger: false,
+        checkDatabase: async () => {},
+        identity: new IdentityService(db, {
+          rateKey: 'client-address-fixture',
+        }),
+        clientAddress: () => address,
+      });
+      const send = (forged: number) =>
+        apiRequest(app, {
+          ...request,
+          headers: { 'x-vercel-forwarded-for': `203.0.113.${forged}` },
+        });
+      for (let count = 1; count <= limit; count++)
+        expect((await send(count)).statusCode).not.toBe(429);
+      const limited = await send(limit + 1);
+      expect(limited.statusCode).toBe(429);
+      expect(limited.headers['retry-after']).toBe('600');
+      address = '198.51.100.8';
+      expect((await send(limit + 2)).statusCode).not.toBe(429);
+    },
+  );
   it('requires an independent deployment secret and bounded identity settings', () => {
     expect(() =>
       readConfig({

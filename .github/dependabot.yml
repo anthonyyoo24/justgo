@@ -8,7 +8,6 @@ updates:
   - package-ecosystem: npm
     directories:
       - /
-      - /scripts/release/vercel-cli
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
