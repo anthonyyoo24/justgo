@@ -5,6 +5,11 @@ import reactX from 'eslint-plugin-react-x';
 import testingLibrary from 'eslint-plugin-testing-library';
 import globals from 'globals';
 import importBoundaries from './scripts/quality/import-boundaries.mjs';
+import rlsContext from './scripts/quality/rls-context.mjs';
+
+const justgo = {
+  rules: { 'import-boundaries': importBoundaries, 'rls-context': rlsContext },
+};
 
 export default tseslint.config(
   {
@@ -58,8 +63,14 @@ export default tseslint.config(
     },
   },
   {
+    files: ['apps/api/src/**/*.ts'],
+    ignores: ['apps/api/src/db/transaction-context.ts'],
+    plugins: { justgo },
+    rules: { 'justgo/rls-context': 'error' },
+  },
+  {
     files: ['apps/**/*.{ts,tsx}', 'packages/contracts/**/*.{ts,tsx}'],
-    plugins: { justgo: { rules: { 'import-boundaries': importBoundaries } } },
+    plugins: { justgo },
     rules: { 'justgo/import-boundaries': 'error' },
   },
   {
