@@ -550,7 +550,9 @@ export class ManagedIdentityController {
               state.account,
               source?.token,
             );
-            if (!restored)
+            // Explain only a login this attempt lost. A cancelled sign-in that
+            // began signed out stays silent, as an ordinary cancel does.
+            if (!restored && source)
               this.reconcile(
                 'Please sign in again. Your saved data was kept.',
                 {

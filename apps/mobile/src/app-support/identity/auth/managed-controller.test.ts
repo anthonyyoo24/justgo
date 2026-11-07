@@ -1852,3 +1852,48 @@ it('re-verifies a source the server rejected while the switch sheet was open bef
   expect(ctx.controller.getSnapshot().account).toBeNull();
   ctx.controller.dispose();
 });
+
+it('keeps a cancelled sign-in silent when it began signed out after an interrupted switch', async () => {
+  const ctx = setup();
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  // The app stops while the switch's provider sheet is open.
+  ctx.auth.signIn.mockResolvedValueOnce('redirecting');
+  await ctx.controller.signIn('google');
+  ctx.controller.dispose();
+  // On restart the SDK has no session, so the account shows signed out.
+  ctx.setProvider(null);
+  const restarted = ctx.create();
+  await restarted.initialize();
+  expect(restarted.getSnapshot()).toMatchObject({
+    account: null,
+    mode: 'signed-out',
+    message: '',
+  });
+  ctx.auth.signIn.mockResolvedValueOnce(null);
+  await restarted.signIn('apple');
+  expect(restarted.getSnapshot()).toMatchObject({
+    message: '',
+    directSignInFailure: false,
+  });
+  restarted.dispose();
+});
+
+it('explains a cancelled switch that lost the active login while its sheet was open', async () => {
+  const ctx = setup();
+  const notifyProvider = ctx.auth.subscribe.mock.calls[0]![0];
+  await ctx.controller.initialize();
+  await ctx.controller.signIn('apple');
+  ctx.auth.signIn.mockImplementationOnce(async () => {
+    ctx.setProvider(null);
+    notifyProvider(null);
+    return null;
+  });
+  await ctx.controller.signIn('google');
+  expect(ctx.controller.getSnapshot()).toMatchObject({
+    account: null,
+    message: 'Please sign in again. Your saved data was kept.',
+    directSignInFailure: true,
+  });
+  ctx.controller.dispose();
+});
