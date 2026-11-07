@@ -5,6 +5,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { inspect } from 'node:util';
 import { Client, Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { localTestDatabaseUrl } from '../../apps/api/scripts/local-test-database.ts';
@@ -41,6 +42,29 @@ async function reviewedAccess(client, change) {
     return rows[0].reviewed_access.metadata;
   } finally {
     await client.query('rollback');
+  }
+}
+
+async function capturedOutput(run) {
+  const output = [];
+  const streams = [process.stdout, process.stderr].map((stream) => {
+    const write = stream.write;
+    stream.write = (chunk, ...rest) => {
+      output.push(String(chunk));
+      return write.call(stream, chunk, ...rest);
+    };
+    return () => (stream.write = write);
+  });
+  try {
+    return {
+      error: await run().then(
+        () => undefined,
+        (error) => error,
+      ),
+      output,
+    };
+  } finally {
+    for (const restore of streams) restore();
   }
 }
 
@@ -453,24 +477,30 @@ export async function rehearse(env = process.env) {
     rejectedUrl.pathname = `/${rejectedName}`;
     let rejectionHookEntered = false,
       rejectedAfterEntered = false;
-    await assert.rejects(
+    const privateDiagnostic = 'synthetic private diagnostic must not escape';
+    const rejected = await capturedOutput(() =>
       restoreLocal(
         { ...restoreEnv, JUSTGO_RESTORE_DATABASE_URL: rejectedUrl.href },
         {
           beforeReconcile: async () => {
             rejectionHookEntered = true;
-            throw new Error('synthetic private diagnostic must not escape');
+            throw new Error(privateDiagnostic);
           },
           afterReconcile: async () => {
             rejectedAfterEntered = true;
           },
         },
       ),
-      {
-        message:
-          'Local restore failed; target remains isolated and writers closed',
-      },
     );
+    assert.equal(
+      rejected.error?.message,
+      'Local restore failed; target remains isolated and writers closed',
+    );
+    assert.equal(
+      inspect(rejected.error, { depth: Infinity }).includes(privateDiagnostic),
+      false,
+    );
+    assert.equal(rejected.output.join('').includes(privateDiagnostic), false);
     assert.equal(rejectionHookEntered, true);
     assert.equal(rejectedAfterEntered, false);
     step = 'revoked proof assertions';
