@@ -217,6 +217,7 @@ highest level that works and updates this table.
 | A bug found outside the task is filed with `bug` and one of `agent-fix`, `needs-decision` or `blocked`. Each known-bug test (Jest `.failing` or Vitest `.fails`) names its issue as `#NNN` or the issue URL. A decision trail records each filed bug in a `bug` row.                                                                                 | `scripts/quality/known-bugs.test.mjs` fails on a tracked known-bug test with no issue reference in its title or the comment above. The Stop hook `.claude/hooks/require-trail-review.mjs` (cases in `trail-review-hook.test.mjs`) blocks while a trail's latest `bug` row for a bug has no label or skip reason. A bug with no row, and the issue's real labels, are caught only in review.                                        | test, hook, written           |
 | Long or step-away runs keep a decision trail at `.local/decision-trails/<run>.tsv` and end with an audit and a separate review in `<run>.review.md`. A run writes only to its own trail and records other sessions' events there. A block over another session's trail means the hook or the main checkout is stale, so never write into that trail. | The Claude Code Stop hook `.claude/hooks/require-trail-review.mjs` (PR #127)                                                                                                                                                                                                                                                                                                                                                       | hook, written                 |
 | Hand work to another session with a brief that names the goal and points at the PRs and the decision trail (pstack's session-pickup playbook). Pause with pstack's pause-safely playbook: a `wip:` commit and a short resume note that points at the trail. Keep no standing handoff files.                                                          | Nothing. It is a judgment call.                                                                                                                                                                                                                                                                                                                                                                                                    | written                       |
+| Verifiers run on Opus. Only a docs- or tests-only, non-sensitive re-check runs on Sonnet, and a hook failure keeps Opus.                                                                                                                                                                                                                             | The `PreToolUse` hook `.claude/hooks/verifier-model.mjs`, which rewrites the `Agent` call's `model`, with cases in `scripts/quality/verifier-model-hook.test.mjs`                                                                                                                                                                                                                                                                  | hook, test                    |
 | Changes reach `main` only through a PR that passes `checks` and `sections`.                                                                                                                                                                                                                                                                          | Branch protection on `main`, which also binds admins and blocks force-pushes and branch deletion                                                                                                                                                                                                                                                                                                                                   | GitHub                        |
 | Agents follow the [effort](#agent-effort) and [merge](#git-and-autonomy) rules.                                                                                                                                                                                                                                                                      | Nothing beyond the verdict check below. Agents act through Anthony's GitHub account and a PR needs no approval, so review catches a break.                                                                                                                                                                                                                                                                                         | written                       |
 | The newest verdict covers the PR head. A commit pushed after it needs a fresh verdict, unless every file it changes is review-only in `verdict-patch.mjs` (Markdown, tests, `eslint.config.mjs` and Prettier config). Review-only files still get a review.                                                                                          | The required `sections` job in `.github/workflows/pr-description.yml` runs `scripts/quality/verdict-status.mjs`, and `.github/workflows/verdict-recheck.yml` reruns that job when Anthony's account posts or edits a verdict. Cases in `scripts/quality/verdict-status.test.mjs`. A missing or unreadable verdict fails. The format is in [Git and autonomy](#git-and-autonomy).                                                   | CI, test                      |
@@ -324,32 +325,35 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   never `xhigh` or `max`. Anthony capped effort at `high` on 2026-11-07 to cut
   usage. `high` is the default, including for the sensitive areas below.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
-  because a resumed verifier checks only its own findings. To save cost, use a
-  fresh agent on a smaller model, not a resumed one, except for the sensitive
-  areas below.
+  because a resumed verifier checks only its own findings. Brief it with
+  `node scripts/quality/recheck-brief.mjs <pr>`, which quotes the newest
+  verdict's findings, scopes the check to the diff since that verdict, and asks
+  for a full re-read after a rebase that needs `re-verify` or on a sensitive PR.
+- Verifiers run on Opus at `high`. The `PreToolUse` hook
+  `.claude/hooks/verifier-model.mjs` sets the model of every verifier or
+  re-verifier `Agent` call. It picks Sonnet only for a re-check whose PR diff
+  against `origin/main` is docs- or tests-only by the `verdict-patch.mjs` rule,
+  touches no sensitive path and carries no `Sensitive: yes`. Anything else,
+  including a first verifier or a hook failure, runs on Opus. Name a verifier
+  as one in the `Agent` description, such as "Verify PR" or "Re-verify fix
+  round", so the hook sees it.
 - When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
   sets the model and effort for each pstack role.
 - Start routine helpers on Sonnet at `high` (`model: "sonnet"`) when pstack's
   per-role settings do not already cover them. Routine helpers are decision-trail
   and audit reviews, inventories and research, docs-only writing passes,
-  mechanical fix rounds (lint, formatting and small review notes), and re-checks
-  after a rebase whose `verdict-patch.mjs check` says `carries`. Owners that
-  change behavior, a PR's first independent verifier and interrogate reviewers
-  stay on Opus. A re-verify after a fix round may use Sonnet, as the re-verify
-  bullet above allows.
+  and mechanical fix rounds (lint, formatting and small review notes). Owners
+  that change behavior and interrogate reviewers stay on Opus. The verifier
+  hook above decides each verifier's model, so this bullet never overrides it.
 - A session that starts or tracks other sessions hands off to a fresh session
   when its context reaches about 200k tokens (`get_usage` reports it). Use the
   session-pickup brief from [Rules and what enforces them](#rules-and-what-enforces-them).
   Every turn rereads the whole context, so a long-lived coordinator costs more
   per turn as it grows.
 - The sensitive areas are sign-in and identity, account data and
-  deletion, database migrations, and release and backup scripts. These live mainly
-  in `apps/api/src/{identity,access,account-export,data-sync}/`,
-  `apps/api/src/http/bearer.ts`, `apps/api/src/db/{schema,managed-session-check}.ts`,
-  `apps/api/drizzle/`, `apps/api/scripts/`, `apps/mobile/src/app-support/{identity,access}/`,
-  `apps/mobile/src/app/account/`, `apps/mobile/src/data/{backup,cloud}/`,
-  `apps/mobile/src/data/activity/sync/`, `scripts/release/`, `scripts/backups/` and the
-  release, staging and backup workflows in `.github/workflows/`.
+  deletion, database migrations, and release and backup scripts.
+  [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
+  lists their paths, and the tooling reads that list.
 - Run `/pstack:interrogate` on every PR that touches those areas before calling
   it verified. An interrogate run covers a patch, like a verdict. After a new
   head, run `verdict-patch.mjs check` against the base and head the panel saw. A
