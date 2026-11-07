@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { ApiError } from '../http/api-error.js';
+import { outboundFetch } from '../http/outbound-fetch.js';
 export type ManagedAuthDeletion = (authUserId: string) => Promise<void>;
 
 /** Server-only administrative client. No session, provider error or secret reaches a response. */
 export function createManagedAuthDeletion(
   url: string,
   secretKey: string,
-  request: typeof fetch = fetch,
+  transport?: typeof fetch,
 ): ManagedAuthDeletion {
   // Preserve fail-fast configuration validation without initializing the SDK on every request.
   const trimmedUrl = url.trim();
@@ -19,6 +20,7 @@ export function createManagedAuthDeletion(
     throw new Error('Invalid supabaseUrl: Provided URL is malformed.');
   }
   if (!secretKey) throw new Error('supabaseKey is required.');
+  const request = outboundFetch(transport);
   return async (authUserId) => {
     try {
       const admin = createClient(url, secretKey, {
