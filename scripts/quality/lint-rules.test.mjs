@@ -89,6 +89,16 @@ for (const [rule, source, filePath = production, severity = 2] of [
     "import { execSync } from 'node:child_process'; execSync('git patch-id --stable', { input: '' });",
     'scripts/quality/changes.mjs',
   ],
+  [
+    'no-restricted-syntax',
+    "import { sql } from 'drizzle-orm'; export const leak = (tx: { execute(query: unknown): unknown }, id: string) => tx.execute(sql`select set_config('app.user_id', ${id}, false)`);",
+    'apps/api/src/access/guest.ts',
+  ],
+  [
+    'no-restricted-syntax',
+    "export const leak = (client: { query(text: string): unknown }) => client.query('SET app.user_id = 1');",
+    'apps/api/src/access/guest.ts',
+  ],
 ]) {
   test(`lint safeguard: ${rule}`, async () => {
     const [result] = await eslint.lintText(source, {
