@@ -24,28 +24,18 @@ import {
 import { DeleteAccountService } from './delete-account.js';
 import type { IdentityService } from './service.js';
 import { ApiError } from '../http/api-error.js';
-import { rateAddress } from './address.js';
 
 export function identityRoutes(
   app: ApiApp,
   service: IdentityService,
-  onVercel = false,
   legacyIdentityEnabled = true,
 ) {
   const general = async (request: ApiContext, next: () => Promise<void>) => {
-    // The connection address is authoritative; arbitrary forwarding headers are not trusted.
-    await service.rateLimit(
-      rateAddress(request.get('clientAddress'), request.req.header(), onVercel),
-      'identity',
-      120,
-    );
+    await service.rateLimit(request.get('clientAddress'), 'identity', 120);
     await next();
   };
   const sensitive = async (request: ApiContext, next: () => Promise<void>) => {
-    await service.rateLimit(
-      rateAddress(request.get('clientAddress'), request.req.header(), onVercel),
-      'recovery',
-    );
+    await service.rateLimit(request.get('clientAddress'), 'recovery');
     await next();
   };
   app.delete('/account', general, parseRequestBody(), async (request) => {

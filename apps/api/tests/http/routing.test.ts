@@ -8,7 +8,7 @@ import { apiRequest } from '../request.js';
 describe.each(['default', 'worker'] as const)(
   'HTTP router compatibility (%s)',
   (router) => {
-    function setup(onVercel = false) {
+    function setup() {
       const identity = new IdentityService(drizzle.mock(), {
         rateKey: 'routing-fixture',
       });
@@ -17,7 +17,6 @@ describe.each(['default', 'worker'] as const)(
         logger: false,
         checkDatabase: async () => {},
         identity,
-        onVercel,
         ...(router === 'worker' ? { router: new WorkerRouter() } : {}),
       });
       return { app, rate, identity };
@@ -146,17 +145,6 @@ describe.each(['default', 'worker'] as const)(
       expect(rate).toHaveBeenCalledExactlyOnceWith(
         '127.0.0.1',
         'managed-auth',
-        120,
-      );
-      const vercel = setup(true);
-      await apiRequest(vercel.app, {
-        url: '/v1/sessions/current',
-        remoteAddress: '127.1.1.1',
-        headers: { 'x-vercel-forwarded-for': '203.0.113.3' },
-      });
-      expect(vercel.rate).toHaveBeenCalledExactlyOnceWith(
-        '203.0.113.3',
-        'identity',
         120,
       );
     });

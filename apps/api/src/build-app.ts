@@ -40,7 +40,6 @@ export function buildApp(
   options: HttpOptions & {
     checkDatabase: () => Promise<void>;
     identity?: IdentityService;
-    onVercel?: boolean;
     entitlementReader?: EntitlementReader;
     uploadEligibilityReader?: UploadEligibilityReader;
     developmentLegalDrafts?: boolean;
@@ -78,16 +77,10 @@ export function buildApp(
     app.get('/v1/guest/challenges', async (context) =>
       context.json(catalogSchema.parse(await guest.catalog())),
     );
-    mount('/v1/auth', (scope) =>
-      managedIdentityRoutes(scope, identity, options.onVercel),
-    );
+    mount('/v1/auth', (scope) => managedIdentityRoutes(scope, identity));
     mount('/v1', (scope) => dataSyncRoutes(scope, identity));
   }
-  if (
-    options.developmentLegalDrafts &&
-    process.env.NODE_ENV !== 'production' &&
-    !process.env.VERCEL
-  )
+  if (options.developmentLegalDrafts && process.env.NODE_ENV !== 'production')
     developmentLegalDraftRoutes(app);
   mount('/v1', (scope) =>
     accessRoutes(
@@ -114,12 +107,7 @@ export function buildApp(
       ),
     );
     mount('/v1', (scope) =>
-      identityRoutes(
-        scope,
-        identity,
-        options.onVercel,
-        options.legacyIdentityEnabled,
-      ),
+      identityRoutes(scope, identity, options.legacyIdentityEnabled),
     );
     mount('/v1/attempts', (scope) =>
       attemptRoutes(
