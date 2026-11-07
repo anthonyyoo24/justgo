@@ -327,9 +327,6 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
 
 ## Agent effort
 
-- Subagents and helpers run at `medium` or `high` effort. Never use `low`, and
-  never `xhigh` or `max`. Anthony capped effort at `high` on 2026-11-07 to cut
-  usage. `high` is the default, including for the sensitive areas below.
 - Re-verify a fix with a fresh verifier, not the one that found the problem,
   because a resumed verifier checks only its own findings. It re-reads the
   whole PR, not only the change since the last verdict.
@@ -341,14 +338,14 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   `PR #<n>` or a PR URL, whose files on GitHub are all docs or tests by the
   `verdict-patch.mjs` rule, none on the sensitive list, and whose brief has no
   `Sensitive: yes` line. Anything else gets Opus. The hook sets the model only,
-  so pass `effort: "high"` yourself. A hook that cannot run blocks the call.
+  so pass the effort yourself. A hook that cannot run blocks the call.
 - When Anthony raises usage limits or cost, offer `/pstack:setup-pstack`, which
   sets the model and effort for each pstack role.
 - Start routine helpers on Sonnet at `high` (`model: "sonnet"`) when pstack's
   per-role settings do not already cover them. Routine helpers are decision-trail
   and audit reviews, inventories and research, docs-only writing passes,
   and mechanical fix rounds (lint, formatting and small review notes). Owners
-  that change behavior and interrogate reviewers stay on Opus. The verifier
+  that change behavior stay on Opus. The verifier
   hook above decides each verifier's model, so this bullet never overrides it.
 - A session that starts or tracks other sessions hands off to a fresh session
   when its context reaches about 200k tokens (`get_usage` reports it). Use the
@@ -359,11 +356,8 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   deletion, database migrations, and release and backup scripts.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
   lists their paths, and the verifier hook reads that list.
-- Run `/pstack:interrogate` on every PR that touches those areas before calling
-  it verified. An interrogate run covers a patch, like a verdict. After a new
-  head, run `verdict-patch.mjs check` against the base and head the panel saw. A
-  `re-verify` result means interrogate runs again, not only a verifier. A
-  Verification line about an earlier head names that head.
+- A PR in those areas gets the same review as any other PR: one verifier on
+  Opus, then a fresh verifier after each fix round. Anthony merges it.
 - Only Claude models are available here. Where pstack asks for a reviewer, judge
   or verifier from a different model family, use a separate Claude agent and say
   so in its verdict.

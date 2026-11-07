@@ -1,6 +1,6 @@
 // The sensitive areas from AGENTS.md "Agent effort": sign-in and identity,
 // account data and deletion, database migrations, and release and backup
-// scripts. A PR that touches one waits for Anthony and runs interrogate.
+// scripts. A PR that touches one waits for Anthony to merge it.
 export const sensitivePaths = [
   'apps/api/src/identity/',
   'apps/api/src/access/',
