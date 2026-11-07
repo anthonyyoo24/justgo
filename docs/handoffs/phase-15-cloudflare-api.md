@@ -8,8 +8,8 @@ The backup and recovery evidence below still applies to the R2 backups.
 
 ## Current status
 
-**Phase 15 remains in progress. Local phase source `abea5f5` is active on staging
-at 100%, including the static security-policy and configuration-validation changes. Genuine
+**Phase 15 remains in progress. Local phase source `a082087` is active on staging
+at 100%, including the tested static security-policy optimization. Genuine
 Google/Apple phone and native iCloud read-back/cleanup checks passed. Manual
 main-workflow copies, real missed-run email delivery and verified manual catch-up
 passed. Two new-clock hourly ledger runs passed; the first nightly database slot,
@@ -17,20 +17,11 @@ actual expiry, complete recovery and sustained
 Workers Free suitability remain open. Final TestFlight, notices and coordinated
 cutover remain separate gates. Changes stay local for one phase PR.**
 
-The latest guarded code-only release deployed source
-`abea5f56a2bab436f7750192643e0a335a213f29`, version
-`c230b339-f512-4ab4-b901-f4f2762e88c0`, deployment
-`7b31b03e-1cd4-4040-a2f9-5c82cc901816`, local run
-`local-4df879bc-6410-4943-a628-def25bc29a9e` at November 2 22:06:53 UTC.
-Full release checks and exact candidate/promotion/readback passed. Current normal-
-traffic metrics still exceed the Free CPU budget; no paid plan was selected.
 The [consolidated rollout review](../checks/phase-15-rollout-review.md) records the
 hourly schedule/monitor evidence, overnight follow-up, credential proposal,
-reviewed recovery preparation and remaining approvals. Recovery task changes
-remain on local `codex/phase15-real-recovery`; integration and final publication
-are not authorized by this checkpoint.
+reviewed recovery preparation and remaining approvals.
 
-The preceding guarded code-only release deployed source
+The latest guarded code-only release deployed source
 `a082087b74c417640baf87e3b0916accf5c677be`, version
 `acf11ecb-afa5-4b5f-87fd-b446186f6794`, deployment
 `f7cff9f0-045b-460f-b373-eb7f6623fc83`, local run
