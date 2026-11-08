@@ -350,12 +350,16 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   formatting and small review notes). Owners that change behavior and
   interrogate reviewers stay on Opus. The verifier hook above decides each
   verifier's model, so this bullet never overrides it.
-- The same hook sets the model for decision-trail reviews and audits. A
-  description that names both "review" and "trail", and is not a fix, build or
-  verdict, runs on Sonnet. A description that starts with "audit", or with a
-  task id such as `P15-4` and then "audit", runs on Sonnet. It runs on Opus
-  instead when its brief says `Sensitive: yes` or names one PR that touches a
-  sensitive path. Pass the effort yourself.
+- The same hook sets the model for decision-trail reviews and audits, so
+  describe them that way. A description that starts with "Review" and then
+  names the trail, such as "Review the P15-3 decision trail", or that starts
+  with "Trail review", runs on Sonnet unless it mentions a verdict. A
+  description that starts with "Audit", or with a task id such as `P15-4` and
+  then "audit", runs on Sonnet. An audit runs on Opus instead when its brief
+  says `Sensitive: yes` or names one PR that touches a sensitive path. With no
+  single PR named, or when GitHub cannot be read, only `Sensitive: yes` keeps
+  an audit on Opus, so write that line for any audit of sensitive work. Pass
+  the effort yourself.
 - A session that starts or tracks other sessions hands off to a fresh session
   when its context reaches about 200k tokens (`get_usage` reports it). Use the
   session-pickup brief from [Rules and what enforces them](#rules-and-what-enforces-them).

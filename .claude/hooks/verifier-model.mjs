@@ -15,10 +15,17 @@ const verifierName =
 const verdictAsk = /Verifier verdict:/;
 const recheckName = /^\s*(?:fresh\s+)?(?:re-?verif\w*|re-?check\b)/i;
 // Routine reviews, named by how the description starts.
-// A trail review names both words and is not a builder or a verdict.
-const trailWords = [/\btrail\b/i, /\breview\b/i];
-const notTrailReview =
-  /^\s*(?:fix|build|write|add|implement|create|update)\b|\bverdict\b/i;
+// A trail review starts with "review" (optionally "final" or "close out the")
+// and names the trail as a word, not as part of a name such as
+// require-trail-review. Or it starts with "trail review", optionally after
+// "close out the". A verdict is never
+// a trail review.
+const trailWord = String.raw`(?<![\w-])trail(?![\w-])`;
+const trailName = new RegExp(
+  String.raw`^\s*(?:(?:(?:final|close\s+out\s+the)\s+)?review\b.*${trailWord}|(?:close\s+out\s+the\s+)?(?:decision[\s-]+)?trail\s+review\b)`,
+  'i',
+);
+const verdictWord = /\bverdict\b/i;
 // An optional task id before "audit" must contain a digit, as in P15-4.
 const auditName = /^\s*(?:(?=\S*\d)[\w.-]+\s+)?audit\b/i;
 // The PR the brief names. Without exactly one, the hook cannot know the diff.
@@ -34,10 +41,7 @@ export function isVerifier(input) {
 export function kindOf(input) {
   if (isVerifier(input)) return 'verifier';
   const description = input.description ?? '';
-  if (
-    trailWords.every((word) => word.test(description)) &&
-    !notTrailReview.test(description)
-  )
+  if (trailName.test(description) && !verdictWord.test(description))
     return 'trail';
   if (auditName.test(description)) return 'audit';
   return undefined;

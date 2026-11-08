@@ -149,6 +149,7 @@ test('decision-trail reviews run on Sonnet, even when Opus is asked for', () => 
     'Trail review for the encode run',
     'Final review of the decision trail',
     'Close out the trail review',
+    'Review final trail rows',
   ]) {
     const input = { description, prompt: 'Read the trail.', model: 'opus' };
     assert.equal(kindOf(input), 'trail', description);
@@ -182,6 +183,10 @@ test('fix rounds and builders that mention a trail or an audit are left alone', 
     'Fix audit findings on PR 203',
     'Build the trail review hook',
     'Final verdict and trail review',
+    'Harden require-trail-review hook',
+    'Interrogate review: trail hook PR #167',
+    'Owner: review trail hook fixes',
+    'Review the require-trail-review hook PR',
     'Inventory IDENTITY.md rules',
     'Owner: IDENTITY R46 backup ledger',
   ]) {
