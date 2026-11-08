@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 // tests-only, non-sensitive PR runs on Sonnet. Any doubt keeps Opus.
 // Decision-trail reviews run on Sonnet. An audit runs on Sonnet unless its
 // brief says `Sensitive: yes` or names a PR that touches a sensitive path.
+// Any other Agent call that picks a non-Opus model keeps it only when its
+// description starts with a routine-helper kind or a pstack Sonnet role.
+// Otherwise the hook rewrites it to Opus, which beats blocking the work.
 // settings.json sets onFailure "block", so a hook that cannot start, crashes or
 // times out stops the Agent call instead of letting a requested Sonnet through.
 
@@ -28,6 +31,32 @@ const trailName = new RegExp(
 const verdictWord = /\bverdict\b/i;
 // An optional task id before "audit" must contain a digit, as in P15-4.
 const auditName = /^\s*(?:(?=\S*\d)[\w.-]+\s+)?audit\b/i;
+// The routine-helper kinds AGENTS.md lists, as description prefixes. The list
+// is complete: anything else that asks for a cheaper model runs on Opus.
+export const routinePrefixes = [
+  'Research',
+  'Inventory',
+  'Docs pass',
+  'Docs-only',
+  'Lint fix',
+  'Format',
+  'Formatting fix',
+];
+// The pstack roles that ~/.claude/rules/pstack-models.md puts on Sonnet.
+// pstack names no description for them, so a helper for one starts with its
+// role name. The prefixes are plain words, so they join into one pattern.
+export const pstackRolePrefixes = [
+  'How explorer',
+  'How explainer',
+  'Why investigator',
+  'Reflect',
+  'Hillclimb',
+  'Arena cross-judge',
+];
+const sonnetName = new RegExp(
+  String.raw`^\s*(?:${[...routinePrefixes, ...pstackRolePrefixes].join('|')})s?(?![\w-])`,
+  'i',
+);
 // The PR the brief names. Without exactly one, the hook cannot know the diff.
 const prReference = /(?:\bPR\s*#|\/pull\/)(\d+)\b/gi;
 
@@ -44,6 +73,7 @@ export function kindOf(input) {
   if (trailName.test(description) && !verdictWord.test(description))
     return 'trail';
   if (auditName.test(description)) return 'audit';
+  if (input.model !== undefined && !/opus/i.test(input.model)) return 'helper';
   return undefined;
 }
 
@@ -71,6 +101,14 @@ export function decide(
       (changed ?? []).some((file) => isSensitivePath(file))
       ? { model: 'opus', reason: 'audit of sensitive work' }
       : { model: 'sonnet', reason: 'audit of non-sensitive work' };
+  if (kind === 'helper')
+    return /sonnet/i.test(input.model) &&
+      sonnetName.test(input.description ?? '')
+      ? undefined
+      : {
+          model: 'opus',
+          reason: `only helpers whose description starts with ${routinePrefixes.join(', ')} or a pstack Sonnet role (${pstackRolePrefixes.join(', ')}) may pick Sonnet`,
+        };
   if (kind !== 'verifier') return undefined;
   const sonnet =
     recheckName.test(input.description ?? '') &&
@@ -131,7 +169,8 @@ async function main() {
       ...(await import('../../scripts/quality/sensitive-paths.mjs')),
       ...(await import('../../scripts/quality/verdict-patch.mjs')),
     };
-    const files = kind === 'trail' ? undefined : prFiles(prOf(input));
+    const files =
+      kind === 'trail' || kind === 'helper' ? undefined : prFiles(prOf(input));
     result = output(input, decide(input, files, rules));
   } catch {
     result = output(input, { model: 'opus', reason: 'hook error' });

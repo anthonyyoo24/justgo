@@ -215,3 +215,98 @@ test('the hook routes a trail review without reading GitHub', () => {
     'sonnet',
   );
 });
+
+test('a routine helper named by an allowed prefix keeps Sonnet', () => {
+  for (const description of [
+    'Research Expo SDK 55 router changes',
+    'Inventory routes and verdict-recheck.yml',
+    'Docs pass on the operations docs',
+    'Docs-only rewrite of TESTFLIGHT_BETA.md',
+    'Lint fix for the mobile workspace',
+    'Format the changed files',
+    'Formatting fix after rebase',
+  ]) {
+    const input = { description, prompt: 'Do it.', model: 'sonnet' };
+    assert.equal(decide(input, undefined, rules), undefined, description);
+    assert.equal(output(input, decide(input, undefined, rules)), undefined);
+  }
+});
+
+test('pstack Sonnet roles named by role keep Sonnet', () => {
+  for (const description of [
+    'How explorer: activity runtime clock',
+    'How explainer for the sync coordinator',
+    'Why investigator: source control',
+    'Why investigators, issue tracker',
+    'Reflect tooling reviewer',
+    'Reflect judgment reviewer',
+    'Reflect divergent reviewer',
+    'Reflect synthesizer',
+    'Hillclimb attempt 3: journal write batching',
+    'Arena cross-judge 2',
+  ]) {
+    const input = { description, prompt: 'Do it.', model: 'sonnet' };
+    assert.equal(decide(input, undefined, rules), undefined, description);
+  }
+});
+
+test('any other helper that picks a non-Opus model is rewritten to Opus', () => {
+  for (const [description, model] of [
+    ['Merge verified PRs', 'sonnet'],
+    ['Install Bun and run pstack watcher', 'sonnet'],
+    ['Owner: IDENTITY R46 backup ledger', 'sonnet'],
+    ['Researcher notes', 'sonnet'],
+    ['Formatter swap', 'sonnet'],
+    ['Fix the reflect hook', 'claude-sonnet-5-5'],
+    ['Inventory routes', 'haiku'],
+    ['Quick look', 'haiku'],
+  ]) {
+    const input = { description, prompt: 'Do it.', model };
+    const decision = decide(input, undefined, rules);
+    assert.equal(decision?.model, 'opus', description);
+    assert.match(decision.reason, /Research, Inventory, Docs pass/);
+    assert.equal(
+      output(input, decision).hookSpecificOutput.updatedInput.model,
+      'opus',
+    );
+  }
+});
+
+test('a helper with no model or with Opus is left alone', () => {
+  for (const input of [
+    { description: 'Merge verified PRs', prompt: 'x' },
+    { description: 'Merge verified PRs', prompt: 'x', model: 'opus' },
+    { description: 'Owner: sync fix', prompt: 'x', model: 'claude-opus-5-5' },
+  ])
+    assert.equal(
+      output(input, decide(input, undefined, rules)),
+      undefined,
+      JSON.stringify(input),
+    );
+});
+
+test('the hook process rewrites a non-routine Sonnet helper to Opus', () => {
+  const run = (tool_input) =>
+    spawnSync(process.execPath, [hook], {
+      input: JSON.stringify({ tool_name: 'Agent', tool_input }),
+      encoding: 'utf8',
+      env: { ...process.env, PATH: '/nonexistent' },
+    });
+  const forced = run({
+    description: 'Merge PRs',
+    prompt: 'x',
+    model: 'sonnet',
+  });
+  assert.equal(forced.status, 0, forced.stderr);
+  assert.equal(
+    JSON.parse(forced.stdout).hookSpecificOutput.updatedInput.model,
+    'opus',
+  );
+  const kept = run({
+    description: 'Inventory hooks',
+    prompt: 'x',
+    model: 'sonnet',
+  });
+  assert.equal(kept.status, 0, kept.stderr);
+  assert.equal(kept.stdout, '');
+});
