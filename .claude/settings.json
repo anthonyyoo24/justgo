@@ -1,7 +1,5 @@
 {
-  "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "25"
-  },
+  "autoCompactWindow": 280000,
   "hooks": {
     "Stop": [
       {

@@ -380,9 +380,10 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   session-pickup brief from [Rules and what enforces them](#rules-and-what-enforces-them).
   Every turn rereads the whole context, so a long-lived coordinator costs more
   per turn as it grows.
-  As a backstop, `.claude/settings.json` sets `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`
-  to `25`, so Claude Code compacts any JustGO session at about 250k of its 1M
-  window.
+  As a backstop, `.claude/settings.json` sets `autoCompactWindow` to `280000`.
+  Claude Code keeps about 33k of that window for output and a buffer, so it
+  compacts a JustGO session at about 250k. A model with a smaller window keeps
+  its own limit. `claude -p /autocompact` shows the window in force.
 - The sensitive areas are sign-in and identity, account data and
   deletion, database migrations, and release and backup scripts.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
