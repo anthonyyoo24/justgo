@@ -84,6 +84,21 @@ these rules:
   explain the difference. Do not keep the passing run. When a change makes the
   code under test match `main`, a pass proves nothing unless the run shows which
   code it served, or it first failed at the same level.
+- Swarm-verify a PR that changes behavior in a sensitive area, once, when it is
+  first code-ready. A sensitive area is a path in
+  [`sensitive-paths`](scripts/quality/sensitive-paths.mjs), or a change to
+  sign-in, account data, migrations or release from outside those paths. Read
+  the installed pstack plugin's `skills/swarm/SKILL.md` first, because an agent
+  cannot load that skill on its own. Then follow step 4 of pstack's
+  `autopilot-full` playbook, with these lanes run in parallel:
+  - a verifier that proves the behavior on the running app;
+  - one or two audits, each on a single question, such as safety invariants or
+    the diff against the plan. Describe each as "Audit: …" with `Sensitive: yes`
+    in its brief, so the model hook keeps it on Opus.
+
+  Every other PR, and every fix round, gets a single verifier. Run the swarm
+  again only for new behavior, a redesign or a large new diff.
+
 - Keep the Playwright journeys, the web adapters and the fixture safeguards until a
   native drive proves the same app, API and database cases and passes hosted CI.
 - When behavior depends on storage, transport, time or randomness, control it
