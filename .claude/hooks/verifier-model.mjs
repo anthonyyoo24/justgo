@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 // PreToolUse hook on Agent. Verifiers run on Opus. A re-check of a docs- or
 // tests-only, non-sensitive PR runs on Sonnet. Any doubt keeps Opus.
+// Decision-trail reviews run on Sonnet. An audit runs on Sonnet unless its
+// brief says `Sensitive: yes` or names a PR that touches a sensitive path.
 // settings.json sets onFailure "block", so a hook that cannot start, crashes or
 // times out stops the Agent call instead of letting a requested Sonnet through.
 
@@ -12,6 +14,13 @@ const verifierName =
   /^\s*(?:independent\s+|fresh\s+)?(?:re-?verif\w*|verif(?:y|ier|ication)\b|re-?check\b)/i;
 const verdictAsk = /Verifier verdict:/;
 const recheckName = /^\s*(?:fresh\s+)?(?:re-?verif\w*|re-?check\b)/i;
+// Routine reviews, named by how the description starts.
+// A trail review names both words and is not a builder or a verdict.
+const trailWords = [/\btrail\b/i, /\breview\b/i];
+const notTrailReview =
+  /^\s*(?:fix|build|write|add|implement|create|update)\b|\bverdict\b/i;
+// An optional task id before "audit" must contain a digit, as in P15-4.
+const auditName = /^\s*(?:(?=\S*\d)[\w.-]+\s+)?audit\b/i;
 // The PR the brief names. Without exactly one, the hook cannot know the diff.
 const prReference = /(?:\bPR\s*#|\/pull\/)(\d+)\b/gi;
 
@@ -20,6 +29,18 @@ export function isVerifier(input) {
     verifierName.test(input.description ?? '') ||
     verdictAsk.test(input.prompt ?? '')
   );
+}
+
+export function kindOf(input) {
+  if (isVerifier(input)) return 'verifier';
+  const description = input.description ?? '';
+  if (
+    trailWords.every((word) => word.test(description)) &&
+    !notTrailReview.test(description)
+  )
+    return 'trail';
+  if (auditName.test(description)) return 'audit';
+  return undefined;
 }
 
 export function prOf(input) {
@@ -38,7 +59,15 @@ export function decide(
   changed,
   { isReviewOnly, isSensitivePath, sensitiveFlag },
 ) {
-  if (!isVerifier(input)) return undefined;
+  const kind = kindOf(input);
+  if (kind === 'trail')
+    return { model: 'sonnet', reason: 'decision-trail review' };
+  if (kind === 'audit')
+    return sensitiveFlag.test(input.prompt ?? '') ||
+      (changed ?? []).some((file) => isSensitivePath(file))
+      ? { model: 'opus', reason: 'audit of sensitive work' }
+      : { model: 'sonnet', reason: 'audit of non-sensitive work' };
+  if (kind !== 'verifier') return undefined;
   const sonnet =
     recheckName.test(input.description ?? '') &&
     !sensitiveFlag.test(input.prompt ?? '') &&
@@ -62,7 +91,7 @@ export function output(input, decision) {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'allow',
-      permissionDecisionReason: `verifier-model: ${decision.model} (${decision.reason})`,
+      permissionDecisionReason: `agent-model: ${decision.model} (${decision.reason})`,
       updatedInput: { ...input, model: decision.model },
     },
   };
@@ -90,14 +119,16 @@ async function main() {
   const event = JSON.parse(readFileSync(0, 'utf8'));
   if (event.tool_name !== 'Agent') return;
   const input = event.tool_input ?? {};
-  if (!isVerifier(input)) return;
+  const kind = kindOf(input);
+  if (!kind) return;
   let result;
   try {
     const rules = {
       ...(await import('../../scripts/quality/sensitive-paths.mjs')),
       ...(await import('../../scripts/quality/verdict-patch.mjs')),
     };
-    result = output(input, decide(input, prFiles(prOf(input)), rules));
+    const files = kind === 'trail' ? undefined : prFiles(prOf(input));
+    result = output(input, decide(input, files, rules));
   } catch {
     result = output(input, { model: 'opus', reason: 'hook error' });
   }
