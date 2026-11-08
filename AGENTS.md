@@ -382,7 +382,7 @@ Agents work in pstack's Autopilot-full model, with these JustGO limits.
   per turn as it grows.
   As a backstop, `.claude/settings.json` sets `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`
   to `25`, so Claude Code compacts any JustGO session at about 250k of its 1M
-  window. A forked side chat ignores the override.
+  window.
 - The sensitive areas are sign-in and identity, account data and
   deletion, database migrations, and release and backup scripts.
   [`scripts/quality/sensitive-paths.mjs`](scripts/quality/sensitive-paths.mjs)
